@@ -490,6 +490,24 @@ export class GoogleSheetsClient {
   }
 
   /**
+   * 指定セルに値を直接書き込む（連番シート更新などに使用）
+   * @param sheetName - シート名
+   * @param cellA1 - A1記法のセル（例: 'C2', 'I2'）
+   * @param value - 書き込む値
+   */
+  async updateRawCell(sheetName: string, cellA1: string, value: any): Promise<void> {
+    this.ensureAuthenticated();
+    await sheetsRateLimiter.executeRequest(async () => {
+      await this.sheets!.spreadsheets.values.update({
+        spreadsheetId: this.config.spreadsheetId,
+        range: `'${sheetName}'!${cellA1}`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [[value]] },
+      });
+    });
+  }
+
+  /**
    * 新しい行を追加
    */
   async appendRow(row: SheetRow): Promise<void> {

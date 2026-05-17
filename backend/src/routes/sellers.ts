@@ -2561,6 +2561,239 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
 });
 
 /**
+ * POST /api/sellers/ieul-transfer
+ * イエウールメール本文を受け取り、DB即時転記 + DB→スプシ即時同期を行う
+ * CRON_SECRET認証（mail_notify.pyから呼び出される）
+ */
+router.post('/ieul-transfer', async (req: Request, res: Response) => {
+  // CRON_SECRET認証（認証ミドルウェアをバイパスするため手動チェック）
+  const authHeader = req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { body: mailBody } = req.body;
+  if (!mailBody || typeof mailBody !== 'string') {
+    return res.status(400).json({ success: false, error: 'mailBody is required' });
+  }
+
+  try {
+    console.log('[ieul-transfer] イエウールメール本文解析開始');
+
+    // ============================================================
+    // 1. メール本文解析（GASのtransferIeuru相当）
+    // ============================================================
+    const cleanedBody = mailBody.replace(/\r?\n|\r/g, ' ');
+
+    const extractData = (text: string, from: string, to: string): string => {
+      const fromIndex = text.indexOf(from);
+      if (fromIndex === -1) return '';
+      const start = fromIndex + from.length;
+      const toIndex = text.indexOf(to, start);
+      return text.substring(start, toIndex === -1 ? text.length : toIndex).trim();
+    };
+
+    const extractNumeric = (str: string): string => {
+      if (!str) return '';
+      const m = str.match(/(\d+(?:\.\d+)?)/);
+      return m ? m[1] : '';
+    };
+
+    const extractYear = (str: string): string => {
+      if (!str) return '';
+      const m = str.match(/(\d{4})/);
+      return m ? m[1] : '';
+    };
+
+    const convertStatus = (status: string): string => {
+      if (!status) return '';
+      if (status.includes('居住中')) return '居';
+      if (status.includes('空き')) return '空';
+      if (status.includes('賃貸')) return '賃';
+      return '他';
+    };
+
+    // 依頼日時
+    const requestDateMatch = cleanedBody.match(
+      /依頼日時[\s　]*[:：][\s　]*([0-9]{4}[-\/][0-9]{1,2}[-\/][0-9]{1,2}[\s　]+[0-9]{1,2}:[0-9]{2}(?::[0-9]{2})?)/
+    );
+    const requestDate = requestDateMatch ? requestDateMatch[1].trim() : '';
+    const requestDateObj = requestDate ? new Date(requestDate) : new Date();
+
+    // 不動産情報
+    const propertyTypeRaw = extractData(cleanedBody, '物件種別　　　　: ', '物件住所');
+    let displayPropertyType = propertyTypeRaw;
+    if (propertyTypeRaw.includes('一戸建て')) displayPropertyType = '戸';
+    else if (propertyTypeRaw.includes('マンション')) displayPropertyType = 'マ';
+    else if (propertyTypeRaw.includes('土地')) displayPropertyType = '土';
+
+    // 物件住所（改行ありの本文から直接抽出）
+    const addrMatch = mailBody.match(/物件住所[^\S\r\n]*:[^\S\r\n]*(.*?)(?:\r?\n)マンション名/);
+    const fullPropertyAddress = addrMatch ? addrMatch[1].replace(/^大分県/, '').trim() : '';
+
+    const mansionName = extractData(cleanedBody, 'マンション名　　: ', '部屋番号');
+    const roomNumber = extractData(cleanedBody, '部屋番号　　　　: ', '建物名');
+    const exclusiveArea = extractData(cleanedBody, '専有面積　　　　: ', '建物面積');
+    const buildingArea = extractData(cleanedBody, '建物面積　　　　: ', '土地面積');
+    const landArea = extractData(cleanedBody, '土地面積　　　　: ', '延べ床面積');
+    const layout = extractData(cleanedBody, '間取り　　　　　: ', '築年数');
+    const builtYear = extractYear(extractData(cleanedBody, '築年数　　　　　: ', '物件の状況'));
+    const propertyStatus = convertStatus(extractData(cleanedBody, '物件の状況　　　: ', '物件との関係'));
+    const areaValue = propertyTypeRaw.includes('マンション')
+      ? extractNumeric(exclusiveArea)
+      : extractNumeric(buildingArea);
+    const landAreaNum = extractNumeric(landArea);
+
+    // ユーザ情報
+    const name = extractData(cleanedBody, '氏名　　　　　　: ', 'フリガナ');
+    const furigana = extractData(cleanedBody, 'フリガナ　　　　: ', '年齢');
+    const age = extractData(cleanedBody, '年齢　　　　　　: ', '住所');
+    const address = extractData(cleanedBody, '住所　　　　　　: ', '電話番号');
+    const tel = extractData(cleanedBody, '電話番号　　　　: ', 'Email').replace(/-/g, '');
+    const email = extractData(cleanedBody, 'Email 　　　　　: ', '希望連絡時間');
+    const contactTime = extractData(cleanedBody, '希望連絡時間　　: ', '査定理由');
+    const reasonForEstimate = extractData(cleanedBody, '査定理由　　　　: ', '査定会社への要望');
+    const requestToCompany = extractData(cleanedBody, '査定会社への要望: ', '買い替え有無');
+    const estimateCount = extractData(cleanedBody, '同時査定社数　　: ', '■ 不動産情報');
+    const detailUrl = extractData(cleanedBody, '詳細は下記URLでご確認ください。', '============================================================');
+
+    // コメント抽出
+    const commentStart = cleanedBody.indexOf('コメント');
+    let commentToAdd = '';
+    if (commentStart !== -1) {
+      let sub = cleanedBody.slice(commentStart + 'コメント'.length);
+      const endIdx = sub.indexOf('============================================================');
+      if (endIdx !== -1) sub = sub.slice(0, endIdx);
+      commentToAdd = sub.trim();
+    }
+
+    const commentParts: string[] = [];
+    if (furigana) commentParts.push(`フリガナ: ${furigana}`);
+    if (age) commentParts.push(`年齢: ${age}`);
+    if (contactTime) commentParts.push(`希望連絡時間: ${contactTime}`);
+    if (requestToCompany) commentParts.push(`査定会社への要望: ${requestToCompany}`);
+    if (estimateCount) commentParts.push(`同時送信社数: ${estimateCount}`);
+    if (commentToAdd) commentParts.push(`コメント: ${commentToAdd}`);
+    const comments = `【以下自動転記（イエウール）】\n${commentParts.join('\n')}`;
+
+    if (!name || !tel) {
+      return res.status(400).json({ success: false, error: `名前または電話番号が取得できませんでした name=${name} tel=${tel}` });
+    }
+
+    // ============================================================
+    // 2. 売主番号採番（連番スプシから。GASと同じロジック）
+    // ============================================================
+    const isFukuoka = fullPropertyAddress.includes('福岡');
+    const prefix = isFukuoka ? 'FI' : 'AA';
+    const serialCell = isFukuoka ? 'I2' : 'C2';
+
+    const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
+    const serialSheetsClient = new GoogleSheetsClient({
+      spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
+      sheetName: '連番',
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+    });
+    await serialSheetsClient.authenticate();
+
+    // 現在値を読んで+1した値を書き込む（GASと同じ動作）
+    const serialValues = await serialSheetsClient.readRawRange(serialCell);
+    const currentNum = parseInt(String(serialValues?.[0]?.[0] || '0'), 10);
+    const newNum = currentNum + 1;
+    const sellerNumber = `${prefix}${newNum}`;
+
+    // 連番シートを更新（Google Sheets API直接呼び出し）
+    await serialSheetsClient.updateRawCell('連番', serialCell, newNum);
+
+    console.log(`[ieul-transfer] 売主番号採番: ${sellerNumber}`);
+
+    // ============================================================
+    // 3. DB INSERT（暗号化込み）
+    // ============================================================
+    const { encrypt } = await import('../utils/encryption');
+    const supabase = (await import('../config/supabase')).default;
+
+    const today = new Date();
+    const jstOffset = 9 * 60 * 60 * 1000;
+    const jstToday = new Date(today.getTime() + jstOffset);
+    const mm = String(jstToday.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(jstToday.getUTCDate()).padStart(2, '0');
+    const nextCallDate = `${jstToday.getUTCFullYear()}-${mm}-${dd}`;
+
+    const inquiryDateISO = requestDateObj.toISOString().split('T')[0];
+    const inquiryYear = requestDateObj.getFullYear();
+
+    const insertData: Record<string, any> = {
+      seller_number: sellerNumber,
+      name: encrypt(name),
+      address: address ? encrypt(address) : null,
+      phone_number: encrypt(tel),
+      email: email ? encrypt(email) : null,
+      property_address: fullPropertyAddress + mansionName + roomNumber,
+      property_type: displayPropertyType,
+      inquiry_site: 'ウ',
+      inquiry_date: inquiryDateISO,
+      inquiry_year: inquiryYear,
+      inquiry_detailed_datetime: requestDate || null,
+      floor_plan: layout || null,
+      build_year: builtYear ? parseInt(builtYear) : null,
+      current_status: propertyStatus || null,
+      land_area: landAreaNum ? parseFloat(landAreaNum) : null,
+      building_area: areaValue ? parseFloat(areaValue) : null,
+      status: '追客中',
+      next_call_date: nextCallDate,
+      comments: comments,
+      pinrich_status: '配信中',
+      site_url: detailUrl || null,
+      valuation_reason: reasonForEstimate || null,
+      is_unreachable: false,
+      duplicate_confirmed: false,
+    };
+
+    const { data: seller, error: insertError } = await supabase
+      .from('sellers')
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (insertError || !seller) {
+      console.error('[ieul-transfer] DB INSERT エラー:', insertError);
+      return res.status(500).json({ success: false, error: `DB INSERT失敗: ${insertError?.message}` });
+    }
+
+    console.log(`[ieul-transfer] DB INSERT成功: ${sellerNumber} (id: ${seller.id})`);
+
+    // ============================================================
+    // 4. DB→スプシ即時同期
+    // ============================================================
+    try {
+      const syncService = await createSpreadsheetSyncService();
+      if (syncService) {
+        const syncResult = await syncService.syncToSpreadsheet(seller.id);
+        if (syncResult.success) {
+          console.log(`[ieul-transfer] スプシ同期成功: ${sellerNumber}`);
+        } else {
+          console.warn(`[ieul-transfer] スプシ同期失敗（DB登録は成功）: ${syncResult.error}`);
+        }
+      }
+    } catch (syncErr: any) {
+      console.warn(`[ieul-transfer] スプシ同期エラー（DB登録は成功）: ${syncErr.message}`);
+    }
+
+    return res.json({
+      success: true,
+      sellerNumber,
+      sellerId: seller.id,
+      message: `${sellerNumber} をDBに登録しました`,
+    });
+
+  } catch (error: any) {
+    console.error('[ieul-transfer] エラー:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * POST /api/sellers/manual-sync
  * 手動転記実行：①メール転記GAS（メール→売主リストスプシ）→ ②/api/sync/trigger（スプシ→DB）を順番に実行
  */
