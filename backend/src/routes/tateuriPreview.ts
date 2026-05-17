@@ -102,12 +102,11 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
     const normalized = normalizeUrl(source_url);
 
     // 同じsource_urlで is_active = true のレコードが存在するか確認
+    // is_tateuriに関係なく、同じURLが既に登録されていれば重複とみなす
     const { data, error } = await supabase
       .from('property_previews')
-      .select('slug, title, address, created_at')
+      .select('slug, title, address, created_at, is_tateuri, region')
       .like('source_url', `${normalized}%`)
-      .eq('is_tateuri', true)
-      .eq('region', region)
       .eq('is_active', true);
 
     if (error) throw error;
@@ -116,6 +115,7 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
       // 重複あり
       const existing = data[0];
       const cleanTitle = (existing.title || '').replace(/\[\d+\].+$/, '').trim();
+      const source = existing.is_tateuri ? '建売専門HP' : '他社物件配信';
       return res.json({
         isDuplicate: true,
         existing: {
@@ -123,6 +123,7 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
           title: cleanTitle,
           address: existing.address,
           created_at: existing.created_at,
+          source,
         },
       });
     }
