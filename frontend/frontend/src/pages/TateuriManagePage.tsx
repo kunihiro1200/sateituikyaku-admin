@@ -71,30 +71,7 @@ export default function TateuriManagePage() {
         return;
       }
 
-      // 先にプレビュー取得（DBに保存しない）で物件情報を取得し、配信履歴と重複チェック
-      const previewRes = await api.post('/api/buyers/scrape-property', { url: addUrl.trim() });
-      if (previewRes.data.success && previewRes.data.data) {
-        const scrapedAddress = previewRes.data.data.address;
-        const scrapedPrice = previewRes.data.data.price;
-        const scrapedLandArea = previewRes.data.data.details?.['土地面積'] || previewRes.data.data.area || null;
-        if (scrapedAddress) {
-          const dupHistRes = await api.post('/api/distribution-history/check-duplicate', {
-            propertyAddress: scrapedAddress,
-            price: scrapedPrice,
-            landArea: scrapedLandArea,
-          });
-          if (dupHistRes.data.isDuplicate) {
-            const histDate = new Date(dupHistRes.data.history.sent_at).toLocaleDateString('ja-JP');
-            setAddResult({
-              success: false,
-              message: `⚠️ この物件（${scrapedAddress} / ${scrapedPrice}）は${histDate}に登録済みです`,
-            });
-            return;
-          }
-        }
-      }
-
-      // 重複なし → スクレイピングして追加（加工なし）
+      // スクレイピングして追加（加工なし）
       const res = await api.post('/api/tateuri/scrape', { url: addUrl.trim(), region, processImages: false });
       if (!res.data.success) throw new Error(res.data.error || '取得失敗');
       const addedTitle = res.data?.data?.title?.replace(/\[\d+\].+$/, '').trim() || res.data?.data?.address || '物件';
@@ -129,30 +106,7 @@ export default function TateuriManagePage() {
         return;
       }
 
-      // 先にプレビュー取得（DBに保存しない）で物件情報を取得し、配信履歴と重複チェック
-      const previewRes = await api.post('/api/buyers/scrape-property', { url: processedUrl.trim() });
-      if (previewRes.data.success && previewRes.data.data) {
-        const scrapedAddress = previewRes.data.data.address;
-        const scrapedPrice = previewRes.data.data.price;
-        const scrapedLandArea = previewRes.data.data.details?.['土地面積'] || previewRes.data.data.area || null;
-        if (scrapedAddress) {
-          const dupHistRes = await api.post('/api/distribution-history/check-duplicate', {
-            propertyAddress: scrapedAddress,
-            price: scrapedPrice,
-            landArea: scrapedLandArea,
-          });
-          if (dupHistRes.data.isDuplicate) {
-            const histDate = new Date(dupHistRes.data.history.sent_at).toLocaleDateString('ja-JP');
-            setProcessedResult({
-              success: false,
-              message: `⚠️ この物件（${scrapedAddress} / ${scrapedPrice}）は${histDate}に登録済みです`,
-            });
-            return;
-          }
-        }
-      }
-
-      // 重複なし → スクレイピングして追加（画像加工あり）
+      // スクレイピングして追加（画像加工あり）
       const res = await api.post('/api/tateuri/scrape', { url: processedUrl.trim(), region, processImages: true });
       if (!res.data.success) throw new Error(res.data.error || '取得失敗');
       const addedTitle = res.data?.data?.title?.replace(/\[\d+\].+$/, '').trim() || res.data?.data?.address || '物件';
