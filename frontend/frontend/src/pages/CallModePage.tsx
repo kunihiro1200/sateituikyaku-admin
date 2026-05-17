@@ -1935,7 +1935,8 @@ const CallModePage = () => {
       setMailingStatus(defaultMailingStatus);
       // 郵送先住所の初期化（売主住所をデフォルト）
       setMailingAddress(sellerData.address || '');
-      setMailingAddressConfirmed(false);
+      // 「済」が既に保存されている場合は確認済みフラグをtrueにする（済ボタンの光った状態を維持するため）
+      setMailingAddressConfirmed(defaultMailingStatus === '済');
 
       // Pinrichステータスの初期化
       setEditedPinrichStatus(sellerData.pinrichStatus || '');
@@ -5862,17 +5863,19 @@ HP：https://ifoo-oita.com/
                             }
                           }
                           
-                          // 訪問日が入力された場合、次電日を訪問日の3日後に自動設定
+                          // 訪問日が入力された場合、かつ営担に値がある場合、次電日を訪問日の1週間後に自動設定
                           try {
                             const visitDateObj = new Date(newDate);
-                            if (!isNaN(visitDateObj.getTime())) {
-                              const nextCallDateObj = new Date(visitDateObj.getTime() + 3 * 24 * 60 * 60 * 1000);
+                            if (!isNaN(visitDateObj.getTime()) && editedAssignedTo) {
+                              const nextCallDateObj = new Date(visitDateObj.getTime() + 7 * 24 * 60 * 60 * 1000);
                               const pad = (n: number) => String(n).padStart(2, '0');
                               const nextCallDateStr = `${nextCallDateObj.getFullYear()}-${pad(nextCallDateObj.getMonth() + 1)}-${pad(nextCallDateObj.getDate())}`;
                               setEditedNextCallDate(nextCallDateStr);
                               setStatusChanged(true);
                               statusChangedRef.current = true;
-                              console.log('📅 次電日を訪問日の3日後に自動設定しました:', nextCallDateStr);
+                              console.log('📅 次電日を訪問日の1週間後に自動設定しました:', nextCallDateStr);
+                            } else if (!isNaN(visitDateObj.getTime()) && !editedAssignedTo) {
+                              console.log('📅 営担が未設定のため、次電日の自動設定をスキップしました');
                             }
                           } catch (err) {
                             console.error('次電日の自動設定に失敗:', err);
