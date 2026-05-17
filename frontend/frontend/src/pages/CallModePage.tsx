@@ -5864,8 +5864,10 @@ HP：https://ifoo-oita.com/
                           }
                           
                           // 訪問日が入力された場合、かつ営担に値がある場合、次電日を訪問日の1週間後に自動設定
+                          console.log('🔍 [次電日自動設定] newDate:', newDate, '/ editedAssignedTo:', editedAssignedTo);
                           try {
                             const visitDateObj = new Date(newDate);
+                            console.log('🔍 [次電日自動設定] visitDateObj:', visitDateObj, '/ isNaN:', isNaN(visitDateObj.getTime()));
                             if (!isNaN(visitDateObj.getTime()) && editedAssignedTo) {
                               const nextCallDateObj = new Date(visitDateObj.getTime() + 7 * 24 * 60 * 60 * 1000);
                               const pad = (n: number) => String(n).padStart(2, '0');
