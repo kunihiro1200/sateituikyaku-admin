@@ -64,9 +64,10 @@ export default function TateuriManagePage() {
         const existing = dupCheck.data.existing;
         const existingTitle = existing.title || existing.address || '物件';
         const existingDate = new Date(existing.created_at).toLocaleDateString('ja-JP');
+        const source = existing.source ? `（${existing.source}で登録済み）` : '';
         setAddResult({
           success: false,
-          message: `「${existingTitle}」は既に登録済みです（登録日: ${existingDate}）`,
+          message: `「${existingTitle}」は既に登録済みです${source}（登録日: ${existingDate}）`,
         });
         return;
       }
@@ -99,9 +100,10 @@ export default function TateuriManagePage() {
         const existing = dupCheck.data.existing;
         const existingTitle = existing.title || existing.address || '物件';
         const existingDate = new Date(existing.created_at).toLocaleDateString('ja-JP');
+        const source = existing.source ? `（${existing.source}で登録済み）` : '';
         setProcessedResult({
           success: false,
-          message: `「${existingTitle}」は既に登録済みです（登録日: ${existingDate}）`,
+          message: `「${existingTitle}」は既に登録済みです${source}（登録日: ${existingDate}）`,
         });
         return;
       }
