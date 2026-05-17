@@ -504,7 +504,11 @@ export default function SellersPage() {
         api.get('/api/sellers', { params }).then((response) => {
           setSellers(response.data.data);
           setTotal(response.data.total);
-          pageDataCache.set(cacheKey, { data: response.data.data, total: response.data.total }, 15 * 60 * 1000);
+          // fi:xxx カテゴリは日付依存のためキャッシュしない（毎回最新を取得）
+          const isFiCategory = typeof params.statusCategory === 'string' && params.statusCategory.startsWith('fi:');
+          if (!isFiCategory) {
+            pageDataCache.set(cacheKey, { data: response.data.data, total: response.data.total }, 15 * 60 * 1000);
+          }
         }).catch((err) => console.error('Background sellers refresh failed:', err));
         return;
       }
@@ -514,8 +518,12 @@ export default function SellersPage() {
       const response = await api.get('/api/sellers', { params });
       setSellers(response.data.data);
       setTotal(response.data.total);
-      // 15分間キャッシュ（コールドスタート対策）
-      pageDataCache.set(cacheKey, { data: response.data.data, total: response.data.total }, 15 * 60 * 1000);
+      // fi:xxx カテゴリは日付依存のためキャッシュしない（毎回最新を取得）
+      // それ以外は15分間キャッシュ（コールドスタート対策）
+      const isFiCategoryNoCache = typeof params.statusCategory === 'string' && params.statusCategory.startsWith('fi:');
+      if (!isFiCategoryNoCache) {
+        pageDataCache.set(cacheKey, { data: response.data.data, total: response.data.total }, 15 * 60 * 1000);
+      }
     } catch (error) {
       console.error('Failed to fetch sellers:', error);
     } finally {

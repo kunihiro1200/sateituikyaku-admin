@@ -1618,9 +1618,44 @@ export class SellerService extends BaseRepository {
           // visitAssigned:xxx または todayCallAssigned:xxx または todayCallWithInfo:xxx または fi:xxx の動的カテゴリ
           const dynamicCategory = statusCategory as string;
           if (dynamicCategory.startsWith('fi:')) {
-            // 福岡（FI）カテゴリ：全件取得してJS側でフィルタリング
-            // DBクエリはFI売主に絞るだけ（複雑なOR条件はJS側で処理）
-            query = query.ilike('seller_number', 'FI%');
+            // 福岡（FI）カテゴリ：FI売主 + サブカテゴリに応じたSQL絞り込み
+            // ページネーション前にDBレベルで絞り込むことで件数が正確になる
+            const fiSubCatForQuery = dynamicCategory.replace('fi:', '');
+            if (fiSubCatForQuery === 'todayCall' || fiSubCatForQuery === 'todayCallNotStarted') {
+              // 当日TEL分 / 当日TEL_未着手：共通ベース条件（FI + 追客中 + 次電日≦今日 + 営担なし）
+              // JSフィルタでコミュニケーション情報・未着手条件を絞り込む
+              query = query
+                .ilike('seller_number', 'FI%')
+                .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+                .not('next_call_date', 'is', null)
+                .lte('next_call_date', todayJST)
+                .or('status.ilike.%追客中%,status.eq.他決→追客')
+                .not('status', 'ilike', '%追客不要%')
+                .not('status', 'ilike', '%専任媒介%')
+                .not('status', 'ilike', '%一般媒介%');
+            } else if (fiSubCatForQuery === 'todayCallWithInfo' || fiSubCatForQuery.startsWith('todayCallWithInfo:')) {
+              // 当日TEL（内容）：FI + 追客中 + 次電日≦今日 + 営担なし + コミュニケーション情報あり
+              query = query
+                .ilike('seller_number', 'FI%')
+                .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+                .not('next_call_date', 'is', null)
+                .lte('next_call_date', todayJST)
+                .or('status.ilike.%追客中%,status.eq.他決→追客')
+                .not('status', 'ilike', '%追客不要%')
+                .not('status', 'ilike', '%専任媒介%')
+                .not('status', 'ilike', '%一般媒介%')
+                .or('phone_contact_person.not.is.null,preferred_contact_time.not.is.null,contact_method.not.is.null');
+            } else if (fiSubCatForQuery === 'unvaluated') {
+              // 未査定：FI + 追客中 + 営担なし + 反響日付が基準日以降
+              query = query
+                .ilike('seller_number', 'FI%')
+                .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+                .ilike('status', '%追客中%')
+                .gte('inquiry_date', '2025-12-08');
+            } else {
+              // その他のFIカテゴリ：FI売主のみ絞り込み（フォールバック）
+              query = query.ilike('seller_number', 'FI%');
+            }
           } else if (dynamicCategory.startsWith('visitAssigned:')) {
             const assignee = dynamicCategory.replace('visitAssigned:', '');
             // 担当者別（営担が指定のイニシャルの全売主、一般媒介・専任媒介・追客不要・他社買取は除外）
@@ -1859,14 +1894,21 @@ export class SellerService extends BaseRepository {
 
     const result = {
       data: sellersWithCallDate,
-      total: isLabelFilter || (typeof statusCategory === 'string' && statusCategory.startsWith('fi:'))
+      // fi:xxx カテゴリの場合: DBで絞り込んだ後のcount（信頼性が高い）を使用
+      // ただしJSフィルタが必要な細かい条件があるため、表示件数とtotalに若干の差が出る場合がある
+      // isLabelFilter の場合は JSフィルタ後の件数を使用（ラベル絞り込みはDBで表現不可）
+      total: isLabelFilter
         ? sellersWithCallDate.length
-        : (count || 0),
+        : (typeof statusCategory === 'string' && statusCategory.startsWith('fi:'))
+          ? (count || sellersWithCallDate.length)
+          : (count || 0),
       page,
       pageSize,
-      totalPages: Math.ceil((isLabelFilter || (typeof statusCategory === 'string' && statusCategory.startsWith('fi:'))
+      totalPages: Math.ceil((isLabelFilter
         ? sellersWithCallDate.length
-        : (count || 0)) / pageSize),
+        : (typeof statusCategory === 'string' && statusCategory.startsWith('fi:'))
+          ? (count || sellersWithCallDate.length)
+          : (count || 0)) / pageSize),
     };
 
     // キャッシュに保存（インメモリ + Redis）
