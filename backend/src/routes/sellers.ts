@@ -519,10 +519,12 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
     // メモ（HOME4Uログアウト〜査定依頼の間）
     const memo = extractData(cleanedBody, 'HOME4Uログアウト', '査定依頼').trim();
 
-    // 依頼日時
+    // 依頼日時（曜日部分を除去して解析）
     const inquiryMatch = cleanedBody.match(/■ご依頼日\s*[:：]\s*([^\n\r]+)/);
-    const inquiryDateTime = inquiryMatch ? inquiryMatch[1].trim() : '';
-    const inquiryDateObj = inquiryDateTime ? new Date(inquiryDateTime.replace(/\(.*?\)/, '').trim()) : new Date();
+    const inquiryDateTimeRaw = inquiryMatch ? inquiryMatch[1].trim() : '';
+    // 「2026/05/17 (日) 20:10:11」→「2026/05/17 20:10:11」に変換
+    const inquiryDateTime = inquiryDateTimeRaw.replace(/\s*\([^)]*\)\s*/g, ' ').trim();
+    const inquiryDateObj = inquiryDateTime ? new Date(inquiryDateTime) : new Date();
 
     // 物件種別
     const propertyTypeRaw = extractData2(cleanedBody, '■物件種別');
