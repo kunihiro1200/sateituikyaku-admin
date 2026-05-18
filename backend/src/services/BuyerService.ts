@@ -3392,8 +3392,9 @@ export class BuyerService {
             while (true) {
               const { data: page, error: pageError } = await this.supabase
                 .from('buyers')
-                .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status, inquiry_hearing, desired_area_lat, desired_area_lng')
+                .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status, inquiry_hearing, desired_area_lat, desired_area_lng, distribution_type')
                 .is('deleted_at', null)
+                .eq('distribution_type', '要')
                 .not('desired_area_lat', 'is', null)
                 .not('desired_area_lng', 'is', null)
                 .gte('desired_area_lat', minLat)
@@ -3464,8 +3465,9 @@ export class BuyerService {
         // 座標範囲内の買主を取得
         const { data: nearbyBuyers, error: nearbyError } = await this.supabase
           .from('buyers')
-          .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status, inquiry_hearing, desired_area_lat, desired_area_lng')
+          .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status, inquiry_hearing, desired_area_lat, desired_area_lng, distribution_type')
           .is('deleted_at', null)
+          .eq('distribution_type', '要')
           .not('desired_area_lat', 'is', null)
           .not('desired_area_lng', 'is', null)
           .gte('desired_area_lat', minLat)
@@ -3504,8 +3506,9 @@ export class BuyerService {
       // クエリ構築
       let query = this.supabase
         .from('buyers')
-        .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status, inquiry_hearing, desired_area_lat, desired_area_lng')
-        .is('deleted_at', null);
+        .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status, inquiry_hearing, desired_area_lat, desired_area_lng, distribution_type')
+        .is('deleted_at', null)
+        .eq('distribution_type', '要');
 
       // エリアフィルタ（OR条件で複数エリアを検索）
       if (targetAreas.length > 0) {
