@@ -98,18 +98,14 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
         const existing = urlMatch[0];
         const source = existing.is_tateuri ? '建売専門HP' : '他社物件配信';
         return res.json({
-          isDuplicate: true,
-          history: {
-            property_address: existing.address,
-            source_url: sourceUrl,
-            sent_at: existing.created_at,
-          },
-          source: `${source}に登録済み（URL一致）`,
+          isDuplicate: false,
+          history: null,
+          warning: `${source}に登録済み（URL一致）`,
         });
       }
     }
 
-    // チェック4: property_previewsテーブルを住所で横断チェック
+    // チェック4: property_previewsテーブルを住所で横断チェック（警告のみ）
     {
       const { data: addressMatch, error: addressError } = await supabase
         .from('property_previews')
@@ -122,13 +118,9 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
         const existing = addressMatch[0];
         const source = existing.is_tateuri ? '建売専門HP' : '他社物件配信';
         return res.json({
-          isDuplicate: true,
-          history: {
-            property_address: existing.address,
-            source_url: null,
-            sent_at: existing.created_at,
-          },
-          source: `${source}に登録済み（住所一致）`,
+          isDuplicate: false,
+          history: null,
+          warning: `${source}に登録済み（住所一致）`,
         });
       }
     }

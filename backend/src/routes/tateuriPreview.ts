@@ -129,6 +129,7 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
     }
 
     // チェック2: 住所でproperty_previewsを横断チェック（URLが異なるが同じ物件の場合）
+    // ※ property_previews内の重複のみブロック（建売HP内での重複防止）
     if (address) {
       const { data: addressMatch, error: addressError } = await supabase
         .from('property_previews')
@@ -154,6 +155,7 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
     }
 
     // チェック3: distribution_historyテーブルも横断チェック（メール配信済みの物件）
+    // ※ 警告のみ（登録はブロックしない）
     if (address && price) {
       const { data: distMatch, error: distError } = await supabase
         .from('distribution_history')
@@ -166,14 +168,8 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
       if (!distError && distMatch && distMatch.length > 0) {
         const existing = distMatch[0];
         return res.json({
-          isDuplicate: true,
-          existing: {
-            slug: null,
-            title: existing.property_address,
-            address: existing.property_address,
-            created_at: existing.sent_at,
-            source: '他社物件メール配信済み',
-          },
+          isDuplicate: false,
+          warning: `この物件はメール配信済みです（配信日: ${new Date(existing.sent_at).toLocaleDateString('ja-JP')}）`,
         });
       }
     }
@@ -310,29 +306,7 @@ router.post('/scrape', async (req: Request, res: Response) => {
         });
       }
 
-      // distribution_historyテーブルも横断チェック
-      const { data: distDup, error: distDupError } = await supabase
-        .from('distribution_history')
-        .select('property_address, price, sent_at')
-        .eq('property_address', result.data.address)
-        .order('sent_at', { ascending: false })
-        .limit(1);
-
-      if (!distDupError && distDup && distDup.length > 0) {
-        // メール配信済みの物件 → 今回追加されたレコードを非アクティブ化して重複エラーを返す
-        await supabase
-          .from('property_previews')
-          .update({ is_active: false })
-          .eq('slug', result.slug);
-
-        const existing = distDup[0];
-        const sentDate = new Date(existing.sent_at).toLocaleDateString('ja-JP');
-        return res.json({
-          success: false,
-          error: `「${existing.property_address}」は既にメール配信済みです（配信日: ${sentDate}）`,
-          isDuplicate: true,
-        });
-      }
+      // distribution_historyテーブルは横断チェックしない（メール配信済みでも建売HPには登録可能）
 
       // 重複なし → regionとis_tateuriをDBに反映
       const { error: updateError } = await supabase
