@@ -442,11 +442,13 @@ router.post(
       try {
         const employeeId = req.employee?.id || '00000000-0000-0000-0000-000000000000';
         const { templateName: actTemplateName } = req.body;
+        console.log(`📧 [send-template-email] templateName from req.body: "${actTemplateName}"`);
         const supabase = (await import('../config/supabase')).default;
         // テンプレート名がある場合は【テンプレート名】を送信、なければ従来通り件名を表示
         const activityContent = actTemplateName
           ? `【${actTemplateName}】を送信`
           : `メール送信: ${subject}`;
+        console.log(`📧 [send-template-email] activityContent: "${activityContent}"`);
         await supabase.from('activities').insert({
           seller_id: sellerId,
           employee_id: employeeId,

@@ -3789,6 +3789,7 @@ HP：https://ifoo-oita.com/
 
           console.log('📧 [handleConfirmSend] Sending email request:', {
             templateId: requestPayload.templateId,
+            templateName: requestPayload.templateName,
             to: requestPayload.to,
             subject: requestPayload.subject,
             from: requestPayload.from,
