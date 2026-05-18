@@ -3397,7 +3397,7 @@ HP：https://ifoo-oita.com/
     result = result.replace(/<<名前[\(（]漢字のみ[\)）]>>/g, seller.name || '');
     
     // 物件所在地
-    result = result.replace(/<<物件所在地>>/g, property?.address || '');
+    result = result.replace(/<<物件所在地>>/g, property?.address || seller.propertyAddress || '');
     
     // 査定額（万円単位）
     const amount1 = editedValuationAmount1 ? Math.round(parseInt(editedValuationAmount1) / 10000) : '';
