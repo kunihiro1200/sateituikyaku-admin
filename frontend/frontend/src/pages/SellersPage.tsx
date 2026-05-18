@@ -450,12 +450,12 @@ export default function SellersPage() {
     return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
-  // 1分ごとにサイドバーカウントを自動更新（ページを開いたまま待っていても最新が表示される）
+  // 10分ごとにサイドバーカウントを自動更新（DB負荷軽減のため1分→10分に変更）
   useEffect(() => {
     const interval = setInterval(() => {
       pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
       fetchSidebarCounts(true);
-    }, 1 * 60 * 1000); // 1分
+    }, 10 * 60 * 1000); // 10分
     return () => clearInterval(interval);
   }, []);
 
