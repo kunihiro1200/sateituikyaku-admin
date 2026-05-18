@@ -306,7 +306,15 @@ export const replacePlaceholders = (
       result = result.replace(/大分市舞鶴町にございます/g, '福岡市中央区舞鶴にございます');
     }
 
-    // FI売主の場合は署名の会社固定TEL番号を福岡用（092-401-5331）に変更し、FAX行を削除
+    // FI・非FI問わずFAX行を常に削除
+    // [改行]FAX: 形式（半角コロン+スペース）
+    result = result.replace(/\[改行\]FAX: [^\[^\n]*/g, '');
+    // [改行]FAX：形式（全角コロン）
+    result = result.replace(/\[改行\]FAX：[^\[^\n]*/g, '');
+    // \n に変換済みの場合
+    result = result.replace(/\nFAX[：:][^\n]*\n?/g, '\n');
+
+    // FI売主の場合は署名の会社固定TEL番号を福岡用（092-401-5331）に変更
     // 担当者個人番号（TEL：<<担当名（営業）電話番号>>）は変更しない
     // ※この時点では [改行] はまだ \n に変換されていないため、
     //   [改行]TEL: ... パターンで直接マッチする

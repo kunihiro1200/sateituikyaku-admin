@@ -44,7 +44,7 @@ export class EmailTemplateService {
         const subject = (row[2] || '').toString().trim();  // E\u5217: \u4ef6\u540d
         const body = (row[3] || '').toString().trim();     // F\u5217: \u672c\u6587
 
-        // \u533a\u5206\u304c\u300c\u8cb7\u4e3b\u300d\u306e\u884c\u306e\u307f\u5bfe\u8c61
+        // 区分が「買主」の行のみ対象
         if (category !== '\u8cb7\u4e3b' || !type) continue;
 
         templates.push({
