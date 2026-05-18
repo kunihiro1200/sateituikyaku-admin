@@ -438,6 +438,28 @@ router.post(
         console.warn('📧 [send-template-email] Failed to log activity:', logErr);
       }
 
+      // activities テーブルに記録（売主詳細/通話モードページのメール・SMS履歴用）
+      try {
+        const employeeId = req.employee?.id || '00000000-0000-0000-0000-000000000000';
+        const supabase = (await import('../config/supabase')).default;
+        await supabase.from('activities').insert({
+          seller_id: sellerId,
+          employee_id: employeeId,
+          type: 'email',
+          content: `メール送信: ${subject}`,
+          result: '送信成功',
+          metadata: {
+            subject,
+            body: htmlBody || content || '',
+            recipient_email: recipientEmail,
+            message_id: result.messageId,
+            sent_at: new Date().toISOString(),
+          },
+        });
+      } catch (actErr) {
+        console.warn('📧 [send-template-email] Failed to save to activities:', actErr);
+      }
+
       res.json({
         messageId: result.messageId,
         sentAt: result.sentAt,
@@ -1040,6 +1062,42 @@ router.post(
             senderEmail
           );
         }
+      }
+
+      if (!result.success) {
+        return res.status(502).json({
+          error: {
+            code: 'EMAIL_SEND_ERROR',
+            message: result.error || 'Failed to send email',
+            retryable: true,
+          },
+        });
+      }
+
+      // activities テーブルに記録（売主詳細/通話モードページのメール・SMS履歴用）
+      try {
+        const employeeId = req.employee?.id || '00000000-0000-0000-0000-000000000000';
+        const supabaseForActivities = (await import('../config/supabase')).default;
+        // seller.idがUUIDの場合のみactivitiesに記録（property_listingsの場合はseller_number形式のためスキップ）
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(seller.id);
+        if (isUuid) {
+          await supabaseForActivities.from('activities').insert({
+            seller_id: seller.id,
+            employee_id: employeeId,
+            type: 'email',
+            content: `メール送信: ${subject}`,
+            result: '送信成功',
+            metadata: {
+              subject,
+              body: htmlBody || content || '',
+              recipient_email: recipientEmail,
+              message_id: result.messageId,
+              sent_at: new Date().toISOString(),
+            },
+          });
+        }
+      } catch (actErr) {
+        console.warn('📧 [by-seller-number/send-template-email] Failed to save to activities:', actErr);
       }
 
       return res.json({

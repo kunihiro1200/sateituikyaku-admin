@@ -3864,13 +3864,8 @@ HP：https://ifoo-oita.com/
           }
           (async () => {
             try {
-              // 活動履歴を記録
-              await api.post(`/api/sellers/${id}/activities`, {
-                type: 'email',
-                content: `【${template.label}】を送信`,
-                result: 'sent',
-                metadata: { subject: capturedEmailSubject, body: capturedEmailBody },
-              });
+              // 活動履歴はバックエンドのsend-template-emailエンドポイント内で
+              // activitiesテーブルに記録済みのため、フロントエンドからの重複記録は不要
 
               // 活動履歴保存後の並列処理
               const promises: Promise<any>[] = [];
