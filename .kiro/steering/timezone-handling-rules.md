@@ -301,4 +301,64 @@ inquiry_detailed_datetime: new Date(requestDate).toISOString()
 - `POST /api/sellers/home4u-transfer`
 - 今後追加する全ての査定サイト転記エンドポイント
 
-**最終更新日**: 2026年5月18日
+**最終更新日**: 2026年5月19日
+
+---
+
+## 🚨 最重要：反響詳細日時の表示で+9時間になる問題（2026年5月19日追加）
+
+### 問題の根本原因
+
+`inquiry_detailed_datetime` はDBに `"2026-05-19 01:34:33"` という**タイムゾーン情報なしの文字列**で保存されている。
+
+この文字列を `new Date()` に渡すと、**VercelサーバーがUTC環境のため「UTC時間」として解釈**され、フロントエンドでJST（+9時間）で表示される。
+
+### ❌ やってはいけないこと（全ての経路）
+
+```typescript
+// ❌ バックエンドのSellerService（decryptSeller）でDateオブジェクトに変換
+inquiryDetailedDatetime: new Date(seller.inquiry_detailed_datetime)
+// 理由: UTCとして解釈され、JSON化すると "2026-05-18T16:34:33.000Z" になる
+//       フロントエンドで表示すると JST +9時間 = 01:34:33 ではなく 10:34:33 になる
+
+// ❌ フロントエンドのSellerServiceでDateオブジェクトに変換
+inquiryDetailedDatetime: seller.inquiry_detailed_datetime ? new Date(seller.inquiry_detailed_datetime) : undefined
+// 理由: 同上
+
+// ❌ inquiryDateFormatter.tsでnew Date()変換
+const date = new Date(seller.inquiryDetailedDatetime);
+return date.toLocaleString('ja-JP', {...});
+// 理由: 同上
+```
+
+### ✅ 正しい処理（2026年5月19日修正済み）
+
+**1. バックエンド `decryptSeller`（`backend/src/services/SellerService.supabase.ts`）**:
+```typescript
+// ✅ 文字列のまま返す（new Date()変換しない）
+inquiryDatetime: (seller.inquiry_detailed_datetime || seller.inquiry_datetime) || undefined,
+inquiryDetailedDatetime: (seller.inquiry_detailed_datetime || seller.inquiry_datetime) || undefined,
+```
+
+**2. フロントエンド `SellerService.supabase.ts`**:
+```typescript
+// ✅ 文字列のまま返す
+inquiryDatetime: seller.inquiry_detailed_datetime || undefined,
+inquiryDetailedDatetime: seller.inquiry_detailed_datetime || undefined,
+```
+
+**3. `inquiryDateFormatter.ts`（表示フォーマット）**:
+```typescript
+// ✅ 正規表現で文字列から直接パース（new Date()を使わない）
+const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+if (match) {
+  return `${match[1]}/${match[2]}/${match[3]} ${match[4]}:${match[5]}`;
+}
+```
+
+### 鉄則
+
+**`inquiry_detailed_datetime` は絶対に `new Date()` に変換しない。文字列のまま扱う。**
+
+- DBに `"2026-05-19 01:34:33"` と保存 → 表示も `"2026/05/19 01:34:33"` にする
+- 変換すると必ず+9時間のずれが生じる
