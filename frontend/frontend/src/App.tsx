@@ -52,7 +52,6 @@ import TateuriRootPage from './pages/TateuriRootPage';
 // FloorPlanComparePage は遅延読み込み（他ページへの影響を完全に分離）
 const FloorPlanComparePage = lazy(() => import('./pages/FloorPlanComparePage'));
 import ProtectedRoute from './components/ProtectedRoute';
-import { useAuthStore } from './store/authStore';
 import { GoogleMapsProvider } from './contexts/GoogleMapsContext';
 
 // 認証不要の公開ページパス（checkAuth・warmupApiをスキップ）
@@ -67,19 +66,18 @@ const PUBLIC_PATHS = [
 ];
 
 function App() {
-  const checkAuth = useAuthStore((state) => state.checkAuth);
   const location = useLocation();
 
   // 公開ページかどうか判定
   const isPublicPage = PUBLIC_PATHS.some(p => location.pathname.startsWith(p));
 
-  // アプリ起動時に認証状態を確認（公開ページではスキップ）
+  // アプリ起動時にウォームアップのみ実行（checkAuthはProtectedRouteに任せる）
   useEffect(() => {
     if (isPublicPage) return;
-    checkAuth();
     // Vercelコールドスタート対策：バックエンドAPIをウォームアップ
     warmupApi();
-  }, [checkAuth, isPublicPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   return (
     <GoogleMapsProvider>

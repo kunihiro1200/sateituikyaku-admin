@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Box, CircularProgress } from '@mui/material';
 import { useAuthStore } from '../store/authStore';
@@ -11,22 +11,36 @@ interface ProtectedRouteProps {
 // viewerロールがアクセスできるパスのプレフィックス
 const VIEWER_ALLOWED_PATHS = ['/property-listings'];
 
+// checkAuthが実行中かどうかのグローバルフラグ（二重呼び出し防止）
+let authCheckInProgress = false;
+
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, checkAuth, employee } = useAuthStore();
   const location = useLocation();
+  const hasChecked = useRef(false);
 
   useEffect(() => {
-    // 認証チェック開始
-    useAuthStore.setState({ isLoading: true });
-    
+    // 既に認証済みの場合はスキップ
+    if (isAuthenticated && employee) {
+      useAuthStore.setState({ isLoading: false });
+      return;
+    }
+
+    // 既にチェック済み or 実行中の場合はスキップ
+    if (hasChecked.current || authCheckInProgress) return;
+    hasChecked.current = true;
+    authCheckInProgress = true;
+
     // 認証チェックを実行（タイムアウト付き）
     const timeoutId = setTimeout(() => {
       console.warn('⚠️ Auth check timeout - forcing to login');
       useAuthStore.setState({ isLoading: false, isAuthenticated: false });
+      authCheckInProgress = false;
     }, 5000); // 5秒でタイムアウト
 
     checkAuth().finally(() => {
       clearTimeout(timeoutId);
+      authCheckInProgress = false;
     });
 
     return () => clearTimeout(timeoutId);

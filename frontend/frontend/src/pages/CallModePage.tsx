@@ -6509,13 +6509,6 @@ HP：https://ifoo-oita.com/
                 {(() => {
                   const hasPropertyData = property || propInfo.hasData;
                   const shouldShowEditFields = (!editedValuationAmount1 || editingValuation) && hasPropertyData;
-                  console.log('📝 編集フィールド表示条件:', {
-                    editedValuationAmount1,
-                    editingValuation,
-                    property: !!property,
-                    propInfoHasData: propInfo.hasData,
-                    shouldShowEditFields
-                  });
                   return shouldShowEditFields;
                 })() && (
                   <Box>
@@ -6734,11 +6727,11 @@ HP：https://ifoo-oita.com/
                             }}
                             helperText={autoCalculating ? '計算中...' : '値を入力すると1秒後に自動的に査定額が計算されます'}
                           />
-                          {property?.address && (
-                            <Box sx={{ display: 'flex', gap: 1, mt: 0.5, alignItems: 'center' }}>
+                          <Box sx={{ display: 'flex', gap: 1, mt: 0.5, alignItems: 'center' }}>
+                            {(property?.address || propInfo.address) && (
                               <TextField
                                 size="small"
-                                value={property.address}
+                                value={propInfo.address || property?.address || ''}
                                 InputProps={{
                                   readOnly: true,
                                   endAdornment: (
@@ -6747,7 +6740,7 @@ HP：https://ifoo-oita.com/
                                         <IconButton
                                           size="small"
                                           onClick={() => {
-                                            navigator.clipboard.writeText(property.address || '');
+                                            navigator.clipboard.writeText(propInfo.address || property?.address || '');
                                             setSnackbarMessage('住所をコピーしました');
                                             setSnackbarOpen(true);
                                           }}
@@ -6761,16 +6754,16 @@ HP：https://ifoo-oita.com/
                                 sx={{ flex: 1, minWidth: '400px' }}
                                 label="物件住所（コピー用）"
                               />
-                              <Button
-                                size="small"
-                                href="https://www.chikamap.jp/chikamap/Portal?mid=216"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                路線価を確認
-                              </Button>
-                            </Box>
-                          )}
+                            )}
+                            <Button
+                              size="small"
+                              href="https://www.chikamap.jp/chikamap/Portal?mid=216"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              路線価を確認
+                            </Button>
+                          </Box>
                         </Box>
                       </Grid>
 

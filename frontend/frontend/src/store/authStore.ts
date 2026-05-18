@@ -175,6 +175,33 @@ export const useAuthStore = create<AuthState>()(
   checkAuth: async () => {
     try {
       console.log('🔍 Checking auth...');
+      
+      // Zustand persistで認証済みの場合、バックグラウンドで確認（UIをブロックしない）
+      const currentState = useAuthStore.getState();
+      if (currentState.isAuthenticated && currentState.employee) {
+        console.log('🔍 Already authenticated (cached), verifying in background...');
+        set({ isLoading: false });
+        // バックグラウンドで検証（失敗したらログアウト）
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            localStorage.setItem('session_token', session.access_token);
+            if (session.refresh_token) {
+              localStorage.setItem('refresh_token', session.refresh_token);
+            }
+          } else {
+            // セッション切れ → ログアウト
+            localStorage.removeItem('session_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('auth-storage');
+            set({ employee: null, isAuthenticated: false });
+          }
+        } catch {
+          // バックグラウンド検証失敗は無視（次回のAPI呼び出しで401が返る）
+        }
+        return;
+      }
+
       set({ isLoading: true });
       
       // Supabase Authからセッションを確認（期限切れの場合はrefresh_tokenで自動更新）
