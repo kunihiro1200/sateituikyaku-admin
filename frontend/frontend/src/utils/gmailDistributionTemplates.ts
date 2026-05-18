@@ -128,7 +128,6 @@ https://sateituikyaku-admin-frontend.vercel.app/tateuri
 〒870-0044
 大分市舞鶴町1丁目3-30
 TEL：097-533-2022
-FAX：097-529-7160
 HP：https://ifoo-oita.com/
 店休日：毎週水曜日　年末年始、GW、盆
 ***************************`,

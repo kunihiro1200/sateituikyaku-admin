@@ -315,9 +315,6 @@ export const replacePlaceholders = (
       result = result.replace(/\[改行\]TEL: 097-533-2022/g, '[改行]TEL: 092-401-5331');
       // [改行]TEL：097-533-2022 形式（全角コロン）→ 福岡用番号に変更
       result = result.replace(/\[改行\]TEL：097-533-2022/g, '[改行]TEL：092-401-5331');
-      // [改行]FAX: 097-529-7160 形式は削除
-      result = result.replace(/\[改行\]FAX: 097-529-7160/g, '');
-      result = result.replace(/\[改行\]FAX：097-529-7160/g, '');
       // [改行]097-533-2022 形式（プレフィックスなし）→ 福岡用番号に変更
       result = result.replace(/\[改行\]097-533-2022/g, '[改行]092-401-5331');
       // 実績リンク削除（大分専用のため福岡では不要）

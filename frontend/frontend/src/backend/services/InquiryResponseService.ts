@@ -225,7 +225,6 @@ export class InquiryResponseService {
 〒870-0044
 大分市舞鶴町1丁目3-30
 TEL：097-533-2022 
-FAX：097-529-7160 
 MAIL:tenant@ifoo-oita.com 
 HP：https://ifoo-oita.com/ 
 採用HP：https://en-gage.net/ifoo-oita/

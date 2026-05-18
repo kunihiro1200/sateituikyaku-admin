@@ -169,7 +169,7 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
       <div style="text-align:left;">
         <div style="font-size:8.5pt;margin-bottom:4px;">不動産のことなら「いふう」へ</div>
         <div style="background:#f5c518;padding:4px 18px;font-size:10.5pt;font-weight:bold;text-align:center;margin-bottom:6px;">株式会社いふう</div>
-        <div style="font-size:9pt;line-height:1.9;">大分市舞鶴町1-3-30<br>TEL：097-533-2022<br>FAX：097-529-7160</div>
+        <div style="font-size:9pt;line-height:1.9;">大分市舞鶴町1-3-30<br>TEL：097-533-2022</div>
       </div>
     </div>
   </div>
@@ -206,7 +206,7 @@ export function generatePage2Html(propertyAddress: string, propertyPrice: number
     <div style="font-size:8.5pt;margin-bottom:8px;">
       仲介業者：株式会社いふう<br>
       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;大分市舞鶴町1-3-30<br>
-      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TEL：097-533-2022　FAX：<span style="text-decoration:underline;">097-529-7160</span>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TEL：097-533-2022
     </div>
     <div style="margin-bottom:8px;font-size:9pt;">私は、下記不動産を、下記の条件にて購入したく、買い付けることを証明致します。</div>
     <div style="text-align:center;margin-bottom:8px;">記</div>

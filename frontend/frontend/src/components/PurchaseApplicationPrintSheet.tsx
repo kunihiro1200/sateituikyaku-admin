@@ -89,7 +89,7 @@ const PurchaseApplicationPrintSheet = React.forwardRef<HTMLDivElement, PurchaseA
             大分市舞鶴町1-3-30
           </Typography>
           <Typography sx={{ fontSize: '9pt', pl: 6 }}>
-            TEL：097-533-2022　FAX：<span style={{ textDecoration: 'underline' }}>097-529-7160</span>
+            TEL：097-533-2022
           </Typography>
         </Box>
 
