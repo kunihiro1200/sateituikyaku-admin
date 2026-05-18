@@ -27,7 +27,7 @@ function calcInshiDai(price: number): number {
 
 /** 所有権移転・抵当権設定費用等 */
 function calcShoyukenIten(price: number): number {
-  return price >= 25_000_000 ? 300_000 : 200_000;
+  return price >= 10_000_000 ? 300_000 : 200_000;
 }
 
 /** 仲介手数料 */

@@ -325,7 +325,7 @@ export function generatePage3Html(propertyAddress: string): string {
 export function generatePage4Html(propertyAddress: string, propertyPrice: number | null, propertyType: string | undefined, today: string): string {
   const price = propertyPrice || 0;
   const inshi = price<=1000000?500:price<=5000000?1000:price<=10000000?5000:price<=50000000?10000:30000;
-  const shoyuken = price>=25000000?300000:200000;
+  const shoyuken = price>=10000000?300000:200000;
   const chukai = price<=8000000?330000:Math.round((price*0.03+60000)*1.1);
   const kasai = (propertyType&&propertyType.includes('マンション'))?200000:300000;
   const GINKO_INSHI = 22000;
