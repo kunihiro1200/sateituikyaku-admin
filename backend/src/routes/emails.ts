@@ -441,15 +441,21 @@ router.post(
       // activities テーブルに記録（売主詳細/通話モードページのメール・SMS履歴用）
       try {
         const employeeId = req.employee?.id || '00000000-0000-0000-0000-000000000000';
+        const { templateName: actTemplateName } = req.body;
         const supabase = (await import('../config/supabase')).default;
+        // テンプレート名がある場合は【テンプレート名】を送信、なければ従来通り件名を表示
+        const activityContent = actTemplateName
+          ? `【${actTemplateName}】を送信`
+          : `メール送信: ${subject}`;
         await supabase.from('activities').insert({
           seller_id: sellerId,
           employee_id: employeeId,
           type: 'email',
-          content: `メール送信: ${subject}`,
+          content: activityContent,
           result: '送信成功',
           metadata: {
             subject,
+            templateName: actTemplateName || '',
             body: htmlBody || content || '',
             recipient_email: recipientEmail,
             message_id: result.messageId,
@@ -1077,18 +1083,24 @@ router.post(
       // activities テーブルに記録（売主詳細/通話モードページのメール・SMS履歴用）
       try {
         const employeeId = req.employee?.id || '00000000-0000-0000-0000-000000000000';
+        const { templateName: actTemplateName } = req.body;
         const supabaseForActivities = (await import('../config/supabase')).default;
         // seller.idがUUIDの場合のみactivitiesに記録（property_listingsの場合はseller_number形式のためスキップ）
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(seller.id);
         if (isUuid) {
+          // テンプレート名がある場合は【テンプレート名】を送信、なければ従来通り件名を表示
+          const activityContent = actTemplateName
+            ? `【${actTemplateName}】を送信`
+            : `メール送信: ${subject}`;
           await supabaseForActivities.from('activities').insert({
             seller_id: seller.id,
             employee_id: employeeId,
             type: 'email',
-            content: `メール送信: ${subject}`,
+            content: activityContent,
             result: '送信成功',
             metadata: {
               subject,
+              templateName: actTemplateName || '',
               body: htmlBody || content || '',
               recipient_email: recipientEmail,
               message_id: result.messageId,

@@ -3769,6 +3769,7 @@ HP：https://ifoo-oita.com/
 
           const requestPayload = {
             templateId: template.id,
+            templateName: template.label, // メール種別名（送信履歴の表示用）
             to: capturedEmailRecipient,
             subject: capturedEmailSubject,
             content: capturedEmailBody,
