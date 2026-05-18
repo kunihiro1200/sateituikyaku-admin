@@ -172,9 +172,32 @@ export default function FukuokaTateuriPage() {
         <title>福岡の建売専門サイト｜新築一戸建て物件情報｜株式会社いふう</title>
         <meta name="description" content={`福岡県の建売住宅専門サイト。現在${properties.length}件の新築建売物件を掲載中。福岡市・春日市・大野城市など福岡県内の物件情報を地図付きでご紹介。株式会社いふう（097-533-2022）`} />
         <meta name="keywords" content="福岡 建売,福岡市 建売住宅,福岡 新築一戸建て,福岡 不動産,建売住宅 福岡県,福岡市 新築,春日市 建売,大野城市 建売,福岡 住宅購入" />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://fukuoka-tateuri.com/fukuoka-tateuri" />
         <meta property="og:title" content="福岡の建売専門サイト｜新築一戸建て物件情報｜株式会社いふう" />
         <meta property="og:description" content={`福岡県の建売住宅専門サイト。現在${properties.length}件の新築建売物件を掲載中。地図付きで物件情報をご紹介します。`} />
+        <meta property="og:url" content="https://fukuoka-tateuri.com/fukuoka-tateuri" />
         <meta property="og:type" content="website" />
+        <meta property="og:locale" content="ja_JP" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          "name": "福岡県の建売住宅一覧",
+          "description": "福岡県内の新築建売住宅物件一覧",
+          "numberOfItems": properties.length,
+          "itemListElement": properties.slice(0, 10).map((p, i) => ({
+            "@type": "ListItem",
+            "position": i + 1,
+            "item": {
+              "@type": "House",
+              "name": cleanTitle(p.title) || p.address || "建売住宅",
+              "description": `${p.address || ""}${p.layout ? ` ${p.layout}` : ""}${p.area ? ` ${p.area}` : ""}`,
+              "url": `https://fukuoka-tateuri.com/property-preview/${p.slug}`,
+              ...(p.price ? { "offers": { "@type": "Offer", "price": p.price, "priceCurrency": "JPY" } } : {}),
+              ...(p.address ? { "address": { "@type": "PostalAddress", "streetAddress": p.address, "addressRegion": "福岡県", "addressCountry": "JP" } } : {}),
+            }
+          }))
+        })}</script>
       </Helmet>
 
       {/* ヘッダー */}

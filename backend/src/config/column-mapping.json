@@ -121,7 +121,12 @@
     "exclusion_action": "除外日にすること",
     "fixed_asset_tax_road_price": "固定資産税路線価",
     "exclusive_other_decision_meeting": "専任他決打合せ",
-    "valuation_text": "査定額"
+    "valuation_text": "査定額",
+    "land_area": "土（㎡）",
+    "building_area": "建（㎡）",
+    "build_year": "築年",
+    "current_status": "状況（売主）",
+    "floor_plan": "間取り"
   },
   "typeConversions": {
     "valuation_amount_1": "number",

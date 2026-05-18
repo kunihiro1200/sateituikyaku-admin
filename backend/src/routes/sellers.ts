@@ -234,16 +234,484 @@ router.post('/backfill-call-log', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/sellers/ieul-transfer
+ * イエウールメール本文を受け取り、DB即時転記 + DB→スプシ即時同期を行う
+ * CRON_SECRET認証（mail_notify.pyから呼び出される）
+ */
+router.post('/ieul-transfer', async (req: Request, res: Response) => {
+  // CRON_SECRET認証（認証ミドルウェアをバイパスするため手動チェック）
+  const authHeader = req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { body: mailBody } = req.body;
+  if (!mailBody || typeof mailBody !== 'string') {
+    return res.status(400).json({ success: false, error: 'mailBody is required' });
+  }
+
+  try {
+    console.log('[ieul-transfer] イエウールメール本文解析開始');
+
+    // ============================================================
+    // 1. メール本文解析（GASのtransferIeuru相当）
+    // ============================================================
+    const cleanedBody = mailBody.replace(/\r?\n|\r/g, ' ');
+
+    const extractData = (text: string, from: string, to: string): string => {
+      const fromIndex = text.indexOf(from);
+      if (fromIndex === -1) return '';
+      const start = fromIndex + from.length;
+      const toIndex = text.indexOf(to, start);
+      return text.substring(start, toIndex === -1 ? text.length : toIndex).trim();
+    };
+
+    const extractNumeric = (str: string): string => {
+      if (!str) return '';
+      const m = str.match(/(\d+(?:\.\d+)?)/);
+      return m ? m[1] : '';
+    };
+
+    const extractYear = (str: string): string => {
+      if (!str) return '';
+      const m = str.match(/(\d{4})/);
+      return m ? m[1] : '';
+    };
+
+    const convertStatus = (status: string): string => {
+      if (!status) return '';
+      if (status.includes('居住中')) return '居';
+      if (status.includes('空き')) return '空';
+      if (status.includes('賃貸')) return '賃';
+      return '他';
+    };
+
+    // 依頼日時
+    const requestDateMatch = cleanedBody.match(
+      /依頼日時[\s　]*[:：][\s　]*([0-9]{4}[-\/][0-9]{1,2}[-\/][0-9]{1,2}[\s　]+[0-9]{1,2}:[0-9]{2}(?::[0-9]{2})?)/
+    );
+    const requestDate = requestDateMatch ? requestDateMatch[1].trim() : '';
+    const requestDateObj = requestDate ? new Date(requestDate) : new Date();
+
+    // 不動産情報
+    const propertyTypeRaw = extractData(cleanedBody, '物件種別　　　　: ', '物件住所');
+    let displayPropertyType = propertyTypeRaw;
+    if (propertyTypeRaw.includes('一戸建て')) displayPropertyType = '戸';
+    else if (propertyTypeRaw.includes('マンション')) displayPropertyType = 'マ';
+    else if (propertyTypeRaw.includes('土地')) displayPropertyType = '土';
+
+    // 物件住所（改行ありの本文から直接抽出）
+    const addrMatch = mailBody.match(/物件住所[^\S\r\n]*:[^\S\r\n]*(.*?)(?:\r?\n)マンション名/);
+    const fullPropertyAddress = addrMatch ? addrMatch[1].replace(/^大分県/, '').trim() : '';
+
+    const mansionName = extractData(cleanedBody, 'マンション名　　: ', '部屋番号');
+    const roomNumber = extractData(cleanedBody, '部屋番号　　　　: ', '建物名');
+    const exclusiveArea = extractData(cleanedBody, '専有面積　　　　: ', '建物面積');
+    const buildingArea = extractData(cleanedBody, '建物面積　　　　: ', '土地面積');
+    const landArea = extractData(cleanedBody, '土地面積　　　　: ', '延べ床面積');
+    const layout = extractData(cleanedBody, '間取り　　　　　: ', '築年数');
+    const builtYear = extractYear(extractData(cleanedBody, '築年数　　　　　: ', '物件の状況'));
+    const propertyStatus = convertStatus(extractData(cleanedBody, '物件の状況　　　: ', '物件との関係'));
+    const areaValue = propertyTypeRaw.includes('マンション')
+      ? extractNumeric(exclusiveArea)
+      : extractNumeric(buildingArea);
+    const landAreaNum = extractNumeric(landArea);
+
+    // ユーザ情報
+    const name = extractData(cleanedBody, '氏名　　　　　　: ', 'フリガナ');
+    const furigana = extractData(cleanedBody, 'フリガナ　　　　: ', '年齢');
+    const age = extractData(cleanedBody, '年齢　　　　　　: ', '住所');
+    const address = extractData(cleanedBody, '住所　　　　　　: ', '電話番号');
+    const tel = extractData(cleanedBody, '電話番号　　　　: ', 'Email').replace(/-/g, '');
+    const email = extractData(cleanedBody, 'Email 　　　　　: ', '希望連絡時間');
+    const contactTime = extractData(cleanedBody, '希望連絡時間　　: ', '査定理由');
+    const reasonForEstimate = extractData(cleanedBody, '査定理由　　　　: ', '査定会社への要望');
+    const requestToCompany = extractData(cleanedBody, '査定会社への要望: ', '買い替え有無');
+    const estimateCount = extractData(cleanedBody, '同時査定社数　　: ', '■ 不動産情報');
+    const detailUrl = extractData(cleanedBody, '詳細は下記URLでご確認ください。', '============================================================');
+
+    // コメント抽出
+    const commentStart = cleanedBody.indexOf('コメント');
+    let commentToAdd = '';
+    if (commentStart !== -1) {
+      let sub = cleanedBody.slice(commentStart + 'コメント'.length);
+      const endIdx = sub.indexOf('============================================================');
+      if (endIdx !== -1) sub = sub.slice(0, endIdx);
+      commentToAdd = sub.trim();
+    }
+
+    const commentParts: string[] = [];
+    if (furigana) commentParts.push(`フリガナ: ${furigana}`);
+    if (age) commentParts.push(`年齢: ${age}`);
+    if (contactTime) commentParts.push(`希望連絡時間: ${contactTime}`);
+    if (requestToCompany) commentParts.push(`査定会社への要望: ${requestToCompany}`);
+    if (estimateCount) commentParts.push(`同時送信社数: ${estimateCount}`);
+    if (commentToAdd) commentParts.push(`コメント: ${commentToAdd}`);
+    const comments = `【以下自動転記（イエウール）】\n${commentParts.join('\n')}`;
+
+    if (!name || !tel) {
+      return res.status(400).json({ success: false, error: `名前または電話番号が取得できませんでした name=${name} tel=${tel}` });
+    }
+
+    // ============================================================
+    // 2. 売主番号採番（連番スプシから。GASと同じロジック）
+    // ============================================================
+    const isFukuoka = fullPropertyAddress.includes('福岡');
+    const prefix = isFukuoka ? 'FI' : 'AA';
+    const serialCell = isFukuoka ? 'I2' : 'C2';
+
+    const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
+    const serialSheetsClient = new GoogleSheetsClient({
+      spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
+      sheetName: '連番',
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+    });
+    await serialSheetsClient.authenticate();
+
+    // 現在値を読んで+1した値を書き込む（GASと同じ動作）
+    const serialValues = await serialSheetsClient.readRawRange(serialCell);
+    const currentNum = parseInt(String(serialValues?.[0]?.[0] || '0'), 10);
+    const newNum = currentNum + 1;
+    const sellerNumber = `${prefix}${newNum}`;
+
+    // 連番シートを更新（Google Sheets API直接呼び出し）
+    await serialSheetsClient.updateRawCell('連番', serialCell, newNum);
+
+    console.log(`[ieul-transfer] 売主番号採番: ${sellerNumber}`);
+
+    // ============================================================
+    // 3. DB INSERT（暗号化込み）
+    // ============================================================
+    const { encrypt } = await import('../utils/encryption');
+    const supabase = (await import('../config/supabase')).default;
+
+    const today = new Date();
+    const jstOffset = 9 * 60 * 60 * 1000;
+    const jstToday = new Date(today.getTime() + jstOffset);
+    const mm = String(jstToday.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(jstToday.getUTCDate()).padStart(2, '0');
+    const nextCallDate = `${jstToday.getUTCFullYear()}-${mm}-${dd}`;
+
+    const inquiryDateISO = requestDateObj.toISOString().split('T')[0];
+    const inquiryYear = requestDateObj.getFullYear();
+
+    const insertData: Record<string, any> = {
+      seller_number: sellerNumber,
+      name: encrypt(name),
+      address: address ? encrypt(address) : null,
+      phone_number: encrypt(tel),
+      email: email ? encrypt(email) : null,
+      property_address: fullPropertyAddress + mansionName + roomNumber,
+      property_type: displayPropertyType,
+      inquiry_site: 'ウ',
+      inquiry_date: inquiryDateISO,
+      inquiry_year: inquiryYear,
+      inquiry_detailed_datetime: requestDate || null,
+      floor_plan: layout || null,
+      build_year: builtYear ? parseInt(builtYear) : null,
+      current_status: propertyStatus || null,
+      land_area: landAreaNum ? parseFloat(landAreaNum) : null,
+      building_area: areaValue ? parseFloat(areaValue) : null,
+      status: '追客中',
+      next_call_date: nextCallDate,
+      comments: comments,
+      pinrich_status: '配信中',
+      site_url: detailUrl || null,
+      valuation_reason: reasonForEstimate || null,
+      is_unreachable: false,
+      duplicate_confirmed: false,
+    };
+
+    const { data: seller, error: insertError } = await supabase
+      .from('sellers')
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (insertError || !seller) {
+      console.error('[ieul-transfer] DB INSERT エラー:', insertError);
+      return res.status(500).json({ success: false, error: `DB INSERT失敗: ${insertError?.message}` });
+    }
+
+    console.log(`[ieul-transfer] DB INSERT成功: ${sellerNumber} (id: ${seller.id})`);
+
+    // propertiesテーブルにも登録
+    await supabase.from('properties').insert({
+      seller_id: seller.id,
+      property_address: fullPropertyAddress + mansionName + roomNumber,
+      property_type: displayPropertyType,
+      floor_plan: layout || null,
+      build_year: builtYear ? parseInt(builtYear) : null,
+      land_area: landAreaNum ? parseFloat(landAreaNum) : null,
+      building_area: areaValue ? parseFloat(areaValue) : null,
+    });
+
+    // ============================================================
+    // 4. DB→スプシ即時同期
+    // ============================================================
+    try {
+      const syncService = await createSpreadsheetSyncService();
+      if (syncService) {
+        const syncResult = await syncService.syncToSpreadsheet(seller.id);
+        if (syncResult.success) {
+          console.log(`[ieul-transfer] スプシ同期成功: ${sellerNumber}`);
+        } else {
+          console.warn(`[ieul-transfer] スプシ同期失敗（DB登録は成功）: ${syncResult.error}`);
+        }
+      }
+    } catch (syncErr: any) {
+      console.warn(`[ieul-transfer] スプシ同期エラー（DB登録は成功）: ${syncErr.message}`);
+    }
+
+    return res.json({
+      success: true,
+      sellerNumber,
+      sellerId: seller.id,
+      message: `${sellerNumber} をDBに登録しました`,
+    });
+
+  } catch (error: any) {
+    console.error('[ieul-transfer] エラー:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/sellers/home4u-transfer
+ * HOME4Uメール本文を受け取り、DB即時転記 + DB→スプシ即時同期を行う
+ * 本文に「HOME4Uログアウト」が含まれる場合のみ処理
+ * CRON_SECRET認証（mail_notify.pyから呼び出される）
+ */
+router.post('/home4u-transfer', async (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { body: mailBody } = req.body;
+  if (!mailBody || typeof mailBody !== 'string') {
+    return res.status(400).json({ success: false, error: 'mailBody is required' });
+  }
+
+  // HOME4Uログアウトが含まれない場合はスキップ
+  if (!mailBody.includes('HOME4Uログアウト')) {
+    return res.json({ success: true, skipped: true, message: 'HOME4Uログアウトが含まれないためスキップ' });
+  }
+
+  try {
+    console.log('[home4u-transfer] HOME4Uメール本文解析開始');
+
+    // 改行で統一
+    const cleanedBody = mailBody.replace(/>\s*/g, '').replace(/\r\n|\n\r|\n|\r/g, '\n');
+
+    const extractData2 = (text: string, keyword: string): string => {
+      const regex = new RegExp(keyword + '\\s*[：:]\\s*([^\\n\\r]+)');
+      const m = text.match(regex);
+      return m ? m[1].trim() : '';
+    };
+
+    const extractData = (text: string, from: string, to: string): string => {
+      const fromIndex = text.indexOf(from);
+      if (fromIndex === -1) return '';
+      const start = fromIndex + from.length;
+      const toIndex = text.indexOf(to, start);
+      return text.substring(start, toIndex === -1 ? text.length : toIndex).trim();
+    };
+
+    const extractNumeric = (str: string): string => {
+      if (!str) return '';
+      const m = str.match(/(\d+(?:\.\d+)?)/);
+      return m ? m[1] : '';
+    };
+
+    // メモ（HOME4Uログアウト〜査定依頼の間）
+    const memo = extractData(cleanedBody, 'HOME4Uログアウト', '査定依頼').trim();
+
+    // 依頼日時（曜日部分を除去して解析）
+    const inquiryMatch = cleanedBody.match(/■ご依頼日\s*[:：]\s*([^\n\r]+)/);
+    const inquiryDateTimeRaw = inquiryMatch ? inquiryMatch[1].trim() : '';
+    // 「2026/05/17 (日) 20:10:11」→「2026/05/17 20:10:11」に変換
+    const inquiryDateTime = inquiryDateTimeRaw.replace(/\s*\([^)]*\)\s*/g, ' ').trim();
+    const inquiryDateObj = inquiryDateTime ? new Date(inquiryDateTime) : new Date();
+
+    // 物件種別
+    const propertyTypeRaw = extractData2(cleanedBody, '■物件種別');
+    let displayPropertyType = propertyTypeRaw;
+    if (propertyTypeRaw.includes('一戸建て')) displayPropertyType = '戸';
+    else if (propertyTypeRaw.includes('マンション')) displayPropertyType = 'マ';
+    else if (propertyTypeRaw.includes('土地')) displayPropertyType = '土';
+
+    // 物件情報
+    const landArea = extractData2(cleanedBody, '■土地面積').replace(/[^\d.]/g, '');
+    const buildingArea = extractData2(cleanedBody, '■建物（専有）面積').replace(/[^\d.]/g, '');
+    const layout = extractData2(cleanedBody, '■間取り');
+    const builtYear = extractData2(cleanedBody, '■築年（西暦）').replace(/[^\d]/g, '');
+    const currentStatusRaw = extractData2(cleanedBody, '■現況');
+    const convertStatus = (s: string) => {
+      if (!s) return '';
+      if (s.includes('居住中')) return '居';
+      if (s.includes('空き')) return '空';
+      if (s.includes('賃貸')) return '賃';
+      return '他';
+    };
+    const propertyStatus = convertStatus(currentStatusRaw);
+
+    // 物件住所（大分県を除去）
+    let propertyAddress = extractData2(cleanedBody, '■物件所在地').replace(/^大分県/, '').trim();
+
+    // ユーザ情報
+    const furigana = extractData2(cleanedBody, '■フリガナ');
+    const name = extractData2(cleanedBody, '■お名前');
+    const age = extractData2(cleanedBody, '■年齢');
+    const tel = extractData2(cleanedBody, '■電話番号').replace(/-/g, '');
+    const secondTel = extractData2(cleanedBody, '■第二電話番号（任意）');
+    const email = extractData2(cleanedBody, '■E-mail');
+    const assessmentReason = extractData2(cleanedBody, '■査定の理由');
+    const desiredSaleTime = extractData2(cleanedBody, '■売却の希望時期');
+    const assessmentMethod = extractData2(cleanedBody, '■査定方法');
+    const requests = extractData(cleanedBody, '■要望・質問（自由記入）:', '-----------------------------------------------------------------').trim();
+
+    // 住所（■ご住所の後の行）
+    const addrSection = extractData(cleanedBody, '■ご住所', '■電話番号').trim();
+    const addrLines = addrSection.split('\n').map(l => l.replace(/^[：:]\s*/, '').trim()).filter(l => l);
+    const address = addrLines.join(' ').trim();
+
+    if (!name || !tel) {
+      return res.status(400).json({ success: false, error: `名前または電話番号が取得できませんでした name=${name} tel=${tel}` });
+    }
+
+    // コメント作成
+    const commentParts: string[] = [];
+    if (furigana) commentParts.push(`フリガナ: ${furigana}`);
+    if (age) commentParts.push(`年齢: ${age}`);
+    if (assessmentReason) commentParts.push(`査定理由: ${assessmentReason}`);
+    if (requests) commentParts.push(`要望: ${requests}`);
+    if (assessmentMethod) commentParts.push(`査定方法: ${assessmentMethod}`);
+    if (secondTel) commentParts.push(`第２電話: ${secondTel}`);
+    const comments = `${memo}\n【以下自動転記（HOME4U）】\n${commentParts.join('\n')}`;
+
+    // 売主番号採番（連番スプシから）
+    const isFukuoka = propertyAddress.includes('福岡');
+    const prefix = isFukuoka ? 'FI' : 'AA';
+    const serialCell = isFukuoka ? 'I2' : 'C2';
+
+    const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
+    const serialSheetsClient = new GoogleSheetsClient({
+      spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
+      sheetName: '連番',
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+    });
+    await serialSheetsClient.authenticate();
+    const serialValues = await serialSheetsClient.readRawRange(serialCell);
+    const currentNum = parseInt(String(serialValues?.[0]?.[0] || '0'), 10);
+    const newNum = currentNum + 1;
+    const sellerNumber = `${prefix}${newNum}`;
+    await serialSheetsClient.updateRawCell('連番', serialCell, newNum);
+    console.log(`[home4u-transfer] 売主番号採番: ${sellerNumber}`);
+
+    // DB INSERT
+    const { encrypt } = await import('../utils/encryption');
+    const supabase = (await import('../config/supabase')).default;
+
+    const today = new Date();
+    const jstOffset = 9 * 60 * 60 * 1000;
+    const jstToday = new Date(today.getTime() + jstOffset);
+    const mm = String(jstToday.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(jstToday.getUTCDate()).padStart(2, '0');
+    const nextCallDate = `${jstToday.getUTCFullYear()}-${mm}-${dd}`;
+    const inquiryDateISO = inquiryDateObj instanceof Date && !isNaN(inquiryDateObj.getTime())
+      ? inquiryDateObj.toISOString().split('T')[0]
+      : nextCallDate;
+    const inquiryYear = inquiryDateObj instanceof Date && !isNaN(inquiryDateObj.getTime())
+      ? inquiryDateObj.getFullYear()
+      : jstToday.getUTCFullYear();
+
+    const insertData: Record<string, any> = {
+      seller_number: sellerNumber,
+      name: encrypt(name),
+      address: address ? encrypt(address) : null,
+      phone_number: encrypt(tel),
+      email: email ? encrypt(email) : null,
+      property_address: propertyAddress,
+      property_type: displayPropertyType,
+      inquiry_site: 'H',
+      inquiry_date: inquiryDateISO,
+      inquiry_year: inquiryYear,
+      inquiry_detailed_datetime: inquiryDateTime || null,
+      floor_plan: layout || null,
+      build_year: builtYear ? parseInt(builtYear) : null,
+      current_status: propertyStatus || null,
+      land_area: landArea ? parseFloat(landArea) : null,
+      building_area: buildingArea ? parseFloat(buildingArea) : null,
+      status: '追客中',
+      next_call_date: nextCallDate,
+      comments: comments,
+      pinrich_status: '配信中',
+      valuation_reason: assessmentReason || null,
+      is_unreachable: false,
+      duplicate_confirmed: false,
+    };
+
+    const { data: seller, error: insertError } = await supabase
+      .from('sellers')
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (insertError || !seller) {
+      console.error('[home4u-transfer] DB INSERT エラー:', insertError);
+      return res.status(500).json({ success: false, error: `DB INSERT失敗: ${insertError?.message}` });
+    }
+
+    console.log(`[home4u-transfer] DB INSERT成功: ${sellerNumber}`);
+
+    // propertiesテーブルにも登録
+    await supabase.from('properties').insert({
+      seller_id: seller.id,
+      property_address: propertyAddress,
+      property_type: displayPropertyType,
+      floor_plan: layout || null,
+      build_year: builtYear ? parseInt(builtYear) : null,
+      land_area: landArea ? parseFloat(landArea) : null,
+      building_area: buildingArea ? parseFloat(buildingArea) : null,
+    });
+
+    // DB→スプシ即時同期
+    try {
+      const syncService = await createSpreadsheetSyncService();
+      if (syncService) {
+        const syncResult = await syncService.syncToSpreadsheet(seller.id);
+        if (syncResult.success) {
+          console.log(`[home4u-transfer] スプシ同期成功: ${sellerNumber}`);
+        } else {
+          console.warn(`[home4u-transfer] スプシ同期失敗（DB登録は成功）: ${syncResult.error}`);
+        }
+      }
+    } catch (syncErr: any) {
+      console.warn(`[home4u-transfer] スプシ同期エラー（DB登録は成功）: ${syncErr.message}`);
+    }
+
+    return res.json({
+      success: true,
+      sellerNumber,
+      sellerId: seller.id,
+      message: `${sellerNumber} をDBに登録しました`,
+    });
+
+  } catch (error: any) {
+    console.error('[home4u-transfer] エラー:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 全てのルートに認証を適用（sidebar-countsの後に配置）
 router.use(authenticate);
 
 /**
  * 売主を登録
- */
-router.post(
-  '/',
-  [
-    body('name').notEmpty().withMessage('Name is required'),
     body('address').notEmpty().withMessage('Address is required'),
     body('phoneNumber').notEmpty().withMessage('Phone number is required'),
     body('email').optional().isEmail().withMessage('Invalid email format'),
@@ -2557,239 +3025,6 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
   } catch (error: any) {
     console.error('Sales history error:', error?.message || error);
     res.status(500).json({ error: error?.message || '売買実績の取得に失敗しました' });
-  }
-});
-
-/**
- * POST /api/sellers/ieul-transfer
- * イエウールメール本文を受け取り、DB即時転記 + DB→スプシ即時同期を行う
- * CRON_SECRET認証（mail_notify.pyから呼び出される）
- */
-router.post('/ieul-transfer', async (req: Request, res: Response) => {
-  // CRON_SECRET認証（認証ミドルウェアをバイパスするため手動チェック）
-  const authHeader = req.headers.authorization;
-  const cronSecret = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return res.status(401).json({ success: false, error: 'Unauthorized' });
-  }
-
-  const { body: mailBody } = req.body;
-  if (!mailBody || typeof mailBody !== 'string') {
-    return res.status(400).json({ success: false, error: 'mailBody is required' });
-  }
-
-  try {
-    console.log('[ieul-transfer] イエウールメール本文解析開始');
-
-    // ============================================================
-    // 1. メール本文解析（GASのtransferIeuru相当）
-    // ============================================================
-    const cleanedBody = mailBody.replace(/\r?\n|\r/g, ' ');
-
-    const extractData = (text: string, from: string, to: string): string => {
-      const fromIndex = text.indexOf(from);
-      if (fromIndex === -1) return '';
-      const start = fromIndex + from.length;
-      const toIndex = text.indexOf(to, start);
-      return text.substring(start, toIndex === -1 ? text.length : toIndex).trim();
-    };
-
-    const extractNumeric = (str: string): string => {
-      if (!str) return '';
-      const m = str.match(/(\d+(?:\.\d+)?)/);
-      return m ? m[1] : '';
-    };
-
-    const extractYear = (str: string): string => {
-      if (!str) return '';
-      const m = str.match(/(\d{4})/);
-      return m ? m[1] : '';
-    };
-
-    const convertStatus = (status: string): string => {
-      if (!status) return '';
-      if (status.includes('居住中')) return '居';
-      if (status.includes('空き')) return '空';
-      if (status.includes('賃貸')) return '賃';
-      return '他';
-    };
-
-    // 依頼日時
-    const requestDateMatch = cleanedBody.match(
-      /依頼日時[\s　]*[:：][\s　]*([0-9]{4}[-\/][0-9]{1,2}[-\/][0-9]{1,2}[\s　]+[0-9]{1,2}:[0-9]{2}(?::[0-9]{2})?)/
-    );
-    const requestDate = requestDateMatch ? requestDateMatch[1].trim() : '';
-    const requestDateObj = requestDate ? new Date(requestDate) : new Date();
-
-    // 不動産情報
-    const propertyTypeRaw = extractData(cleanedBody, '物件種別　　　　: ', '物件住所');
-    let displayPropertyType = propertyTypeRaw;
-    if (propertyTypeRaw.includes('一戸建て')) displayPropertyType = '戸';
-    else if (propertyTypeRaw.includes('マンション')) displayPropertyType = 'マ';
-    else if (propertyTypeRaw.includes('土地')) displayPropertyType = '土';
-
-    // 物件住所（改行ありの本文から直接抽出）
-    const addrMatch = mailBody.match(/物件住所[^\S\r\n]*:[^\S\r\n]*(.*?)(?:\r?\n)マンション名/);
-    const fullPropertyAddress = addrMatch ? addrMatch[1].replace(/^大分県/, '').trim() : '';
-
-    const mansionName = extractData(cleanedBody, 'マンション名　　: ', '部屋番号');
-    const roomNumber = extractData(cleanedBody, '部屋番号　　　　: ', '建物名');
-    const exclusiveArea = extractData(cleanedBody, '専有面積　　　　: ', '建物面積');
-    const buildingArea = extractData(cleanedBody, '建物面積　　　　: ', '土地面積');
-    const landArea = extractData(cleanedBody, '土地面積　　　　: ', '延べ床面積');
-    const layout = extractData(cleanedBody, '間取り　　　　　: ', '築年数');
-    const builtYear = extractYear(extractData(cleanedBody, '築年数　　　　　: ', '物件の状況'));
-    const propertyStatus = convertStatus(extractData(cleanedBody, '物件の状況　　　: ', '物件との関係'));
-    const areaValue = propertyTypeRaw.includes('マンション')
-      ? extractNumeric(exclusiveArea)
-      : extractNumeric(buildingArea);
-    const landAreaNum = extractNumeric(landArea);
-
-    // ユーザ情報
-    const name = extractData(cleanedBody, '氏名　　　　　　: ', 'フリガナ');
-    const furigana = extractData(cleanedBody, 'フリガナ　　　　: ', '年齢');
-    const age = extractData(cleanedBody, '年齢　　　　　　: ', '住所');
-    const address = extractData(cleanedBody, '住所　　　　　　: ', '電話番号');
-    const tel = extractData(cleanedBody, '電話番号　　　　: ', 'Email').replace(/-/g, '');
-    const email = extractData(cleanedBody, 'Email 　　　　　: ', '希望連絡時間');
-    const contactTime = extractData(cleanedBody, '希望連絡時間　　: ', '査定理由');
-    const reasonForEstimate = extractData(cleanedBody, '査定理由　　　　: ', '査定会社への要望');
-    const requestToCompany = extractData(cleanedBody, '査定会社への要望: ', '買い替え有無');
-    const estimateCount = extractData(cleanedBody, '同時査定社数　　: ', '■ 不動産情報');
-    const detailUrl = extractData(cleanedBody, '詳細は下記URLでご確認ください。', '============================================================');
-
-    // コメント抽出
-    const commentStart = cleanedBody.indexOf('コメント');
-    let commentToAdd = '';
-    if (commentStart !== -1) {
-      let sub = cleanedBody.slice(commentStart + 'コメント'.length);
-      const endIdx = sub.indexOf('============================================================');
-      if (endIdx !== -1) sub = sub.slice(0, endIdx);
-      commentToAdd = sub.trim();
-    }
-
-    const commentParts: string[] = [];
-    if (furigana) commentParts.push(`フリガナ: ${furigana}`);
-    if (age) commentParts.push(`年齢: ${age}`);
-    if (contactTime) commentParts.push(`希望連絡時間: ${contactTime}`);
-    if (requestToCompany) commentParts.push(`査定会社への要望: ${requestToCompany}`);
-    if (estimateCount) commentParts.push(`同時送信社数: ${estimateCount}`);
-    if (commentToAdd) commentParts.push(`コメント: ${commentToAdd}`);
-    const comments = `【以下自動転記（イエウール）】\n${commentParts.join('\n')}`;
-
-    if (!name || !tel) {
-      return res.status(400).json({ success: false, error: `名前または電話番号が取得できませんでした name=${name} tel=${tel}` });
-    }
-
-    // ============================================================
-    // 2. 売主番号採番（連番スプシから。GASと同じロジック）
-    // ============================================================
-    const isFukuoka = fullPropertyAddress.includes('福岡');
-    const prefix = isFukuoka ? 'FI' : 'AA';
-    const serialCell = isFukuoka ? 'I2' : 'C2';
-
-    const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
-    const serialSheetsClient = new GoogleSheetsClient({
-      spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
-      sheetName: '連番',
-      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
-    });
-    await serialSheetsClient.authenticate();
-
-    // 現在値を読んで+1した値を書き込む（GASと同じ動作）
-    const serialValues = await serialSheetsClient.readRawRange(serialCell);
-    const currentNum = parseInt(String(serialValues?.[0]?.[0] || '0'), 10);
-    const newNum = currentNum + 1;
-    const sellerNumber = `${prefix}${newNum}`;
-
-    // 連番シートを更新（Google Sheets API直接呼び出し）
-    await serialSheetsClient.updateRawCell('連番', serialCell, newNum);
-
-    console.log(`[ieul-transfer] 売主番号採番: ${sellerNumber}`);
-
-    // ============================================================
-    // 3. DB INSERT（暗号化込み）
-    // ============================================================
-    const { encrypt } = await import('../utils/encryption');
-    const supabase = (await import('../config/supabase')).default;
-
-    const today = new Date();
-    const jstOffset = 9 * 60 * 60 * 1000;
-    const jstToday = new Date(today.getTime() + jstOffset);
-    const mm = String(jstToday.getUTCMonth() + 1).padStart(2, '0');
-    const dd = String(jstToday.getUTCDate()).padStart(2, '0');
-    const nextCallDate = `${jstToday.getUTCFullYear()}-${mm}-${dd}`;
-
-    const inquiryDateISO = requestDateObj.toISOString().split('T')[0];
-    const inquiryYear = requestDateObj.getFullYear();
-
-    const insertData: Record<string, any> = {
-      seller_number: sellerNumber,
-      name: encrypt(name),
-      address: address ? encrypt(address) : null,
-      phone_number: encrypt(tel),
-      email: email ? encrypt(email) : null,
-      property_address: fullPropertyAddress + mansionName + roomNumber,
-      property_type: displayPropertyType,
-      inquiry_site: 'ウ',
-      inquiry_date: inquiryDateISO,
-      inquiry_year: inquiryYear,
-      inquiry_detailed_datetime: requestDate || null,
-      floor_plan: layout || null,
-      build_year: builtYear ? parseInt(builtYear) : null,
-      current_status: propertyStatus || null,
-      land_area: landAreaNum ? parseFloat(landAreaNum) : null,
-      building_area: areaValue ? parseFloat(areaValue) : null,
-      status: '追客中',
-      next_call_date: nextCallDate,
-      comments: comments,
-      pinrich_status: '配信中',
-      site_url: detailUrl || null,
-      valuation_reason: reasonForEstimate || null,
-      is_unreachable: false,
-      duplicate_confirmed: false,
-    };
-
-    const { data: seller, error: insertError } = await supabase
-      .from('sellers')
-      .insert(insertData)
-      .select()
-      .single();
-
-    if (insertError || !seller) {
-      console.error('[ieul-transfer] DB INSERT エラー:', insertError);
-      return res.status(500).json({ success: false, error: `DB INSERT失敗: ${insertError?.message}` });
-    }
-
-    console.log(`[ieul-transfer] DB INSERT成功: ${sellerNumber} (id: ${seller.id})`);
-
-    // ============================================================
-    // 4. DB→スプシ即時同期
-    // ============================================================
-    try {
-      const syncService = await createSpreadsheetSyncService();
-      if (syncService) {
-        const syncResult = await syncService.syncToSpreadsheet(seller.id);
-        if (syncResult.success) {
-          console.log(`[ieul-transfer] スプシ同期成功: ${sellerNumber}`);
-        } else {
-          console.warn(`[ieul-transfer] スプシ同期失敗（DB登録は成功）: ${syncResult.error}`);
-        }
-      }
-    } catch (syncErr: any) {
-      console.warn(`[ieul-transfer] スプシ同期エラー（DB登録は成功）: ${syncErr.message}`);
-    }
-
-    return res.json({
-      success: true,
-      sellerNumber,
-      sellerId: seller.id,
-      message: `${sellerNumber} をDBに登録しました`,
-    });
-
-  } catch (error: any) {
-    console.error('[ieul-transfer] エラー:', error);
-    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
