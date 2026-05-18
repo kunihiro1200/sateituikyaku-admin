@@ -149,7 +149,7 @@ export default function OtherCompanyDistributionPage() {
 
   // 配信履歴
   const [distributionHistory, setDistributionHistory] = useState<any[]>([]);
-  const [duplicateWarning, setDuplicateWarning] = useState<{ isDuplicate: boolean; history: any } | null>(null);
+  const [duplicateWarning, setDuplicateWarning] = useState<{ isDuplicate: boolean; history: any; source?: string } | null>(null);
 
   // 配信履歴を取得
   useEffect(() => {
@@ -328,6 +328,7 @@ export default function OtherCompanyDistributionPage() {
             propertyAddress: result.data.address,
             price: result.data.price,
             landArea: landArea,
+            sourceUrl: propertyUrl.trim(),
           });
           if (dupRes.data.isDuplicate) {
             setDuplicateWarning(dupRes.data);
@@ -729,7 +730,10 @@ export default function OtherCompanyDistributionPage() {
       {/* 重複警告 */}
       {duplicateWarning?.isDuplicate && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          ⚠️ この物件は過去に配信済みです（{new Date(duplicateWarning.history.sent_at).toLocaleDateString('ja-JP')}に{duplicateWarning.history.sent_count}件送信）
+          ⚠️ この物件は重複しています
+          {duplicateWarning.source ? `（${duplicateWarning.source}）` : ''}
+          {duplicateWarning.history?.sent_at ? `（${new Date(duplicateWarning.history.sent_at).toLocaleDateString('ja-JP')}）` : ''}
+          {duplicateWarning.history?.sent_count ? `（${duplicateWarning.history.sent_count}件送信済み）` : ''}
         </Alert>
       )}
           {/* 当社の電話番号と隠しボタン */}

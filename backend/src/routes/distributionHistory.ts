@@ -32,18 +32,19 @@ router.get('/', async (_req: Request, res: Response) => {
 
 /**
  * 重複チェック（住所＋土地面積の一致、土地面積がない場合は住所＋金額）
+ * + property_previewsテーブルも横断チェック（建売HP登録済みの物件）
  * POST /api/distribution-history/check-duplicate
- * Body: { propertyAddress: string, price: string, landArea?: string }
+ * Body: { propertyAddress: string, price: string, landArea?: string, sourceUrl?: string }
  */
 router.post('/check-duplicate', async (req: Request, res: Response) => {
   try {
-    const { propertyAddress, price, landArea } = req.body;
+    const { propertyAddress, price, landArea, sourceUrl } = req.body;
 
     if (!propertyAddress) {
       return res.json({ isDuplicate: false, history: null });
     }
 
-    // 住所＋金額で重複チェック
+    // チェック1: distribution_history内で住所＋金額の重複チェック
     if (price) {
       const { data: priceMatch, error: priceError } = await supabase
         .from('distribution_history')
@@ -54,11 +55,11 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
         .limit(1);
 
       if (!priceError && priceMatch && priceMatch.length > 0) {
-        return res.json({ isDuplicate: true, history: priceMatch[0] });
+        return res.json({ isDuplicate: true, history: priceMatch[0], source: '配信履歴（住所＋金額一致）' });
       }
     }
 
-    // 住所＋土地面積で重複チェック
+    // チェック2: distribution_history内で住所＋土地面積の重複チェック
     if (landArea) {
       const { data: areaMatch, error: areaError } = await supabase
         .from('distribution_history')
@@ -69,7 +70,66 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
         .limit(1);
 
       if (!areaError && areaMatch && areaMatch.length > 0) {
-        return res.json({ isDuplicate: true, history: areaMatch[0] });
+        return res.json({ isDuplicate: true, history: areaMatch[0], source: '配信履歴（住所＋土地面積一致）' });
+      }
+    }
+
+    // チェック3: property_previewsテーブルを横断チェック（建売HP登録済みの物件）
+    // URLで確認
+    if (sourceUrl) {
+      const normalizeUrl = (url: string) => {
+        try {
+          const u = new URL(url);
+          return `${u.protocol}//${u.host}${u.pathname}`.replace(/\/$/, '') + '/';
+        } catch {
+          return url;
+        }
+      };
+      const normalized = normalizeUrl(sourceUrl);
+
+      const { data: urlMatch, error: urlError } = await supabase
+        .from('property_previews')
+        .select('slug, title, address, created_at, is_tateuri')
+        .like('source_url', `${normalized}%`)
+        .eq('is_active', true)
+        .limit(1);
+
+      if (!urlError && urlMatch && urlMatch.length > 0) {
+        const existing = urlMatch[0];
+        const source = existing.is_tateuri ? '建売専門HP' : '他社物件配信';
+        return res.json({
+          isDuplicate: true,
+          history: {
+            property_address: existing.address,
+            source_url: sourceUrl,
+            sent_at: existing.created_at,
+          },
+          source: `${source}に登録済み（URL一致）`,
+        });
+      }
+    }
+
+    // チェック4: property_previewsテーブルを住所で横断チェック
+    {
+      const { data: addressMatch, error: addressError } = await supabase
+        .from('property_previews')
+        .select('slug, title, address, created_at, is_tateuri')
+        .eq('address', propertyAddress)
+        .eq('is_active', true)
+        .limit(1);
+
+      if (!addressError && addressMatch && addressMatch.length > 0) {
+        const existing = addressMatch[0];
+        const source = existing.is_tateuri ? '建売専門HP' : '他社物件配信';
+        return res.json({
+          isDuplicate: true,
+          history: {
+            property_address: existing.address,
+            source_url: null,
+            sent_at: existing.created_at,
+          },
+          source: `${source}に登録済み（住所一致）`,
+        });
       }
     }
 

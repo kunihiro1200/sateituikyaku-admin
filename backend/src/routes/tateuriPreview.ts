@@ -82,7 +82,7 @@ router.get('/', async (req: Request, res: Response) => {
 // POST /api/tateuri/check-duplicate - URLが既に登録済みか確認（認証不要）
 router.post('/check-duplicate', async (req: Request, res: Response) => {
   try {
-    const { source_url, region = 'oita' } = req.body;
+    const { source_url, region = 'oita', address, price } = req.body;
     if (!source_url) {
       return res.status(400).json({ error: 'source_url is required' });
     }
@@ -101,7 +101,7 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
 
     const normalized = normalizeUrl(source_url);
 
-    // 同じsource_urlで is_active = true のレコードが存在するか確認
+    // チェック1: 同じsource_urlで is_active = true のレコードが存在するか確認
     // is_tateuriに関係なく、同じURLが既に登録されていれば重複とみなす
     const { data, error } = await supabase
       .from('property_previews')
@@ -112,7 +112,7 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
     if (error) throw error;
 
     if (data && data.length > 0) {
-      // 重複あり
+      // URL重複あり
       const existing = data[0];
       const cleanTitle = (existing.title || '').replace(/\[\d+\].+$/, '').trim();
       const source = existing.is_tateuri ? '建売専門HP' : '他社物件配信';
@@ -126,6 +126,56 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
           source,
         },
       });
+    }
+
+    // チェック2: 住所でproperty_previewsを横断チェック（URLが異なるが同じ物件の場合）
+    if (address) {
+      const { data: addressMatch, error: addressError } = await supabase
+        .from('property_previews')
+        .select('slug, title, address, created_at, is_tateuri, region')
+        .eq('address', address)
+        .eq('is_active', true);
+
+      if (!addressError && addressMatch && addressMatch.length > 0) {
+        const existing = addressMatch[0];
+        const cleanTitle = (existing.title || '').replace(/\[\d+\].+$/, '').trim();
+        const source = existing.is_tateuri ? '建売専門HP' : '他社物件配信';
+        return res.json({
+          isDuplicate: true,
+          existing: {
+            slug: existing.slug,
+            title: cleanTitle,
+            address: existing.address,
+            created_at: existing.created_at,
+            source: source + '（住所一致）',
+          },
+        });
+      }
+    }
+
+    // チェック3: distribution_historyテーブルも横断チェック（メール配信済みの物件）
+    if (address && price) {
+      const { data: distMatch, error: distError } = await supabase
+        .from('distribution_history')
+        .select('id, property_address, price, sent_at')
+        .eq('property_address', address)
+        .eq('price', price)
+        .order('sent_at', { ascending: false })
+        .limit(1);
+
+      if (!distError && distMatch && distMatch.length > 0) {
+        const existing = distMatch[0];
+        return res.json({
+          isDuplicate: true,
+          existing: {
+            slug: null,
+            title: existing.property_address,
+            address: existing.property_address,
+            created_at: existing.sent_at,
+            source: '他社物件メール配信済み',
+          },
+        });
+      }
     }
 
     // 重複なし
@@ -231,8 +281,72 @@ router.post('/scrape', async (req: Request, res: Response) => {
 
     const result = await scrapeRes.json() as any;
 
-    // スクレイピング成功後、regionとis_tateuriをDBに反映（スクレイピングサーバーはこれらを知らないため）
-    if (result.success && result.slug) {
+    // スクレイピング成功後、住所による重複チェック（URLチェックをすり抜けた場合の二重防止）
+    if (result.success && result.slug && result.data?.address) {
+      const supabase = getSupabase();
+      
+      // 同じ住所で既にアクティブな物件が存在するか確認（今回追加されたもの以外）
+      const { data: addressDup, error: addressDupError } = await supabase
+        .from('property_previews')
+        .select('slug, title, address, created_at, is_tateuri')
+        .eq('address', result.data.address)
+        .eq('is_active', true)
+        .neq('slug', result.slug);
+
+      if (!addressDupError && addressDup && addressDup.length > 0) {
+        // 住所重複あり → 今回追加されたレコードを非アクティブ化して重複エラーを返す
+        await supabase
+          .from('property_previews')
+          .update({ is_active: false })
+          .eq('slug', result.slug);
+
+        const existing = addressDup[0];
+        const cleanTitle = (existing.title || '').replace(/\[\d+\].+$/, '').trim();
+        const source = existing.is_tateuri ? '建売専門HP' : '他社物件配信';
+        return res.json({
+          success: false,
+          error: `「${cleanTitle || existing.address}」は既に${source}に登録済みです（住所一致）`,
+          isDuplicate: true,
+        });
+      }
+
+      // distribution_historyテーブルも横断チェック
+      const { data: distDup, error: distDupError } = await supabase
+        .from('distribution_history')
+        .select('property_address, price, sent_at')
+        .eq('property_address', result.data.address)
+        .order('sent_at', { ascending: false })
+        .limit(1);
+
+      if (!distDupError && distDup && distDup.length > 0) {
+        // メール配信済みの物件 → 今回追加されたレコードを非アクティブ化して重複エラーを返す
+        await supabase
+          .from('property_previews')
+          .update({ is_active: false })
+          .eq('slug', result.slug);
+
+        const existing = distDup[0];
+        const sentDate = new Date(existing.sent_at).toLocaleDateString('ja-JP');
+        return res.json({
+          success: false,
+          error: `「${existing.property_address}」は既にメール配信済みです（配信日: ${sentDate}）`,
+          isDuplicate: true,
+        });
+      }
+
+      // 重複なし → regionとis_tateuriをDBに反映
+      const { error: updateError } = await supabase
+        .from('property_previews')
+        .update({ region, is_tateuri: true })
+        .eq('slug', result.slug);
+      
+      if (updateError) {
+        console.error(`[tateuri/scrape] 更新エラー: slug=${result.slug}`, updateError);
+      } else {
+        console.log(`[tateuri/scrape] region='${region}', is_tateuri=true をslug=${result.slug}に設定`);
+      }
+    } else if (result.success && result.slug) {
+      // 住所がない場合はregionとis_tateuriのみ更新
       const supabase = getSupabase();
       const { error: updateError } = await supabase
         .from('property_previews')
