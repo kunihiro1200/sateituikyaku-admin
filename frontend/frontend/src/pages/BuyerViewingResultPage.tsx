@@ -809,21 +809,12 @@ export default function BuyerViewingResultPage() {
 
       console.log('[BuyerViewingResultPage] Calendar event created:', response.data);
 
-      // Googleカレンダー新規イベント作成URLを直接開く
-      const params = new URLSearchParams({
-        action: 'TEMPLATE',
-        text: title,
-        details: description,
-        location: property?.address || '',
+      // バックエンドAPIでイベント作成済みのため、成功メッセージを表示
+      setSnackbar({
+        open: true,
+        message: `後続担当（${buyer.follow_up_assignee}）のGoogleカレンダーに内覧予約を登録しました`,
+        severity: 'success',
       });
-      if (startDateStr && endDateStr) {
-        params.append('dates', `${startDateStr}/${endDateStr}`);
-      }
-
-      // 後続担当のカレンダーに直接作成（srcパラメータを使用）
-      const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
-
-      window.open(`https://calendar.google.com/calendar/render?${params.toString()}${srcParam}`, '_blank');
       setCalendarOpened(true);
     } catch (error: any) {
       console.error('[BuyerViewingResultPage] Calendar event creation error:', error);
