@@ -437,6 +437,17 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
 
     console.log(`[ieul-transfer] DB INSERT成功: ${sellerNumber} (id: ${seller.id})`);
 
+    // propertiesテーブルにも登録
+    await supabase.from('properties').insert({
+      seller_id: seller.id,
+      property_address: fullPropertyAddress + mansionName + roomNumber,
+      property_type: displayPropertyType,
+      floor_plan: layout || null,
+      build_year: builtYear ? parseInt(builtYear) : null,
+      land_area: landAreaNum ? parseFloat(landAreaNum) : null,
+      building_area: areaValue ? parseFloat(areaValue) : null,
+    });
+
     // ============================================================
     // 4. DB→スプシ即時同期
     // ============================================================
@@ -656,6 +667,17 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
     }
 
     console.log(`[home4u-transfer] DB INSERT成功: ${sellerNumber}`);
+
+    // propertiesテーブルにも登録
+    await supabase.from('properties').insert({
+      seller_id: seller.id,
+      property_address: propertyAddress,
+      property_type: displayPropertyType,
+      floor_plan: layout || null,
+      build_year: builtYear ? parseInt(builtYear) : null,
+      land_area: landArea ? parseFloat(landArea) : null,
+      building_area: buildingArea ? parseFloat(buildingArea) : null,
+    });
 
     // DB→スプシ即時同期
     try {
