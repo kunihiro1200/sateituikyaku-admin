@@ -101,21 +101,21 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
 
     const normalized = normalizeUrl(source_url);
 
-    // チェック1: 同じsource_urlで is_active = true のレコードが存在するか確認
-    // is_tateuriに関係なく、同じURLが既に登録されていれば重複とみなす
+    // チェック1: 同じsource_urlで is_active = true かつ is_tateuri = true のレコードが存在するか確認
+    // 建売HP内での重複のみブロック（他社物件配信用のレコードは無視）
     const { data, error } = await supabase
       .from('property_previews')
       .select('slug, title, address, created_at, is_tateuri, region')
       .like('source_url', `${normalized}%`)
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .eq('is_tateuri', true);
 
     if (error) throw error;
 
     if (data && data.length > 0) {
-      // URL重複あり
+      // URL重複あり（建売HP内）
       const existing = data[0];
       const cleanTitle = (existing.title || '').replace(/\[\d+\].+$/, '').trim();
-      const source = existing.is_tateuri ? '建売専門HP' : '他社物件配信';
       return res.json({
         isDuplicate: true,
         existing: {
@@ -123,24 +123,24 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
           title: cleanTitle,
           address: existing.address,
           created_at: existing.created_at,
-          source,
+          source: '建売専門HP',
         },
       });
     }
 
     // チェック2: 住所でproperty_previewsを横断チェック（URLが異なるが同じ物件の場合）
-    // ※ property_previews内の重複のみブロック（建売HP内での重複防止）
+    // ※ 建売HP（is_tateuri=true）内での重複のみブロック
     if (address) {
       const { data: addressMatch, error: addressError } = await supabase
         .from('property_previews')
         .select('slug, title, address, created_at, is_tateuri, region')
         .eq('address', address)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('is_tateuri', true);
 
       if (!addressError && addressMatch && addressMatch.length > 0) {
         const existing = addressMatch[0];
         const cleanTitle = (existing.title || '').replace(/\[\d+\].+$/, '').trim();
-        const source = existing.is_tateuri ? '建売専門HP' : '他社物件配信';
         return res.json({
           isDuplicate: true,
           existing: {
@@ -148,7 +148,7 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
             title: cleanTitle,
             address: existing.address,
             created_at: existing.created_at,
-            source: source + '（住所一致）',
+            source: '建売専門HP（住所一致）',
           },
         });
       }
@@ -281,12 +281,13 @@ router.post('/scrape', async (req: Request, res: Response) => {
     if (result.success && result.slug && result.data?.address) {
       const supabase = getSupabase();
       
-      // 同じ住所で既にアクティブな物件が存在するか確認（今回追加されたもの以外）
+      // 同じ住所で既にアクティブな建売HP物件が存在するか確認（今回追加されたもの以外）
       const { data: addressDup, error: addressDupError } = await supabase
         .from('property_previews')
         .select('slug, title, address, created_at, is_tateuri')
         .eq('address', result.data.address)
         .eq('is_active', true)
+        .eq('is_tateuri', true)
         .neq('slug', result.slug);
 
       if (!addressDupError && addressDup && addressDup.length > 0) {
