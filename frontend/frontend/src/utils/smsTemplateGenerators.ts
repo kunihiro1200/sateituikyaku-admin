@@ -306,27 +306,27 @@ export const replacePlaceholders = (
       result = result.replace(/大分市舞鶴町にございます/g, '福岡市中央区舞鶴にございます');
     }
 
-    // FI売主の場合は署名の会社固定TEL・FAX行を削除
-    // 担当者個人番号（TEL：<<担当名（営業）電話番号>>）は削除しない
+    // FI売主の場合は署名の会社固定TEL番号を福岡用（092-401-5331）に変更し、FAX行を削除
+    // 担当者個人番号（TEL：<<担当名（営業）電話番号>>）は変更しない
     // ※この時点では [改行] はまだ \n に変換されていないため、
     //   [改行]TEL: ... パターンで直接マッチする
     if (hasFI) {
-      // [改行]TEL: 097-533-2022 形式（半角コロン+スペース）
-      result = result.replace(/\[改行\]TEL: 097-533-2022/g, '');
-      // [改行]TEL：097-533-2022 形式（全角コロン）
-      result = result.replace(/\[改行\]TEL：097-533-2022/g, '');
-      // [改行]FAX: 097-529-7160 形式
+      // [改行]TEL: 097-533-2022 形式（半角コロン+スペース）→ 福岡用番号に変更
+      result = result.replace(/\[改行\]TEL: 097-533-2022/g, '[改行]TEL: 092-401-5331');
+      // [改行]TEL：097-533-2022 形式（全角コロン）→ 福岡用番号に変更
+      result = result.replace(/\[改行\]TEL：097-533-2022/g, '[改行]TEL：092-401-5331');
+      // [改行]FAX: 097-529-7160 形式は削除
       result = result.replace(/\[改行\]FAX: 097-529-7160/g, '');
       result = result.replace(/\[改行\]FAX：097-529-7160/g, '');
-      // [改行]097-533-2022 形式（プレフィックスなし）
-      result = result.replace(/\[改行\]097-533-2022/g, '');
+      // [改行]097-533-2022 形式（プレフィックスなし）→ 福岡用番号に変更
+      result = result.replace(/\[改行\]097-533-2022/g, '[改行]092-401-5331');
       // 実績リンク削除（大分専用のため福岡では不要）
       result = result.replace(/\[改行\]実績: bit\.ly\/3J61wzG/g, '');
       result = result.replace(/\[改行\]売買実績はこちら：bit\.ly\/3J61wzG/g, '');
-      // 万が一 \n に変換済みの場合も念のため対応
-      result = result.replace(/\nTEL: 097-533-2022\n?/g, '\n');
-      result = result.replace(/\nTEL：097-533-2022\n?/g, '\n');
-      result = result.replace(/\n097-533-2022\n?/g, '\n');
+      // 万が一 \n に変換済みの場合も念のため対応（→ 福岡用番号に変更）
+      result = result.replace(/\nTEL: 097-533-2022(\n?)/g, '\nTEL: 092-401-5331$1');
+      result = result.replace(/\nTEL：097-533-2022(\n?)/g, '\nTEL：092-401-5331$1');
+      result = result.replace(/\n097-533-2022(\n?)/g, '\n092-401-5331$1');
       result = result.replace(/\n実績: bit\.ly\/3J61wzG\n?/g, '\n');
       result = result.replace(/\n売買実績はこちら：bit\.ly\/3J61wzG\n?/g, '\n');
     }
