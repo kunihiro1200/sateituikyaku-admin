@@ -2520,22 +2520,17 @@ export class SellerService extends BaseRepository {
       const latestUpdateDate = latestUpdatedAt ? latestUpdatedAt.substring(0, 10) : '';
 
       if (latestUpdateDate < todayJST) {
-        console.warn(`⚠️ [SidebarCounts] Table last updated on ${latestUpdateDate}, today is ${todayJST}. Triggering refresh...`);
-        try {
-          const { SellerSidebarCountsUpdateService } = await import('./SellerSidebarCountsUpdateService');
+        console.warn(`⚠️ [SidebarCounts] Table last updated on ${latestUpdateDate}, today is ${todayJST}. Triggering background refresh...`);
+        // バックグラウンドで更新（awaitしない → すぐに古いデータを返す）
+        import('./SellerSidebarCountsUpdateService').then(({ SellerSidebarCountsUpdateService }) => {
           const updateService = new SellerSidebarCountsUpdateService(this.supabase);
-          await updateService.updateSellerSidebarCounts();
-          console.log('✅ [SidebarCounts] Refresh complete, re-fetching table...');
-          // 更新後に再取得
-          const { data: freshRows, error: freshError } = await this.table('seller_sidebar_counts')
-            .select('category, count, label, assignee, updated_at');
-          if (!freshError && freshRows && freshRows.length > 0) {
-            return this.buildSidebarCountsFromRows(freshRows);
-          }
-        } catch (refreshErr: any) {
-          console.error('❌ [SidebarCounts] Refresh failed, using stale data:', refreshErr?.message);
-          // 失敗した場合は古いデータをそのまま返す（エラーより古いデータの方がマシ）
-        }
+          return updateService.updateSellerSidebarCounts();
+        }).then(() => {
+          console.log('✅ [SidebarCounts] Background refresh complete');
+        }).catch((refreshErr: any) => {
+          console.error('❌ [SidebarCounts] Background refresh failed:', refreshErr?.message);
+        });
+        // 古いデータをそのまま即返す（フロントをブロックしない）
       }
 
       console.log('✅ [SidebarCounts] Served from seller_sidebar_counts table (fast path)');
