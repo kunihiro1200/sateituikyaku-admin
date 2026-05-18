@@ -101,8 +101,8 @@ const FundingPlanSheet = React.forwardRef<HTMLDivElement, FundingPlanSheetProps>
     // 購入費用概算
     const total = price + shokeihi;
 
-    // 借入金額 = 諸経費合計
-    const borrowing = shokeihi;
+    // 借入金額 = 総額（物件価格＋諸経費）
+    const borrowing = total;
 
     // 月額返済額
     const monthly_hendo = calcMonthlyPayment(borrowing, 0.95, 35);

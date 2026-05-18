@@ -332,7 +332,7 @@ export function generatePage4Html(propertyAddress: string, propertyPrice: number
   const GINKO_JIMU = 220000;
   const shokeihi = inshi+shoyuken+chukai+kasai+GINKO_INSHI+GINKO_JIMU;
   const total = price+shokeihi;
-  const borrowing = shokeihi;
+  const borrowing = total; // 総額（物件価格＋諸経費）をローン借入金額とする
   function monthly(principal:number,rate:number,years:number):number{
     if(principal<=0)return 0;
     const r=rate/12/100,n=years*12;
