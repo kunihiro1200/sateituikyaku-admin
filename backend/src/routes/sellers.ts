@@ -437,13 +437,19 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
 
     console.log(`[ieul-transfer] DB INSERT成功: ${sellerNumber} (id: ${seller.id})`);
 
+    // propertiesテーブル用のproperty_type変換（マ→マンション等）
+    const propertyTypeForDB = displayPropertyType === 'マ' ? 'マンション'
+      : displayPropertyType === '戸' ? '戸建て'
+      : displayPropertyType === '土' ? '土地'
+      : displayPropertyType || null;
+
     // propertiesテーブルにも登録
     await supabase.from('properties').insert({
       seller_id: seller.id,
       property_address: fullPropertyAddress + mansionName + roomNumber,
-      property_type: displayPropertyType,
+      property_type: propertyTypeForDB,
       floor_plan: layout || null,
-      build_year: builtYear ? parseInt(builtYear) : null,
+      construction_year: builtYear ? parseInt(builtYear) : null,
       land_area: landAreaNum ? parseFloat(landAreaNum) : null,
       building_area: areaValue ? parseFloat(areaValue) : null,
     });
@@ -668,13 +674,19 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
 
     console.log(`[home4u-transfer] DB INSERT成功: ${sellerNumber}`);
 
+    // propertiesテーブル用のproperty_type変換（マ→マンション等）
+    const propertyTypeForDB = displayPropertyType === 'マ' ? 'マンション'
+      : displayPropertyType === '戸' ? '戸建て'
+      : displayPropertyType === '土' ? '土地'
+      : displayPropertyType || null;
+
     // propertiesテーブルにも登録
     await supabase.from('properties').insert({
       seller_id: seller.id,
       property_address: propertyAddress,
-      property_type: displayPropertyType,
+      property_type: propertyTypeForDB,
       floor_plan: layout || null,
-      build_year: builtYear ? parseInt(builtYear) : null,
+      construction_year: builtYear ? parseInt(builtYear) : null,
       land_area: landArea ? parseFloat(landArea) : null,
       building_area: buildingArea ? parseFloat(buildingArea) : null,
     });
