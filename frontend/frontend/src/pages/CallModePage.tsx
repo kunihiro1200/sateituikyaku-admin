@@ -6309,7 +6309,7 @@ HP：https://ifoo-oita.com/
                     </a>
                   </Box>
                 )}
-                {!property && !editedValuationAmount1 && (
+                {!property && !propInfo.hasData && !editedValuationAmount1 && (
                   <Alert severity="info">
                     物件情報が登録されていないため、査定を実行できません
                   </Alert>
@@ -6507,11 +6507,13 @@ HP：https://ifoo-oita.com/
 
                 {/* 査定額が未設定、または編集モードの場合：詳細な編集画面 */}
                 {(() => {
-                  const shouldShowEditFields = (!editedValuationAmount1 || editingValuation) && property;
+                  const hasPropertyData = property || propInfo.hasData;
+                  const shouldShowEditFields = (!editedValuationAmount1 || editingValuation) && hasPropertyData;
                   console.log('📝 編集フィールド表示条件:', {
                     editedValuationAmount1,
                     editingValuation,
                     property: !!property,
+                    propInfoHasData: propInfo.hasData,
                     shouldShowEditFields
                   });
                   return shouldShowEditFields;
