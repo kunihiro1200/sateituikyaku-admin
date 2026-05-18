@@ -1892,23 +1892,20 @@ export class SellerService extends BaseRepository {
       lastCalledAt: (seller.sellerNumber && lastCalledAtMap[seller.sellerNumber]) || null,
     }));
 
+    // fi:xxx カテゴリはJSフィルタ後の件数を使用（DBのcountはJSフィルタ前の粗い絞り込みのため不正確）
+    // 特に fi:todayCallNotStarted はunreachable_status等をJSで判定するため、
+    // DBのcount（29件）とJSフィルタ後の実件数（0件など）が大きく乖離する場合がある
+    const isFiCategory = typeof statusCategory === 'string' && statusCategory.startsWith('fi:');
+    const totalCount = isLabelFilter || isFiCategory
+      ? sellersWithCallDate.length
+      : (count || 0);
+
     const result = {
       data: sellersWithCallDate,
-      // fi:xxx カテゴリの場合: DBで絞り込んだ後のcount（信頼性が高い）を使用
-      // ただしJSフィルタが必要な細かい条件があるため、表示件数とtotalに若干の差が出る場合がある
-      // isLabelFilter の場合は JSフィルタ後の件数を使用（ラベル絞り込みはDBで表現不可）
-      total: isLabelFilter
-        ? sellersWithCallDate.length
-        : (typeof statusCategory === 'string' && statusCategory.startsWith('fi:'))
-          ? (count || sellersWithCallDate.length)
-          : (count || 0),
+      total: totalCount,
       page,
       pageSize,
-      totalPages: Math.ceil((isLabelFilter
-        ? sellersWithCallDate.length
-        : (typeof statusCategory === 'string' && statusCategory.startsWith('fi:'))
-          ? (count || sellersWithCallDate.length)
-          : (count || 0)) / pageSize),
+      totalPages: Math.ceil(totalCount / pageSize),
     };
 
     // キャッシュに保存（インメモリ + Redis）
@@ -2624,70 +2621,104 @@ export class SellerService extends BaseRepository {
     fi_todayCallWithInfoLabelCounts: Record<string, number>;
   }> {
     try {
-      // seller_sidebar_countsテーブルから全行を取得（1クエリで高速）
+      // seller_sidebar_countsテーブルから全行を取得（updated_atも含めて取得）
       const { data: rows, error } = await this.table('seller_sidebar_counts')
-        .select('category, count, label, assignee');
+        .select('category, count, label, assignee, updated_at');
 
       if (error || !rows || rows.length === 0) {
         console.warn('⚠️ [SidebarCounts] Table empty or error, falling back to DB calculation:', error?.message);
         return this.getSidebarCountsFallback();
       }
 
-      // テーブルのデータを返却形式に変換
-      const getCount = (category: string) =>
-        rows.find((r: any) => r.category === category && !r.label && !r.assignee)?.count ?? 0;
+      // 日付依存カテゴリ（当日TEL系）は日付が変わると自動的にずれる。
+      // テーブルの最終更新日時が今日のJST日付でない場合、強制再計算してから返す。
+      const nowJST = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      const todayJST = `${nowJST.getUTCFullYear()}-${String(nowJST.getUTCMonth() + 1).padStart(2, '0')}-${String(nowJST.getUTCDate()).padStart(2, '0')}`;
+      const latestUpdatedAt = rows.reduce((latest: string, r: any) => {
+        if (!r.updated_at) return latest;
+        return r.updated_at > latest ? r.updated_at : latest;
+      }, '');
+      const latestUpdateDate = latestUpdatedAt ? latestUpdatedAt.substring(0, 10) : '';
 
-      const visitAssignedCounts: Record<string, number> = {};
-      const todayCallAssignedCounts: Record<string, number> = {};
-      const todayCallWithInfoLabelCounts: Record<string, number> = {};
-      const fi_todayCallWithInfoLabelCounts: Record<string, number> = {};
-
-      rows.forEach((r: any) => {
-        if (r.category === 'visitAssigned' && r.assignee) {
-          visitAssignedCounts[r.assignee] = r.count;
-        } else if (r.category === 'todayCallAssigned' && r.assignee) {
-          todayCallAssignedCounts[r.assignee] = r.count;
-        } else if (r.category === 'todayCallWithInfo' && r.label) {
-          todayCallWithInfoLabelCounts[r.label] = r.count;
-        } else if (r.category === 'fi_todayCallWithInfo' && r.label) {
-          fi_todayCallWithInfoLabelCounts[r.label] = r.count;
+      if (latestUpdateDate < todayJST) {
+        console.warn(`⚠️ [SidebarCounts] Table last updated on ${latestUpdateDate}, today is ${todayJST}. Triggering refresh...`);
+        try {
+          const { SellerSidebarCountsUpdateService } = await import('./SellerSidebarCountsUpdateService');
+          const updateService = new SellerSidebarCountsUpdateService(this.supabase);
+          await updateService.updateSellerSidebarCounts();
+          console.log('✅ [SidebarCounts] Refresh complete, re-fetching table...');
+          // 更新後に再取得
+          const { data: freshRows, error: freshError } = await this.table('seller_sidebar_counts')
+            .select('category, count, label, assignee, updated_at');
+          if (!freshError && freshRows && freshRows.length > 0) {
+            return this.buildSidebarCountsFromRows(freshRows);
+          }
+        } catch (refreshErr: any) {
+          console.error('❌ [SidebarCounts] Refresh failed, using stale data:', refreshErr?.message);
+          // 失敗した場合は古いデータをそのまま返す（エラーより古いデータの方がマシ）
         }
-      });
-
-      const todayCallWithInfoLabels = Object.keys(todayCallWithInfoLabelCounts);
+      }
 
       console.log('✅ [SidebarCounts] Served from seller_sidebar_counts table (fast path)');
-
-      return {
-        todayCall: getCount('todayCall'),
-        todayCallWithInfo: getCount('todayCallWithInfo'),
-        todayCallAssigned: getCount('todayCallAssigned'),
-        visitDayBefore: getCount('visitDayBefore'),
-        visitCompleted: getCount('visitCompleted'),
-        unvaluated: getCount('unvaluated'),
-        mailingPending: getCount('mailingPending'),
-        todayCallNotStarted: getCount('todayCallNotStarted'),
-        pinrichEmpty: getCount('pinrichEmpty'),
-        pinrichChangeRequired: getCount('pinrichChangeRequired'),
-        exclusive: getCount('exclusive'),
-        general: getCount('general'),
-        visitOtherDecision: getCount('visitOtherDecision'),
-        unvisitedOtherDecision: getCount('unvisitedOtherDecision'),
-        visitAssignedCounts,
-        todayCallAssignedCounts,
-        todayCallWithInfoLabels,
-        todayCallWithInfoLabelCounts,
-        // 福岡（FI）専用カウント
-        fi_todayCall: getCount('fi_todayCall'),
-        fi_todayCallNotStarted: getCount('fi_todayCallNotStarted'),
-        fi_todayCallWithInfo: getCount('fi_todayCallWithInfo'),
-        fi_unvaluated: getCount('fi_unvaluated'),
-        fi_todayCallWithInfoLabelCounts,
-      };
+      return this.buildSidebarCountsFromRows(rows);
     } catch (err) {
       console.warn('⚠️ [SidebarCounts] Unexpected error, falling back to DB calculation:', err);
       return this.getSidebarCountsFallback();
     }
+  }
+
+  /**
+   * seller_sidebar_countsテーブルの行配列からレスポンス形式に変換するヘルパー
+   */
+  private buildSidebarCountsFromRows(rows: any[]): any {
+    const getCount = (category: string) =>
+      rows.find((r: any) => r.category === category && !r.label && !r.assignee)?.count ?? 0;
+
+    const visitAssignedCounts: Record<string, number> = {};
+    const todayCallAssignedCounts: Record<string, number> = {};
+    const todayCallWithInfoLabelCounts: Record<string, number> = {};
+    const fi_todayCallWithInfoLabelCounts: Record<string, number> = {};
+
+    rows.forEach((r: any) => {
+      if (r.category === 'visitAssigned' && r.assignee) {
+        visitAssignedCounts[r.assignee] = r.count;
+      } else if (r.category === 'todayCallAssigned' && r.assignee) {
+        todayCallAssignedCounts[r.assignee] = r.count;
+      } else if (r.category === 'todayCallWithInfo' && r.label) {
+        todayCallWithInfoLabelCounts[r.label] = r.count;
+      } else if (r.category === 'fi_todayCallWithInfo' && r.label) {
+        fi_todayCallWithInfoLabelCounts[r.label] = r.count;
+      }
+    });
+
+    const todayCallWithInfoLabels = Object.keys(todayCallWithInfoLabelCounts);
+
+    return {
+      todayCall: getCount('todayCall'),
+      todayCallWithInfo: getCount('todayCallWithInfo'),
+      todayCallAssigned: getCount('todayCallAssigned'),
+      visitDayBefore: getCount('visitDayBefore'),
+      visitCompleted: getCount('visitCompleted'),
+      unvaluated: getCount('unvaluated'),
+      mailingPending: getCount('mailingPending'),
+      todayCallNotStarted: getCount('todayCallNotStarted'),
+      pinrichEmpty: getCount('pinrichEmpty'),
+      pinrichChangeRequired: getCount('pinrichChangeRequired'),
+      exclusive: getCount('exclusive'),
+      general: getCount('general'),
+      visitOtherDecision: getCount('visitOtherDecision'),
+      unvisitedOtherDecision: getCount('unvisitedOtherDecision'),
+      visitAssignedCounts,
+      todayCallAssignedCounts,
+      todayCallWithInfoLabels,
+      todayCallWithInfoLabelCounts,
+      // 福岡（FI）専用カウント
+      fi_todayCall: getCount('fi_todayCall'),
+      fi_todayCallNotStarted: getCount('fi_todayCallNotStarted'),
+      fi_todayCallWithInfo: getCount('fi_todayCallWithInfo'),
+      fi_unvaluated: getCount('fi_unvaluated'),
+      fi_todayCallWithInfoLabelCounts,
+    };
   }
 
     /**
