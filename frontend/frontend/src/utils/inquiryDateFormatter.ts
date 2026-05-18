@@ -3,6 +3,11 @@
  * 
  * 反響詳細日時（inquiryDetailedDatetime）があれば日時形式で表示し、
  * なければ反響日付（inquiryDate）を日付形式で表示する
+ * 
+ * ⚠️ タイムゾーン注意：
+ * inquiry_detailed_datetime はDBにJST文字列（"2026-05-19 01:34:33"）として保存されている。
+ * new Date() で変換するとUTC扱いになり+9時間ずれるため、
+ * 文字列を正規表現で直接パースして表示する。
  */
 
 export interface SellerDateInfo {
@@ -23,24 +28,23 @@ export const formatInquiryDate = (seller: SellerDateInfo): string => {
   try {
     // Property 1: 反響詳細日時が存在すれば優先的に表示
     if (seller.inquiryDetailedDatetime) {
-      const date = new Date(seller.inquiryDetailedDatetime);
-      if (!isNaN(date.getTime())) {
-        // Property 3: 日時形式で表示（時刻情報を含む）
-        return date.toLocaleString('ja-JP', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-        });
+      const raw = String(seller.inquiryDetailedDatetime);
+      // "2026-05-19 01:34:33" または "2026-05-19T01:34:33" 形式を直接パース
+      // new Date() を使わずタイムゾーン変換を防ぐ（+9時間ずれ防止）
+      const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+      if (match) {
+        // Property 3: 日時形式で表示（YYYY/MM/DD HH:MM）
+        return `${match[1]}/${match[2]}/${match[3]} ${match[4]}:${match[5]}`;
       }
     }
     // Property 2: 反響詳細日時がない場合は反響日付を表示
     if (seller.inquiryDate) {
-      const date = new Date(seller.inquiryDate);
-      if (!isNaN(date.getTime())) {
-        // Property 4: 日付形式で表示（時刻情報を含まない）
-        return date.toLocaleDateString('ja-JP');
+      const rawDate = String(seller.inquiryDate);
+      // "2026-05-19" 形式を直接パース
+      const matchDate = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (matchDate) {
+        // Property 4: 日付形式で表示（YYYY/MM/DD）
+        return `${matchDate[1]}/${matchDate[2]}/${matchDate[3]}`;
       }
     }
   } catch (error) {

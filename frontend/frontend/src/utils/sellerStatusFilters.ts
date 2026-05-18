@@ -126,7 +126,8 @@ const normalizeDateString = (dateStr: string | Date | undefined | null): string 
     
     // "2026-01-27" 形式の場合、日付部分のみ抽出
     if (dateString.includes('-')) {
-      const datePart = dateString.split('T')[0]; // ISO形式の場合、日付部分のみ
+      // ISO形式（T区切り）またはスペース区切りの日時文字列（"2026-05-19 01:34:33"）に対応
+      const datePart = dateString.split('T')[0].split(' ')[0]; // 日付部分のみ抽出
       const parts = datePart.split('-');
       if (parts.length === 3) {
         const year = parts[0];
