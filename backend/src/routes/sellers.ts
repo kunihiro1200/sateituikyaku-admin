@@ -724,6 +724,11 @@ router.use(authenticate);
 
 /**
  * 売主を登録
+ */
+router.post(
+  '/',
+  [
+    body('name').notEmpty().withMessage('Name is required'),
     body('address').notEmpty().withMessage('Address is required'),
     body('phoneNumber').notEmpty().withMessage('Phone number is required'),
     body('email').optional().isEmail().withMessage('Invalid email format'),
