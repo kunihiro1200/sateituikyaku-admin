@@ -130,6 +130,7 @@ router.get('/:sellerId/activities', async (req: Request, res: Response) => {
     }
 
     const activities = await followUpService.getActivityHistory(sellerId, typeFilter);
+    console.log(`📋 [GET activities] sellerId=${sellerId}, typeFilter=${typeFilter || 'none'}, count=${activities.length}, types=${[...new Set(activities.map((a: any) => a.type))].join(',')}`);
     setActivitiesCache(cacheKey, activities);
     res.json(activities);
   } catch (error) {

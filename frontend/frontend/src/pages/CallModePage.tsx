@@ -1993,6 +1993,8 @@ const CallModePage = () => {
       // 活動履歴をバックグラウンドで取得（3秒かかるため画面表示をブロックしない）
       api.get(`/api/sellers/${id}/activities`)
         .then((activitiesResponse) => {
+          console.log(`📋 [activities] Loaded ${activitiesResponse.data.length} activities for seller ${id}`);
+          console.log(`📋 [activities] Types:`, activitiesResponse.data.map((a: any) => a.type));
           const convertedActivities = activitiesResponse.data.map((activity: any) => ({
             id: activity.id,
             sellerId: activity.seller_id || activity.sellerId,
