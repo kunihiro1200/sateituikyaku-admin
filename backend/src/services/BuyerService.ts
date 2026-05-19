@@ -3189,6 +3189,16 @@ export class BuyerService {
       throw new Error(`Failed to fetch nearby properties: ${nearbyError.message}`);
     }
 
+    // 買付が入っている物件番号を取得（buyersテーブルのlatest_statusに「買（」を含む買主の物件）
+    const { data: purchaseBuyers } = await this.supabase
+      .from('buyers')
+      .select('property_number')
+      .like('latest_status', '%買（%')
+      .not('property_number', 'is', null);
+    const purchasePropertyNumbers = new Set(
+      (purchaseBuyers || []).map((b: any) => b.property_number).filter(Boolean)
+    );
+
     // ステータスフィルタ：「非公開」を含むもの、買付が入っている物件は除外、ただし「非公開（配信メールのみ）」は含める
     const isValidStatus = (property: any): boolean => {
       const status = property.atbb_status;
@@ -3198,6 +3208,8 @@ export class BuyerService {
       }
       // offer_statusに値がある場合は買付済みとして除外
       if (property.offer_status && String(property.offer_status).trim() !== '') return false;
+      // 買主のlatest_statusに「買（」を含む物件は除外
+      if (purchasePropertyNumbers.has(property.property_number)) return false;
       return true;
     };
 

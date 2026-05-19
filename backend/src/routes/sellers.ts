@@ -2891,6 +2891,16 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
       .not('latitude', 'is', null)
       .not('longitude', 'is', null);
 
+    // 買付が入っている物件番号を取得（buyersテーブルのlatest_statusに「買（」を含む買主の物件）
+    const { data: purchaseBuyers } = await supabase
+      .from('buyers')
+      .select('property_number')
+      .like('latest_status', '%買（%')
+      .not('property_number', 'is', null);
+    const purchasePropertyNumbers = new Set(
+      (purchaseBuyers || []).map((b: any) => b.property_number).filter(Boolean)
+    );
+
     const results: any[] = [];
 
     if (allListings && allListings.length > 0) {
@@ -2909,6 +2919,9 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
         // 買付が入っている物件は除外（offer_statusに値がある場合）
         const offerStatus = String(listing.offer_status || '').trim();
         if (offerStatus !== '') continue;
+
+        // 買主のlatest_statusに「買（」を含む物件は除外
+        if (purchasePropertyNumbers.has(listing.property_number)) continue;
 
         let statusLabel = '';
         if (atbbStatus.includes('非公開')) statusLabel = '成約済み';
