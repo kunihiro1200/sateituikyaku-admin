@@ -203,6 +203,10 @@ export default function BuyersPage() {
                   const matched = !!(hasSurveyResult && !isSurveyConfirmed);
                   if (matched) console.log(`[viewingSurveyUnchecked] ✅ ${b.buyer_number}: result="${b.viewing_survey_result}", confirmed="${b.viewing_survey_confirmed}"`);
                   return matched;
+                } else if (selectedCalculatedStatus.startsWith('todayCallWithInfo:')) {
+                  // コミュニケーション情報ありの当日TEL（内容）
+                  const targetLabel = selectedCalculatedStatus.replace('todayCallWithInfo:', '');
+                  return b.calculated_status === targetLabel;
                 } else if (selectedCalculatedStatus === 'viewingUnconfirmed') {
                   // 内覧未確定: viewing_unconfirmed = '未確定'
                   return b.viewing_unconfirmed === '未確定';
@@ -325,6 +329,11 @@ export default function BuyersPage() {
             // 動的カテゴリ（assigned:xxx, todayCallAssigned:xxx, nextCallDateBlank:xxx）は
             // statusCategory パラメーターとして getAll() に渡す
             quickParams.statusCategory = selectedCalculatedStatus;
+          } else if (selectedCalculatedStatus.startsWith('todayCallWithInfo:')) {
+            // コミュニケーション情報ありの当日TEL（内容）
+            // ラベル（例: "当日TEL(R・夕方・電話)"）をcalculatedStatusとして渡す
+            const targetLabel = selectedCalculatedStatus.replace('todayCallWithInfo:', '');
+            quickParams.calculatedStatus = targetLabel;
           } else {
             const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
             quickParams.calculatedStatus = displayName;

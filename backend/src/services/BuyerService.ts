@@ -2184,6 +2184,8 @@ export class BuyerService {
       all: cachedBuyers.length,
       viewingDayBefore: 0,
       todayCall: 0,
+      todayCallWithInfo: 0,
+      todayCallWithInfoLabels: {} as Record<string, number>,
       threeCallUnchecked: 0,
       assignedCounts: {} as Record<string, number>,
       todayCallAssignedCounts: {} as Record<string, number>,
@@ -2212,13 +2214,20 @@ export class BuyerService {
       else if (status === '内覧未確定') result.viewingUnconfirmed++;
       else if (status === '売主内覧連絡未') result.sellerViewingContactPending++;
       else if (status.startsWith('当日TEL(')) {
-        const match = status.match(/^当日TEL\((.+)\)$/);
-        if (match) {
-          const assignee = match[1];
-          if (!buyer.follow_up_assignee && buyer.project_assignee) {
-            result.projectAssigneeOnlyTodayCallCounts[assignee] = (result.projectAssigneeOnlyTodayCallCounts[assignee] || 0) + 1;
-          } else {
-            result.todayCallAssignedCounts[assignee] = (result.todayCallAssignedCounts[assignee] || 0) + 1;
+        // コミュニケーション情報ありの当日TEL（担当なし）か、担当者別の当日TELかを区別
+        if (!buyer.follow_up_assignee && !buyer.project_assignee) {
+          // コミュニケーション情報ありの当日TEL（内容）
+          result.todayCallWithInfo++;
+          result.todayCallWithInfoLabels[status] = (result.todayCallWithInfoLabels[status] || 0) + 1;
+        } else {
+          const match = status.match(/^当日TEL\((.+)\)$/);
+          if (match) {
+            const assignee = match[1];
+            if (!buyer.follow_up_assignee && buyer.project_assignee) {
+              result.projectAssigneeOnlyTodayCallCounts[assignee] = (result.projectAssigneeOnlyTodayCallCounts[assignee] || 0) + 1;
+            } else {
+              result.todayCallAssignedCounts[assignee] = (result.todayCallAssignedCounts[assignee] || 0) + 1;
+            }
           }
         }
       } else if (status.startsWith('担当(')) {
@@ -2276,6 +2285,9 @@ export class BuyerService {
       'viewing_survey_result',
       'viewing_survey_confirmed',
       'seller_viewing_date_contact',
+      'phone_contact_person',
+      'preferred_contact_time',
+      'contact_method',
     ].join(', ');
 
     // count クエリ・最初のバッチ・property_listings件数を並列実行
@@ -2416,6 +2428,8 @@ export class BuyerService {
         all: allBuyers.length,
         viewingDayBefore: 0,  // ✅ 買主用：内覧日前日
         todayCall: 0,          // ✅ 買主用：当日TEL
+        todayCallWithInfo: 0,  // 🆕 買主用：当日TEL（内容）- コミュニケーション情報あり
+        todayCallWithInfoLabels: {} as Record<string, number>,  // 🆕 ラベル別カウント（例: "当日TEL(R・夕方・電話)": 1）
         threeCallUnchecked: 0, // ✅ 買主用：３回架電未（新規）
         assignedCounts: {} as Record<string, number>,  // ✅ 買主用：担当別
         todayCallAssignedCounts: {} as Record<string, number>,  // ✅ 買主用：当日TEL担当別（後続担当あり）
@@ -2449,16 +2463,24 @@ export class BuyerService {
         } else if (status === '3回架電未') {
           result.threeCallUnchecked++;
         } else if (status.startsWith('当日TEL(')) {
-          // 当日TEL(K) などの担当別
-          const match = status.match(/^当日TEL\((.+)\)$/);
-          if (match) {
-            const assignee = match[1];
-            if (!buyer.follow_up_assignee && buyer.project_assignee) {
-              // 案件担当のみ → 「当日TEL」直下に表示するための専用カウント
-              result.projectAssigneeOnlyTodayCallCounts[assignee] = (result.projectAssigneeOnlyTodayCallCounts[assignee] || 0) + 1;
-            } else {
-              // 後続担当あり → 担当(K)の子項目として表示
-              result.todayCallAssignedCounts[assignee] = (result.todayCallAssignedCounts[assignee] || 0) + 1;
+          // コミュニケーション情報ありの当日TEL（担当なし）か、担当者別の当日TELかを区別
+          // 担当なし（follow_up_assignee も project_assignee も空）→ コミュニケーション情報あり
+          if (!buyer.follow_up_assignee && !buyer.project_assignee) {
+            // コミュニケーション情報ありの当日TEL（内容）
+            result.todayCallWithInfo++;
+            result.todayCallWithInfoLabels[status] = (result.todayCallWithInfoLabels[status] || 0) + 1;
+          } else {
+            // 担当者別の当日TEL
+            const match = status.match(/^当日TEL\((.+)\)$/);
+            if (match) {
+              const assignee = match[1];
+              if (!buyer.follow_up_assignee && buyer.project_assignee) {
+                // 案件担当のみ → 「当日TEL」直下に表示するための専用カウント
+                result.projectAssigneeOnlyTodayCallCounts[assignee] = (result.projectAssigneeOnlyTodayCallCounts[assignee] || 0) + 1;
+              } else {
+                // 後続担当あり → 担当(K)の子項目として表示
+                result.todayCallAssignedCounts[assignee] = (result.todayCallAssignedCounts[assignee] || 0) + 1;
+              }
             }
           }
         } else if (status.startsWith('担当(')) {

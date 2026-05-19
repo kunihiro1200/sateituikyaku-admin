@@ -11,6 +11,8 @@ interface CategoryCounts {
   all?: number;
   viewingDayBefore?: number;
   todayCall?: number;
+  todayCallWithInfo?: number;  // 🆕 当日TEL（内容）- コミュニケーション情報あり
+  todayCallWithInfoLabels?: Record<string, number>;  // 🆕 ラベル別カウント
   threeCallUnchecked?: number;  // ３回架電未カテゴリ（新規）
   assignedCounts?: Record<string, number>;
   todayCallAssignedCounts?: Record<string, number>;
@@ -211,6 +213,22 @@ export default function BuyerStatusSidebar({
             label: `当日TEL(${assignee})`,
             count: cnt,
             color: getCategoryColor('todayCallAssigned'),
+            isSubCategory: true,
+            parentKey: 'todayCall',
+          });
+        }
+      });
+    }
+
+    // 「当日TEL」の直後にコミュニケーション情報ありの当日TEL（内容）を表示
+    if (key === 'todayCall' && categoryCounts.todayCallWithInfoLabels) {
+      Object.entries(categoryCounts.todayCallWithInfoLabels).forEach(([label, cnt]) => {
+        if (cnt > 0) {
+          categoryList.push({
+            key: `todayCallWithInfo:${label}`,
+            label: label,
+            count: cnt,
+            color: '#9c27b0', // 紫（売主リストと同じ）
             isSubCategory: true,
             parentKey: 'todayCall',
           });

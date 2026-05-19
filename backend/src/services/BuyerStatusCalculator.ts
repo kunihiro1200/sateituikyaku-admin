@@ -67,6 +67,10 @@ export interface BuyerData {
   atbb_status?: string | null;
   seller_viewing_date_contact?: string | null;
   other_company_property?: string | null; // 他社物件問合せ判定用
+  // コミュニケーション情報
+  phone_contact_person?: string | null;
+  preferred_contact_time?: string | null;
+  contact_method?: string | null;
 }
 
 export interface StatusResult {
@@ -74,6 +78,39 @@ export interface StatusResult {
   priority: number;
   matchedCondition: string;
   color: string;
+}
+
+/**
+ * 買主のコミュニケーション情報が存在するかチェック
+ */
+function hasBuyerContactInfo(buyer: BuyerData): boolean {
+  const phoneContactPerson = buyer.phone_contact_person || '';
+  const preferredContactTime = buyer.preferred_contact_time || '';
+  const contactMethod = buyer.contact_method || '';
+  const isValid = (v: string): boolean => !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
+  return isValid(phoneContactPerson) || isValid(preferredContactTime) || isValid(contactMethod);
+}
+
+/**
+ * 買主の当日TEL（内容）ラベルを生成
+ * 例: 「当日TEL(R・夕方・電話)」
+ */
+export function getBuyerTodayCallWithInfoLabel(buyer: BuyerData): string {
+  const phoneContactPerson = buyer.phone_contact_person || '';
+  const preferredContactTime = buyer.preferred_contact_time || '';
+  const contactMethod = buyer.contact_method || '';
+  const isValid = (v: string): boolean => !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
+
+  // 表示順: 電話担当・連絡取りやすい時間・連絡方法
+  const parts: string[] = [];
+  if (isValid(phoneContactPerson)) parts.push(phoneContactPerson.trim());
+  if (isValid(preferredContactTime)) parts.push(preferredContactTime.trim());
+  if (isValid(contactMethod)) parts.push(contactMethod.trim());
+
+  if (parts.length === 0) {
+    return '当日TEL（内容）';
+  }
+  return `当日TEL(${parts.join('・')})`;
 }
 
 export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
@@ -148,6 +185,7 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
 
     // Priority 6: 当日TEL（次電日が当日以前 かつ 追客担当なし かつ 案件担当なし）
     // 追客担当または案件担当がある場合は Priority 23以降の担当者別カテゴリで「当日TEL(K)」として表示
+    // コミュニケーション情報がある場合は「当日TEL(R・夕方・電話)」のようなラベルを返す
     if (
       and(
         isNotBlank(buyer.next_call_date),
@@ -156,6 +194,12 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
         isBlank(buyer.project_assignee)
       )
     ) {
+      // コミュニケーション情報のチェック
+      const hasCommInfo = hasBuyerContactInfo(buyer);
+      if (hasCommInfo) {
+        const label = getBuyerTodayCallWithInfoLabel(buyer);
+        return { status: label, priority: 6, matchedCondition: '次電日が当日以前（担当なし・コミュニケーション情報あり）', color: getStatusColor('当日TEL（内容）') };
+      }
       const status = '当日TEL';
       return { status, priority: 6, matchedCondition: '次電日が当日以前（担当なし）', color: getStatusColor('当日TEL') };
     }
