@@ -261,6 +261,10 @@ def check_new_emails(service, notified_ids):
                 else:
                     logging.info(f"  [スキップ] イエウール・HOME4U以外のため転記なし: {subject[:50]}")
 
+                # 通知済みとして記録（matchedの場合も必ず記録する）
+                notified_ids.add(msg_id)
+                save_notified_ids(notified_ids)
+
             # HOME4Uは件名Re:でも本文に「HOME4Uログアウト」があれば必ず処理
             else:
                 body = decode_body(msg_detail["payload"])

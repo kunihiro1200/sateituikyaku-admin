@@ -287,6 +287,10 @@ def check_new_emails(service, toaster, notified_ids):
                     logging.info("  [DB転記] HOME4U検知 → home4u-transfer を非同期実行します")
                     trigger_home4u_transfer(body)
 
+                # 通知済みとして記録（matchedの場合も必ず記録する）
+                notified_ids.add(msg_id)
+                save_notified_ids(notified_ids)
+
             # HOME4Uは件名Re:でも本文に「HOME4Uログアウト」があれば必ず処理
             else:
                 body = decode_body(msg_detail["payload"])
