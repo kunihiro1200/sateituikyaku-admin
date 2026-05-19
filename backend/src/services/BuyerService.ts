@@ -3189,18 +3189,21 @@ export class BuyerService {
       throw new Error(`Failed to fetch nearby properties: ${nearbyError.message}`);
     }
 
-    // ステータスフィルタ：「非公開」「買付」を含むものは除外、ただし「非公開（配信メールのみ）」は含める
-    const isValidStatus = (status: string | null): boolean => {
-      if (!status) return true;
-      if (status.includes('非公開（配信メールのみ）')) return true;
-      if (status.includes('非公開')) return false;
-      if (status.includes('買付')) return false;
+    // ステータスフィルタ：「非公開」を含むもの、買付が入っている物件は除外、ただし「非公開（配信メールのみ）」は含める
+    const isValidStatus = (property: any): boolean => {
+      const status = property.atbb_status;
+      if (status) {
+        if (status.includes('非公開（配信メールのみ）')) { /* 含める */ }
+        else if (status.includes('非公開')) return false;
+      }
+      // offer_statusに値がある場合は買付済みとして除外
+      if (property.offer_status && String(property.offer_status).trim() !== '') return false;
       return true;
     };
 
     // バウンディングボックスは正方形なので、実際の距離でフィルタリング＋ステータスフィルタ
     const nearbyProperties = (candidates || []).filter((p: any) => {
-      if (!isValidStatus(p.atbb_status)) return false;
+      if (!isValidStatus(p)) return false;
       const dist = this.calcDistanceKm(baseLat, baseLng, p.latitude, p.longitude);
       return dist <= RADIUS_KM;
     });

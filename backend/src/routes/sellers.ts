@@ -2819,7 +2819,7 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
     // 1. property_listingsから座標付き物件を全件取得
     const { data: allListings } = await supabase
       .from('property_listings')
-      .select('property_number, property_type, address, display_address, land_area, building_area, sales_price, settlement_date, atbb_status, latitude, longitude')
+      .select('property_number, property_type, address, display_address, land_area, building_area, sales_price, settlement_date, atbb_status, offer_status, latitude, longitude')
       .not('latitude', 'is', null)
       .not('longitude', 'is', null);
 
@@ -2838,8 +2838,9 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
 
         const atbbStatus = String(listing.atbb_status || '');
 
-        // 買付が入っている物件は除外
-        if (atbbStatus.includes('買付')) continue;
+        // 買付が入っている物件は除外（offer_statusに値がある場合）
+        const offerStatus = String(listing.offer_status || '').trim();
+        if (offerStatus !== '') continue;
 
         let statusLabel = '';
         if (atbbStatus.includes('非公開')) statusLabel = '成約済み';
