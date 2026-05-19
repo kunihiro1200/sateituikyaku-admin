@@ -2837,6 +2837,10 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
         if (!matchesAllowedType(rowType)) continue;
 
         const atbbStatus = String(listing.atbb_status || '');
+
+        // 買付が入っている物件は除外
+        if (atbbStatus.includes('買付')) continue;
+
         let statusLabel = '';
         if (atbbStatus.includes('非公開')) statusLabel = '成約済み';
         else if (atbbStatus.includes('公開')) statusLabel = '現在募集中';

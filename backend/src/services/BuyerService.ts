@@ -3189,11 +3189,12 @@ export class BuyerService {
       throw new Error(`Failed to fetch nearby properties: ${nearbyError.message}`);
     }
 
-    // ステータスフィルタ：「非公開」を含むものは除外、ただし「非公開（配信メールのみ）」は含める
+    // ステータスフィルタ：「非公開」「買付」を含むものは除外、ただし「非公開（配信メールのみ）」は含める
     const isValidStatus = (status: string | null): boolean => {
       if (!status) return true;
       if (status.includes('非公開（配信メールのみ）')) return true;
       if (status.includes('非公開')) return false;
+      if (status.includes('買付')) return false;
       return true;
     };
 
