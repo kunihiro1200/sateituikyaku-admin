@@ -1288,6 +1288,7 @@ export class SellerService extends BaseRepository {
               .is('deleted_at', null)
               .not('next_call_date', 'is', null)
               .lte('next_call_date', todayJST)
+              .order('id')
               .range(tcPage * tcPageSize, (tcPage + 1) * tcPageSize - 1);
             if (error) { console.error('❌ todayCall取得エラー:', error); break; }
             if (!data || data.length === 0) break;
@@ -1316,6 +1317,7 @@ export class SellerService extends BaseRepository {
               .is('deleted_at', null)
               .not('next_call_date', 'is', null)
               .lte('next_call_date', todayJST)
+              .order('id')
               .range(tcwiPage * tcwiPageSize, (tcwiPage + 1) * tcwiPageSize - 1);
             if (error) { console.error('❌ todayCallWithInfo取得エラー:', error); break; }
             if (!data || data.length === 0) break;
@@ -1348,6 +1350,7 @@ export class SellerService extends BaseRepository {
               .is('valuation_amount_1', null)
               .is('valuation_amount_2', null)
               .is('valuation_amount_3', null)
+              .order('id')
               .range(uvPage * uvPageSize, (uvPage + 1) * uvPageSize - 1);
             if (error) { console.error('❌ unvaluated取得エラー:', error); break; }
             if (!data || data.length === 0) break;
@@ -1387,6 +1390,7 @@ export class SellerService extends BaseRepository {
               .lte('next_call_date', todayJST)
               .gte('inquiry_date', '2026-01-01')
               .not('seller_number', 'ilike', 'FI%')
+              .order('id')
               .range(tnsPage * tnsPageSize, (tnsPage + 1) * tnsPageSize - 1);
             if (error || !data || data.length === 0) break;
             tnsCandidates = tnsCandidates.concat(data);
@@ -1598,7 +1602,11 @@ export class SellerService extends BaseRepository {
       query = query.eq('property_type', propertyTypeFilter); // 修正: 種別 → property_type（正しいカラム名）
     }
     if (statusFilter) {
-      query = query.eq('status', statusFilter); // 修正: ilike → eq（完全一致）
+      // サイドバーカテゴリが選択されている場合、statusFilterは適用しない
+      // （カテゴリフィルタとstatusFilterの競合を防ぐ）
+      if (!statusCategory || statusCategory === 'all') {
+        query = query.eq('status', statusFilter); // 修正: ilike → eq（完全一致）
+      }
     }
 
     // ソート（inquiry_dateがnullのものは最後に表示、同日の場合は売主番号が大きいほうを最新とする）

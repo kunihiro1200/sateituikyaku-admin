@@ -313,6 +313,11 @@ export default function SellersPage() {
     setSelectedCategory(category);
     setSearchQuery(''); // 検索クエリをクリア（後から操作したサイドバーを優先）
     setPage(0); // カテゴリが変わったらページを0にリセット
+    // フィルタをリセット（カテゴリフィルタと追加フィルタの競合を防ぐ）
+    setConfidenceLevelFilter('');
+    setInquirySiteFilter('');
+    setPropertyTypeFilter('');
+    setStatusFilterValue('');
   }, []);
 
   // カテゴリ展開ハンドラー（useCallbackで最適化）
