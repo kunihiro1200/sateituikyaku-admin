@@ -356,6 +356,40 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
     }
 
     // ============================================================
+    // 1.5. 重複チェック（同一電話番号が既にDBに存在する場合はスキップ）
+    // ============================================================
+    {
+      const { encrypt: encryptForCheck } = await import('../utils/encryption');
+      const supabaseForCheck = (await import('../config/supabase')).default;
+      const { decrypt: decryptForCheck } = await import('../utils/encryption');
+
+      const { data: allSellers, error: fetchError } = await supabaseForCheck
+        .from('sellers')
+        .select('id, seller_number, phone_number, inquiry_date')
+        .is('deleted_at', null);
+
+      if (!fetchError && allSellers) {
+        for (const existing of allSellers) {
+          if (!existing.phone_number) continue;
+          try {
+            const decryptedPhone = decryptForCheck(existing.phone_number);
+            if (decryptedPhone === tel) {
+              console.log(`[ieul-transfer] ⏭ 重複スキップ: 電話番号が既存売主 ${existing.seller_number} と一致`);
+              return res.json({
+                success: true,
+                skipped: true,
+                message: `重複スキップ: 電話番号が既存売主 ${existing.seller_number} と一致するため登録しませんでした`,
+                duplicateSeller: existing.seller_number,
+              });
+            }
+          } catch {
+            // 復号失敗はスキップ
+          }
+        }
+      }
+    }
+
+    // ============================================================
     // 2. 売主番号採番（連番スプシから。GASと同じロジック）
     // ============================================================
     const isFukuoka = fullPropertyAddress.includes('福岡');
@@ -587,6 +621,40 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
 
     if (!name || !tel) {
       return res.status(400).json({ success: false, error: `名前または電話番号が取得できませんでした name=${name} tel=${tel}` });
+    }
+
+    // ============================================================
+    // 重複チェック（同一電話番号が既にDBに存在する場合はスキップ）
+    // ============================================================
+    {
+      const { encrypt: encryptForCheck } = await import('../utils/encryption');
+      const supabaseForCheck = (await import('../config/supabase')).default;
+      const { decrypt: decryptForCheck } = await import('../utils/encryption');
+
+      const { data: allSellers, error: fetchError } = await supabaseForCheck
+        .from('sellers')
+        .select('id, seller_number, phone_number, inquiry_date')
+        .is('deleted_at', null);
+
+      if (!fetchError && allSellers) {
+        for (const existing of allSellers) {
+          if (!existing.phone_number) continue;
+          try {
+            const decryptedPhone = decryptForCheck(existing.phone_number);
+            if (decryptedPhone === tel) {
+              console.log(`[home4u-transfer] ⏭ 重複スキップ: 電話番号が既存売主 ${existing.seller_number} と一致`);
+              return res.json({
+                success: true,
+                skipped: true,
+                message: `重複スキップ: 電話番号が既存売主 ${existing.seller_number} と一致するため登録しませんでした`,
+                duplicateSeller: existing.seller_number,
+              });
+            }
+          } catch {
+            // 復号失敗はスキップ
+          }
+        }
+      }
     }
 
     // コメント作成
