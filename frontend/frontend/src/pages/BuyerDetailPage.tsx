@@ -259,7 +259,6 @@ const BUYER_FIELD_SECTIONS: BuyerFieldSection[] = [
       { key: 'reception_date', label: '受付日', type: 'date', inlineEditable: true },
       { key: 'inquiry_source', label: '問合せ元', inlineEditable: true },
       { key: 'latest_status', label: '★最新状況', inlineEditable: true },
-      { key: 'project_assignee', label: '案件担当（任意）', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'phone_contact_person', label: '電話担当（任意）', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'preferred_contact_time', label: '連絡取りやすい日…', inlineEditable: true },
       { key: 'contact_method', label: '連絡方法', inlineEditable: true },
@@ -2560,9 +2559,6 @@ TEL：097-533-2022`;
 
                       const isLatestStatusMissing = missingRequiredFields.has('latest_status');
                       
-                      // project_assigneeフィールドを取得
-                      const projectAssigneeField = section.fields.find(f => f.key === 'project_assignee');
-                      
                       return (
                         <>
                           {/* ★最新状況（左側 xs=6） */}
@@ -2604,60 +2600,38 @@ TEL：097-533-2022`;
                             </Box>
                           </Grid>
                           
-                          {/* 案件担当（任意）（右側 xs=6） */}
-                          {projectAssigneeField && (
-                            <Grid item xs={6} key={`${section.title}-project_assignee`}>
-                              <InlineEditableField
-                                label={projectAssigneeField.label}
-                                value={buyer.project_assignee || ''}
-                                fieldName="project_assignee"
-                                fieldType="dropdown"
-                                options={[
-                                  { label: '選択してください', value: '' },
-                                  ...normalInitials.map(initial => ({ label: initial, value: initial }))
-                                ]}
-                                onSave={async (newValue) => {
-                                  setBuyer((prev: any) => prev ? { ...prev, project_assignee: newValue } : prev);
-                                  await handleInlineFieldSave('project_assignee', newValue);
-                                }}
-                                buyerId={buyer_number}
-                                enableConflictDetection={false}
-                                showEditIndicator={true}
-                              />
-                            </Grid>
-                          )}
+                          {/* 電話担当（任意）（右側 xs=6） */}
+                          <Grid item xs={6} key={`${section.title}-phone_contact_person`}>
+                            <InlineEditableField
+                              label="電話担当（任意）"
+                              value={buyer.phone_contact_person || ''}
+                              fieldName="phone_contact_person"
+                              fieldType="dropdown"
+                              options={[
+                                { label: '未選択', value: '' },
+                                ...normalInitials.map(initial => ({ label: initial, value: initial }))
+                              ]}
+                              onSave={async (newValue) => {
+                                setBuyer((prev: any) => prev ? { ...prev, phone_contact_person: newValue } : prev);
+                                await handleInlineFieldSave('phone_contact_person', newValue);
+                              }}
+                              buyerId={buyer_number}
+                              enableConflictDetection={false}
+                              showEditIndicator={true}
+                            />
+                          </Grid>
                         </>
                       );
                     }
                     
-                    // project_assigneeはlatest_statusと同時に処理されるのでスキップ
+                    // project_assigneeはフィールド定義から削除済みだがスキップ処理は残す
                     if (field.key === 'project_assignee') {
                       return null;
                     }
 
-                    // phone_contact_personはドロップダウンで表示（スタッフイニシャル選択）
+                    // phone_contact_personはlatest_statusと同じ行で処理されるのでスキップ
                     if (field.key === 'phone_contact_person') {
-                      return (
-                        <Grid item xs={6} key={`${section.title}-${field.key}`}>
-                          <InlineEditableField
-                            label={field.label}
-                            value={buyer.phone_contact_person || ''}
-                            fieldName="phone_contact_person"
-                            fieldType="dropdown"
-                            options={[
-                              { label: '未選択', value: '' },
-                              ...normalInitials.map(initial => ({ label: initial, value: initial }))
-                            ]}
-                            onSave={async (newValue) => {
-                              setBuyer((prev: any) => prev ? { ...prev, phone_contact_person: newValue } : prev);
-                              await handleInlineFieldSave('phone_contact_person', newValue);
-                            }}
-                            buyerId={buyer_number}
-                            enableConflictDetection={false}
-                            showEditIndicator={true}
-                          />
-                        </Grid>
-                      );
+                      return null;
                     }
 
                     // neighbor_property_email_sentフィールドは特別処理（ボタン選択 + 説明文）
