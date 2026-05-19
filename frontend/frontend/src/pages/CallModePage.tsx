@@ -1933,8 +1933,8 @@ const CallModePage = () => {
       const defaultMailingStatus = sellerData.mailingStatus ||
         (initialValuationMethod.includes('郵送') ? '未' : '');
       setMailingStatus(defaultMailingStatus);
-      // 郵送先住所の初期化（売主住所をデフォルト）
-      setMailingAddress(sellerData.address || '');
+      // 郵送先住所の初期化（保存済みの住所があればそれを使用、なければ売主住所をデフォルト）
+      setMailingAddress(sellerData.alternativeMailingAddress || sellerData.address || '');
       // 「済」が既に保存されている場合は確認済みフラグをtrueにする（済ボタンの光った状態を維持するため）
       setMailingAddressConfirmed(defaultMailingStatus === '済');
 
@@ -3185,6 +3185,7 @@ const CallModePage = () => {
 
       await api.put(`/api/sellers/${id}`, {
         mailingStatus: status,
+        alternativeMailingAddress: mailingAddress,
       });
 
       setMailingStatus(status);
@@ -6395,13 +6396,6 @@ HP：https://ifoo-oita.com/
                             }}
                             placeholder="売主住所が自動入力されます"
                             sx={{ mb: 1 }}
-                            InputProps={{
-                              endAdornment: mailingAddressConfirmed ? (
-                                <InputAdornment position="end">
-                                  <Chip label="✓ 確認済み" color="success" size="small" />
-                                </InputAdornment>
-                              ) : undefined,
-                            }}
                           />
                           {!mailingAddressConfirmed && (
                             <Alert
@@ -6593,13 +6587,6 @@ HP：https://ifoo-oita.com/
                                 }}
                                 placeholder="売主住所が自動入力されます"
                                 sx={{ mb: 1 }}
-                                InputProps={{
-                                  endAdornment: mailingAddressConfirmed ? (
-                                    <InputAdornment position="end">
-                                      <Chip label="✓ 確認済み" color="success" size="small" />
-                                    </InputAdornment>
-                                  ) : undefined,
-                                }}
                               />
                               {!mailingAddressConfirmed && (
                                 <Alert

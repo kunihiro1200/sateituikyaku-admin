@@ -661,6 +661,10 @@ export class SellerService extends BaseRepository {
     if ((data as any).mailSentDate !== undefined) {
       updates.mail_sent_date = (data as any).mailSentDate;
     }
+    // 郵送先住所フィールド
+    if ((data as any).alternativeMailingAddress !== undefined) {
+      updates.alternative_mailing_address = (data as any).alternativeMailingAddress;
+    }
 
     // コメントフィールド
     if ((data as any).comments !== undefined) {
@@ -2155,6 +2159,7 @@ export class SellerService extends BaseRepository {
         // Mailing status fields
         mailingStatus: seller.mailing_status,
         mailSentDate: seller.mail_sent_date ? new Date(seller.mail_sent_date) : undefined,
+        alternativeMailingAddress: seller.alternative_mailing_address,
         // Valuation method field
         valuationMethod: seller.valuation_method,
         // Valuation text field (I列「査定額」テキスト形式)
