@@ -260,6 +260,9 @@ const BUYER_FIELD_SECTIONS: BuyerFieldSection[] = [
       { key: 'inquiry_source', label: '問合せ元', inlineEditable: true },
       { key: 'latest_status', label: '★最新状況', inlineEditable: true },
       { key: 'project_assignee', label: '案件担当（任意）', inlineEditable: true, fieldType: 'dropdown' },
+      { key: 'phone_contact_person', label: '電話担当（任意）', inlineEditable: true, fieldType: 'dropdown' },
+      { key: 'preferred_contact_time', label: '連絡取りやすい日…', inlineEditable: true },
+      { key: 'contact_method', label: '連絡方法', inlineEditable: true },
       { key: 'neighbor_property_email_sent', label: '近隣物件送付メール', inlineEditable: true, fieldType: 'buttonSelect' },
       { key: 'distribution_type', label: '配信メール', inlineEditable: true, fieldType: 'buttonSelect', required: true },
       { key: 'pinrich', label: 'Pinrich', inlineEditable: true, fieldType: 'dropdown' },
@@ -658,11 +661,6 @@ export default function BuyerDetailPage() {
   // 通常スタッフのイニシャル一覧（初動担当選択用）
   const [normalInitials, setNormalInitials] = useState<string[]>([]);
 
-  // コミュニケーション情報用のstate
-  const [editedPhoneContactPerson, setEditedPhoneContactPerson] = useState<string>('');
-  const [editedPreferredContactTime, setEditedPreferredContactTime] = useState<string>('');
-  const [editedContactMethod, setEditedContactMethod] = useState<string>('');
-
   // 削除ダイアログ用の状態
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -685,39 +683,6 @@ export default function BuyerDetailPage() {
       .then(res => setNormalInitials(res.data.initials || []))
       .catch(err => console.error('Failed to fetch normal initials:', err));
   }, []);
-
-  // コミュニケーション情報の自動保存（変更後1秒で自動保存）
-  useEffect(() => {
-    if (!buyer) return;
-    const hasChanges =
-      editedPhoneContactPerson !== (buyer.phone_contact_person || '') ||
-      editedPreferredContactTime !== (buyer.preferred_contact_time || '') ||
-      editedContactMethod !== (buyer.contact_method || '');
-    if (!hasChanges) return;
-
-    const timeoutId = setTimeout(async () => {
-      try {
-        await api.put(`/api/buyers/${buyer_number}`, {
-          phone_contact_person: editedPhoneContactPerson || null,
-          preferred_contact_time: editedPreferredContactTime || null,
-          contact_method: editedContactMethod || null,
-        });
-        // ローカルstateも更新
-        setBuyer((prev: any) => prev ? {
-          ...prev,
-          phone_contact_person: editedPhoneContactPerson || null,
-          preferred_contact_time: editedPreferredContactTime || null,
-          contact_method: editedContactMethod || null,
-        } : prev);
-        // キャッシュを無効化してサイドバーカテゴリーを即時反映
-        pageDataCache.invalidate(CACHE_KEYS.BUYERS_WITH_STATUS);
-      } catch (error) {
-        console.error('Failed to save communication info:', error);
-      }
-    }, 1000);
-
-    return () => clearTimeout(timeoutId);
-  }, [editedPhoneContactPerson, editedPreferredContactTime, editedContactMethod, buyer?.phone_contact_person, buyer?.preferred_contact_time, buyer?.contact_method, buyer_number]);
 
 
   // useStableContainerHeightフックを使用して安定した高さ管理
@@ -794,10 +759,6 @@ export default function BuyerDetailPage() {
       setBuyer(res.data);
       // ヒアリング項目の初期値をセット（HTML形式で保存されている場合はそのまま）
       setHearingEditValue(res.data.inquiry_hearing || '');
-      // コミュニケーション情報の初期値をセット
-      setEditedPhoneContactPerson(res.data.phone_contact_person || '');
-      setEditedPreferredContactTime(res.data.preferred_contact_time || '');
-      setEditedContactMethod(res.data.contact_method || '');
       // 変更前の値として記録（_THISROW_BEFORE相当）
       initialInquiryEmailPhoneRef.current = res.data.inquiry_email_phone || '';
       initialInquiryHearingRef.current = res.data.inquiry_hearing || '';
@@ -2674,6 +2635,31 @@ TEL：097-533-2022`;
                       return null;
                     }
 
+                    // phone_contact_personはドロップダウンで表示（スタッフイニシャル選択）
+                    if (field.key === 'phone_contact_person') {
+                      return (
+                        <Grid item xs={6} key={`${section.title}-${field.key}`}>
+                          <InlineEditableField
+                            label={field.label}
+                            value={buyer.phone_contact_person || ''}
+                            fieldName="phone_contact_person"
+                            fieldType="dropdown"
+                            options={[
+                              { label: '未選択', value: '' },
+                              ...normalInitials.map(initial => ({ label: initial, value: initial }))
+                            ]}
+                            onSave={async (newValue) => {
+                              setBuyer((prev: any) => prev ? { ...prev, phone_contact_person: newValue } : prev);
+                              await handleInlineFieldSave('phone_contact_person', newValue);
+                            }}
+                            buyerId={buyer_number}
+                            enableConflictDetection={false}
+                            showEditIndicator={true}
+                          />
+                        </Grid>
+                      );
+                    }
+
                     // neighbor_property_email_sentフィールドは特別処理（ボタン選択 + 説明文）
                     // 業者問合せの場合は非表示
                     if (field.key === 'neighbor_property_email_sent') {
@@ -4008,61 +3994,6 @@ TEL：097-533-2022`;
                   買付率
                 </Button>
               </Box>
-            )}
-
-            {/* 基本情報セクションの直後にコミュニケーション情報セクションを表示 */}
-            {section.title === '基本情報' && (
-              <Paper sx={{ p: 2, mb: 2 }}>
-                <Typography variant="h6" gutterBottom sx={{ fontSize: '1rem', fontWeight: 'bold' }}>
-                  📞 コミュニケーション情報
-                </Typography>
-                <Grid container spacing={2}>
-                  {/* 電話担当（任意） */}
-                  <Grid item xs={12} md={4}>
-                    <FormControl fullWidth size="small">
-                      <InputLabel>電話担当（任意）</InputLabel>
-                      <Select
-                        value={editedPhoneContactPerson}
-                        onChange={(e) => setEditedPhoneContactPerson(e.target.value)}
-                        label="電話担当（任意）"
-                      >
-                        <MenuItem value="">
-                          <em>未選択</em>
-                        </MenuItem>
-                        {normalInitials.map((initial) => (
-                          <MenuItem key={initial} value={initial}>
-                            {initial}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-
-                  {/* 連絡取りやすい日、時間帯 */}
-                  <Grid item xs={12} md={4}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="連絡取りやすい日、時間帯"
-                      value={editedPreferredContactTime}
-                      onChange={(e) => setEditedPreferredContactTime(e.target.value)}
-                      placeholder="例: 14:00、夕方、平日午前中"
-                    />
-                  </Grid>
-
-                  {/* 連絡方法 */}
-                  <Grid item xs={12} md={4}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="連絡方法"
-                      value={editedContactMethod}
-                      onChange={(e) => setEditedContactMethod(e.target.value)}
-                      placeholder="例: 電話、Email、SMS"
-                    />
-                  </Grid>
-                </Grid>
-              </Paper>
             )}
             </Box>
           ))}
