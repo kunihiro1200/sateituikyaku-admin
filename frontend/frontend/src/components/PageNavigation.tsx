@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Button, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, useMediaQuery, useTheme } from '@mui/material';
+import { Badge, Box, Button, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, useMediaQuery, useTheme } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   People as PeopleIcon,
@@ -12,6 +12,7 @@ import {
 } from '@mui/icons-material';
 import { useAuthStore } from '../store/authStore';
 import { EmployeeRole } from '../types';
+import { useNewItemBadges, NewItemCounts } from '../hooks/useNewItemBadges';
 
 const NAV_COLORS = {
   '/': { main: '#e53935', light: '#ffebee', text: '#e53935' },           // 売主リスト: 赤
@@ -25,6 +26,15 @@ interface PageNavigationProps {
   onNavigate?: (url: string) => void;
 }
 
+// パスからバッジカウントのキーを取得
+function getBadgeKey(path: string): keyof NewItemCounts | null {
+  if (path === '/') return 'sellers';
+  if (path === '/buyers') return 'buyers';
+  if (path === '/property-listings') return 'propertyListings';
+  if (path === '/work-tasks') return 'workTasks';
+  return null;
+}
+
 export default function PageNavigation({ onNavigate }: PageNavigationProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -32,6 +42,7 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { employee } = useAuthStore();
+  const { counts } = useNewItemBadges(location.pathname);
 
   // viewerロールは物件リストのみ表示
   const isViewer = employee?.role === EmployeeRole.VIEWER;
@@ -85,6 +96,8 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
             {navItems.map((item) => {
               const color = NAV_COLORS[item.path as keyof typeof NAV_COLORS];
               const active = isActive(item.path);
+              const badgeKey = getBadgeKey(item.path);
+              const badgeCount = badgeKey ? counts[badgeKey] : 0;
               return (
                 <ListItem key={item.path} disablePadding>
                   <ListItemButton
@@ -100,7 +113,21 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
                     }}
                   >
                     <ListItemIcon sx={{ color: 'inherit', minWidth: 36 }}>
-                      {item.icon}
+                      <Badge
+                        badgeContent={badgeCount}
+                        color="error"
+                        max={99}
+                        sx={{
+                          '& .MuiBadge-badge': {
+                            fontSize: '0.65rem',
+                            minWidth: 18,
+                            height: 18,
+                            padding: '0 4px',
+                          },
+                        }}
+                      >
+                        {item.icon}
+                      </Badge>
                     </ListItemIcon>
                     <ListItemText primary={item.label} />
                   </ListItemButton>
@@ -131,26 +158,45 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
         {navItems.map((item) => {
           const color = NAV_COLORS[item.path as keyof typeof NAV_COLORS];
           const active = isActive(item.path);
+          const badgeKey = getBadgeKey(item.path);
+          const badgeCount = badgeKey ? counts[badgeKey] : 0;
           return (
-            <Button
+            <Badge
               key={item.path}
-              variant="outlined"
-              size="large"
-              onClick={() => handleNav(item.path)}
-              startIcon={item.icon}
+              badgeContent={badgeCount}
+              color="error"
+              max={99}
               sx={{
-                minWidth: 130,
-                borderColor: color.main,
-                color: active ? '#fff' : color.text,
-                backgroundColor: active ? color.main : color.light,
-                '&:hover': {
-                  backgroundColor: active ? color.main : `${color.main}22`,
-                  borderColor: color.main,
+                '& .MuiBadge-badge': {
+                  fontSize: '0.7rem',
+                  minWidth: 20,
+                  height: 20,
+                  padding: '0 5px',
+                  top: 4,
+                  right: 4,
+                  fontWeight: 'bold',
                 },
               }}
             >
-              {item.label}
-            </Button>
+              <Button
+                variant="outlined"
+                size="large"
+                onClick={() => handleNav(item.path)}
+                startIcon={item.icon}
+                sx={{
+                  minWidth: 130,
+                  borderColor: color.main,
+                  color: active ? '#fff' : color.text,
+                  backgroundColor: active ? color.main : color.light,
+                  '&:hover': {
+                    backgroundColor: active ? color.main : `${color.main}22`,
+                    borderColor: color.main,
+                  },
+                }}
+              >
+                {item.label}
+              </Button>
+            </Badge>
           );
         })}
       </Box>
