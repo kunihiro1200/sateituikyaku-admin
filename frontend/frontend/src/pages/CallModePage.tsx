@@ -1930,8 +1930,8 @@ const CallModePage = () => {
       // 郵送ステータスの初期化
       // seller.mailingStatus があればそれを使用、なければ査定方法が「郵送」系の場合は「未」をデフォルト
       const initialValuationMethod = sellerData.valuationMethod || '';
-      const defaultMailingStatus = sellerData.mailingStatus ||
-        (initialValuationMethod.includes('郵送') ? '未' : '');
+      // DBに保存済みの値があればそれを使用。デフォルトで「未」を入れない（ボタンが最初から色づくのを防ぐ）
+      const defaultMailingStatus = sellerData.mailingStatus || '';
       setMailingStatus(defaultMailingStatus);
       // 郵送先住所の初期化（保存済みの住所があればそれを使用、なければ売主住所をデフォルト）
       setMailingAddress(sellerData.alternativeMailingAddress || sellerData.address || '');
@@ -3174,6 +3174,18 @@ const CallModePage = () => {
       setError(err.response?.data?.error?.message || '手入力査定額のクリアに失敗しました');
     } finally {
       setSavingManualValuation(false);
+    }
+  };
+
+  // 郵送先住所確認済みハンドラー（確認済みボタン押下時に住所をDBへ保存）
+  const handleMailingAddressConfirm = async () => {
+    try {
+      setMailingAddressConfirmed(true);
+      await api.put(`/api/sellers/${id}`, {
+        alternativeMailingAddress: mailingAddress,
+      });
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || '郵送先住所の保存に失敗しました');
     }
   };
 
@@ -6406,7 +6418,7 @@ HP：https://ifoo-oita.com/
                                   color="warning"
                                   size="small"
                                   variant="contained"
-                                  onClick={() => setMailingAddressConfirmed(true)}
+                                  onClick={handleMailingAddressConfirm}
                                   sx={{ whiteSpace: 'nowrap' }}
                                 >
                                   確認済み
@@ -6597,7 +6609,7 @@ HP：https://ifoo-oita.com/
                                       color="warning"
                                       size="small"
                                       variant="contained"
-                                      onClick={() => setMailingAddressConfirmed(true)}
+                                      onClick={handleMailingAddressConfirm}
                                       sx={{ whiteSpace: 'nowrap' }}
                                     >
                                       確認済み
