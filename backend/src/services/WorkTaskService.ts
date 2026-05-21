@@ -94,6 +94,17 @@ export class WorkTaskService {
 
     const data = workTasksResult.data;
 
+    // スプレッドシートのエラー値（#REF!, #N/A, #VALUE! 等）をnullに変換
+    const sanitizedData = data.map((row: any) => {
+      const sanitized = { ...row };
+      for (const key of Object.keys(sanitized)) {
+        if (typeof sanitized[key] === 'string' && /^#(REF|N\/A|VALUE|ERROR|NAME\?|NULL|DIV\/0)!?$/i.test(sanitized[key].trim())) {
+          sanitized[key] = null;
+        }
+      }
+      return sanitized;
+    });
+
     // property_listingsの結合
     try {
       if (listingsResult.data) {
@@ -101,7 +112,7 @@ export class WorkTaskService {
         listingsResult.data.forEach((l: any) => {
           if (l.property_number) listingMap[l.property_number] = l.sales_contract_completed || '';
         });
-        return data.map((t: any) => ({
+        return sanitizedData.map((t: any) => ({
           ...t,
           sales_contract_completed: listingMap[t.property_number] || '',
         })) as WorkTaskData[];
@@ -110,7 +121,7 @@ export class WorkTaskService {
       // 結合失敗時はwork_tasksのみ返す
     }
 
-    return data as WorkTaskData[];
+    return sanitizedData as WorkTaskData[];
   }
 
   /**

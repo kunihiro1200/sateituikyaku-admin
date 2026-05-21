@@ -52,6 +52,13 @@ export class WorkTaskColumnMapper {
         continue;
       }
 
+      // スプレッドシートのエラー値（#REF!, #N/A, #VALUE! 等）をnullとして扱う
+      const strCheck = String(value).trim();
+      if (/^#(REF|N\/A|VALUE|ERROR|NAME\?|NULL|DIV\/0)!?$/i.test(strCheck)) {
+        dbData[dbColumn] = null;
+        continue;
+      }
+
       // 型変換
       const targetType = this.typeConversions[dbColumn];
       const converted = this.convertValue(value, targetType);
