@@ -155,6 +155,8 @@ export class EnhancedAutoSyncService {
   /**
    * DBから全売主番号を取得（ページネーション対応）
    * Supabaseのデフォルト制限（1000件）を回避するため、ページングで全件取得
+   * ⚠️ 論理削除済み（deleted_at が非NULL）のレコードは除外する
+   *    → スプシに存在する売主が論理削除状態で残っている場合に再同期されるようにするため
    */
   private async getAllDbSellerNumbers(): Promise<Set<string>> {
     const allSellerNumbers = new Set<string>();
@@ -166,6 +168,7 @@ export class EnhancedAutoSyncService {
       const { data, error } = await this.supabase
         .from('sellers')
         .select('seller_number')
+        .is('deleted_at', null) // 論理削除済みを除外（スプシに存在する場合は再同期させる）
         .range(offset, offset + pageSize - 1);
 
       if (error) {
@@ -1339,6 +1342,7 @@ export class EnhancedAutoSyncService {
     const floorPlan = row['間取り'];
 
     const updateData: any = {
+      deleted_at: null, // 論理削除されていた場合は復元する（スプシに存在する = アクティブ）
       status: mappedData.status || '追客中',
       pinrich_status: mappedData.pinrich_status || null,
       is_unreachable: this.convertIsUnreachable(row['不通']),
@@ -1690,6 +1694,7 @@ export class EnhancedAutoSyncService {
 
     const encryptedData: any = {
       seller_number: sellerNumber,
+      deleted_at: null, // 論理削除されていた場合は復元する
       name: mappedData.name ? encrypt(mappedData.name) : null,
       address: mappedData.address ? encrypt(mappedData.address) : null,
       phone_number: mappedData.phone_number ? encrypt(mappedData.phone_number) : null,
