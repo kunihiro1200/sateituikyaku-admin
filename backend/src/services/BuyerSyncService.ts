@@ -103,10 +103,32 @@ export class BuyerSyncService {
     try {
       console.log('Starting buyers sync...');
       
-      const auth = new google.auth.GoogleAuth({
-        keyFile: path.join(__dirname, '../../google-service-account.json'),
-        scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-      });
+      // Google認証（環境変数 > ファイルパスの優先順位）
+      let auth;
+      const saJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+      if (saJson) {
+        // Vercel環境: 環境変数から認証
+        let credentials;
+        try {
+          credentials = JSON.parse(saJson);
+        } catch {
+          // Base64エンコードの場合
+          credentials = JSON.parse(Buffer.from(saJson, 'base64').toString('utf-8'));
+        }
+        if (credentials.private_key) {
+          credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+        }
+        auth = new google.auth.GoogleAuth({
+          credentials,
+          scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+        });
+      } else {
+        // ローカル環境: ファイルパスから認証
+        auth = new google.auth.GoogleAuth({
+          keyFile: path.join(__dirname, '../../google-service-account.json'),
+          scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+        });
+      }
 
       const sheets = google.sheets({ version: 'v4', auth });
 
@@ -470,10 +492,28 @@ export class BuyerSyncService {
     
     try {
       // Get spreadsheet data
-      const auth = new google.auth.GoogleAuth({
-        keyFile: path.join(__dirname, '../../google-service-account.json'),
-        scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-      });
+      let auth;
+      const saJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+      if (saJson) {
+        let credentials;
+        try {
+          credentials = JSON.parse(saJson);
+        } catch {
+          credentials = JSON.parse(Buffer.from(saJson, 'base64').toString('utf-8'));
+        }
+        if (credentials.private_key) {
+          credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+        }
+        auth = new google.auth.GoogleAuth({
+          credentials,
+          scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+        });
+      } else {
+        auth = new google.auth.GoogleAuth({
+          keyFile: path.join(__dirname, '../../google-service-account.json'),
+          scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+        });
+      }
 
       const sheets = google.sheets({ version: 'v4', auth });
 
