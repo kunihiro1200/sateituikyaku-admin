@@ -844,8 +844,8 @@ export class SellerService extends BaseRepository {
     const lowerQuery = query.toLowerCase().trim();
     
     // 売主番号での検索を優先（暗号化されていないので高速）
-    // AA12903のような形式の場合、データベースで直接検索
-    if (lowerQuery.match(/^aa\d+$/i)) {
+    // AA12903、FI349のような形式の場合、データベースで直接検索
+    if (lowerQuery.match(/^[a-z]{2}\d+$/i)) {
       console.log('🚀 Fast path: Searching by seller_number in database');
       let sellerQuery = this.table<Seller>('sellers')
         .select('*')
