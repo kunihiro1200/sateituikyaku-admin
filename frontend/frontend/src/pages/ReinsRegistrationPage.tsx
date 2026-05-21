@@ -33,6 +33,7 @@ interface PropertyData {
   seller_email?: string;
   sales_assignee?: string;
   suumo_url?: string;
+  suumo_registered?: string | null;
   reins_certificate_email?: string | null;
   cc_assignee?: string | null;
   report_date_setting?: string | null;
@@ -134,6 +135,7 @@ export default function ReinsRegistrationPage() {
         seller_email: d.seller_email ?? '',
         sales_assignee: d.sales_assignee ?? '',
         suumo_url: d.suumo_url ?? '',
+        suumo_registered: d.suumo_registered ?? null,
         reins_certificate_email: d.reins_certificate_email ?? null,
         cc_assignee: d.cc_assignee ?? null,
         report_date_setting: d.report_date_setting ?? null,
@@ -274,6 +276,27 @@ export default function ReinsRegistrationPage() {
   const handleOpenSuumoUrl = () => {
     if (suumoUrlInput) {
       window.open(suumoUrlInput, '_blank');
+    }
+  };
+
+  const handleToggleSuumoFuyo = async () => {
+    if (!propertyNumber || !data) return;
+    const newValue = data.suumo_registered === 'S不要' ? null : 'S不要';
+    const prevValue = data.suumo_registered;
+    setData((prev) => prev ? { ...prev, suumo_registered: newValue } : prev);
+    setUpdating('suumo_registered');
+    try {
+      await api.put(`/api/property-listings/${propertyNumber}`, { suumo_registered: newValue });
+      setSnackbar({ 
+        open: true, 
+        message: newValue === 'S不要' ? 'SUUMO不要に設定しました' : 'SUUMO不要を解除しました', 
+        severity: 'success' 
+      });
+    } catch (error) {
+      setData((prev) => prev ? { ...prev, suumo_registered: prevValue } : prev);
+      setSnackbar({ open: true, message: '保存に失敗しました', severity: 'error' });
+    } finally {
+      setUpdating(null);
     }
   };
 
@@ -427,7 +450,7 @@ export default function ReinsRegistrationPage() {
                 placeholder="https://suumo.jp/..."
                 value={suumoUrlInput}
                 onChange={(e) => setSuumoUrlInput(e.target.value)}
-                disabled={updating === 'suumo_url'}
+                disabled={updating === 'suumo_url' || data?.suumo_registered === 'S不要'}
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
                     handleSaveSuumoUrl();
@@ -437,7 +460,7 @@ export default function ReinsRegistrationPage() {
               <Button
                 variant="contained"
                 onClick={handleSaveSuumoUrl}
-                disabled={updating === 'suumo_url'}
+                disabled={updating === 'suumo_url' || data?.suumo_registered === 'S不要'}
                 sx={{ minWidth: 80 }}
               >
                 {updating === 'suumo_url' ? <CircularProgress size={16} /> : '保存'}
@@ -451,6 +474,22 @@ export default function ReinsRegistrationPage() {
               >
                 開く
               </Button>
+            </Box>
+            <Box sx={{ mt: 1.5 }}>
+              <Button
+                variant={data?.suumo_registered === 'S不要' ? 'contained' : 'outlined'}
+                color={data?.suumo_registered === 'S不要' ? 'warning' : 'inherit'}
+                size="small"
+                onClick={handleToggleSuumoFuyo}
+                disabled={updating === 'suumo_registered'}
+              >
+                {updating === 'suumo_registered' ? <CircularProgress size={16} /> : 'S不要'}
+              </Button>
+              {data?.suumo_registered === 'S不要' && (
+                <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                  SUUMO登録不要のため未完了から除外されます
+                </Typography>
+              )}
             </Box>
           </Paper>
 

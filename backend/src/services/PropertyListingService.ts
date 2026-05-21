@@ -300,6 +300,39 @@ export class PropertyListingService {
       }
     }
 
+    // suumo_registered が更新される場合、sidebar_status を再計算
+    if ('suumo_registered' in updates && !('suumo_url' in updates)) {
+      try {
+        const current = await this.getByPropertyNumber(propertyNumber);
+        if (current) {
+          const syncService = new PropertyListingSyncService();
+          const gyomuListData = await syncService.fetchGyomuListDataFromWorkTasks();
+
+          const row: Record<string, any> = {
+            '物件番号': current.property_number ?? '',
+            'atbb成約済み/非公開': current.atbb_status ?? '',
+            '報告日': current.report_date ?? null,
+            '報告担当_override': current.report_assignee ?? null,
+            '報告担当': current.report_assignee ?? null,
+            '確認': current.confirmation ?? null,
+            '一般媒介非公開（仮）': current.general_mediation_private ?? null,
+            '１社掲載': current.single_listing ?? null,
+            'Suumo URL': current.suumo_url ?? null,
+            // suumo_registered は更新後の値を使用
+            'Suumo登録': updates.suumo_registered,
+            '買付': current.offer_status ?? null,
+            '担当名（営業）': current.sales_assignee ?? null,
+          };
+
+          const newSidebarStatus = syncService.calculateSidebarStatus(row, gyomuListData);
+          updates.sidebar_status = newSidebarStatus;
+          console.log(`[PropertyListingService] Recalculated sidebar_status for ${propertyNumber} (suumo_registered update): ${newSidebarStatus}`);
+        }
+      } catch (e) {
+        console.warn(`[PropertyListingService] Failed to recalculate sidebar_status for suumo_registered update:`, e);
+      }
+    }
+
     const { data, error } = await this.supabase
       .from('property_listings')
       .update({ ...updates, updated_at: new Date().toISOString() })
