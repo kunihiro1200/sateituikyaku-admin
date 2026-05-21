@@ -283,18 +283,13 @@ export class BuyerColumnMapper {
     const str = String(value).trim();
     if (!str) return null;
 
-    // 数値文字列の場合もExcelシリアル値として扱う
-    const num = parseFloat(str);
-    if (!isNaN(num) && num >= 1 && num <= 100000) {
-      const dateStr = this.parseDate(num);
-      return dateStr ? `${dateStr}T00:00:00.000Z` : null;
-    }
-
-    // YYYY/MM/DD HH:mm:ss
-    const match = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    // YYYY/MM/DD HH:mm:ss（秒は1桁でもOK）
+    // ⚠️ 正規表現マッチをparseFloatチェックより先に実行する
+    // 理由: parseFloat("2026/05/19 11:24:5") = 2026 となり、誤ってExcelシリアル値として処理されるため
+    const match = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{1,2}))?/);
     if (match) {
       const [, year, month, day, hour, minute, second = '00'] = match;
-      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:${second}`;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:${second.padStart(2, '0')}`;
     }
 
     // YYYY/MM/DD or YYYY-MM-DD（時刻なし）
@@ -309,6 +304,16 @@ export class BuyerColumnMapper {
       const date = new Date(str);
       if (!isNaN(date.getTime())) {
         return date.toISOString();
+      }
+    }
+
+    // 数値文字列の場合もExcelシリアル値として扱う
+    // ⚠️ 純粋な数値文字列のみ対象（"05/19"のようなスラッシュ含みは除外）
+    if (/^\d+(\.\d+)?$/.test(str)) {
+      const num = parseFloat(str);
+      if (!isNaN(num) && num >= 1 && num <= 100000) {
+        const dateStr = this.parseDate(num);
+        return dateStr ? `${dateStr}T00:00:00.000Z` : null;
       }
     }
 
