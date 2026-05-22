@@ -2737,9 +2737,28 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'OPENAI_API_KEYが設定されていません' });
     }
 
-    // 住所から「○○市」を抽出してプロンプトに含める（例: 福岡市、大分市）
-    const cityMatch = address.match(/([^\s都道府県]+市)/);
-    const cityHint = cityMatch ? `この住所は${cityMatch[1]}の地名です。` : '';
+    // 都道府県を抽出（大分県か福岡県かで読み方が変わる地名があるため）
+    const prefectureMatch = address.match(/^(.+?[都道府県])/);
+    const prefecture = prefectureMatch ? prefectureMatch[1] : '';
+    const isOita = prefecture.includes('大分') || address.includes('大分');
+    const isFukuoka = prefecture.includes('福岡') || address.includes('福岡');
+
+    // systemプロンプト: 都道府県を明示することで地域固有の読み方を正確に返させる
+    // 例: 「別府」は大分では「べっぷ」、福岡では「べふ」
+    const prefectureNote = isOita
+      ? 'この住所は大分県の地名です。大分県での正しい読み方を使用してください。例：別府→べっぷ、日田→ひた、由布→ゆふ。'
+      : isFukuoka
+        ? 'この住所は福岡県の地名です。福岡県での正しい読み方を使用してください。例：別府→べふ、博多→はかた。'
+        : '';
+
+    // 都道府県に応じた例文を切り替える
+    // 「大字」は除外対象（おおあざ）であることをAIに明示するため、大分の例を用意
+    let examplesText: string;
+    if (isOita) {
+      examplesText = `例（大分県）:\n大分県大分市大字駄原１丁目1-1 → だばる\n大分県大分市大字玉沢1-1 → たまざわ\n大分県大分市金池町1丁目1-1 → かないけまち\n大分県別府市大字別府1-1 → べっぷ\n大分県大分市中央町1丁目1-1 → ちゅうおうまち\n\n重要: 「大字」は「おおあざ」と読むが読み仮名には含めない。「大字駄原」→「だばる」のみを返す。`;
+    } else {
+      examplesText = `例（福岡県）:\n福岡県福岡市早良区賀茂１丁目49-11 → さわらくかも\n福岡県福岡市城南区神松寺２丁目1-1 → じょうなんくしんしょうじ\n福岡県福岡市博多区千代１丁目1-1 → はかたくせんだい\n福岡県福岡市東区香椎１丁目1-1 → ひがしくかしい\n福岡県北九州市別府１丁目1-1 → べふ`;
+    }
 
     const axiosLib = (await import('axios')).default;
     const response = await axiosLib.post(
@@ -2749,11 +2768,11 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
         messages: [
           {
             role: 'system',
-            content: '日本の住所から区・町名部分の正確なひらがな読みだけを返すアシスタントです。都道府県・市は除外してください。丁目・番地（数字・ハイフン）も除外してください。区と町名のひらがな読みのみを返してください。地名は慣用的な正しい読み方を使用してください。余分な説明は不要です。',
+            content: `日本の住所から区・町名部分の正確なひらがな読みだけを返すアシスタントです。都道府県・市は除外してください。「大字」という文字は除外してください（読みには含めない）。丁目・番地（数字・ハイフン）も除外してください。区と町名のひらがな読みのみを返してください。地名は慣用的な正しい読み方を使用してください。${prefectureNote}余分な説明は不要です。`,
           },
           {
             role: 'user',
-            content: `次の住所の、区と町名のひらがな読みを返してください。都道府県・市・丁目・番地（数字・ハイフン）は全て不要です。${cityHint}地名の読みは正確に。\n\n例（福岡市）:\n福岡県福岡市早良区賀茂１丁目49-11 → さわらくかも\n福岡県福岡市城南区神松寺２丁目1-1 → じょうなんくしんしょうじ\n福岡県福岡市博多区千代１丁目1-1 → はかたくせんだい\n福岡県福岡市東区香椎１丁目1-1 → ひがしくかしい\n福岡県福岡市南区大橋１丁目1-1 → みなみくおおはし\n\n${address}`,
+            content: `次の住所の、区と町名のひらがな読みを返してください。都道府県・市・「大字」・丁目・番地（数字・ハイフン）は全て不要です。地名の読みは正確に。\n\n${examplesText}\n\n${address}`,
           },
         ],
         temperature: 0,
