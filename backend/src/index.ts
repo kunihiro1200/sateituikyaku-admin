@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 
 // 最初に環境変数を読み込む（Vercel環境では.envファイルは存在しない）
+// Build: 2026-05-23 address-reading fix
 try {
   const envPath = path.resolve(__dirname, '../.env');
   if (fs.existsSync(envPath)) {
