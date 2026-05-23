@@ -67,6 +67,7 @@ export interface BuyerData {
   atbb_status?: string | null;
   seller_viewing_date_contact?: string | null;
   other_company_property?: string | null; // 他社物件問合せ判定用
+  initial_assignee?: string | null; // 初動担当
   // コミュニケーション情報
   phone_contact_person?: string | null;
   preferred_contact_time?: string | null;
@@ -226,7 +227,9 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
           contains(buyer.inquiry_source, 'ピンリッチ'),
           isBlank(buyer.inquiry_email_phone),
           isBlank(buyer.inquiry_email_reply),
-          isBlank(buyer.latest_viewing_date)
+          isBlank(buyer.latest_viewing_date),
+          isBlank(buyer.initial_assignee),
+          isNotBlank(buyer.next_call_date)
         )
       )
     ) {
