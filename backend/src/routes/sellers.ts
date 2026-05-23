@@ -787,6 +787,248 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/sellers/athome-transfer
+ * アットホーム査定メール本文を受け取り、DB即時転記 + DB→スプシ即時同期を行う
+ * CRON_SECRET認証（mail_notify_server.pyから呼び出される）
+ */
+router.post('/athome-transfer', async (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { body: mailBody } = req.body;
+  if (!mailBody || typeof mailBody !== 'string') {
+    return res.status(400).json({ success: false, error: 'mailBody is required' });
+  }
+
+  try {
+    console.log('[athome-transfer] アットホームメール本文解析開始');
+
+    // 改行で統一
+    const lines = mailBody.replace(/\r\n|\n\r|\r/g, '\n');
+
+    // アットホームのメール本文からデータを抽出
+    // フォーマット: 「項目名      ：値」
+    const extractField = (text: string, fieldName: string): string => {
+      const regex = new RegExp(fieldName + '\\s*[：:]\\s*([^\\n]+)');
+      const m = text.match(regex);
+      return m ? m[1].trim() : '';
+    };
+
+    // 受付完了日時
+    const receptionDateMatch = lines.match(/受付完了日時\s*[：:]\s*([^\n]+)/);
+    const receptionDateRaw = receptionDateMatch ? receptionDateMatch[1].trim() : '';
+    // 「2026年05月23日」→ Date
+    const dateMatch = receptionDateRaw.match(/(\d{4})年(\d{2})月(\d{2})日/);
+    const inquiryDateObj = dateMatch
+      ? new Date(`${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`)
+      : new Date();
+
+    // ユーザ情報
+    const name = extractField(lines, 'お名前');
+    const furigana = extractField(lines, 'フリガナ');
+    const email = extractField(lines, 'メールアドレス');
+    const address = extractField(lines, 'ご住所');
+    const tel = extractField(lines, '電話番号').replace(/-/g, '');
+    const preferredTime = extractField(lines, 'ご希望時間帯');
+
+    // 物件情報
+    const propertyTypeRaw = extractField(lines, '物件種目');
+    let displayPropertyType = '';
+    if (propertyTypeRaw.includes('一戸建て') || propertyTypeRaw.includes('戸建')) displayPropertyType = '戸';
+    else if (propertyTypeRaw.includes('マンション')) displayPropertyType = 'マ';
+    else if (propertyTypeRaw.includes('土地')) displayPropertyType = '土';
+    else displayPropertyType = '戸'; // デフォルト
+
+    // 物件住所（大分県を除去）
+    let propertyAddress = extractField(lines, '所在地').replace(/^大分県/, '').replace(/^福岡県/, '').trim();
+    // 「所在地」が空の場合は「物件所在地」も試す
+    if (!propertyAddress) {
+      propertyAddress = extractField(lines, '物件所在地').replace(/^大分県/, '').replace(/^福岡県/, '').trim();
+    }
+
+    const buildingName = extractField(lines, '建物名');
+    const exclusiveArea = extractField(lines, '専有面積');
+    const buildingAreaRaw = extractField(lines, '建物面積');
+    const landAreaRaw = extractField(lines, '土地面積');
+
+    // 数値抽出
+    const extractNumeric = (str: string): string => {
+      if (!str || str === '-') return '';
+      const m = str.match(/(\d+(?:\.\d+)?)/);
+      return m ? m[1] : '';
+    };
+
+    const landArea = extractNumeric(landAreaRaw);
+    const buildingArea = extractNumeric(buildingAreaRaw) || extractNumeric(exclusiveArea);
+
+    if (!name || !tel) {
+      return res.status(400).json({ success: false, error: `名前または電話番号が取得できませんでした name=${name} tel=${tel}` });
+    }
+
+    // ============================================================
+    // 重複チェック（同一電話番号が既にDBに存在する場合はスキップ）
+    // ============================================================
+    {
+      const supabaseForCheck = (await import('../config/supabase')).default;
+      const { decrypt: decryptForCheck } = await import('../utils/encryption');
+
+      const { data: allSellers, error: fetchError } = await supabaseForCheck
+        .from('sellers')
+        .select('id, seller_number, phone_number, inquiry_date')
+        .is('deleted_at', null);
+
+      if (!fetchError && allSellers) {
+        for (const existing of allSellers) {
+          if (!existing.phone_number) continue;
+          try {
+            const decryptedPhone = decryptForCheck(existing.phone_number);
+            if (decryptedPhone === tel) {
+              console.log(`[athome-transfer] ⏭ 重複スキップ: 電話番号が既存売主 ${existing.seller_number} と一致`);
+              return res.json({
+                success: true,
+                skipped: true,
+                message: `重複スキップ: 電話番号が既存売主 ${existing.seller_number} と一致するため登録しませんでした`,
+                duplicateSeller: existing.seller_number,
+              });
+            }
+          } catch {
+            // 復号失敗はスキップ
+          }
+        }
+      }
+    }
+
+    // コメント作成
+    const commentParts: string[] = [];
+    if (furigana) commentParts.push(`フリガナ: ${furigana}`);
+    if (preferredTime && preferredTime !== '-') commentParts.push(`希望時間帯: ${preferredTime}`);
+    if (buildingName && buildingName !== '-') commentParts.push(`建物名: ${buildingName}`);
+    const comments = `【以下自動転記（アットホーム）】\n${commentParts.join('\n')}`;
+
+    // 売主番号採番（連番スプシから）
+    const isFukuoka = propertyAddress.includes('福岡') || address.includes('福岡');
+    const prefix = isFukuoka ? 'FI' : 'AA';
+    const serialCell = isFukuoka ? 'I2' : 'C2';
+
+    const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
+    const serialSheetsClient = new GoogleSheetsClient({
+      spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
+      sheetName: '連番',
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+    });
+    await serialSheetsClient.authenticate();
+    const serialValues = await serialSheetsClient.readRawRange(serialCell);
+    const currentNum = parseInt(String(serialValues?.[0]?.[0] || '0'), 10);
+    const newNum = currentNum + 1;
+    const sellerNumber = `${prefix}${newNum}`;
+    await serialSheetsClient.updateRawCell('連番', serialCell, newNum);
+    console.log(`[athome-transfer] 売主番号採番: ${sellerNumber}`);
+
+    // DB INSERT
+    const { encrypt } = await import('../utils/encryption');
+    const supabase = (await import('../config/supabase')).default;
+
+    const today = new Date();
+    const jstOffset = 9 * 60 * 60 * 1000;
+    const jstToday = new Date(today.getTime() + jstOffset);
+    const mm = String(jstToday.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(jstToday.getUTCDate()).padStart(2, '0');
+    const nextCallDate = `${jstToday.getUTCFullYear()}-${mm}-${dd}`;
+    const inquiryDateISO = inquiryDateObj instanceof Date && !isNaN(inquiryDateObj.getTime())
+      ? inquiryDateObj.toISOString().split('T')[0]
+      : nextCallDate;
+    const inquiryYear = inquiryDateObj instanceof Date && !isNaN(inquiryDateObj.getTime())
+      ? inquiryDateObj.getFullYear()
+      : jstToday.getUTCFullYear();
+
+    const insertData: Record<string, any> = {
+      seller_number: sellerNumber,
+      name: encrypt(name),
+      address: address ? encrypt(address) : null,
+      phone_number: encrypt(tel),
+      email: email ? encrypt(email) : null,
+      property_address: propertyAddress,
+      property_type: displayPropertyType,
+      inquiry_site: 'ア',
+      inquiry_date: inquiryDateISO,
+      inquiry_year: inquiryYear,
+      inquiry_detailed_datetime: receptionDateRaw || null,
+      floor_plan: null,
+      build_year: null,
+      current_status: null,
+      land_area: landArea ? parseFloat(landArea) : null,
+      building_area: buildingArea ? parseFloat(buildingArea) : null,
+      status: '追客中',
+      next_call_date: nextCallDate,
+      comments: comments,
+      pinrich_status: '配信中',
+      valuation_reason: null,
+      is_unreachable: false,
+      duplicate_confirmed: false,
+    };
+
+    const { data: seller, error: insertError } = await supabase
+      .from('sellers')
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (insertError || !seller) {
+      console.error('[athome-transfer] DB INSERT エラー:', insertError);
+      return res.status(500).json({ success: false, error: `DB INSERT失敗: ${insertError?.message}` });
+    }
+
+    console.log(`[athome-transfer] DB INSERT成功: ${sellerNumber} (id: ${seller.id})`);
+
+    // propertiesテーブル用のproperty_type変換
+    const propertyTypeForDB = displayPropertyType === 'マ' ? 'マンション'
+      : displayPropertyType === '戸' ? '戸建て'
+      : displayPropertyType === '土' ? '土地'
+      : displayPropertyType || null;
+
+    // propertiesテーブルにも登録
+    await supabase.from('properties').insert({
+      seller_id: seller.id,
+      property_address: propertyAddress,
+      property_type: propertyTypeForDB,
+      floor_plan: null,
+      construction_year: null,
+      land_area: landArea ? parseFloat(landArea) : null,
+      building_area: buildingArea ? parseFloat(buildingArea) : null,
+    });
+
+    // DB→スプシ即時同期
+    try {
+      const syncService = await createSpreadsheetSyncService();
+      if (syncService) {
+        const syncResult = await syncService.syncToSpreadsheet(seller.id);
+        if (syncResult.success) {
+          console.log(`[athome-transfer] スプシ同期成功: ${sellerNumber}`);
+        } else {
+          console.warn(`[athome-transfer] スプシ同期失敗（DB登録は成功）: ${syncResult.error}`);
+        }
+      }
+    } catch (syncErr: any) {
+      console.warn(`[athome-transfer] スプシ同期エラー（DB登録は成功）: ${syncErr.message}`);
+    }
+
+    return res.json({
+      success: true,
+      sellerNumber,
+      sellerId: seller.id,
+      message: `${sellerNumber} をDBに登録しました`,
+    });
+
+  } catch (error: any) {
+    console.error('[athome-transfer] エラー:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 全てのルートに認証を適用（sidebar-countsの後に配置）
 router.use(authenticate);
 
@@ -2746,7 +2988,7 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
     // systemプロンプト: 都道府県を明示することで地域固有の読み方を正確に返させる
     // 例: 「別府」は大分では「べっぷ」、福岡では「べふ」
     const prefectureNote = isOita
-      ? 'この住所は大分県の地名です。大分県での正しい読み方を使用してください。例：別府→べっぷ、日田→ひた、由布→ゆふ。'
+      ? 'この住所は大分県の地名です。大分県での正しい読み方を使用してください。例：別府→べっぷ、日田→ひた、由布→ゆふ、大畑→おばたけ、駄原→だのはる。大分県の地名は標準的な漢字の読みと異なることが多いので、必ず地元の慣用読みを使用してください。'
       : isFukuoka
         ? 'この住所は福岡県の地名です。福岡県での正しい読み方を使用してください。例：別府→べふ、博多→はかた。'
         : '';
@@ -2755,7 +2997,7 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
     // 「大字」は除外対象（おおあざ）であることをAIに明示するため、大分の例を用意
     let examplesText: string;
     if (isOita) {
-      examplesText = `例（大分県）:\n大分県大分市大字駄原１丁目1-1 → だばる\n大分県大分市大字玉沢1-1 → たまざわ\n大分県大分市金池町1丁目1-1 → かないけまち\n大分県別府市大字別府1-1 → べっぷ\n大分県大分市中央町1丁目1-1 → ちゅうおうまち\n\n重要: 「大字」は「おおあざ」と読むが読み仮名には含めない。「大字駄原」→「だばる」のみを返す。`;
+      examplesText = `例（大分県の地名読み）:\n大分県大分市大字駄原１丁目1-1 → だのはる\n大分県大分市大字玉沢1-1 → たまざわ\n大分県大分市金池町1丁目1-1 → かないけまち\n大分県別府市大字別府1-1 → べっぷ\n大分県大分市中央町1丁目1-1 → ちゅうおうまち\n大分県別府市大字大畑42番2号 → おばたけ\n大分県大分市大字駄原2087-15 → だのはる\n大分県大分市大字羽屋1-1 → はや\n大分県大分市大字猪野1-1 → いの\n大分県大分市大字木上1-1 → きのえ\n大分県別府市大字鶴見1-1 → つるみ\n大分県大分市大字横尾1-1 → よこお\n\n重要ルール:\n1. 「大字」は「おおあざ」と読むが読み仮名には含めない。「大字駄原」→「だのはる」のみを返す。\n2. 「大畑」は「おばたけ」と読む（「おおはた」ではない）。\n3. 「駄原」は「だのはる」と読む（「だばる」「だはら」ではない）。\n4. 大分県の地名は標準的な読みと異なることが多いので、地元の慣用読みを必ず使用すること。`;
     } else {
       examplesText = `例（福岡県）:\n福岡県福岡市早良区賀茂１丁目49-11 → さわらくかも\n福岡県福岡市城南区神松寺２丁目1-1 → じょうなんくしんしょうじ\n福岡県福岡市博多区千代１丁目1-1 → はかたくせんだい\n福岡県福岡市東区香椎１丁目1-1 → ひがしくかしい\n福岡県北九州市別府１丁目1-1 → べふ`;
     }
@@ -2768,7 +3010,7 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
         messages: [
           {
             role: 'system',
-            content: `日本の住所から区・町名部分の正確なひらがな読みだけを返すアシスタントです。都道府県・市は除外してください。「大字」という文字は除外してください（読みには含めない）。丁目・番地（数字・ハイフン）も除外してください。区と町名のひらがな読みのみを返してください。地名は慣用的な正しい読み方を使用してください。${prefectureNote}余分な説明は不要です。`,
+            content: `日本の住所から区・町名部分の正確なひらがな読みだけを返すアシスタントです。都道府県・市は除外してください。「大字」という文字は除外してください（読みには含めない）。丁目・番地（数字・ハイフン）も除外してください。区と町名のひらがな読みのみを返してください。地名は地元で実際に使われている慣用的な正しい読み方を最優先で使用してください。漢字の一般的な読みではなく、その地域固有の読み方を返してください。${prefectureNote}余分な説明は不要です。`,
           },
           {
             role: 'user',
