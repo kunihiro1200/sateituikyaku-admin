@@ -241,6 +241,12 @@ export class SidebarCountsUpdateService {
         !buyer.latest_viewing_date &&
         buyer.inquiry_email_phone === '不要' &&
         (buyer.inquiry_email_reply === '未' || !buyer.inquiry_email_reply)
+      ) ||
+      (
+        buyer.inquiry_source && String(buyer.inquiry_source).includes('ピンリッチ') &&
+        !buyer.inquiry_email_phone &&
+        !buyer.inquiry_email_reply &&
+        !buyer.latest_viewing_date
       );
 
     if (isInquiryEmailUnanswered) {

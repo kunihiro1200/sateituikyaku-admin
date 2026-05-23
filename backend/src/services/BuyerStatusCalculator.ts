@@ -209,6 +209,7 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
     //   1. 電話対応が "未"
     //   2. メール返信が "未"
     //   3. 内覧日が空欄 かつ 電話対応が "不要" かつ メール返信が "未" または空欄
+    //   4. ピンリッチからの問い合わせで電話対応・メール返信が両方空欄（未対応状態）
     if (
       or(
         equals(buyer.inquiry_email_phone, '未'),
@@ -220,6 +221,12 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
             equals(buyer.inquiry_email_reply, '未'),
             isBlank(buyer.inquiry_email_reply)
           )
+        ),
+        and(
+          contains(buyer.inquiry_source, 'ピンリッチ'),
+          isBlank(buyer.inquiry_email_phone),
+          isBlank(buyer.inquiry_email_reply),
+          isBlank(buyer.latest_viewing_date)
         )
       )
     ) {
