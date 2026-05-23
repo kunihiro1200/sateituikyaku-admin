@@ -2975,6 +2975,37 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
       return res.status(400).json({ error: '物件住所が設定されていません' });
     }
 
+    // 地名辞書（OpenAI APIが間違える地名を直接定義）
+    const localReadingDict: { [key: string]: string } = {
+      '大畑': 'おばたけ',
+      '駄原': 'だのはる',
+      '玉沢': 'たまざわ',
+      '金池町': 'かないけまち',
+      '中央町': 'ちゅうおうまち',
+      '羽屋': 'はや',
+      '猪野': 'いの',
+      '木上': 'きのえ',
+      '鶴見': 'つるみ',
+      '横尾': 'よこお',
+      '別府': 'べっぷ',
+    };
+
+    // 辞書マッチを試みる（「大字」を除去してから町名を抽出）
+    const addressWithoutPrefix = address
+      .replace(/^.*?[都道府県]/, '')  // 都道府県を除去
+      .replace(/^.*?[市区町村]/, '')  // 市区町村を除去
+      .replace(/^大字/, '')           // 「大字」を除去
+      .replace(/[０-９0-9]+.*$/, '') // 番地以降を除去
+      .replace(/[丁目番号].*$/, '')   // 丁目以降を除去
+      .trim();
+
+    // 辞書で直接マッチする場合はOpenAI APIを呼ばずに返す
+    for (const [placeName, reading] of Object.entries(localReadingDict)) {
+      if (address.includes(placeName)) {
+        return res.json({ address, reading });
+      }
+    }
+
     if (!process.env.OPENAI_API_KEY) {
       return res.status(500).json({ error: 'OPENAI_API_KEYが設定されていません' });
     }
