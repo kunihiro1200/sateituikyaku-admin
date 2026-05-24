@@ -11,6 +11,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TableSortLabel,
   CircularProgress,
   Chip,
   Link,
@@ -41,6 +42,7 @@ interface BuyerCandidate {
   phone_number: string | null;
   inquiry_property_address: string | null;
   inquiry_property_price: number | null;
+  desired_price_range: string | null;
 }
 
 interface BuyerCandidateResponse {
@@ -74,6 +76,76 @@ export default function BuyerCandidateListPage() {
   const [landBuyerMode, setLandBuyerMode] = useState(false);
   const [landBuyerData, setLandBuyerData] = useState<BuyerCandidateResponse | null>(null);
   const [landBuyerLoading, setLandBuyerLoading] = useState(false);
+
+  // ソート用state
+  type SortKey = 'buyer_number' | 'name' | 'latest_status' | 'inquiry_property_address' | 'desired_area' | 'desired_property_type' | 'desired_price_range' | 'reception_date';
+  const [sortBy, setSortBy] = useState<SortKey>('reception_date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  const handleSort = (column: SortKey) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+  };
+
+  // ソート済み候補リスト
+  const getSortedCandidates = (candidates: BuyerCandidate[]): BuyerCandidate[] => {
+    return [...candidates].sort((a, b) => {
+      let aVal: string | number | null = null;
+      let bVal: string | number | null = null;
+
+      switch (sortBy) {
+        case 'buyer_number':
+          aVal = parseInt(a.buyer_number, 10) || 0;
+          bVal = parseInt(b.buyer_number, 10) || 0;
+          break;
+        case 'name':
+          aVal = a.name || '';
+          bVal = b.name || '';
+          break;
+        case 'latest_status':
+          aVal = a.latest_status || '';
+          bVal = b.latest_status || '';
+          break;
+        case 'inquiry_property_address':
+          aVal = a.inquiry_property_address || '';
+          bVal = b.inquiry_property_address || '';
+          break;
+        case 'desired_area':
+          aVal = a.desired_area || '';
+          bVal = b.desired_area || '';
+          break;
+        case 'desired_property_type':
+          aVal = a.desired_property_type || '';
+          bVal = b.desired_property_type || '';
+          break;
+        case 'desired_price_range':
+          aVal = a.desired_price_range || '';
+          bVal = b.desired_price_range || '';
+          break;
+        case 'reception_date':
+          aVal = a.reception_date || '';
+          bVal = b.reception_date || '';
+          break;
+      }
+
+      if (aVal === null && bVal === null) return 0;
+      if (aVal === null) return 1;
+      if (bVal === null) return -1;
+
+      let comparison = 0;
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        comparison = aVal - bVal;
+      } else {
+        comparison = String(aVal).localeCompare(String(bVal), 'ja');
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  };
 
   useEffect(() => {
     if (propertyNumber) {
@@ -479,17 +551,82 @@ export default function BuyerCandidateListPage() {
                       onChange={handleSelectAll}
                     />
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>買主番号</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>氏名 / メール</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>最新状況</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>問い合わせ物件住所</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>希望エリア</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>希望種別</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>受付日</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                    <TableSortLabel
+                      active={sortBy === 'buyer_number'}
+                      direction={sortBy === 'buyer_number' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('buyer_number')}
+                    >
+                      買主番号
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                    <TableSortLabel
+                      active={sortBy === 'name'}
+                      direction={sortBy === 'name' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('name')}
+                    >
+                      氏名 / メール
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                    <TableSortLabel
+                      active={sortBy === 'latest_status'}
+                      direction={sortBy === 'latest_status' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('latest_status')}
+                    >
+                      最新状況
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                    <TableSortLabel
+                      active={sortBy === 'inquiry_property_address'}
+                      direction={sortBy === 'inquiry_property_address' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('inquiry_property_address')}
+                    >
+                      問い合わせ物件住所
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                    <TableSortLabel
+                      active={sortBy === 'desired_area'}
+                      direction={sortBy === 'desired_area' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('desired_area')}
+                    >
+                      希望エリア
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                    <TableSortLabel
+                      active={sortBy === 'desired_property_type'}
+                      direction={sortBy === 'desired_property_type' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('desired_property_type')}
+                    >
+                      希望種別
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                    <TableSortLabel
+                      active={sortBy === 'desired_price_range'}
+                      direction={sortBy === 'desired_price_range' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('desired_price_range')}
+                    >
+                      希望価格
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                    <TableSortLabel
+                      active={sortBy === 'reception_date'}
+                      direction={sortBy === 'reception_date' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('reception_date')}
+                    >
+                      受付日
+                    </TableSortLabel>
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {activeData?.candidates.map((candidate) => {
+                {getSortedCandidates(activeData?.candidates || []).map((candidate) => {
                   const isSelected = selectedBuyers.has(candidate.buyer_number);
                   return (
                     <TableRow
@@ -562,6 +699,9 @@ export default function BuyerCandidateListPage() {
                       </TableCell>
                       <TableCell onClick={() => handleBuyerClick(candidate.buyer_number)} sx={{ fontSize: '1rem' }}>
                         {candidate.desired_property_type || '-'}
+                      </TableCell>
+                      <TableCell onClick={() => handleBuyerClick(candidate.buyer_number)} sx={{ fontSize: '1rem' }}>
+                        {candidate.desired_price_range || '-'}
                       </TableCell>
                       <TableCell onClick={() => handleBuyerClick(candidate.buyer_number)} sx={{ fontSize: '1rem' }}>
                         {formatDate(candidate.reception_date)}

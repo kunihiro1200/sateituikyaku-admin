@@ -17,6 +17,7 @@ export interface BuyerCandidate {
   phone_number: string | null;
   inquiry_property_address: string | null;
   inquiry_property_price: number | null;
+  desired_price_range: string | null;
 }
 
 export interface BuyerCandidateResponse {
@@ -168,6 +169,12 @@ export class BuyerCandidateService {
         inquiryPropertyPrice = info?.price ?? null;
       }
 
+      // 希望価格帯を物件種別に応じて取得
+      let desiredPriceRange: string | null = null;
+      if (b.price_range_house) desiredPriceRange = b.price_range_house;
+      if (b.price_range_apartment) desiredPriceRange = desiredPriceRange ? `${desiredPriceRange} / ${b.price_range_apartment}` : b.price_range_apartment;
+      if (b.price_range_land) desiredPriceRange = desiredPriceRange ? `${desiredPriceRange} / ${b.price_range_land}` : b.price_range_land;
+
       return {
         buyer_number: b.buyer_number,
         name: b.name,
@@ -179,6 +186,7 @@ export class BuyerCandidateService {
         phone_number: b.phone_number,
         inquiry_property_address: inquiryPropertyAddress,
         inquiry_property_price: inquiryPropertyPrice,
+        desired_price_range: desiredPriceRange,
       };
     });
 
