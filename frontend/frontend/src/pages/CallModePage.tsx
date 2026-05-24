@@ -2720,7 +2720,7 @@ const CallModePage = () => {
     }
   };
 
-  const handleSaveAppointment = async () => {
+  const handleSaveAppointment = async (keepEditing: boolean = false) => {
     try {
       setSavingAppointment(true);
       setError(null);
@@ -2817,7 +2817,9 @@ const CallModePage = () => {
       console.log('visitAssigneeInitials:', updatedSeller?.visitAssigneeInitials);
 
       setAppointmentSuccessMessage('訪問予約情報を更新しました');
-      setEditingAppointment(false);
+      if (!keepEditing) {
+        setEditingAppointment(false);
+      }
       setPageEdited(true); // 訪問予約保存時に編集フラグを設定
       
       // データを再読み込み
@@ -6045,7 +6047,7 @@ HP：https://ifoo-oita.com/
                         <Button
                           onClick={() => {
                             setHearingWarningOpen(false);
-                            handleSaveAppointment();
+                            handleSaveAppointment(true);
                           }}
                           variant="contained"
                           color="warning"
