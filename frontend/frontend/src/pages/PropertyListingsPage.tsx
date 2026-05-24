@@ -401,6 +401,7 @@ export default function PropertyListingsPage() {
         (l.seller_phone ? normalizeText(l.seller_phone) : '').includes(query) ||
         (l.seller_contact ? normalizeText(l.seller_contact) : '').includes(query) ||
         (l.buyer_name ? normalizeText(l.buyer_name) : '').includes(query) ||
+        (l.property_type ? normalizeText(l.property_type) : '').includes(query) ||
         (l.price != null ? normalizeText(String(l.price)) === query : false)
       );
     }
@@ -713,7 +714,7 @@ export default function PropertyListingsPage() {
             <TextField
               fullWidth
               size="small"
-              placeholder="物件番号、所在地、売主、売主電話番号、買主で検索"
+              placeholder="物件番号、所在地、売主、売主電話番号、買主、種別で検索"
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setSidebarStatus(null); setLastFilter('search'); setPage(0); }}
               InputProps={{
