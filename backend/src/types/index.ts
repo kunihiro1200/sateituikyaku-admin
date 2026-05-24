@@ -62,7 +62,7 @@ export interface Seller {
   inquiryId?: string; // 問い合わせID（スプシD列）
   inquiryYear?: number;
   inquiryDate?: Date | string; // 反響日付
-  inquiryDetailedDateTime?: Date;
+  inquiryDetailedDateTime?: string; // ⚠️ UTCずれ防止のため文字列で保持
   inquirySite?: string; // サイト（ウ、L等）
   inquiryReason?: string; // 査定理由
   siteUrl?: string;
@@ -301,7 +301,7 @@ export interface Appointment {
 export interface InquiryInfo {
   inquiryYear: number;
   // inquiry_date は削除（DBに存在しない）
-  inquiryDetailedDateTime?: Date;
+  inquiryDetailedDateTime?: string; // ⚠️ UTCずれ防止のため文字列で保持
   inquirySite?: string;
   inquiryReason?: string;
   siteUrl?: string;

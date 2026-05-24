@@ -229,8 +229,9 @@ export class InquiryService {
     return {
       inquiryYear: data.inquiry_year,
       inquiryDate: data.inquiry_date ? new Date(data.inquiry_date) : new Date(),
+      // ⚠️ new Date() を使用しない（UTC解釈で+9時間ずれるため）文字列のまま返す
       inquiryDetailedDateTime: data.inquiry_detailed_datetime
-        ? new Date(data.inquiry_detailed_datetime)
+        ? data.inquiry_detailed_datetime as string
         : undefined,
       inquirySite: data.inquiry_site,
       inquiryReason: data.inquiry_reason,

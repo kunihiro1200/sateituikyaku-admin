@@ -61,7 +61,7 @@ export interface Seller {
   // 反響情報
   inquiryYear?: number;
   // inquiry_date カラムは存在しないため削除
-  inquiryDetailedDateTime?: Date;
+  inquiryDetailedDateTime?: string; // ⚠️ UTCずれ防止のため文字列で保持
   inquirySite?: string; // サイト（ウ、L等）
   inquiryReason?: string; // 査定理由
   siteUrl?: string;
@@ -275,7 +275,7 @@ export interface Appointment {
 export interface InquiryInfo {
   inquiryYear: number;
   // inquiry_date は削除（DBに存在しない）
-  inquiryDetailedDateTime?: Date;
+  inquiryDetailedDateTime?: string; // ⚠️ UTCずれ防止のため文字列で保持
   inquirySite?: string;
   inquiryReason?: string;
   siteUrl?: string;

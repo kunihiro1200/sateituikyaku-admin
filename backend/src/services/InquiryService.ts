@@ -227,8 +227,9 @@ export class InquiryService {
   private mapToInquiryInfo(data: any): InquiryInfo {
   return {
     inquiryYear: data.inquiry_year,
+    // ⚠️ new Date() を使用しない（UTC解釈で+9時間ずれるため）文字列のまま返す
     inquiryDetailedDateTime: data.inquiry_detailed_datetime
-      ? new Date(data.inquiry_detailed_datetime)
+      ? data.inquiry_detailed_datetime as string
       : undefined,
     inquirySite: data.inquiry_site,
     inquiryReason: data.inquiry_reason,
