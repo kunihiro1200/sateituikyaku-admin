@@ -6696,7 +6696,14 @@ HP：https://ifoo-oita.com/
                             InputProps={{
                               startAdornment: <Typography sx={{ mr: 1 }}>¥</Typography>,
                             }}
-                            helperText={autoCalculating ? '計算中...' : '値を入力すると1秒後に自動的に査定額が計算されます'}
+                            helperText={
+                              landAreaWarning
+                                ? landAreaWarning
+                                : autoCalculating ? '計算中...' : '値を入力すると1秒後に自動的に査定額が計算されます'
+                            }
+                            FormHelperTextProps={{
+                              sx: landAreaWarning ? { color: 'warning.dark', fontWeight: 'bold' } : {}
+                            }}
                           />
                           <Box sx={{ display: 'flex', gap: 1, mt: 0.5, alignItems: 'center' }}>
                             {(property?.address || propInfo.address) && (
@@ -8372,27 +8379,7 @@ HP：https://ifoo-oita.com/
         </Box>
       )}
 
-      {/* 土地面積警告ダイアログ */}
-      <Dialog open={!!landAreaWarning} onClose={() => setLandAreaWarning(null)}>
-        <DialogTitle>⚠️ 土地面積の確認</DialogTitle>
-        <DialogContent>
-          <Typography>{landAreaWarning}</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={() => {
-              setLandAreaWarning(null);
-              setLandAreaWarningConfirmed(true);
-              if (seller?.id) {
-                sessionStorage.setItem(`landAreaWarningConfirmed_${seller.id}`, 'true');
-              }
-            }} 
-            variant="contained"
-          >
-            確認しました
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* 土地面積警告ダイアログ（廃止: 路線価フィールドのhelperTextに変更） */}
 
       {/* 確認ダイアログ */}
       <Dialog 
