@@ -836,7 +836,19 @@ export default function PropertyListingDetailPage() {
       }
     }
 
-    if (Object.keys(offerEditedData).length === 0) {
+    // ATBB変更フローから来た場合: editedDataにatbb_status等のヘッダーデータが含まれている
+    // その場合はヘッダーデータも一緒に保存する（買付必須バリデーション通過後の保存）
+    const HEADER_FIELDS = ['atbb_status', 'e_label_checked'];
+    const headerData: Record<string, any> = {};
+    for (const field of HEADER_FIELDS) {
+      if (editedData[field] !== undefined) {
+        headerData[field] = editedData[field];
+      }
+    }
+
+    const allSaveData = { ...headerData, ...offerEditedData };
+
+    if (Object.keys(allSaveData).length === 0) {
       throw new Error('no_changes');
     }
 
@@ -851,11 +863,12 @@ export default function PropertyListingDetailPage() {
     setOfferErrors({});
 
     try {
-      // 買付の核心フィールドが変更された場合のみGoogle Chat通知を送信
-      // （ATBB変更フローから来て status のみ変更された場合は通知しない）
+      // 買付の核心フィールド（offer_date, offer_status, offer_amount, offer_comment）が
+      // 変更された場合のみGoogle Chat通知を送信
+      // ATBB変更フローから来て status のみ変更された場合は通知しない
       const NOTIFY_FIELDS = ['offer_date', 'offer_status', 'offer_amount', 'offer_comment'];
       const hasNotifiableChange = NOTIFY_FIELDS.some(f => offerEditedData[f] !== undefined);
-      await api.put(`/api/property-listings/${propertyNumber}`, { ...offerEditedData, notify_offer: hasNotifiableChange });
+      await api.put(`/api/property-listings/${propertyNumber}`, { ...allSaveData, notify_offer: hasNotifiableChange });
       setSnackbar({
         open: true,
         message: '買付情報を保存しました',
