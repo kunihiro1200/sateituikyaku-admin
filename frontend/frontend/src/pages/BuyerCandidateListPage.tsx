@@ -556,6 +556,7 @@ export default function BuyerCandidateListPage() {
                       active={sortBy === 'buyer_number'}
                       direction={sortBy === 'buyer_number' ? sortOrder : 'asc'}
                       onClick={() => handleSort('buyer_number')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
                     >
                       買主番号
                     </TableSortLabel>
@@ -565,6 +566,7 @@ export default function BuyerCandidateListPage() {
                       active={sortBy === 'name'}
                       direction={sortBy === 'name' ? sortOrder : 'asc'}
                       onClick={() => handleSort('name')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
                     >
                       氏名 / メール
                     </TableSortLabel>
@@ -574,6 +576,7 @@ export default function BuyerCandidateListPage() {
                       active={sortBy === 'latest_status'}
                       direction={sortBy === 'latest_status' ? sortOrder : 'asc'}
                       onClick={() => handleSort('latest_status')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
                     >
                       最新状況
                     </TableSortLabel>
@@ -583,6 +586,7 @@ export default function BuyerCandidateListPage() {
                       active={sortBy === 'inquiry_property_address'}
                       direction={sortBy === 'inquiry_property_address' ? sortOrder : 'asc'}
                       onClick={() => handleSort('inquiry_property_address')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
                     >
                       問い合わせ物件住所
                     </TableSortLabel>
@@ -592,6 +596,7 @@ export default function BuyerCandidateListPage() {
                       active={sortBy === 'desired_area'}
                       direction={sortBy === 'desired_area' ? sortOrder : 'asc'}
                       onClick={() => handleSort('desired_area')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
                     >
                       希望エリア
                     </TableSortLabel>
@@ -601,6 +606,7 @@ export default function BuyerCandidateListPage() {
                       active={sortBy === 'desired_property_type'}
                       direction={sortBy === 'desired_property_type' ? sortOrder : 'asc'}
                       onClick={() => handleSort('desired_property_type')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
                     >
                       希望種別
                     </TableSortLabel>
@@ -610,6 +616,7 @@ export default function BuyerCandidateListPage() {
                       active={sortBy === 'desired_price_range'}
                       direction={sortBy === 'desired_price_range' ? sortOrder : 'asc'}
                       onClick={() => handleSort('desired_price_range')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
                     >
                       希望価格
                     </TableSortLabel>
@@ -619,6 +626,7 @@ export default function BuyerCandidateListPage() {
                       active={sortBy === 'reception_date'}
                       direction={sortBy === 'reception_date' ? sortOrder : 'asc'}
                       onClick={() => handleSort('reception_date')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
                     >
                       受付日
                     </TableSortLabel>
