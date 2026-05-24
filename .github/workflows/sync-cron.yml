@@ -13,9 +13,9 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: フル同期を実行
+      - name: 売主同期を実行
         run: |
-          echo "同期開始: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "売主同期開始: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           
           RESPONSE=$(curl -s -w "\n%{http_code}" \
             -X POST \
@@ -30,8 +30,31 @@ jobs:
           echo "レスポンス: $BODY"
           
           if [ "$HTTP_CODE" != "200" ]; then
-            echo "❌ 同期失敗 (HTTP $HTTP_CODE)"
+            echo "❌ 売主同期失敗 (HTTP $HTTP_CODE)"
             exit 1
           fi
           
-          echo "✅ 同期完了"
+          echo "✅ 売主同期完了"
+
+      - name: 買主追加同期を実行
+        run: |
+          echo "買主追加同期開始: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.SYNC_API_URL }}/api/sync/trigger?buyerAddition=true&additionOnly=true")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+          
+          echo "HTTPステータス: $HTTP_CODE"
+          echo "レスポンス: $BODY"
+          
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ 買主追加同期失敗 (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+          
+          echo "✅ 買主追加同期完了"

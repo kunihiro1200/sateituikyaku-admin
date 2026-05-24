@@ -6,6 +6,7 @@ import { GoogleSheetsClient, SheetRow } from '../services/GoogleSheetsClient';
 import { SpreadsheetSyncService } from '../services/SpreadsheetSyncService';
 import { ManualSyncService, SyncMode } from '../services/ManualSyncService';
 import { RollbackService } from '../services/RollbackService';
+import { invalidateBuyerStatusCache } from '../services/BuyerService';
 
 const router = express.Router();
 
@@ -569,6 +570,11 @@ router.post('/trigger', async (req: Request, res: Response) => {
         const addResult = await syncService.syncMissingBuyers(missingBuyers);
         added = addResult.newSellersCount;
         errors.push(...addResult.errors);
+      }
+      // 買主が追加された場合、キャッシュを無効化してフロントエンドに即反映
+      if (added > 0) {
+        await invalidateBuyerStatusCache();
+        console.log('[Buyer Addition Sync] Buyer status cache invalidated');
       }
       const healthChecker = getSyncHealthChecker();
       await healthChecker.checkAndUpdateHealth();
