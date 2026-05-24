@@ -1439,46 +1439,35 @@ router.get('/:buyerNumber/nearby-properties', async (req: Request, res: Response
 });
 
 /**
- * 月間電話ランキングを取得
- * GET /api/buyers/call-ranking
- * 当月（JST）の activity_logs（action=phone_call, target_type=buyer）を
- * 担当者イニシャル別に集計して返す
+ * 共通: activity_logs から buyer の通話履歴を全件取得してスタッフ別に集計
  */
-router.get('/call-ranking', async (req: Request, res: Response) => {
-  try {
-    // JSTで当月の開始日・終了日を計算
-    const now = new Date();
-    const jstOffset = 9 * 60 * 60 * 1000;
-    const jstNow = new Date(now.getTime() + jstOffset);
-    const year = jstNow.getUTCFullYear();
-    const month = jstNow.getUTCMonth(); // 0-indexed
+async function fetchBuyerCallRankings(
+  fromUtcIso: string,
+  toUtcIso: string,
+): Promise<Map<string, number>> {
+  const supabase = (await import('../config/supabase')).default;
 
-    const fromDate = `${year}-${String(month + 1).padStart(2, '0')}-01T00:00:00+09:00`;
-    const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-    const toDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59+09:00`;
+  const counts = new Map<string, number>();
+  const PAGE_SIZE = 1000;
+  let from = 0;
 
-    const fromDateLabel = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    const toDateLabel = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-
-    const supabase = (await import('../config/supabase')).default;
-
-    // activity_logs から buyer 向け phone_call を取得（employee情報をJOIN）
+  // Supabaseは1回1000件上限のためページネーションで全件取得
+  while (true) {
     const { data, error } = await supabase
       .from('activity_logs')
       .select('employee_id, employee:employees(id, name, initials)')
       .in('action', ['phone_call', 'call'])
       .eq('target_type', 'buyer')
-      .gte('created_at', fromDate)
-      .lte('created_at', toDate)
-      .not('employee_id', 'is', null);
+      .gte('created_at', fromUtcIso)
+      .lt('created_at', toUtcIso)
+      .not('employee_id', 'is', null)
+      .order('created_at', { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
+    if (!data || data.length === 0) break;
 
-    // イニシャルで集計（nameの姓部分を使用、なければinitials）
-    const counts = new Map<string, number>();
-    for (const row of data || []) {
+    for (const row of data) {
       const emp = (row as any).employee;
       if (!emp) continue;
       // 姓（スペース前）を表示名として使用、なければinitials
@@ -1488,10 +1477,47 @@ router.get('/call-ranking', async (req: Request, res: Response) => {
       counts.set(displayName, (counts.get(displayName) || 0) + 1);
     }
 
-    // count DESC, name ASC でソート
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+
+  return counts;
+}
+
+/**
+ * 月間電話ランキングを取得
+ * GET /api/buyers/call-ranking
+ * 当月（JST）の activity_logs（action=phone_call, target_type=buyer）を
+ * 担当者名別に集計して返す
+ */
+router.get('/call-ranking', async (req: Request, res: Response) => {
+  try {
+    // JSTで当月の開始・終了をUTC ISOに変換
+    const now = new Date();
+    const jstOffset = 9 * 60 * 60 * 1000;
+    const jstNow = new Date(now.getTime() + jstOffset);
+    const year = jstNow.getUTCFullYear();
+    const month = jstNow.getUTCMonth(); // 0-indexed
+
+    // JST月初 00:00:00 → UTC
+    const fromJst = new Date(Date.UTC(year, month, 1, 0, 0, 0) - jstOffset);
+    // JST翌月初 00:00:00 → UTC（lt で使う）
+    const toJst = new Date(Date.UTC(year, month + 1, 1, 0, 0, 0) - jstOffset);
+
+    const fromDateLabel = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    const toDateLabel = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    const counts = await fetchBuyerCallRankings(
+      fromJst.toISOString(),
+      toJst.toISOString(),
+    );
+
     const rankings = Array.from(counts.entries())
       .map(([initial, count]) => ({ initial, count }))
       .sort((a, b) => b.count - a.count || a.initial.localeCompare(b.initial));
+
+    console.log(`[/api/buyers/call-ranking] 月間 ${fromDateLabel}〜${toDateLabel}: ${rankings.reduce((s, r) => s + r.count, 0)}件`);
 
     res.json({
       period: { from: fromDateLabel, to: toDateLabel },
@@ -1514,54 +1540,36 @@ router.get('/call-ranking', async (req: Request, res: Response) => {
  * 年間電話ランキングを取得
  * GET /api/buyers/call-ranking-yearly
  * 2026年1月1日から現在までの activity_logs（action=phone_call, target_type=buyer）を
- * 担当者イニシャル別に集計して返す
+ * 担当者名別に集計して返す
  */
 router.get('/call-ranking-yearly', async (req: Request, res: Response) => {
   try {
-    const fromDate = '2026-01-01T00:00:00+09:00';
-    const fromDateLabel = '2026-01-01';
-
-    // JSTで今月末の日付を計算
-    const now = new Date();
     const jstOffset = 9 * 60 * 60 * 1000;
+
+    // JST 2026-01-01 00:00:00 → UTC
+    const fromJst = new Date(Date.UTC(2026, 0, 1, 0, 0, 0) - jstOffset);
+
+    // JSTで翌月初 → UTC（lt で使う）
+    const now = new Date();
     const jstNow = new Date(now.getTime() + jstOffset);
     const year = jstNow.getUTCFullYear();
     const month = jstNow.getUTCMonth();
+    const toJst = new Date(Date.UTC(year, month + 1, 1, 0, 0, 0) - jstOffset);
+
+    const fromDateLabel = '2026-01-01';
     const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-    const toDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59+09:00`;
     const toDateLabel = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-    const supabase = (await import('../config/supabase')).default;
+    const counts = await fetchBuyerCallRankings(
+      fromJst.toISOString(),
+      toJst.toISOString(),
+    );
 
-    // activity_logs から buyer 向け phone_call を取得（employee情報をJOIN）
-    const { data, error } = await supabase
-      .from('activity_logs')
-      .select('employee_id, employee:employees(id, name, initials)')
-      .in('action', ['phone_call', 'call'])
-      .eq('target_type', 'buyer')
-      .gte('created_at', fromDate)
-      .lte('created_at', toDate)
-      .not('employee_id', 'is', null);
-
-    if (error) {
-      throw error;
-    }
-
-    // 姓で集計（nameの姓部分を使用、なければinitials）
-    const counts = new Map<string, number>();
-    for (const row of data || []) {
-      const emp = (row as any).employee;
-      if (!emp) continue;
-      const displayName = emp.name
-        ? emp.name.split(/[\s　]/)[0]
-        : (emp.initials || '不明');
-      counts.set(displayName, (counts.get(displayName) || 0) + 1);
-    }
-
-    // count DESC, name ASC でソート
     const rankings = Array.from(counts.entries())
       .map(([initial, count]) => ({ initial, count }))
       .sort((a, b) => b.count - a.count || a.initial.localeCompare(b.initial));
+
+    console.log(`[/api/buyers/call-ranking-yearly] 年間 ${fromDateLabel}〜${toDateLabel}: ${rankings.reduce((s, r) => s + r.count, 0)}件`);
 
     res.json({
       period: { from: fromDateLabel, to: toDateLabel },
