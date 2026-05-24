@@ -38,6 +38,12 @@ interface PropertyDetails {
   storage_location?: string;
   image_url?: string;
   pdf_url?: string;
+  // よく聞かれる項目
+  property_tax?: number;
+  management_fee?: number;
+  reserve_fund?: number;
+  parking?: string;
+  delivery?: string;
 }
 
 interface BuyerDetails {
@@ -235,6 +241,26 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
                   <Typography sx={{ fontSize: '7pt', whiteSpace: 'pre-wrap', lineHeight: 1.3 }}>
                     {property.pre_viewing_notes}
                   </Typography>
+                </Box>
+              )}
+
+              {/* よく聞かれる項目（固定資産税・管理費・積立金・駐車場・引渡し） */}
+              {(property.property_tax || property.management_fee || property.reserve_fund || property.parking || property.delivery) && (
+                <Box sx={{ p: 0.5, bgcolor: '#f5f5f5', border: '1px solid #bbb', borderRadius: 0.5, mb: 1 }}>
+                  <Typography sx={{ fontSize: '7pt', fontWeight: 'bold', color: '#333', mb: 0.3 }}>
+                    よく聞かれる項目
+                  </Typography>
+                  {property.property_tax && (
+                    <FieldRow label="固定資産税" value={`¥${property.property_tax.toLocaleString()}`} />
+                  )}
+                  {property.management_fee && (
+                    <FieldRow label="管理費" value={`¥${property.management_fee.toLocaleString()}`} />
+                  )}
+                  {property.reserve_fund && (
+                    <FieldRow label="積立金" value={`¥${property.reserve_fund.toLocaleString()}`} />
+                  )}
+                  <FieldRow label="駐車場" value={property.parking} />
+                  <FieldRow label="引渡し" value={property.delivery} />
                 </Box>
               )}
 
