@@ -5870,7 +5870,8 @@ HP：https://ifoo-oita.com/
                               .map(item => item.label);
                             if (unheardItems.length > 0) {
                               setHearingWarningItems(unheardItems);
-                              setHearingWarningOpen(true);
+                            } else {
+                              setHearingWarningItems([]);
                             }
                           }
                           
@@ -5932,6 +5933,26 @@ HP：https://ifoo-oita.com/
                         InputLabelProps={{ shrink: true }}
                       />
                     </Grid>
+                    {/* ヒアリング未確認項目のインライン警告 */}
+                    {hearingWarningItems.length > 0 && (
+                      <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5, px: 0.5 }}>
+                          <Typography variant="caption" color="warning.dark" sx={{ fontWeight: 'bold' }}>
+                            ⚠️ ヒアリング未確認:
+                          </Typography>
+                          {hearingWarningItems.map((item) => (
+                            <Chip
+                              key={item}
+                              label={item}
+                              color="warning"
+                              variant="outlined"
+                              size="small"
+                              sx={{ fontWeight: 'bold', fontSize: '0.7rem' }}
+                            />
+                          ))}
+                        </Box>
+                      </Grid>
+                    )}
                     <Grid item xs={12}>
                       <Box>
                         <Typography variant="subtitle2" sx={{ mb: 1 }}>営担</Typography>
@@ -6009,54 +6030,7 @@ HP：https://ifoo-oita.com/
                       </Button>
                     </Grid>
 
-                    {/* ヒアリング注意喚起ダイアログ */}
-                    <Dialog
-                      open={hearingWarningOpen}
-                      onClose={() => setHearingWarningOpen(false)}
-                      maxWidth="xs"
-                      fullWidth
-                    >
-                      <DialogTitle sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold', pb: 1 }}>
-                        ⚠️ ヒアリング未確認項目があります
-                      </DialogTitle>
-                      <DialogContent sx={{ pt: 2 }}>
-                        <Typography variant="body2" sx={{ mb: 1.5 }}>
-                          訪問予定日時を入力しましたが、以下の項目がまだヒアリングされていません。必ずヒアリングしてください。
-                        </Typography>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                          {hearingWarningItems.map((item) => (
-                            <Chip
-                              key={item}
-                              label={item}
-                              color="warning"
-                              variant="outlined"
-                              sx={{ fontWeight: 'bold' }}
-                            />
-                          ))}
-                        </Box>
-                      </DialogContent>
-                      <DialogActions sx={{ px: 2, pb: 2, gap: 1 }}>
-                        <Button
-                          onClick={() => setHearingWarningOpen(false)}
-                          variant="outlined"
-                          color="inherit"
-                          fullWidth
-                        >
-                          閉じる
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            setHearingWarningOpen(false);
-                            handleSaveAppointment(true);
-                          }}
-                          variant="contained"
-                          color="warning"
-                          fullWidth
-                        >
-                          そのまま保存
-                        </Button>
-                      </DialogActions>
-                    </Dialog>
+                    {/* ヒアリング注意喚起ダイアログ（廃止: インライン表示に変更） */}
                     
                     {/* 編集モードでも訪問統計を表示 */}
                     <Grid item xs={12}>
