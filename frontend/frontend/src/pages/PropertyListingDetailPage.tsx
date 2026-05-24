@@ -851,7 +851,11 @@ export default function PropertyListingDetailPage() {
     setOfferErrors({});
 
     try {
-      await api.put(`/api/property-listings/${propertyNumber}`, { ...offerEditedData, notify_offer: true });
+      // 買付の核心フィールドが変更された場合のみGoogle Chat通知を送信
+      // （ATBB変更フローから来て status のみ変更された場合は通知しない）
+      const NOTIFY_FIELDS = ['offer_date', 'offer_status', 'offer_amount', 'offer_comment'];
+      const hasNotifiableChange = NOTIFY_FIELDS.some(f => offerEditedData[f] !== undefined);
+      await api.put(`/api/property-listings/${propertyNumber}`, { ...offerEditedData, notify_offer: hasNotifiableChange });
       setSnackbar({
         open: true,
         message: '買付情報を保存しました',
