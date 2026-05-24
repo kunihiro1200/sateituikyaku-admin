@@ -826,6 +826,12 @@ export class BuyerService {
       allowedData.latest_status_updated_at = new Date().toISOString();
     }
 
+    // viewing_date が更新される場合、latest_viewing_date も同じ値で同期
+    // （2フィールドは同じ内覧日を指す別名のため常に一致させる）
+    if (allowedData.viewing_date !== undefined) {
+      allowedData.latest_viewing_date = allowedData.viewing_date;
+    }
+
     // Apply second inquiry rule: force pinrich to '登録不要（不可）' if inquiry_source is '2件目以降'
     const finalAllowedData = this.applySecondInquiryRule(allowedData);
 
