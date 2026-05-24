@@ -325,6 +325,7 @@ const CATEGORY_GROUP_COLORS: [string, string][] = [
   ['要台帳作成',                 '#fce4ec'],
   ['決済完了チャット送信未',     '#fff8e1'],
   ['経理確認未',                 '#fff8e1'],
+  ['保留',                       '#f5f5f5'],
 ];
 
 // カテゴリプレフィックスから背景色を返す関数
@@ -352,6 +353,7 @@ const CATEGORY_ORDER = [
   '要台帳作成',
   '決済完了チャット送信未',
   '経理確認未',
+  '保留',
 ];
 
 const getCategoryOrder = (status: string): number => {
@@ -362,17 +364,13 @@ const getCategoryOrder = (status: string): number => {
 };
 
 // ステータスカテゴリ定義（締切日ごとに分割）
-// ※ 保留（on_holdに値あり）の物件はリストから除外する
 export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
-  // 保留物件を除外
-  const activeTasks = tasks.filter(task => calculateTaskStatus(task) !== '保留');
-
   // ステータス文字列ごとにカウント（日付・担当者込みで完全一致グループ化）
   const statusCounts: Record<string, number> = {};
   // サイト依頼済み納品待ちの締め日（site_registration_deadline）を収集
   const siteDeadlines: Record<string, string> = {};
 
-  activeTasks.forEach(task => {
+  tasks.forEach(task => {
     const status = calculateTaskStatus(task);
     if (status) {
       statusCounts[status] = (statusCounts[status] || 0) + 1;
@@ -399,7 +397,7 @@ export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
     {
       key: 'all',
       label: 'All',
-      count: activeTasks.length,
+      count: tasks.length,
       filter: () => true,
     },
   ];
@@ -463,21 +461,18 @@ const getStatusKey = (status: string): string => {
   return '';
 };
 
-// タスクをステータスでフィルタリング（保留物件は常に除外）
+// タスクをステータスでフィルタリング
 export const filterTasksByStatus = (tasks: WorkTask[], statusKey: string): WorkTask[] => {
-  // 保留物件を除外
-  const activeTasks = tasks.filter(task => calculateTaskStatus(task) !== '保留');
-
-  if (statusKey === 'all') return activeTasks;
+  if (statusKey === 'all') return tasks;
 
   // 新形式: "status:ステータス文字列"
   if (statusKey.startsWith('status:')) {
     const targetStatus = statusKey.slice('status:'.length);
-    return activeTasks.filter(task => calculateTaskStatus(task) === targetStatus);
+    return tasks.filter(task => calculateTaskStatus(task) === targetStatus);
   }
 
   // 旧形式との後方互換（念のため残す）
-  return activeTasks.filter(task => {
+  return tasks.filter(task => {
     const status = calculateTaskStatus(task);
     const taskStatusKey = getStatusKey(status);
     return taskStatusKey === statusKey;
