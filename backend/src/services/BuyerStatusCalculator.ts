@@ -243,27 +243,18 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
       return { status, priority: 5, matchedCondition: '問い合わせメールへの対応が未完了', color: getStatusColor(status) };
     }
 
-    // Priority 7: 3回架電未
-    // 条件: [3回架電確認済み] = "3回架電未" AND ([【問合メール】電話対応] = "不通" OR "未")
-    if (
-      and(
-        equals(buyer.three_calls_confirmed, '3回架電未'),
-        or(
-          equals(buyer.inquiry_email_phone, '不通'),
-          equals(buyer.inquiry_email_phone, '未')
-        )
-      )
-    ) {
-      const status = '3回架電未';
-      return { status, priority: 7, matchedCondition: '3回架電が未完了', color: getStatusColor(status) };
-    }
+    // Priority 9-15: 内覧後未入力の判定に使う内覧日
+    // latest_viewing_date が null の場合は viewing_date をフォールバックとして使用
+    // （内覧後に latest_viewing_date がセットされていないケースへの対応）
+    const effectiveViewingDate = buyer.latest_viewing_date ?? buyer.viewing_date;
 
     // Priority 9: Y_内覧後未入力（追加条件あり）
+    // ※ 内覧後未入力は3回架電未より優先（内覧済みの対応漏れを先に検出）
     if (
       and(
         equals(buyer.follow_up_assignee, 'Y'),
-        isNotBlank(buyer.latest_viewing_date),
-        isPast(buyer.latest_viewing_date),
+        isNotBlank(effectiveViewingDate),
+        isPast(effectiveViewingDate),
         isBlank(buyer.viewing_result_follow_up),
         contains(buyer.atbb_status, '公開中'),
         notEquals(buyer.broker_inquiry, '業者問合せ')
@@ -291,8 +282,8 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
       if (
         and(
           equals(buyer.follow_up_assignee, condition.assignee),
-          isNotBlank(buyer.latest_viewing_date),
-          isPast(buyer.latest_viewing_date),
+          isNotBlank(effectiveViewingDate),
+          isPast(effectiveViewingDate),
           isBlank(buyer.viewing_result_follow_up),
           contains(buyer.atbb_status, '公開中'),
           notEquals(buyer.broker_inquiry, '業者問合せ')
@@ -305,6 +296,21 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
           color: getStatusColor(condition.status),
         };
       }
+    }
+
+    // Priority 7: 3回架電未（内覧後未入力より後に評価）
+    // 条件: [3回架電確認済み] = "3回架電未" AND ([【問合メール】電話対応] = "不通" OR "未")
+    if (
+      and(
+        equals(buyer.three_calls_confirmed, '3回架電未'),
+        or(
+          equals(buyer.inquiry_email_phone, '不通'),
+          equals(buyer.inquiry_email_phone, '未')
+        )
+      )
+    ) {
+      const status = '3回架電未';
+      return { status, priority: 7, matchedCondition: '3回架電が未完了', color: getStatusColor(status) };
     }
 
     return calculateBuyerStatusComplete(buyer);
