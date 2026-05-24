@@ -826,7 +826,17 @@ export default function PropertyListingDetailPage() {
 
   const handleSaveOffer = async () => {
     if (!propertyNumber) return;
-    if (Object.keys(editedData).length === 0) {
+
+    // 買付関連フィールドのみを抽出（他セクションのデータが混入しないようにする）
+    const OFFER_RELATED_FIELDS = ['offer_date', 'offer_status', 'offer_amount', 'offer_comment', 'company_name', 'status'];
+    const offerEditedData: Record<string, any> = {};
+    for (const field of OFFER_RELATED_FIELDS) {
+      if (editedData[field] !== undefined) {
+        offerEditedData[field] = editedData[field];
+      }
+    }
+
+    if (Object.keys(offerEditedData).length === 0) {
       throw new Error('no_changes');
     }
 
@@ -841,7 +851,7 @@ export default function PropertyListingDetailPage() {
     setOfferErrors({});
 
     try {
-      await api.put(`/api/property-listings/${propertyNumber}`, { ...editedData, notify_offer: true });
+      await api.put(`/api/property-listings/${propertyNumber}`, { ...offerEditedData, notify_offer: true });
       setSnackbar({
         open: true,
         message: '買付情報を保存しました',
