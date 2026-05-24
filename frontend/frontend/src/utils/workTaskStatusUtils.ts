@@ -168,7 +168,7 @@ export const calculateTaskStatus = (task: WorkTask): string => {
   if (
     isNotBlank(task.sales_contract_deadline) &&
     isBlank(task.binding_scheduled_date) &&
-    isBlank(task.on_hold) &&
+    task.on_hold !== 'Y' &&
     isBlank(task.binding_completed) &&
     (isBlank(task.settlement_date) || dateGte(task.settlement_date, today())) &&
     (isNotBlank(task.hirose_request_sales) || isNotBlank(task.cw_request_sales) || isNotBlank(task.employee_contract_creation)) &&
@@ -182,7 +182,7 @@ export const calculateTaskStatus = (task: WorkTask): string => {
   if (
     isBlank(task.site_registration_requestor) &&
     isBlank(task.cw_request_email_site) &&
-    isBlank(task.on_hold) &&
+    task.on_hold !== 'Y' &&
     isBlank(task.distribution_date) &&
     isBlank(task.publish_scheduled_date) &&
     isNotBlank(task.site_registration_deadline) &&
@@ -219,7 +219,7 @@ export const calculateTaskStatus = (task: WorkTask): string => {
   //    settlement_date はデフォルト値とみなして無視する
   if (
     isBlank(task.ledger_created) &&
-    isBlank(task.on_hold) &&
+    task.on_hold !== 'Y' &&
     isNotBlank(task.settlement_date) &&
     dateLt(task.settlement_date, today()) &&
     isNotBlank(task.sales_contract_deadline) &&
@@ -233,7 +233,7 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     isNotBlank(task.sales_contract_deadline) &&
     isNotBlank(task.binding_scheduled_date) &&
     task.sales_contract_confirmed === '確認OK' &&
-    isBlank(task.on_hold) &&
+    task.on_hold !== 'Y' &&
     isBlank(task.binding_completed)
   ) {
     return `売買契約 製本待ち ${formatDateMD(task.binding_scheduled_date)} ${task.sales_contract_assignee || ''}`;
@@ -246,7 +246,7 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     isBlank(task.binding_completed) &&
     (isBlank(task.settlement_date) || dateGte(task.settlement_date, today())) &&
     isBlank(task.accounting_confirmed) &&
-    isBlank(task.on_hold) &&
+    task.on_hold !== 'Y' &&
     isBlank(task.hirose_request_sales) &&
     isBlank(task.cw_request_sales)
   ) {
@@ -295,13 +295,13 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     isNotBlank(task.mediation_deadline) &&
     isBlank(task.distribution_date) &&
     isBlank(task.sales_contract_deadline) &&
-    isBlank(task.on_hold)
+    task.on_hold !== 'Y'
   ) {
     return `媒介作成_締日（${formatDateMD(task.mediation_deadline)}`;
   }
 
-  // 12. 保留
-  if (isNotBlank(task.on_hold)) {
+  // 12. 保留（on_hold === 'Y' の場合のみ。'N'やその他の値は保留とみなさない）
+  if (task.on_hold === 'Y') {
     return '保留';
   }
 
