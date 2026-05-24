@@ -2393,7 +2393,7 @@ TEL：097-533-2022`;
                       variant="outlined"
                       startIcon={<BarChartIcon />}
                       onClick={() => setBuyerCallRankingDialogOpen(true)}
-                      sx={{ fontSize: '0.7rem', px: 1, py: 0.25, whiteSpace: 'nowrap' }}
+                      sx={{ fontSize: '0.7rem', px: 1, py: 0.25, whiteSpace: 'nowrap', borderColor: '#1976d2', color: '#1976d2', '&:hover': { borderColor: '#1565c0', bgcolor: '#e3f2fd' } }}
                     >
                       月間電話ランキング
                     </Button>
@@ -2402,7 +2402,7 @@ TEL：097-533-2022`;
                       variant="outlined"
                       startIcon={<BarChartIcon />}
                       onClick={() => setBuyerCallRankingYearlyDialogOpen(true)}
-                      sx={{ fontSize: '0.7rem', px: 1, py: 0.25, whiteSpace: 'nowrap' }}
+                      sx={{ fontSize: '0.7rem', px: 1, py: 0.25, whiteSpace: 'nowrap', borderColor: '#e65100', color: '#e65100', '&:hover': { borderColor: '#bf360c', bgcolor: '#fff3e0' } }}
                     >
                       年間電話ランキング
                     </Button>
