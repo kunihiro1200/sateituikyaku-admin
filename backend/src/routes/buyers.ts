@@ -1438,6 +1438,148 @@ router.get('/:buyerNumber/nearby-properties', async (req: Request, res: Response
   }
 });
 
+/**
+ * 月間電話ランキングを取得
+ * GET /api/buyers/call-ranking
+ * 当月（JST）の activity_logs（action=phone_call, target_type=buyer）を
+ * 担当者イニシャル別に集計して返す
+ */
+router.get('/call-ranking', async (req: Request, res: Response) => {
+  try {
+    // JSTで当月の開始日・終了日を計算
+    const now = new Date();
+    const jstOffset = 9 * 60 * 60 * 1000;
+    const jstNow = new Date(now.getTime() + jstOffset);
+    const year = jstNow.getUTCFullYear();
+    const month = jstNow.getUTCMonth(); // 0-indexed
+
+    const fromDate = `${year}-${String(month + 1).padStart(2, '0')}-01T00:00:00+09:00`;
+    const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    const toDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59+09:00`;
+
+    const fromDateLabel = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const toDateLabel = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    const supabase = (await import('../config/supabase')).default;
+
+    // activity_logs から buyer 向け phone_call を取得（employee情報をJOIN）
+    const { data, error } = await supabase
+      .from('activity_logs')
+      .select('employee_id, employee:employees(id, name, initials)')
+      .in('action', ['phone_call', 'call'])
+      .eq('target_type', 'buyer')
+      .gte('created_at', fromDate)
+      .lte('created_at', toDate)
+      .not('employee_id', 'is', null);
+
+    if (error) {
+      throw error;
+    }
+
+    // イニシャルで集計（nameの姓部分を使用、なければinitials）
+    const counts = new Map<string, number>();
+    for (const row of data || []) {
+      const emp = (row as any).employee;
+      if (!emp) continue;
+      // 姓（スペース前）を表示名として使用、なければinitials
+      const displayName = emp.name
+        ? emp.name.split(/[\s　]/)[0]
+        : (emp.initials || '不明');
+      counts.set(displayName, (counts.get(displayName) || 0) + 1);
+    }
+
+    // count DESC, name ASC でソート
+    const rankings = Array.from(counts.entries())
+      .map(([initial, count]) => ({ initial, count }))
+      .sort((a, b) => b.count - a.count || a.initial.localeCompare(b.initial));
+
+    res.json({
+      period: { from: fromDateLabel, to: toDateLabel },
+      rankings,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Get buyer call ranking error:', error);
+    res.status(500).json({
+      error: {
+        code: 'BUYER_CALL_RANKING_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to get buyer call ranking',
+        retryable: true,
+      },
+    });
+  }
+});
+
+/**
+ * 年間電話ランキングを取得
+ * GET /api/buyers/call-ranking-yearly
+ * 2026年1月1日から現在までの activity_logs（action=phone_call, target_type=buyer）を
+ * 担当者イニシャル別に集計して返す
+ */
+router.get('/call-ranking-yearly', async (req: Request, res: Response) => {
+  try {
+    const fromDate = '2026-01-01T00:00:00+09:00';
+    const fromDateLabel = '2026-01-01';
+
+    // JSTで今月末の日付を計算
+    const now = new Date();
+    const jstOffset = 9 * 60 * 60 * 1000;
+    const jstNow = new Date(now.getTime() + jstOffset);
+    const year = jstNow.getUTCFullYear();
+    const month = jstNow.getUTCMonth();
+    const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    const toDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59+09:00`;
+    const toDateLabel = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    const supabase = (await import('../config/supabase')).default;
+
+    // activity_logs から buyer 向け phone_call を取得（employee情報をJOIN）
+    const { data, error } = await supabase
+      .from('activity_logs')
+      .select('employee_id, employee:employees(id, name, initials)')
+      .in('action', ['phone_call', 'call'])
+      .eq('target_type', 'buyer')
+      .gte('created_at', fromDate)
+      .lte('created_at', toDate)
+      .not('employee_id', 'is', null);
+
+    if (error) {
+      throw error;
+    }
+
+    // 姓で集計（nameの姓部分を使用、なければinitials）
+    const counts = new Map<string, number>();
+    for (const row of data || []) {
+      const emp = (row as any).employee;
+      if (!emp) continue;
+      const displayName = emp.name
+        ? emp.name.split(/[\s　]/)[0]
+        : (emp.initials || '不明');
+      counts.set(displayName, (counts.get(displayName) || 0) + 1);
+    }
+
+    // count DESC, name ASC でソート
+    const rankings = Array.from(counts.entries())
+      .map(([initial, count]) => ({ initial, count }))
+      .sort((a, b) => b.count - a.count || a.initial.localeCompare(b.initial));
+
+    res.json({
+      period: { from: fromDateLabel, to: toDateLabel },
+      rankings,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Get buyer call ranking yearly error:', error);
+    res.status(500).json({
+      error: {
+        code: 'BUYER_CALL_RANKING_YEARLY_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to get yearly buyer call ranking',
+        retryable: true,
+      },
+    });
+  }
+});
+
 // 他社物件新着配信用の買主取得
 router.get('/other-company-distribution', authenticate, async (req: Request, res: Response) => {
   try {

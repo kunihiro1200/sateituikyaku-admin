@@ -73,6 +73,7 @@ import {
 import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../components/RichTextCommentEditor';
 import { ValidationWarningDialog } from '../components/ValidationWarningDialog';
 import { ChatNavigationPopup } from '../components/ChatNavigationPopup';
+import CallRankingDisplay from '../components/CallRankingDisplay';
 import { formatDateTime } from '../utils/dateFormat';
 import { getDisplayName } from '../utils/employeeUtils';
 import { normalizeEmail } from '../utils/stringUtils';
@@ -663,6 +664,10 @@ export default function BuyerDetailPage() {
   // 削除ダイアログ用の状態
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // 買主電話ランキングダイアログ用の状態
+  const [buyerCallRankingDialogOpen, setBuyerCallRankingDialogOpen] = useState(false);
+  const [buyerCallRankingYearlyDialogOpen, setBuyerCallRankingYearlyDialogOpen] = useState(false);
 
   // メール本文表示用の状態
   const [emailBodyModalOpen, setEmailBodyModalOpen] = useState(false);
@@ -2380,6 +2385,29 @@ TEL：097-533-2022`;
                 >
                   {section.title}
                 </Typography>
+                {/* 「問合せ内容」セクション: ランキングボタンを表示 */}
+                {section.title === '問合せ内容' && (
+                  <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<BarChartIcon />}
+                      onClick={() => setBuyerCallRankingDialogOpen(true)}
+                      sx={{ fontSize: '0.7rem', px: 1, py: 0.25, whiteSpace: 'nowrap' }}
+                    >
+                      月間電話ランキング
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<BarChartIcon />}
+                      onClick={() => setBuyerCallRankingYearlyDialogOpen(true)}
+                      sx={{ fontSize: '0.7rem', px: 1, py: 0.25, whiteSpace: 'nowrap' }}
+                    >
+                      年間電話ランキング
+                    </Button>
+                  </Box>
+                )}
                 {/* 「問合せ内容」以外のセクションはヘッダー右上に保存ボタンを表示 */}
                 {section.title !== '問合せ内容' && (
                   <SectionSaveButton
@@ -4016,6 +4044,41 @@ TEL：097-533-2022`;
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* 買主月間電話ランキングダイアログ */}
+      <Dialog open={buyerCallRankingDialogOpen} onClose={() => setBuyerCallRankingDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          🏆 月間電話ランキング
+        </DialogTitle>
+        <DialogContent>
+          <CallRankingDisplay
+            key={buyerCallRankingDialogOpen ? 'open' : 'closed'}
+            title="月間電話ランキング"
+            endpoint="/api/buyers/call-ranking"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBuyerCallRankingDialogOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 買主年間電話ランキングダイアログ */}
+      <Dialog open={buyerCallRankingYearlyDialogOpen} onClose={() => setBuyerCallRankingYearlyDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          🏆 年間電話ランキング
+        </DialogTitle>
+        <DialogContent>
+          <CallRankingDisplay
+            key={buyerCallRankingYearlyDialogOpen ? 'open' : 'closed'}
+            title="年間電話ランキング"
+            endpoint="/api/buyers/call-ranking-yearly"
+            yearlyMode={true}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBuyerCallRankingYearlyDialogOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 削除確認ダイアログ */}
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
