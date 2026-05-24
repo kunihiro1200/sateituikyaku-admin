@@ -61,6 +61,7 @@ interface ReportData {
   suumo_url?: string;
   report_memo?: string;
   price?: number | null; // 売買価格（円単位）
+  price_reduction_history?: string; // 値下げ履歴
 }
 
 // 今日からN週間後の日付文字列（YYYY-MM-DD）を返す
@@ -219,6 +220,7 @@ export default function PropertyReportPage() {
         suumo_url: d.suumo_url || '',
         report_memo: d.report_memo || '',
         price: d.price ?? null, // 売買価格（BS列「価格」）
+        price_reduction_history: d.price_reduction_history || '',
       };
       setReportData(initial);
       setSavedData(initial);
@@ -886,6 +888,18 @@ export default function PropertyReportPage() {
                 {saving ? '保存中' : '保存'}
               </Button>
             </Box>
+
+            {/* 値下げ履歴 */}
+            {reportData.price_reduction_history && (
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1 }}>
+                  値下げ履歴
+                </Typography>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-line', fontSize: '0.85rem', color: 'text.primary' }}>
+                  {reportData.price_reduction_history}
+                </Typography>
+              </Box>
+            )}
           </Paper>
         </Box>
 
