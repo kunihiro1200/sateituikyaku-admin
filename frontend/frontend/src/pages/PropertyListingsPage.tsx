@@ -12,6 +12,7 @@ import {
   TableHead,
   TableRow,
   TablePagination,
+  TableSortLabel,
   TextField,
   InputAdornment,
   IconButton,
@@ -103,6 +104,21 @@ export default function PropertyListingsPage() {
   const isFetchingRef = useRef(false); // 二重フェッチ防止フラグ
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+
+  // ソート用state
+  type PropertySortKey = 'property_number' | 'sales_assignee' | 'property_type' | 'address' | 'display_address' | 'seller_name' | 'atbb_status' | 'buyer_name' | 'contract_date' | 'settlement_date' | 'price';
+  const [sortBy, setSortBy] = useState<PropertySortKey | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (column: PropertySortKey) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+    setPage(0);
+  };
 
   // 状態を復元
   useEffect(() => {
@@ -414,10 +430,79 @@ export default function PropertyListingsPage() {
     return listings;
   }, [allListings, sidebarStatus, searchQuery, workTaskMap]);
 
+  // ユーザーソートを適用したリスト
+  const sortedListings = useMemo(() => {
+    if (!sortBy) return filteredListings;
+    return [...filteredListings].sort((a, b) => {
+      let aVal: string | number | null = null;
+      let bVal: string | number | null = null;
+
+      switch (sortBy) {
+        case 'property_number':
+          aVal = a.property_number || '';
+          bVal = b.property_number || '';
+          break;
+        case 'sales_assignee':
+          aVal = a.sales_assignee || '';
+          bVal = b.sales_assignee || '';
+          break;
+        case 'property_type':
+          aVal = a.property_type || '';
+          bVal = b.property_type || '';
+          break;
+        case 'address':
+          aVal = a.address || '';
+          bVal = b.address || '';
+          break;
+        case 'display_address':
+          aVal = a.display_address || '';
+          bVal = b.display_address || '';
+          break;
+        case 'seller_name':
+          aVal = a.seller_name || '';
+          bVal = b.seller_name || '';
+          break;
+        case 'atbb_status':
+          aVal = a.atbb_status || '';
+          bVal = b.atbb_status || '';
+          break;
+        case 'buyer_name':
+          aVal = a.buyer_name || '';
+          bVal = b.buyer_name || '';
+          break;
+        case 'contract_date':
+          aVal = a.contract_date || '';
+          bVal = b.contract_date || '';
+          break;
+        case 'settlement_date':
+          aVal = a.settlement_date || '';
+          bVal = b.settlement_date || '';
+          break;
+        case 'price':
+          aVal = a.price ?? 0;
+          bVal = b.price ?? 0;
+          break;
+      }
+
+      if (aVal === null && bVal === null) return 0;
+      if (aVal === null) return 1;
+      if (bVal === null) return -1;
+
+      let comparison = 0;
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        comparison = aVal - bVal;
+      } else {
+        comparison = String(aVal).localeCompare(String(bVal), 'ja');
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [filteredListings, sortBy, sortOrder]);
+
   const paginatedListings = useMemo(() => {
     const start = page * rowsPerPage;
-    return filteredListings.slice(start, start + rowsPerPage);
-  }, [filteredListings, page, rowsPerPage]);
+    return sortedListings.slice(start, start + rowsPerPage);
+  }, [sortedListings, page, rowsPerPage]);
 
   const prevPropertyNumbersRef = useRef<string>('');
 
@@ -700,17 +785,116 @@ export default function PropertyListingsPage() {
                       onChange={handleSelectAll}
                     />
                   </TableCell>
-                  <TableCell>物件番号</TableCell>
-                  <TableCell>担当</TableCell>
-                  <TableCell>種別</TableCell>
-                  <TableCell>所在地</TableCell>
-                  <TableCell>住居表示</TableCell>
-                  <TableCell>売主</TableCell>
-                  <TableCell>ATBB状況</TableCell>
-                  <TableCell>買主</TableCell>
-                  <TableCell>契約日</TableCell>
-                  <TableCell>決済日</TableCell>
-                  <TableCell>売買価格</TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortBy === 'property_number'}
+                      direction={sortBy === 'property_number' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('property_number')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
+                    >
+                      物件番号
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortBy === 'sales_assignee'}
+                      direction={sortBy === 'sales_assignee' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('sales_assignee')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
+                    >
+                      担当
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortBy === 'property_type'}
+                      direction={sortBy === 'property_type' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('property_type')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
+                    >
+                      種別
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortBy === 'address'}
+                      direction={sortBy === 'address' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('address')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
+                    >
+                      所在地
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortBy === 'display_address'}
+                      direction={sortBy === 'display_address' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('display_address')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
+                    >
+                      住居表示
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortBy === 'seller_name'}
+                      direction={sortBy === 'seller_name' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('seller_name')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
+                    >
+                      売主
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortBy === 'atbb_status'}
+                      direction={sortBy === 'atbb_status' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('atbb_status')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
+                    >
+                      ATBB状況
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortBy === 'buyer_name'}
+                      direction={sortBy === 'buyer_name' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('buyer_name')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
+                    >
+                      買主
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortBy === 'contract_date'}
+                      direction={sortBy === 'contract_date' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('contract_date')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
+                    >
+                      契約日
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortBy === 'settlement_date'}
+                      direction={sortBy === 'settlement_date' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('settlement_date')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
+                    >
+                      決済日
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortBy === 'price'}
+                      direction={sortBy === 'price' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('price')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
+                    >
+                      売買価格
+                    </TableSortLabel>
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
