@@ -210,6 +210,10 @@ export default function BuyersPage() {
                 } else if (selectedCalculatedStatus === 'viewingUnconfirmed') {
                   // 内覧未確定: viewing_unconfirmed = '未確定'
                   return b.viewing_unconfirmed === '未確定';
+                } else if (selectedCalculatedStatus.startsWith('viewingPostInput:')) {
+                  // 内覧後未入力(担当者別): calculated_status = 「R_内覧後未入力」など
+                  const assignee = selectedCalculatedStatus.replace('viewingPostInput:', '');
+                  return b.calculated_status === `${assignee}_内覧後未入力`;
                 } else {
                   // サイドバーのカテゴリキーを日本語の表示名に変換
                   const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
@@ -324,9 +328,10 @@ export default function BuyersPage() {
           } else if (
             selectedCalculatedStatus.startsWith('assigned:') ||
             selectedCalculatedStatus.startsWith('todayCallAssigned:') ||
-            selectedCalculatedStatus.startsWith('nextCallDateBlank:')
+            selectedCalculatedStatus.startsWith('nextCallDateBlank:') ||
+            selectedCalculatedStatus.startsWith('viewingPostInput:')
           ) {
-            // 動的カテゴリ（assigned:xxx, todayCallAssigned:xxx, nextCallDateBlank:xxx）は
+            // 動的カテゴリ（assigned:xxx, todayCallAssigned:xxx, nextCallDateBlank:xxx, viewingPostInput:xxx）は
             // statusCategory パラメーターとして getAll() に渡す
             quickParams.statusCategory = selectedCalculatedStatus;
           } else if (selectedCalculatedStatus.startsWith('todayCallWithInfo:')) {

@@ -280,6 +280,13 @@ export class BuyerService {
               .in('latest_status', [STATUS_A_QUERY, STATUS_B_QUERY])
               .is('next_call_date', null)
               .or('broker_inquiry.is.null,broker_inquiry.eq.');
+          } else if (dynamicCategory.startsWith('viewingPostInput:')) {
+            // 内覧後未入力(担当者別): follow_up_assignee = 担当 AND 内覧日あり AND 内覧結果未入力
+            const assigneeInitial = dynamicCategory.replace('viewingPostInput:', '');
+            query = query
+              .eq('follow_up_assignee', assigneeInitial)
+              .not('viewing_date', 'is', null)
+              .is('viewing_result_follow_up', null);
           }
           break;
         }
@@ -2206,6 +2213,8 @@ export class BuyerService {
       viewingSurveyUnchecked: 0,
       viewingUnconfirmed: 0,
       sellerViewingContactPending: 0,
+      // 内覧後未入力（担当者別）
+      viewingPostInputCounts: {} as Record<string, number>,
     };
 
     for (const buyer of cachedBuyers) {
@@ -2239,6 +2248,10 @@ export class BuyerService {
       } else if (status.startsWith('担当(')) {
         const match = status.match(/^担当\((.+)\)$/);
         if (match) result.assignedCounts[match[1]] = (result.assignedCounts[match[1]] || 0) + 1;
+      } else if (status.endsWith('_内覧後未入力')) {
+        // 担当者別内覧後未入力: 「R_内覧後未入力」→ assignee = 'R'
+        const assignee = status.replace('_内覧後未入力', '');
+        result.viewingPostInputCounts[assignee] = (result.viewingPostInputCounts[assignee] || 0) + 1;
       }
     }
 

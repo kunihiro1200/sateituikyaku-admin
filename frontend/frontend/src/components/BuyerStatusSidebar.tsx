@@ -29,6 +29,7 @@ interface CategoryCounts {
   viewingSurveyUnchecked?: number;  // 内覧アンケート未確認
   viewingUnconfirmed?: number;  // 内覧未確定
   sellerViewingContactPending?: number;  // 売主内覧連絡未
+  viewingPostInputCounts?: Record<string, number>;  // 内覧後未入力（担当者別）
 }
 
 export interface BuyerWithStatus {
@@ -272,6 +273,20 @@ export default function BuyerStatusSidebar({
       });
     }
   });
+
+  // 内覧後未入力（担当者別）- カウントがある担当のみ表示
+  if (categoryCounts.viewingPostInputCounts) {
+    Object.entries(categoryCounts.viewingPostInputCounts).forEach(([assignee, count]) => {
+      if (count > 0) {
+        categoryList.push({
+          key: `viewingPostInput:${assignee}`,
+          label: `内覧後未入力(${assignee})`,
+          count,
+          color: '#66bb6a', // 緑
+        });
+      }
+    });
+  }
 
   // 担当者別カテゴリ（assignedCounts）- 親カテゴリ
   // 「業者」は担当カテゴリーから除外する
