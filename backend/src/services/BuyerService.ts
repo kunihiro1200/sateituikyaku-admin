@@ -1945,6 +1945,7 @@ export class BuyerService {
       'desired_area', 'desired_property_type', 'budget',
       'viewing_survey_result', 'viewing_survey_confirmed',
       'seller_viewing_date_contact',
+      'phone_contact_person', 'preferred_contact_time', 'contact_method',
     ].join(', ');
 
     // count クエリ・最初のバッチ・property_listings を全て並列実行
