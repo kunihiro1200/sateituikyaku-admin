@@ -4931,24 +4931,22 @@ HP：https://ifoo-oita.com/
                     <Typography component="span" variant="body2" sx={{ fontWeight: 'bold', ml: 0.5 }}>
                       {(() => {
                         // 反響詳細日時（AL列）を優先表示。秒は除外
+                        // ⚠️ new Date() を使用しない（UTC解釈で+9時間ずれるため）
+                        // 文字列を正規表現で直接パースする
                         const detailedDateTime = seller.inquiryDetailedDateTime || seller.inquiryDetailedDatetime || (seller as any).inquiryDatetime;
                         if (detailedDateTime) {
-                          const d = new Date(detailedDateTime);
-                          if (!isNaN(d.getTime())) {
-                            return d.toLocaleString('ja-JP', {
-                              year: 'numeric',
-                              month: '2-digit',
-                              day: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            });
+                          const raw = String(detailedDateTime);
+                          const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+                          if (match) {
+                            return `${match[1]}/${match[2]}/${match[3]} ${match[4]}:${match[5]}`;
                           }
                         }
                         // 反響詳細日時がない場合は反響日付を日付のみで表示
                         if (seller.inquiryDate) {
-                          const d = new Date(seller.inquiryDate);
-                          if (!isNaN(d.getTime())) {
-                            return d.toLocaleDateString('ja-JP');
+                          const rawDate = String(seller.inquiryDate);
+                          const matchDate = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                          if (matchDate) {
+                            return `${matchDate[1]}/${matchDate[2]}/${matchDate[3]}`;
                           }
                         }
                         return '-';
@@ -7092,13 +7090,18 @@ HP：https://ifoo-oita.com/
                   if (!showFields) return null;
 
                   // 反響詳細日時のフォーマット
+                  // ⚠️ new Date() を使用しない（UTC解釈で+9時間ずれるため）
                   const detailedDatetime = seller.inquiryDetailedDateTime || seller.inquiryDetailedDatetime;
-                  const formattedDatetime = detailedDatetime
-                    ? new Date(detailedDatetime).toLocaleString('ja-JP', {
-                        year: 'numeric', month: '2-digit', day: '2-digit',
-                        hour: '2-digit', minute: '2-digit', second: '2-digit',
-                      })
-                    : '－';
+                  const formattedDatetime = (() => {
+                    if (!detailedDatetime) return '－';
+                    const rawDt = String(detailedDatetime);
+                    const matchDt = rawDt.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
+                    if (matchDt) {
+                      const sec = matchDt[6] ? `:${matchDt[6]}` : ':00';
+                      return `${matchDt[1]}/${matchDt[2]}/${matchDt[3]} ${matchDt[4]}:${matchDt[5]}${sec}`;
+                    }
+                    return '－';
+                  })();
 
                   // 名前（姓のみ）
                   const lastName = seller.name ? seller.name.split(/[\s　]/)[0] : '－';
