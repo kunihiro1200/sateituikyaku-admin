@@ -334,6 +334,15 @@ export const replacePlaceholders = (
       result = result.replace(/\n097-533-2022(\n?)/g, '\n092-401-5331$1');
       result = result.replace(/\n実績: bit\.ly\/3J61wzG\n?/g, '\n');
       result = result.replace(/\n売買実績はこちら：bit\.ly\/3J61wzG\n?/g, '\n');
+
+      // FI売主の場合はHP URLをくじら不動産のURLに変更し、リンクテキストを付与
+      // [改行]HP：https://ifoo-oita.com/ 形式（SMSテンプレート）
+      result = result.replace(/\[改行\]HP：https:\/\/ifoo-oita\.com\//g, '[改行]HP：https://kujira-fudosan.com/');
+      // \n に変換済みの場合（Emailテンプレート）
+      result = result.replace(/\nHP：https:\/\/ifoo-oita\.com\//g, '\nHP：https://kujira-fudosan.com/');
+      // 半角コロン形式にも対応
+      result = result.replace(/\[改行\]HP: https:\/\/ifoo-oita\.com\//g, '[改行]HP: https://kujira-fudosan.com/');
+      result = result.replace(/\nHP: https:\/\/ifoo-oita\.com\//g, '\nHP: https://kujira-fudosan.com/');
     }
     
     return result;
