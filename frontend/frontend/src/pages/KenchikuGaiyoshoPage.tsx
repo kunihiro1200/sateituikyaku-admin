@@ -243,6 +243,39 @@ const KenchikuGaiyoshoPage: React.FC = () => {
 
       const merged = await analyzeAllFiles(allPayloads);
 
+      // 道路幅員の数値から12m未満/以上を自動補正（AIの判断に依存しない）
+      // 複数接道がある場合は最大幅員で判定
+      const roadWidths = ['road_width_contact_1', 'road_width_contact_2', 'road_width_contact_3']
+        .map((key) => merged.find((r) => r.key === key)?.content)
+        .filter((v): v is string => v !== null && v !== undefined)
+        .map((v) => parseFloat(v))
+        .filter((v) => !isNaN(v));
+      const maxRoadWidth = roadWidths.length > 0 ? Math.max(...roadWidths) : null;
+      if (maxRoadWidth !== null) {
+        const under12 = merged.find((r) => r.key === 'road_width_under_12m');
+        const over12 = merged.find((r) => r.key === 'road_width_over_12m');
+        if (under12) {
+          under12.content = maxRoadWidth < 12 ? 'true' : 'false';
+          under12.found = true;
+        }
+        if (over12) {
+          over12.content = maxRoadWidth >= 12 ? 'true' : 'false';
+          over12.found = true;
+        }
+      }
+
+      // 用途地域が取得できていれば市街化区域を自動でtrueにする（用途地域がある＝市街化区域）
+      const useZone1 = merged.find((r) => r.key === 'use_zone_1');
+      const useZone2 = merged.find((r) => r.key === 'use_zone_2');
+      const hasUseZone = (useZone1?.content && useZone1.content !== '') || (useZone2?.content && useZone2.content !== '');
+      if (hasUseZone) {
+        const urbanized = merged.find((r) => r.key === 'city_plan_urbanized');
+        if (urbanized && urbanized.content !== 'true') {
+          urbanized.content = 'true';
+          urbanized.found = true;
+        }
+      }
+
       setProgress(100);
       setResults(merged);
       setIsFromCache(false);
