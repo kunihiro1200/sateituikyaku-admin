@@ -42,6 +42,7 @@ import BuyerNearbyMapPage from './pages/BuyerNearbyMapPage';
 import ReinsRegistrationPage from './pages/ReinsRegistrationPage';
 import ManagementRulesTestPage from './pages/ManagementRulesTestPage';
 import MansionJyuchoPage from './pages/MansionJyuchoPage';
+import KenchikuGaiyoshoPage from './pages/KenchikuGaiyoshoPage';
 import SalesHistoryPage from './pages/SalesHistoryPage';
 import PropertyPreviewPage from './pages/PropertyPreviewPage';
 import TateuriPage from './pages/TateuriPage';
@@ -391,6 +392,14 @@ function App() {
         element={
           <ProtectedRoute>
             <MansionJyuchoPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/kenchiku-gaiyosho"
+        element={
+          <ProtectedRoute>
+            <KenchikuGaiyoshoPage />
           </ProtectedRoute>
         }
       />

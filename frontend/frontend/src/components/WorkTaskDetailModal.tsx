@@ -5094,6 +5094,20 @@ ${pageUrl}`;
                   sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#0277bd', '&:hover': { bgcolor: '#01579b' }, fontSize: '0.75rem', px: 1, py: 0.4, minWidth: 0 }}
                 >マンション重調</Button>
               )}
+              {/* 建築概要書ボタン: 契約決済タブで表示 */}
+              {tabIndex === 2 && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => {
+                    const url = getValue('spreadsheet_url');
+                    const params = new URLSearchParams({ propertyNumber: propertyNumber || '' });
+                    if (url) params.set('spreadsheetUrl', url);
+                    window.open(`/kenchiku-gaiyosho?${params.toString()}`, '_blank', 'noopener,noreferrer');
+                  }}
+                  sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' }, fontSize: '0.75rem', px: 1, py: 0.4, minWidth: 0 }}
+                >建築概要書</Button>
+              )}
               {/* 謄本_売買契約・重説ボタン: 契約決済タブ かつ 種別がマ・マンションの場合のみ表示 */}
               {tabIndex === 2 && ['マ', 'マンション'].includes(getValue('property_type') || '') && (
                 <Button
@@ -5330,6 +5344,22 @@ ${pageUrl}`;
                     sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#0277bd', '&:hover': { bgcolor: '#01579b' }, fontSize: '0.85rem', px: 1.5 }}
                   >
                     マンション重調
+                  </Button>
+                )}
+                {/* 建築概要書ボタン（モバイル）: 契約決済タブで表示 */}
+                {tabIndex === 2 && (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => {
+                      const url = getValue('spreadsheet_url');
+                      const params = new URLSearchParams({ propertyNumber: propertyNumber || '' });
+                      if (url) params.set('spreadsheetUrl', url);
+                      window.open(`/kenchiku-gaiyosho?${params.toString()}`, '_blank', 'noopener,noreferrer');
+                    }}
+                    sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' }, fontSize: '0.85rem', px: 1.5 }}
+                  >
+                    建築概要書
                   </Button>
                 )}
                 {/* 謄本_売買契約・重説ボタン（モバイル）: 契約決済タブ かつ 種別がマ・マンションの場合のみ表示 */}
