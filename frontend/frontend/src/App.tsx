@@ -43,6 +43,7 @@ import ReinsRegistrationPage from './pages/ReinsRegistrationPage';
 import ManagementRulesTestPage from './pages/ManagementRulesTestPage';
 import MansionJyuchoPage from './pages/MansionJyuchoPage';
 import KenchikuGaiyoshoPage from './pages/KenchikuGaiyoshoPage';
+import KoteiKazeiComparePage from './pages/KoteiKazeiComparePage';
 import SalesHistoryPage from './pages/SalesHistoryPage';
 import PropertyPreviewPage from './pages/PropertyPreviewPage';
 import TateuriPage from './pages/TateuriPage';
@@ -400,6 +401,14 @@ function App() {
         element={
           <ProtectedRoute>
             <KenchikuGaiyoshoPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/kotei-kazei-compare"
+        element={
+          <ProtectedRoute>
+            <KoteiKazeiComparePage />
           </ProtectedRoute>
         }
       />
