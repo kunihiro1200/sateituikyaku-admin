@@ -67,6 +67,12 @@ CRON_SECRET = os.environ.get(
     "a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s="
 )
 
+# アラートメール送信URL（バックエンドAPI経由）
+BACKEND_SEND_ALERT_URL = os.environ.get(
+    "BACKEND_SEND_ALERT_URL",
+    "https://sateituikyaku-admin-backend.vercel.app/api/sellers/send-alert"
+)
+
 # ファイルパス（Railway環境では環境変数で上書き可能）
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CREDENTIALS_FILE = os.environ.get("GMAIL_CREDENTIALS_FILE", os.path.join(SCRIPT_DIR, "credentials.json"))
@@ -89,6 +95,29 @@ SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 # ================
 
 
+def send_alert_email(subject: str, body: str):
+    """認証エラーなどの緊急アラートをバックエンドAPI経由でメール送信する"""
+    try:
+        payload = json.dumps({"subject": subject, "body": body}).encode("utf-8")
+        req = urllib.request.Request(
+            BACKEND_SEND_ALERT_URL,
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {CRON_SECRET}",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+            if result.get("success"):
+                logging.info(f"[アラート] ✅ アラートメール送信完了 → tenant@ifoo-oita.com")
+            else:
+                logging.error(f"[アラート] ❌ アラートメール送信失敗: {result}")
+    except Exception as e:
+        logging.error(f"[アラート] ❌ アラートメール送信エラー: {e}")
+
+
 def get_gmail_service():
     """Gmail APIサービスを取得する"""
     creds = None
@@ -101,11 +130,49 @@ def get_gmail_service():
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            # サーバー環境では対話的認証不可 → ローカルで事前に token.pickle を生成しておく
-            raise RuntimeError(
-                "token.pickleが無効です。ローカルで一度 mail_notify.py を実行して"
-                "token.pickleを再生成してからRailwayにデプロイしてください。"
+            # サーバー環境では対話的認証不可 → アラートメールを送信して終了
+            error_msg = (
+                "token.pickleが無効です。ローカルで token.pickle を再生成してください。"
             )
+            alert_body = """Gmail認証トークンが期限切れになりました。
+イエウール・HOME4Uのメールが自動転記されていない状態です。
+
+■ 復旧手順
+
+1. PCのPowerShellを開く
+
+2. 以下を実行する（コピー&ペーストでOK）:
+
+   cd C:\\Users\\kunih\\sateituikyaku-admin
+   python -c "
+   from google_auth_oauthlib.flow import InstalledAppFlow
+   import pickle
+   SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+   flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+   creds = flow.run_local_server(port=0)
+   with open('token.pickle', 'wb') as f:
+       pickle.dump(creds, f)
+   print('完了')
+   "
+
+3. ブラウザが開いたら「株式会社威風 tenant@ifoo-oita.com」を選択して認証
+
+4. 以下を実行:
+
+   cd C:\\Users\\kunih\\sateituikyaku-mail-server
+   copy C:\\Users\\kunih\\sateituikyaku-admin\\token.pickle token.pickle
+   git add token.pickle
+   git commit -m "fix: refresh Gmail token.pickle"
+   git push origin main
+
+5. RailwayのDashboardでサービスが再デプロイされれば復旧完了
+
+■ 確認方法
+Railwayのログに「接続成功！監視を開始します。」と表示されればOKです。
+"""
+            logging.error(f"[認証エラー] {error_msg}")
+            send_alert_email("【緊急】メール監視サーバー認証エラー - 復旧手順", alert_body)
+            raise RuntimeError(error_msg)
         with open(TOKEN_FILE, "wb") as token:
             pickle.dump(creds, token)
 
@@ -288,7 +355,11 @@ def main():
     logging.info("=" * 50)
 
     logging.info("Gmailに接続中...")
-    service = get_gmail_service()
+    try:
+        service = get_gmail_service()
+    except RuntimeError as e:
+        logging.error(f"起動失敗: {e}")
+        sys.exit(1)
     logging.info("接続成功！監視を開始します。\n")
 
     notified_ids = load_notified_ids()

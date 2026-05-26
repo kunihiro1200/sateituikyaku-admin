@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { body, query, validationResult } from 'express-validator';
 import axios from 'axios';
 import { SellerService } from '../services/SellerService.supabase';
+import { EmailService } from '../services/EmailService';
 import { authenticate } from '../middleware/auth';
 import { CreateSellerRequest, ListSellersParams } from '../types';
 import { PropertyDistributionAreaCalculator } from '../services/PropertyDistributionAreaCalculator';
@@ -3571,6 +3572,38 @@ router.post('/manual-sync', async (_req: Request, res: Response) => {
   } catch (error: any) {
     console.error('[seller manual-sync] エラー:', error);
     return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/sellers/send-alert
+ * メール監視サーバーからの緊急アラートメール送信
+ * CRON_SECRET認証（認証ミドルウェアをバイパス）
+ */
+router.post('/send-alert', async (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { subject, body: mailBody } = req.body;
+  if (!subject || !mailBody) {
+    return res.status(400).json({ success: false, error: 'subject と body は必須です' });
+  }
+
+  try {
+    const emailService = new EmailService();
+    await emailService.sendEmail({
+      to: ['tenant@ifoo-oita.com'],
+      subject,
+      body: mailBody,
+    });
+    console.log('[send-alert] アラートメール送信成功');
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('[send-alert] アラートメール送信エラー:', error);
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
