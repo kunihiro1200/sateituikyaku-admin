@@ -114,6 +114,9 @@ const ImageSelectorModal = ({
   // Google Drive用の状態
   const [folderPath, setFolderPath] = useState<FolderPathItem[]>([]);
   const [driveFiles, setDriveFiles] = useState<DriveFile[]>([]);
+
+  // 検索バー用の状態
+  const [searchQuery, setSearchQuery] = useState<string>('');
   
   // ローカルファイル用の状態
   const [dragActive, setDragActive] = useState(false);
@@ -123,12 +126,13 @@ const ImageSelectorModal = ({
   const [urlError, setUrlError] = useState<string | null>(null);
   // サイズバリデーションエラー用 state
   const [sizeError, setSizeError] = useState<string | null>(null);
-
   // モーダルが開いたときにGoogle Driveのルートフォルダを読み込む
   useEffect(() => {
     if (open && activeTab === 'drive') {
       loadDriveFolder(null);
     }
+    // タブ切り替え時に検索クエリをリセット
+    setSearchQuery('');
   }, [open, activeTab]);
 
   // Google Driveフォルダの内容を読み込む
@@ -539,20 +543,54 @@ const ImageSelectorModal = ({
                 ))}
               </Breadcrumbs>
 
+              {/* 検索バー */}
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="ファイル名で絞り込む..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                sx={{ mb: 2 }}
+                InputProps={{
+                  startAdornment: (
+                    <Box component="span" sx={{ mr: 1, color: 'text.secondary', display: 'flex' }}>
+                      🔍
+                    </Box>
+                  ),
+                  endAdornment: searchQuery ? (
+                    <IconButton size="small" onClick={() => setSearchQuery('')}>
+                      <Close fontSize="small" />
+                    </IconButton>
+                  ) : null,
+                }}
+              />
+
               {loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
                   <CircularProgress />
                 </Box>
               ) : (
                 <Grid container spacing={2}>
-                  {driveFiles.map((file) =>
-                    file.isFolder
-                      ? renderFolderCard(file)
-                      : renderImageCard(convertDriveFileToImageFile(file))
-                  )}
-                  {driveFiles.length === 0 && (
+                  {driveFiles
+                    .filter((file) =>
+                      searchQuery === '' ||
+                      file.name.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .map((file) =>
+                      file.isFolder
+                        ? renderFolderCard(file)
+                        : renderImageCard(convertDriveFileToImageFile(file))
+                    )}
+                  {driveFiles.filter((file) =>
+                    searchQuery === '' ||
+                    file.name.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).length === 0 && (
                     <Grid item xs={12}>
-                      <Alert severity="info">このフォルダには画像がありません</Alert>
+                      <Alert severity="info">
+                        {searchQuery
+                          ? `「${searchQuery}」に一致するファイルが見つかりません`
+                          : 'このフォルダには画像がありません'}
+                      </Alert>
                     </Grid>
                   )}
                 </Grid>
@@ -564,7 +602,7 @@ const ImageSelectorModal = ({
           {activeTab === 'local' && (
             <Box>
               {/* ファイル選択ボタン */}
-              <Box sx={{ mb: 3 }}>
+              <Box sx={{ mb: 2 }}>
                 <Button
                   variant="contained"
                   component="label"
@@ -581,6 +619,30 @@ const ImageSelectorModal = ({
                   />
                 </Button>
               </Box>
+
+              {/* 検索バー（選択済みファイルが1件以上の場合のみ表示） */}
+              {selectedImages.filter(img => img.source === 'local').length > 0 && (
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="ファイル名で絞り込む..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  sx={{ mb: 2 }}
+                  InputProps={{
+                    startAdornment: (
+                      <Box component="span" sx={{ mr: 1, color: 'text.secondary', display: 'flex' }}>
+                        🔍
+                      </Box>
+                    ),
+                    endAdornment: searchQuery ? (
+                      <IconButton size="small" onClick={() => setSearchQuery('')}>
+                        <Close fontSize="small" />
+                      </IconButton>
+                    ) : null,
+                  }}
+                />
+              )}
 
               {/* ドラッグ&ドロップエリア */}
               <Box
@@ -610,7 +672,16 @@ const ImageSelectorModal = ({
                 <Grid container spacing={2}>
                   {selectedImages
                     .filter(img => img.source === 'local')
+                    .filter(img => searchQuery === '' || img.name.toLowerCase().includes(searchQuery.toLowerCase()))
                     .map(renderImageCard)}
+                  {selectedImages
+                    .filter(img => img.source === 'local')
+                    .filter(img => searchQuery !== '' && !img.name.toLowerCase().includes(searchQuery.toLowerCase())).length ===
+                    selectedImages.filter(img => img.source === 'local').length && (
+                    <Grid item xs={12}>
+                      <Alert severity="info">{`「${searchQuery}」に一致するファイルが見つかりません`}</Alert>
+                    </Grid>
+                  )}
                 </Grid>
               ) : (
                 <Alert severity="info">ファイルを選択してください</Alert>
