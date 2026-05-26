@@ -19,11 +19,7 @@ import FolderIcon from '@mui/icons-material/Folder';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-
-const API_BASE_URL =
-  import.meta.env.MODE === 'production'
-    ? 'https://sateituikyaku-admin-backend.vercel.app'
-    : import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import api from '../services/api';
 
 const MAX_BYTES_PER_REQUEST = 3 * 1024 * 1024;
 
@@ -109,11 +105,8 @@ async function localFilesToPayloads(files: File[], onProgress: (msg: string) => 
 }
 
 async function driveFileToPayload(fileId: string, fileName: string): Promise<FilePayload> {
-  const res = await fetch(`${API_BASE_URL}/api/drive/files/${fileId}/base64`, {
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Drive取得エラー: ${res.status}`);
-  const { base64, mimeType } = await res.json();
+  const res = await api.get(`/api/drive/files/${fileId}/base64`);
+  const { base64, mimeType } = res.data;
   return { name: fileName, mimeType, base64 };
 }
 
@@ -177,15 +170,15 @@ const DriveFileSelector: React.FC<{
 
   const loadFiles = useCallback(async () => {
     if (!storageUrl) { setError('格納先URLが設定されていません'); return; }
-    const match = storageUrl.match(/[-\w]{25,}/);
-    const folderId = match ? match[0] : null;
-    if (!folderId) { setError('フォルダIDの取得に失敗しました'); return; }
+    // /folders/FOLDER_ID 形式でフォルダIDを抽出（GoogleDriveServiceと同じ正規表現）
+    const match = storageUrl.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+    const folderId = match ? match[1] : null;
+    if (!folderId) { setError('格納先URLからフォルダIDを取得できませんでした'); return; }
     setLoading(true); setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/drive/folders/contents?folderId=${folderId}`, { credentials: 'include' });
-      const data = await res.json();
+      const res = await api.get('/api/drive/folders/contents', { params: { folderId } });
       const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-      const filtered = (data.files || []).filter((f: DriveFile) => allowed.includes(f.mimeType));
+      const filtered = (res.data.files || []).filter((f: DriveFile) => allowed.includes(f.mimeType));
       setFiles(filtered);
     } catch (e: any) { setError(e.message); } finally { setLoading(false); }
   }, [storageUrl]);
@@ -264,8 +257,9 @@ const KoteiKazeiComparePage: React.FC = () => {
 
   React.useEffect(() => {
     if (!propertyNumber) return;
-    fetch(`${API_BASE_URL}/api/kotei-kazei-compare/${encodeURIComponent(propertyNumber)}`, { credentials: 'include' })
-      .then((r) => r.json()).then((json) => {
+    api.get(`/api/kotei-kazei-compare/${encodeURIComponent(propertyNumber)}`)
+      .then((res) => {
+        const json = res.data;
         if (json.data) {
           setDiffs(json.data.diffs); setTokiData(json.data.toki_data);
           setKazeiData(json.data.kazei_data); setSavedAt(json.data.analyzed_at); setIsFromCache(true);
@@ -313,26 +307,19 @@ const KoteiKazeiComparePage: React.FC = () => {
       setProgress(50);
       setLoadingMessage('Claude AIが謄本と公課証明を比較解析中...');
 
-      const response = await fetch(`${API_BASE_URL}/api/kotei-kazei-compare/analyze`, {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tokiFiles: tokiPayloads, kazeiFiles: kazeiPayloads }),
+      const response = await api.post('/api/kotei-kazei-compare/analyze', {
+        tokiFiles: tokiPayloads, kazeiFiles: kazeiPayloads,
       });
-
       setProgress(90);
-      if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error((err as any).error || `APIエラー: ${response.status}`); }
-
-      const data = await response.json();
+      const data = response.data;
       setDiffs(data.diffs); setTokiData(data.toki); setKazeiData(data.kazei);
       setIsFromCache(false); setProgress(100);
 
       if (propertyNumber) {
         setSaving(true);
         try {
-          await fetch(`${API_BASE_URL}/api/kotei-kazei-compare/save`, {
-            method: 'POST', credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ propertyNumber, toki: data.toki, kazei: data.kazei, diffs: data.diffs }),
+          await api.post('/api/kotei-kazei-compare/save', {
+            propertyNumber, toki: data.toki, kazei: data.kazei, diffs: data.diffs,
           });
           setSavedAt(new Date().toISOString());
           setSnackbarMessage('比較結果を保存しました'); setSnackbarSeverity('success'); setSnackbarOpen(true);
