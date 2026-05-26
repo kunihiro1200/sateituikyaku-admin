@@ -357,16 +357,16 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
     }
 
     // ============================================================
-    // 1.5. 重複チェック（同一電話番号が既にDBに存在する場合はスキップ）
+    // 1.5. 重複チェック（同一電話番号 かつ 同一反響日時の場合のみスキップ）
+    // 過去に同じ人から別の時期に依頼が来た場合は新規登録する
     // ============================================================
     {
-      const { encrypt: encryptForCheck } = await import('../utils/encryption');
-      const supabaseForCheck = (await import('../config/supabase')).default;
       const { decrypt: decryptForCheck } = await import('../utils/encryption');
+      const supabaseForCheck = (await import('../config/supabase')).default;
 
       const { data: allSellers, error: fetchError } = await supabaseForCheck
         .from('sellers')
-        .select('id, seller_number, phone_number, inquiry_date')
+        .select('id, seller_number, phone_number, inquiry_detailed_datetime')
         .is('deleted_at', null);
 
       if (!fetchError && allSellers) {
@@ -375,13 +375,24 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
           try {
             const decryptedPhone = decryptForCheck(existing.phone_number);
             if (decryptedPhone === tel) {
-              console.log(`[ieul-transfer] ⏭ 重複スキップ: 電話番号が既存売主 ${existing.seller_number} と一致`);
-              return res.json({
-                success: true,
-                skipped: true,
-                message: `重複スキップ: 電話番号が既存売主 ${existing.seller_number} と一致するため登録しませんでした`,
-                duplicateSeller: existing.seller_number,
-              });
+              // 電話番号が一致しても、反響日時が異なれば別依頼として登録する
+              // 反響日時が同じ（または両方nullで日時不明）の場合のみスキップ
+              const existingDatetime = existing.inquiry_detailed_datetime;
+              const isSameDatetime = existingDatetime && requestDate
+                ? existingDatetime === requestDate || existingDatetime.startsWith(requestDate.replace(' ', 'T'))
+                : !existingDatetime && !requestDate; // 両方nullの場合のみ重複とみなす
+
+              if (isSameDatetime) {
+                console.log(`[ieul-transfer] ⏭ 重複スキップ: 電話番号・反響日時が既存売主 ${existing.seller_number} と一致`);
+                return res.json({
+                  success: true,
+                  skipped: true,
+                  message: `重複スキップ: 電話番号・反響日時が既存売主 ${existing.seller_number} と一致するため登録しませんでした`,
+                  duplicateSeller: existing.seller_number,
+                });
+              } else {
+                console.log(`[ieul-transfer] ℹ️ 同一電話番号 ${existing.seller_number} だが反響日時が異なるため新規登録します (既存: ${existingDatetime}, 今回: ${requestDate})`);
+              }
             }
           } catch {
             // 復号失敗はスキップ
@@ -625,16 +636,16 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
     }
 
     // ============================================================
-    // 重複チェック（同一電話番号が既にDBに存在する場合はスキップ）
+    // 重複チェック（同一電話番号 かつ 同一反響日時の場合のみスキップ）
+    // 過去に同じ人から別の時期に依頼が来た場合は新規登録する
     // ============================================================
     {
-      const { encrypt: encryptForCheck } = await import('../utils/encryption');
-      const supabaseForCheck = (await import('../config/supabase')).default;
       const { decrypt: decryptForCheck } = await import('../utils/encryption');
+      const supabaseForCheck = (await import('../config/supabase')).default;
 
       const { data: allSellers, error: fetchError } = await supabaseForCheck
         .from('sellers')
-        .select('id, seller_number, phone_number, inquiry_date')
+        .select('id, seller_number, phone_number, inquiry_detailed_datetime')
         .is('deleted_at', null);
 
       if (!fetchError && allSellers) {
@@ -643,13 +654,23 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
           try {
             const decryptedPhone = decryptForCheck(existing.phone_number);
             if (decryptedPhone === tel) {
-              console.log(`[home4u-transfer] ⏭ 重複スキップ: 電話番号が既存売主 ${existing.seller_number} と一致`);
-              return res.json({
-                success: true,
-                skipped: true,
-                message: `重複スキップ: 電話番号が既存売主 ${existing.seller_number} と一致するため登録しませんでした`,
-                duplicateSeller: existing.seller_number,
-              });
+              // 電話番号が一致しても、反響日時が異なれば別依頼として登録する
+              const existingDatetime = existing.inquiry_detailed_datetime;
+              const isSameDatetime = existingDatetime && inquiryDateTime
+                ? existingDatetime === inquiryDateTime || existingDatetime.startsWith(inquiryDateTime.replace(' ', 'T'))
+                : !existingDatetime && !inquiryDateTime;
+
+              if (isSameDatetime) {
+                console.log(`[home4u-transfer] ⏭ 重複スキップ: 電話番号・反響日時が既存売主 ${existing.seller_number} と一致`);
+                return res.json({
+                  success: true,
+                  skipped: true,
+                  message: `重複スキップ: 電話番号・反響日時が既存売主 ${existing.seller_number} と一致するため登録しませんでした`,
+                  duplicateSeller: existing.seller_number,
+                });
+              } else {
+                console.log(`[home4u-transfer] ℹ️ 同一電話番号 ${existing.seller_number} だが反響日時が異なるため新規登録します`);
+              }
             }
           } catch {
             // 復号失敗はスキップ
