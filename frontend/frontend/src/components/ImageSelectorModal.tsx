@@ -120,6 +120,8 @@ const ImageSelectorModal = ({
 
   // 検索バー用の状態
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isSearchMode, setIsSearchMode] = useState<boolean>(false); // Drive全体検索モード中か
+  const [searchLoading, setSearchLoading] = useState<boolean>(false);
   
   // ローカルファイル用の状態
   const [dragActive, setDragActive] = useState(false);
@@ -136,6 +138,7 @@ const ImageSelectorModal = ({
     }
     // タブ切り替え時に検索クエリをリセット
     setSearchQuery('');
+    setIsSearchMode(false);
   }, [open, activeTab]);
 
   // Google Driveフォルダの内容を読み込む
@@ -175,7 +178,36 @@ const ImageSelectorModal = ({
 
   // パンくずリストでフォルダに移動
   const handleBreadcrumbClick = (folderId: string | null) => {
+    setIsSearchMode(false);
+    setSearchQuery('');
     loadDriveFolder(folderId);
+  };
+
+  // Drive全体検索（Enter or 検索ボタン）
+  const handleDriveSearch = async () => {
+    if (!searchQuery.trim()) {
+      setIsSearchMode(false);
+      loadDriveFolder(DEFAULT_ROOT_FOLDER_ID);
+      return;
+    }
+    setSearchLoading(true);
+    setIsSearchMode(true);
+    setError(null);
+    try {
+      const response = await emailImageApi.searchFiles(searchQuery.trim(), DEFAULT_ROOT_FOLDER_ID);
+      setDriveFiles(response.files || []);
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message || '検索に失敗しました');
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // 検索クリア
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setIsSearchMode(false);
+    loadDriveFolder(DEFAULT_ROOT_FOLDER_ID);
   };
 
   // 画像を選択/解除
@@ -550,9 +582,10 @@ const ImageSelectorModal = ({
               <TextField
                 fullWidth
                 size="small"
-                placeholder="ファイル名で絞り込む..."
+                placeholder="ファイル名で検索（Enterで全体検索）..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleDriveSearch(); }}
                 sx={{ mb: 2 }}
                 InputProps={{
                   startAdornment: (
@@ -560,15 +593,30 @@ const ImageSelectorModal = ({
                       🔍
                     </Box>
                   ),
-                  endAdornment: searchQuery ? (
-                    <IconButton size="small" onClick={() => setSearchQuery('')}>
-                      <Close fontSize="small" />
-                    </IconButton>
-                  ) : null,
+                  endAdornment: (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      {searchQuery && (
+                        <IconButton size="small" onClick={handleClearSearch} title="クリア">
+                          <Close fontSize="small" />
+                        </IconButton>
+                      )}
+                      <Button size="small" variant="contained" onClick={handleDriveSearch}
+                        disabled={searchLoading || !searchQuery.trim()}
+                        sx={{ minWidth: 60, height: 28, fontSize: '0.75rem' }}>
+                        {searchLoading ? <CircularProgress size={14} color="inherit" /> : '検索'}
+                      </Button>
+                    </Box>
+                  ),
                 }}
               />
+              {isSearchMode && (
+                <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Chip label={`「${searchQuery}」の検索結果 ${driveFiles.length}件`} size="small" color="primary" variant="outlined" />
+                  <Button size="small" onClick={handleClearSearch} sx={{ fontSize: '0.75rem' }}>フォルダに戻る</Button>
+                </Box>
+              )}
 
-              {loading ? (
+              {loading || searchLoading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
                   <CircularProgress />
                 </Box>
@@ -576,7 +624,7 @@ const ImageSelectorModal = ({
                 <Grid container spacing={2}>
                   {driveFiles
                     .filter((file) =>
-                      searchQuery === '' ||
+                      isSearchMode || searchQuery === '' ||
                       file.name.toLowerCase().includes(searchQuery.toLowerCase())
                     )
                     .map((file) =>
@@ -585,12 +633,14 @@ const ImageSelectorModal = ({
                         : renderImageCard(convertDriveFileToImageFile(file))
                     )}
                   {driveFiles.filter((file) =>
-                    searchQuery === '' ||
+                    isSearchMode || searchQuery === '' ||
                     file.name.toLowerCase().includes(searchQuery.toLowerCase())
                   ).length === 0 && (
                     <Grid item xs={12}>
                       <Alert severity="info">
-                        {searchQuery
+                        {isSearchMode
+                          ? `「${searchQuery}」に一致するファイルが見つかりません`
+                          : searchQuery
                           ? `「${searchQuery}」に一致するファイルが見つかりません`
                           : 'このフォルダには画像がありません'}
                       </Alert>

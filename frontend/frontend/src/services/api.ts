@@ -166,6 +166,14 @@ export const emailImageApi = {
     return response.data;
   },
 
+  // Google Drive全体検索
+  searchFiles: async (query: string, rootFolderId?: string | null) => {
+    const response = await api.get('/api/drive/search', {
+      params: { q: query, ...(rootFolderId ? { rootFolderId } : {}) },
+    });
+    return response.data;
+  },
+
   // フォルダパスを取得
   getFolderPath: async (folderId: string) => {
     const response = await api.get(`/api/drive/folders/${folderId}/path`);

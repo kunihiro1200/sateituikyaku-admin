@@ -386,6 +386,57 @@ export class GoogleDriveService extends BaseRepository {
    * フォルダ内のファイル一覧を取得
    * 共有ドライブ対応 - corpora: 'drive'とdriveIdを指定
    */
+  /**
+   * ファイル名でGoogle Drive内を検索（サブフォルダも含む）
+   * rootFolderIdが指定された場合、そのフォルダ配下のみを対象にする
+   */
+  async searchFiles(query: string, rootFolderId: string | null): Promise<{ files: any[] }> {
+    try {
+      const drive = await this.getDriveClient();
+
+      // ファイル名に検索ワードを含む条件
+      // rootFolderIdがある場合は "in parents" チェーンが難しいので
+      // name contains でドライブ全体を検索し、後でフィルタする
+      let qStr = `name contains '${query.replace(/'/g, "\\'")}' and trashed = false`;
+
+      const queryParams: any = {
+        q: qStr,
+        fields: 'files(id, name, mimeType, size, modifiedTime, webViewLink, webContentLink, thumbnailLink, parents)',
+        orderBy: 'modifiedTime desc',
+        pageSize: 50,
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
+      };
+
+      if (this.sharedDriveId) {
+        queryParams.corpora = 'drive';
+        queryParams.driveId = this.sharedDriveId;
+      } else {
+        queryParams.corpora = 'allDrives';
+      }
+
+      const response = await drive.files.list(queryParams);
+      const files = response.data.files || [];
+
+      const result = files.map(file => ({
+        id: file.id || '',
+        name: file.name || '',
+        mimeType: file.mimeType || '',
+        size: parseInt(file.size || '0', 10),
+        modifiedTime: file.modifiedTime || '',
+        webViewLink: file.webViewLink || this.getPreviewUrl(file.id || ''),
+        webContentLink: file.webContentLink || this.getDownloadUrl(file.id || ''),
+        thumbnailLink: file.thumbnailLink,
+        isFolder: file.mimeType === 'application/vnd.google-apps.folder',
+      }));
+
+      return { files: result };
+    } catch (error: any) {
+      console.error('[GoogleDriveService] searchFiles error:', error.message);
+      throw error;
+    }
+  }
+
   async listFiles(folderId: string): Promise<DriveFile[]> {
     try {
       const drive = await this.getDriveClient();

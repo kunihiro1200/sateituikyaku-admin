@@ -252,6 +252,25 @@ router.post('/folders/:sellerNumber/files', authenticate, upload.single('file'),
 
 
 /**
+ * GET /api/drive/search?q=keyword&rootFolderId=xxx
+ * 指定フォルダ配下をGoogle Drive APIで全文検索（サブフォルダも含む）
+ */
+router.get('/search', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { q, rootFolderId } = req.query as { q?: string; rootFolderId?: string };
+    if (!q || q.trim() === '') {
+      return res.status(400).json({ error: '検索キーワードを入力してください' });
+    }
+
+    const result = await driveService.searchFiles(q.trim(), rootFolderId || null);
+    return res.json(result);
+  } catch (error: any) {
+    console.error('[drive/search] エラー:', error.message);
+    return res.status(500).json({ error: error.message || '検索に失敗しました' });
+  }
+});
+
+/**
  * GET /api/drive/files/:fileId/base64
  * ファイルのBase64データを返す（公課証明比較・建築概要書解析などAI解析用）
  */
