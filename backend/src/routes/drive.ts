@@ -252,6 +252,26 @@ router.post('/folders/:sellerNumber/files', authenticate, upload.single('file'),
 
 
 /**
+ * GET /api/drive/files/:fileId/base64
+ * ファイルのBase64データを返す（公課証明比較・建築概要書解析などAI解析用）
+ */
+router.get('/files/:fileId/base64', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { fileId } = req.params;
+    if (!fileId) return res.status(400).json({ error: 'fileIdが必要です' });
+
+    const fileData = await driveService.getFile(fileId);
+    if (!fileData) return res.status(404).json({ error: 'ファイルが見つかりません' });
+
+    const base64 = fileData.data.toString('base64');
+    return res.json({ success: true, base64, mimeType: fileData.mimeType });
+  } catch (error: any) {
+    console.error('[drive/base64] エラー:', error.message);
+    return res.status(500).json({ error: error.message || 'ファイル取得に失敗しました' });
+  }
+});
+
+/**
  * DELETE /api/drive/files/:fileId
  * ファイルを削除
  */

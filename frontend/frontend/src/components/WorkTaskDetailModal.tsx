@@ -5114,7 +5114,9 @@ ${pageUrl}`;
                   variant="contained"
                   size="small"
                   onClick={() => {
+                    const storageUrl = getValue('storage_url');
                     const params = new URLSearchParams({ propertyNumber: propertyNumber || '' });
+                    if (storageUrl) params.set('storageUrl', storageUrl);
                     window.open(`/kotei-kazei-compare?${params.toString()}`, '_blank', 'noopener,noreferrer');
                   }}
                   sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#4a148c', '&:hover': { bgcolor: '#38006b' }, fontSize: '0.75rem', px: 1, py: 0.4, minWidth: 0 }}
@@ -5380,7 +5382,9 @@ ${pageUrl}`;
                     variant="contained"
                     size="small"
                     onClick={() => {
+                      const storageUrl = getValue('storage_url');
                       const params = new URLSearchParams({ propertyNumber: propertyNumber || '' });
+                      if (storageUrl) params.set('storageUrl', storageUrl);
                       window.open(`/kotei-kazei-compare?${params.toString()}`, '_blank', 'noopener,noreferrer');
                     }}
                     sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#4a148c', '&:hover': { bgcolor: '#38006b' }, fontSize: '0.85rem', px: 1.5 }}

@@ -2,7 +2,8 @@ import React, { useState, useCallback } from 'react';
 import {
   Box, Button, Typography, Paper, CircularProgress, Alert, Chip,
   Divider, List, ListItem, ListItemIcon, ListItemText,
-  LinearProgress, Snackbar, Grid,
+  LinearProgress, Snackbar, Grid, Tab, Tabs,
+  IconButton, Tooltip,
 } from '@mui/material';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -14,6 +15,9 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
 import LandscapeIcon from '@mui/icons-material/Landscape';
 import HomeIcon from '@mui/icons-material/Home';
+import FolderIcon from '@mui/icons-material/Folder';
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const API_BASE_URL =
@@ -43,6 +47,14 @@ interface FilePayload {
   base64: string;
 }
 
+interface DriveFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  modifiedTime: string;
+}
+
 async function splitPdfIntoChunks(file: File, maxBytes: number): Promise<FilePayload[][]> {
   const pdfjsLib = await import('pdfjs-dist');
   pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -54,11 +66,9 @@ async function splitPdfIntoChunks(file: File, maxBytes: number): Promise<FilePay
     const page = await pdf.getPage(i);
     const viewport = page.getViewport({ scale: 1.5 });
     const canvas = document.createElement('canvas');
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
+    canvas.width = viewport.width; canvas.height = viewport.height;
     const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     await page.render({ canvasContext: ctx, viewport }).promise;
     const base64 = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
     pages.push({ name: `${file.name}_p${i}.jpg`, mimeType: 'image/jpeg', base64 });
@@ -83,7 +93,7 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-async function filesToPayloads(files: File[], onProgress: (msg: string) => void): Promise<FilePayload[]> {
+async function localFilesToPayloads(files: File[], onProgress: (msg: string) => void): Promise<FilePayload[]> {
   const payloads: FilePayload[] = [];
   for (const file of files) {
     if (file.type === 'application/pdf') {
@@ -98,42 +108,38 @@ async function filesToPayloads(files: File[], onProgress: (msg: string) => void)
   return payloads;
 }
 
+async function driveFileToPayload(fileId: string, fileName: string): Promise<FilePayload> {
+  const res = await fetch(`${API_BASE_URL}/api/drive/files/${fileId}/base64`, {
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(`Drive取得エラー: ${res.status}`);
+  const { base64, mimeType } = await res.json();
+  return { name: fileName, mimeType, base64 };
+}
+
 const DIFF_TYPE_LABEL: Record<DiffItem['diffType'], string> = {
-  only_in_toki:       '謄本にのみ存在',
-  only_in_kazei:      '公課証明にのみ存在',
-  area_mismatch:      '面積が異なる',
-  type_mismatch:      '地目が異なる',
-  attached_building:  '付属建物の不一致',
+  only_in_toki: '謄本にのみ存在', only_in_kazei: '公課証明にのみ存在',
+  area_mismatch: '面積が異なる', type_mismatch: '地目が異なる',
+  attached_building: '付属建物の不一致',
 };
-
 const DIFF_TYPE_COLOR: Record<DiffItem['diffType'], 'error' | 'warning' | 'info'> = {
-  only_in_toki:      'error',
-  only_in_kazei:     'error',
-  area_mismatch:     'warning',
-  type_mismatch:     'warning',
-  attached_building: 'info',
+  only_in_toki: 'error', only_in_kazei: 'error',
+  area_mismatch: 'warning', type_mismatch: 'warning', attached_building: 'info',
 };
 
-// ドロップゾーンコンポーネント
-const DropZone: React.FC<{
-  id: string;
-  label: string;
-  color: string;
-  files: File[];
-  onAdd: (files: FileList | null) => void;
-  onRemove: (i: number) => void;
+// ローカルファイルのドロップゾーン
+const LocalDropZone: React.FC<{
+  id: string; label: string; color: string;
+  files: File[]; onAdd: (f: FileList | null) => void; onRemove: (i: number) => void;
 }> = ({ id, label, color, files, onAdd, onRemove }) => {
   const [dragOver, setDragOver] = useState(false);
   return (
     <Box>
-      <Paper
-        variant="outlined"
-        sx={{
-          p: 2, textAlign: 'center', cursor: 'pointer',
-          border: dragOver ? `2px dashed ${color}` : '2px dashed #ccc',
-          backgroundColor: dragOver ? '#f5f5f5' : '#fafafa',
-          transition: 'all 0.2s',
-        }}
+      <Paper variant="outlined" sx={{
+        p: 2, textAlign: 'center', cursor: 'pointer',
+        border: dragOver ? `2px dashed ${color}` : '2px dashed #ccc',
+        backgroundColor: dragOver ? '#f5f5f5' : '#fafafa', transition: 'all 0.2s',
+      }}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => { e.preventDefault(); setDragOver(false); onAdd(e.dataTransfer.files); }}
@@ -141,9 +147,7 @@ const DropZone: React.FC<{
       >
         <input id={id} type="file" multiple
           accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
-          style={{ display: 'none' }}
-          onChange={(e) => onAdd(e.target.files)}
-        />
+          style={{ display: 'none' }} onChange={(e) => onAdd(e.target.files)} />
         <UploadFileIcon sx={{ fontSize: 36, color: 'text.secondary', mb: 0.5 }} />
         <Typography variant="body2" color="text.secondary" fontWeight="bold">{label}</Typography>
         <Typography variant="caption" color="text.disabled">PDF・画像（複数可）</Typography>
@@ -154,12 +158,74 @@ const DropZone: React.FC<{
             <Chip key={i} size="small"
               icon={f.type === 'application/pdf' ? <PictureAsPdfIcon /> : <ImageIcon />}
               label={`${f.name} (${(f.size / 1024).toFixed(0)}KB)`}
-              onDelete={() => onRemove(i)}
-              color={f.type === 'application/pdf' ? 'error' : 'default'}
-              variant="outlined"
-            />
+              onDelete={() => onRemove(i)} color={f.type === 'application/pdf' ? 'error' : 'default'} variant="outlined" />
           ))}
         </Box>
+      )}
+    </Box>
+  );
+};
+
+// Google Driveファイル選択UI
+const DriveFileSelector: React.FC<{
+  label: string; color: string; storageUrl: string | null;
+  selectedIds: string[]; onToggle: (file: DriveFile) => void;
+}> = ({ label, color, storageUrl, selectedIds, onToggle }) => {
+  const [files, setFiles] = useState<DriveFile[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadFiles = useCallback(async () => {
+    if (!storageUrl) { setError('格納先URLが設定されていません'); return; }
+    const match = storageUrl.match(/[-\w]{25,}/);
+    const folderId = match ? match[0] : null;
+    if (!folderId) { setError('フォルダIDの取得に失敗しました'); return; }
+    setLoading(true); setError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/drive/folders/contents?folderId=${folderId}`, { credentials: 'include' });
+      const data = await res.json();
+      const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      const filtered = (data.files || []).filter((f: DriveFile) => allowed.includes(f.mimeType));
+      setFiles(filtered);
+    } catch (e: any) { setError(e.message); } finally { setLoading(false); }
+  }, [storageUrl]);
+
+  React.useEffect(() => { loadFiles(); }, [loadFiles]);
+
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+        <FolderIcon sx={{ color }} />
+        <Typography variant="body2" fontWeight="bold" color={color}>{label}</Typography>
+        <Tooltip title="再読み込み"><IconButton size="small" onClick={loadFiles}><RefreshIcon fontSize="small" /></IconButton></Tooltip>
+      </Box>
+      {!storageUrl && <Alert severity="warning" sx={{ mb: 1 }}>格納先URLが設定されていません</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
+      {loading && <CircularProgress size={20} />}
+      {files.length === 0 && !loading && !error && storageUrl && (
+        <Typography variant="caption" color="text.secondary">PDF・画像ファイルが見つかりません</Typography>
+      )}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, maxHeight: 200, overflowY: 'auto' }}>
+        {files.map((f) => {
+          const selected = selectedIds.includes(f.id);
+          return (
+            <Paper key={f.id} variant="outlined" sx={{
+              p: 0.8, display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer',
+              bgcolor: selected ? '#e3f2fd' : 'white',
+              borderColor: selected ? color : '#ccc', borderWidth: selected ? 2 : 1,
+              '&:hover': { bgcolor: '#f5f5f5' },
+            }} onClick={() => onToggle(f)}>
+              {f.mimeType === 'application/pdf' ? <PictureAsPdfIcon fontSize="small" color="error" /> : <ImageIcon fontSize="small" color="primary" />}
+              <Typography variant="caption" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</Typography>
+              {selected && <CheckCircleIcon fontSize="small" sx={{ color }} />}
+            </Paper>
+          );
+        })}
+      </Box>
+      {selectedIds.length > 0 && (
+        <Typography variant="caption" color={color} fontWeight="bold" sx={{ mt: 0.5, display: 'block' }}>
+          {selectedIds.length}ファイル選択中
+        </Typography>
       )}
     </Box>
   );
@@ -169,9 +235,19 @@ const KoteiKazeiComparePage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const propertyNumber = searchParams.get('propertyNumber');
+  const storageUrl = searchParams.get('storageUrl');
 
+  // 入力タブ（0=ローカル、1=Google Drive）
+  const [inputTab, setInputTab] = useState(0);
+
+  // ローカルファイル
   const [tokiFiles, setTokiFiles] = useState<File[]>([]);
   const [kazeiFiles, setKazeiFiles] = useState<File[]>([]);
+
+  // Google DriveファイルID選択
+  const [tokiDriveFiles, setTokiDriveFiles] = useState<DriveFile[]>([]);
+  const [kazeiDriveFiles, setKazeiDriveFiles] = useState<DriveFile[]>([]);
+
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [progress, setProgress] = useState(0);
@@ -186,24 +262,18 @@ const KoteiKazeiComparePage: React.FC = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
 
-  // 保存済みデータの読み込み
   React.useEffect(() => {
     if (!propertyNumber) return;
-    fetch(`${API_BASE_URL}/api/kotei-kazei-compare/${encodeURIComponent(propertyNumber)}`)
-      .then((r) => r.json())
-      .then((json) => {
+    fetch(`${API_BASE_URL}/api/kotei-kazei-compare/${encodeURIComponent(propertyNumber)}`, { credentials: 'include' })
+      .then((r) => r.json()).then((json) => {
         if (json.data) {
-          setDiffs(json.data.diffs);
-          setTokiData(json.data.toki_data);
-          setKazeiData(json.data.kazei_data);
-          setSavedAt(json.data.analyzed_at);
-          setIsFromCache(true);
+          setDiffs(json.data.diffs); setTokiData(json.data.toki_data);
+          setKazeiData(json.data.kazei_data); setSavedAt(json.data.analyzed_at); setIsFromCache(true);
         }
-      })
-      .catch(() => {});
+      }).catch(() => {});
   }, [propertyNumber]);
 
-  const addFiles = useCallback((setter: React.Dispatch<React.SetStateAction<File[]>>) =>
+  const addLocalFiles = useCallback((setter: React.Dispatch<React.SetStateAction<File[]>>) =>
     (newFiles: FileList | null) => {
       if (!newFiles) return;
       const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
@@ -211,71 +281,66 @@ const KoteiKazeiComparePage: React.FC = () => {
       if (valid.length > 0) setter((prev) => [...prev, ...valid]);
     }, []);
 
+  const toggleDriveFile = (setter: React.Dispatch<React.SetStateAction<DriveFile[]>>) =>
+    (file: DriveFile) => setter((prev) => prev.find((f) => f.id === file.id) ? prev.filter((f) => f.id !== file.id) : [...prev, file]);
+
+  const hasInput = inputTab === 0
+    ? (tokiFiles.length > 0 && kazeiFiles.length > 0)
+    : (tokiDriveFiles.length > 0 && kazeiDriveFiles.length > 0);
+
   const handleAnalyze = async () => {
-    if (tokiFiles.length === 0 || kazeiFiles.length === 0) {
-      setError('謄本と公課証明の両方のファイルを選択してください');
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    setDiffs(null);
-    setProgress(0);
-
+    if (!hasInput) { setError('謄本と公課証明の両方のファイルを選択してください'); return; }
+    setLoading(true); setError(null); setDiffs(null); setProgress(0);
     try {
-      setLoadingMessage('謄本を準備中...');
-      const tokiPayloads = await filesToPayloads(tokiFiles, setLoadingMessage);
-      setProgress(25);
+      let tokiPayloads: FilePayload[], kazeiPayloads: FilePayload[];
 
-      setLoadingMessage('公課証明を準備中...');
-      const kazeiPayloads = await filesToPayloads(kazeiFiles, setLoadingMessage);
+      if (inputTab === 0) {
+        // ローカルファイル
+        setLoadingMessage('謄本を準備中...');
+        tokiPayloads = await localFilesToPayloads(tokiFiles, setLoadingMessage);
+        setProgress(25);
+        setLoadingMessage('公課証明を準備中...');
+        kazeiPayloads = await localFilesToPayloads(kazeiFiles, setLoadingMessage);
+      } else {
+        // Google Drive
+        setLoadingMessage('Google Driveから謄本を取得中...');
+        tokiPayloads = await Promise.all(tokiDriveFiles.map((f) => driveFileToPayload(f.id, f.name)));
+        setProgress(25);
+        setLoadingMessage('Google Driveから公課証明を取得中...');
+        kazeiPayloads = await Promise.all(kazeiDriveFiles.map((f) => driveFileToPayload(f.id, f.name)));
+      }
+
       setProgress(50);
-
       setLoadingMessage('Claude AIが謄本と公課証明を比較解析中...');
+
       const response = await fetch(`${API_BASE_URL}/api/kotei-kazei-compare/analyze`, {
-        method: 'POST',
+        method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tokiFiles: tokiPayloads, kazeiFiles: kazeiPayloads }),
       });
 
       setProgress(90);
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error((err as any).error || `APIエラー: ${response.status}`);
-      }
+      if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error((err as any).error || `APIエラー: ${response.status}`); }
 
       const data = await response.json();
-      setDiffs(data.diffs);
-      setTokiData(data.toki);
-      setKazeiData(data.kazei);
-      setIsFromCache(false);
-      setProgress(100);
+      setDiffs(data.diffs); setTokiData(data.toki); setKazeiData(data.kazei);
+      setIsFromCache(false); setProgress(100);
 
-      // 自動保存
       if (propertyNumber) {
         setSaving(true);
         try {
           await fetch(`${API_BASE_URL}/api/kotei-kazei-compare/save`, {
-            method: 'POST',
+            method: 'POST', credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ propertyNumber, toki: data.toki, kazei: data.kazei, diffs: data.diffs }),
           });
           setSavedAt(new Date().toISOString());
-          setSnackbarMessage('比較結果を保存しました');
-          setSnackbarSeverity('success');
-          setSnackbarOpen(true);
-        } catch {
-          // 保存失敗は無視
-        } finally {
-          setSaving(false);
-        }
+          setSnackbarMessage('比較結果を保存しました'); setSnackbarSeverity('success'); setSnackbarOpen(true);
+        } catch { } finally { setSaving(false); }
       }
     } catch (err: any) {
       setError(err.message || '解析中にエラーが発生しました');
-    } finally {
-      setLoading(false);
-      setLoadingMessage('');
-      setProgress(0);
-    }
+    } finally { setLoading(false); setLoadingMessage(''); setProgress(0); }
   };
 
   const landDiffs = diffs?.filter((d) => d.category === 'land') ?? [];
@@ -283,39 +348,60 @@ const KoteiKazeiComparePage: React.FC = () => {
 
   return (
     <Box sx={{ maxWidth: 960, mx: 'auto', p: 3 }}>
-      {/* ヘッダー */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <Button variant="outlined" size="small" startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/work-tasks')} sx={{ whiteSpace: 'nowrap' }}>
-          業務一覧
-        </Button>
+        <Button variant="outlined" size="small" startIcon={<ArrowBackIcon />} onClick={() => navigate('/work-tasks')} sx={{ whiteSpace: 'nowrap' }}>業務一覧</Button>
         <Typography variant="h5" fontWeight="bold">固定資産税公課証明 比較</Typography>
         {propertyNumber && <Chip label={propertyNumber} size="small" color="primary" variant="outlined" />}
       </Box>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         謄本（複数枚可）と固定資産税公課証明書を読み込み、地番・面積・付属建物などの差分を自動検出します。
       </Typography>
 
-      {/* ファイルアップロード（左右2カラム） */}
-      <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={12} md={6}>
-          <DropZone id="toki-file-input" label="謄本（登記事項証明書）" color="#1565c0"
-            files={tokiFiles} onAdd={addFiles(setTokiFiles)}
-            onRemove={(i) => setTokiFiles((p) => p.filter((_, idx) => idx !== i))} />
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <DropZone id="kazei-file-input" label="固定資産税公課証明書" color="#e65100"
-            files={kazeiFiles} onAdd={addFiles(setKazeiFiles)}
-            onRemove={(i) => setKazeiFiles((p) => p.filter((_, idx) => idx !== i))} />
-        </Grid>
-      </Grid>
+      {/* 入力方法タブ */}
+      <Paper variant="outlined" sx={{ mb: 2 }}>
+        <Tabs value={inputTab} onChange={(_, v) => setInputTab(v)} sx={{ borderBottom: '1px solid #e0e0e0' }}>
+          <Tab icon={<UploadFileIcon />} iconPosition="start" label="ローカルから選ぶ" />
+          <Tab icon={<CloudDownloadIcon />} iconPosition="start" label="Google Driveから選ぶ" />
+        </Tabs>
+
+        <Box sx={{ p: 2 }}>
+          {inputTab === 0 ? (
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <LocalDropZone id="toki-file-input" label="謄本（登記事項証明書）" color="#1565c0"
+                  files={tokiFiles} onAdd={addLocalFiles(setTokiFiles)}
+                  onRemove={(i) => setTokiFiles((p) => p.filter((_, idx) => idx !== i))} />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <LocalDropZone id="kazei-file-input" label="固定資産税公課証明書" color="#e65100"
+                  files={kazeiFiles} onAdd={addLocalFiles(setKazeiFiles)}
+                  onRemove={(i) => setKazeiFiles((p) => p.filter((_, idx) => idx !== i))} />
+              </Grid>
+            </Grid>
+          ) : (
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <DriveFileSelector label="謄本（登記事項証明書）" color="#1565c0"
+                  storageUrl={storageUrl}
+                  selectedIds={tokiDriveFiles.map((f) => f.id)}
+                  onToggle={toggleDriveFile(setTokiDriveFiles)} />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <DriveFileSelector label="固定資産税公課証明書" color="#e65100"
+                  storageUrl={storageUrl}
+                  selectedIds={kazeiDriveFiles.map((f) => f.id)}
+                  onToggle={toggleDriveFile(setKazeiDriveFiles)} />
+              </Grid>
+            </Grid>
+          )}
+        </Box>
+      </Paper>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Button variant="contained" size="large" fullWidth
         startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SearchIcon />}
-        onClick={handleAnalyze}
-        disabled={loading || tokiFiles.length === 0 || kazeiFiles.length === 0}
+        onClick={handleAnalyze} disabled={loading || !hasInput}
         sx={{ mb: loading ? 1 : 3, bgcolor: '#4a148c', '&:hover': { bgcolor: '#38006b' } }}
       >
         {loading ? '解析中...' : '謄本と公課証明を比較する'}
@@ -324,28 +410,21 @@ const KoteiKazeiComparePage: React.FC = () => {
       {loading && (
         <Box sx={{ mb: 3 }}>
           <LinearProgress variant={progress > 0 ? 'determinate' : 'indeterminate'} value={progress} />
-          <Typography variant="caption" color="text.secondary"
-            sx={{ mt: 0.5, display: 'block', textAlign: 'center' }}>{loadingMessage}</Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', textAlign: 'center' }}>{loadingMessage}</Typography>
         </Box>
       )}
 
       {diffs !== null && (
         <Box>
-          {/* ステータスバー */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, flexWrap: 'wrap' }}>
             {saving && <CircularProgress size={16} />}
             {savedAt && !saving && (
               <Chip label={`保存済み ${new Date(savedAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
                 size="small" color="success" variant="outlined" icon={<SaveIcon />} />
             )}
-            {isFromCache && (
-              <Chip label="前回の保存済み結果" size="small" color="warning" variant="outlined" />
-            )}
-            <Chip
-              label={diffs.length === 0 ? '✓ 差分なし' : `⚠ 差分 ${diffs.length}件`}
-              color={diffs.length === 0 ? 'success' : 'error'}
-              sx={{ fontWeight: 700 }}
-            />
+            {isFromCache && <Chip label="前回の保存済み結果" size="small" color="warning" variant="outlined" />}
+            <Chip label={diffs.length === 0 ? '✓ 差分なし' : `⚠ 差分 ${diffs.length}件`}
+              color={diffs.length === 0 ? 'success' : 'error'} sx={{ fontWeight: 700 }} />
             {landDiffs.length > 0 && <Chip label={`土地 ${landDiffs.length}件`} size="small" color="warning" variant="outlined" icon={<LandscapeIcon />} />}
             {buildingDiffs.length > 0 && <Chip label={`建物 ${buildingDiffs.length}件`} size="small" color="warning" variant="outlined" icon={<HomeIcon />} />}
           </Box>
@@ -358,7 +437,6 @@ const KoteiKazeiComparePage: React.FC = () => {
             </Paper>
           ) : (
             <Paper variant="outlined" sx={{ p: 2 }}>
-              {/* 土地の差分 */}
               {landDiffs.length > 0 && (
                 <>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -370,45 +448,23 @@ const KoteiKazeiComparePage: React.FC = () => {
                       <React.Fragment key={i}>
                         {i > 0 && <Divider component="li" />}
                         <ListItem alignItems="flex-start" sx={{ py: 1 }}>
-                          <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-                            <WarningAmberIcon color={DIFF_TYPE_COLOR[diff.diffType]} />
-                          </ListItemIcon>
+                          <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}><WarningAmberIcon color={DIFF_TYPE_COLOR[diff.diffType]} /></ListItemIcon>
                           <ListItemText
-                            primary={
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                                <Typography variant="subtitle2" fontWeight="bold">{diff.description}</Typography>
-                                <Chip label={DIFF_TYPE_LABEL[diff.diffType]} size="small"
-                                  color={DIFF_TYPE_COLOR[diff.diffType]} variant="outlined"
-                                  sx={{ fontSize: '0.7rem', height: 20 }} />
-                              </Box>
-                            }
-                            secondary={
-                              <Box sx={{ mt: 0.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                {diff.tokiValue && (
-                                  <Box sx={{ p: 1, bgcolor: '#e3f2fd', borderRadius: 1, borderLeft: '3px solid #1565c0' }}>
-                                    <Typography variant="caption" color="#1565c0" fontWeight="bold">謄本：</Typography>
-                                    <Typography variant="body2">{diff.tokiValue}</Typography>
-                                  </Box>
-                                )}
-                                {diff.kazeiValue && (
-                                  <Box sx={{ p: 1, bgcolor: '#fff3e0', borderRadius: 1, borderLeft: '3px solid #e65100' }}>
-                                    <Typography variant="caption" color="#e65100" fontWeight="bold">公課証明：</Typography>
-                                    <Typography variant="body2">{diff.kazeiValue}</Typography>
-                                  </Box>
-                                )}
-                              </Box>
-                            }
-                          />
+                            primary={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                              <Typography variant="subtitle2" fontWeight="bold">{diff.description}</Typography>
+                              <Chip label={DIFF_TYPE_LABEL[diff.diffType]} size="small" color={DIFF_TYPE_COLOR[diff.diffType]} variant="outlined" sx={{ fontSize: '0.7rem', height: 20 }} />
+                            </Box>}
+                            secondary={<Box sx={{ mt: 0.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                              {diff.tokiValue && <Box sx={{ p: 1, bgcolor: '#e3f2fd', borderRadius: 1, borderLeft: '3px solid #1565c0' }}><Typography variant="caption" color="#1565c0" fontWeight="bold">謄本：</Typography><Typography variant="body2">{diff.tokiValue}</Typography></Box>}
+                              {diff.kazeiValue && <Box sx={{ p: 1, bgcolor: '#fff3e0', borderRadius: 1, borderLeft: '3px solid #e65100' }}><Typography variant="caption" color="#e65100" fontWeight="bold">公課証明：</Typography><Typography variant="body2">{diff.kazeiValue}</Typography></Box>}
+                            </Box>} />
                         </ListItem>
                       </React.Fragment>
                     ))}
                   </List>
                 </>
               )}
-
               {landDiffs.length > 0 && buildingDiffs.length > 0 && <Divider sx={{ my: 2 }} />}
-
-              {/* 建物の差分 */}
               {buildingDiffs.length > 0 && (
                 <>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -420,35 +476,16 @@ const KoteiKazeiComparePage: React.FC = () => {
                       <React.Fragment key={i}>
                         {i > 0 && <Divider component="li" />}
                         <ListItem alignItems="flex-start" sx={{ py: 1 }}>
-                          <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-                            <WarningAmberIcon color={DIFF_TYPE_COLOR[diff.diffType]} />
-                          </ListItemIcon>
+                          <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}><WarningAmberIcon color={DIFF_TYPE_COLOR[diff.diffType]} /></ListItemIcon>
                           <ListItemText
-                            primary={
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                                <Typography variant="subtitle2" fontWeight="bold">{diff.description}</Typography>
-                                <Chip label={DIFF_TYPE_LABEL[diff.diffType]} size="small"
-                                  color={DIFF_TYPE_COLOR[diff.diffType]} variant="outlined"
-                                  sx={{ fontSize: '0.7rem', height: 20 }} />
-                              </Box>
-                            }
-                            secondary={
-                              <Box sx={{ mt: 0.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                {diff.tokiValue && (
-                                  <Box sx={{ p: 1, bgcolor: '#e3f2fd', borderRadius: 1, borderLeft: '3px solid #1565c0' }}>
-                                    <Typography variant="caption" color="#1565c0" fontWeight="bold">謄本：</Typography>
-                                    <Typography variant="body2">{diff.tokiValue}</Typography>
-                                  </Box>
-                                )}
-                                {diff.kazeiValue && (
-                                  <Box sx={{ p: 1, bgcolor: '#fff3e0', borderRadius: 1, borderLeft: '3px solid #e65100' }}>
-                                    <Typography variant="caption" color="#e65100" fontWeight="bold">公課証明：</Typography>
-                                    <Typography variant="body2">{diff.kazeiValue}</Typography>
-                                  </Box>
-                                )}
-                              </Box>
-                            }
-                          />
+                            primary={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                              <Typography variant="subtitle2" fontWeight="bold">{diff.description}</Typography>
+                              <Chip label={DIFF_TYPE_LABEL[diff.diffType]} size="small" color={DIFF_TYPE_COLOR[diff.diffType]} variant="outlined" sx={{ fontSize: '0.7rem', height: 20 }} />
+                            </Box>}
+                            secondary={<Box sx={{ mt: 0.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                              {diff.tokiValue && <Box sx={{ p: 1, bgcolor: '#e3f2fd', borderRadius: 1, borderLeft: '3px solid #1565c0' }}><Typography variant="caption" color="#1565c0" fontWeight="bold">謄本：</Typography><Typography variant="body2">{diff.tokiValue}</Typography></Box>}
+                              {diff.kazeiValue && <Box sx={{ p: 1, bgcolor: '#fff3e0', borderRadius: 1, borderLeft: '3px solid #e65100' }}><Typography variant="caption" color="#e65100" fontWeight="bold">公課証明：</Typography><Typography variant="body2">{diff.kazeiValue}</Typography></Box>}
+                            </Box>} />
                         </ListItem>
                       </React.Fragment>
                     ))}
@@ -458,33 +495,21 @@ const KoteiKazeiComparePage: React.FC = () => {
             </Paper>
           )}
 
-          {/* 読み取り内容サマリー */}
           <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            {tokiData && (
-              <Paper variant="outlined" sx={{ p: 1.5, flex: 1, minWidth: 200 }}>
-                <Typography variant="caption" color="#1565c0" fontWeight="bold">📄 謄本 読み取り内容</Typography>
-                <Typography variant="body2" sx={{ mt: 0.5 }}>
-                  土地: {tokiData.lands.length}筆　建物: {tokiData.buildings.filter((b) => !b.isAttached).length}棟　付属: {tokiData.buildings.filter((b) => b.isAttached).length}棟
-                </Typography>
-              </Paper>
-            )}
-            {kazeiData && (
-              <Paper variant="outlined" sx={{ p: 1.5, flex: 1, minWidth: 200 }}>
-                <Typography variant="caption" color="#e65100" fontWeight="bold">📄 公課証明 読み取り内容</Typography>
-                <Typography variant="body2" sx={{ mt: 0.5 }}>
-                  土地: {kazeiData.lands.length}筆　建物: {kazeiData.buildings.filter((b) => !b.isAttached).length}棟　付属: {kazeiData.buildings.filter((b) => b.isAttached).length}棟
-                </Typography>
-              </Paper>
-            )}
+            {tokiData && <Paper variant="outlined" sx={{ p: 1.5, flex: 1, minWidth: 200 }}>
+              <Typography variant="caption" color="#1565c0" fontWeight="bold">📄 謄本 読み取り内容</Typography>
+              <Typography variant="body2" sx={{ mt: 0.5 }}>土地: {tokiData.lands.length}筆　建物: {tokiData.buildings.filter((b) => !b.isAttached).length}棟　付属: {tokiData.buildings.filter((b) => b.isAttached).length}棟</Typography>
+            </Paper>}
+            {kazeiData && <Paper variant="outlined" sx={{ p: 1.5, flex: 1, minWidth: 200 }}>
+              <Typography variant="caption" color="#e65100" fontWeight="bold">📄 公課証明 読み取り内容</Typography>
+              <Typography variant="body2" sx={{ mt: 0.5 }}>土地: {kazeiData.lands.length}筆　建物: {kazeiData.buildings.filter((b) => !b.isAttached).length}棟　付属: {kazeiData.buildings.filter((b) => b.isAttached).length}棟</Typography>
+            </Paper>}
           </Box>
         </Box>
       )}
 
-      <Snackbar open={snackbarOpen} autoHideDuration={3000} onClose={() => setSnackbarOpen(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} sx={{ width: '100%' }}>
-          {snackbarMessage}
-        </Alert>
+      <Snackbar open={snackbarOpen} autoHideDuration={3000} onClose={() => setSnackbarOpen(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} sx={{ width: '100%' }}>{snackbarMessage}</Alert>
       </Snackbar>
     </Box>
   );
