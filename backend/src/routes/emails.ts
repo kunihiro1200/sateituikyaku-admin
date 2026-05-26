@@ -175,7 +175,7 @@ router.post(
   [
     body('templateId').notEmpty().withMessage('Template ID is required'),
     body('to').optional().isEmail().withMessage('Invalid email address'),
-    body('subject').notEmpty().withMessage('Subject is required'),
+    body('subject').optional().isString().withMessage('Subject must be a string'),
     body('content').optional().isString().withMessage('Content must be a string'),
     body('htmlBody').optional().isString().withMessage('HTML body must be a string'),
     body('from').optional().isEmail().withMessage('Invalid from email address'),
@@ -208,7 +208,9 @@ router.post(
       }
 
       const { sellerId } = req.params;
-      const { templateId, to, subject, content, htmlBody, from, attachments, replyTo } = req.body;
+      const { templateId, to, content, htmlBody, from, attachments, replyTo } = req.body;
+      // subject が空の場合はテンプレート名をフォールバックとして使用
+      const subject: string = (req.body.subject || req.body.templateName || '（件名なし）') as string;
 
       // Fromアドレス: 常に tenant@ifoo-oita.com 固定（文字化け防止）
       const resolvedFrom = 'tenant@ifoo-oita.com';
