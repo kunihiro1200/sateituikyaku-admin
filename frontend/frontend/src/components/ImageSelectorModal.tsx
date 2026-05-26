@@ -83,6 +83,9 @@ interface FolderPathItem {
   name: string;
 }
 
+// デフォルトのルートフォルダID（固定資産税・謄本書類保管フォルダ）
+const DEFAULT_ROOT_FOLDER_ID = '1d9oHRSQ1_UAC5XakBLijUsendj0ZxD4F';
+
 const ImageSelectorModal = ({
   open,
   onConfirm,
@@ -129,7 +132,7 @@ const ImageSelectorModal = ({
   // モーダルが開いたときにGoogle Driveのルートフォルダを読み込む
   useEffect(() => {
     if (open && activeTab === 'drive') {
-      loadDriveFolder(null);
+      loadDriveFolder(DEFAULT_ROOT_FOLDER_ID);
     }
     // タブ切り替え時に検索クエリをリセット
     setSearchQuery('');
@@ -525,7 +528,7 @@ const ImageSelectorModal = ({
                 <Link
                   component="button"
                   variant="body2"
-                  onClick={() => handleBreadcrumbClick(null)}
+                  onClick={() => handleBreadcrumbClick(DEFAULT_ROOT_FOLDER_ID)}
                   sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
                 >
                   <HomeIcon fontSize="small" />
