@@ -1,4 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string; numpages: number }>;
 import { GoogleDriveService } from './GoogleDriveService';
 import { GoogleSheetsClient } from './GoogleSheetsClient';
 
@@ -481,29 +483,49 @@ export class TokiExtractService {
   "construction_date": null
 }`;
 
-    const response = await callClaudeWithRetry(client, {
-      model: 'claude-sonnet-4-5',
-      max_tokens: 4096,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: 'application/pdf',
-                data: pdfBase64,
-              },
-            } as any,
-            {
-              type: 'text',
-              text: prompt,
-            },
-          ],
-        },
-      ],
-    });
+    // PDFからテキストを抽出してClaudeに送る（トークン数削減のため）
+    let pdfText = '';
+    try {
+      const pdfBuffer = Buffer.from(pdfBase64, 'base64');
+      const parsed = await pdfParse(pdfBuffer);
+      pdfText = parsed.text;
+      console.log(`[TokiExtract] PDF テキスト抽出成功: ${pdfText.length}文字`);
+    } catch (e: any) {
+      console.warn(`[TokiExtract] PDF テキスト抽出失敗: ${e.message}。Base64で送信します。`);
+    }
+
+    let response: Anthropic.Message;
+    if (pdfText && pdfText.length > 100) {
+      // テキスト抽出成功 → テキストとして送信（トークン数大幅削減）
+      response = await callClaudeWithRetry(client, {
+        model: 'claude-opus-4-5',
+        max_tokens: 4096,
+        messages: [
+          {
+            role: 'user',
+            content: prompt + '\n\n【登記簿謄本のテキスト内容】\n' + pdfText,
+          },
+        ],
+      });
+    } else {
+      // テキスト抽出失敗（スキャンPDF等）→ Base64で送信
+      response = await callClaudeWithRetry(client, {
+        model: 'claude-sonnet-4-5',
+        max_tokens: 4096,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'document',
+                source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 },
+              } as any,
+              { type: 'text', text: prompt },
+            ],
+          },
+        ],
+      });
+    }
 
     const responseText =
       response.content[0].type === 'text' ? response.content[0].text.trim() : '';
