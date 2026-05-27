@@ -442,6 +442,7 @@ export default function PropertyReportPage() {
         currentBody: originalBody,
         previousBodies,
         mode,
+        templateName: pendingSendHistory?.templateName || '',
       });
       if (response.data?.enhancedBody) {
         setEditBody(response.data.enhancedBody);

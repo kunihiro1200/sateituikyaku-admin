@@ -356,107 +356,200 @@ router.post('/comment-highlights', authenticate, async (req: Request, res: Respo
 });
 
 /**
- * メール本文をAIで改善・バリエーション生成
+ * スプレッドシートから同じ種別（テンプレ名）の過去報告書本文を取得する
+ * J列=種別、G列=区分（「物件」）、U列=物件本文
+ */
+async function fetchPastReportBodiesFromSheet(templateName: string): Promise<string[]> {
+  try {
+    const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
+    const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_TEMPLATE_SPREADSHEET_ID || '1sIBMhrarUSMcVWlTVVyaNNKaDxmfrxyHJLWv6U-MZxE';
+
+    // まずスプレッドシートのシート一覧を取得してシート名を特定する
+    const client = new GoogleSheetsClient({
+      spreadsheetId: SPREADSHEET_ID,
+      sheetName: 'テンプレート', // 認証用（シート名は後で動的取得）
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+    });
+    await client.authenticate();
+
+    const sheetsInstance = (client as any).sheets;
+
+    // スプレッドシートのシート一覧を取得
+    const spreadsheetMeta = await sheetsInstance.spreadsheets.get({
+      spreadsheetId: SPREADSHEET_ID,
+    });
+    const sheets = spreadsheetMeta.data.sheets || [];
+
+    // gid=13393607 に対応するシートを探す
+    const TARGET_GID = 13393607;
+    let targetSheetName: string | null = null;
+    for (const sheet of sheets) {
+      if (sheet.properties?.sheetId === TARGET_GID) {
+        targetSheetName = sheet.properties?.title || null;
+        break;
+      }
+    }
+
+    if (!targetSheetName) {
+      // gidで見つからない場合は「送信履歴」「メール履歴」などの名前で探す
+      const candidateNames = ['送信履歴', 'メール送信履歴', 'メール履歴', '履歴'];
+      for (const name of candidateNames) {
+        if (sheets.some((s: any) => s.properties?.title === name)) {
+          targetSheetName = name;
+          break;
+        }
+      }
+    }
+
+    if (!targetSheetName) {
+      console.warn('[fetchPastReportBodies] 送信履歴シートが見つかりませんでした');
+      return [];
+    }
+
+    console.log(`[fetchPastReportBodies] シート名: ${targetSheetName}, テンプレ名: ${templateName}`);
+
+    // ヘッダー行を取得してG列・J列・U列のインデックスを特定
+    const headerResponse = await sheetsInstance.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${targetSheetName}'!A1:ZZ1`,
+    });
+    const headers: string[] = (headerResponse.data.values?.[0] || []).map((h: any) => String(h || '').trim());
+
+    // カラム名で検索（G列=区分、J列=種別、U列=物件本文）
+    const categoryColIdx = headers.findIndex(h => h === '区分');
+    const typeColIdx = headers.findIndex(h => h === '種別');
+    const bodyColIdx = headers.findIndex(h => h === '物件本文');
+
+    // ヘッダーで見つからない場合は列番号で直接指定（G=6, J=9, U=20、0-indexed）
+    const effectiveCategoryIdx = categoryColIdx >= 0 ? categoryColIdx : 6;
+    const effectiveTypeIdx = typeColIdx >= 0 ? typeColIdx : 9;
+    const effectiveBodyIdx = bodyColIdx >= 0 ? bodyColIdx : 20;
+
+    console.log(`[fetchPastReportBodies] 列インデックス: 区分=${effectiveCategoryIdx}, 種別=${effectiveTypeIdx}, 物件本文=${effectiveBodyIdx}`);
+
+    // データを取得（最大1000行）
+    const dataResponse = await sheetsInstance.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${targetSheetName}'!A2:ZZ1000`,
+    });
+    const rows: any[][] = dataResponse.data.values || [];
+
+    // G列=「物件」かつ J列が templateName を含む行の U列を収集
+    const pastBodies: string[] = [];
+    for (const row of rows) {
+      const category = String(row[effectiveCategoryIdx] || '').trim();
+      const type = String(row[effectiveTypeIdx] || '').trim();
+      const body = String(row[effectiveBodyIdx] || '').trim();
+
+      if (category === '物件' && type.includes(templateName) && body.length > 0) {
+        pastBodies.push(body);
+      }
+    }
+
+    console.log(`[fetchPastReportBodies] 該当する過去報告書: ${pastBodies.length}件`);
+    // 最新20件を返す（多すぎるとトークンを消費するため）
+    return pastBodies.slice(-20);
+  } catch (error: any) {
+    console.error('[fetchPastReportBodies] エラー:', error.message);
+    return [];
+  }
+}
+
+/**
+ * メール本文をAIで改善・バリエーション生成（Claude使用）
  * POST /api/summarize/enhance-email
- * Body: { currentBody: string, previousBodies: string[] }
+ * Body: { currentBody: string, previousBodies: string[], mode: string, templateName?: string }
  */
 router.post('/enhance-email', authenticate, async (req: Request, res: Response) => {
   try {
-    const { currentBody, previousBodies, mode } = req.body;
+    const { currentBody, previousBodies, mode, templateName } = req.body;
     const enhanceMode: 'light' | 'rewrite' = mode === 'rewrite' ? 'rewrite' : 'light';
 
     if (!currentBody || typeof currentBody !== 'string' || currentBody.trim().length === 0) {
       return res.status(400).json({ error: 'currentBody は必須です' });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      console.error('[enhance-email] OPENAI_API_KEY not set');
-      return res.status(500).json({ error: 'OpenAI API key not configured' });
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicKey) {
+      console.error('[enhance-email] ANTHROPIC_API_KEY not set');
+      return res.status(500).json({ error: 'Anthropic API key not configured' });
     }
 
-    const historySection = Array.isArray(previousBodies) && previousBodies.length > 0
-      ? `【過去に送った本文（直近${previousBodies.length}件）】\n` +
-        previousBodies.map((b, i) => `--- 過去${i + 1}回目 ---\n${b}`).join('\n\n')
-      : '（過去の送信履歴なし）';
+    // スプレッドシートから同じ種別の過去報告書本文を取得
+    let sheetPastBodies: string[] = [];
+    if (templateName && typeof templateName === 'string' && templateName.trim().length > 0) {
+      sheetPastBodies = await fetchPastReportBodiesFromSheet(templateName.trim());
+    }
+
+    // 参考例セクションを構築（スプレッドシート履歴 + 直近の送信履歴）
+    const sheetHistorySection = sheetPastBodies.length > 0
+      ? `【過去に当社が実際に送った「${templateName}」の報告書本文（${sheetPastBodies.length}件）】\n` +
+        `※ これらは実際に送った文章です。このトーン・文体・文章量を参考にしてください。\n\n` +
+        sheetPastBodies.map((b, i) => `--- 参考例${i + 1} ---\n${b}`).join('\n\n')
+      : '';
+
+    const recentHistorySection = Array.isArray(previousBodies) && previousBodies.length > 0
+      ? `【この物件に最近送った本文（直近${previousBodies.length}件）】\n` +
+        `※ これらと同じ表現・言い回しにならないよう変えてください。\n\n` +
+        previousBodies.map((b, i) => `--- 直近${i + 1}回目 ---\n${b}`).join('\n\n')
+      : '';
+
+    const referenceSection = [sheetHistorySection, recentHistorySection].filter(Boolean).join('\n\n---\n\n');
 
     const systemPrompt = enhanceMode === 'rewrite'
-      ? `あなたは不動産会社の担当者です。売主との関係を大切にしながら、温かみのある丁寧なメールを書くのが得意です。
-以下の売主への報告メールを、同じ情報を伝えながら「全く別の人が書いたような文章」に書き直してください。
+      ? `あなたは不動産会社の担当者です。売主への報告メールを書き直してください。
 
-【トーンについて】
-- ビジネスメールとして礼儀正しいが、堅苦しくなりすぎない
-- 売主との距離感を縮めるような、温かみのある表現を使う
-- 「〜でございます」より「〜です・〜ます」調を基本にする
-- 読んでいて自然に伝わる、話しかけるような柔らかさを意識する
+【最重要：参考例のトーン・文体・文章量に合わせること】
+過去に実際に送った報告書の参考例が提供されている場合、その文章のトーン・文体・文章量を忠実に再現してください。
+参考例が「短くシンプル」なら短くシンプルに、「丁寧で詳しい」なら丁寧で詳しく書いてください。
+参考例がない場合は、ビジネスメールとして自然な文体で書いてください。
 
-【必須条件】
+【絶対に守るルール】
+- 参考例の文章量・トーンから大きく外れない（大げさな表現・過剰な敬語・不自然な膨らませ方は禁止）
+- 元の本文の情報・事実・趣旨は完全に同じにする
 - 元の文章の単語・フレーズを極力使わない（別の言葉に置き換える）
-- 冒頭の挨拶はビジネスメールとして適切な表現にする（「お世話になっております」「いつもお世話になっております」などの範囲で変える。「こんにちは」などカジュアルすぎる表現は使わない）
-- 段落の構成・順序を変える
-- 伝える情報・事実・趣旨は元の本文と完全に同じにする
-- 語尾を省略しない（「思います」「考えています」など最後まで書く）
+- 冒頭の挨拶はビジネスメールとして適切な範囲で変える
 - 署名部分（「---」以降や名前・会社名・電話番号など）は一切変更しない
-- 書き直した本文のみを返す（説明・コメント・前置き不要）
+- 書き直した本文のみを返す（説明・コメント・前置き不要）`
+      : `あなたは不動産会社の担当者です。売主への報告メールの本文を改善してください。
 
-【文章量について】
-- 元の本文より1.5〜2倍程度の文章量にする
-- 背景・理由・補足説明・今後の流れなどを丁寧に加筆して膨らませる
-- ただし無駄な繰り返しや冗長な表現は避け、読んで意味のある内容を追加する
-
-【重要】元の文章をベースに少し変えるのではなく、ゼロから書き直すイメージで作成してください。`
-      : `あなたは不動産会社の担当者です。売主との関係を大切にしながら、温かみのある丁寧なメールを書くのが得意です。
-売主への報告メールの本文を、自然で読みやすい日本語に改善してください。
-
-【トーンについて】
-- ビジネスメールとして礼儀正しいが、堅苦しくなりすぎない
-- 「〜でございます」より「〜です・〜ます」調を基本にする
-- 読んでいて自然に伝わる、柔らかさを意識する
+【最重要：参考例のトーン・文体に合わせること】
+過去に実際に送った報告書の参考例が提供されている場合、そのトーン・文体を参考にしてください。
+参考例がない場合は、ビジネスメールとして自然な文体で書いてください。
 
 【ルール】
 - 元の本文の意味・内容・構成は変えない
-- 過去に送った本文と同じ表現・言い回しにならないよう、ニュアンスや言葉を変える
-- 文章の長さは元の本文と同程度にする
-- 語尾を省略しない（「思います」など最後まで書く）
+- 直近に送った本文と同じ表現・言い回しにならないよう、ニュアンスや言葉を変える
+- 文章の長さは元の本文と同程度にする（大げさに膨らませない）
 - 署名部分（「---」以降や名前・会社名など）は変更しない
 - 改行・段落構成は元の本文に合わせる
 - 改善した本文のみを返す（説明文・コメント不要）`;
 
     const userMessage = enhanceMode === 'rewrite'
-      ? `${historySection}
+      ? `${referenceSection ? referenceSection + '\n\n---\n\n' : ''}【今回の本文（書き直してください）】\n${currentBody}`
+      : `${referenceSection ? referenceSection + '\n\n---\n\n' : ''}【今回の本文（改善してください）】\n${currentBody}`;
 
-【今回の本文（書き直してください）】
-${currentBody}
-
----
-上記の本文は約${currentBody.length}文字です。
-書き直し後は必ず${Math.floor(currentBody.length * 1.5)}文字以上、できれば${currentBody.length * 2}文字程度になるよう、内容を丁寧に膨らませてください。`
-      : `${historySection}
-
-【今回の本文（改善してください）】
-${currentBody}`;
-
-    const completion = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
+    const response = await axios.post(
+      'https://api.anthropic.com/v1/messages',
       {
-        model: enhanceMode === 'rewrite' ? 'gpt-4o' : 'gpt-4o-mini',
+        model: 'claude-sonnet-4-5',
+        max_tokens: enhanceMode === 'rewrite' ? 2000 : 1500,
+        system: systemPrompt,
         messages: [
-          { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage },
         ],
-        temperature: enhanceMode === 'rewrite' ? 1.0 : 0.7,
-        max_tokens: enhanceMode === 'rewrite' ? 2500 : 1500,
       },
       {
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'x-api-key': anthropicKey,
+          'anthropic-version': '2023-06-01',
           'Content-Type': 'application/json',
         },
         timeout: 60000,
       }
     );
 
-    const enhancedBody = completion.data?.choices?.[0]?.message?.content?.trim() || '';
+    const enhancedBody = response.data?.content?.[0]?.text?.trim() || '';
     if (!enhancedBody) {
       return res.status(500).json({ error: 'AIからの応答が空でした' });
     }
@@ -472,7 +565,7 @@ ${currentBody}`;
       return res.status(429).json({ error: 'APIの利用制限に達しました。しばらく待ってから再試行してください。' });
     }
     if (status === 401) {
-      return res.status(401).json({ error: 'OpenAI APIキーが無効です。' });
+      return res.status(401).json({ error: 'Anthropic APIキーが無効です。' });
     }
     return res.status(500).json({ error: 'メール改善に失敗しました' });
   }
