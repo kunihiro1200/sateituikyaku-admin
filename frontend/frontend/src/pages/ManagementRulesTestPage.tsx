@@ -27,7 +27,10 @@ import SearchIcon from '@mui/icons-material/Search';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ImageIcon from '@mui/icons-material/Image';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import ImageSelectorModal, { ImageFile } from '../components/ImageSelectorModal';
+import api from '../services/api';
 
 const API_BASE_URL =
   import.meta.env.MODE === 'production'
@@ -332,6 +335,8 @@ const ManagementRulesTestPage: React.FC = () => {
   const propertyNumber = searchParams.get('propertyNumber');
 
   const [files, setFiles] = useState<File[]>([]);
+  const [driveImages, setDriveImages] = useState<ImageFile[]>([]);
+  const [selectorOpen, setSelectorOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [progress, setProgress] = useState(0);
@@ -383,7 +388,7 @@ const ManagementRulesTestPage: React.FC = () => {
   };
 
   const handleAnalyze = async () => {
-    if (files.length === 0) {
+    if (files.length === 0 && driveImages.length === 0) {
       setError('ファイルを選択してください');
       return;
     }
@@ -398,7 +403,6 @@ const ManagementRulesTestPage: React.FC = () => {
 
       for (const file of files) {
         if (file.type === 'application/pdf') {
-          // PDFはページ分割して送信
           setLoadingMessage(`PDFを変換中: ${file.name}`);
           const chunks = await splitPdfIntoChunks(file, MAX_BYTES_PER_REQUEST, (page, total) => {
             setLoadingMessage(`PDFを変換中: ${file.name} (${page}/${total}ページ)`);
@@ -413,7 +417,6 @@ const ManagementRulesTestPage: React.FC = () => {
             allChunkResults.push(chunkResults);
           }
         } else {
-          // 画像はそのまま送信
           setLoadingMessage(`Claude AIが解析中: ${file.name}`);
           const base64 = await fileToBase64(file);
           const chunkResults = await analyzeChunk([{
@@ -423,6 +426,18 @@ const ManagementRulesTestPage: React.FC = () => {
           }]);
           allChunkResults.push(chunkResults);
         }
+
+      // Google DriveファイルはBase64をAPIから取得して処理
+      }
+      for (const img of driveImages) {
+        if (img.driveFileId) {
+          setLoadingMessage(`Google Driveから取得中: ${img.name}`);
+          const res = await api.get(`/api/drive/files/${img.driveFileId}/base64`);
+          const { base64, mimeType } = res.data;
+          const chunkResults = await analyzeChunk([{ name: img.name, mimeType, base64 }]);
+          allChunkResults.push(chunkResults);
+        }
+      }
       }
 
       setProgress(100);
@@ -518,6 +533,16 @@ const ManagementRulesTestPage: React.FC = () => {
         テキストPDF・スキャンPDF両方に対応しています。
       </Typography>
 
+      <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
+        <Button variant="outlined" size="small" startIcon={<FolderOpenIcon />}
+          onClick={() => setSelectorOpen(true)}
+          sx={{ whiteSpace: 'nowrap', borderColor: '#7b1fa2', color: '#7b1fa2' }}>
+          Google Driveから選ぶ
+        </Button>
+        {driveImages.length > 0 && (
+          <Typography variant="caption" sx={{ color: '#7b1fa2' }}>{driveImages.length}ファイル選択中（Drive）</Typography>
+        )}
+      </Box>
       <Paper
         variant="outlined"
         sx={{
@@ -571,7 +596,7 @@ const ManagementRulesTestPage: React.FC = () => {
         size="large"
         startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SearchIcon />}
         onClick={handleAnalyze}
-        disabled={loading || files.length === 0}
+        disabled={loading || (files.length === 0 && driveImages.length === 0)}
         fullWidth
         sx={{ mb: loading ? 1 : 3 }}
       >
@@ -662,6 +687,14 @@ const ManagementRulesTestPage: React.FC = () => {
           </List>
         </Paper>
       )}
+
+      {/* Google DriveファイルピッカーModal */}
+      <ImageSelectorModal
+        open={selectorOpen}
+        onConfirm={(images) => { setDriveImages(images); setSelectorOpen(false); }}
+        onCancel={() => setSelectorOpen(false)}
+        initialSelected={driveImages}
+      />
     </Box>
   );
 };

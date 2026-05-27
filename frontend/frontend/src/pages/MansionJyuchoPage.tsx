@@ -23,7 +23,10 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ImageIcon from '@mui/icons-material/Image';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import ImageSelectorModal, { ImageFile } from '../components/ImageSelectorModal';
+import api from '../services/api';
 
 const API_BASE_URL =
   import.meta.env.MODE === 'production'
@@ -162,6 +165,8 @@ const MansionJyuchoPage: React.FC = () => {
   const spreadsheetUrl = searchParams.get('spreadsheetUrl');
 
   const [files, setFiles] = useState<File[]>([]);
+  const [driveImages, setDriveImages] = useState<ImageFile[]>([]);
+  const [selectorOpen, setSelectorOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [progress, setProgress] = useState(0);
@@ -254,6 +259,17 @@ const MansionJyuchoPage: React.FC = () => {
           const chunkResults = await analyzeChunk([
             { name: file.name, mimeType: file.type, base64 },
           ]);
+          allChunkResults.push(chunkResults);
+        }
+      }
+
+      // Google DriveファイルはBase64をAPIから取得して処理
+      for (const img of driveImages) {
+        if (img.driveFileId) {
+          setLoadingMessage(`Google Driveから取得中: ${img.name}`);
+          const res = await api.get(`/api/drive/files/${img.driveFileId}/base64`);
+          const { base64, mimeType } = res.data;
+          const chunkResults = await analyzeChunk([{ name: img.name, mimeType, base64 }]);
           allChunkResults.push(chunkResults);
         }
       }
@@ -351,6 +367,16 @@ const MansionJyuchoPage: React.FC = () => {
       </Typography>
 
       {/* ファイルアップロードエリア */}
+      <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
+        <Button variant="outlined" size="small" startIcon={<FolderOpenIcon />}
+          onClick={() => setSelectorOpen(true)}
+          sx={{ whiteSpace: 'nowrap', borderColor: '#1976d2', color: '#1976d2' }}>
+          Google Driveから選ぶ
+        </Button>
+        {driveImages.length > 0 && (
+          <Typography variant="caption" color="primary">{driveImages.length}ファイル選択中（Drive）</Typography>
+        )}
+      </Box>
       <Paper
         variant="outlined"
         sx={{
@@ -380,7 +406,7 @@ const MansionJyuchoPage: React.FC = () => {
         />
         <UploadFileIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
         <Typography variant="body1" color="text.secondary">
-          ここにファイルをドロップ、またはクリックして選択
+          ここにファイルをドロップ、またはクリックして選択（ローカル）
         </Typography>
         <Typography variant="caption" color="text.disabled">
           対応形式: PDF（テキスト・スキャン両対応）、JPEG、PNG
@@ -414,7 +440,7 @@ const MansionJyuchoPage: React.FC = () => {
         size="large"
         startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SearchIcon />}
         onClick={handleAnalyze}
-        disabled={loading || files.length === 0}
+        disabled={loading || (files.length === 0 && driveImages.length === 0)}
         fullWidth
         sx={{ mb: loading ? 1 : 3 }}
       >
@@ -688,8 +714,18 @@ const MansionJyuchoPage: React.FC = () => {
           {snackbarMessage}
         </Alert>
       </Snackbar>
+
+      {/* Google DriveファイルピッカーModal */}
+      <ImageSelectorModal
+        open={selectorOpen}
+        onConfirm={(images) => { setDriveImages(images); setSelectorOpen(false); }}
+        onCancel={() => setSelectorOpen(false)}
+        initialSelected={driveImages}
+      />
     </Box>
   );
 };
+
+export default MansionJyuchoPage;
 
 export default MansionJyuchoPage;

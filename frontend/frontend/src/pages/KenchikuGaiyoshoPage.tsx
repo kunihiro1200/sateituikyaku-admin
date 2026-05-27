@@ -23,7 +23,10 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ImageIcon from '@mui/icons-material/Image';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import ImageSelectorModal, { ImageFile } from '../components/ImageSelectorModal';
+import api from '../services/api';
 
 const API_BASE_URL =
   import.meta.env.MODE === 'production'
@@ -149,6 +152,8 @@ const KenchikuGaiyoshoPage: React.FC = () => {
   const spreadsheetUrl = searchParams.get('spreadsheetUrl');
 
   const [files, setFiles] = useState<File[]>([]);
+  const [driveImages, setDriveImages] = useState<ImageFile[]>([]);
+  const [selectorOpen, setSelectorOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [progress, setProgress] = useState(0);
@@ -206,7 +211,7 @@ const KenchikuGaiyoshoPage: React.FC = () => {
   };
 
   const handleAnalyze = async () => {
-    if (files.length === 0) {
+    if (files.length === 0 && driveImages.length === 0) {
       setError('ファイルを選択してください');
       return;
     }
@@ -226,7 +231,6 @@ const KenchikuGaiyoshoPage: React.FC = () => {
           const chunks = await splitPdfIntoChunks(file, MAX_BYTES_PER_REQUEST, (page, total) => {
             setLoadingMessage(`PDFを変換中: ${file.name} (${page}/${total}ページ)`);
           });
-          // PDFのページを全て追加
           for (const chunk of chunks) {
             allPayloads.push(...chunk);
           }
@@ -234,6 +238,15 @@ const KenchikuGaiyoshoPage: React.FC = () => {
           setLoadingMessage(`ファイルを準備中: ${file.name}`);
           const base64 = await fileToBase64(file);
           allPayloads.push({ name: file.name, mimeType: file.type, base64 });
+        }
+      }
+
+      // Google DriveファイルはBase64をAPIから取得
+      for (const img of driveImages) {
+        if (img.driveFileId) {
+          setLoadingMessage(`Google Driveから取得中: ${img.name}`);
+          const res = await api.get(`/api/drive/files/${img.driveFileId}/base64`);
+          allPayloads.push({ name: img.name, mimeType: res.data.mimeType, base64: res.data.base64 });
         }
       }
 
@@ -368,6 +381,16 @@ const KenchikuGaiyoshoPage: React.FC = () => {
       </Typography>
 
       {/* ファイルアップロードエリア */}
+      <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
+        <Button variant="outlined" size="small" startIcon={<FolderOpenIcon />}
+          onClick={() => setSelectorOpen(true)}
+          sx={{ whiteSpace: 'nowrap', borderColor: '#2e7d32', color: '#2e7d32' }}>
+          Google Driveから選ぶ
+        </Button>
+        {driveImages.length > 0 && (
+          <Typography variant="caption" color="success.main">{driveImages.length}ファイル選択中（Drive）</Typography>
+        )}
+      </Box>
       <Paper
         variant="outlined"
         sx={{
@@ -397,7 +420,7 @@ const KenchikuGaiyoshoPage: React.FC = () => {
         />
         <UploadFileIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
         <Typography variant="body1" color="text.secondary">
-          ここにファイルをドロップ、またはクリックして選択
+          ここにファイルをドロップ、またはクリックして選択（ローカル）
         </Typography>
         <Typography variant="caption" color="text.disabled">
           複数ファイル対応（PDF・JPEG・PNG）｜都市計画図・建築計画概要書・確認済証など何枚でも
@@ -436,7 +459,7 @@ const KenchikuGaiyoshoPage: React.FC = () => {
         size="large"
         startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SearchIcon />}
         onClick={handleAnalyze}
-        disabled={loading || files.length === 0}
+        disabled={loading || (files.length === 0 && driveImages.length === 0)}
         fullWidth
         sx={{ mb: loading ? 1 : 3, bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}
       >
@@ -642,14 +665,18 @@ const KenchikuGaiyoshoPage: React.FC = () => {
         onClose={() => setSnackbarOpen(false)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert
-          onClose={() => setSnackbarOpen(false)}
-          severity={snackbarSeverity}
-          sx={{ width: '100%' }}
-        >
+        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} sx={{ width: '100%' }}>
           {snackbarMessage}
         </Alert>
       </Snackbar>
+
+      {/* Google DriveファイルピッカーModal */}
+      <ImageSelectorModal
+        open={selectorOpen}
+        onConfirm={(images) => { setDriveImages(images); setSelectorOpen(false); }}
+        onCancel={() => setSelectorOpen(false)}
+        initialSelected={driveImages}
+      />
     </Box>
   );
 };
