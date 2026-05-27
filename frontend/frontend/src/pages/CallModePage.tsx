@@ -5186,7 +5186,10 @@ HP：https://ifoo-oita.com/
                 const rawBuildingAreaVerified = property?.buildingAreaVerified ?? seller?.buildingAreaVerified;
                 const displayBuildingAreaVerified = rawBuildingAreaVerified?.toString() || '';
                 const displayBuildingAreaVerifiedTsubo = toTsubo(rawBuildingAreaVerified);
-                const displayBuildYear = (property?.buildYear || seller?.buildYear)?.toString() || '';
+                const rawBuildYear = property?.buildYear || seller?.buildYear;
+                const displayBuildYear = rawBuildYear
+                  ? `${rawBuildYear}（築${new Date().getFullYear() - rawBuildYear}年）`
+                  : '';
                 const displayFloorPlan = property?.floorPlan || seller?.floorPlan || '';
                 const displayStructure = property?.structure || seller?.structure || '';
                 const displayCurrentStatus = property?.currentStatus || property?.sellerSituation || seller?.currentStatus || '';
