@@ -113,18 +113,34 @@ router.get('/:propertyNumber/list-mansyon-pdfs', async (req: Request, res: Respo
 
 /**
  * POST /api/toki-extract/:propertyNumber/extract-mansyon-single
- * マンション用：fileIdを受け取り、1枚のPDFだけを解析して返す（タイムアウト対策）
+ * マンション用：base64またはfileIdを受け取り、1枚のPDFを解析して返す
+ * フロントエンドからbase64を渡す方式（管理規約・重調と同方式）
  */
 router.post('/:propertyNumber/extract-mansyon-single', async (req: Request, res: Response) => {
   try {
     const { propertyNumber } = req.params;
-    const { fileId, fileName } = req.body as { fileId: string; fileName: string };
+    const { fileId, fileName, base64, mimeType } = req.body as {
+      fileId?: string;
+      fileName: string;
+      base64?: string;
+      mimeType?: string;
+    };
 
-    if (!fileId) return res.status(400).json({ error: 'fileId は必須です' });
+    if (!base64 && !fileId) return res.status(400).json({ error: 'base64 または fileId は必須です' });
 
     console.log(`[TokiMansyon] 1枚解析開始: ${fileName}`);
-    const extractResult = await tokiExtractService.extractSingleTokiPdfForMansyon(fileId, fileName);
 
+    let pdfBase64: string;
+    if (base64) {
+      // フロントエンドからbase64が送られてきた場合（推奨）
+      pdfBase64 = base64;
+    } else {
+      // fileIdからバックエンドで取得（フォールバック）
+      const extractResult2 = await tokiExtractService.extractSingleTokiPdfForMansyon(fileId!, fileName);
+      return res.json({ success: true, fileName, extractResult: extractResult2 });
+    }
+
+    const extractResult = await tokiExtractService.extractFromPdf(pdfBase64);
     return res.json({ success: true, fileName, extractResult });
   } catch (error: any) {
     console.error('[TokiMansyon] 1枚解析エラー:', error.message);

@@ -2316,12 +2316,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     fetchRevisionHistories();
   }, [open]);
 
-  // 謄本読み取りハンドラー（マンション用・1枚ずつ処理）
+  // 謄本読み取りハンドラー（マンション用・管理規約と同方式でbase64をフロントから送る）
   const handleTokiExtract = async () => {
     if (!propertyNumber) return;
     setTokiExtractLoading(true);
     try {
-      // Step1: PDF一覧を取得（高速・タイムアウトなし）
+      // Step1: PDF一覧を取得（高速）
       const listRes = await api.get(`/api/toki-extract/${propertyNumber}/list-mansyon-pdfs`);
       const { pdfList, sheetName, spreadsheetUrl } = listRes.data as {
         pdfList: Array<{ fileId: string; fileName: string }>;
@@ -2329,19 +2329,26 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         spreadsheetUrl: string;
       };
 
-      // Step2: 1枚ずつ順番に解析
+      // Step2: 1枚ずつ Base64取得 → 解析（管理規約・重調と同方式）
       let mergedResult: any = null;
       const fileNames: string[] = [];
 
       for (let i = 0; i < pdfList.length; i++) {
         const pdf = pdfList[i];
+        setSnackbar({ open: true, message: `謄本取得中... (${i + 1}/${pdfList.length}) ${pdf.fileName}`, severity: 'info' });
+
+        // Google DriveからBase64を取得（管理規約と同じ方式）
+        const b64Res = await api.get(`/api/drive/files/${pdf.fileId}/base64`);
+        const { base64, mimeType } = b64Res.data;
+
         setSnackbar({ open: true, message: `謄本解析中... (${i + 1}/${pdfList.length}) ${pdf.fileName}`, severity: 'info' });
+
         const singleRes = await api.post(`/api/toki-extract/${propertyNumber}/extract-mansyon-single`, {
-          fileId: pdf.fileId,
           fileName: pdf.fileName,
+          base64,
+          mimeType,
         });
         fileNames.push(pdf.fileName);
-        // マンションは通常1ファイルなので最初の結果を採用
         if (!mergedResult) mergedResult = singleRes.data.extractResult;
       }
 
