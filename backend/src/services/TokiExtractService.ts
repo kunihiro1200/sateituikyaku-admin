@@ -445,7 +445,10 @@ export class TokiExtractService {
 - structure: 「① 構造」欄から建物構造部分のみ（例：鉄骨鉄筋コンクリート造陸屋根14階建 → "鉄骨鉄筋コンクリート造"）
 - roof_type: 「① 構造」欄から屋根部分のみ（例：鉄骨鉄筋コンクリート造陸屋根14階建 → "陸屋根"）
 - floors: 「① 構造」欄から「〇階建」の数字のみ（例：14階建 → "14"）
-- building_area: 「② 床面積 ㎡」欄に記載されている全階の面積を合計した値
+- floor_areas: 「② 床面積 ㎡」欄の各階の面積を個別にリストで返すこと（地下階含む、全階漏れなく）
+  【重要】面積の数字は「：」を小数点「.」に変換し、全角数字は半角に変換すること
+  【重要】数字が「1 0 3 3 ： 7 3」のように1文字ずつ並んでいる場合、全桁を繋げて「1033.73」と読むこと
+  例: [{"floor": "1", "area": "1033.73"}, {"floor": "2", "area": "972.96"}, ..., {"floor": "地下1", "area": "999.56"}]
 
 ■ 専有部分の建物の表示（表題部（専有部分の建物の表示）から取得）
 - floor_number: 「③ 床面積 ㎡」欄の「〇階部分」から数字のみ（例：１０階部分 → "10"）
@@ -466,7 +469,7 @@ export class TokiExtractService {
   "structure": null,
   "roof_type": null,
   "floors": null,
-  "building_area": null,
+  "floor_areas": [{"floor": null, "area": null}],
   "floor_number": null,
   "room_number": null,
   "exclusive_area": null,
@@ -505,6 +508,25 @@ export class TokiExtractService {
     try { raw = JSON.parse(jsonStr); }
     catch (e) { throw new Error(`JSONパースエラー: ${jsonStr.substring(0, 200)}`); }
 
+    // floor_areasから合計を計算（各階の面積をバックエンドで合計して精度を確保）
+    let buildingArea: string | null = null;
+    if (Array.isArray(raw.floor_areas) && raw.floor_areas.length > 0) {
+      let total = 0;
+      let valid = true;
+      for (const fa of raw.floor_areas) {
+        const areaStr = String(fa.area ?? '').replace(/：/g, '.').replace(/[０-９]/g, (c: string) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/[㎡\s　]/g, '');
+        const num = parseFloat(areaStr);
+        if (isNaN(num)) { valid = false; break; }
+        total += num;
+      }
+      if (valid) {
+        buildingArea = String(Math.round(total * 100) / 100);
+        console.log(`[TokiExtract] 延床面積合計: ${buildingArea}㎡ (${raw.floor_areas.length}階分)`);
+      }
+    }
+    // floor_areasがない場合はbuilding_areaを使用（フォールバック）
+    if (!buildingArea) buildingArea = raw.building_area ?? null;
+
     return {
       ownerAddress: raw.owner_address ?? null,
       ownerName: raw.owner_name ?? null,
@@ -522,17 +544,13 @@ export class TokiExtractService {
       structure: raw.structure ?? null,
       roofType: raw.roof_type ?? null,
       floors: raw.floors ?? null,
-      buildingArea: raw.building_area ?? null,
+      buildingArea,
       floorNumber: raw.floor_number ?? null,
       roomNumber: raw.room_number ?? null,
       exclusiveArea: raw.exclusive_area ?? null,
       constructionDate: raw.construction_date ?? null,
     };
   }
-
-  /**
-   * Claude APIを使って謄本PDFから情報を抽出する（後方互換用・旧方式）
-   */
   async extractFromPdf(pdfBase64: string): Promise<TokiExtractResult> {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
