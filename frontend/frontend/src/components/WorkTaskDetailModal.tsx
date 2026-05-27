@@ -2316,12 +2316,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     fetchRevisionHistories();
   }, [open]);
 
-  // 謄本読み取りハンドラー（マンション用・管理規約と同方式でbase64をフロントから送る）
+  // 謄本読み取りハンドラー（マンション用・管理規約と同じ画像変換方式）
   const handleTokiExtract = async () => {
     if (!propertyNumber) return;
     setTokiExtractLoading(true);
     try {
-      // Step1: PDF一覧を取得（高速）
+      // Step1: PDF一覧とシート情報を取得
       const listRes = await api.get(`/api/toki-extract/${propertyNumber}/list-mansyon-pdfs`);
       const { pdfList, sheetName, spreadsheetUrl } = listRes.data as {
         pdfList: Array<{ fileId: string; fileName: string }>;
@@ -2329,27 +2329,92 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         spreadsheetUrl: string;
       };
 
-      // Step2: 1枚ずつ Base64取得 → 解析（管理規約・重調と同方式）
+      // Step2: 各PDFをDriveから取得してフロントエンドで画像変換（管理規約と同方式）
+      const MAX_BYTES_PER_CHUNK = 3 * 1024 * 1024; // 3MB
       let mergedResult: any = null;
       const fileNames: string[] = [];
 
-      for (let i = 0; i < pdfList.length; i++) {
-        const pdf = pdfList[i];
-        setSnackbar({ open: true, message: `謄本取得中... (${i + 1}/${pdfList.length}) ${pdf.fileName}`, severity: 'info' });
+      for (let p = 0; p < pdfList.length; p++) {
+        const pdf = pdfList[p];
+        setSnackbar({ open: true, message: `謄本取得中... ${pdf.fileName}`, severity: 'info' });
 
-        // Google DriveからBase64を取得（管理規約と同じ方式）
+        // DriveからBase64取得
         const b64Res = await api.get(`/api/drive/files/${pdf.fileId}/base64`);
-        const { base64, mimeType } = b64Res.data;
+        const { base64: pdfBase64 } = b64Res.data;
 
-        setSnackbar({ open: true, message: `謄本解析中... (${i + 1}/${pdfList.length}) ${pdf.fileName}`, severity: 'info' });
+        // PDF → 画像変換（pdfjs-dist使用）
+        setSnackbar({ open: true, message: `画像変換中... ${pdf.fileName}`, severity: 'info' });
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
 
-        const singleRes = await api.post(`/api/toki-extract/${propertyNumber}/extract-mansyon-single`, {
-          fileName: pdf.fileName,
-          base64,
-          mimeType,
-        });
+        const pdfBytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
+        const pdfDoc = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+        const totalPages = pdfDoc.numPages;
+
+        const pages: Array<{ name: string; mimeType: string; base64: string }> = [];
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+          setSnackbar({ open: true, message: `画像変換中... ${pdf.fileName} (${pageNum}/${totalPages}ページ)`, severity: 'info' });
+          const page = await pdfDoc.getPage(pageNum);
+          const viewport = page.getViewport({ scale: 1.5 });
+
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d')!;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          await page.render({ canvasContext: ctx, viewport }).promise;
+
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+          pages.push({
+            name: `${pdf.fileName}_p${pageNum}.jpg`,
+            mimeType: 'image/jpeg',
+            base64: dataUrl.split(',')[1],
+          });
+        }
+
+        // チャンク分割（3MB以下に収める）
+        const chunks: Array<typeof pages> = [];
+        let currentChunk: typeof pages = [];
+        let currentSize = 0;
+        for (const pg of pages) {
+          const pgSize = pg.base64.length * 0.75;
+          if (currentSize + pgSize > MAX_BYTES_PER_CHUNK && currentChunk.length > 0) {
+            chunks.push(currentChunk);
+            currentChunk = [];
+            currentSize = 0;
+          }
+          currentChunk.push(pg);
+          currentSize += pgSize;
+        }
+        if (currentChunk.length > 0) chunks.push(currentChunk);
+
+        // チャンクごとに解析して結果をマージ
+        for (let i = 0; i < chunks.length; i++) {
+          setSnackbar({ open: true, message: `謄本解析中... ${pdf.fileName} (${i + 1}/${chunks.length}バッチ)`, severity: 'info' });
+          const chunkRes = await api.post(`/api/toki-extract/${propertyNumber}/extract-mansyon-chunk`, {
+            files: chunks[i],
+            sheetName,
+            spreadsheetUrl,
+          });
+          const chunkResult = chunkRes.data.extractResult;
+          // 最初の結果を基準に、nullの項目だけ後のチャンクで補完
+          if (!mergedResult) {
+            mergedResult = chunkResult;
+          } else {
+            for (const key of Object.keys(chunkResult)) {
+              if ((mergedResult[key] === null || mergedResult[key] === undefined) && chunkResult[key] != null) {
+                mergedResult[key] = chunkResult[key];
+              }
+            }
+            if (Array.isArray(chunkResult.lands) && chunkResult.lands.length > 0 && mergedResult.lands.length === 0) {
+              mergedResult.lands = chunkResult.lands;
+            }
+          }
+        }
+
         fileNames.push(pdf.fileName);
-        if (!mergedResult) mergedResult = singleRes.data.extractResult;
       }
 
       if (!mergedResult) throw new Error('解析結果が取得できませんでした');

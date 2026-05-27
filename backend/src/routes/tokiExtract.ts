@@ -152,6 +152,34 @@ router.post('/:propertyNumber/extract-mansyon-single', async (req: Request, res:
 });
 
 /**
+ * POST /api/toki-extract/:propertyNumber/extract-mansyon-chunk
+ * マンション用：フロントエンドで画像変換したJPEGチャンクを受け取り解析する（管理規約と同方式）
+ */
+router.post('/:propertyNumber/extract-mansyon-chunk', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+    const { files, sheetName, spreadsheetUrl } = req.body as {
+      files: Array<{ name: string; mimeType: string; base64: string }>;
+      sheetName: string;
+      spreadsheetUrl: string;
+    };
+
+    if (!files || files.length === 0) return res.status(400).json({ error: 'filesは必須です' });
+
+    console.log(`[TokiMansyon] 画像チャンク解析開始: ${files.length}枚 (${propertyNumber})`);
+    const extractResult = await tokiExtractService.extractFromImages(files);
+
+    return res.json({ success: true, extractResult, sheetName, spreadsheetUrl });
+  } catch (error: any) {
+    console.error('[TokiMansyon] チャンク解析エラー:', error.message);
+    if (error?.status === 429 || error?.error?.type === 'rate_limit_error') {
+      return res.status(429).json({ error: 'APIのレート制限に達しました。しばらく待ってから再試行してください。' });
+    }
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST /api/toki-extract/:propertyNumber/write
  * 抽出結果をスプレッドシートの指定セルに書き込む
  */

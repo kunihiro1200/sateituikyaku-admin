@@ -1,6 +1,4 @@
 import Anthropic from '@anthropic-ai/sdk';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string; numpages: number }>;
 import { GoogleDriveService } from './GoogleDriveService';
 import { GoogleSheetsClient } from './GoogleSheetsClient';
 
@@ -400,7 +398,140 @@ export class TokiExtractService {
   }
 
   /**
-   * Claude APIを使って謄本PDFから情報を抽出する
+   * Claude APIを使って謄本PDFから情報を抽出する（画像チャンク方式・管理規約と同方式）
+   * files: フロントエンドでPDFを画像変換したJPEGのBase64配列
+   */
+  async extractFromImages(files: Array<{ name: string; mimeType: string; base64: string }>): Promise<TokiExtractResult> {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY が設定されていません');
+    }
+
+    const client = new Anthropic({ apiKey });
+
+    const prompt = `あなたは不動産登記簿謄本の専門家です。
+添付された登記簿謄本（全部事項証明書）の画像を読み取り、以下の情報をJSONで返してください。
+
+【重要ルール】
+- 全角スペース・半角スペース・改行の揺れを吸収して読み取ること
+- 下線が引かれている情報は抹消事項として除外すること（抹消された登記は無視する）
+- 抽出できない場合は null を返すこと
+- 面積・地積の「：」は小数点「.」に変換すること（例：１６１５：６７ → 1615.67）
+- 全角数字は半角数字に変換すること
+- 和暦の日付は西暦に変換すること（例：平成21年2月26日 → 2009-02-26）
+- 同じ項目が複数行ある場合は原則1行目を取得すること
+- 推測せず、読み取れない場合は必ず null にすること
+- 住所の読み取り時は各文字を正確に読むこと。特に建物名の先頭文字が脱落するミスに注意すること
+  例：「塚本四丁目１１番６号　塚本壱番館」→ owner_address に「大阪市淀川区塚本四丁目11番6号 塚本壱番館」と正確に転記すること（「本壱番館」のように先頭の「塚」が落ちないこと）
+
+【抽出項目】
+
+■ 所有者情報（権利部（甲区）（所有権に関する事項）から取得）
+- 「登記の目的」が「所有権保存」または「所有権移転」の行を対象とする
+- 移転が複数回ある場合は最新（最後）の所有者を取得する
+- 下線あり（抹消）の行は除外する
+- 「共有者」と書かれている場合は1番目の共有者の情報のみ owner_address・owner_name に入れる
+- 2番目以降の共有者は co_owners にまとめて出力する（氏名・住所・持分を改行区切りで）
+- 共有者がいない場合は co_owners は null
+
+■ 敷地権の目的である土地（表題部（敷地権の目的である土地の表示）から取得）
+- 「② 所在及び地番」欄から所在（地番を除いた部分）と地番を分けて取得する
+  例：大分市中島東三丁目６４７５番１ → location: "大分市中島東三丁目", lot_number: "6475番1"
+- 土地が複数行ある場合はlandsの配列に順番に格納する
+
+■ 一棟の建物の表示（表題部（一棟の建物の表示）から取得）
+- building_name: 「建物の名称」欄の値
+- building_location: 「所在」欄の値
+- structure: 「① 構造」欄から建物構造部分のみ（例：鉄骨鉄筋コンクリート造陸屋根14階建 → "鉄骨鉄筋コンクリート造"）
+- roof_type: 「① 構造」欄から屋根部分のみ（例：鉄骨鉄筋コンクリート造陸屋根14階建 → "陸屋根"）
+- floors: 「① 構造」欄から「〇階建」の数字のみ（例：14階建 → "14"）
+- building_area: 「② 床面積 ㎡」欄に記載されている全階の面積を合計した値
+
+■ 専有部分の建物の表示（表題部（専有部分の建物の表示）から取得）
+- floor_number: 「③ 床面積 ㎡」欄の「〇階部分」から数字のみ（例：１０階部分 → "10"）
+- room_number: まず「建物の名称」欄を確認し、数字のみなら半角で取得。なければ「家屋番号」欄の末尾の数字
+- exclusive_area: 「③ 床面積 ㎡」欄の面積のみ（「：」→「.」変換、全角→半角変換）
+- construction_date: 「原因及びその日付〔登記の日付〕」欄の1行目の日付のみ（和暦→西暦変換）
+
+【出力形式】
+必ず以下のJSON形式のみで応答してください（説明文・コードブロック記号は不要）：
+
+{
+  "owner_address": null,
+  "owner_name": null,
+  "co_owners": null,
+  "lands": [{"location": null, "lot_number": null, "land_type": null, "area": null}],
+  "building_name": null,
+  "building_location": null,
+  "structure": null,
+  "roof_type": null,
+  "floors": null,
+  "building_area": null,
+  "floor_number": null,
+  "room_number": null,
+  "exclusive_area": null,
+  "construction_date": null
+}`;
+
+    // 画像をcontentBlocksとして構築（管理規約と同方式）
+    const contentBlocks: Anthropic.ContentBlockParam[] = [];
+    for (const file of files) {
+      const mediaType = file.mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+      contentBlocks.push({
+        type: 'image',
+        source: { type: 'base64', media_type: mediaType, data: file.base64 },
+      });
+    }
+    contentBlocks.push({ type: 'text', text: prompt });
+
+    const response = await callClaudeWithRetry(client, {
+      model: 'claude-opus-4-5',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: contentBlocks }],
+    });
+
+    const responseText =
+      response.content[0].type === 'text' ? response.content[0].text.trim() : '';
+
+    console.log('[TokiExtract] Claude response (first 500):', responseText.substring(0, 500));
+
+    const jsonBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    const jsonRawMatch = responseText.match(/\{[\s\S]*\}/);
+    const jsonStr = jsonBlockMatch?.[1] ?? jsonRawMatch?.[0] ?? null;
+
+    if (!jsonStr) throw new Error('Claude APIからJSONを取得できませんでした');
+
+    let raw: any;
+    try { raw = JSON.parse(jsonStr); }
+    catch (e) { throw new Error(`JSONパースエラー: ${jsonStr.substring(0, 200)}`); }
+
+    return {
+      ownerAddress: raw.owner_address ?? null,
+      ownerName: raw.owner_name ?? null,
+      coOwners: raw.co_owners ?? null,
+      lands: Array.isArray(raw.lands)
+        ? raw.lands.map((l: any) => ({
+            location: l.location ?? null,
+            lotNumber: l.lot_number ?? null,
+            landType: l.land_type ?? null,
+            area: l.area ?? null,
+          }))
+        : [],
+      buildingName: raw.building_name ?? null,
+      buildingLocation: raw.building_location ?? null,
+      structure: raw.structure ?? null,
+      roofType: raw.roof_type ?? null,
+      floors: raw.floors ?? null,
+      buildingArea: raw.building_area ?? null,
+      floorNumber: raw.floor_number ?? null,
+      roomNumber: raw.room_number ?? null,
+      exclusiveArea: raw.exclusive_area ?? null,
+      constructionDate: raw.construction_date ?? null,
+    };
+  }
+
+  /**
+   * Claude APIを使って謄本PDFから情報を抽出する（後方互換用・旧方式）
    */
   async extractFromPdf(pdfBase64: string): Promise<TokiExtractResult> {
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -483,49 +614,29 @@ export class TokiExtractService {
   "construction_date": null
 }`;
 
-    // PDFからテキストを抽出してClaudeに送る（トークン数削減のため）
-    let pdfText = '';
-    try {
-      const pdfBuffer = Buffer.from(pdfBase64, 'base64');
-      const parsed = await pdfParse(pdfBuffer);
-      pdfText = parsed.text;
-      console.log(`[TokiExtract] PDF テキスト抽出成功: ${pdfText.length}文字`);
-    } catch (e: any) {
-      console.warn(`[TokiExtract] PDF テキスト抽出失敗: ${e.message}。Base64で送信します。`);
-    }
-
-    let response: Anthropic.Message;
-    if (pdfText && pdfText.length > 100) {
-      // テキスト抽出成功 → テキストとして送信（トークン数大幅削減）
-      response = await callClaudeWithRetry(client, {
-        model: 'claude-opus-4-5',
-        max_tokens: 4096,
-        messages: [
-          {
-            role: 'user',
-            content: prompt + '\n\n【登記簿謄本のテキスト内容】\n' + pdfText,
-          },
-        ],
-      });
-    } else {
-      // テキスト抽出失敗（スキャンPDF等）→ Base64で送信
-      response = await callClaudeWithRetry(client, {
-        model: 'claude-sonnet-4-5',
-        max_tokens: 4096,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'document',
-                source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 },
-              } as any,
-              { type: 'text', text: prompt },
-            ],
-          },
-        ],
-      });
-    }
+    const response = await callClaudeWithRetry(client, {
+      model: 'claude-opus-4-5',
+      max_tokens: 4096,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'document',
+              source: {
+                type: 'base64',
+                media_type: 'application/pdf',
+                data: pdfBase64,
+              },
+            } as any,
+            {
+              type: 'text',
+              text: prompt,
+            },
+          ],
+        },
+      ],
+    });
 
     const responseText =
       response.content[0].type === 'text' ? response.content[0].text.trim() : '';
