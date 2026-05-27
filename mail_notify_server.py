@@ -195,20 +195,25 @@ def save_notified_ids(ids):
 
 
 def decode_body(payload):
-    """メール本文をデコードする"""
-    body = ""
-    if "parts" in payload:
-        for part in payload["parts"]:
-            if part["mimeType"] == "text/plain":
-                data = part["body"].get("data", "")
-                if data:
-                    body = base64.urlsafe_b64decode(data).decode("utf-8", errors="ignore")
-                    break
-    else:
-        data = payload["body"].get("data", "")
-        if data:
-            body = base64.urlsafe_b64decode(data).decode("utf-8", errors="ignore")
-    return body
+    """メール本文をデコードする（ネストされたparts対応）"""
+    def extract_text_plain(part, collected):
+        mime = part.get("mimeType", "")
+        if mime == "text/plain":
+            data = part.get("body", {}).get("data", "")
+            if data:
+                text = base64.urlsafe_b64decode(data).decode("utf-8", errors="ignore")
+                collected.append(text)
+        elif mime.startswith("multipart/"):
+            for sub in part.get("parts", []):
+                extract_text_plain(sub, collected)
+
+    collected = []
+    extract_text_plain(payload, collected)
+
+    if collected:
+        # 全パートのtext/plainを結合（返信メールで本文と引用が別パートに分かれる場合に対応）
+        return "\n".join(collected)
+    return ""
 
 
 def trigger_home4u_transfer(body: str):

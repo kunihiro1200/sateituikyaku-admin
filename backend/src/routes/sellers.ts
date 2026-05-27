@@ -304,8 +304,10 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
     else if (propertyTypeRaw.includes('土地')) displayPropertyType = '土';
 
     // 物件住所（改行ありの本文から直接抽出）
-    const addrMatch = mailBody.match(/物件住所[^\S\r\n]*:[^\S\r\n]*(.*?)(?:\r?\n)マンション名/);
+    // 「物件住所」〜「マンション名」の間を取得（スペース数が可変なので \s* で対応）
+    const addrMatch = mailBody.match(/物件住所[\s　]*:[\s　]*(.*?)[\r\n]/);
     const fullPropertyAddress = addrMatch ? addrMatch[1].replace(/^大分県/, '').trim() : '';
+    console.log(`[ieul-transfer] 物件住所抽出: "${fullPropertyAddress}"`);
 
     const mansionName = extractData(cleanedBody, 'マンション名　　: ', '部屋番号');
     const roomNumber = extractData(cleanedBody, '部屋番号　　　　: ', '建物名');
@@ -326,7 +328,9 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
     const age = extractData(cleanedBody, '年齢　　　　　　: ', '住所');
     const address = extractData(cleanedBody, '住所　　　　　　: ', '電話番号');
     const tel = extractData(cleanedBody, '電話番号　　　　: ', 'Email').replace(/-/g, '');
-    const email = extractData(cleanedBody, 'Email 　　　　　: ', '希望連絡時間');
+    // Emailフィールドのスペースは可変（"Email 　　　　　: " または "Email　　　　　 : "）
+    const emailMatch = cleanedBody.match(/Email[\s　]+:[\s　]*([^\s　\r\n]+)/);
+    const email = emailMatch ? emailMatch[1].trim() : '';
     const contactTime = extractData(cleanedBody, '希望連絡時間　　: ', '査定理由');
     const reasonForEstimate = extractData(cleanedBody, '査定理由　　　　: ', '査定会社への要望');
     const requestToCompany = extractData(cleanedBody, '査定会社への要望: ', '買い替え有無');
@@ -556,8 +560,10 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
   try {
     console.log('[home4u-transfer] HOME4Uメール本文解析開始');
 
-    // 改行で統一
-    const cleanedBody = mailBody.replace(/>\s*/g, '').replace(/\r\n|\n\r|\n|\r/g, '\n');
+    // 改行で統一し、行頭の引用符（> ）のみ除去（行中の > は残す）
+    const cleanedBody = mailBody
+      .replace(/\r\n|\n\r|\n|\r/g, '\n')
+      .replace(/^>\s*/gm, '');  // 行頭の > を除去（multiline mode）
 
     const extractData2 = (text: string, keyword: string): string => {
       const regex = new RegExp(keyword + '\\s*[：:]\\s*([^\\n\\r]+)');
@@ -579,8 +585,37 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
       return m ? m[1] : '';
     };
 
-    // メモ（HOME4Uログアウト〜査定依頼の間）
-    const memo = extractData(cleanedBody, 'HOME4Uログアウト', '査定依頼').trim();
+    // メモ（HOME4Uログアウト行の次の行から「査定依頼」が現れる行の手前まで）
+    // 構造例:
+    //   HOME4Uログアウト         ← この行の次から取得
+    //   林5/26　不通・留守×      ← 1行コメント
+    //   査定依頼 株式会社威風...  ← ここで終了
+    //
+    //   HOME4Uログアウト
+    //   林5/26　不通・留守×      ← 2行コメント
+    //   電話番号確認済み
+    //   査定依頼 株式会社威風...  ← ここで終了
+    const extractMemo = (text: string): string => {
+      const lines = text.split('\n');
+      const startIdx = lines.findIndex(l => l.trim() === 'HOME4Uログアウト' || l.trim().startsWith('HOME4Uログアウト'));
+      if (startIdx === -1) return '';
+      // HOME4Uログアウト行自体にコメントが同行にある場合（例: "HOME4Uログアウト林5/26..."）
+      const startLine = lines[startIdx].trim();
+      const inlineComment = startLine.replace('HOME4Uログアウト', '').trim();
+      // 次の行から「査定依頼」が出るまでを収集
+      const commentLines: string[] = inlineComment ? [inlineComment] : [];
+      for (let i = startIdx + 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith('査定依頼') || line.includes('査定依頼 --')) break;
+        if (line) commentLines.push(line);
+        // 空行2行連続で終了（コメントの区切り）
+        if (!line && commentLines.length > 0) break;
+      }
+      return commentLines.join('\n').trim();
+    };
+    const memo = extractMemo(cleanedBody);
+    console.log(`[home4u-transfer] memo抽出結果: "${memo}"`);
+    console.log(`[home4u-transfer] 本文先頭300文字: ${cleanedBody.substring(0, 300).replace(/\n/g, '\\n')}`);
 
     // 依頼日時（曜日部分を除去して解析）
     const inquiryMatch = cleanedBody.match(/■ご依頼日\s*[:：]\s*([^\n\r]+)/);
@@ -684,10 +719,12 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
     if (furigana) commentParts.push(`フリガナ: ${furigana}`);
     if (age) commentParts.push(`年齢: ${age}`);
     if (assessmentReason) commentParts.push(`査定理由: ${assessmentReason}`);
+    if (desiredSaleTime) commentParts.push(`売却希望時期: ${desiredSaleTime}`);
     if (requests) commentParts.push(`要望: ${requests}`);
     if (assessmentMethod) commentParts.push(`査定方法: ${assessmentMethod}`);
     if (secondTel) commentParts.push(`第２電話: ${secondTel}`);
     const comments = `${memo}\n【以下自動転記（HOME4U）】\n${commentParts.join('\n')}`;
+    console.log(`[home4u-transfer] comments作成完了: "${comments.substring(0, 100)}"`);
 
     // 売主番号採番（連番スプシから）
     const isFukuoka = propertyAddress.includes('福岡');
