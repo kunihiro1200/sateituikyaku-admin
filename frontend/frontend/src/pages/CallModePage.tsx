@@ -7400,6 +7400,7 @@ HP：https://ifoo-oita.com/
                 'リビオ', 'ロフティ', 'パレスト',
                 'レジオン', 'アルバガーデン', 'パレス',
                 'グランフォーレ', 'グランドパレス',
+                'ライオンズマンション', 'ライオンズプラザ', 'ライオンズ',
               ];
               const detected = MANSION_BRANDS.some((m) => address.includes(m));
               if (!detected) return null;
