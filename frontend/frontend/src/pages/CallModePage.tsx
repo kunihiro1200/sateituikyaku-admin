@@ -919,12 +919,27 @@ const CallModePage = () => {
       { keyword: 'すまいステップ', sites: ['す'] },
       { keyword: 'HOME4U',         sites: ['H'] },
     ];
-    return sellerEmailTemplates.filter(t => {
+
+    // サイト別フィルタリング
+    const siteFiltered = sellerEmailTemplates.filter(t => {
       const rule = SITE_TEMPLATE_RULES.find(r => t.name.includes(r.keyword));
       if (!rule) return true; // サイト指定なし → 全サイトで表示
       return rule.sites.includes(site);
     });
-  }, [sellerEmailTemplates, seller?.site, editedSite]);
+
+    // 査定額案内メールを査定理由（相続/相続以外）でフィルタリング
+    const isInheritance = seller?.valuationReason?.includes('相続') ?? false;
+    return siteFiltered.filter(t => {
+      if (!t.name?.includes('査定額案内メール')) return true; // 対象外テンプレートはそのまま表示
+      if (isInheritance) {
+        // 相続の場合：「相続」を含み「相続以外」を含まないテンプレートのみ表示
+        return t.name.includes('相続') && !t.name.includes('相続以外');
+      } else {
+        // 相続以外の場合：「相続以外」を含むテンプレートのみ表示
+        return t.name.includes('相続以外');
+      }
+    });
+  }, [sellerEmailTemplates, seller?.site, editedSite, seller?.valuationReason]);
 
   // 査定計算用の状態
   const [editingValuation, setEditingValuation] = useState(false);
