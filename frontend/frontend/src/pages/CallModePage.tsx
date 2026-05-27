@@ -5163,10 +5163,29 @@ HP：https://ifoo-oita.com/
                 // 表示モード（値がある項目のみ表示）
                 const displayAddress = property?.address || seller?.propertyAddress || '';
                 const displayPropertyType = property?.propertyType || seller?.propertyType || '';
-                const displayLandArea = (property?.landArea || seller?.landArea)?.toString() || '';
-                const displayLandAreaVerified = property?.landAreaVerified?.toString() || seller?.landAreaVerified?.toString() || '';
-                const displayBuildingArea = (property?.buildingArea || seller?.buildingArea)?.toString() || '';
-                const displayBuildingAreaVerified = property?.buildingAreaVerified?.toString() || seller?.buildingAreaVerified?.toString() || '';
+
+                // ㎡ → 坪変換ヘルパー（1坪 = 3.30579㎡）
+                const toTsubo = (sqm: number | string | null | undefined): string => {
+                  const num = parseFloat(String(sqm));
+                  if (isNaN(num) || num <= 0) return '';
+                  return `（${Math.round(num / 3.30579)}坪）`;
+                };
+
+                const rawLandArea = property?.landArea || seller?.landArea;
+                const displayLandArea = rawLandArea?.toString() || '';
+                const displayLandAreaTsubo = toTsubo(rawLandArea);
+
+                const rawLandAreaVerified = property?.landAreaVerified ?? seller?.landAreaVerified;
+                const displayLandAreaVerified = rawLandAreaVerified?.toString() || '';
+                const displayLandAreaVerifiedTsubo = toTsubo(rawLandAreaVerified);
+
+                const rawBuildingArea = property?.buildingArea || seller?.buildingArea;
+                const displayBuildingArea = rawBuildingArea?.toString() || '';
+                const displayBuildingAreaTsubo = toTsubo(rawBuildingArea);
+
+                const rawBuildingAreaVerified = property?.buildingAreaVerified ?? seller?.buildingAreaVerified;
+                const displayBuildingAreaVerified = rawBuildingAreaVerified?.toString() || '';
+                const displayBuildingAreaVerifiedTsubo = toTsubo(rawBuildingAreaVerified);
                 const displayBuildYear = (property?.buildYear || seller?.buildYear)?.toString() || '';
                 const displayFloorPlan = property?.floorPlan || seller?.floorPlan || '';
                 const displayStructure = property?.structure || seller?.structure || '';
@@ -5237,25 +5256,25 @@ HP：https://ifoo-oita.com/
                     {displayLandArea && (
                       <Grid item xs={6}>
                         <Typography variant="caption" color="text.secondary">土地面積 (m²)</Typography>
-                        <Typography variant="body2" sx={{ color: areaWarning.landRed ? 'error.main' : 'inherit' }}>{displayLandArea}</Typography>
+                        <Typography variant="body2" sx={{ color: areaWarning.landRed ? 'error.main' : 'inherit' }}>{displayLandArea}{displayLandAreaTsubo}</Typography>
                       </Grid>
                     )}
                     {displayLandAreaVerified && (
                       <Grid item xs={6}>
                         <Typography variant="caption" color="text.secondary">土地（当社調べ）(m²)</Typography>
-                        <Typography variant="body2">{displayLandAreaVerified}</Typography>
+                        <Typography variant="body2">{displayLandAreaVerified}{displayLandAreaVerifiedTsubo}</Typography>
                       </Grid>
                     )}
                     {!isLandType && displayBuildingArea && (
                       <Grid item xs={6}>
                         <Typography variant="caption" color="text.secondary">建物面積 (m²)</Typography>
-                        <Typography variant="body2" sx={{ color: areaWarning.buildingRed ? 'error.main' : 'inherit' }}>{displayBuildingArea}</Typography>
+                        <Typography variant="body2" sx={{ color: areaWarning.buildingRed ? 'error.main' : 'inherit' }}>{displayBuildingArea}{displayBuildingAreaTsubo}</Typography>
                       </Grid>
                     )}
                     {!isLandType && displayBuildingAreaVerified && (
                       <Grid item xs={6}>
                         <Typography variant="caption" color="text.secondary">建物（当社調べ）(m²)</Typography>
-                        <Typography variant="body2">{displayBuildingAreaVerified}</Typography>
+                        <Typography variant="body2">{displayBuildingAreaVerified}{displayBuildingAreaVerifiedTsubo}</Typography>
                       </Grid>
                     )}
                     {!isLandType && displayBuildYear && (
