@@ -482,7 +482,7 @@ export class TokiExtractService {
 }`;
 
     const response = await callClaudeWithRetry(client, {
-      model: 'claude-opus-4-5',
+      model: 'claude-sonnet-4-5',
       max_tokens: 4096,
       messages: [
         {
