@@ -2316,13 +2316,38 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     fetchRevisionHistories();
   }, [open]);
 
-  // 謄本読み取りハンドラー
+  // 謄本読み取りハンドラー（マンション用・1枚ずつ処理）
   const handleTokiExtract = async () => {
     if (!propertyNumber) return;
     setTokiExtractLoading(true);
     try {
-      const res = await api.post(`/api/toki-extract/${propertyNumber}/extract`);
-      setTokiExtractResult(res.data);
+      // Step1: PDF一覧を取得（高速・タイムアウトなし）
+      const listRes = await api.get(`/api/toki-extract/${propertyNumber}/list-mansyon-pdfs`);
+      const { pdfList, sheetName, spreadsheetUrl } = listRes.data as {
+        pdfList: Array<{ fileId: string; fileName: string }>;
+        sheetName: string;
+        spreadsheetUrl: string;
+      };
+
+      // Step2: 1枚ずつ順番に解析
+      let mergedResult: any = null;
+      const fileNames: string[] = [];
+
+      for (let i = 0; i < pdfList.length; i++) {
+        const pdf = pdfList[i];
+        setSnackbar({ open: true, message: `謄本解析中... (${i + 1}/${pdfList.length}) ${pdf.fileName}`, severity: 'info' });
+        const singleRes = await api.post(`/api/toki-extract/${propertyNumber}/extract-mansyon-single`, {
+          fileId: pdf.fileId,
+          fileName: pdf.fileName,
+        });
+        fileNames.push(pdf.fileName);
+        // マンションは通常1ファイルなので最初の結果を採用
+        if (!mergedResult) mergedResult = singleRes.data.extractResult;
+      }
+
+      if (!mergedResult) throw new Error('解析結果が取得できませんでした');
+
+      setTokiExtractResult({ extractResult: mergedResult, sheetName, spreadsheetUrl, fileName: fileNames.join(', ') });
       setTokiExtractDialog(true);
     } catch (err: any) {
       const msg = err?.response?.data?.error || '謄本の読み取りに失敗しました';

@@ -2133,6 +2133,38 @@ export class TokiExtractService {
   // プライベートヘルパー
   // -------------------------------------------------------
 
+  /**
+   * マンション用（媒介契約タブ）：PDF一覧のみ返す（fileId付き・高速）
+   * ダウンロード・解析はしない
+   */
+  async listTokiPdfsForMansyon(storageFolderUrl: string): Promise<Array<{ fileId: string; fileName: string }>> {
+    const folderId = this.extractFolderIdFromUrl(storageFolderUrl);
+    if (!folderId) return [];
+
+    const files = await this.driveService.listFiles(folderId);
+    const tokiFiles = files.filter(
+      (f) =>
+        (f.name.includes('全部事項') || f.name.includes('全部謄本')) &&
+        (f.mimeType === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))
+    );
+
+    return tokiFiles.map((f) => ({ fileId: f.id, fileName: f.name }));
+  }
+
+  /**
+   * マンション用（媒介契約タブ）：fileIdを受け取り1枚だけ解析して返す
+   */
+  async extractSingleTokiPdfForMansyon(fileId: string, fileName: string): Promise<TokiExtractResult> {
+    const fileData = await this.driveService.getFile(fileId);
+    if (!fileData) throw new Error(`PDFの取得に失敗しました: ${fileName}`);
+    const base64 = fileData.data.toString('base64');
+    return this.extractFromPdf(base64);
+  }
+
+  // -------------------------------------------------------
+  // プライベートヘルパー
+  // -------------------------------------------------------
+
   private extractFolderIdFromUrl(url: string): string | null {
     try {
       const match = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
