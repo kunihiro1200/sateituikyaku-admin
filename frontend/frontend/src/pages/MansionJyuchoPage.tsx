@@ -727,5 +727,3 @@ const MansionJyuchoPage: React.FC = () => {
 };
 
 export default MansionJyuchoPage;
-
-export default MansionJyuchoPage;

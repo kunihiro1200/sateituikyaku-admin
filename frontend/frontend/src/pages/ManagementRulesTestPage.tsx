@@ -426,9 +426,9 @@ const ManagementRulesTestPage: React.FC = () => {
           }]);
           allChunkResults.push(chunkResults);
         }
+      }
 
       // Google DriveファイルはBase64をAPIから取得して処理
-      }
       for (const img of driveImages) {
         if (img.driveFileId) {
           setLoadingMessage(`Google Driveから取得中: ${img.name}`);
@@ -437,7 +437,6 @@ const ManagementRulesTestPage: React.FC = () => {
           const chunkResults = await analyzeChunk([{ name: img.name, mimeType, base64 }]);
           allChunkResults.push(chunkResults);
         }
-      }
       }
 
       setProgress(100);
