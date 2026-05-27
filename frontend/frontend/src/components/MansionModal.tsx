@@ -532,6 +532,11 @@ const LOCAL_BRANDS: Record<string, MansionContent> = {
 
 const ALL_DATA: Record<string, MansionContent> = { ...DATA, ...LOCAL_BRANDS };
 
+// ALL_DATAのキー一覧を自動生成してエクスポート
+// 各ページの MANSION_BRANDS リストとして使用することで、
+// MansionModal.tsx にデータを追加するだけで全ページのボタン表示も自動対応される
+export const MANSION_BRANDS: string[] = Object.keys(ALL_DATA);
+
 function detectBrand(address: string): MansionContent | null {
   for (const [key, data] of Object.entries(ALL_DATA)) {
     if (address.includes(key)) return data;

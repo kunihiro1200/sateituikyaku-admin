@@ -77,7 +77,7 @@ import AreaReportModal from '../components/AreaReportModal';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CommentHighlightsPanel from '../components/CommentHighlightsPanel';
 import HouseMakerModal from '../components/HouseMakerModal';
-import MansionModal from '../components/MansionModal';
+import MansionModal, { MANSION_BRANDS } from '../components/MansionModal';
 
 import { formatCurrentStatusDetailed } from '../utils/propertyStatusFormatter';
 import PageNavigation from '../components/PageNavigation';
@@ -7393,15 +7393,6 @@ HP：https://ifoo-oita.com/
               if (!isApartment) return null;
               // propInfo.address と seller.propertyAddress の両方を結合して検索
               const address = (propInfo.address || '') + ' ' + (seller?.propertyAddress || '');
-              const MANSION_BRANDS = [
-                'アルファステイツ', 'サーパス', 'サンレスコ', 'グリーンヒル',
-                'エイリック', 'スタイルパークサイド', 'デュオヒルズ', 'MJR',
-                'サンパーク', 'クレアネクスト', 'オーヴィジョン',
-                'リビオ', 'ロフティ', 'パレスト',
-                'レジオン', 'アルバガーデン', 'パレス',
-                'グランフォーレ', 'グランドパレス',
-                'ライオンズマンション', 'ライオンズプラザ', 'ライオンズ',
-              ];
               const detected = MANSION_BRANDS.some((m) => address.includes(m));
               if (!detected) return null;
               return (

@@ -73,7 +73,7 @@ import { fetchChatHistory } from '../services/chatHistoryService';
 import { generateSmsBody, smsTemplates, SmsTemplateId } from '../utils/smsTemplates';
 import { ChatHistoryItem } from '../types/chatHistory';
 import HouseMakerModal from '../components/HouseMakerModal';
-import MansionModal from '../components/MansionModal';
+import MansionModal, { MANSION_BRANDS } from '../components/MansionModal';
 import NearbyMapModal from '../components/NearbyMapModal';
 
 interface PropertyListing {
@@ -2663,26 +2663,6 @@ export default function PropertyListingDetailPage() {
                   )}
                   {/* マンションボタン（物件住所にマンション名が含まれる場合のみ表示） */}
                   {(() => {
-                    const MANSION_BRANDS = [
-                      'アルファステイツ', 'サーパス', 'サンレスコ', 'グリーンヒル',
-                      'エイリック', 'スタイルパークサイド', 'デュオヒルズ', 'MJR',
-                      'サンパーク', 'クレアネクスト', 'オーヴィジョン',
-                      'リビオ', 'ロフティ', 'パレスト',
-                      'レジオン', 'アルバガーデン', 'パレス',
-                      'グランフォーレ', 'グランドパレス',
-                      'ザ・パークハウス', 'ザ・ライオンズ', 'グランドメゾン', 'プレミスト',
-                      'ザ・サンメゾン', 'ロイヤルアーク', 'レーベン', 'ルッシュ', 'アンピール',
-                      'ネクサス', 'アーバンパレス', 'ブライトパーク', 'サンリヤン', 'アルテ',
-                      'マインド', 'ライオンズマンション', 'アクタス', 'パークコート', 'サントーア',
-                      'コアマンション', 'グランドステイツ', 'サングレート', 'パークホームズ', 'アクロス',
-                      'エステートマンション', 'ティアラ', 'アーサー', '東急ドエル', 'アルス',
-                      'デュオヴェール', 'ダイアパレス', 'グランデージ', 'ソピア', 'インプレスト',
-                      'オープンレジデンシア', 'クリオ', 'サンレジア', 'アートウィル', 'グランコート',
-                      'エンゼルハイム', 'アドニス', 'ライオンズプラザ', 'コモダス', 'パッソ',
-                      '藤和シティコープ', 'プレッソ', 'ニューライフ', 'シャンボール', '藤和コープ',
-                      'ソシエ', '赤坂エクセル', 'ヴィルテージ', '日商岩井', 'ダイナコート',
-                      '朝日プラザ', 'エスポワール', '東洋マンション', '三井', 'ライオンズ',
-                    ];
                     const addr = data.address || data.display_address || '';
                     const detected = MANSION_BRANDS.some((m) => addr.includes(m));
                     if (!detected) return null;
