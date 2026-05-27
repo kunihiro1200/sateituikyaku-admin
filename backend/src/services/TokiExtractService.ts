@@ -1,5 +1,4 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { PDFDocument } from 'pdf-lib';
 import { GoogleDriveService } from './GoogleDriveService';
 import { GoogleSheetsClient } from './GoogleSheetsClient';
 
@@ -400,7 +399,6 @@ export class TokiExtractService {
 
   /**
    * Claude APIを使って謄本PDFから情報を抽出する
-   * PDFが大きい場合は前半・後半に分割して送り、結果をマージする
    */
   async extractFromPdf(pdfBase64: string): Promise<TokiExtractResult> {
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -410,21 +408,7 @@ export class TokiExtractService {
 
     const client = new Anthropic({ apiKey });
 
-    // PDFのページ数を確認して分割が必要か判断
-    const pdfBuffer = Buffer.from(pdfBase64, 'base64');
-    let totalPages = 0;
-    try {
-      const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
-      totalPages = pdfDoc.getPageCount();
-      console.log(`[TokiExtract] PDF総ページ数: ${totalPages}`);
-    } catch (e: any) {
-      console.warn(`[TokiExtract] PDFページ数取得失敗（暗号化等）: ${e.message}。そのまま送信します。`);
-      totalPages = 0; // 取得失敗時はそのまま送信
-    }
-
-    // 分割してClaudeに送る内部関数
-    const sendToClaude = async (base64Data: string): Promise<string> => {
-      const prompt = `あなたは不動産登記簿謄本の専門家です。
+    const prompt = `あなたは不動産登記簿謄本の専門家です。
 添付された登記簿謄本（全部事項証明書）のPDFを読み取り、以下の情報をJSONで返してください。
 
 【重要ルール】
@@ -437,6 +421,7 @@ export class TokiExtractService {
 - 同じ項目が複数行ある場合は原則1行目を取得すること
 - 推測せず、読み取れない場合は必ず null にすること
 - 住所の読み取り時は各文字を正確に読むこと。特に建物名の先頭文字が脱落するミスに注意すること
+  例：「塚本四丁目１１番６号　塚本壱番館」→ owner_address に「大阪市淀川区塚本四丁目11番6号 塚本壱番館」と正確に転記すること（「本壱番館」のように先頭の「塚」が落ちないこと）
 
 【抽出項目】
 
@@ -456,16 +441,18 @@ export class TokiExtractService {
 ■ 一棟の建物の表示（表題部（一棟の建物の表示）から取得）
 - building_name: 「建物の名称」欄の値
 - building_location: 「所在」欄の値
-- structure: 「① 構造」欄から建物構造部分のみ
-- roof_type: 「① 構造」欄から屋根部分のみ
-- floors: 「① 構造」欄から「〇階建」の数字のみ
-- building_area: 「② 床面積 ㎡」欄の全階合計
+- structure: 「① 構造」欄から建物構造部分のみ（例：鉄骨鉄筋コンクリート造陸屋根14階建 → "鉄骨鉄筋コンクリート造"）
+  対象：木造、土蔵造、石造、れんが造、コンクリートブロック造、鉄骨造、鉄筋コンクリート造、鉄骨鉄筋コンクリート造、木骨石造、木骨煉瓦造、軽量鉄骨造
+- roof_type: 「① 構造」欄から屋根部分のみ（例：鉄骨鉄筋コンクリート造陸屋根14階建 → "陸屋根"）
+  対象：瓦ぶき、スレートぶき、亜鉛メッキ鋼板ぶき、草ぶき、陸屋根、セメント瓦ぶき、アルミニュームぶき、板ぶき、杉皮ぶき、石板ぶき、銅板ぶき、ルーフィングぶき、ビニール板ぶき、合金メッキ鋼板ぶき
+- floors: 「① 構造」欄から「〇階建」の数字のみ（例：14階建 → "14"）
+- building_area: 「② 床面積 ㎡」欄に記載されている全階の面積を合計した値（「：」→「.」変換、全角→半角変換してから合計する）。例：1階202.05 + 2階20.43 + 3階〜13階580.64×11 + 14階591.76 = 7201.28 のように全階分を足し合わせること
 
 ■ 専有部分の建物の表示（表題部（専有部分の建物の表示）から取得）
-- floor_number: 「③ 床面積 ㎡」欄の「〇階部分」から数字のみ
-- room_number: 「建物の名称」欄の数字のみ、なければ「家屋番号」欄の末尾の数字
-- exclusive_area: 「③ 床面積 ㎡」欄の面積のみ
-- construction_date: 「原因及びその日付〔登記の日付〕」欄の1行目の日付
+- floor_number: 「③ 床面積 ㎡」欄の「〇階部分」から数字のみ（例：１０階部分 → "10"）
+- room_number: まず「建物の名称」欄を確認し、数字のみなら半角で取得。数字以外が含まれる場合は「家屋番号」欄の末尾の連続した数字を取得（例：中島東三丁目 ６４７５番１の１００１ → "1001"）
+- exclusive_area: 「③ 床面積 ㎡」欄の面積のみ（「：」→「.」変換、全角→半角変換）（例：１０階部分 ９８：９７ → "98.97"）
+- construction_date: 「原因及びその日付〔登記の日付〕」欄の1行目の日付のみ（和暦→西暦変換）（例：平成21年2月26日新築 → "2009-02-26"）
 
 【出力形式】
 必ず以下のJSON形式のみで応答してください（説明文・コードブロック記号は不要）：
@@ -474,7 +461,14 @@ export class TokiExtractService {
   "owner_address": null,
   "owner_name": null,
   "co_owners": null,
-  "lands": [{"location": null, "lot_number": null, "land_type": null, "area": null}],
+  "lands": [
+    {
+      "location": null,
+      "lot_number": null,
+      "land_type": null,
+      "area": null
+    }
+  ],
   "building_name": null,
   "building_location": null,
   "structure": null,
@@ -487,113 +481,34 @@ export class TokiExtractService {
   "construction_date": null
 }`;
 
-      const response = await callClaudeWithRetry(client, {
-        model: 'claude-opus-4-5',
-        max_tokens: 4096,
-        messages: [{
+    const response = await callClaudeWithRetry(client, {
+      model: 'claude-opus-4-5',
+      max_tokens: 4096,
+      messages: [
+        {
           role: 'user',
           content: [
-            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } } as any,
-            { type: 'text', text: prompt },
+            {
+              type: 'document',
+              source: {
+                type: 'base64',
+                media_type: 'application/pdf',
+                data: pdfBase64,
+              },
+            } as any,
+            {
+              type: 'text',
+              text: prompt,
+            },
           ],
-        }],
-      });
-      return response.content[0].type === 'text' ? response.content[0].text.trim() : '';
-    };
+        },
+      ],
+    });
 
-    // ページ数が少ない、または取得失敗の場合はそのまま送る
-    let responseText: string;
-    if (totalPages <= 15) {
-      if (totalPages > 0) {
-        console.log(`[TokiExtract] 分割なし（${totalPages}ページ）で送信`);
-      } else {
-        console.log(`[TokiExtract] ページ数不明（暗号化PDF等）のためそのまま送信`);
-      }
-      responseText = await sendToClaude(pdfBase64);
-    } else {
-      // 前半・後半に分割して送り、結果をマージ
-      const midPage = Math.ceil(totalPages / 2);
-      console.log(`[TokiExtract] 分割送信: 前半1〜${midPage}ページ / 後半${midPage + 1}〜${totalPages}ページ`);
+    const responseText =
+      response.content[0].type === 'text' ? response.content[0].text.trim() : '';
 
-      let firstHalfBase64: string;
-      let secondHalfBase64: string;
-
-      try {
-        const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
-
-        // 前半PDFを作成
-        const firstHalfDoc = await PDFDocument.create();
-        const firstPages = await firstHalfDoc.copyPages(pdfDoc, Array.from({ length: midPage }, (_, i) => i));
-        firstPages.forEach(p => firstHalfDoc.addPage(p));
-        firstHalfBase64 = Buffer.from(await firstHalfDoc.save()).toString('base64');
-
-        // 後半PDFを作成
-        const secondHalfDoc = await PDFDocument.create();
-        const secondPages = await secondHalfDoc.copyPages(pdfDoc, Array.from({ length: totalPages - midPage }, (_, i) => midPage + i));
-        secondPages.forEach(p => secondHalfDoc.addPage(p));
-        secondHalfBase64 = Buffer.from(await secondHalfDoc.save()).toString('base64');
-      } catch (splitError: any) {
-        console.warn(`[TokiExtract] PDF分割失敗（${splitError.message}）。そのまま送信します。`);
-        responseText = await sendToClaude(pdfBase64);
-        // 後続のJSON解析に進む
-        const jsonBlockMatch2 = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-        const jsonRawMatch2 = responseText.match(/\{[\s\S]*\}/);
-        const jsonStr2 = jsonBlockMatch2?.[1] ?? jsonRawMatch2?.[0] ?? null;
-        if (!jsonStr2) throw new Error('Claude APIからJSONを取得できませんでした');
-        let raw2: any;
-        try { raw2 = JSON.parse(jsonStr2); } catch { throw new Error(`JSONパースエラー: ${jsonStr2.substring(0, 200)}`); }
-        return {
-          ownerAddress: raw2.owner_address ?? null, ownerName: raw2.owner_name ?? null, coOwners: raw2.co_owners ?? null,
-          lands: Array.isArray(raw2.lands) ? raw2.lands.map((l: any) => ({ location: l.location ?? null, lotNumber: l.lot_number ?? null, landType: l.land_type ?? null, area: l.area ?? null })) : [],
-          buildingName: raw2.building_name ?? null, buildingLocation: raw2.building_location ?? null,
-          structure: raw2.structure ?? null, roofType: raw2.roof_type ?? null, floors: raw2.floors ?? null,
-          buildingArea: raw2.building_area ?? null, floorNumber: raw2.floor_number ?? null,
-          roomNumber: raw2.room_number ?? null, exclusiveArea: raw2.exclusive_area ?? null, constructionDate: raw2.construction_date ?? null,
-        };
-      }
-
-      // 前半・後半を並列送信
-      console.log(`[TokiExtract] 前半・後半を並列でClaude送信`);
-      const [firstText, secondText] = await Promise.all([
-        sendToClaude(firstHalfBase64),
-        sendToClaude(secondHalfBase64),
-      ]);
-
-      // 結果をマージ：両方のJSONをパースして最終結果を作成
-      const parseJson = (text: string) => {
-        const blockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-        const rawMatch = text.match(/\{[\s\S]*\}/);
-        const str = blockMatch?.[1] ?? rawMatch?.[0] ?? null;
-        if (!str) return null;
-        try { return JSON.parse(str); } catch { return null; }
-      };
-
-      const first = parseJson(firstText);
-      const second = parseJson(secondText);
-
-      // owner情報・土地情報など、どちらかにある方を優先してマージ
-      const merged = {
-        owner_address: first?.owner_address ?? second?.owner_address ?? null,
-        owner_name: first?.owner_name ?? second?.owner_name ?? null,
-        co_owners: first?.co_owners ?? second?.co_owners ?? null,
-        lands: [...(first?.lands ?? []), ...(second?.lands ?? [])].filter(
-          (l, i, arr) => arr.findIndex(x => x.lot_number === l.lot_number) === i
-        ),
-        building_name: first?.building_name ?? second?.building_name ?? null,
-        building_location: first?.building_location ?? second?.building_location ?? null,
-        structure: first?.structure ?? second?.structure ?? null,
-        roof_type: first?.roof_type ?? second?.roof_type ?? null,
-        floors: first?.floors ?? second?.floors ?? null,
-        building_area: first?.building_area ?? second?.building_area ?? null,
-        floor_number: first?.floor_number ?? second?.floor_number ?? null,
-        room_number: first?.room_number ?? second?.room_number ?? null,
-        exclusive_area: first?.exclusive_area ?? second?.exclusive_area ?? null,
-        construction_date: first?.construction_date ?? second?.construction_date ?? null,
-      };
-
-      responseText = JSON.stringify(merged);
-      console.log(`[TokiExtract] マージ結果:`, responseText.substring(0, 300));
-    }
+    console.log('[TokiExtract] Claude response (first 500):', responseText.substring(0, 500));
 
     // JSONを抽出（コードブロックあり・なし両対応）
     const jsonBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
