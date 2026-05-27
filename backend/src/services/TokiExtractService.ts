@@ -412,9 +412,15 @@ export class TokiExtractService {
 
     // PDFのページ数を確認して分割が必要か判断
     const pdfBuffer = Buffer.from(pdfBase64, 'base64');
-    const pdfDoc = await PDFDocument.load(pdfBuffer);
-    const totalPages = pdfDoc.getPageCount();
-    console.log(`[TokiExtract] PDF総ページ数: ${totalPages}`);
+    let totalPages = 0;
+    try {
+      const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+      totalPages = pdfDoc.getPageCount();
+      console.log(`[TokiExtract] PDF総ページ数: ${totalPages}`);
+    } catch (e: any) {
+      console.warn(`[TokiExtract] PDFページ数取得失敗（暗号化等）: ${e.message}。そのまま送信します。`);
+      totalPages = 0; // 取得失敗時はそのまま送信
+    }
 
     // 分割してClaudeに送る内部関数
     const sendToClaude = async (base64Data: string): Promise<string> => {
@@ -495,27 +501,56 @@ export class TokiExtractService {
       return response.content[0].type === 'text' ? response.content[0].text.trim() : '';
     };
 
-    // ページ数が少ない場合はそのまま送る
+    // ページ数が少ない、または取得失敗の場合はそのまま送る
     let responseText: string;
     if (totalPages <= 15) {
-      console.log(`[TokiExtract] 分割なし（${totalPages}ページ）で送信`);
+      if (totalPages > 0) {
+        console.log(`[TokiExtract] 分割なし（${totalPages}ページ）で送信`);
+      } else {
+        console.log(`[TokiExtract] ページ数不明（暗号化PDF等）のためそのまま送信`);
+      }
       responseText = await sendToClaude(pdfBase64);
     } else {
       // 前半・後半に分割して送り、結果をマージ
       const midPage = Math.ceil(totalPages / 2);
       console.log(`[TokiExtract] 分割送信: 前半1〜${midPage}ページ / 後半${midPage + 1}〜${totalPages}ページ`);
 
-      // 前半PDFを作成
-      const firstHalfDoc = await PDFDocument.create();
-      const firstPages = await firstHalfDoc.copyPages(pdfDoc, Array.from({ length: midPage }, (_, i) => i));
-      firstPages.forEach(p => firstHalfDoc.addPage(p));
-      const firstHalfBase64 = Buffer.from(await firstHalfDoc.save()).toString('base64');
+      let firstHalfBase64: string;
+      let secondHalfBase64: string;
 
-      // 後半PDFを作成
-      const secondHalfDoc = await PDFDocument.create();
-      const secondPages = await secondHalfDoc.copyPages(pdfDoc, Array.from({ length: totalPages - midPage }, (_, i) => midPage + i));
-      secondPages.forEach(p => secondHalfDoc.addPage(p));
-      const secondHalfBase64 = Buffer.from(await secondHalfDoc.save()).toString('base64');
+      try {
+        const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+
+        // 前半PDFを作成
+        const firstHalfDoc = await PDFDocument.create();
+        const firstPages = await firstHalfDoc.copyPages(pdfDoc, Array.from({ length: midPage }, (_, i) => i));
+        firstPages.forEach(p => firstHalfDoc.addPage(p));
+        firstHalfBase64 = Buffer.from(await firstHalfDoc.save()).toString('base64');
+
+        // 後半PDFを作成
+        const secondHalfDoc = await PDFDocument.create();
+        const secondPages = await secondHalfDoc.copyPages(pdfDoc, Array.from({ length: totalPages - midPage }, (_, i) => midPage + i));
+        secondPages.forEach(p => secondHalfDoc.addPage(p));
+        secondHalfBase64 = Buffer.from(await secondHalfDoc.save()).toString('base64');
+      } catch (splitError: any) {
+        console.warn(`[TokiExtract] PDF分割失敗（${splitError.message}）。そのまま送信します。`);
+        responseText = await sendToClaude(pdfBase64);
+        // 後続のJSON解析に進む
+        const jsonBlockMatch2 = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+        const jsonRawMatch2 = responseText.match(/\{[\s\S]*\}/);
+        const jsonStr2 = jsonBlockMatch2?.[1] ?? jsonRawMatch2?.[0] ?? null;
+        if (!jsonStr2) throw new Error('Claude APIからJSONを取得できませんでした');
+        let raw2: any;
+        try { raw2 = JSON.parse(jsonStr2); } catch { throw new Error(`JSONパースエラー: ${jsonStr2.substring(0, 200)}`); }
+        return {
+          ownerAddress: raw2.owner_address ?? null, ownerName: raw2.owner_name ?? null, coOwners: raw2.co_owners ?? null,
+          lands: Array.isArray(raw2.lands) ? raw2.lands.map((l: any) => ({ location: l.location ?? null, lotNumber: l.lot_number ?? null, landType: l.land_type ?? null, area: l.area ?? null })) : [],
+          buildingName: raw2.building_name ?? null, buildingLocation: raw2.building_location ?? null,
+          structure: raw2.structure ?? null, roofType: raw2.roof_type ?? null, floors: raw2.floors ?? null,
+          buildingArea: raw2.building_area ?? null, floorNumber: raw2.floor_number ?? null,
+          roomNumber: raw2.room_number ?? null, exclusiveArea: raw2.exclusive_area ?? null, constructionDate: raw2.construction_date ?? null,
+        };
+      }
 
       // 前半・後半を並列送信
       console.log(`[TokiExtract] 前半・後半を並列でClaude送信`);
