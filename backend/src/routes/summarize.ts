@@ -356,6 +356,89 @@ router.post('/comment-highlights', authenticate, async (req: Request, res: Respo
 });
 
 /**
+ * デバッグ用：スプレッドシートから過去報告書の取得状況を確認
+ * GET /api/summarize/debug-report-bodies?templateName=xxx
+ */
+router.get('/debug-report-bodies', authenticate, async (req: Request, res: Response) => {
+  try {
+    const templateName = String(req.query.templateName || '').trim();
+    const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
+    const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_TEMPLATE_SPREADSHEET_ID || '1sIBMhrarUSMcVWlTVVyaNNKaDxmfrxyHJLWv6U-MZxE';
+
+    const client = new GoogleSheetsClient({
+      spreadsheetId: SPREADSHEET_ID,
+      sheetName: 'テンプレート',
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+    });
+    await client.authenticate();
+    const sheetsInstance = (client as any).sheets;
+
+    // シート一覧
+    const spreadsheetMeta = await sheetsInstance.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+    const allSheets = (spreadsheetMeta.data.sheets || []).map((s: any) => ({
+      gid: s.properties?.sheetId,
+      name: s.properties?.title,
+    }));
+
+    // gid=13393607のシートを探す
+    const TARGET_GID = 13393607;
+    const targetSheet = allSheets.find((s: any) => s.gid === TARGET_GID);
+    const targetSheetName = targetSheet?.name || null;
+
+    if (!targetSheetName) {
+      return res.json({ allSheets, targetSheetName: null, error: 'gid=13393607のシートが見つかりません' });
+    }
+
+    // ヘッダー取得
+    const headerResponse = await sheetsInstance.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${targetSheetName}'!A1:ZZ1`,
+    });
+    const headers: string[] = (headerResponse.data.values?.[0] || []).map((h: any) => String(h || '').trim());
+
+    const categoryColIdx = headers.findIndex((h: string) => h === '区分');
+    const typeColIdx = headers.findIndex((h: string) => h === '種別');
+    const bodyColIdx = headers.findIndex((h: string) => h === '物件本文');
+    const effectiveCategoryIdx = categoryColIdx >= 0 ? categoryColIdx : 6;
+    const effectiveTypeIdx = typeColIdx >= 0 ? typeColIdx : 9;
+    const effectiveBodyIdx = bodyColIdx >= 0 ? bodyColIdx : 20;
+
+    // 全データ取得（上限なし）
+    const dataResponse = await sheetsInstance.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${targetSheetName}'!A2:ZZ`,
+    });
+    const rows: any[][] = dataResponse.data.values || [];
+
+    // 全行の区分・種別を集計
+    const typeCounts: Record<string, number> = {};
+    const matchedBodies: string[] = [];
+    for (const row of rows) {
+      const category = String(row[effectiveCategoryIdx] || '').trim();
+      const type = String(row[effectiveTypeIdx] || '').trim();
+      const body = String(row[effectiveBodyIdx] || '').trim();
+      const key = `${category}|${type}`;
+      typeCounts[key] = (typeCounts[key] || 0) + 1;
+      if (templateName && category === '物件' && type === templateName && body.length > 0) {
+        matchedBodies.push(body.substring(0, 50) + '...');
+      }
+    }
+
+    return res.json({
+      targetSheetName,
+      totalRows: rows.length,
+      headers: { categoryColIdx: effectiveCategoryIdx, typeColIdx: effectiveTypeIdx, bodyColIdx: effectiveBodyIdx },
+      headerNames: { category: headers[effectiveCategoryIdx], type: headers[effectiveTypeIdx], body: headers[effectiveBodyIdx] },
+      typeCounts,
+      matchedCount: matchedBodies.length,
+      matchedSamples: matchedBodies.slice(0, 5),
+    });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * スプレッドシートから同じ種別（テンプレ名）の過去報告書本文を取得する
  * J列=種別、G列=区分（「物件」）、U列=物件本文
  */
@@ -427,10 +510,10 @@ async function fetchPastReportBodiesFromSheet(templateName: string): Promise<str
 
     console.log(`[fetchPastReportBodies] 列インデックス: 区分=${effectiveCategoryIdx}, 種別=${effectiveTypeIdx}, 物件本文=${effectiveBodyIdx}`);
 
-    // データを取得（最大1000行）
+    // データを取得（上限なし）
     const dataResponse = await sheetsInstance.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `'${targetSheetName}'!A2:ZZ1000`,
+      range: `'${targetSheetName}'!A2:ZZ`,
     });
     const rows: any[][] = dataResponse.data.values || [];
 
