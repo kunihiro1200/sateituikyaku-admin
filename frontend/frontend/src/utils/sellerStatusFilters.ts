@@ -339,15 +339,23 @@ export const isVisitCompleted = (seller: Seller | any): boolean => {
  * 
  * 条件:
  * - 営担（visitAssignee）に入力がある
- * - 訪問日（visitDate）が今日以前（訪問済み）
+ * - 訪問日（visitDate）が今日以降（訪問予定あり）
  * - visitThankYouSent フラグが false（バックエンドから付与）
  * 
  * @param seller 売主データ（visitThankYouSent フィールドを含む）
  * @returns 訪問後御礼メール未送信かどうか
  */
 export const isVisitThankYouPending = (seller: Seller | any): boolean => {
-  // 訪問済み条件を満たさない場合は対象外
-  if (!isVisitCompleted(seller)) {
+  // 営担がない場合は対象外
+  if (!hasVisitAssignee(seller)) {
+    return false;
+  }
+  // 訪問日が今日以降かチェック
+  const visitDate = seller.visitDate || seller.visit_date;
+  if (!visitDate) {
+    return false;
+  }
+  if (!isTodayOrAfter(visitDate)) {
     return false;
   }
   // バックエンドから付与された「御礼メール送信済み」フラグで判定

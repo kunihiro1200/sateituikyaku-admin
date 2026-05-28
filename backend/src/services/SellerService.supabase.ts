@@ -1579,15 +1579,15 @@ export class SellerService extends BaseRepository {
               .or('phone_contact_person.not.is.null,preferred_contact_time.not.is.null,contact_method.not.is.null');
           } else if (dynamicCategory.startsWith('visitThankYouPending:')) {
             const assignee = dynamicCategory.replace('visitThankYouPending:', '');
-            // 訪問後御礼メール未送信（営担が指定のイニシャル AND 訪問日が今日以前）
-            // 御礼メール送信済みかどうかはJS側でフィルタリング（DBクエリでは訪問済み全件を取得）
+            // 訪問後御礼メール未送信（営担が指定のイニシャル AND 訪問日が今日以降）
+            // 御礼メール送信済みかどうかはJS側でフィルタリング（DBクエリでは訪問予定全件を取得）
             query = query
               .not('visit_assignee', 'is', null)
               .neq('visit_assignee', '')
               .neq('visit_assignee', '外す')
               .eq('visit_assignee', assignee)
               .not('visit_date', 'is', null)
-              .lt('visit_date', todayJST);
+              .gte('visit_date', todayJST);
           }
           break;
         }

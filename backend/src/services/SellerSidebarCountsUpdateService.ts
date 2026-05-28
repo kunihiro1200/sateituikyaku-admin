@@ -228,7 +228,7 @@ export class SellerSidebarCountsUpdateService {
       }
 
       // 13. 訪問後御礼メール未送信カウント用データ
-      // 訪問済み売主（visit_assignee あり、visit_date が今日以前）を取得
+      // 訪問予定あり売主（visit_assignee あり、visit_date が今日以降）を取得
       let visitCompletedSellers: any[] = [];
       {
         let vcPage = 0;
@@ -242,7 +242,7 @@ export class SellerSidebarCountsUpdateService {
             .neq('visit_assignee', '')
             .neq('visit_assignee', '外す')
             .not('visit_date', 'is', null)
-            .lt('visit_date', todayJST)
+            .gte('visit_date', todayJST)
             .range(vcPage * vcPageSize, (vcPage + 1) * vcPageSize - 1);
           if (vcError || !vcData || vcData.length === 0) break;
           visitCompletedSellers = visitCompletedSellers.concat(vcData);
