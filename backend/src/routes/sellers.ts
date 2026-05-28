@@ -2232,14 +2232,18 @@ router.put('/:id', async (req: Request, res: Response) => {
       // スプレッドシートに同期（awaitして確実に完了させる）
       // Vercelサーバーレス環境ではレスポンス後に非同期処理が打ち切られるため、awaitが必須
       try {
+        console.log(`🔄 [SpreadsheetSync] Starting sync for seller ${req.params.id}...`);
         const syncService = await createSpreadsheetSyncService();
         if (syncService) {
+          console.log(`🔄 [SpreadsheetSync] Service initialized, calling syncToSpreadsheet...`);
           const syncResult = await syncService.syncToSpreadsheet(req.params.id);
           if (syncResult.success) {
             console.log(`✅ [SpreadsheetSync] Sync completed for ${req.params.id}`);
           } else {
             console.error(`⚠️ [SpreadsheetSync] Sync failed for ${req.params.id}:`, syncResult.error);
           }
+        } else {
+          console.error(`❌ [SpreadsheetSync] createSpreadsheetSyncService returned null for ${req.params.id}`);
         }
       } catch (e) {
         console.error('⚠️ [SpreadsheetSync] Sync error:', e);
