@@ -1225,7 +1225,7 @@ export default function SellersPage() {
               <TableRow>
                 <TableCell sx={{ width: 100 }}>売主番号</TableCell>
                 <TableCell sx={{ width: 120 }}>名前</TableCell>
-                <TableCell sx={{ width: 80 }}>年齢/連絡時間</TableCell>
+                <TableCell sx={{ width: 80 }}>年齢/連絡時間/確度</TableCell>
                 <TableCell sx={{ width: 60 }}>対応中</TableCell>
                 <TableCell sx={{ width: 90 }}>最終電話</TableCell>
                 <TableCell sx={{ width: 90 }}>反響日付</TableCell>
@@ -1367,7 +1367,27 @@ export default function SellersPage() {
                             {extractContactTimeFromComments(seller.comments)}
                           </Typography>
                         )}
-                        {!extractAgeFromComments(seller.comments) && !extractContactTimeFromComments(seller.comments) && (
+                        {(seller.confidenceLevel || seller.confidence) && (
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontSize: '0.7rem',
+                              whiteSpace: 'nowrap',
+                              fontWeight: 'bold',
+                              color: (() => {
+                                const c = seller.confidenceLevel || seller.confidence || '';
+                                if (c === 'A') return '#d32f2f'; // 赤
+                                if (c === 'B') return '#f57c00'; // オレンジ
+                                if (c === 'C') return '#388e3c'; // 緑
+                                if (c === 'D') return '#757575'; // グレー
+                                return 'text.secondary';
+                              })(),
+                            }}
+                          >
+                            確度{seller.confidenceLevel || seller.confidence}
+                          </Typography>
+                        )}
+                        {!extractAgeFromComments(seller.comments) && !extractContactTimeFromComments(seller.comments) && !(seller.confidenceLevel || seller.confidence) && (
                           <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>-</Typography>
                         )}
                       </Box>
