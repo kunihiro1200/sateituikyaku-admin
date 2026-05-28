@@ -581,7 +581,8 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
       .replace(/^>\s*/gm, '');  // 行頭の > を除去（multiline mode）
 
     const extractData2 = (text: string, keyword: string): string => {
-      const regex = new RegExp(keyword + '\\s*[：:]\\s*([^\\n\\r]+)');
+      // [^\n\r]* で0文字以上にマッチ（空欄の場合も正しく空文字を返す）
+      const regex = new RegExp(keyword + '\\s*[：:]\\s*([^\\n\\r]*)');
       const m = text.match(regex);
       return m ? m[1].trim() : '';
     };
