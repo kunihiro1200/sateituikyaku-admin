@@ -441,7 +441,7 @@ async function fetchPastReportBodiesFromSheet(templateName: string): Promise<str
       const type = String(row[effectiveTypeIdx] || '').trim();
       const body = String(row[effectiveBodyIdx] || '').trim();
 
-      if (category === '物件' && type.includes(templateName) && body.length > 0) {
+      if (category === '物件' && type === templateName && body.length > 0) {
         pastBodies.push(body);
       }
     }
