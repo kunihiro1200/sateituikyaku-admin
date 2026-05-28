@@ -332,6 +332,9 @@ export const isVisitCompleted = (seller: Seller | any): boolean => {
   return isYesterdayOrBefore(visitDate);
 };
 
+// 訪問後御礼の対象開始日（この日以降の訪問が対象）
+const VISIT_THANK_YOU_CUTOFF = '2026-05-28';
+
 /**
  * 訪問後御礼メール未送信判定
  * 
@@ -339,7 +342,7 @@ export const isVisitCompleted = (seller: Seller | any): boolean => {
  * 
  * 条件:
  * - 営担（visitAssignee）に入力がある
- * - 訪問日（visitDate）が今日以降（訪問予定あり）
+ * - 訪問日（visitDate）が 2026/5/28 以降かつ今日以前（訪問済み）
  * - visitThankYouSent フラグが false（バックエンドから付与）
  * 
  * @param seller 売主データ（visitThankYouSent フィールドを含む）
@@ -350,12 +353,18 @@ export const isVisitThankYouPending = (seller: Seller | any): boolean => {
   if (!hasVisitAssignee(seller)) {
     return false;
   }
-  // 訪問日が今日以降かチェック
-  const visitDate = seller.visitDate || seller.visit_date;
+  // 訪問日を取得・正規化
+  let visitDate = seller.visitDate || seller.visit_date;
   if (!visitDate) {
     return false;
   }
-  if (!isTodayOrAfter(visitDate)) {
+  const normalized = normalizeDateString(visitDate);
+  if (!normalized) {
+    return false;
+  }
+  // 訪問日が 2026-05-28 以降かつ今日以前（訪問済み）
+  const todayStr = getTodayJSTString();
+  if (normalized < VISIT_THANK_YOU_CUTOFF || normalized > todayStr) {
     return false;
   }
   // バックエンドから付与された「御礼メール送信済み」フラグで判定

@@ -1579,15 +1579,38 @@ export class SellerService extends BaseRepository {
               .or('phone_contact_person.not.is.null,preferred_contact_time.not.is.null,contact_method.not.is.null');
           } else if (dynamicCategory.startsWith('visitThankYouPending:')) {
             const assignee = dynamicCategory.replace('visitThankYouPending:', '');
-            // 訪問後御礼メール未送信（営担が指定のイニシャル AND 訪問日が今日以降）
-            // 御礼メール送信済みかどうかはJS側でフィルタリング（DBクエリでは訪問予定全件を取得）
-            query = query
+            // 訪問後御礼メール未送信（営担が指定のイニシャル AND 訪問日が 2026-05-28 以降かつ今日以前）
+            // 御礼メール送信済みかどうかはJS側でフィルタリング（DBクエリでは訪問済み全件を取得）
+            const visitThankYouCutoff = '2026-05-28';
+            // 御礼メール送信済みの seller_number を取得して除外
+            const { data: sentHistory } = await this.supabase
+              .from('property_chat_history')
+              .select('property_number')
+              .in('chat_type', ['seller_email', 'seller_gmail'])
+              .ilike('subject', '%御礼%');
+            const sentNumbers = new Set((sentHistory || []).map((h: any) => h.property_number).filter(Boolean));
+            // 訪問済み売主を取得（seller_number も含める）
+            const { data: visitedSellers } = await this.supabase
+              .from('sellers')
+              .select('id, seller_number')
+              .is('deleted_at', null)
               .not('visit_assignee', 'is', null)
               .neq('visit_assignee', '')
               .neq('visit_assignee', '外す')
               .eq('visit_assignee', assignee)
               .not('visit_date', 'is', null)
-              .gte('visit_date', todayJST);
+              .gte('visit_date', visitThankYouCutoff)
+              .lte('visit_date', todayJST);
+            // 御礼メール未送信の seller_number のみ残す
+            const pendingIds = (visitedSellers || [])
+              .filter((s: any) => !sentNumbers.has(s.seller_number))
+              .map((s: any) => s.id);
+            if (pendingIds.length === 0) {
+              // 該当なし → 空結果を返すため存在しないIDを指定
+              query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+            } else {
+              query = query.in('id', pendingIds);
+            }
           }
           break;
         }
