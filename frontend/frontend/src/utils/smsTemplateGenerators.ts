@@ -341,6 +341,18 @@ export const replacePlaceholders = (
       result = result.replace(/\[改行\]HP[：:]https:\/\/ifoo-oita\.com\//g, '[改行]HP：https://kujira-fudosan.com/');
       // \n に変換済みの場合（行頭スペースあり・なし両方対応）
       result = result.replace(/(\r?\n[ \t]*)HP[：:]https:\/\/ifoo-oita\.com\//g, '$1HP：https://kujira-fudosan.com/');
+
+      // FI売主の場合は売却の流れPDFのURLを新しいGoogle DriveのURLに変更
+      // chrome-extension://... プレフィックス付きのURL（valuation_inheritanceテンプレート）
+      result = result.replace(
+        /chrome-extension:\/\/efaidnbmnnnibpcajpcglclefindmkaj\/https:\/\/ifoo-oita\.com\/testsite\/wp-content\/uploads\/2020\/12\/d58af49c9c6dd87c7aee1845265204b6\.pdf/g,
+        'https://drive.google.com/file/d/1yo-tNvpLU0zYV0hR8NtlF5oUcH16TUeJ/view?usp=sharing'
+      );
+      // プレフィックスなしのURL（valuation_non_inheritanceテンプレート）
+      result = result.replace(
+        /https:\/\/ifoo-oita\.com\/testsite\/wp-content\/uploads\/2020\/12\/d58af49c9c6dd87c7aee1845265204b6\.pdf/g,
+        'https://drive.google.com/file/d/1yo-tNvpLU0zYV0hR8NtlF5oUcH16TUeJ/view?usp=sharing'
+      );
     }
     
     return result;
