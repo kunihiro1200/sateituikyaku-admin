@@ -117,6 +117,74 @@ function extractAgeFromComments(comments: string | null | undefined): string | n
 }
 
 /**
+ * 希望連絡時間の文字列から曜日部分を圧縮する
+ * 例: 「月曜日、火曜日、水曜日、木曜日、金曜日 10:00〜22:00」→「平日 10:00〜22:00」
+ * 例: 「月曜日、火曜日、水曜日、木曜日、金曜日、土曜日、日曜日」→「毎日」
+ * 例: 「土曜日、日曜日 午後」→「土日 午後」
+ */
+function compressContactTime(value: string): string {
+  if (!value) return value;
+
+  // 「全て」「毎日」「いつでも」が含まれる場合
+  if (/全て|毎日|いつでも|いつでも/.test(value)) {
+    const timeOnly = value.replace(/全て|毎日|いつでも/g, '').replace(/[、,，\s]+/g, ' ').trim();
+    return timeOnly ? `毎日 ${timeOnly}` : '毎日';
+  }
+
+  // 曜日の正規化（「月曜日」→「月」など）
+  const dayMap: Record<string, string> = {
+    '月曜日': '月', '火曜日': '火', '水曜日': '水', '木曜日': '木',
+    '金曜日': '金', '土曜日': '土', '日曜日': '日',
+    '月曜': '月', '火曜': '火', '水曜': '水', '木曜': '木',
+    '金曜': '金', '土曜': '土', '日曜': '日',
+  };
+
+  // 含まれる曜日を検出
+  const weekdays = ['月', '火', '水', '木', '金'];
+  const weekend = ['土', '日'];
+  const allDays = [...weekdays, ...weekend];
+
+  // 値の中に含まれる曜日を収集
+  let normalized = value;
+  for (const [long, short] of Object.entries(dayMap)) {
+    normalized = normalized.replace(new RegExp(long, 'g'), short);
+  }
+
+  const foundDays = allDays.filter(d => normalized.includes(d));
+
+  // 曜日以外の部分（時間帯など）を抽出
+  let remainder = normalized;
+  for (const d of allDays) {
+    remainder = remainder.replace(new RegExp(d, 'g'), '');
+  }
+  remainder = remainder.replace(/[、,，・\s]+/g, ' ').trim();
+
+  let dayLabel = '';
+  const hasAllWeekdays = weekdays.every(d => foundDays.includes(d));
+  const hasWeekend = weekend.every(d => foundDays.includes(d));
+
+  if (hasAllWeekdays && hasWeekend) {
+    dayLabel = '毎日';
+  } else if (hasAllWeekdays) {
+    dayLabel = '平日';
+    // 土日が個別にある場合は追加
+    const extraDays = weekend.filter(d => foundDays.includes(d));
+    if (extraDays.length > 0) dayLabel += extraDays.join('');
+  } else if (foundDays.length > 0) {
+    dayLabel = foundDays.join('');
+  }
+
+  const parts = [dayLabel, remainder].filter(Boolean);
+  const result = parts.join(' ') || value;
+
+  // 時刻フォーマット変換: 「10:00」「10：00」→「10時」（分が00の場合）、「10:30」→「10時半」
+  return result
+    .replace(/(\d{1,2})[：:]00/g, '$1時')
+    .replace(/(\d{1,2})[：:]30/g, '$1時半')
+    .replace(/(\d{1,2})[：:](\d{2})/g, '$1時$2分');
+}
+
+/**
  * コメント文字列から希望連絡時間を抽出する
  * 「希望連絡時間: XX」「★希望連絡時間：XX」の形式に対応
  */
@@ -125,7 +193,8 @@ function extractContactTimeFromComments(comments: string | null | undefined): st
   const plainText = comments.replace(/<[^>]*>/g, '');
   const match = plainText.match(/希望連絡時間[：:]\s*([^\n\r]+)/);
   const value = match ? match[1].trim() : null;
-  return value || null; // 空文字列はnullとして扱う
+  if (!value) return null;
+  return compressContactTime(value);
 }
 
 const statusLabels: Record<string, string> = {
