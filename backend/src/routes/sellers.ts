@@ -2228,30 +2228,24 @@ router.put('/:id', async (req: Request, res: Response) => {
       // 通常の更新
       const seller = await sellerService.updateSeller(req.params.id, req.body);
       invalidateDuplicatesCache(req.params.id);
-      res.json(seller);
-      // スプレッドシートに非同期で同期（レスポンスをブロックしない）
-      createSpreadsheetSyncService().then(syncService => {
+
+      // スプレッドシートに同期（awaitして確実に完了させる）
+      // Vercelサーバーレス環境ではレスポンス後に非同期処理が打ち切られるため、awaitが必須
+      try {
+        const syncService = await createSpreadsheetSyncService();
         if (syncService) {
-          syncService.syncToSpreadsheet(req.params.id).catch(e =>
-            console.error('⚠️ [SpreadsheetSync] Sync error:', e)
-          );
-        }
-      });
-      // firstCallPerson が更新された場合、スプレッドシートのY列（'1番電話'）を即時同期
-      if (req.body.firstCallPerson !== undefined) {
-        console.log('📞 [SpreadsheetSync] firstCallPerson updated, triggering immediate sync for Y column (1番電話)');
-        createSpreadsheetSyncService().then(syncService => {
-          if (syncService) {
-            syncService.syncToSpreadsheet(req.params.id).then(result => {
-              console.log('✅ [SpreadsheetSync] firstCallPerson sync completed:', result);
-            }).catch(e =>
-              console.error('⚠️ [SpreadsheetSync] firstCallPerson sync error (best-effort):', e)
-            );
+          const syncResult = await syncService.syncToSpreadsheet(req.params.id);
+          if (syncResult.success) {
+            console.log(`✅ [SpreadsheetSync] Sync completed for ${req.params.id}`);
+          } else {
+            console.error(`⚠️ [SpreadsheetSync] Sync failed for ${req.params.id}:`, syncResult.error);
           }
-        }).catch(e =>
-          console.error('⚠️ [SpreadsheetSync] Failed to initialize sync service for firstCallPerson:', e)
-        );
+        }
+      } catch (e) {
+        console.error('⚠️ [SpreadsheetSync] Sync error:', e);
       }
+
+      res.json(seller);
       // サイドバーカウントを非同期で即時更新（レスポンスをブロックしない）
       import('../services/SellerSidebarCountsUpdateService').then(({ SellerSidebarCountsUpdateService }) => {
         const { createClient } = require('@supabase/supabase-js');
