@@ -1353,7 +1353,7 @@ export default function SellersPage() {
                             <Typography
                               variant="body2"
                               sx={{
-                                fontSize: '0.75rem',
+                                fontSize: isElderly ? '0.85rem' : '0.75rem',
                                 whiteSpace: 'nowrap',
                                 fontWeight: isElderly ? 'bold' : 'normal',
                               }}
