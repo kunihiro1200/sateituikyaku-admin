@@ -229,7 +229,13 @@ export class SellerSidebarCountsUpdateService {
 
       // 13. 訪問後御礼メール未送信カウント用データ
       // 訪問済み売主（visit_assignee あり、visit_date が 2026-05-28 以降かつ今日以前）を取得
+      // visit_date はTIMESTAMP型のため、今日の23:59:59までを含めるよう todayJST + 1日 で lt を使う
       const visitThankYouCutoff = '2026-05-28';
+      const tomorrowJST = (() => {
+        const d = new Date(todayJST + 'T00:00:00Z');
+        d.setUTCDate(d.getUTCDate() + 1);
+        return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+      })();
       let visitCompletedSellers: any[] = [];
       {
         let vcPage = 0;
@@ -244,7 +250,7 @@ export class SellerSidebarCountsUpdateService {
             .neq('visit_assignee', '外す')
             .not('visit_date', 'is', null)
             .gte('visit_date', visitThankYouCutoff)
-            .lte('visit_date', todayJST)
+            .lt('visit_date', tomorrowJST)
             .range(vcPage * vcPageSize, (vcPage + 1) * vcPageSize - 1);
           if (vcError || !vcData || vcData.length === 0) break;
           visitCompletedSellers = visitCompletedSellers.concat(vcData);

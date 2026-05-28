@@ -1580,8 +1580,13 @@ export class SellerService extends BaseRepository {
           } else if (dynamicCategory.startsWith('visitThankYouPending:')) {
             const assignee = dynamicCategory.replace('visitThankYouPending:', '');
             // 訪問後御礼メール未送信（営担が指定のイニシャル AND 訪問日が 2026-05-28 以降かつ今日以前）
-            // 御礼メール送信済みかどうかはJS側でフィルタリング（DBクエリでは訪問済み全件を取得）
+            // visit_date はTIMESTAMP型のため、今日の23:59:59までを含めるよう翌日で lt を使う
             const visitThankYouCutoff = '2026-05-28';
+            const tomorrowJSTLocal = (() => {
+              const d = new Date(todayJST + 'T00:00:00Z');
+              d.setUTCDate(d.getUTCDate() + 1);
+              return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+            })();
             // 御礼メール送信済みの seller_number を取得して除外
             const { data: sentHistory } = await this.supabase
               .from('property_chat_history')
@@ -1600,7 +1605,7 @@ export class SellerService extends BaseRepository {
               .eq('visit_assignee', assignee)
               .not('visit_date', 'is', null)
               .gte('visit_date', visitThankYouCutoff)
-              .lte('visit_date', todayJST);
+              .lt('visit_date', tomorrowJSTLocal);
             // 御礼メール未送信の seller_number のみ残す
             const pendingIds = (visitedSellers || [])
               .filter((s: any) => !sentNumbers.has(s.seller_number))
