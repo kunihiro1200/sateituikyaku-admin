@@ -1341,11 +1341,23 @@ export default function SellersPage() {
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.2 }}>
-                        {extractAgeFromComments(seller.comments) && (
-                          <Typography variant="body2" sx={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
-                            {extractAgeFromComments(seller.comments)}
-                          </Typography>
-                        )}
+                        {extractAgeFromComments(seller.comments) && (() => {
+                          const ageText = extractAgeFromComments(seller.comments)!;
+                          const ageNum = parseInt(ageText);
+                          const isElderly = !isNaN(ageNum) && ageNum >= 65;
+                          return (
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontSize: '0.75rem',
+                                whiteSpace: 'nowrap',
+                                fontWeight: isElderly ? 'bold' : 'normal',
+                              }}
+                            >
+                              {ageText}
+                            </Typography>
+                          );
+                        })()}
                         {extractContactTimeFromComments(seller.comments) && (
                           <Typography variant="body2" sx={{ fontSize: '0.7rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
                             {extractContactTimeFromComments(seller.comments)}
