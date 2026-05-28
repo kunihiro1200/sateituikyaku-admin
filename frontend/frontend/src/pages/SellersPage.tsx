@@ -1335,7 +1335,7 @@ export default function SellersPage() {
                             sx={{
                               fontSize: '0.65rem',
                               height: 18,
-                              bgcolor: '#ff9800',
+                              bgcolor: (seller.exclusionAction || '').includes('不通') ? '#ff9800' : '#e53935',
                               color: 'white',
                               '& .MuiChip-label': { px: 0.8 },
                             }}
