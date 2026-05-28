@@ -276,6 +276,7 @@ export default function SellersPage() {
     fi_todayCallWithInfo?: number;
     fi_unvaluated?: number;
     fi_todayCallWithInfoLabelCounts?: Record<string, number>;
+    visitThankYouPendingCounts?: Record<string, number>;
   }>({
     todayCall: 0,
     todayCallWithInfo: 0,
@@ -295,6 +296,7 @@ export default function SellersPage() {
     fi_todayCallWithInfo: 0,
     fi_unvaluated: 0,
     fi_todayCallWithInfoLabelCounts: {},
+    visitThankYouPendingCounts: {},
   });
   const [sidebarLoading, setSidebarLoading] = useState(!pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS));
   // 担当者イニシャル一覧（スタッフスプレッドシートから取得）
@@ -847,6 +849,7 @@ export default function SellersPage() {
                 expandedCategoryLoading={expandedCategoryLoading}
                 loading={sidebarLoading}
                 assigneeInitials={assigneeInitials}
+                visitThankYouPendingCounts={sidebarCounts.visitThankYouPendingCounts}
               />
             </AccordionDetails>
           </Accordion>
@@ -867,6 +870,7 @@ export default function SellersPage() {
               expandedCategoryLoading={expandedCategoryLoading}
               loading={sidebarLoading}
               assigneeInitials={assigneeInitials}
+              visitThankYouPendingCounts={sidebarCounts.visitThankYouPendingCounts}
             />
           )}
 

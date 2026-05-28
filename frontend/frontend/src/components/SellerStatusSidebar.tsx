@@ -27,6 +27,7 @@ import {
   isVisitDayBefore,
   isVisitScheduled,
   isVisitCompleted,
+  isVisitThankYouPending,
   isUnvisitedOtherDecision,
 } from '../utils/sellerStatusFilters';
 import { Seller } from '../types';
@@ -54,6 +55,8 @@ interface SellerStatusSidebarProps {
   loading?: boolean;
   /** スタッフイニシャル一覧（担当者別カテゴリー表示用） */
   assigneeInitials?: string[];
+  /** 担当者別の訪問後御礼メール未送信カウント */
+  visitThankYouPendingCounts?: Record<string, number>;
   /** 売主クリック時のナビゲーションハンドラー（遷移ブロック対応用） */
   onSellerNavigate?: (sellerId: string) => void;
 }
@@ -109,6 +112,10 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
   if (typeof category === 'string' && category.startsWith('todayCallAssigned:')) {
     const assignee = category.replace('todayCallAssigned:', '');
     return sellers.filter(s => isTodayCallAssignedTo(s, assignee));
+  }
+  if (typeof category === 'string' && category.startsWith('visitThankYouPending:')) {
+    const assignee = category.replace('visitThankYouPending:', '');
+    return sellers.filter(s => isVisitThankYouPending(s) && (s.visitAssigneeInitials || s.visit_assignee || s.visitAssignee) === assignee);
   }
   if (typeof category === 'string' && category.startsWith('todayCallWithInfo:')) {
     const targetLabel = category.replace('todayCallWithInfo:', '');
@@ -197,6 +204,9 @@ const getCategoryLabel = (category: StatusCategory): string => {
       if (typeof category === 'string' && category.startsWith('todayCallWithInfo:')) {
         return category.replace('todayCallWithInfo:', '');
       }
+      if (typeof category === 'string' && category.startsWith('visitThankYouPending:')) {
+        return `訪問後御礼(${category.replace('visitThankYouPending:', '')})`;
+      }
       // FI（福岡）カテゴリ
       if (typeof category === 'string' && category.startsWith('fi:')) {
         const sub = category.replace('fi:', '');
@@ -255,6 +265,9 @@ const getCategoryColor = (category: StatusCategory): string => {
       if (typeof category === 'string' && category.startsWith('todayCallWithInfo:')) {
         return '#9c27b0';
       }
+      if (typeof category === 'string' && category.startsWith('visitThankYouPending:')) {
+        return '#e65100';
+      }
       // FI（福岡）カテゴリ
       if (typeof category === 'string' && category.startsWith('fi:')) {
         const sub = category.replace('fi:', '');
@@ -279,6 +292,7 @@ function SellerStatusSidebarComponent({
   expandedCategoryLoading = {},
   loading = false,
   assigneeInitials = [],
+  visitThankYouPendingCounts = {},
   onSellerNavigate,
 }: SellerStatusSidebarProps) {
   const navigate = useNavigate();
@@ -356,6 +370,14 @@ function SellerStatusSidebarComponent({
         return categoryCounts.todayCallAssignedCounts[assignee] ?? 0;
       }
       return filterSellersByCategory(validSellers, category).length;
+    }
+    if (typeof category === 'string' && category.startsWith('visitThankYouPending:')) {
+      const assignee = category.replace('visitThankYouPending:', '');
+      // APIから取得した担当者別訪問後御礼未送信カウントがあればそれを使用
+      if (visitThankYouPendingCounts) {
+        return visitThankYouPendingCounts[assignee] ?? 0;
+      }
+      return validSellers.filter(s => isVisitThankYouPending(s) && (s.visitAssigneeInitials || s.visit_assignee || s.visitAssignee) === assignee).length;
     }
     if (categoryCounts) {
       return (categoryCounts as unknown as Record<string, number>)[category] ?? 0;
@@ -728,6 +750,52 @@ function SellerStatusSidebarComponent({
               </Button>
             </Box>
           )}
+          {/* ↳ 訪問後御礼(Y)サブカテゴリー（インデント付き） */}
+          {(() => {
+            const thankYouCategory = `visitThankYouPending:${assignee}` as StatusCategory;
+            const thankYouCount = visitThankYouPendingCounts?.[assignee] ?? 0;
+            const isThankYouActive = isActive(thankYouCategory);
+            const isThankYouExpanded = expandedCategory === thankYouCategory;
+            const thankYouColor = '#e65100'; // 深いオレンジ
+            if (thankYouCount === 0) return null;
+            return (
+              <Box sx={{ bgcolor: '#e8f5e9', borderRadius: 1 }}>
+                <Button
+                  fullWidth
+                  onClick={() => handleCategoryClick(thankYouCategory)}
+                  sx={{
+                    justifyContent: 'space-between',
+                    textAlign: 'left',
+                    fontSize: '0.85rem',
+                    py: 1,
+                    pl: 4,
+                    pr: 1.5,
+                    color: isThankYouActive || isThankYouExpanded ? 'white' : thankYouColor,
+                    bgcolor: isThankYouActive || isThankYouExpanded ? thankYouColor : 'transparent',
+                    borderRadius: 1,
+                    '&:hover': {
+                      bgcolor: isThankYouActive || isThankYouExpanded ? thankYouColor : `${thankYouColor}15`,
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <span>↳ 訪問後御礼({assignee})</span>
+                    <Chip
+                      label={thankYouCount}
+                      size="small"
+                      sx={{
+                        height: 20,
+                        fontSize: '0.7rem',
+                        bgcolor: isThankYouActive || isThankYouExpanded ? 'rgba(255,255,255,0.3)' : undefined,
+                        color: isThankYouActive || isThankYouExpanded ? 'white' : undefined,
+                      }}
+                    />
+                  </Box>
+                  {isThankYouExpanded ? <ExpandLess /> : <ExpandMore />}
+                </Button>
+              </Box>
+            );
+          })()}
         </Box>
       );
     });

@@ -227,6 +227,65 @@ export class SellerSidebarCountsUpdateService {
         }
       }
 
+      // 13. 訪問後御礼メール未送信カウント用データ
+      // 訪問済み売主（visit_assignee あり、visit_date が今日以前）を取得
+      let visitCompletedSellers: any[] = [];
+      {
+        let vcPage = 0;
+        const vcPageSize = 1000;
+        while (true) {
+          const { data: vcData, error: vcError } = await this.supabase
+            .from('sellers')
+            .select('seller_number, visit_assignee')
+            .is('deleted_at', null)
+            .not('visit_assignee', 'is', null)
+            .neq('visit_assignee', '')
+            .neq('visit_assignee', '外す')
+            .not('visit_date', 'is', null)
+            .lt('visit_date', todayJST)
+            .range(vcPage * vcPageSize, (vcPage + 1) * vcPageSize - 1);
+          if (vcError || !vcData || vcData.length === 0) break;
+          visitCompletedSellers = visitCompletedSellers.concat(vcData);
+          if (vcData.length < vcPageSize) break;
+          vcPage++;
+        }
+      }
+
+      // 訪問済み売主の seller_number 一覧
+      const visitCompletedSellerNumbers = visitCompletedSellers.map((s: any) => s.seller_number).filter(Boolean);
+
+      // 御礼メール送信済みの seller_number を property_chat_history から取得
+      const thankYouSentSet = new Set<string>();
+      if (visitCompletedSellerNumbers.length > 0) {
+        // 1000件ずつ分割してクエリ（Supabase の IN 句上限対策）
+        const chunkSize = 500;
+        for (let i = 0; i < visitCompletedSellerNumbers.length; i += chunkSize) {
+          const chunk = visitCompletedSellerNumbers.slice(i, i + chunkSize);
+          const { data: histData } = await this.supabase
+            .from('property_chat_history')
+            .select('property_number')
+            .in('property_number', chunk)
+            .in('chat_type', ['seller_email', 'seller_gmail'])
+            .ilike('subject', '%御礼%');
+          if (histData) {
+            histData.forEach((h: any) => {
+              if (h.property_number) thankYouSentSet.add(h.property_number);
+            });
+          }
+        }
+      }
+
+      // 訪問後御礼メール未送信カウント（担当者別）
+      const visitThankYouPendingCounts: Record<string, number> = {};
+      visitCompletedSellers.forEach((s: any) => {
+        const assignee = s.visit_assignee;
+        if (!assignee) return;
+        // 御礼メール未送信の場合のみカウント
+        if (!thankYouSentSet.has(s.seller_number)) {
+          visitThankYouPendingCounts[assignee] = (visitThankYouPendingCounts[assignee] || 0) + 1;
+        }
+      });
+
       console.log(`⏱️ [SellerSidebarCountsUpdate] Data fetched in ${Date.now() - startTime}ms`);
 
       // カウント計算（getSidebarCountsFallback()と同じロジック）
@@ -475,6 +534,11 @@ export class SellerSidebarCountsUpdateService {
       // visitAssignedCounts
       Object.entries(visitAssignedCounts).forEach(([assignee, count]) => {
         rows.push({ category: 'visitAssigned', count, label: null, assignee });
+      });
+
+      // visitThankYouPendingCounts（訪問後御礼メール未送信カウント）
+      Object.entries(visitThankYouPendingCounts).forEach(([assignee, count]) => {
+        rows.push({ category: 'visitThankYouPending', count, label: null, assignee });
       });
 
       const { error: insertError } = await this.supabase

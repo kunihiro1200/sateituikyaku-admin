@@ -47,7 +47,8 @@ import { isVisitDayBefore as isVisitDayBeforeUtil, parseDate } from './sellerSta
 export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'pinrichChangeRequired' | 'exclusive' | 'general' | 'visitOtherDecision' | 'unvisitedOtherDecision'
   | `visitAssigned:${string}`        // 担当カテゴリー（例: visitAssigned:Y）
   | `todayCallAssigned:${string}`    // 当日TELサブカテゴリー（例: todayCallAssigned:Y）
-  | `todayCallWithInfo:${string}`;   // 当日TEL（内容）ラベル別カテゴリー（例: todayCallWithInfo:当日TEL(I・Eメール)）
+  | `todayCallWithInfo:${string}`    // 当日TEL（内容）ラベル別カテゴリー（例: todayCallWithInfo:当日TEL(I・Eメール)）
+  | `visitThankYouPending:${string}`;  // 訪問後御礼サブカテゴリー（例: visitThankYouPending:Y）
 
 // カテゴリカウントのインターフェース
 export interface CategoryCounts {
@@ -329,6 +330,46 @@ export const isVisitCompleted = (seller: Seller | any): boolean => {
   }
   
   return isYesterdayOrBefore(visitDate);
+};
+
+/**
+ * 訪問後御礼メール未送信判定
+ * 
+ * 【サイドバー表示】「↳ 訪問後御礼(イニシャル)」
+ * 
+ * 条件:
+ * - 営担（visitAssignee）に入力がある
+ * - 訪問日（visitDate）が今日以前（訪問済み）
+ * - visitThankYouSent フラグが false（バックエンドから付与）
+ * 
+ * @param seller 売主データ（visitThankYouSent フィールドを含む）
+ * @returns 訪問後御礼メール未送信かどうか
+ */
+export const isVisitThankYouPending = (seller: Seller | any): boolean => {
+  // 訪問済み条件を満たさない場合は対象外
+  if (!isVisitCompleted(seller)) {
+    return false;
+  }
+  // バックエンドから付与された「御礼メール送信済み」フラグで判定
+  // visitThankYouSent が true なら送信済み → 対象外
+  if (seller.visitThankYouSent === true) {
+    return false;
+  }
+  return true;
+};
+
+/**
+ * 訪問後御礼の表示ラベルを取得
+ * 
+ * @param seller 売主データ
+ * @returns 表示ラベル（例: "訪問後御礼(Y)"）
+ */
+export const getVisitThankYouPendingLabel = (seller: Seller | any): string => {
+  const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
+  if (visitAssignee && visitAssignee.trim() !== '') {
+    return `訪問後御礼(${visitAssignee})`;
+  }
+  return '訪問後御礼';
 };
 
 /**

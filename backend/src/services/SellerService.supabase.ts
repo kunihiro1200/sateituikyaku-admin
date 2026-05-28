@@ -1577,6 +1577,17 @@ export class SellerService extends BaseRepository {
               .lte('next_call_date', todayJST)
               .or('status.ilike.%追客中%,status.ilike.%除外後追客中%,status.ilike.%他決→追客%')
               .or('phone_contact_person.not.is.null,preferred_contact_time.not.is.null,contact_method.not.is.null');
+          } else if (dynamicCategory.startsWith('visitThankYouPending:')) {
+            const assignee = dynamicCategory.replace('visitThankYouPending:', '');
+            // 訪問後御礼メール未送信（営担が指定のイニシャル AND 訪問日が今日以前）
+            // 御礼メール送信済みかどうかはJS側でフィルタリング（DBクエリでは訪問済み全件を取得）
+            query = query
+              .not('visit_assignee', 'is', null)
+              .neq('visit_assignee', '')
+              .neq('visit_assignee', '外す')
+              .eq('visit_assignee', assignee)
+              .not('visit_date', 'is', null)
+              .lt('visit_date', todayJST);
           }
           break;
         }
@@ -2511,6 +2522,7 @@ export class SellerService extends BaseRepository {
     fi_todayCallWithInfo: number;
     fi_unvaluated: number;
     fi_todayCallWithInfoLabelCounts: Record<string, number>;
+    visitThankYouPendingCounts: Record<string, number>;
   }> {
     try {
       // seller_sidebar_countsテーブルから全行を取得（updated_atも含めて取得）
@@ -2565,6 +2577,7 @@ export class SellerService extends BaseRepository {
     const todayCallAssignedCounts: Record<string, number> = {};
     const todayCallWithInfoLabelCounts: Record<string, number> = {};
     const fi_todayCallWithInfoLabelCounts: Record<string, number> = {};
+    const visitThankYouPendingCounts: Record<string, number> = {};
 
     rows.forEach((r: any) => {
       if (r.category === 'visitAssigned' && r.assignee) {
@@ -2575,6 +2588,8 @@ export class SellerService extends BaseRepository {
         todayCallWithInfoLabelCounts[r.label] = r.count;
       } else if (r.category === 'fi_todayCallWithInfo' && r.label) {
         fi_todayCallWithInfoLabelCounts[r.label] = r.count;
+      } else if (r.category === 'visitThankYouPending' && r.assignee) {
+        visitThankYouPendingCounts[r.assignee] = r.count;
       }
     });
 
@@ -2605,6 +2620,7 @@ export class SellerService extends BaseRepository {
       fi_todayCallWithInfo: getCount('fi_todayCallWithInfo'),
       fi_unvaluated: getCount('fi_unvaluated'),
       fi_todayCallWithInfoLabelCounts,
+      visitThankYouPendingCounts,
     };
   }
 
@@ -2636,6 +2652,7 @@ export class SellerService extends BaseRepository {
     fi_todayCallWithInfo: number;
     fi_unvaluated: number;
     fi_todayCallWithInfoLabelCounts: Record<string, number>;
+    visitThankYouPendingCounts: Record<string, number>;
   }> {
     // JST今日の日付を計算
     const now = new Date();
@@ -3004,6 +3021,7 @@ export class SellerService extends BaseRepository {
       fi_todayCallWithInfo: fi_todayCallWithInfoCount || 0,
       fi_unvaluated: fi_unvaluatedCount || 0,
       fi_todayCallWithInfoLabelCounts: fi_labelCountMap,
+      visitThankYouPendingCounts: {},  // フォールバック時は空（seller_sidebar_countsテーブルから取得）
     };
 
     console.log(`✅ [Performance] Sidebar counts calculation completed in ${Date.now() - startTime}ms`);
