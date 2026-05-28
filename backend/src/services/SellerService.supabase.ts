@@ -1587,17 +1587,10 @@ export class SellerService extends BaseRepository {
               d.setUTCDate(d.getUTCDate() + 1);
               return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
             })();
-            // 御礼メール送信済みの seller_number を取得して除外
-            const { data: sentHistory } = await this.supabase
-              .from('property_chat_history')
-              .select('property_number')
-              .in('chat_type', ['seller_email', 'seller_gmail'])
-              .ilike('subject', '%御礼%');
-            const sentNumbers = new Set((sentHistory || []).map((h: any) => h.property_number).filter(Boolean));
-            // 訪問済み売主を取得（seller_number も含める）
+            // 訪問済み売主を取得
             const { data: visitedSellers } = await this.supabase
               .from('sellers')
-              .select('id, seller_number')
+              .select('id')
               .is('deleted_at', null)
               .not('visit_assignee', 'is', null)
               .neq('visit_assignee', '')
@@ -1606,10 +1599,21 @@ export class SellerService extends BaseRepository {
               .not('visit_date', 'is', null)
               .gte('visit_date', visitThankYouCutoff)
               .lt('visit_date', tomorrowJSTLocal);
-            // 御礼メール未送信の seller_number のみ残す
-            const pendingIds = (visitedSellers || [])
-              .filter((s: any) => !sentNumbers.has(s.seller_number))
-              .map((s: any) => s.id);
+            const visitedIds = (visitedSellers || []).map((s: any) => s.id);
+            // 御礼メール送信済みの seller_id を activities テーブルから取得
+            const thankYouSentIds = new Set<string>();
+            if (visitedIds.length > 0) {
+              const { data: actData } = await this.supabase
+                .from('activities')
+                .select('seller_id')
+                .in('seller_id', visitedIds)
+                .ilike('content', '%訪問査定後御礼%');
+              (actData || []).forEach((a: any) => {
+                if (a.seller_id) thankYouSentIds.add(a.seller_id);
+              });
+            }
+            // 御礼メール未送信の id のみ残す
+            const pendingIds = visitedIds.filter((id: string) => !thankYouSentIds.has(id));
             if (pendingIds.length === 0) {
               // 該当なし → 空結果を返すため存在しないIDを指定
               query = query.eq('id', '00000000-0000-0000-0000-000000000000');

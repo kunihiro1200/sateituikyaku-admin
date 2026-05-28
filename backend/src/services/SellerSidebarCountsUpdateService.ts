@@ -243,7 +243,7 @@ export class SellerSidebarCountsUpdateService {
         while (true) {
           const { data: vcData, error: vcError } = await this.supabase
             .from('sellers')
-            .select('seller_number, visit_assignee')
+            .select('id, seller_number, visit_assignee')
             .is('deleted_at', null)
             .not('visit_assignee', 'is', null)
             .neq('visit_assignee', '')
@@ -259,25 +259,31 @@ export class SellerSidebarCountsUpdateService {
         }
       }
 
-      // 訪問済み売主の seller_number 一覧
+      // 訪問済み売主の seller_number と id の一覧
       const visitCompletedSellerNumbers = visitCompletedSellers.map((s: any) => s.seller_number).filter(Boolean);
 
-      // 御礼メール送信済みの seller_number を property_chat_history から取得
-      const thankYouSentSet = new Set<string>();
-      if (visitCompletedSellerNumbers.length > 0) {
-        // 1000件ずつ分割してクエリ（Supabase の IN 句上限対策）
+      // 御礼メール送信済みの seller_id を activities テーブルから取得
+      // activities.content = '【訪問査定後御礼メール】を送信' で照合
+      const thankYouSentSellerIds = new Set<string>();
+      if (visitCompletedSellers.length > 0) {
+        // seller_number → seller_id のマップを取得
+        const sellerNumberToId: Record<string, string> = {};
+        visitCompletedSellers.forEach((s: any) => {
+          if (s.seller_number && s.id) sellerNumberToId[s.seller_number] = s.id;
+        });
+        const sellerIds = Object.values(sellerNumberToId);
+        // 1000件ずつ分割してクエリ
         const chunkSize = 500;
-        for (let i = 0; i < visitCompletedSellerNumbers.length; i += chunkSize) {
-          const chunk = visitCompletedSellerNumbers.slice(i, i + chunkSize);
-          const { data: histData } = await this.supabase
-            .from('property_chat_history')
-            .select('property_number')
-            .in('property_number', chunk)
-            .in('chat_type', ['seller_email', 'seller_gmail'])
-            .ilike('subject', '%御礼%');
-          if (histData) {
-            histData.forEach((h: any) => {
-              if (h.property_number) thankYouSentSet.add(h.property_number);
+        for (let i = 0; i < sellerIds.length; i += chunkSize) {
+          const chunk = sellerIds.slice(i, i + chunkSize);
+          const { data: actData } = await this.supabase
+            .from('activities')
+            .select('seller_id')
+            .in('seller_id', chunk)
+            .ilike('content', '%訪問査定後御礼%');
+          if (actData) {
+            actData.forEach((a: any) => {
+              if (a.seller_id) thankYouSentSellerIds.add(a.seller_id);
             });
           }
         }
@@ -288,8 +294,8 @@ export class SellerSidebarCountsUpdateService {
       visitCompletedSellers.forEach((s: any) => {
         const assignee = s.visit_assignee;
         if (!assignee) return;
-        // 御礼メール未送信の場合のみカウント
-        if (!thankYouSentSet.has(s.seller_number)) {
+        // 御礼メール未送信の場合のみカウント（seller_id で照合）
+        if (!thankYouSentSellerIds.has(s.id)) {
           visitThankYouPendingCounts[assignee] = (visitThankYouPendingCounts[assignee] || 0) + 1;
         }
       });
