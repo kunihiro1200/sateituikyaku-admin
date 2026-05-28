@@ -86,6 +86,19 @@ interface Seller {
   currentStatus?: string;
   phoneContactPerson?: string;
   lastCalledAt?: string;
+  comments?: string;
+}
+
+/**
+ * コメント文字列から年齢を抽出する
+ * 「年齢: XX歳」または「年齢: XX」の形式に対応
+ */
+function extractAgeFromComments(comments: string | null | undefined): string | null {
+  if (!comments) return null;
+  // HTMLタグを除去してプレーンテキストに変換
+  const plainText = comments.replace(/<[^>]*>/g, '');
+  const match = plainText.match(/年齢[：:]\s*(\d+)/);
+  return match ? `${match[1]}歳` : null;
 }
 
 const statusLabels: Record<string, string> = {
@@ -1112,6 +1125,7 @@ export default function SellersPage() {
               <TableRow>
                 <TableCell sx={{ width: 100 }}>売主番号</TableCell>
                 <TableCell sx={{ width: 120 }}>名前</TableCell>
+                <TableCell sx={{ width: 50 }}>年齢</TableCell>
                 <TableCell sx={{ width: 60 }}>対応中</TableCell>
                 <TableCell sx={{ width: 90 }}>最終電話</TableCell>
                 <TableCell sx={{ width: 90 }}>反響日付</TableCell>
@@ -1161,13 +1175,13 @@ export default function SellersPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={12} align="center">
+                  <TableCell colSpan={13} align="center">
                     読み込み中...
                   </TableCell>
                 </TableRow>
               ) : filteredSellers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} align="center">
+                  <TableCell colSpan={13} align="center">
                     売主が見つかりませんでした
                   </TableCell>
                 </TableRow>
@@ -1212,6 +1226,11 @@ export default function SellersPage() {
                       </Box>
                     </TableCell>
                     <TableCell>{seller.name}</TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                        {extractAgeFromComments(seller.comments) || '-'}
+                      </Typography>
+                    </TableCell>
                     <TableCell>
                       {seller.sellerNumber && (() => {
                         const active = (presenceState[seller.sellerNumber] || [])
