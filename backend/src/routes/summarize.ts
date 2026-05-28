@@ -359,7 +359,7 @@ router.post('/comment-highlights', authenticate, async (req: Request, res: Respo
  * デバッグ用：スプレッドシートから過去報告書の取得状況を確認
  * GET /api/summarize/debug-report-bodies?templateName=xxx
  */
-router.get('/debug-report-bodies', authenticate, async (req: Request, res: Response) => {
+router.get('/debug-report-bodies', async (req: Request, res: Response) => {
   try {
     const templateName = String(req.query.templateName || '').trim();
     const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
