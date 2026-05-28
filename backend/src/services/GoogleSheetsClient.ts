@@ -752,7 +752,12 @@ export class GoogleSheetsClient {
 
       for (const [columnName, value] of Object.entries(row)) {
         const colIndex = headers.indexOf(columnName);
-        if (colIndex === -1) continue;
+        if (colIndex === -1) {
+          if (columnName === 'メールアドレス') {
+            console.warn(`⚠️ [updateRowPartial] Header 'メールアドレス' NOT FOUND in headers. Headers[4..6]: ${JSON.stringify(headers.slice(4, 7))}`);
+          }
+          continue;
+        }
 
         // 値の型に応じて適切なフィールドを設定
         let userEnteredValue: any;

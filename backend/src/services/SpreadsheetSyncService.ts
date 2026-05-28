@@ -119,7 +119,7 @@ export class SpreadsheetSyncService {
 
       // スプレッドシート形式に変換
       const sheetRow = this.columnMapper.mapToSheet(decryptedSeller as SellerData);
-      console.log(`📋 [SpreadsheetSync] Converted to sheet row`);
+      console.log(`📋 [SpreadsheetSync] Converted to sheet row. メールアドレス="${sheetRow['メールアドレス'] || '(empty)'}", keys count=${Object.keys(sheetRow).length}`);
 
       // 既存行を検索（リトライロジック付き）
       const existingRowIndex = await this.findRowBySellerIdWithRetry(seller.seller_number);
