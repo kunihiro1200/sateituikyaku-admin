@@ -104,25 +104,28 @@ function formatExclusionAction(action: string | null | undefined): string | null
 
 /**
  * コメント文字列から年齢を抽出する
- * 「年齢: XX歳」または「年齢: XX」の形式に対応
+ * 「年齢: XX」「年齢：XX」「★年齢XX」など、コロンあり・なし両方に対応
  */
 function extractAgeFromComments(comments: string | null | undefined): string | null {
   if (!comments) return null;
   // HTMLタグを除去してプレーンテキストに変換
   const plainText = comments.replace(/<[^>]*>/g, '');
-  const match = plainText.match(/年齢[：:]\s*(\d+)/);
+  // コロンあり: 「年齢: 35」「年齢：35」
+  // コロンなし: 「★年齢35」「年齢35」
+  const match = plainText.match(/年齢[：:]?\s*(\d+)/);
   return match ? `${match[1]}歳` : null;
 }
 
 /**
  * コメント文字列から希望連絡時間を抽出する
- * 「希望連絡時間: XX」の形式に対応
+ * 「希望連絡時間: XX」「★希望連絡時間：XX」の形式に対応
  */
 function extractContactTimeFromComments(comments: string | null | undefined): string | null {
   if (!comments) return null;
   const plainText = comments.replace(/<[^>]*>/g, '');
   const match = plainText.match(/希望連絡時間[：:]\s*([^\n\r]+)/);
-  return match ? match[1].trim() : null;
+  const value = match ? match[1].trim() : null;
+  return value || null; // 空文字列はnullとして扱う
 }
 
 const statusLabels: Record<string, string> = {
