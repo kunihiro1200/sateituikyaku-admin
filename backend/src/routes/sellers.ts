@@ -1504,6 +1504,130 @@ router.get('/call-ranking-yearly', async (req: Request, res: Response) => {
 });
 
 /**
+ * 訪問予約者月間ランキングを取得
+ * GET /api/sellers/visit-ranking
+ * 当月（JST）の visit_valuation_acquirer 件数をスタッフ別に集計して返す
+ */
+router.get('/visit-ranking', async (req: Request, res: Response) => {
+  try {
+    // JSTで当月の開始日・終了日を計算
+    const now = new Date();
+    const jstOffset = 9 * 60 * 60 * 1000;
+    const jstNow = new Date(now.getTime() + jstOffset);
+    const year = jstNow.getUTCFullYear();
+    const month = jstNow.getUTCMonth(); // 0-indexed
+
+    const fromDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    const toDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    const supabase = (await import('../config/supabase')).default;
+
+    const { data, error } = await supabase
+      .from('sellers')
+      .select('visit_valuation_acquirer')
+      .gte('visit_acquisition_date', fromDate)
+      .lte('visit_acquisition_date', toDate)
+      .not('visit_valuation_acquirer', 'is', null)
+      .neq('visit_valuation_acquirer', '')
+      .is('deleted_at', null);
+
+    if (error) {
+      throw error;
+    }
+
+    // アプリ側で集計
+    const counts = new Map<string, number>();
+    for (const row of data || []) {
+      const initial = row.visit_valuation_acquirer as string;
+      counts.set(initial, (counts.get(initial) || 0) + 1);
+    }
+
+    // count DESC, initial ASC でソート
+    const rankings = Array.from(counts.entries())
+      .map(([initial, count]) => ({ initial, count }))
+      .sort((a, b) => b.count - a.count || a.initial.localeCompare(b.initial));
+
+    res.json({
+      period: { from: fromDate, to: toDate },
+      rankings,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Get visit ranking error:', error);
+    res.status(500).json({
+      error: {
+        code: 'VISIT_RANKING_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to get visit ranking',
+        retryable: true,
+      },
+    });
+  }
+});
+
+/**
+ * 訪問予約者年間累計ランキングを取得
+ * GET /api/sellers/visit-ranking-yearly
+ * 2026年1月1日から現在までの visit_valuation_acquirer 件数をスタッフ別に集計して返す
+ */
+router.get('/visit-ranking-yearly', async (req: Request, res: Response) => {
+  try {
+    const fromDate = '2026-01-01';
+
+    // JSTで今日の日付を計算
+    const now = new Date();
+    const jstOffset = 9 * 60 * 60 * 1000;
+    const jstNow = new Date(now.getTime() + jstOffset);
+    const year = jstNow.getUTCFullYear();
+    const month = jstNow.getUTCMonth();
+    const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    const toDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    const supabase = (await import('../config/supabase')).default;
+
+    const { data, error } = await supabase
+      .from('sellers')
+      .select('visit_valuation_acquirer')
+      .gte('visit_acquisition_date', fromDate)
+      .lte('visit_acquisition_date', toDate)
+      .not('visit_valuation_acquirer', 'is', null)
+      .neq('visit_valuation_acquirer', '')
+      .is('deleted_at', null);
+
+    if (error) {
+      throw error;
+    }
+
+    // アプリ側で集計
+    const counts = new Map<string, number>();
+    for (const row of data || []) {
+      const initial = row.visit_valuation_acquirer as string;
+      counts.set(initial, (counts.get(initial) || 0) + 1);
+    }
+
+    // count DESC, initial ASC でソート
+    const rankings = Array.from(counts.entries())
+      .map(([initial, count]) => ({ initial, count }))
+      .sort((a, b) => b.count - a.count || a.initial.localeCompare(b.initial));
+
+    res.json({
+      period: { from: fromDate, to: toDate },
+      rankings,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Get visit ranking yearly error:', error);
+    res.status(500).json({
+      error: {
+        code: 'VISIT_RANKING_YEARLY_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to get yearly visit ranking',
+        retryable: true,
+      },
+    });
+  }
+});
+
+/**
  * 追客電話ランキングを取得
  * GET /api/sellers/call-tracking-ranking
  * Google Spreadsheet「売主追客ログ」から当月のデータを集計してランキングを返す

@@ -992,6 +992,8 @@ const CallModePage = () => {
   const [rankingDialogOpen, setRankingDialogOpen] = useState(false); // 1番電話月間ランキングダイアログ
   const [callTrackingRankingDialogOpen, setCallTrackingRankingDialogOpen] = useState(false); // 追客電話月間ランキングダイアログ
   const [yearlyRankingDialogOpen, setYearlyRankingDialogOpen] = useState(false); // 1番電話年間累計ランキングダイアログ
+  const [visitRankingDialogOpen, setVisitRankingDialogOpen] = useState(false); // 訪問予約者月間ランキングダイアログ
+  const [visitRankingYearlyDialogOpen, setVisitRankingYearlyDialogOpen] = useState(false); // 訪問予約者年間ランキングダイアログ
   // スマホ時のアコーディオン開閉状態
   const [mobileCommentOpen, setMobileCommentOpen] = useState(true); // コメント（デフォルト展開）
   const [mobilePropertyOpen, setMobilePropertyOpen] = useState(false); // 物件情報
@@ -5527,56 +5529,76 @@ HP：https://ifoo-oita.com/
                 <Typography variant="h6">
                   📅 訪問予約
                 </Typography>
-                <Button
-                  size="small"
-                  onClick={() => {
-                    if (editingAppointment) {
-                      // キャンセル時は元の値に戻す
-                      // キャンセル時: visitDateを優先、なければappointmentDateを使用
-                      let cancelDateLocal = '';
-                      if (seller?.visitDate) {
-                        // タイムゾーン変換なし: 文字列を直接パースして "YYYY-MM-DDTHH:mm" 形式に変換
-                        cancelDateLocal = parseVisitDateToLocal(seller.visitDate);
-                      } else if (seller?.appointmentDate) {
-                        const d = new Date(seller.appointmentDate);
-                        const pad = (n: number) => String(n).padStart(2, '0');
-                        cancelDateLocal = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="success"
+                    onClick={() => setVisitRankingDialogOpen(true)}
+                    sx={{ fontSize: '0.7rem', px: 1, py: 0.25, minWidth: 0 }}
+                  >
+                    🏆月間
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="success"
+                    onClick={() => setVisitRankingYearlyDialogOpen(true)}
+                    sx={{ fontSize: '0.7rem', px: 1, py: 0.25, minWidth: 0 }}
+                  >
+                    🏆年間
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      if (editingAppointment) {
+                        // キャンセル時は元の値に戻す
+                        // キャンセル時: visitDateを優先、なければappointmentDateを使用
+                        let cancelDateLocal = '';
+                        if (seller?.visitDate) {
+                          // タイムゾーン変換なし: 文字列を直接パースして "YYYY-MM-DDTHH:mm" 形式に変換
+                          cancelDateLocal = parseVisitDateToLocal(seller.visitDate);
+                        } else if (seller?.appointmentDate) {
+                          const d = new Date(seller.appointmentDate);
+                          const pad = (n: number) => String(n).padStart(2, '0');
+                          cancelDateLocal = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                        }
+                        setEditedAppointmentDate(cancelDateLocal);
+                        setEditedAssignedTo(seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo || '');
+                        setEditedVisitValuationAcquirer(seller?.visitValuationAcquirer || '');
+                        setOriginalVisitValuationAcquirer(seller?.visitValuationAcquirer ?? null);
+                        setEditedAppointmentNotes(seller?.appointmentNotes || '');
+                      } else {
+                        // 編集モードに入る時に現在の値を設定
+                        // visitDateがあればそれを使用（TIMESTAMP型から日時を抽出）
+                        let appointmentDateLocal = '';
+                        if (seller?.visitDate) {
+                          // タイムゾーン変換なし: 文字列を直接パースして "YYYY-MM-DDTHH:mm" 形式に変換
+                          appointmentDateLocal = parseVisitDateToLocal(seller.visitDate);
+                        } else if (seller?.appointmentDate) {
+                          // appointmentDateはUTCなのでローカル時刻に変換
+                          const d = new Date(seller.appointmentDate);
+                          const pad = (n: number) => String(n).padStart(2, '0');
+                          appointmentDateLocal = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                        }
+                        setEditedAppointmentDate(appointmentDateLocal);
+                        setEditedAssignedTo(seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo || '');
+                        setEditedVisitValuationAcquirer(seller?.visitValuationAcquirer || '');
+                        setOriginalVisitValuationAcquirer(seller?.visitValuationAcquirer ?? null);
+                        setEditedAppointmentNotes(seller?.appointmentNotes || '');
+                        // 編集開始時点で訪問予定日時が空かどうかを記録（新規入力判定用）
+                        setVisitDateWasEmpty(!seller?.visitDate && !seller?.appointmentDate);
                       }
-                      setEditedAppointmentDate(cancelDateLocal);
-                      setEditedAssignedTo(seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo || '');
-                      setEditedVisitValuationAcquirer(seller?.visitValuationAcquirer || '');
-                      setOriginalVisitValuationAcquirer(seller?.visitValuationAcquirer ?? null);
-                      setEditedAppointmentNotes(seller?.appointmentNotes || '');
-                    } else {
-                      // 編集モードに入る時に現在の値を設定
-                      // visitDateがあればそれを使用（TIMESTAMP型から日時を抽出）
-                      let appointmentDateLocal = '';
-                      if (seller?.visitDate) {
-                        // タイムゾーン変換なし: 文字列を直接パースして "YYYY-MM-DDTHH:mm" 形式に変換
-                        appointmentDateLocal = parseVisitDateToLocal(seller.visitDate);
-                      } else if (seller?.appointmentDate) {
-                        // appointmentDateはUTCなのでローカル時刻に変換
-                        const d = new Date(seller.appointmentDate);
-                        const pad = (n: number) => String(n).padStart(2, '0');
-                        appointmentDateLocal = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                      setEditingAppointment(!editingAppointment);
+                      // 訪問予約フォームを開く時に当月の統計をロード
+                      if (!editingAppointment) {
+                        loadVisitStats();
                       }
-                      setEditedAppointmentDate(appointmentDateLocal);
-                      setEditedAssignedTo(seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo || '');
-                      setEditedVisitValuationAcquirer(seller?.visitValuationAcquirer || '');
-                      setOriginalVisitValuationAcquirer(seller?.visitValuationAcquirer ?? null);
-                      setEditedAppointmentNotes(seller?.appointmentNotes || '');
-                      // 編集開始時点で訪問予定日時が空かどうかを記録（新規入力判定用）
-                      setVisitDateWasEmpty(!seller?.visitDate && !seller?.appointmentDate);
-                    }
-                    setEditingAppointment(!editingAppointment);
-                    // 訪問予約フォームを開く時に当月の統計をロード
-                    if (!editingAppointment) {
-                      loadVisitStats();
-                    }
-                  }}
+                    }}
                 >
                   {editingAppointment ? 'キャンセル' : '編集'}
-                </Button>
+                  </Button>
+                </Box>
               </Box>
               
               <Paper sx={{ p: 2, mb: 3, bgcolor: '#f0fff4' }}>
@@ -8660,6 +8682,43 @@ HP：https://ifoo-oita.com/
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCallTrackingRankingDialogOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 訪問予約者月間ランキングダイアログ */}
+      <Dialog open={visitRankingDialogOpen} onClose={() => setVisitRankingDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          🏆 訪問予約者月間ランキング
+        </DialogTitle>
+        <DialogContent>
+          <CallRankingDisplay
+            key={visitRankingDialogOpen ? 'open' : 'closed'}
+            title="訪問予約者月間ランキング"
+            endpoint="/api/sellers/visit-ranking"
+            allowedInitials={normalInitials.filter((i) => i !== 'K')}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setVisitRankingDialogOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 訪問予約者年間ランキングダイアログ */}
+      <Dialog open={visitRankingYearlyDialogOpen} onClose={() => setVisitRankingYearlyDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          🏆 訪問予約者年間ランキング
+        </DialogTitle>
+        <DialogContent>
+          <CallRankingDisplay
+            key={visitRankingYearlyDialogOpen ? 'open' : 'closed'}
+            title="訪問予約者年間ランキング"
+            endpoint="/api/sellers/visit-ranking-yearly"
+            allowedInitials={normalInitials.filter((i) => i !== 'K')}
+            yearlyMode={true}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setVisitRankingYearlyDialogOpen(false)}>閉じる</Button>
         </DialogActions>
       </Dialog>
 
