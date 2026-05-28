@@ -114,6 +114,17 @@ function extractAgeFromComments(comments: string | null | undefined): string | n
   return match ? `${match[1]}歳` : null;
 }
 
+/**
+ * コメント文字列から希望連絡時間を抽出する
+ * 「希望連絡時間: XX」の形式に対応
+ */
+function extractContactTimeFromComments(comments: string | null | undefined): string | null {
+  if (!comments) return null;
+  const plainText = comments.replace(/<[^>]*>/g, '');
+  const match = plainText.match(/希望連絡時間[：:]\s*([^\n\r]+)/);
+  return match ? match[1].trim() : null;
+}
+
 const statusLabels: Record<string, string> = {
   following_up: '追客中',
   appointment_scheduled: '訪問査定予定',
@@ -1138,7 +1149,7 @@ export default function SellersPage() {
               <TableRow>
                 <TableCell sx={{ width: 100 }}>売主番号</TableCell>
                 <TableCell sx={{ width: 120 }}>名前</TableCell>
-                <TableCell sx={{ width: 50 }}>年齢</TableCell>
+                <TableCell sx={{ width: 80 }}>年齢/連絡時間</TableCell>
                 <TableCell sx={{ width: 60 }}>対応中</TableCell>
                 <TableCell sx={{ width: 90 }}>最終電話</TableCell>
                 <TableCell sx={{ width: 90 }}>反響日付</TableCell>
@@ -1257,9 +1268,21 @@ export default function SellersPage() {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
-                        {extractAgeFromComments(seller.comments) || '-'}
-                      </Typography>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.2 }}>
+                        {extractAgeFromComments(seller.comments) && (
+                          <Typography variant="body2" sx={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                            {extractAgeFromComments(seller.comments)}
+                          </Typography>
+                        )}
+                        {extractContactTimeFromComments(seller.comments) && (
+                          <Typography variant="body2" sx={{ fontSize: '0.7rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                            {extractContactTimeFromComments(seller.comments)}
+                          </Typography>
+                        )}
+                        {!extractAgeFromComments(seller.comments) && !extractContactTimeFromComments(seller.comments) && (
+                          <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>-</Typography>
+                        )}
+                      </Box>
                     </TableCell>
                     <TableCell>
                       {seller.sellerNumber && (() => {
