@@ -87,6 +87,19 @@ interface Seller {
   phoneContactPerson?: string;
   lastCalledAt?: string;
   comments?: string;
+  exclusionAction?: string;
+}
+
+/**
+ * exclusionAction の値を省略表示に変換する
+ * 「除外日に不通であれば除外」→「不通であれば除」
+ * 「除外日になにもせず除外」→「なにもせず除」
+ */
+function formatExclusionAction(action: string | null | undefined): string | null {
+  if (!action) return null;
+  if (action.includes('不通')) return '不通であれば除';
+  if (action.includes('なにもせず') || action.includes('何もせず')) return 'なにもせず除';
+  return null;
 }
 
 /**
@@ -1225,7 +1238,24 @@ export default function SellersPage() {
                         )}
                       </Box>
                     </TableCell>
-                    <TableCell>{seller.name}</TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+                        <Typography variant="body2">{seller.name}</Typography>
+                        {formatExclusionAction(seller.exclusionAction) && (
+                          <Chip
+                            label={formatExclusionAction(seller.exclusionAction)}
+                            size="small"
+                            sx={{
+                              fontSize: '0.65rem',
+                              height: 18,
+                              bgcolor: '#ff9800',
+                              color: 'white',
+                              '& .MuiChip-label': { px: 0.8 },
+                            }}
+                          />
+                        )}
+                      </Box>
+                    </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
                         {extractAgeFromComments(seller.comments) || '-'}
