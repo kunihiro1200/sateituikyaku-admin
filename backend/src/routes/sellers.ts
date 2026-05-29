@@ -560,11 +560,13 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
   try {
     console.log('[home4u-transfer] HOME4Uメール本文解析開始');
 
-    // 改行がない場合（メール監視サーバーから1行テキストとして送信された場合）の前処理
+    // 改行がない、または改行が少ない場合（メール監視サーバーから送信された場合）の前処理
     // ■の前に改行を挿入して、extractData2が正しく動作するようにする
+    // 条件: ■が含まれているのに改行が3つ未満の場合（改行ありでも本文が1行に詰まっているケース対応）
     let preprocessedBody = mailBody;
-    if (!mailBody.includes('\n') && !mailBody.includes('\r')) {
-      // 1行テキストの場合、■の前に改行を挿入
+    const hasEnoughNewlines = (mailBody.match(/\n/g) || []).length >= 10;
+    if (!hasEnoughNewlines) {
+      // ■の前に改行を挿入
       preprocessedBody = mailBody.replace(/■/g, '\n■');
       // 「HOME4Uログアウト」の後にも改行を挿入
       preprocessedBody = preprocessedBody.replace(/HOME4Uログアウト/g, 'HOME4Uログアウト\n');
@@ -572,7 +574,7 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
       preprocessedBody = preprocessedBody.replace(/査定依頼 株式会社/g, '\n査定依頼 株式会社');
       // 区切り線の前後に改行を挿入
       preprocessedBody = preprocessedBody.replace(/-{10,}/g, '\n-----------------------------------------------------------------\n');
-      console.log('[home4u-transfer] 改行なしテキストを前処理しました');
+      console.log('[home4u-transfer] 改行不足テキストを前処理しました');
     }
 
     // 改行で統一し、行頭の引用符（> ）のみ除去（行中の > は残す）
