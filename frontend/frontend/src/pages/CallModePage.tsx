@@ -2888,80 +2888,8 @@ const CallModePage = () => {
         setError('データの更新に失敗しました。ページを更新してください。');
       }
 
-      // 訪問日が設定されている場合、カレンダーを自動で開く
-      // データ再読み込みが失敗した場合はスキップ（sellerがnullの可能性があるため）
-      if (visitDateTimeStr && reloadSuccess && (seller || updatedSeller)) {
-        try {
-          // visitDateTimeStr (YYYY-MM-DD HH:mm:ss) からDateを生成
-          const date = new Date(visitDateTimeStr.replace(' ', 'T'));
-          const startDateStr2 = date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-          const endDate2 = new Date(date.getTime() + 60 * 60 * 1000);
-          const endDateStr2 = endDate2.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-
-          const propertyAddress = property?.address || updatedSeller?.address || seller?.address || '物件所在地未設定';
-          const calTitle = `【訪問】${propertyAddress}`;
-          const calLocation = propertyAddress;
-          // detailsはURLに含まれるため短く保つ（コメントは除外）
-          const calDetails = 
-            (updatedSeller?.sellerNumber || seller?.sellerNumber ? `売主番号: ${updatedSeller?.sellerNumber || seller?.sellerNumber}\n` : '') +
-            `売主名: ${updatedSeller?.name || seller?.name || ''}\n` +
-            `電話: ${updatedSeller?.phoneNumber || seller?.phoneNumber || ''}\n` +
-            `\n通話モードページ:\n${window.location.href}`;
-
-          // 営担のメールアドレスを取得（保存前のスナップショットを優先）
-          const assignedToValue = assignedToSnapshot || updatedSeller?.visitAssigneeInitials || updatedSeller?.visitAssignee || seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo;
-
-          // employees は既にページロード時に取得済みのはず
-          // キャッシュから同期的に取得（awaitしない → window.openがブロックされない）
-          const employeeList = employees && employees.length > 0
-            ? employees
-            : (() => {
-                // キャッシュから同期的に読む
-                try {
-                  const cached = localStorage.getItem('employees_cache_v2');
-                  if (cached) {
-                    const { data } = JSON.parse(cached);
-                    return data || [];
-                  }
-                } catch { /* ignore */ }
-                return [];
-              })();
-
-          // 営担のメールアドレスを検索
-          const matchedEmployee = employeeList.find((e: any) =>
-            e.name === assignedToValue ||
-            e.initials === assignedToValue ||
-            e.email === assignedToValue
-          );
-          console.log('assignedToValue:', assignedToValue, '→ マッチ:', matchedEmployee?.name, matchedEmployee?.email);
-          
-          const assignedEmail = matchedEmployee?.email || '';
-          
-          // URLSearchParamsを使用してパラメータを構築
-          const calParams = new URLSearchParams({
-            action: 'TEMPLATE',
-            text: calTitle,
-            dates: `${startDateStr2}/${endDateStr2}`,
-            details: calDetails,
-            location: calLocation,
-          });
-          
-          // 営担をゲストとして招待（addパラメータを使用）
-          if (assignedEmail) {
-            calParams.append('add', assignedEmail);
-          }
-
-          // 営担のカレンダーに直接作成（srcパラメータを使用）
-          const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
-
-          const calendarUrl = `https://calendar.google.com/calendar/render?${calParams.toString()}${srcParam}`;
-
-          // 同期的に開く（awaitなしのためポップアップブロックされない）
-          window.open(calendarUrl, '_blank');
-        } catch (calError) {
-          console.error('❌ カレンダーを開けませんでした:', calError);
-        }
-      }
+      // 訪問日が設定されている場合のカレンダー処理は保存ボタンのonClickで実行済み
+      // （window.openはユーザー操作の直接ハンドラー内でないとポップアップブロックされるため）
     } catch (err: any) {
       console.error('❌ Failed to save appointment:', err);
       const errorMessage = err.response?.data?.error?.message || '訪問予約情報の更新に失敗しました';
@@ -6111,7 +6039,58 @@ HP：https://ifoo-oita.com/
                         fullWidth
                         variant="contained"
                         startIcon={savingAppointment ? <CircularProgress size={20} /> : <Save />}
-                        onClick={handleSaveAppointment}
+                        onClick={(e) => {
+                          // 訪問日と営担が設定されている場合、クリック時（同期）にカレンダーを先に開く
+                          // window.open はユーザー操作の直接ハンドラー内でないとポップアップブロックされる
+                          if (editedAppointmentDate && editedAssignedTo) {
+                            try {
+                              const [datePart, timePart] = editedAppointmentDate.split('T');
+                              const timeWithSeconds = timePart ? `${timePart}:00` : '00:00:00';
+                              const visitDtStr = `${datePart} ${timeWithSeconds}`;
+                              const date = new Date(visitDtStr.replace(' ', 'T'));
+                              const startStr = date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+                              const endDate = new Date(date.getTime() + 60 * 60 * 1000);
+                              const endStr = endDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+                              const addr = property?.address || seller?.address || '物件所在地未設定';
+                              const calTitle = `【訪問】${addr}`;
+
+                              // 営担のメールをキャッシュから同期取得
+                              let assignedEmail = '';
+                              const empList = employees && employees.length > 0 ? employees : (() => {
+                                try {
+                                  const c = localStorage.getItem('employees_cache_v2');
+                                  return c ? JSON.parse(c).data || [] : [];
+                                } catch { return []; }
+                              })();
+                              const matched = empList.find((e: any) =>
+                                e.name === editedAssignedTo || e.initials === editedAssignedTo || e.email === editedAssignedTo
+                              );
+                              assignedEmail = matched?.email || '';
+
+                              const calDetails =
+                                ((seller?.sellerNumber ? `売主番号: ${seller.sellerNumber}\n` : '') +
+                                `売主名: ${seller?.name || ''}\n` +
+                                `電話: ${seller?.phoneNumber || ''}\n` +
+                                `\n通話モードページ:\n${window.location.href}`);
+
+                              const calParams = new URLSearchParams({
+                                action: 'TEMPLATE',
+                                text: calTitle,
+                                dates: `${startStr}/${endStr}`,
+                                details: calDetails,
+                                location: addr,
+                              });
+                              if (assignedEmail) calParams.append('add', assignedEmail);
+                              const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
+                              window.open(`https://calendar.google.com/calendar/render?${calParams.toString()}${srcParam}`, '_blank');
+                            } catch (calErr) {
+                              console.error('カレンダーを開けませんでした:', calErr);
+                            }
+                          }
+                          // 非同期の保存処理を実行
+                          handleSaveAppointment();
+                        }}
                         disabled={savingAppointment}
                       >
                         {savingAppointment ? '保存中...' : '保存'}
