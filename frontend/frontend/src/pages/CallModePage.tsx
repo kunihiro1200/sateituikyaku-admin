@@ -1712,8 +1712,8 @@ const CallModePage = () => {
     savedCommentsRef.current = savedComments;
   }, [savedComments]);
 
-  const loadAllData = async () => {
-    setLoading(true);
+  const loadAllData = async (showLoading: boolean = true) => {
+    if (showLoading) setLoading(true);
     setError(null);
 
     try {
@@ -1984,7 +1984,7 @@ const CallModePage = () => {
       setSavedFirstCallPerson(sellerData.firstCallPerson || '');
 
       // ローディング終了（画面を表示）- employees/activities 取得を待たずに表示
-      setLoading(false);
+      if (showLoading) setLoading(false);
 
       // employees と property フォールバックをバックグラウンドで並列取得
       Promise.all([
@@ -2699,8 +2699,8 @@ const CallModePage = () => {
       setEditingProperty(false);
       setPageEdited(true); // 物件情報保存時に編集フラグを設定
       
-      // データを再読み込み
-      await loadAllData();
+      // データを再読み込み（showLoading=false で画面を白くしない）
+      await loadAllData(false);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || '物件情報の更新に失敗しました');
     } finally {
@@ -2746,8 +2746,8 @@ const CallModePage = () => {
       setEditingSeller(false);
       setPageEdited(true); // 売主情報保存時に編集フラグを設定
       
-      // データを再読み込み
-      await loadAllData();
+      // データを再読み込み（showLoading=false で画面を白くしない）
+      await loadAllData(false);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || '売主情報の更新に失敗しました');
     } finally {
@@ -2977,8 +2977,8 @@ const CallModePage = () => {
       setSuccessMessage('サイト情報を更新しました');
       setEditingSite(false);
       
-      // データを再読み込み
-      await loadAllData();
+      // データを再読み込み（showLoading=false で画面を白くしない）
+      await loadAllData(false);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'サイト情報の更新に失敗しました');
     } finally {
