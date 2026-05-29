@@ -740,6 +740,8 @@ const CallModePage = () => {
   // コメント直接編集の状態
   const [editableComments, setEditableComments] = useState<string>('');
   const [savedComments, setSavedComments] = useState<string>(''); // 保存済みコメント（変更検知用）
+  const savedCommentsRef = useRef<string>(''); // loadAllData クロージャ内でdirty判定に使用
+  const editableCommentsRef = useRef<string>(''); // loadAllData クロージャ内でdirty判定に使用
   const [savingComments, setSavingComments] = useState(false);
   
   // 保存処理のロック（同時実行を防ぐ）
@@ -1702,6 +1704,14 @@ const CallModePage = () => {
     };
   }, []);
 
+  // コメントのref同期（loadAllData クロージャ内でdirty判定に使用）
+  useEffect(() => {
+    editableCommentsRef.current = editableComments;
+  }, [editableComments]);
+  useEffect(() => {
+    savedCommentsRef.current = savedComments;
+  }, [savedComments]);
+
   const loadAllData = async () => {
     setLoading(true);
     setError(null);
@@ -1725,8 +1735,11 @@ const CallModePage = () => {
             pageDataCache.set(sellerDetailCacheKey(id!), freshData, 30 * 1000);
             setSeller(freshData);
             setUnreachableStatus(freshData.unreachableStatus || null);
-            setEditableComments(freshData.comments || '');
-            setSavedComments(freshData.comments || '');
+            // コメントが未保存（dirty）の場合は上書きしない
+            if (editableCommentsRef.current === savedCommentsRef.current) {
+              setEditableComments(freshData.comments || '');
+              setSavedComments(freshData.comments || '');
+            }
             // statusChanged が false の場合のみステータスフィールドを更新
             // （ユーザーが編集中の場合は上書きしない）
             // 除外日を更新（キャッシュヒット時もバックグラウンドで最新値を反映）
@@ -1770,8 +1783,11 @@ const CallModePage = () => {
       setSeller(sellerData);
       setUnreachableStatus(sellerData.unreachableStatus || null);
       setSavedUnreachableStatus(sellerData.unreachableStatus || null);
-      setEditableComments(sellerData.comments || '');
-      setSavedComments(sellerData.comments || '');
+      // コメントが未保存（dirty）の場合は上書きしない
+      if (editableCommentsRef.current === savedCommentsRef.current) {
+        setEditableComments(sellerData.comments || '');
+        setSavedComments(sellerData.comments || '');
+      }
 
       // 反響URLを非同期で取得（エラーでも続行）
       api.get(`/api/sellers/${id}/inquiry-url`).then(r => {
@@ -2845,15 +2861,31 @@ const CallModePage = () => {
       }
       setPageEdited(true); // 訪問予約保存時に編集フラグを設定
       
-      // データを再読み込み
+      // loadAllData() を呼ばず、APIレスポンスで訪問日関連フィールドのみ部分更新する
+      // （loadAllData は setLoading(true) を呼ぶため画面が白くなり、
+      //   setEditableComments で入力中のコメントが消えてしまうため）
       let reloadSuccess = true;
       try {
-        await loadAllData();
+        if (updatedSeller) {
+          setSeller(updatedSeller);
+          // 訪問日関連フィールドを更新
+          const appointmentDateLocal = updatedSeller.visitDate
+            ? parseVisitDateToLocal(updatedSeller.visitDate)
+            : '';
+          setEditedAppointmentDate(appointmentDateLocal);
+          setEditedAssignedTo(updatedSeller.visitAssignee || updatedSeller.visitAssigneeInitials || '');
+          setEditedVisitValuationAcquirer(updatedSeller.visitValuationAcquirer || '');
+          setOriginalVisitValuationAcquirer(updatedSeller.visitValuationAcquirer ?? null);
+          setEditedAppointmentNotes(updatedSeller.appointmentNotes || '');
+          // visitAcquisitionDate を更新
+          if (updatedSeller.visitAcquisitionDate !== undefined) {
+            // seller ステートに含まれているので setSeller で反映済み
+          }
+        }
       } catch (reloadError) {
-        console.error('❌ データの再読み込みに失敗:', reloadError);
+        console.error('❌ 部分更新に失敗:', reloadError);
         reloadSuccess = false;
-        // 再読み込みエラーは警告のみ（保存は成功しているため）
-        setError('データの再読み込みに失敗しました。ページを更新してください。');
+        setError('データの更新に失敗しました。ページを更新してください。');
       }
 
       // 訪問日が設定されている場合、カレンダーを自動で開く
@@ -2869,12 +2901,12 @@ const CallModePage = () => {
           const propertyAddress = property?.address || updatedSeller?.address || seller?.address || '物件所在地未設定';
           const calTitle = `【訪問】${propertyAddress}`;
           const calLocation = propertyAddress;
+          // detailsはURLに含まれるため短く保つ（コメントは除外）
           const calDetails = 
             (updatedSeller?.sellerNumber || seller?.sellerNumber ? `売主番号: ${updatedSeller?.sellerNumber || seller?.sellerNumber}\n` : '') +
             `売主名: ${updatedSeller?.name || seller?.name || ''}\n` +
             `電話: ${updatedSeller?.phoneNumber || seller?.phoneNumber || ''}\n` +
-            `\n通話モードページ:\n${window.location.href}` +
-            (updatedSeller?.comments || seller?.comments ? `\n\nコメント:\n${updatedSeller?.comments || seller?.comments}` : '');
+            `\n通話モードページ:\n${window.location.href}`;
 
           // 営担のメールアドレスを取得（保存前のスナップショットを優先）
           const assignedToValue = assignedToSnapshot || updatedSeller?.visitAssigneeInitials || updatedSeller?.visitAssignee || seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo;
@@ -2931,10 +2963,17 @@ const CallModePage = () => {
           // 営担のカレンダーに直接作成（srcパラメータを使用）
           const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
 
-          window.open(
-            `https://calendar.google.com/calendar/render?${calParams.toString()}${srcParam}`,
-            '_blank'
-          );
+          const calendarUrl = `https://calendar.google.com/calendar/render?${calParams.toString()}${srcParam}`;
+
+          // window.open は非同期処理内でポップアップブロックされる場合があるため
+          // リンクを動的に作成してクリックする方式で開く
+          const link = document.createElement('a');
+          link.href = calendarUrl;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
         } catch (calError) {
           console.error('❌ カレンダーを開けませんでした:', calError);
         }
