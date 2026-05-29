@@ -2912,8 +2912,6 @@ const CallModePage = () => {
           const assignedToValue = assignedToSnapshot || updatedSeller?.visitAssigneeInitials || updatedSeller?.visitAssignee || seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo;
           console.log('=== カレンダー営担デバッグ（売主） ===');
           console.log('assignedToValue:', assignedToValue);
-          console.log('updatedSeller.visitAssignee:', updatedSeller?.visitAssignee);
-          console.log('updatedSeller.visitAssigneeInitials:', updatedSeller?.visitAssigneeInitials);
           console.log('employees配列:', employees);
           
           // 営担のメールアドレスを検索（見つからなくてもカレンダーは開く）
@@ -2925,8 +2923,6 @@ const CallModePage = () => {
           console.log('マッチした社員:', matchedEmployee?.name, 'メール:', matchedEmployee?.email);
           
           const assignedEmail = matchedEmployee?.email || '';
-          console.log('見つかった社員:', assignedEmployee?.name);
-          console.log('メールアドレス:', assignedEmail);
           
           // URLSearchParamsを使用してパラメータを構築
           const calParams = new URLSearchParams({
@@ -2946,16 +2942,10 @@ const CallModePage = () => {
           const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
 
           const calendarUrl = `https://calendar.google.com/calendar/render?${calParams.toString()}${srcParam}`;
+          console.log('カレンダーURL:', calendarUrl);
 
-          // window.open は非同期処理内でポップアップブロックされる場合があるため
-          // リンクを動的に作成してクリックする方式で開く
-          const link = document.createElement('a');
-          link.href = calendarUrl;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          // 保存ボタンのクリックイベントと同期して開く（ポップアップブロック回避）
+          window.open(calendarUrl, '_blank');
         } catch (calError) {
           console.error('❌ カレンダーを開けませんでした:', calError);
         }
