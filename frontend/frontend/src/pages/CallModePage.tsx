@@ -2916,33 +2916,15 @@ const CallModePage = () => {
           console.log('updatedSeller.visitAssigneeInitials:', updatedSeller?.visitAssigneeInitials);
           console.log('employees配列:', employees);
           
-          // 営担が設定されていない場合は警告（カレンダーを開かないが、保存は成功済みなのでページは維持）
-          if (!assignedToValue) {
-            setAppointmentSuccessMessage('訪問予約情報を更新しました（営業担当が未設定のためカレンダーは開きませんでした）');
-            return;
-          }
+          // 営担のメールアドレスを検索（見つからなくてもカレンダーは開く）
+          const matchedEmployee = employees.find((e: any) =>
+            e.name === assignedToValue ||
+            e.initials === assignedToValue ||
+            e.email === assignedToValue
+          );
+          console.log('マッチした社員:', matchedEmployee?.name, 'メール:', matchedEmployee?.email);
           
-          const matchedEmployees = employees.filter((e: any) => {
-            const nameMatch = e.name === assignedToValue;
-            const initialsMatch = e.initials === assignedToValue;
-            const emailMatch = e.email === assignedToValue;
-            console.log(`従業員チェック: ${e.name} (initials: ${e.initials}, email: ${e.email})`);
-            console.log(`  - nameMatch: ${nameMatch}, initialsMatch: ${initialsMatch}, emailMatch: ${emailMatch}`);
-            return nameMatch || initialsMatch || emailMatch;
-          });
-          
-          console.log('マッチした社員数:', matchedEmployees.length);
-          console.log('マッチした社員:', matchedEmployees);
-          
-          const assignedEmployee = matchedEmployees[0];
-          
-          // 営担に対応する社員が見つからない場合は警告（カレンダーを開かないが、保存は成功済みなのでページは維持）
-          if (!assignedEmployee) {
-            setAppointmentSuccessMessage(`訪問予約情報を更新しました（営業担当「${assignedToValue}」が見つからないためカレンダーは開きませんでした）`);
-            return;
-          }
-          
-          const assignedEmail = assignedEmployee?.email || '';
+          const assignedEmail = matchedEmployee?.email || '';
           console.log('見つかった社員:', assignedEmployee?.name);
           console.log('メールアドレス:', assignedEmail);
           
