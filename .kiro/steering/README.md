@@ -53,6 +53,9 @@
 ### メール送信系（⚠️ 常時読み込みに変更済み）
 - `email-html-image-display-rules` - **メールHTML画像表示ルール** → `inclusion: auto` に変更（2026年5月。手動参照不要）
 
+### フロントエンド実装ルール
+- `#window-open-popup-block-rules` - **window.openポップアップブロック防止**（カレンダー送信など）
+
 ### 実装記録系（過去の修正記録）
 - `#visit-appointment-features` - 訪問予約機能の実装記録
 - `#property-listing-spreadsheet-sync-fix` - 物件リストスプレッドシート同期修正
@@ -73,5 +76,5 @@
 
 ---
 
-**最終更新日**: 2026年4月9日
-**変更**: 実装記録系ファイル6つを手動読み込みに変更、date-field-handling-rules.mdを条件付き読み込みに変更
+**最終更新日**: 2026年5月30日
+**変更**: window-open-popup-block-rules.md を手動読み込みに追加
