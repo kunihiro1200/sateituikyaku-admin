@@ -2763,18 +2763,57 @@ const CallModePage = () => {
       setAppointmentSuccessMessage(null);
 
       // 保存前に営担の値をスナップショットとして保持
-      // loadAllData() 後に editedAssignedTo が再初期化されても正しい値を使えるようにする
       const assignedToSnapshot = editedAssignedTo;
 
       // datetime-localの値からvisit_date（TIMESTAMP型: YYYY-MM-DD HH:mm:ss）を生成
-      // タイムゾーン変換せずローカル時刻のまま使用
       let visitDateTimeStr: string | null = null;
       if (editedAppointmentDate) {
-        // editedAppointmentDate は "YYYY-MM-DDTHH:mm" 形式
         const [datePart, timePart] = editedAppointmentDate.split('T');
         const timeWithSeconds = timePart ? `${timePart}:00` : '00:00:00';
-        visitDateTimeStr = `${datePart} ${timeWithSeconds}`; // YYYY-MM-DD HH:mm:ss
+        visitDateTimeStr = `${datePart} ${timeWithSeconds}`;
       }
+
+      // ===== カレンダーを先に開く（await より前に呼ぶことでポップアップブロックを回避）=====
+      if (visitDateTimeStr && assignedToSnapshot) {
+        try {
+          const date = new Date(visitDateTimeStr.replace(' ', 'T'));
+          const startStr = date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+          const endDate = new Date(date.getTime() + 60 * 60 * 1000);
+          const endStr = endDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+          const addr = property?.address || seller?.address || '物件所在地未設定';
+          const calDetails =
+            (seller?.sellerNumber ? `売主番号: ${seller.sellerNumber}\n` : '') +
+            `売主名: ${seller?.name || ''}\n` +
+            `電話: ${seller?.phoneNumber || ''}\n` +
+            `\n通話モードページ:\n${window.location.href}`;
+
+          const empList = employees && employees.length > 0 ? employees : (() => {
+            try {
+              const c = localStorage.getItem('employees_cache_v2');
+              return c ? JSON.parse(c).data || [] : [];
+            } catch { return []; }
+          })();
+          const matched = empList.find((e: any) =>
+            e.name === assignedToSnapshot || e.initials === assignedToSnapshot || e.email === assignedToSnapshot
+          );
+          const assignedEmail = matched?.email || '';
+
+          const calParams = new URLSearchParams({
+            action: 'TEMPLATE',
+            text: `【訪問】${addr}`,
+            dates: `${startStr}/${endStr}`,
+            details: calDetails,
+            location: addr,
+          });
+          if (assignedEmail) calParams.append('add', assignedEmail);
+          const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
+          window.open(`https://calendar.google.com/calendar/render?${calParams.toString()}${srcParam}`, '_blank');
+        } catch (calErr) {
+          console.error('カレンダーを開けませんでした:', calErr);
+        }
+      }
+      // ===== カレンダーここまで =====
 
       console.log('Saving appointment:', {
         visitDate: visitDateTimeStr,
@@ -2784,12 +2823,9 @@ const CallModePage = () => {
       });
 
       // editedVisitValuationAcquirer が空の場合のフォールバック
-      // 重要: originalVisitValuationAcquirer が null/undefined の場合（新規設定）のみ自動設定
-      // ユーザーが意図的にクリアした場合（元の値があって空にした）はフォールバックしない
       let acquirer = editedVisitValuationAcquirer;
       const isNewAppointment = originalVisitValuationAcquirer === null || originalVisitValuationAcquirer === undefined;
       if (!acquirer && isNewAppointment && employee?.email) {
-        // employees ステートまたはキャッシュから同期的に検索（awaitしない）
         const empList = employees && employees.length > 0 ? employees : (() => {
           try {
             const c = localStorage.getItem('employees_cache_v2');
@@ -2878,45 +2914,7 @@ const CallModePage = () => {
         setError('データの更新に失敗しました。ページを更新してください。');
       }
 
-      // 訪問日が設定されている場合、カレンダーを自動で開く
-      if (visitDateTimeStr && reloadSuccess && (seller || updatedSeller)) {
-        try {
-          const date = new Date(visitDateTimeStr.replace(' ', 'T'));
-          const startDateStr2 = date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-          const endDate2 = new Date(date.getTime() + 60 * 60 * 1000);
-          const endDateStr2 = endDate2.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-
-          const propertyAddress = property?.address || updatedSeller?.address || seller?.address || '物件所在地未設定';
-          const calTitle = `【訪問】${propertyAddress}`;
-          const calLocation = propertyAddress;
-          const calDetails =
-            (updatedSeller?.sellerNumber || seller?.sellerNumber ? `売主番号: ${updatedSeller?.sellerNumber || seller?.sellerNumber}\n` : '') +
-            `売主名: ${updatedSeller?.name || seller?.name || ''}\n` +
-            `電話: ${updatedSeller?.phoneNumber || seller?.phoneNumber || ''}\n` +
-            `\n通話モードページ:\n${window.location.href}`;
-
-          const assignedToValue = assignedToSnapshot || updatedSeller?.visitAssigneeInitials || updatedSeller?.visitAssignee || seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo;
-
-          const matchedEmployee = employees.find((e: any) =>
-            e.name === assignedToValue || e.initials === assignedToValue || e.email === assignedToValue
-          );
-          const assignedEmail = matchedEmployee?.email || '';
-
-          const calParams = new URLSearchParams({
-            action: 'TEMPLATE',
-            text: calTitle,
-            dates: `${startDateStr2}/${endDateStr2}`,
-            details: calDetails,
-            location: calLocation,
-          });
-          if (assignedEmail) calParams.append('add', assignedEmail);
-          const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
-
-          window.open(`https://calendar.google.com/calendar/render?${calParams.toString()}${srcParam}`, '_blank');
-        } catch (calError) {
-          console.error('❌ カレンダーを開けませんでした:', calError);
-        }
-      }
+      // カレンダーは関数冒頭（await前）で開き済み
     } catch (err: any) {
       console.error('❌ Failed to save appointment:', err);
       const errorMessage = err.response?.data?.error?.message || '訪問予約情報の更新に失敗しました';
