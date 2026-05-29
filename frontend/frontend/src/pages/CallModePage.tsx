@@ -2913,9 +2913,22 @@ const CallModePage = () => {
           console.log('=== カレンダー営担デバッグ（売主） ===');
           console.log('assignedToValue:', assignedToValue);
           console.log('employees配列:', employees);
+
+          // employees が空の場合はここで取得する（loadAllData を呼ばなくなったため）
+          let employeeList = employees;
+          if (!employeeList || employeeList.length === 0) {
+            try {
+              const freshEmployees = await getActiveEmployees();
+              employeeList = freshEmployees as any[];
+              setEmployees(freshEmployees as any);
+              setActiveEmployees(freshEmployees);
+            } catch {
+              employeeList = [];
+            }
+          }
           
           // 営担のメールアドレスを検索（見つからなくてもカレンダーは開く）
-          const matchedEmployee = employees.find((e: any) =>
+          const matchedEmployee = employeeList.find((e: any) =>
             e.name === assignedToValue ||
             e.initials === assignedToValue ||
             e.email === assignedToValue
