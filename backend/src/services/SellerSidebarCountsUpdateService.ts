@@ -263,7 +263,7 @@ export class SellerSidebarCountsUpdateService {
       const visitCompletedSellerNumbers = visitCompletedSellers.map((s: any) => s.seller_number).filter(Boolean);
 
       // 御礼メール送信済みの seller_id を activities テーブルから取得
-      // activities.content = '【訪問査定後御礼メール】を送信' で照合
+      // メール: 【訪問査定後御礼メール】を送信 / SMS: 【訪問後御礼メール】を送信
       const thankYouSentSellerIds = new Set<string>();
       if (visitCompletedSellers.length > 0) {
         // seller_number → seller_id のマップを取得
@@ -280,7 +280,7 @@ export class SellerSidebarCountsUpdateService {
             .from('activities')
             .select('seller_id')
             .in('seller_id', chunk)
-            .ilike('content', '%訪問査定後御礼%');
+            .or('content.ilike.%訪問査定後御礼%,content.ilike.%訪問後御礼%');
           if (actData) {
             actData.forEach((a: any) => {
               if (a.seller_id) thankYouSentSellerIds.add(a.seller_id);

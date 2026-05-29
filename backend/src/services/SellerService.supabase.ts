@@ -1601,13 +1601,14 @@ export class SellerService extends BaseRepository {
               .lt('visit_date', tomorrowJSTLocal);
             const visitedIds = (visitedSellers || []).map((s: any) => s.id);
             // 御礼メール送信済みの seller_id を activities テーブルから取得
+            // メール: 【訪問査定後御礼メール】を送信 / SMS: 【訪問後御礼メール】を送信
             const thankYouSentIds = new Set<string>();
             if (visitedIds.length > 0) {
               const { data: actData } = await this.supabase
                 .from('activities')
                 .select('seller_id')
                 .in('seller_id', visitedIds)
-                .ilike('content', '%訪問査定後御礼%');
+                .or('content.ilike.%訪問査定後御礼%,content.ilike.%訪問後御礼%');
               (actData || []).forEach((a: any) => {
                 if (a.seller_id) thankYouSentIds.add(a.seller_id);
               });
