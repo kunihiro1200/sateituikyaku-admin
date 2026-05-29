@@ -4757,7 +4757,7 @@ HP：https://ifoo-oita.com/
             </Button>
           </Box>
 
-          <Box sx={{ width: isMobile ? '100%' : 280, p: 2, borderBottom: 1, borderColor: 'divider', display: isMobile && !mobileCallLogOpen ? 'none' : undefined }}>
+          <Box sx={{ width: isMobile ? '100%' : 280, p: 2, borderBottom: 1, borderColor: 'divider', display: isMobile && !mobileCallLogOpen ? 'none' : undefined, bgcolor: '#FFFDE7' }}>
             <CallLogDisplay ref={callLogRef} sellerId={id!} />
           </Box>
 
