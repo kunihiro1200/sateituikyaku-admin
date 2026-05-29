@@ -2910,30 +2910,30 @@ const CallModePage = () => {
 
           // 営担のメールアドレスを取得（保存前のスナップショットを優先）
           const assignedToValue = assignedToSnapshot || updatedSeller?.visitAssigneeInitials || updatedSeller?.visitAssignee || seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo;
-          console.log('=== カレンダー営担デバッグ（売主） ===');
-          console.log('assignedToValue:', assignedToValue);
-          console.log('employees配列:', employees);
 
-          // employees が空の場合はここで取得する（loadAllData を呼ばなくなったため）
-          let employeeList = employees;
-          if (!employeeList || employeeList.length === 0) {
-            try {
-              const freshEmployees = await getActiveEmployees();
-              employeeList = freshEmployees as any[];
-              setEmployees(freshEmployees as any);
-              setActiveEmployees(freshEmployees);
-            } catch {
-              employeeList = [];
-            }
-          }
-          
-          // 営担のメールアドレスを検索（見つからなくてもカレンダーは開く）
+          // employees は既にページロード時に取得済みのはず
+          // キャッシュから同期的に取得（awaitしない → window.openがブロックされない）
+          const employeeList = employees && employees.length > 0
+            ? employees
+            : (() => {
+                // キャッシュから同期的に読む
+                try {
+                  const cached = localStorage.getItem('employees_cache_v2');
+                  if (cached) {
+                    const { data } = JSON.parse(cached);
+                    return data || [];
+                  }
+                } catch { /* ignore */ }
+                return [];
+              })();
+
+          // 営担のメールアドレスを検索
           const matchedEmployee = employeeList.find((e: any) =>
             e.name === assignedToValue ||
             e.initials === assignedToValue ||
             e.email === assignedToValue
           );
-          console.log('マッチした社員:', matchedEmployee?.name, 'メール:', matchedEmployee?.email);
+          console.log('assignedToValue:', assignedToValue, '→ マッチ:', matchedEmployee?.name, matchedEmployee?.email);
           
           const assignedEmail = matchedEmployee?.email || '';
           
@@ -2955,9 +2955,8 @@ const CallModePage = () => {
           const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
 
           const calendarUrl = `https://calendar.google.com/calendar/render?${calParams.toString()}${srcParam}`;
-          console.log('カレンダーURL:', calendarUrl);
 
-          // 保存ボタンのクリックイベントと同期して開く（ポップアップブロック回避）
+          // 同期的に開く（awaitなしのためポップアップブロックされない）
           window.open(calendarUrl, '_blank');
         } catch (calError) {
           console.error('❌ カレンダーを開けませんでした:', calError);
