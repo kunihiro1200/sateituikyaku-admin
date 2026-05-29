@@ -26,14 +26,9 @@ IEUL_SUBJECT = "【イエウール】不動産査定依頼のお知らせ"
 
 SUBJECT_KEYWORDS = [
     "【イエウール】不動産査定依頼のお知らせ",
-    "[HOME4U] 査定依頼 -- <大分県> 別府市",
-    "[HOME4U] 査定依頼 -- <福岡県> 福岡市東区",
-    "[HOME4U] 査定依頼 -- <大分県> 大分市",
-    "[HOME4U] 査定依頼 -- <福岡県> 福岡市西区",
-    "[HOME4U] 査定依頼 -- <福岡県> 福岡市中央区",
-    "[HOME4U] 査定依頼 -- <福岡県> 福岡市城南区",
-    "[HOME4U] 査定依頼 -- <福岡県> 福岡市博多区",
-    "[HOME4U] 査定依頼 -- <福岡県> 福岡市南区",
+    # HOME4Uは件名部分一致で検知（地域を問わず全て対応）
+    # ※本文に「HOME4Uログアウト」が含まれることが絶対条件（バックエンド側でもチェック）
+    "[HOME4U] 査定依頼",
     "【すまいステップ 反響通知メール】",
     "【LIFULL HOME'S】＜実名＞査定依頼がありました",
     "【反響 Yahoo!不動産 売買ツール】お客様から売却査定依頼がありました",
@@ -51,17 +46,9 @@ BACKEND_HOME4U_TRANSFER_URL = os.environ.get(
     "BACKEND_HOME4U_TRANSFER_URL",
     "https://sateituikyaku-admin-backend.vercel.app/api/sellers/home4u-transfer"
 )
-HOME4U_SUBJECTS = [
-    "[HOME4U] 査定依頼 -- <大分県> 別府市",
-    "[HOME4U] 査定依頼 -- <福岡県> 福岡市東区",
-    "[HOME4U] 査定依頼 -- <大分県> 大分市",
-    "[HOME4U] 査定依頼 -- <福岡県> 福岡市西区",
-    "[HOME4U] 査定依頼 -- <福岡県> 福岡市中央区",
-    "[HOME4U] 査定依頼 -- <福岡県> 福岡市城南区",
-    "[HOME4U] 査定依頼 -- <福岡県> 福岡市博多区",
-    "[HOME4U] 査定依頼 -- <福岡県> 福岡市南区",
-    "[HOME4U] 査定依頼 -- <福岡県> 福岡市早良区",
-]
+HOME4U_SUBJECT_PREFIX = "[HOME4U] 査定依頼"
+# HOME4Uは件名部分一致で検知（地域を問わず全て対応）
+# ※本文に「HOME4Uログアウト」が含まれることが絶対条件（バックエンド側でもチェック）
 CRON_SECRET = os.environ.get(
     "CRON_SECRET",
     "a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s="
@@ -315,6 +302,8 @@ def check_new_emails(service, notified_ids):
             def subject_matches(subject, keyword):
                 if keyword == "【すまいステップ 反響通知メール】":
                     return subject.startswith(keyword)
+                if keyword == "[HOME4U] 査定依頼":
+                    return keyword in subject
                 return subject == keyword
 
             matched = any(subject_matches(subject, keyword) for keyword in SUBJECT_KEYWORDS)
@@ -327,9 +316,14 @@ def check_new_emails(service, notified_ids):
                 if subject == IEUL_SUBJECT:
                     logging.info("  [DB転記] イエウール検知 → ieul-transfer を非同期実行します")
                     trigger_ieul_transfer(body)
-                elif any(subject == s for s in HOME4U_SUBJECTS):
-                    logging.info("  [DB転記] HOME4U検知 → home4u-transfer を非同期実行します")
-                    trigger_home4u_transfer(body)
+                elif HOME4U_SUBJECT_PREFIX in subject:
+                    # HOME4Uは本文に「HOME4Uログアウト」が含まれる場合のみ転記
+                    # （バックエンド側でも同じチェックをしているが、ここでも事前フィルタ）
+                    if 'HOME4Uログアウト' in body:
+                        logging.info("  [DB転記] HOME4U検知 → home4u-transfer を非同期実行します")
+                        trigger_home4u_transfer(body)
+                    else:
+                        logging.info(f"  [スキップ] HOME4Uだが本文に「HOME4Uログアウト」なし: {subject[:50]}")
                 else:
                     logging.info(f"  [スキップ] イエウール・HOME4U以外のため転記なし: {subject[:50]}")
 
