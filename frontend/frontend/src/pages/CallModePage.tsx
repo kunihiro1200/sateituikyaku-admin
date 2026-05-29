@@ -2789,25 +2789,15 @@ const CallModePage = () => {
       let acquirer = editedVisitValuationAcquirer;
       const isNewAppointment = originalVisitValuationAcquirer === null || originalVisitValuationAcquirer === undefined;
       if (!acquirer && isNewAppointment && employee?.email) {
-        // 1. employees ステートから検索
-        const staffFromState = employees.find((emp: any) => emp.email === employee.email);
-        if (staffFromState) {
-          acquirer = staffFromState.initials || staffFromState.name || staffFromState.email;
-        } else {
-          // 2. getActiveEmployees() を呼び出して再検索
+        // employees ステートまたはキャッシュから同期的に検索（awaitしない）
+        const empList = employees && employees.length > 0 ? employees : (() => {
           try {
-            const freshEmployees = await getActiveEmployees();
-            const freshStaff = freshEmployees.find((emp) => emp.email === employee.email);
-            if (freshStaff) {
-              acquirer = freshStaff.initials || freshStaff.name || freshStaff.email;
-            } else {
-              // 3. employee.initials を使用
-              acquirer = (employee as any).initials || '';
-            }
-          } catch {
-            acquirer = (employee as any).initials || '';
-          }
-        }
+            const c = localStorage.getItem('employees_cache_v2');
+            return c ? JSON.parse(c).data || [] : [];
+          } catch { return []; }
+        })();
+        const staffFound = empList.find((emp: any) => emp.email === employee.email);
+        acquirer = staffFound?.initials || staffFound?.name || (employee as any).initials || '';
       }
 
       // 訪問取得日の自動設定

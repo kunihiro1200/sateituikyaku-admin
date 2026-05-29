@@ -638,7 +638,11 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
     const inquiryDateTimeRaw = inquiryMatch ? inquiryMatch[1].trim() : '';
     // 「2026/05/17 (日) 20:10:11」→「2026/05/17 20:10:11」に変換
     const inquiryDateTime = inquiryDateTimeRaw.replace(/\s*\([^)]*\)\s*/g, ' ').trim();
-    const inquiryDateObj = inquiryDateTime ? new Date(inquiryDateTime) : new Date();
+    // PostgreSQL TIMESTAMP型用にISO形式へ変換（「2026/05/30 06:07:14」→「2026-05-30T06:07:14」）
+    const inquiryDateTimeISO = inquiryDateTime
+      ? inquiryDateTime.replace(/^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}:\d{2}:\d{2})$/, '$1-$2-$3T$4')
+      : null;
+    const inquiryDateObj = inquiryDateTime ? new Date(inquiryDateTime.replace(/\//g, '-')) : new Date();
 
     // 物件種別
     const propertyTypeRaw = extractData2(cleanedBody, '■物件種別');
@@ -707,9 +711,9 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
             if (decryptedPhone === tel) {
               // 電話番号が一致しても、反響日時が異なれば別依頼として登録する
               const existingDatetime = existing.inquiry_detailed_datetime;
-              const isSameDatetime = existingDatetime && inquiryDateTime
-                ? existingDatetime === inquiryDateTime || existingDatetime.startsWith(inquiryDateTime.replace(' ', 'T'))
-                : !existingDatetime && !inquiryDateTime;
+              const isSameDatetime = existingDatetime && inquiryDateTimeISO
+                ? existingDatetime === inquiryDateTimeISO || existingDatetime.startsWith(inquiryDateTimeISO.replace(' ', 'T'))
+                : !existingDatetime && !inquiryDateTimeISO;
 
               if (isSameDatetime) {
                 console.log(`[home4u-transfer] ⏭ 重複スキップ: 電話番号・反響日時が既存売主 ${existing.seller_number} と一致`);
@@ -789,7 +793,7 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
       inquiry_site: 'H',
       inquiry_date: inquiryDateISO,
       inquiry_year: inquiryYear,
-      inquiry_detailed_datetime: inquiryDateTime ? inquiryDateTime : null,
+      inquiry_detailed_datetime: inquiryDateTimeISO ? inquiryDateTimeISO : null,
       floor_plan: layout || null,
       build_year: builtYear ? parseInt(builtYear) : null,
       current_status: propertyStatus || null,
