@@ -1013,6 +1013,13 @@ const CallModePage = () => {
   // 遷移ブロックダイアログ用の状態（追客中+次電日未入力時に遷移を完全ブロック）
   const [navigationBlockDialog, setNavigationBlockDialog] = useState<{ open: boolean }>({ open: false });
 
+  // 未保存変更確認ダイアログ用の状態
+  const [unsavedChangesDialog, setUnsavedChangesDialog] = useState<{
+    open: boolean;
+    unsavedSections: string[];
+    onProceed: (() => void) | null;
+  }>({ open: false, unsavedSections: [], onProceed: null });
+
   // 編集フラグ（ページで何らかの編集が行われたか）
   const [pageEdited, setPageEdited] = useState<boolean>(false);
 
@@ -1462,12 +1469,26 @@ const CallModePage = () => {
         window.history.pushState(null, '', window.location.href);
         setNavigationBlockDialog({ open: true });
       } else {
-        // 遷移許可: 既存の警告チェックを経由
-        navigateWithWarningCheck(() => {
-          pageDataCache.invalidateByPrefix(CACHE_KEYS.SELLERS_LIST);
-          pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
-          navigate('/sellers');
-        });
+        // 未保存変更チェック後に遷移警告チェックを経由
+        const proceed = () => {
+          navigateWithWarningCheck(() => {
+            pageDataCache.invalidateByPrefix(CACHE_KEYS.SELLERS_LIST);
+            pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+            navigate('/sellers');
+          });
+        };
+        const unsaved = getUnsavedSections();
+        if (unsaved.length > 0) {
+          window.history.pushState(null, '', window.location.href);
+          setUnsavedChangesDialog({ open: true, unsavedSections: unsaved, onProceed: proceed });
+        } else {
+          // 遷移許可: 既存の警告チェックを経由
+          navigateWithWarningCheck(() => {
+            pageDataCache.invalidateByPrefix(CACHE_KEYS.SELLERS_LIST);
+            pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+            navigate('/sellers');
+          });
+        }
       }
     };
 
@@ -2183,6 +2204,30 @@ const CallModePage = () => {
     setDuplicateModalOpen(false);
   };
 
+  /**
+   * 未保存変更があるセクション名の一覧を返す
+   */
+  const getUnsavedSections = (): string[] => {
+    const sections: string[] = [];
+    if (editableComments !== savedComments) sections.push('コメント');
+    if (statusChanged) sections.push('ステータス');
+    if (editingProperty) sections.push('物件情報');
+    if (editingSeller) sections.push('売主情報');
+    return sections;
+  };
+
+  /**
+   * 未保存変更がある場合は確認ダイアログを表示し、なければ onProceed を直接実行する
+   */
+  const checkUnsavedAndNavigate = (onProceed: () => void) => {
+    const unsaved = getUnsavedSections();
+    if (unsaved.length > 0) {
+      setUnsavedChangesDialog({ open: true, unsavedSections: unsaved, onProceed });
+      return;
+    }
+    onProceed();
+  };
+
   const handleBack = () => {
     // 追客中かつ次電日未入力の場合は遷移を完全ブロック（最優先）
     // editedStatusを参照（画面上の現在値、保存前も含む）
@@ -2191,8 +2236,32 @@ const CallModePage = () => {
       return;
     }
 
+    // 未保存変更チェック
+    const unsaved = getUnsavedSections();
+    if (unsaved.length > 0) {
+      setUnsavedChangesDialog({
+        open: true,
+        unsavedSections: unsaved,
+        onProceed: () => {
+          // 未保存を無視して遷移（以降の警告チェックも経由）
+          _handleBackAfterUnsavedCheck();
+        },
+      });
+      return;
+    }
+
+    _handleBackAfterUnsavedCheck();
+  };
+
+  /** 未保存チェック後の実際の戻る処理 */
+  const _handleBackAfterUnsavedCheck = () => {
     // 不通未入力警告（反響日2026年1月1日以降 かつ 不通未入力）
     const isAfterJan2026ForUnreachable = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01');
+    const onConfirm = () => {
+      pageDataCache.invalidateByPrefix(CACHE_KEYS.SELLERS_LIST);
+      pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+      navigate('/sellers');
+    };
     if (isAfterJan2026ForUnreachable && !unreachableStatus) {
       setNavigationWarningDialog({ open: true, warningType: 'unreachable', onConfirm });
       return;
@@ -2248,6 +2317,22 @@ const CallModePage = () => {
       return;
     }
 
+    // 未保存変更チェック
+    const unsaved = getUnsavedSections();
+    if (unsaved.length > 0) {
+      setUnsavedChangesDialog({
+        open: true,
+        unsavedSections: unsaved,
+        onProceed: () => _navigateWithWarningCheckCore(onConfirm),
+      });
+      return;
+    }
+
+    _navigateWithWarningCheckCore(onConfirm);
+  };
+
+  /** 未保存チェック後の警告チェック本体 */
+  const _navigateWithWarningCheckCore = (onConfirm: () => void) => {
     // 次電日変更確認ダイアログの判定（NavigationWarningDialogより前に評価）
     // 4条件: 反響日付から3日以上経過 & 追客中 & 編集あり & 次電日が変更されていない
     if (shouldShowReminderDialog(
@@ -8725,6 +8810,56 @@ HP：https://ifoo-oita.com/
         open={navigationBlockDialog.open}
         onGoToNextCallDate={handleGoToNextCallDate}
       />
+
+      {/* 未保存変更確認ダイアログ */}
+      <Dialog
+        open={unsavedChangesDialog.open}
+        onClose={() => setUnsavedChangesDialog({ open: false, unsavedSections: [], onProceed: null })}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+          保存されていない変更があります
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            以下の保存ボタンを押していませんが、このまま移動しますか？
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            {unsavedChangesDialog.unsavedSections.map((section) => (
+              <Chip
+                key={section}
+                label={`${section}の保存ボタン`}
+                color="warning"
+                size="small"
+                variant="outlined"
+              />
+            ))}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 2, gap: 1 }}>
+          <Button
+            onClick={() => setUnsavedChangesDialog({ open: false, unsavedSections: [], onProceed: null })}
+            color="primary"
+            variant="contained"
+            sx={{ fontWeight: 'bold' }}
+          >
+            戻る
+          </Button>
+          <Button
+            onClick={() => {
+              const onProceed = unsavedChangesDialog.onProceed;
+              setUnsavedChangesDialog({ open: false, unsavedSections: [], onProceed: null });
+              onProceed?.();
+            }}
+            color="inherit"
+            variant="outlined"
+          >
+            そのまま移動
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 次電日変更確認ダイアログ */}
       <NextCallDateReminderDialog
