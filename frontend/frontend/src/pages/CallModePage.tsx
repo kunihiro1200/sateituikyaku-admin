@@ -1884,7 +1884,9 @@ const CallModePage = () => {
         ? parseVisitDateToLocal(sellerData.visitDate)
         : '';
       setEditedAppointmentDate(appointmentDateLocal);
-      setEditedAssignedTo(sellerData.assignedTo || '');
+      // visitAssignee（営業担当イニシャル）を優先して初期化
+      // assignedTo はメールアドレスフィールドのため使用しない
+      setEditedAssignedTo(sellerData.visitAssignee || sellerData.visitAssigneeInitials || '');
       setEditedVisitValuationAcquirer(sellerData.visitValuationAcquirer || '');
       setOriginalVisitValuationAcquirer(sellerData.visitValuationAcquirer ?? null); // 元の値を保存（nullは未設定）
       setEditedAppointmentNotes(sellerData.appointmentNotes || '');
@@ -2744,6 +2746,10 @@ const CallModePage = () => {
       setSuccessMessage(null);
       setAppointmentSuccessMessage(null);
 
+      // 保存前に営担の値をスナップショットとして保持
+      // loadAllData() 後に editedAssignedTo が再初期化されても正しい値を使えるようにする
+      const assignedToSnapshot = editedAssignedTo;
+
       // datetime-localの値からvisit_date（TIMESTAMP型: YYYY-MM-DD HH:mm:ss）を生成
       // タイムゾーン変換せずローカル時刻のまま使用
       let visitDateTimeStr: string | null = null;
@@ -2756,7 +2762,7 @@ const CallModePage = () => {
 
       console.log('Saving appointment:', {
         visitDate: visitDateTimeStr,
-        visitAssignee: editedAssignedTo,
+        visitAssignee: assignedToSnapshot,
         visitValuationAcquirer: editedVisitValuationAcquirer,
         appointmentNotes: editedAppointmentNotes,
       });
@@ -2814,7 +2820,7 @@ const CallModePage = () => {
       const updateResponse = await api.put(`/api/sellers/${id}`, {
         visitDate: visitDateTimeStr,
         visitTime: visitTimeStr,  // スプシのAS列「訪問時間」に即時反映
-        visitAssignee: editedAssignedTo || null,
+        visitAssignee: assignedToSnapshot || null,
         visitValuationAcquirer: acquirer || null,
         appointmentNotes: editedAppointmentNotes || null,
         // カレンダーイベント作成用にappointmentDateも送信
@@ -2822,7 +2828,7 @@ const CallModePage = () => {
         // visitDateが空の場合はappointmentDateもクリア（表示フォールバックを防ぐ）
         ...(!visitDateTimeStr && { appointmentDate: null }),
         // visitAssigneeが空の場合はassignedToもクリア（表示フォールバックを防ぐ）
-        ...(!editedAssignedTo && { assignedTo: null }),
+        ...(!assignedToSnapshot && { assignedTo: null }),
         ...(visitAcquisitionDateToSave !== undefined && { visitAcquisitionDate: visitAcquisitionDateToSave }),
       });
 
@@ -2870,8 +2876,8 @@ const CallModePage = () => {
             `\n通話モードページ:\n${window.location.href}` +
             (updatedSeller?.comments || seller?.comments ? `\n\nコメント:\n${updatedSeller?.comments || seller?.comments}` : '');
 
-          // 営担のメールアドレスを取得（更新されたデータを優先）
-          const assignedToValue = editedAssignedTo || updatedSeller?.visitAssigneeInitials || updatedSeller?.visitAssignee || seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo;
+          // 営担のメールアドレスを取得（保存前のスナップショットを優先）
+          const assignedToValue = assignedToSnapshot || updatedSeller?.visitAssigneeInitials || updatedSeller?.visitAssignee || seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo;
           console.log('=== カレンダー営担デバッグ（売主） ===');
           console.log('assignedToValue:', assignedToValue);
           console.log('updatedSeller.visitAssignee:', updatedSeller?.visitAssignee);
