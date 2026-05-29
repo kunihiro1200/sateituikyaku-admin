@@ -164,7 +164,7 @@ const CallLogDisplay = forwardRef<CallLogDisplayHandle, CallLogDisplayProps>(({ 
           </TableHead>
           <TableBody>
             {callLogs.map((log) => (
-              <TableRow key={log.id} hover>
+              <TableRow key={log.id} hover sx={{ bgcolor: '#FFFDE7', '&:hover': { bgcolor: '#FFF9C4' } }}>
                 <TableCell>{formatDateTime(log.calledAt)}</TableCell>
                 <TableCell>{log.employeeName}</TableCell>
               </TableRow>
