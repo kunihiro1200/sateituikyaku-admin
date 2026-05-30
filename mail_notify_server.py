@@ -194,12 +194,37 @@ def decode_body(payload):
             for sub in part.get("parts", []):
                 extract_text_plain(sub, collected)
 
+    def extract_text_html(part, collected):
+        """text/htmlからタグを除去してテキストを取得（text/plainが空の場合のフォールバック）"""
+        mime = part.get("mimeType", "")
+        if mime == "text/html":
+            data = part.get("body", {}).get("data", "")
+            if data:
+                html = base64.urlsafe_b64decode(data).decode("utf-8", errors="ignore")
+                # HTMLタグを除去してプレーンテキスト化
+                text = re.sub(r'<[^>]+>', '', html)
+                # HTMLエンティティを変換
+                text = text.replace('&nbsp;', ' ').replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+                collected.append(text)
+        elif mime.startswith("multipart/"):
+            for sub in part.get("parts", []):
+                extract_text_html(sub, collected)
+
+    # まずtext/plainを試みる
     collected = []
     extract_text_plain(payload, collected)
 
     if collected:
         # 全パートのtext/plainを結合（返信メールで本文と引用が別パートに分かれる場合に対応）
         return "\n".join(collected)
+
+    # text/plainが空の場合はtext/htmlからフォールバック取得
+    html_collected = []
+    extract_text_html(payload, html_collected)
+    if html_collected:
+        logging.info("  [本文取得] text/plainが空のためtext/htmlから取得")
+        return "\n".join(html_collected)
+
     return ""
 
 
@@ -311,6 +336,7 @@ def check_new_emails(service, notified_ids):
             if matched:
                 body = decode_body(msg_detail["payload"])
                 logging.info(f"\n[{datetime.now().strftime('%H:%M:%S')}] 🔔 新着メール検知: {subject}")
+                logging.info(f"  [本文先頭] {repr(body[:100])}")
 
                 # イエウールのみDB転記
                 if subject == IEUL_SUBJECT:
