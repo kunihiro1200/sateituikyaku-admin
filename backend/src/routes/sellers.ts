@@ -421,13 +421,29 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
     await serialSheetsClient.authenticate();
 
     // 現在値を読んで+1した値を書き込む（GASと同じ動作）
-    const serialValues = await serialSheetsClient.readRawRange(serialCell);
-    const currentNum = parseInt(String(serialValues?.[0]?.[0] || '0'), 10);
-    const newNum = currentNum + 1;
-    const sellerNumber = `${prefix}${newNum}`;
+    // 重複時はリトライ（同時実行による競合対策）
+    let sellerNumber = '';
+    let retryCount = 0;
+    const maxRetries = 3;
+    while (retryCount < maxRetries) {
+      const serialValues = await serialSheetsClient.readRawRange(serialCell);
+      const currentNum = parseInt(String(serialValues?.[0]?.[0] || '0'), 10);
+      const newNum = currentNum + 1;
+      sellerNumber = `${prefix}${newNum}`;
+      await serialSheetsClient.updateRawCell('連番', serialCell, newNum);
 
-    // 連番シートを更新（Google Sheets API直接呼び出し）
-    await serialSheetsClient.updateRawCell('連番', serialCell, newNum);
+      // 既に同じ番号がDBに存在するか確認
+      const supabaseCheck = (await import('../config/supabase')).default;
+      const { data: existing } = await supabaseCheck
+        .from('sellers')
+        .select('id')
+        .eq('seller_number', sellerNumber)
+        .maybeSingle();
+
+      if (!existing) break; // 重複なし → 採番成功
+      console.log(`[ieul-transfer] ⚠️ ${sellerNumber} は既に存在。リトライ ${retryCount + 1}/${maxRetries}`);
+      retryCount++;
+    }
 
     console.log(`[ieul-transfer] 売主番号採番: ${sellerNumber}`);
 
@@ -760,11 +776,29 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
       serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
     });
     await serialSheetsClient.authenticate();
-    const serialValues = await serialSheetsClient.readRawRange(serialCell);
-    const currentNum = parseInt(String(serialValues?.[0]?.[0] || '0'), 10);
-    const newNum = currentNum + 1;
-    const sellerNumber = `${prefix}${newNum}`;
-    await serialSheetsClient.updateRawCell('連番', serialCell, newNum);
+    // 現在値を読んで+1した値を書き込む（重複時はリトライ）
+    let sellerNumber = '';
+    let retryCount = 0;
+    const maxRetries = 3;
+    while (retryCount < maxRetries) {
+      const serialValues = await serialSheetsClient.readRawRange(serialCell);
+      const currentNum = parseInt(String(serialValues?.[0]?.[0] || '0'), 10);
+      const newNum = currentNum + 1;
+      sellerNumber = `${prefix}${newNum}`;
+      await serialSheetsClient.updateRawCell('連番', serialCell, newNum);
+
+      // 既に同じ番号がDBに存在するか確認
+      const supabaseCheck = (await import('../config/supabase')).default;
+      const { data: existing } = await supabaseCheck
+        .from('sellers')
+        .select('id')
+        .eq('seller_number', sellerNumber)
+        .maybeSingle();
+
+      if (!existing) break; // 重複なし → 採番成功
+      console.log(`[home4u-transfer] ⚠️ ${sellerNumber} は既に存在。リトライ ${retryCount + 1}/${maxRetries}`);
+      retryCount++;
+    }
     console.log(`[home4u-transfer] 売主番号採番: ${sellerNumber}`);
 
     // DB INSERT
