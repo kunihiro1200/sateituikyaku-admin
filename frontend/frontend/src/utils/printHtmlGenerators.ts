@@ -512,8 +512,8 @@ export function generatePage6CampaignHtml(buyerNumber: string, viewingDate: stri
     <div style="margin-bottom:10px;font-size:9pt;font-weight:bold;">物件価格1500万以上の物件のご購入に限ります！！</div>
     <!-- 有効期間 -->
     <div style="margin-bottom:10px;font-size:9.5pt;">
-      <span style="font-weight:bold;color:#c00;">有効期間：</span>
-      <span style="font-weight:bold;color:#c00;">${esc(expiryStr)} まで</span>
+      <span style="font-weight:bold;color:#000;">有効期間：</span>
+      <span style="font-weight:bold;color:#000;">${esc(expiryStr)} まで</span>
     </div>
     <!-- 物件評価テーブル -->
     <table style="width:100%;border-collapse:collapse;margin-bottom:10px;">

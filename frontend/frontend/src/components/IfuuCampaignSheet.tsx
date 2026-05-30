@@ -48,8 +48,8 @@ const IfuuCampaignSheet: React.FC<IfuuCampaignSheetProps> = ({ buyerNumber, view
 
       {/* 有効期間 */}
       <Typography sx={{ mb: '10px', fontSize: '9.5pt' }}>
-        <Box component="span" sx={{ fontWeight: 'bold', color: '#c00' }}>有効期間：</Box>
-        <Box component="span" sx={{ fontWeight: 'bold', color: '#c00' }}>{expiryStr} まで</Box>
+        <Box component="span" sx={{ fontWeight: 'bold', color: '#000' }}>有効期間：</Box>
+        <Box component="span" sx={{ fontWeight: 'bold', color: '#000' }}>{expiryStr} まで</Box>
       </Typography>
 
       {/* 物件評価テーブル */}
