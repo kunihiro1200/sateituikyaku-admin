@@ -4695,6 +4695,11 @@ HP：https://ifoo-oita.com/
                   </MenuItem>
                 ))}
               </Select>
+              {!seller?.email && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Emailがないため送信不可
+                </Typography>
+              )}
             </FormControl>
 
             {/* SMSテンプレート選択 */}
