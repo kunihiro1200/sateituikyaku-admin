@@ -789,6 +789,31 @@ export default function BuyerViewingResultPage() {
       const viewingDate = new Date(startDateStr.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6'));
       const endDate = new Date(endDateStr.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6'));
 
+      // ===== カレンダーを先に開く（await より前に呼ぶことでポップアップブロックを回避）=====
+      {
+        const startStr = viewingDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        const endStr = endDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        const addr = calendarAddress || buyer.other_company_property || '';
+        const calDetails =
+          `買主番号: ${buyer.buyer_number}\n` +
+          `お客様名: ${buyer.name || ''}\n` +
+          `電話: ${buyer.phone_number || ''}\n` +
+          `問合時ヒアリング: ${buyer.inquiry_hearing || ''}\n` +
+          `\n買主詳細ページ:\n${window.location.origin}/buyers/${buyer.buyer_number}`;
+
+        const calParams = new URLSearchParams({
+          action: 'TEMPLATE',
+          text: title,
+          dates: `${startStr}/${endStr}`,
+          details: calDetails,
+          location: addr,
+        });
+        if (assignedEmail) calParams.append('add', assignedEmail);
+        const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
+        window.open(`https://calendar.google.com/calendar/render?${calParams.toString()}${srcParam}`, '_blank');
+      }
+      // ===== カレンダーここまで =====
+
       console.log('[BuyerViewingResultPage] Calling /api/buyer-appointments');
       
       const response = await api.post('/api/buyer-appointments', {
@@ -822,9 +847,6 @@ export default function BuyerViewingResultPage() {
         severity: 'success',
       });
       setCalendarOpened(true);
-
-      // 登録成功後にGoogleカレンダーを開く
-      window.open('https://calendar.google.com/calendar/r', '_blank');
     } catch (error: any) {
       console.error('[BuyerViewingResultPage] Calendar event creation error:', error);
       const errorMessage = error.response?.data?.error?.message || 'カレンダー登録に失敗しました';
