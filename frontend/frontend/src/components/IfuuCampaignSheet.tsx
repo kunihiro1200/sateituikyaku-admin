@@ -65,8 +65,11 @@ const IfuuCampaignSheet: React.FC<IfuuCampaignSheetProps> = ({ buyerNumber, view
         <tbody>
           {[...Array(5)].map((_, i) => (
             <tr key={i} style={{ height: '42px' }}>
-              <td style={{ ...cellStyle, borderBottom: '1px dotted #999' }}></td>
-              <td style={{ ...cellStyle, borderBottom: '1px dotted #999', textAlign: 'right' }}>万円</td>
+              <td style={{ ...cellStyle, borderBottom: '1px dotted #999', textAlign: 'center' }}>/</td>
+              <td style={{ ...cellStyle, borderBottom: '1px dotted #999' }}>
+                <div style={{ borderBottom: '1px dotted #ccc', minHeight: '18px', marginBottom: '2px' }}></div>
+                <div style={{ textAlign: 'right' }}>万円</div>
+              </td>
               <td style={{ ...cellStyle, borderBottom: '1px dotted #999', width: '200px' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '7.5pt' }}>
                   <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
@@ -99,13 +102,13 @@ const IfuuCampaignSheet: React.FC<IfuuCampaignSheetProps> = ({ buyerNumber, view
           <tr>
             <td style={cellStyle}>銀行</td>
             <td style={{ ...cellStyle, textAlign: 'right' }}>万円</td>
-            <td style={cellStyle}>/</td>
+            <td style={{ ...cellStyle, textAlign: 'center' }}>/</td>
             <td style={cellStyle}></td>
           </tr>
           <tr>
             <td style={cellStyle}>銀行</td>
             <td style={{ ...cellStyle, textAlign: 'right' }}>万円</td>
-            <td style={cellStyle}>/</td>
+            <td style={{ ...cellStyle, textAlign: 'center' }}>/</td>
             <td style={cellStyle}></td>
           </tr>
         </tbody>
@@ -116,15 +119,15 @@ const IfuuCampaignSheet: React.FC<IfuuCampaignSheetProps> = ({ buyerNumber, view
         <Typography sx={{ fontWeight: 'bold', mb: '6px', fontSize: '9pt' }}>おすすめ銀行の連絡先（ご参考）</Typography>
         <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '8pt' }}>
           <tbody>
-            <tr><td colSpan={4} style={{ fontWeight: 'bold', padding: '2px 0' }}>【大分銀行】</td><td style={{ textAlign: 'right', fontSize: '7.5pt' }}>＊休日</td></tr>
-            <tr><td style={{ padding: '1px 4px' }}>ローンプラザ宗麟館</td><td style={{ padding: '1px 4px' }}>大分市東大道1丁目9番1号3階</td><td style={{ padding: '1px 4px' }}>0120-67-0189</td><td colSpan={2} style={{ padding: '1px 4px' }}>水、祝</td></tr>
-            <tr><td style={{ padding: '1px 4px' }}>わさだローンプラザ</td><td style={{ padding: '1px 4px' }}>大分市大字市1157番地</td><td style={{ padding: '1px 4px' }}>0120-56-0189</td><td colSpan={2} style={{ padding: '1px 4px' }}>水、祝</td></tr>
-            <tr><td style={{ padding: '1px 4px' }}>鶴崎ローンプラザ</td><td style={{ padding: '1px 4px' }}>大分市南鶴崎3丁目1番12号</td><td style={{ padding: '1px 4px' }}>0120-53-0189</td><td colSpan={2} style={{ padding: '1px 4px' }}>水、祝</td></tr>
-            <tr><td colSpan={5} style={{ fontWeight: 'bold', padding: '4px 0 2px' }}>【ろうきん】</td></tr>
-            <tr><td style={{ padding: '1px 4px' }}>ローンセンターおおいた</td><td style={{ padding: '1px 4px' }}>大分市寿町1-3（大分支店3F）</td><td style={{ padding: '1px 4px' }}>097-536-6366</td><td colSpan={2} style={{ padding: '1px 4px' }}>水、土、祝</td></tr>
-            <tr><td style={{ padding: '1px 4px' }}>鶴崎支店</td><td style={{ padding: '1px 4px' }}>大分市中鶴崎2-3-18</td><td style={{ padding: '1px 4px' }}>097-521-8101</td><td colSpan={2} style={{ padding: '1px 4px' }}>土、日、祝</td></tr>
-            <tr><td colSpan={5} style={{ fontWeight: 'bold', padding: '4px 0 2px' }}>【伊予銀行】</td></tr>
-            <tr><td style={{ padding: '1px 4px' }}>大分支店</td><td style={{ padding: '1px 4px' }}>大分市府内町3-1-9</td><td style={{ padding: '1px 4px' }}>097-532-6171</td><td colSpan={2} style={{ padding: '1px 4px' }}>土、日、祝</td></tr>
+            <tr><td style={{ fontWeight: 'bold', padding: '2px 0' }}>【大分銀行】</td><td></td><td></td><td style={{ textAlign: 'right', fontSize: '7.5pt' }}>＊休日</td></tr>
+            <tr><td style={{ padding: '1px 4px' }}>ローンプラザ宗麟館</td><td style={{ padding: '1px 4px' }}>大分市東大道1丁目9番1号3階</td><td style={{ padding: '1px 4px' }}>0120-67-0189</td><td style={{ padding: '1px 4px' }}>水、祝</td></tr>
+            <tr><td style={{ padding: '1px 4px' }}>わさだローンプラザ</td><td style={{ padding: '1px 4px' }}>大分市大字市1157番地</td><td style={{ padding: '1px 4px' }}>0120-56-0189</td><td style={{ padding: '1px 4px' }}>水、祝</td></tr>
+            <tr><td style={{ padding: '1px 4px' }}>鶴崎ローンプラザ</td><td style={{ padding: '1px 4px' }}>大分市南鶴崎3丁目1番12号</td><td style={{ padding: '1px 4px' }}>0120-53-0189</td><td style={{ padding: '1px 4px' }}>水、祝</td></tr>
+            <tr><td colSpan={4} style={{ fontWeight: 'bold', padding: '4px 0 2px' }}>【ろうきん】</td></tr>
+            <tr><td style={{ padding: '1px 4px' }}>ローンセンターおおいた</td><td style={{ padding: '1px 4px' }}>大分市寿町1-3（大分支店3F）</td><td style={{ padding: '1px 4px' }}>097-536-6366</td><td style={{ padding: '1px 4px' }}>水、土、祝</td></tr>
+            <tr><td style={{ padding: '1px 4px' }}>鶴崎支店</td><td style={{ padding: '1px 4px' }}>大分市中鶴崎2-3-18</td><td style={{ padding: '1px 4px' }}>097-521-8101</td><td style={{ padding: '1px 4px' }}>土、日、祝</td></tr>
+            <tr><td colSpan={4} style={{ fontWeight: 'bold', padding: '4px 0 2px' }}>【伊予銀行】</td></tr>
+            <tr><td style={{ padding: '1px 4px' }}>大分支店</td><td style={{ padding: '1px 4px' }}>大分市府内町3-1-9</td><td style={{ padding: '1px 4px' }}>097-532-6171</td><td style={{ padding: '1px 4px' }}>土、日、祝</td></tr>
           </tbody>
         </Box>
       </Box>

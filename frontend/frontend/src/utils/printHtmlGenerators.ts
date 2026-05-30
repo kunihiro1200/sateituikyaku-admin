@@ -485,12 +485,15 @@ export function generatePage6CampaignHtml(buyerNumber: string, viewingDate: stri
     </td>`;
   }
 
-  // 物件記入欄（5行）
+  // 物件記入欄（5行）- 上段に物件名、下段に価格
   let propertyRows = '';
   for (let i = 0; i < 5; i++) {
     propertyRows += `<tr style="height:42px;">
-      <td style="border:1px solid #000;border-bottom:1px dotted #999;padding:4px 6px;font-size:8.5pt;"></td>
-      <td style="border:1px solid #000;border-bottom:1px dotted #999;padding:4px 6px;font-size:8.5pt;text-align:right;">万円</td>
+      <td style="border:1px solid #000;border-bottom:1px dotted #999;padding:4px 6px;font-size:8.5pt;text-align:center;">/</td>
+      <td style="border:1px solid #000;border-bottom:1px dotted #999;padding:2px 6px;font-size:8.5pt;">
+        <div style="border-bottom:1px dotted #ccc;min-height:18px;margin-bottom:2px;"></div>
+        <div style="text-align:right;">万円</div>
+      </td>
       ${ratingRow()}
       <td style="border:1px solid #000;border-bottom:1px dotted #999;padding:4px 6px;font-size:8.5pt;"></td>
     </tr>`;
@@ -538,13 +541,13 @@ export function generatePage6CampaignHtml(buyerNumber: string, viewingDate: stri
       <tr>
         <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;">銀行</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;text-align:right;">万円</td>
-        <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;">/</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;text-align:center;">/</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;"></td>
       </tr>
       <tr>
         <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;">銀行</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;text-align:right;">万円</td>
-        <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;">/</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;text-align:center;">/</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;"></td>
       </tr>
     </table>
@@ -552,15 +555,15 @@ export function generatePage6CampaignHtml(buyerNumber: string, viewingDate: stri
     <div style="border:2px solid #000;padding:8px 10px;margin-bottom:10px;">
       <div style="font-weight:bold;margin-bottom:6px;font-size:9pt;">おすすめ銀行の連絡先（ご参考）</div>
       <table style="width:100%;border-collapse:collapse;font-size:8pt;">
-        <tr><td colspan="4" style="font-weight:bold;padding:2px 0;">【大分銀行】</td><td style="text-align:right;font-size:7.5pt;">＊休日</td></tr>
-        <tr><td style="padding:1px 4px;">ローンプラザ宗麟館</td><td style="padding:1px 4px;">大分市東大道1丁目9番1号3階</td><td style="padding:1px 4px;">0120-67-0189</td><td colspan="2" style="padding:1px 4px;">水、祝</td></tr>
-        <tr><td style="padding:1px 4px;">わさだローンプラザ</td><td style="padding:1px 4px;">大分市大字市1157番地</td><td style="padding:1px 4px;">0120-56-0189</td><td colspan="2" style="padding:1px 4px;">水、祝</td></tr>
-        <tr><td style="padding:1px 4px;">鶴崎ローンプラザ</td><td style="padding:1px 4px;">大分市南鶴崎3丁目1番12号</td><td style="padding:1px 4px;">0120-53-0189</td><td colspan="2" style="padding:1px 4px;">水、祝</td></tr>
-        <tr><td colspan="5" style="font-weight:bold;padding:4px 0 2px;">【ろうきん】</td></tr>
-        <tr><td style="padding:1px 4px;">ローンセンターおおいた</td><td style="padding:1px 4px;">大分市寿町1-3（大分支店3F）</td><td style="padding:1px 4px;">097-536-6366</td><td colspan="2" style="padding:1px 4px;">水、土、祝</td></tr>
-        <tr><td style="padding:1px 4px;">鶴崎支店</td><td style="padding:1px 4px;">大分市中鶴崎2-3-18</td><td style="padding:1px 4px;">097-521-8101</td><td colspan="2" style="padding:1px 4px;">土、日、祝</td></tr>
-        <tr><td colspan="5" style="font-weight:bold;padding:4px 0 2px;">【伊予銀行】</td></tr>
-        <tr><td style="padding:1px 4px;">大分支店</td><td style="padding:1px 4px;">大分市府内町3-1-9</td><td style="padding:1px 4px;">097-532-6171</td><td colspan="2" style="padding:1px 4px;">土、日、祝</td></tr>
+        <tr><td style="font-weight:bold;padding:2px 0;">【大分銀行】</td><td></td><td></td><td style="text-align:right;font-size:7.5pt;">＊休日</td></tr>
+        <tr><td style="padding:1px 4px;">ローンプラザ宗麟館</td><td style="padding:1px 4px;">大分市東大道1丁目9番1号3階</td><td style="padding:1px 4px;">0120-67-0189</td><td style="padding:1px 4px;">水、祝</td></tr>
+        <tr><td style="padding:1px 4px;">わさだローンプラザ</td><td style="padding:1px 4px;">大分市大字市1157番地</td><td style="padding:1px 4px;">0120-56-0189</td><td style="padding:1px 4px;">水、祝</td></tr>
+        <tr><td style="padding:1px 4px;">鶴崎ローンプラザ</td><td style="padding:1px 4px;">大分市南鶴崎3丁目1番12号</td><td style="padding:1px 4px;">0120-53-0189</td><td style="padding:1px 4px;">水、祝</td></tr>
+        <tr><td colspan="4" style="font-weight:bold;padding:4px 0 2px;">【ろうきん】</td></tr>
+        <tr><td style="padding:1px 4px;">ローンセンターおおいた</td><td style="padding:1px 4px;">大分市寿町1-3（大分支店3F）</td><td style="padding:1px 4px;">097-536-6366</td><td style="padding:1px 4px;">水、土、祝</td></tr>
+        <tr><td style="padding:1px 4px;">鶴崎支店</td><td style="padding:1px 4px;">大分市中鶴崎2-3-18</td><td style="padding:1px 4px;">097-521-8101</td><td style="padding:1px 4px;">土、日、祝</td></tr>
+        <tr><td colspan="4" style="font-weight:bold;padding:4px 0 2px;">【伊予銀行】</td></tr>
+        <tr><td style="padding:1px 4px;">大分支店</td><td style="padding:1px 4px;">大分市府内町3-1-9</td><td style="padding:1px 4px;">097-532-6171</td><td style="padding:1px 4px;">土、日、祝</td></tr>
       </table>
     </div>
     <!-- 銀行相談前の案内 -->
