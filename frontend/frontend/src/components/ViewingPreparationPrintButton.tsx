@@ -17,6 +17,7 @@ import PurchaseApplicationPrintSheet from './PurchaseApplicationPrintSheet';
 import ExclusiveMediationContractSheet from './ExclusiveMediationContractSheet';
 import FundingPlanSheet from './FundingPlanSheet';
 import ReformEstimateSheet from './ReformEstimateSheet';
+import IfuuCampaignSheet from './IfuuCampaignSheet';
 
 interface PropertyListing {
   property_number: string;
@@ -196,49 +197,61 @@ export function ViewingPreparationPrintButton({
 
   if (!linkedProperties || linkedProperties.length === 0) return null;
 
-  const previewPages = propertyDetails.flatMap((property, propIndex) => [
-    {
-      key: `${propIndex}-1`,
-      label: '1枚目：内覧準備資料',
-      node: <ViewingPreparationPrintSheet buyer={buyer} property={property} printDate={today} />,
-    },
-    {
-      key: `${propIndex}-2`,
-      label: '2枚目：買付申込書',
-      node: (
-        <PurchaseApplicationPrintSheet
-          propertyAddress={property.display_address || property.address}
-          propertyPrice={property.price || property.listing_price}
-        />
-      ),
-    },
-    {
-      key: `${propIndex}-3`,
-      label: '3枚目：内覧証明書',
-      node: (
-        <ExclusiveMediationContractSheet
-          propertyAddress={property.display_address || property.address}
-        />
-      ),
-    },
-    {
-      key: `${propIndex}-4`,
-      label: '4枚目：資金計画書',
-      node: (
-        <FundingPlanSheet
-          propertyAddress={property.display_address || property.address}
-          propertyPrice={property.price || property.listing_price}
-          propertyType={property.property_type}
-          printDate={today}
-        />
-      ),
-    },
-    {
-      key: `${propIndex}-5`,
-      label: '5枚目：リフォーム概算表',
-      node: <ReformEstimateSheet />,
-    },
-  ]);
+  const previewPages = propertyDetails.flatMap((property, propIndex) => {
+    const price = property.price || property.listing_price;
+    const pages = [
+      {
+        key: `${propIndex}-1`,
+        label: '1枚目：内覧準備資料',
+        node: <ViewingPreparationPrintSheet buyer={buyer} property={property} printDate={today} />,
+      },
+      {
+        key: `${propIndex}-2`,
+        label: '2枚目：買付申込書',
+        node: (
+          <PurchaseApplicationPrintSheet
+            propertyAddress={property.display_address || property.address}
+            propertyPrice={property.price || property.listing_price}
+          />
+        ),
+      },
+      {
+        key: `${propIndex}-3`,
+        label: '3枚目：内覧証明書',
+        node: (
+          <ExclusiveMediationContractSheet
+            propertyAddress={property.display_address || property.address}
+          />
+        ),
+      },
+      {
+        key: `${propIndex}-4`,
+        label: '4枚目：資金計画書',
+        node: (
+          <FundingPlanSheet
+            propertyAddress={property.display_address || property.address}
+            propertyPrice={property.price || property.listing_price}
+            propertyType={property.property_type}
+            printDate={today}
+          />
+        ),
+      },
+      {
+        key: `${propIndex}-5`,
+        label: '5枚目：リフォーム概算表',
+        node: <ReformEstimateSheet />,
+      },
+    ];
+    // 物件価格1500万円以上の場合のみキャンペーンシートを追加
+    if (price != null && price >= 15000000) {
+      pages.push({
+        key: `${propIndex}-6`,
+        label: '6枚目：いふうキャンペーン',
+        node: <IfuuCampaignSheet buyerNumber={buyer?.buyer_number || ''} viewingDate={today} />,
+      });
+    }
+    return pages;
+  });
 
   return (
     <>

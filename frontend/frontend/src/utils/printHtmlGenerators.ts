@@ -464,10 +464,121 @@ export function generatePage5Html(): string {
 }
 
 // ============================================================
+// ページ6: いふうキャンペーンシート（物件価格1500万円以上のみ）
+// ============================================================
+export function generatePage6CampaignHtml(buyerNumber: string, viewingDate: string): string {
+  // 有効期間：内覧日より1年間
+  const vDate = new Date(viewingDate.replace(/\//g, '-'));
+  const expiryDate = new Date(vDate);
+  expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+  const expiryStr = `${expiryDate.getFullYear()}/${String(expiryDate.getMonth() + 1).padStart(2, '0')}/${String(expiryDate.getDate()).padStart(2, '0')}`;
+
+  // 評価欄（1〜5）の生成
+  function ratingRow(): string {
+    return `<td style="border:1px solid #000;padding:4px 2px;width:200px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:7.5pt;">
+        <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:6.5pt;color:#666;">
+        <span>悪い</span><span style="margin-left:auto;">良い</span>
+      </div>
+    </td>`;
+  }
+
+  // 物件記入欄（5行）
+  let propertyRows = '';
+  for (let i = 0; i < 5; i++) {
+    propertyRows += `<tr style="height:42px;">
+      <td style="border:1px solid #000;border-bottom:1px dotted #999;padding:4px 6px;font-size:8.5pt;"></td>
+      <td style="border:1px solid #000;border-bottom:1px dotted #999;padding:4px 6px;font-size:8.5pt;text-align:right;">万円</td>
+      ${ratingRow()}
+      <td style="border:1px solid #000;border-bottom:1px dotted #999;padding:4px 6px;font-size:8.5pt;"></td>
+    </tr>`;
+  }
+
+  return `<div style="width:100%;height:100%;padding:10mm 12mm;background:#fff;font-family:${FONT};font-size:9pt;color:#000;box-sizing:border-box;overflow:hidden;">
+    <!-- タイトル -->
+    <div style="text-align:center;margin-bottom:10px;">
+      <div style="font-size:16pt;font-weight:bold;">いふうの5万円値引き＆1年間の修繕費用5万円負担キャンペーン！！</div>
+    </div>
+    <!-- 条件説明 -->
+    <div style="margin-bottom:4px;font-size:9pt;">
+      他社の物件のご購入でも可能です！（当社内覧に限ります）
+      <span style="float:right;border:2px solid #000;border-radius:8px;padding:2px 8px;font-size:8pt;font-weight:bold;">他社物件でもOK！</span>
+    </div>
+    <div style="margin-bottom:10px;font-size:9pt;font-weight:bold;">物件価格1500万以上の物件のご購入に限ります！！</div>
+    <!-- 有効期間 -->
+    <div style="margin-bottom:10px;font-size:9.5pt;">
+      <span style="font-weight:bold;color:#c00;">有効期間：</span>
+      <span style="font-weight:bold;color:#c00;">${esc(expiryStr)} まで</span>
+    </div>
+    <!-- 物件評価テーブル -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:10px;">
+      <tr>
+        <th style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;font-weight:bold;background:#f9f9f9;width:100px;">日付</th>
+        <th style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;font-weight:bold;background:#f9f9f9;">物件名・価格</th>
+        <th style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;font-weight:bold;background:#f9f9f9;width:200px;">評価</th>
+        <th style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;font-weight:bold;background:#f9f9f9;">コメント</th>
+      </tr>
+      ${propertyRows}
+    </table>
+    <!-- 当社管理番号 -->
+    <div style="text-align:right;margin-bottom:12px;font-size:9pt;">
+      当社管理番号： <span style="font-weight:bold;">${esc(buyerNumber)}</span>
+    </div>
+    <!-- ローン仮審査の状況 -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
+      <tr>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;font-weight:bold;vertical-align:middle;" rowspan="3">ローン仮審査の状況</td>
+        <th style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;font-weight:bold;background:#f9f9f9;">銀行名</th>
+        <th style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;font-weight:bold;background:#f9f9f9;">融資額</th>
+        <th style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;font-weight:bold;background:#f9f9f9;">日付</th>
+        <th style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;font-weight:bold;background:#f9f9f9;">結果</th>
+      </tr>
+      <tr>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;">銀行</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;text-align:right;">万円</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;">/</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;"></td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;">銀行</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;text-align:right;">万円</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;">/</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:8.5pt;"></td>
+      </tr>
+    </table>
+    <!-- おすすめ銀行の連絡先 -->
+    <div style="border:2px solid #000;padding:8px 10px;margin-bottom:10px;">
+      <div style="font-weight:bold;margin-bottom:6px;font-size:9pt;">おすすめ銀行の連絡先（ご参考）</div>
+      <table style="width:100%;border-collapse:collapse;font-size:8pt;">
+        <tr><td colspan="4" style="font-weight:bold;padding:2px 0;">【大分銀行】</td><td style="text-align:right;font-size:7.5pt;">＊休日</td></tr>
+        <tr><td style="padding:1px 4px;">ローンプラザ宗麟館</td><td style="padding:1px 4px;">大分市東大道1丁目9番1号3階</td><td style="padding:1px 4px;">0120-67-0189</td><td colspan="2" style="padding:1px 4px;">水、祝</td></tr>
+        <tr><td style="padding:1px 4px;">わさだローンプラザ</td><td style="padding:1px 4px;">大分市大字市1157番地</td><td style="padding:1px 4px;">0120-56-0189</td><td colspan="2" style="padding:1px 4px;">水、祝</td></tr>
+        <tr><td style="padding:1px 4px;">鶴崎ローンプラザ</td><td style="padding:1px 4px;">大分市南鶴崎3丁目1番12号</td><td style="padding:1px 4px;">0120-53-0189</td><td colspan="2" style="padding:1px 4px;">水、祝</td></tr>
+        <tr><td colspan="5" style="font-weight:bold;padding:4px 0 2px;">【ろうきん】</td></tr>
+        <tr><td style="padding:1px 4px;">ローンセンターおおいた</td><td style="padding:1px 4px;">大分市寿町1-3（大分支店3F）</td><td style="padding:1px 4px;">097-536-6366</td><td colspan="2" style="padding:1px 4px;">水、土、祝</td></tr>
+        <tr><td style="padding:1px 4px;">鶴崎支店</td><td style="padding:1px 4px;">大分市中鶴崎2-3-18</td><td style="padding:1px 4px;">097-521-8101</td><td colspan="2" style="padding:1px 4px;">土、日、祝</td></tr>
+        <tr><td colspan="5" style="font-weight:bold;padding:4px 0 2px;">【伊予銀行】</td></tr>
+        <tr><td style="padding:1px 4px;">大分支店</td><td style="padding:1px 4px;">大分市府内町3-1-9</td><td style="padding:1px 4px;">097-532-6171</td><td colspan="2" style="padding:1px 4px;">土、日、祝</td></tr>
+      </table>
+    </div>
+    <!-- 銀行相談前の案内 -->
+    <div style="border:2px solid #000;padding:8px 10px;">
+      <div style="font-weight:bold;margin-bottom:4px;font-size:9pt;">銀行へご相談に行く前に・・・</div>
+      <div style="margin-bottom:4px;font-size:8.5pt;">事前に連絡して、予約をされることをお勧めいたします。</div>
+      <div style="margin-bottom:4px;font-size:8.5pt;">基本的な準備書類（金融機関によって異なりますので、事前にご確認をお願いいたします）</div>
+      <div style="font-size:8.5pt;">①身分証明書（運転免許証等）<br>②健康保険証（勤務先名の記載があるもの）<br>③源泉徴収票（直近のもの）</div>
+    </div>
+  </div>`;
+}
+
+// ============================================================
 // 全ページ結合
 // ============================================================
 export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDetails: Record<string,unknown>[], today: string): string {
   const pages: string[] = [];
+  const buyerNumber = (buyer.buyer_number || '') as string;
   for (const property of propertyDetails) {
     const addr = (property.display_address || property.address || '') as string;
     const price = (property.price || property.listing_price || null) as number | null;
@@ -477,6 +588,10 @@ export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDeta
     pages.push(generatePage3Html(addr));
     pages.push(generatePage4Html(addr, price, ptype, today));
     pages.push(generatePage5Html());
+    // 物件価格1500万円以上の場合のみキャンペーンシートを追加
+    if (price != null && price >= 15000000) {
+      pages.push(generatePage6CampaignHtml(buyerNumber, today));
+    }
   }
   const pagesHtml = pages.map((p)=>`<div class="page">${p}</div>`).join('');
   return `<!DOCTYPE html>
