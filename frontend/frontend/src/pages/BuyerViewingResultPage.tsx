@@ -707,16 +707,22 @@ export default function BuyerViewingResultPage() {
     // 他社物件ケース（linkedProperties が空）では property が null になるが、
     // buyer.viewing_mobile は正しく渡される。
     // generateCalendarTitle 内で viewingType || viewingTypeGeneral || '' として処理されるため変更不要（要件2.4）
+    // 種別に"マ"が含まれる場合は住居表示（display_address）を優先する
+    const propertyType = property?.property_type || '';
+    const isMansion = propertyType.includes('マ');
+    const calendarAddress = isMansion
+      ? (property?.display_address || property?.address)
+      : property?.address;
     const baseTitle = generateCalendarTitle(
       buyer.viewing_mobile,
       buyer.viewing_type_general,
-      property?.address,
+      calendarAddress,
       buyer.name,
       buyer.other_company_property
     );
     const title = applyAgencyInquiryTitle(baseTitle, buyer.broker_inquiry, buyer.name);
     const description = generateCalendarDescription(
-      property?.address,
+      calendarAddress,
       property?.google_map_url,
       buyer.name,
       buyer.buyer_number,
@@ -798,7 +804,7 @@ export default function BuyerViewingResultPage() {
         viewingTypeGeneral: buyer.viewing_type_general || '',
         viewingDate: buyer.viewing_date || '',
         viewingTime: buyer.viewing_time || '',
-        propertyAddress: property?.address || '',
+        propertyAddress: calendarAddress || '',
         propertyNumber: property?.property_number || '',
         propertyGoogleMapUrl: property?.google_map_url || '',
         inquiryHearing: buyer.inquiry_hearing || '',
@@ -861,6 +867,12 @@ export default function BuyerViewingResultPage() {
       endDate.setHours(viewingDate.getHours() + 1);
 
       const property = linkedProperties && linkedProperties.length > 0 ? linkedProperties[0] : null;
+      // 種別に"マ"が含まれる場合は住居表示（display_address）を優先する
+      const propType = property?.property_type || '';
+      const isMansionType = propType.includes('マ');
+      const propAddress = isMansionType
+        ? (property?.display_address || property?.address || '')
+        : (property?.address || '');
 
       const response = await api.post('/api/buyer-appointments', {
         buyerNumber: buyer.buyer_number,
@@ -875,7 +887,7 @@ export default function BuyerViewingResultPage() {
         viewingTypeGeneral: buyer.viewing_type_general || '',
         viewingDate: buyer.viewing_date || '',
         viewingTime: buyer.viewing_time || '',
-        propertyAddress: property?.address || '',
+        propertyAddress: propAddress,
         propertyNumber: property?.property_number || '',
         propertyGoogleMapUrl: property?.google_map_url || '',
         inquiryHearing: buyer.inquiry_hearing || '',
@@ -1115,7 +1127,12 @@ export default function BuyerViewingResultPage() {
               {/* 電話番号がある場合はSMSボタン */}
               {buyer.phone_number && (() => {
                 const property = linkedProperties.length > 0 ? linkedProperties[0] : null;
-                const address = property?.address || property?.display_address || property?.property_address || buyer.other_company_property || '';
+                // 種別に"マ"が含まれる場合は住居表示（display_address）を優先する
+                const pType = property?.property_type || '';
+                const isMansionSms = pType.includes('マ');
+                const address = isMansionSms
+                  ? (property?.display_address || property?.address || property?.property_address || buyer.other_company_property || '')
+                  : (property?.address || property?.display_address || property?.property_address || buyer.other_company_property || '');
                 const googleMapUrl = property?.google_map_url || '';
                 const smsBody = generatePreDaySmsBody(buyer, address, googleMapUrl);
                 const smsLink = `sms:${buyer.phone_number}?body=${encodeURIComponent(smsBody)}`;

@@ -1594,7 +1594,11 @@ export default function BuyerDetailPage() {
               phoneNumber={buyer.phone_number}
               buyerName={buyer.name || 'お客様'}
               buyerNumber={buyer_number || ''}
-              propertyAddress={linkedProperties[0]?.display_address || linkedProperties[0]?.address || ''}
+              propertyAddress={
+                (linkedProperties[0]?.property_type || '').includes('マ')
+                  ? (linkedProperties[0]?.display_address || linkedProperties[0]?.address || '')
+                  : (linkedProperties[0]?.address || '')
+              }
               propertyType={linkedProperties[0]?.property_type || ''}
               propertyNumber={linkedProperties[0]?.property_number || ''}
               senderName={employee?.name || ''}

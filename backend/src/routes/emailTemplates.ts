@@ -352,7 +352,7 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
     // 物件番号で直接検索（propertyIdsは物件番号の配列）
     const { data: properties, error: propError } = await supabase
       .from('property_listings')
-      .select('id, property_number, address, sales_price, price, google_map_url, suumo_url, property_type, land_area, building_area, current_status, viewing_key')
+      .select('id, property_number, address, display_address, sales_price, price, google_map_url, suumo_url, property_type, land_area, building_area, current_status, viewing_key')
       .in('property_number', propertyIds);
 
     if (propError) {
@@ -424,9 +424,12 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
     }
 
     // <<>> プレースホルダー用データ
+    // 種別に"マ"が含まれる場合は住居表示（display_address）を優先する
     const propertyDataForPlaceholders = allProperties.map((p: any) => ({
       propertyNumber: p.property_number || '',
-      address: p.address || '',
+      address: (p.property_type || '').includes('マ')
+        ? (p.display_address || p.address || '')
+        : (p.address || ''),
       price: p.price,
       googleMapUrl: p.google_map_url || '',
       athomeUrl: p.suumo_url || '',
@@ -439,9 +442,12 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
     }));
 
     // {{}} 形式用データ（後方互換）
+    // 種別に"マ"が含まれる場合は住居表示（display_address）を優先する
     const legacyProperties = allProperties.map((p: any) => ({
       propertyNumber: p.property_number || '',
-      propertyAddress: p.address || '',
+      propertyAddress: (p.property_type || '').includes('マ')
+        ? (p.display_address || p.address || '')
+        : (p.address || ''),
       price: p.sales_price || p.price || 0,
       propertyType: p.property_type || '',
       landArea: p.land_area,
