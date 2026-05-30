@@ -2210,7 +2210,17 @@ const CallModePage = () => {
   const getUnsavedSections = (): string[] => {
     const sections: string[] = [];
     if (editableComments !== savedComments) sections.push('コメント');
-    if (statusChanged) sections.push('ステータス');
+    // ステータスセクション: 実際の値を保存済み値と比較して判定
+    const hasStatusChanges = 
+      editedStatus !== savedStatus ||
+      editedConfidence !== savedConfidence ||
+      editedNextCallDate !== savedNextCallDate ||
+      editedExclusiveOtherDecisionMeeting !== savedExclusiveOtherDecisionMeeting ||
+      editedExclusiveDecisionDate !== savedExclusiveDecisionDate ||
+      JSON.stringify(editedCompetitors) !== JSON.stringify(savedCompetitors) ||
+      JSON.stringify(editedExclusiveOtherDecisionFactors) !== JSON.stringify(savedExclusiveOtherDecisionFactors) ||
+      editedCompetitorNameAndReason !== savedCompetitorNameAndReason;
+    if (hasStatusChanges) sections.push('ステータス');
     if (editingProperty) sections.push('物件情報');
     if (editingSeller) sections.push('売主情報');
     return sections;
