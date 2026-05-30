@@ -555,7 +555,7 @@ export function generatePage6CampaignHtml(buyerNumber: string, viewingDate: stri
     <div style="border:2px solid #000;padding:8px 10px;margin-bottom:10px;">
       <div style="font-weight:bold;margin-bottom:6px;font-size:9pt;">おすすめ銀行の連絡先（ご参考）</div>
       <table style="width:100%;border-collapse:collapse;font-size:8pt;">
-        <tr><td style="font-weight:bold;padding:2px 0;">【大分銀行】</td><td></td><td></td><td style="text-align:right;font-size:7.5pt;">＊休日</td></tr>
+        <tr><td style="font-weight:bold;padding:2px 0;">【大分銀行】</td><td></td><td></td><td style="padding:1px 4px;font-size:7.5pt;">＊休日</td></tr>
         <tr><td style="padding:1px 4px;">ローンプラザ宗麟館</td><td style="padding:1px 4px;">大分市東大道1丁目9番1号3階</td><td style="padding:1px 4px;">0120-67-0189</td><td style="padding:1px 4px;">水、祝</td></tr>
         <tr><td style="padding:1px 4px;">わさだローンプラザ</td><td style="padding:1px 4px;">大分市大字市1157番地</td><td style="padding:1px 4px;">0120-56-0189</td><td style="padding:1px 4px;">水、祝</td></tr>
         <tr><td style="padding:1px 4px;">鶴崎ローンプラザ</td><td style="padding:1px 4px;">大分市南鶴崎3丁目1番12号</td><td style="padding:1px 4px;">0120-53-0189</td><td style="padding:1px 4px;">水、祝</td></tr>

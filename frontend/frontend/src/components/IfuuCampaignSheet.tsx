@@ -119,7 +119,7 @@ const IfuuCampaignSheet: React.FC<IfuuCampaignSheetProps> = ({ buyerNumber, view
         <Typography sx={{ fontWeight: 'bold', mb: '6px', fontSize: '9pt' }}>おすすめ銀行の連絡先（ご参考）</Typography>
         <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '8pt' }}>
           <tbody>
-            <tr><td style={{ fontWeight: 'bold', padding: '2px 0' }}>【大分銀行】</td><td></td><td></td><td style={{ textAlign: 'right', fontSize: '7.5pt' }}>＊休日</td></tr>
+            <tr><td style={{ fontWeight: 'bold', padding: '2px 0' }}>【大分銀行】</td><td></td><td></td><td style={{ padding: '1px 4px', fontSize: '7.5pt' }}>＊休日</td></tr>
             <tr><td style={{ padding: '1px 4px' }}>ローンプラザ宗麟館</td><td style={{ padding: '1px 4px' }}>大分市東大道1丁目9番1号3階</td><td style={{ padding: '1px 4px' }}>0120-67-0189</td><td style={{ padding: '1px 4px' }}>水、祝</td></tr>
             <tr><td style={{ padding: '1px 4px' }}>わさだローンプラザ</td><td style={{ padding: '1px 4px' }}>大分市大字市1157番地</td><td style={{ padding: '1px 4px' }}>0120-56-0189</td><td style={{ padding: '1px 4px' }}>水、祝</td></tr>
             <tr><td style={{ padding: '1px 4px' }}>鶴崎ローンプラザ</td><td style={{ padding: '1px 4px' }}>大分市南鶴崎3丁目1番12号</td><td style={{ padding: '1px 4px' }}>0120-53-0189</td><td style={{ padding: '1px 4px' }}>水、祝</td></tr>
