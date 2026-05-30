@@ -822,6 +822,9 @@ export default function BuyerViewingResultPage() {
         severity: 'success',
       });
       setCalendarOpened(true);
+
+      // 登録成功後にGoogleカレンダーを開く
+      window.open('https://calendar.google.com/calendar/r', '_blank');
     } catch (error: any) {
       console.error('[BuyerViewingResultPage] Calendar event creation error:', error);
       const errorMessage = error.response?.data?.error?.message || 'カレンダー登録に失敗しました';
