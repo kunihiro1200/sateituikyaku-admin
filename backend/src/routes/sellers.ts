@@ -537,6 +537,16 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
       console.warn(`[ieul-transfer] スプシ同期エラー（DB登録は成功）: ${syncErr.message}`);
     }
 
+    // サイドバーカウントを非同期で更新（レスポンスをブロックしない）
+    import('../services/SellerSidebarCountsUpdateService').then(({ SellerSidebarCountsUpdateService }) => {
+      const { createClient } = require('@supabase/supabase-js');
+      const supabaseForCounts = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+      const updateService = new SellerSidebarCountsUpdateService(supabaseForCounts);
+      updateService.updateSellerSidebarCounts().catch((e: any) =>
+        console.error('⚠️ [ieul-transfer] SidebarCounts update error:', e)
+      );
+    });
+
     return res.json({
       success: true,
       sellerNumber,
@@ -888,6 +898,16 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
     } catch (syncErr: any) {
       console.warn(`[home4u-transfer] スプシ同期エラー（DB登録は成功）: ${syncErr.message}`);
     }
+
+    // サイドバーカウントを非同期で更新（レスポンスをブロックしない）
+    import('../services/SellerSidebarCountsUpdateService').then(({ SellerSidebarCountsUpdateService }) => {
+      const { createClient } = require('@supabase/supabase-js');
+      const supabaseForCounts = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+      const updateService = new SellerSidebarCountsUpdateService(supabaseForCounts);
+      updateService.updateSellerSidebarCounts().catch((e: any) =>
+        console.error('⚠️ [home4u-transfer] SidebarCounts update error:', e)
+      );
+    });
 
     return res.json({
       success: true,
