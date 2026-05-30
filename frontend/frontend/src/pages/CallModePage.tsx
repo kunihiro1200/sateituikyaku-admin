@@ -52,6 +52,7 @@ import { PerformanceMetricsSection } from '../components/PerformanceMetricsSecti
 import { useAuthStore } from '../store/authStore';
 import { useSellerPresenceTrack } from '../hooks/useSellerPresence';
 import { StatusCategory } from '../utils/sellerStatusFilters';
+import { isMobilePhone } from '../utils/phoneNormalizer';
 import {
   generateInitialCancellationGuidance,
   generateCancellationGuidance,
@@ -4703,7 +4704,7 @@ HP：https://ifoo-oita.com/
                 value=""
                 label="SMS送信"
                 onChange={(e) => handleSmsTemplateSelect(e.target.value)}
-                disabled={sendingTemplate}
+                disabled={sendingTemplate || !isMobilePhone(seller?.phoneNumber)}
                 MenuProps={{
                   PaperProps: {
                     sx: { maxWidth: 500 }
@@ -4718,6 +4719,11 @@ HP：https://ifoo-oita.com/
                   </MenuItem>
                 ))}
               </Select>
+              {seller?.phoneNumber && !isMobilePhone(seller.phoneNumber) && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                  固定電話のためSMS送信不可
+                </Typography>
+              )}
             </FormControl>
 
             {/* 電話番号ボタン */}
@@ -8472,13 +8478,14 @@ HP：https://ifoo-oita.com/
           <Button
             variant="outlined"
             startIcon={<SmsIcon />}
+            disabled={!isMobilePhone(seller?.phoneNumber)}
             sx={{
               flex: 1,
               minHeight: 56,
               fontWeight: 'bold',
               fontSize: '1rem',
-              borderColor: SECTION_COLORS.seller.main,
-              color: SECTION_COLORS.seller.main,
+              borderColor: isMobilePhone(seller?.phoneNumber) ? SECTION_COLORS.seller.main : undefined,
+              color: isMobilePhone(seller?.phoneNumber) ? SECTION_COLORS.seller.main : undefined,
             }}
             onClick={() => {
               // SMSテンプレート選択ダイアログを開く（既存のSMS機能を利用）
@@ -8486,7 +8493,7 @@ HP：https://ifoo-oita.com/
               if (smsSelect) smsSelect.click();
             }}
           >
-            SMS
+            {isMobilePhone(seller?.phoneNumber) ? 'SMS' : 'SMS（固定電話）'}
           </Button>
         </Box>
       )}
