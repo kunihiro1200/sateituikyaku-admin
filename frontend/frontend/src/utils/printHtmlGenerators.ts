@@ -582,6 +582,7 @@ export function generatePage6CampaignHtml(buyerNumber: string, viewingDate: stri
 export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDetails: Record<string,unknown>[], today: string): string {
   const pages: string[] = [];
   const buyerNumber = (buyer.buyer_number || '') as string;
+  const viewingDateStr = (buyer.viewing_date || today) as string;
   for (const property of propertyDetails) {
     const addr = (property.display_address || property.address || '') as string;
     const price = (property.price || property.listing_price || null) as number | null;
@@ -593,7 +594,7 @@ export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDeta
     pages.push(generatePage5Html());
     // 物件価格1500万円以上の場合のみキャンペーンシートを追加
     if (price != null && price >= 15000000) {
-      pages.push(generatePage6CampaignHtml(buyerNumber, today));
+      pages.push(generatePage6CampaignHtml(buyerNumber, viewingDateStr));
     }
   }
   const pagesHtml = pages.map((p)=>`<div class="page">${p}</div>`).join('');

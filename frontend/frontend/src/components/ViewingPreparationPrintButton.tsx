@@ -247,7 +247,7 @@ export function ViewingPreparationPrintButton({
       pages.push({
         key: `${propIndex}-6`,
         label: '6枚目：いふうキャンペーン',
-        node: <IfuuCampaignSheet buyerNumber={buyer?.buyer_number || ''} viewingDate={today} />,
+        node: <IfuuCampaignSheet buyerNumber={buyer?.buyer_number || ''} viewingDate={buyer?.viewing_date || today} />,
       });
     }
     return pages;
