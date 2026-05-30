@@ -545,6 +545,9 @@ const CallModePage = () => {
 
   // データ状態
   const [seller, setSeller] = useState<Seller | null>(null);
+  const sellerRef = useRef<Seller | null>(null);
+  // sellerRefを常に最新に保つ（useCallback内でstaleなsellerを参照しないため）
+  useEffect(() => { sellerRef.current = seller; }, [seller]);
   const [property, setProperty] = useState<PropertyInfo | null>(null);
 
   // 物件住所の読み仮名
@@ -1597,8 +1600,7 @@ const CallModePage = () => {
   // サイドバー用の売主リストを取得する関数
   // サイドバーに表示されるカテゴリの売主のみを取得（全売主ではない）
   const fetchSidebarSellers = useCallback(async () => {
-    console.log('=== サイドバー売主リスト取得開始（バックグラウンド） ===');
-    console.log('現在時刻:', new Date().toISOString());
+    const currentSeller = sellerRef.current;
     
     // 認証トークンを確認
     const sessionToken = localStorage.getItem('session_token');
@@ -1611,31 +1613,18 @@ const CallModePage = () => {
     }
     
     // 現在の売主の営担を取得
-    console.log('=== 営担チェック ===');
-    console.log('seller:', seller);
-    console.log('seller.visitAssignee:', seller?.visitAssignee);
-    console.log('seller.visitAssigneeInitials:', seller?.visitAssigneeInitials);
-    console.log('seller.assignedTo:', seller?.assignedTo);
-    
     // visitAssignee（フルネーム）またはvisitAssigneeInitials（イニシャル）のいずれかが存在すればOK
-    const currentVisitAssignee = seller?.visitAssignee || seller?.visitAssigneeInitials;
+    const currentVisitAssignee = currentSeller?.visitAssignee || currentSeller?.visitAssigneeInitials;
     
-    if (!seller || !currentVisitAssignee) {
-      console.log('⚠️ 現在の売主の営担が設定されていません。サイドバーを表示しません。');
-      console.log('  - visitAssignee:', seller?.visitAssignee);
-      console.log('  - visitAssigneeInitials:', seller?.visitAssigneeInitials);
+    if (!currentSeller || !currentVisitAssignee) {
       setSidebarSellers([]);
       setSidebarLoading(false);
       return;
     }
     
-    console.log(`📋 営担「${currentVisitAssignee}」の売主のみを取得します`);
-    
     try {
       // fetchSidebarSellers（pageSize=500）と fetchSidebarCounts を並列取得
       // メインコンテンツ（売主詳細）はすでに表示済みのため、ここはバックグラウンドで実行
-      console.log('📡 サイドバー売主リストとカウントを並列取得中...');
-      
       const [response] = await Promise.all([
         api.get('/api/sellers', {
           params: {
@@ -1652,8 +1641,6 @@ const CallModePage = () => {
       ]);
       
       const allSellers = response.data?.data || [];
-      console.log('=== サイドバー売主リスト取得完了 ===');
-      console.log(`営担「${currentVisitAssignee}」の売主件数:`, allSellers.length);
       
       setSidebarSellers(allSellers);
     } catch (error: any) {
@@ -1685,19 +1672,17 @@ const CallModePage = () => {
 
   // サイドバー用の売主リストを取得（sellerが読み込まれた後にバックグラウンドで実行）
   // メインコンテンツ（売主詳細）はすでに表示済みのため、サイドバーデータは非ブロッキングで取得
+  // 依存配列: seller.id（売主切替時のみ再取得）と visitAssignee（営担変更時のみ再取得）
+  const sidebarTriggerSellerId = seller?.id;
+  const sidebarTriggerVisitAssignee = seller?.visitAssignee || seller?.visitAssigneeInitials;
   useEffect(() => {
-    console.log('=== サイドバーuseEffect実行 ===');
-    console.log('seller:', seller ? seller.sellerNumber : 'null');
-    if (seller) {
-      console.log('→ fetchSidebarSellers をバックグラウンドで呼び出します');
+    if (sidebarTriggerSellerId) {
       // 非ブロッキング: await しないことでメインコンテンツの表示をブロックしない
       // サイドバーデータ取得中は sidebarLoading=true でローディングインジケーターを表示
       setSidebarLoading(true);
       fetchSidebarSellers();
-    } else {
-      console.log('→ sellerがnullのため、fetchSidebarSellersをスキップ');
     }
-  }, [seller, fetchSidebarSellers]);
+  }, [sidebarTriggerSellerId, sidebarTriggerVisitAssignee, fetchSidebarSellers]);
 
   // 画像数をバックグラウンドで取得（「画像」ボタンのバッジ表示用）
   useEffect(() => {
@@ -2209,20 +2194,22 @@ const CallModePage = () => {
    */
   const getUnsavedSections = (): string[] => {
     const sections: string[] = [];
-    if (editableComments !== savedComments) sections.push('コメント');
-    // ステータスセクション: 実際の値を保存済み値と比較して判定
-    const hasStatusChanges = 
-      editedStatus !== savedStatus ||
-      editedConfidence !== savedConfidence ||
-      editedNextCallDate !== savedNextCallDate ||
-      editedExclusiveOtherDecisionMeeting !== savedExclusiveOtherDecisionMeeting ||
-      editedExclusiveDecisionDate !== savedExclusiveDecisionDate ||
-      JSON.stringify(editedCompetitors) !== JSON.stringify(savedCompetitors) ||
-      JSON.stringify(editedExclusiveOtherDecisionFactors) !== JSON.stringify(savedExclusiveOtherDecisionFactors) ||
-      editedCompetitorNameAndReason !== savedCompetitorNameAndReason;
-    if (hasStatusChanges) sections.push('ステータス');
-    if (editingProperty) sections.push('物件情報');
-    if (editingSeller) sections.push('売主情報');
+    if (editableComments !== savedComments && !savingComments) sections.push('コメント');
+    // ステータスセクション: 保存中でなければ実際の値を保存済み値と比較して判定
+    if (!savingStatus) {
+      const hasStatusChanges = 
+        editedStatus !== savedStatus ||
+        editedConfidence !== savedConfidence ||
+        editedNextCallDate !== savedNextCallDate ||
+        editedExclusiveOtherDecisionMeeting !== savedExclusiveOtherDecisionMeeting ||
+        editedExclusiveDecisionDate !== savedExclusiveDecisionDate ||
+        JSON.stringify(editedCompetitors) !== JSON.stringify(savedCompetitors) ||
+        JSON.stringify(editedExclusiveOtherDecisionFactors) !== JSON.stringify(savedExclusiveOtherDecisionFactors) ||
+        editedCompetitorNameAndReason !== savedCompetitorNameAndReason;
+      if (hasStatusChanges) sections.push('ステータス');
+    }
+    if (editingProperty && !savingProperty) sections.push('物件情報');
+    if (editingSeller && !savingSeller) sections.push('売主情報');
     return sections;
   };
 
@@ -3713,57 +3700,7 @@ HP：https://ifoo-oita.com/
       // 改行プレースホルダーを実際の改行に変換
       const messageContent = convertLineBreaks(generatedContent);
       
-      // 活動履歴を記録（非同期、エラーが発生してもSMS送信は継続）
-      try {
-        await api.post(`/api/sellers/${id}/activities`, {
-          type: 'sms',
-          content: `【${template.label}】を送信`,
-          result: 'sent',
-          metadata: { body: messageContent },
-        });
-      } catch (activityErr) {
-        console.error('活動履歴の記録に失敗しました:', activityErr);
-        // エラーをログに記録するが、処理は継続
-      }
-
-      // 担当フィールドを自動セット（非同期、エラーが発生してもSMS送信は継続）
-      try {
-        const assigneeKey = SMS_TEMPLATE_ASSIGNEE_MAP[template.id];
-        if (assigneeKey && seller?.id) {
-          // イニシャルを取得
-          let myInitial = '';
-          try {
-            const initialsRes = await api.get('/api/employees/initials-by-email');
-            if (initialsRes.data?.initials) {
-              myInitial = initialsRes.data.initials;
-            }
-          } catch { /* ignore */ }
-          
-          // フォールバック: activeEmployeesから取得
-          if (!myInitial) {
-            const myEmployee = activeEmployees.find(e => e.email === employee?.email);
-            if (myEmployee?.initials) {
-              myInitial = myEmployee.initials;
-            } else {
-              try {
-                const freshEmployees = await import('../services/employeeService').then(m => m.getActiveEmployees());
-                const freshMe = freshEmployees.find(e => e.email === employee?.email);
-                myInitial = freshMe?.initials || '';
-              } catch { /* ignore */ }
-            }
-          }
-          
-          if (myInitial) {
-            await api.put(`/api/sellers/${seller.id}`, { [assigneeKey]: myInitial });
-            setSeller((prev) => prev ? { ...prev, [assigneeKey as keyof Seller]: myInitial } : prev);
-          }
-        }
-      } catch (assigneeErr) {
-        console.error('担当フィールド自動セットに失敗しました:', assigneeErr);
-        // エラーをログに記録するが、処理は継続
-      }
-
-      // SMSアプリを開く
+      // SMSアプリを即座に開く（API呼び出しを待たない）
       const smsLink = `sms:${seller.phoneNumber}?body=${encodeURIComponent(messageContent)}`;
       window.location.href = smsLink;
       
@@ -3771,9 +3708,18 @@ HP：https://ifoo-oita.com/
       setSnackbarMessage(`${template.label}を記録しました`);
       setSnackbarOpen(true);
       setPageEdited(true); // SMS送信実行時に編集フラグを設定
-      
-      // 活動履歴を再読み込み（バックグラウンドで実行）
-      api.get(`/api/sellers/${id}/activities`).then((activitiesResponse) => {
+
+      // 以下はバックグラウンドで実行（UIをブロックしない）
+      // 活動履歴を記録
+      api.post(`/api/sellers/${id}/activities`, {
+        type: 'sms',
+        content: `【${template.label}】を送信`,
+        result: 'sent',
+        metadata: { body: messageContent },
+      }).then(() => {
+        // 活動履歴を再読み込み
+        return api.get(`/api/sellers/${id}/activities`);
+      }).then((activitiesResponse) => {
         const convertedActivities = activitiesResponse.data.map((activity: any) => ({
           id: activity.id,
           sellerId: activity.seller_id || activity.sellerId,
@@ -3787,8 +3733,46 @@ HP：https://ifoo-oita.com/
         }));
         setActivities(convertedActivities);
       }).catch((err) => {
-        console.error('活動履歴の再読み込みに失敗しました:', err);
+        console.error('活動履歴の記録/再読み込みに失敗しました:', err);
       });
+
+      // 担当フィールドを自動セット（バックグラウンド）
+      const assigneeKey = SMS_TEMPLATE_ASSIGNEE_MAP[template.id];
+      if (assigneeKey && seller?.id) {
+        (async () => {
+          try {
+            // イニシャルを取得
+            let myInitial = '';
+            try {
+              const initialsRes = await api.get('/api/employees/initials-by-email');
+              if (initialsRes.data?.initials) {
+                myInitial = initialsRes.data.initials;
+              }
+            } catch { /* ignore */ }
+            
+            // フォールバック: activeEmployeesから取得
+            if (!myInitial) {
+              const myEmployee = activeEmployees.find(e => e.email === employee?.email);
+              if (myEmployee?.initials) {
+                myInitial = myEmployee.initials;
+              } else {
+                try {
+                  const freshEmployees = await import('../services/employeeService').then(m => m.getActiveEmployees());
+                  const freshMe = freshEmployees.find(e => e.email === employee?.email);
+                  myInitial = freshMe?.initials || '';
+                } catch { /* ignore */ }
+              }
+            }
+            
+            if (myInitial) {
+              await api.put(`/api/sellers/${seller.id}`, { [assigneeKey]: myInitial });
+              setSeller((prev) => prev ? { ...prev, [assigneeKey as keyof Seller]: myInitial } : prev);
+            }
+          } catch (assigneeErr) {
+            console.error('担当フィールド自動セットに失敗しました:', assigneeErr);
+          }
+        })();
+      }
       
     } catch (err: any) {
       setError('メッセージの生成に失敗しました');
