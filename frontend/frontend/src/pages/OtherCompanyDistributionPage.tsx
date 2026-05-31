@@ -740,9 +740,9 @@ export default function OtherCompanyDistributionPage() {
             previewUrl={previewUrl}
           />
         )}
-        {/* URL入力フィールド */}
+        {/* athome URL入力フィールド */}
         <TextField
-          label="URL"
+          label="athome URL"
           value={propertyUrl}
           onChange={e => setPropertyUrl(e.target.value)}
           placeholder="https://www.athome.co.jp/mansion/..."
