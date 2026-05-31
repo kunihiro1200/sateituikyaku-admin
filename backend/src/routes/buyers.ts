@@ -1879,7 +1879,48 @@ router.post('/scrape-property-suumo', authenticate, async (req: Request, res: Re
 
     console.log(`[buyers/scrape-property-suumo] 完了: title=${title}, price=${price}, images=${images.length}枚`);
 
-    // プレビューデータを返す（DBに保存しない）
+    // DBに保存してプレビューURLを生成
+    const { createClient: createSbClient } = require('@supabase/supabase-js');
+    const { randomBytes } = require('crypto');
+    const supabase = createSbClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const slug = randomBytes(6).toString('hex');
+
+    const payload = {
+      slug,
+      source_url: url,
+      title,
+      price,
+      address,
+      access,
+      layout,
+      area,
+      images,
+      lat,
+      lng,
+      appeal_comment,
+      provider_name,
+      provider_phone,
+      is_tateuri: false,
+      is_active: true,
+      region: 'distribution', // 他社物件配信用（建売HPとは区別）
+    };
+
+    const { error: insertError } = await supabase
+      .from('property_previews')
+      .insert(payload);
+
+    if (insertError) {
+      console.error('[buyers/scrape-property-suumo] DB保存エラー:', insertError);
+      // DB保存に失敗してもスクレイピングデータは返す
+    }
+
+    const preview_url = insertError
+      ? url // DB保存失敗時は元URLを返す
+      : `https://sateituikyaku-admin-frontend.vercel.app/property-preview/${slug}`;
+
     const data = {
       title,
       price,
@@ -1901,7 +1942,7 @@ router.post('/scrape-property-suumo', authenticate, async (req: Request, res: Re
     return res.json({
       success: true,
       data,
-      preview_url: '', // DBに保存しないのでプレビューURLなし
+      preview_url,
     });
   } catch (err: any) {
     console.error('[buyers/scrape-property-suumo] エラー:', err.message);
