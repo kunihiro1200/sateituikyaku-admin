@@ -1653,6 +1653,262 @@ router.post('/scrape-property', authenticate, async (req: Request, res: Response
   }
 });
 
+// 他社物件新着配信用SUUMOスクレイピング（DBに保存しない・プレビューのみ）
+router.post('/scrape-property-suumo', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { url } = req.body;
+    if (!url) {
+      return res.status(400).json({ success: false, error: 'url is required' });
+    }
+    if (!url.includes('suumo.jp')) {
+      return res.status(400).json({ success: false, error: 'SUUMOのURLを入力してください' });
+    }
+
+    console.log(`[buyers/scrape-property-suumo] 開始: ${url}`);
+
+    // SUUMOのHTMLを取得
+    const htmlRes = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept-Language': 'ja-JP,ja;q=0.9',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Referer': 'https://suumo.jp/',
+      },
+    });
+
+    if (!htmlRes.ok) {
+      return res.status(500).json({ success: false, error: `SUUMO取得失敗: HTTP ${htmlRes.status}` });
+    }
+
+    const html = await htmlRes.text();
+
+    // タグを除去してテキストを取得するヘルパー
+    const stripTags = (s: string) => s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // --- タイトル ---
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    let title = titleMatch ? titleMatch[1].trim() : null;
+    if (title) {
+      title = title.replace(/【[^】]+】/g, '').replace(/\s*[-|｜].*$/, '').trim();
+    }
+
+    // --- 物件概要テーブルから各フィールドを抽出するヘルパー ---
+    const extractField = (label: string): string | null => {
+      const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp(
+        escaped + '[\\s\\S]{0,200}?<\\/th>[\\s\\S]{0,50}?<td[^>]*>([\\s\\S]{1,300}?)<\\/td>',
+        'i'
+      );
+      const m = html.match(pattern);
+      if (!m) return null;
+      const text = stripTags(m[1])
+        .replace(/ヒント/g, '')
+        .replace(/\[.*?\]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      return text || null;
+    };
+
+    // --- 価格 ---
+    let price = extractField('価格');
+    if (price) price = price.replace(/支払.*$/, '').replace(/□.*$/, '').trim();
+    if (!price) {
+      const m = html.match(/(\d{3,5}万円(?:[～〜]\d{3,5}万円)?)/);
+      if (m) price = m[1];
+    }
+
+    // --- 住所 ---
+    let address = extractField('所在地');
+    if (!address) {
+      const m = html.match(/所在地\s*<\/[^>]+>\s*([\s\S]{1,200}?)(?:<\/td>|<\/dd>|\[)/);
+      if (m) address = stripTags(m[1]).replace(/\[.*?\]/g, '').trim();
+    }
+
+    // --- 間取り ---
+    let layout = extractField('間取り');
+    if (layout) {
+      const lm = layout.match(/[1-9][SLDK+]+/);
+      if (lm) layout = lm[0];
+    }
+
+    // --- 建物面積 ---
+    let area = extractField('建物面積');
+    if (area) {
+      area = area.replace(/\s+/g, '');
+      const am = area.match(/[\d.]+m2[^（(]*/);
+      if (am) area = am[0].trim();
+    }
+
+    // --- 土地面積 ---
+    let landArea = extractField('土地面積');
+    if (landArea) {
+      landArea = landArea.replace(/\s+/g, '');
+      const lam = landArea.match(/[\d.]+m2[^（(]*/);
+      if (lam) landArea = lam[0].trim();
+    }
+
+    // --- 交通 ---
+    let access = extractField('交通');
+    if (access) {
+      access = access.replace(/\[.*?\]/g, '').replace(/乗り換え案内.*$/, '').trim();
+      if (access.length > 80) access = access.substring(0, 80) + '...';
+    }
+    if (!access) {
+      const trainMatch = html.match(/((?:地下鉄|西鉄|JR|東急|京急|阪急|近鉄)[^\n<「」]{5,60}(?:分|歩\d+分))/);
+      if (trainMatch) access = trainMatch[1].trim();
+    }
+
+    // --- アピールコメント ---
+    let appeal_comment: string | null = null;
+    const pickupMatch = html.match(/特徴ピックアップ[\s\S]{0,100}?<[^>]*>([\s\S]{50,2000}?)<\/(?:p|div|dd)>/i);
+    if (pickupMatch) {
+      appeal_comment = stripTags(pickupMatch[1]).replace(/\s+/g, ' ').trim();
+    }
+    if (!appeal_comment) {
+      const appealM = html.match(/担当者より[\s\S]{0,500}?<p[^>]*>([\s\S]{20,500}?)<\/p>/i);
+      if (appealM) appeal_comment = stripTags(appealM[1]).trim();
+    }
+
+    // --- 提供元情報 ---
+    let provider_name: string | null = null;
+    let provider_phone: string | null = null;
+
+    const contactMatch = html.match(/お問い?合わ?せ先[\s\S]{0,500}?<\/(?:th|dt)>[\s\S]{0,100}?<(?:td|dd)[^>]*>([\s\S]{10,500}?)<\/(?:td|dd)>/i);
+    if (contactMatch) {
+      const contactText = stripTags(contactMatch[1]);
+      const companyMatch = contactText.match(/([（(]株[）)]|株式会社|有限会社|合同会社|[ァ-ヶー]+(?:不動産|ハウス|ホーム|建設|工務店))[^\n\r]{0,50}/);
+      if (companyMatch) provider_name = companyMatch[0].trim();
+      const phoneMatch = contactText.match(/TEL\s*[:：]?\s*(0\d{1,4}[-\s]?\d{1,4}[-\s]?\d{4})/i);
+      if (phoneMatch) provider_phone = phoneMatch[1].replace(/\s+/g, '').trim();
+    }
+    if (!provider_name) {
+      const companyPatterns = [
+        /([（(]株[）)]|株式会社|有限会社|合同会社)\s*[ァ-ヶー\w]+/,
+        /[ァ-ヶー]+(?:不動産|ハウス|ホーム|建設|工務店|住宅)/,
+      ];
+      for (const pattern of companyPatterns) {
+        const match = html.match(pattern);
+        if (match) { provider_name = match[0].trim(); break; }
+      }
+    }
+    if (!provider_phone) {
+      const phonePatterns = [
+        /TEL\s*[:：]?\s*(0\d{1,4}[-\s]?\d{1,4}[-\s]?\d{4})/i,
+        /電話\s*[:：]?\s*(0\d{1,4}[-\s]?\d{1,4}[-\s]?\d{4})/i,
+        /\b(0\d{1,4}[-]\d{1,4}[-]\d{4})\b/,
+      ];
+      for (const pattern of phonePatterns) {
+        const match = html.match(pattern);
+        if (match) { provider_phone = match[1].replace(/\s+/g, '').trim(); break; }
+      }
+    }
+
+    // --- 緯度経度 ---
+    let lat: number | null = null;
+    let lng: number | null = null;
+
+    const latKw = html.match(/['"_]lat['"_\s:=]+([3][0-9]\.[0-9]{4,})/i);
+    const lngKw = html.match(/['"_]lng['"_\s:=]+([1][2-4][0-9]\.[0-9]{4,})/i);
+    if (latKw) lat = parseFloat(latKw[1]);
+    if (lngKw) lng = parseFloat(lngKw[1]);
+
+    if (!lat || !lng) {
+      const latNums = [...html.matchAll(/\b([3][0-9]\.[0-9]{6,})\b/g)].map(m => parseFloat(m[1]));
+      const lngNums = [...html.matchAll(/\b(1[2-4][0-9]\.[0-9]{6,})\b/g)].map(m => parseFloat(m[1]));
+      if (latNums.length > 0) lat = latNums[0];
+      if (lngNums.length > 0) lng = lngNums[0];
+    }
+
+    if (!lat || !lng) {
+      const dataLat = html.match(/data-lat[='":\s]+([3][0-9]\.[0-9]{4,})/i);
+      const dataLng = html.match(/data-lng[='":\s]+([1][2-4][0-9]\.[0-9]{4,})/i);
+      if (dataLat) lat = parseFloat(dataLat[1]);
+      if (dataLng) lng = parseFloat(dataLng[1]);
+    }
+
+    // --- 画像 ---
+    const images: string[] = [];
+
+    // パターン1: resizeImage URL
+    const resizeImageMatches = html.matchAll(/https:\/\/img01\.suumo\.com\/jj\/resizeImage\?src=gazo%2Fbukken%2F[^"'\s<>,]+?\.jpg[^"'\s<>,]*/gi);
+    for (const match of resizeImageMatches) {
+      let imgUrl = match[0];
+      imgUrl = imgUrl.replace(/&amp;/g, '&');
+      imgUrl = imgUrl.split(',')[0];
+      imgUrl = imgUrl.replace(/&w=96&h=72/g, '&w=800&h=600');
+      imgUrl = imgUrl.replace(/&w=220&h=165/g, '&w=800&h=600');
+      imgUrl = imgUrl.replace(/&w=452&h=339/g, '&w=800&h=600');
+      imgUrl = imgUrl.replace(/&w=296&h=222/g, '&w=800&h=600');
+      imgUrl = imgUrl.replace(/&w=500/g, '&w=800&h=600');
+      if (!imgUrl.includes('kaisha') && !images.includes(imgUrl)) {
+        images.push(imgUrl);
+      }
+    }
+
+    // パターン2: data-src属性
+    const dataSrcMatches = html.matchAll(/data-src=["']([^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["']/gi);
+    for (const match of dataSrcMatches) {
+      let imgUrl = match[1];
+      if (imgUrl.startsWith('//')) imgUrl = 'https:' + imgUrl;
+      else if (imgUrl.startsWith('/')) imgUrl = 'https://suumo.jp' + imgUrl;
+      const shouldExclude =
+        imgUrl.includes('/icon/') || imgUrl.includes('/logo') || imgUrl.includes('/banner') ||
+        imgUrl.includes('/btn_') || imgUrl.includes('/common/') || imgUrl.includes('/edit/assets/') ||
+        imgUrl.includes('/edit/include/') || imgUrl.includes('/pagetop') ||
+        imgUrl.includes('_logo') || imgUrl.includes('_icon') || imgUrl.includes('_btn');
+      if (!images.includes(imgUrl) && imgUrl.includes('suumo') && !shouldExclude) {
+        images.push(imgUrl);
+      }
+    }
+
+    // パターン3: src属性
+    const srcMatches = html.matchAll(/src=["']([^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["']/gi);
+    for (const match of srcMatches) {
+      let imgUrl = match[1];
+      if (imgUrl.startsWith('//')) imgUrl = 'https:' + imgUrl;
+      else if (imgUrl.startsWith('/')) imgUrl = 'https://suumo.jp' + imgUrl;
+      const shouldExclude =
+        imgUrl.includes('/icon/') || imgUrl.includes('/logo') || imgUrl.includes('/banner') ||
+        imgUrl.includes('/btn_') || imgUrl.includes('/common/') || imgUrl.includes('/edit/assets/') ||
+        imgUrl.includes('/edit/include/') || imgUrl.includes('/pagetop') ||
+        imgUrl.includes('_logo') || imgUrl.includes('_icon') || imgUrl.includes('_btn');
+      if (!images.includes(imgUrl) && imgUrl.includes('suumo') && !shouldExclude) {
+        images.push(imgUrl);
+      }
+    }
+
+    console.log(`[buyers/scrape-property-suumo] 完了: title=${title}, price=${price}, images=${images.length}枚`);
+
+    // プレビューデータを返す（DBに保存しない）
+    const data = {
+      title,
+      price,
+      address,
+      access,
+      layout,
+      area,
+      images,
+      lat,
+      lng,
+      appeal_comment,
+      provider_name,
+      provider_phone,
+      details: {
+        '土地面積': landArea,
+      },
+    };
+
+    return res.json({
+      success: true,
+      data,
+      preview_url: '', // DBに保存しないのでプレビューURLなし
+    });
+  } catch (err: any) {
+    console.error('[buyers/scrape-property-suumo] エラー:', err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // スクレイピングサーバーのヘルスチェック（Vercel Cron Job用）
 // 定期的にpingして、サーバーが落ちていたら自動復旧を促す
 router.get('/cron/scrape-server-ping', async (req: Request, res: Response) => {

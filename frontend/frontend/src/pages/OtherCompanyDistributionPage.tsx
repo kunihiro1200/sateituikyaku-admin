@@ -137,6 +137,8 @@ export default function OtherCompanyDistributionPage() {
 
   // 物件プレビュー取得
   const [scraping, setScraping] = useState(false);
+  const [scrapingSuumo, setScrapingSuumo] = useState(false);
+  const [suumoUrl, setSuumoUrl] = useState<string>('');
   const [previewData, setPreviewData] = useState<any | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [showFields, setShowFields] = useState({
@@ -346,6 +348,67 @@ export default function OtherCompanyDistributionPage() {
       setSnackbar({ open: true, message: `取得失敗: ${err.message}。scrape_server.pyが起動しているか確認してください。`, severity: 'error' });
     } finally {
       setScraping(false);
+    }
+  };
+
+  // SUUMO用スクレイピング
+  const handleScrapeSuumo = async () => {
+    if (!suumoUrl.trim()) return;
+    setScrapingSuumo(true);
+    setPreviewData(null);
+    setPreviewUrl('');
+    try {
+      const res = await api.post('/api/buyers/scrape-property-suumo', { url: suumoUrl.trim() });
+      const result = res.data;
+      if (!result.success) throw new Error(result.error || '取得失敗');
+      setPreviewData(result.data);
+      setPreviewUrl(result.preview_url || '');
+      setShowProviderInfo(false);
+
+      // 自動入力を実行
+      autoFillFromScrapedData(result.data);
+
+      // 画像を自動選択（最初の3枚）
+      if (result.data.images && result.data.images.length > 0) {
+        const firstThreeImages: ImageFile[] = result.data.images.slice(0, 3).map((imgUrl: string, index: number) => ({
+          id: `scraped-suumo-${Date.now()}-${index}`,
+          name: `物件画像${index + 1}.jpg`,
+          source: 'url' as const,
+          size: 0,
+          mimeType: 'image/jpeg',
+          previewUrl: imgUrl,
+          url: imgUrl,
+        }));
+        setSelectedImages(firstThreeImages);
+      }
+
+      setSnackbar({ open: true, message: 'SUUMO物件情報を取得し、フィルターに自動入力しました', severity: 'success' });
+
+      // 重複チェック
+      if (result.data.address && result.data.price) {
+        try {
+          const landArea = result.data.details?.['土地面積'] || result.data.area || null;
+          const dupRes = await api.post('/api/distribution-history/check-duplicate', {
+            propertyAddress: result.data.address,
+            price: result.data.price,
+            landArea: landArea,
+            sourceUrl: suumoUrl.trim(),
+          });
+          if (dupRes.data.isDuplicate) {
+            setDuplicateWarning(dupRes.data);
+          } else if (dupRes.data.warning) {
+            setDuplicateWarning({ isDuplicate: false, history: null, source: dupRes.data.warning, warning: dupRes.data.warning });
+          } else {
+            setDuplicateWarning(null);
+          }
+        } catch (dupErr) {
+          console.error('Duplicate check failed:', dupErr);
+        }
+      }
+    } catch (err: any) {
+      setSnackbar({ open: true, message: `SUUMO取得失敗: ${err.message}`, severity: 'error' });
+    } finally {
+      setScrapingSuumo(false);
     }
   };
 
@@ -695,6 +758,26 @@ export default function OtherCompanyDistributionPage() {
           sx={{ backgroundColor: '#555', '&:hover': { backgroundColor: '#333' }, whiteSpace: 'nowrap' }}
         >
           {scraping ? '取得中...' : '物件情報を取得'}
+        </Button>
+        {/* SUUMO URL入力フィールド */}
+        <TextField
+          label="SUUMO URL"
+          value={suumoUrl}
+          onChange={e => setSuumoUrl(e.target.value)}
+          placeholder="https://suumo.jp/jj/bukken/shosai/..."
+          size="small"
+          sx={{ width: 380 }}
+          InputProps={{
+            startAdornment: <LinkIcon sx={{ mr: 1, color: '#4CAF50', fontSize: 20 }} />,
+          }}
+        />
+        <Button
+          variant="contained"
+          onClick={handleScrapeSuumo}
+          disabled={scrapingSuumo || !suumoUrl.trim()}
+          sx={{ backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#388E3C' }, whiteSpace: 'nowrap' }}
+        >
+          {scrapingSuumo ? '取得中...' : 'SUUMO取得'}
         </Button>
         <Box sx={{ display: 'flex', gap: 2 }}>          <Button
             variant="contained"
