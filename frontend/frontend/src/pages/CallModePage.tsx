@@ -5975,7 +5975,6 @@ HP：https://ifoo-oita.com/
                         type="datetime-local"
                         inputRef={appointmentDateRef}
                         value={editedAppointmentDate}
-                        onClick={() => appointmentDateRef.current?.showPicker?.()}
                         onChange={(e) => {
                           const newDate = e.target.value;
                           setEditedAppointmentDate(newDate);
