@@ -1921,6 +1921,26 @@ export class EnhancedAutoSyncService {
       encryptedData.exclusive_other_decision_meeting = exclusiveOtherDecisionMeeting ? String(exclusiveOtherDecisionMeeting) : null;
     }
 
+    // 🛡️ 重複防止チェック: 同じ電話番号+同じ反響日付のデータが既にDBに存在する場合はスキップ
+    // （スプレッドシートに同一人物が複数行入力された場合の重複登録を防止）
+    const phoneHashForDupCheck = encryptedData.phone_number_hash;
+    const inquiryDateForDupCheck = encryptedData.inquiry_date;
+    if (phoneHashForDupCheck && inquiryDateForDupCheck) {
+      const { data: existingDuplicate } = await this.supabase
+        .from('sellers')
+        .select('seller_number')
+        .eq('phone_number_hash', phoneHashForDupCheck)
+        .eq('inquiry_date', inquiryDateForDupCheck)
+        .is('deleted_at', null)
+        .neq('seller_number', sellerNumber)
+        .limit(1);
+
+      if (existingDuplicate && existingDuplicate.length > 0) {
+        console.log(`⚠️ ${sellerNumber}: 重複スキップ（同一電話番号+反響日付が ${existingDuplicate[0].seller_number} に既存）`);
+        return;
+      }
+    }
+
     // UPSERT: 既存データがあれば更新、なければ挿入
     const { data: newSeller, error: upsertError } = await this.supabase
       .from('sellers')
