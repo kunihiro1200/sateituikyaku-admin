@@ -362,7 +362,8 @@ export default function OtherCompanyDistributionPage() {
       const result = res.data;
       if (!result.success) throw new Error(result.error || '取得失敗');
       setPreviewData(result.data);
-      setPreviewUrl(result.preview_url || '');
+      // SUUMOはDBに保存しないのでpreview_urlがない → 元のSUUMO URLをセット
+      setPreviewUrl(result.preview_url || suumoUrl.trim());
       setShowProviderInfo(false);
 
       // 自動入力を実行
