@@ -4,27 +4,14 @@ import api from '../services/api';
 // 録音状態の型
 export type RecordingStatus = 'idle' | 'recording' | 'transcribing' | 'done';
 
-// 1チャンクの最大サイズ（Whisper API上限25MBに対して余裕を持たせた3MB）
-// 2時間録音 ≈ 150MB → 約50チャンク
-const MAX_CHUNK_BYTES = 3 * 1024 * 1024; // 3MB
+// 1チャンクの最大サイズ（Whisper API上限25MB）
+// webm/opusは圧縮効率が高く、1時間録音でも約10〜15MB程度
+// バイナリ分割するとwebmコンテナが壊れてWhisperがハルシネーションを起こすため、
+// 実質的に分割が発生しないよう24MBに設定
+const MAX_CHUNK_BYTES = 24 * 1024 * 1024; // 24MB
 
 // 並列送信の最大数（レートリミット対策）
-const MAX_PARALLEL = 5;
-
-/**
- * Blobをサイズベースで分割する（Whisper API 25MB制限対策）
- */
-function splitBlobBySize(blob: Blob, mimeType: string): Blob[] {
-  if (blob.size <= MAX_CHUNK_BYTES) return [blob];
-  const chunks: Blob[] = [];
-  let offset = 0;
-  while (offset < blob.size) {
-    const end = Math.min(offset + MAX_CHUNK_BYTES, blob.size);
-    chunks.push(blob.slice(offset, end, mimeType));
-    offset = end;
-  }
-  return chunks;
-}
+const MAX_PARALLEL = 3;
 
 /**
  * 1チャンクをWhisper APIで文字起こし
@@ -35,7 +22,7 @@ async function transcribeChunk(blob: Blob, mimeType: string, index: number): Pro
   formData.append('audio', blob, `recording_${index}.${ext}`);
   const res = await api.post('/api/summarize/transcribe', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 90000,
+    timeout: 180000,
   });
   return res.data?.transcript || '';
 }
@@ -88,7 +75,9 @@ export function useAudioTranscription(sellerName?: string) {
     return `${m}:${s}`;
   };
 
-  // 音声Blobを受け取り → 分割 → 並列文字起こし（最大MAX_PARALLEL並列）
+  // 音声Blobを受け取り → 文字起こし
+  // webm/opusはバイナリ分割するとコンテナが壊れるため、可能な限り1つのBlobとして送信する
+  // 24MBを超える超長時間録音の場合のみ、録音時のチャンク境界で分割する
   const processAndTranscribe = useCallback(async (blob: Blob, mimeType: string, _durationSec: number) => {
     if (blob.size === 0) {
       setError('録音データが空です。もう一度お試しください。');
@@ -100,25 +89,44 @@ export function useAudioTranscription(sellerName?: string) {
     setTranscribeProgress(null);
 
     try {
-      // サイズベースで分割（3MB上限）
-      const chunks = splitBlobBySize(blob, mimeType);
-      setTranscribeProgress({ done: 0, total: chunks.length });
-
-      if (chunks.length === 1) {
-        // 1チャンクはそのまま送信
+      if (blob.size <= MAX_CHUNK_BYTES) {
+        // 24MB以下: そのまま1つのファイルとして送信（通常はこちら）
+        setTranscribeProgress({ done: 0, total: 1 });
         const text = await transcribeChunk(blob, mimeType, 0);
         setTranscribeProgress({ done: 1, total: 1 });
         setTranscript(text);
       } else {
-        // 最大MAX_PARALLEL並列で送信（レートリミット対策）
+        // 24MB超: 録音時のチャンク（chunksRef）を使って正しい境界で分割
+        // MediaRecorderが1秒ごとに生成したチャンクをグループ化して送信
+        const rawChunks = chunksRef.current;
+        const groups: Blob[] = [];
+        let currentGroup: Blob[] = [];
+        let currentSize = 0;
+
+        for (const chunk of rawChunks) {
+          if (currentSize + chunk.size > MAX_CHUNK_BYTES && currentGroup.length > 0) {
+            groups.push(new Blob(currentGroup, { type: mimeType }));
+            currentGroup = [];
+            currentSize = 0;
+          }
+          currentGroup.push(chunk);
+          currentSize += chunk.size;
+        }
+        if (currentGroup.length > 0) {
+          groups.push(new Blob(currentGroup, { type: mimeType }));
+        }
+
+        setTranscribeProgress({ done: 0, total: groups.length });
+
+        // 最大MAX_PARALLEL並列で送信
         const results: { index: number; text: string }[] = [];
 
-        for (let i = 0; i < chunks.length; i += MAX_PARALLEL) {
-          const batch = chunks.slice(i, i + MAX_PARALLEL);
+        for (let i = 0; i < groups.length; i += MAX_PARALLEL) {
+          const batch = groups.slice(i, i + MAX_PARALLEL);
           const batchResults = await Promise.all(
-            batch.map((chunk, batchIdx) => {
+            batch.map((group, batchIdx) => {
               const globalIdx = i + batchIdx;
-              return transcribeChunk(chunk, mimeType, globalIdx).then((text) => {
+              return transcribeChunk(group, mimeType, globalIdx).then((text) => {
                 setTranscribeProgress((prev) =>
                   prev ? { done: prev.done + 1, total: prev.total } : null
                 );

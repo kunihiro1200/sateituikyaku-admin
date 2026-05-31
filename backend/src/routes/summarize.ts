@@ -870,7 +870,7 @@ router.post('/transcribe', authenticate, upload.single('audio'), async (req: Req
         headers: {
           Authorization: `Bearer ${apiKey}`,
         },
-        timeout: 60000,
+        timeout: 180000,
       }
     );
 
