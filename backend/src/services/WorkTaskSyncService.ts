@@ -205,6 +205,18 @@ export class WorkTaskSyncService {
           const workTaskData = this.columnMapper.mapToDatabase(sheetRow);
           workTaskData.synced_at = new Date().toISOString();
 
+          // storage_urlがスプシで空の場合、DBの既存値を保持する（画面から保存した値が消えないように）
+          if (!workTaskData.storage_url) {
+            const { data: existing } = await this.supabase
+              .from('work_tasks')
+              .select('storage_url')
+              .eq('property_number', propertyNumber)
+              .single();
+            if (existing?.storage_url) {
+              workTaskData.storage_url = existing.storage_url;
+            }
+          }
+
           // Upsert処理
           const { error: upsertError } = await this.supabase
             .from('work_tasks')

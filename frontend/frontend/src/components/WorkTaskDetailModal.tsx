@@ -1647,12 +1647,18 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   // ドキュメントフォルダURL（自動取得）
   const [documentFolderUrl, setDocumentFolderUrl] = useState<string>('');
 
-  // フォルダURL取得時のコールバック：storage_urlが空欄の場合のみ自動セット
+  // フォルダURL取得時のコールバック：storage_urlが空欄の場合のみ自動セット＆即座にDB保存
   const handleFolderUrlReady = (url: string) => {
     setDocumentFolderUrl(url);
     const currentStorageUrl = getValue('storage_url');
     if (!currentStorageUrl && url) {
       handleFieldChange('storage_url', url);
+      // 保存ボタンを押さなくても即座にDBに保存する
+      if (propertyNumber) {
+        api.put(`/api/work-tasks/${propertyNumber}`, { storage_url: url }).catch((e) => {
+          console.error('格納先URL自動保存エラー:', e);
+        });
+      }
     }
   };
   // Email送信履歴（SellerBuyerDetailSectionから引き上げ）
