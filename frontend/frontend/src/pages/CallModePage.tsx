@@ -8713,7 +8713,7 @@ HP：https://ifoo-oita.com/
         <DialogContent>
           <CallRankingDisplay
             key={rankingDialogOpen ? 'open' : 'closed'}
-            allowedInitials={normalInitials.filter((i) => i !== 'K')}
+            allowedInitials={normalInitials}
           />
         </DialogContent>
         <DialogActions>
@@ -8731,7 +8731,7 @@ HP：https://ifoo-oita.com/
             key={yearlyRankingDialogOpen ? 'open' : 'closed'}
             title="1番電話年間累計ランキング"
             endpoint="/api/sellers/call-ranking-yearly"
-            allowedInitials={normalInitials.filter((i) => i !== 'K')}
+            allowedInitials={normalInitials}
             yearlyMode={true}
           />
         </DialogContent>
@@ -8767,7 +8767,7 @@ HP：https://ifoo-oita.com/
             key={visitRankingDialogOpen ? 'open' : 'closed'}
             title="訪問予約者月間ランキング"
             endpoint="/api/sellers/visit-ranking"
-            allowedInitials={normalInitials.filter((i) => i !== 'K')}
+            allowedInitials={normalInitials}
           />
         </DialogContent>
         <DialogActions>
@@ -8785,7 +8785,7 @@ HP：https://ifoo-oita.com/
             key={visitRankingYearlyDialogOpen ? 'open' : 'closed'}
             title="訪問予約者年間ランキング"
             endpoint="/api/sellers/visit-ranking-yearly"
-            allowedInitials={normalInitials.filter((i) => i !== 'K')}
+            allowedInitials={normalInitials}
             yearlyMode={true}
           />
         </DialogContent>

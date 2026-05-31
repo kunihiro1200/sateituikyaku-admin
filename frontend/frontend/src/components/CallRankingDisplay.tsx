@@ -50,7 +50,7 @@ const DEFAULT_RANK_COLOR = { bg: '#FAFAFA', text: '#424242', border: '#E0E0E0' }
 const DISPLAY_LIMIT = 5;
 
 // ランキングから除外するイニシャル・文字列
-const EXCLUDED_INITIALS = new Set(['K', 'TENANT']);
+const EXCLUDED_INITIALS = new Set(['TENANT']);
 // 除外するイニシャルのパターン（部分一致）
 const EXCLUDED_PATTERNS = ['1度目不通', '不要', '1度目で通電OK'];
 
