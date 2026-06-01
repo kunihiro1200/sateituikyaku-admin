@@ -6040,10 +6040,9 @@ HP：https://ifoo-oita.com/
                       <TextField
                         sx={{ flex: 1 }}
                         size="small"
-                        label="時間 (例: 14:00)"
-                        type="text"
+                        label="時間"
+                        type="time"
                         inputRef={appointmentDateRef}
-                        placeholder="14:00"
                         value={editedAppointmentDate ? (editedAppointmentDate.split('T')[1] || '') : ''}
                         onChange={(e) => {
                           const timePart = e.target.value;
