@@ -186,7 +186,9 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     isBlank(task.distribution_date) &&
     isBlank(task.publish_scheduled_date) &&
     isNotBlank(task.site_registration_deadline) &&
-    isBlank(task.sales_contract_deadline)
+    isBlank(task.sales_contract_deadline) &&
+    isBlank(task.site_registration_confirmed) &&
+    isBlank(task.site_registration_due_date)
   ) {
     return `サイト登録依頼してください ${formatDateMD(task.site_registration_deadline)}`;
   }

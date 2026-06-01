@@ -94,11 +94,14 @@ function calcStatus(task: Record<string, any>): string {
   }
   if (
     isBlank(task.site_registration_requestor) &&
+    isBlank(task.cw_request_email_site) &&
     isBlank(task.on_hold) &&
     isBlank(task.distribution_date) &&
     isBlank(task.publish_scheduled_date) &&
     isNotBlank(task.site_registration_deadline) &&
-    isBlank(task.sales_contract_deadline)
+    isBlank(task.sales_contract_deadline) &&
+    isBlank(task.site_registration_confirmed) &&
+    isBlank(task.site_registration_due_date)
   ) {
     return `サイト登録依頼してください ${formatDateMD(task.site_registration_deadline)}`;
   }

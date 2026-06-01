@@ -316,6 +316,25 @@ function mapRowToRecord(headers, row) {
     record[dbColumn] = converted;
   }
 
+  // 画面から保存されるフィールドは、スプシで空の場合にDBの既存値を上書きしない
+  // （nullのフィールドをレコードから削除することで、upsert時に更新されない）
+  var PRESERVE_IF_EMPTY = [
+    'storage_url',
+    'site_registration_requester',
+    'site_registration_requestor',
+    'cw_request_email_site',
+    'cw_request_email_floor_plan',
+    'cw_request_email_2f_above',
+    'site_registration_confirmed',
+    'site_registration_confirm_request_date'
+  ];
+  for (var p = 0; p < PRESERVE_IF_EMPTY.length; p++) {
+    var field = PRESERVE_IF_EMPTY[p];
+    if (record[field] === null || record[field] === undefined) {
+      delete record[field];
+    }
+  }
+
   // 司法書士が「司法書士法人中央ライズアクロス」の場合、連絡先を自動補完
   if (record['judicial_scrivener'] === '司法書士法人中央ライズアクロス') {
     if (!record['judicial_scrivener_contact']) {

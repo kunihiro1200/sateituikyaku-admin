@@ -205,15 +205,30 @@ export class WorkTaskSyncService {
           const workTaskData = this.columnMapper.mapToDatabase(sheetRow);
           workTaskData.synced_at = new Date().toISOString();
 
-          // storage_urlがスプシで空の場合、DBの既存値を保持する（画面から保存した値が消えないように）
-          if (!workTaskData.storage_url) {
+          // スプシで空の場合、DBの既存値を保持する（画面から保存した値が消えないように）
+          const fieldsToPreserve = [
+            'storage_url',
+            'site_registration_requester',
+            'site_registration_requestor',
+            'cw_request_email_site',
+            'cw_request_email_floor_plan',
+            'cw_request_email_2f_above',
+            'site_registration_confirmed',
+            'site_registration_confirm_request_date',
+          ];
+          const emptyPreserveFields = fieldsToPreserve.filter(f => !workTaskData[f]);
+          if (emptyPreserveFields.length > 0) {
             const { data: existing } = await this.supabase
               .from('work_tasks')
-              .select('storage_url')
+              .select(emptyPreserveFields.join(','))
               .eq('property_number', propertyNumber)
               .single();
-            if (existing?.storage_url) {
-              workTaskData.storage_url = existing.storage_url;
+            if (existing) {
+              for (const field of emptyPreserveFields) {
+                if (existing[field]) {
+                  workTaskData[field] = existing[field];
+                }
+              }
             }
           }
 
@@ -308,6 +323,33 @@ export class WorkTaskSyncService {
       // データ変換
       const workTaskData = this.columnMapper.mapToDatabase(sheetRow);
       workTaskData.synced_at = new Date().toISOString();
+
+      // スプシで空の場合、DBの既存値を保持する（画面から保存した値が消えないように）
+      const fieldsToPreserve = [
+        'storage_url',
+        'site_registration_requester',
+        'site_registration_requestor',
+        'cw_request_email_site',
+        'cw_request_email_floor_plan',
+        'cw_request_email_2f_above',
+        'site_registration_confirmed',
+        'site_registration_confirm_request_date',
+      ];
+      const emptyPreserveFields = fieldsToPreserve.filter(f => !workTaskData[f]);
+      if (emptyPreserveFields.length > 0) {
+        const { data: existing } = await this.supabase
+          .from('work_tasks')
+          .select(emptyPreserveFields.join(','))
+          .eq('property_number', propertyNumber)
+          .single();
+        if (existing) {
+          for (const field of emptyPreserveFields) {
+            if (existing[field]) {
+              workTaskData[field] = existing[field];
+            }
+          }
+        }
+      }
 
       // Upsert処理
       const { error: upsertError } = await this.supabase

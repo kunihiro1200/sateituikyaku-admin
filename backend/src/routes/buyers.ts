@@ -1487,17 +1487,18 @@ async function fetchBuyerCallRankings(
 /**
  * 月間電話ランキングを取得
  * GET /api/buyers/call-ranking
- * 当月（JST）の activity_logs（action=phone_call, target_type=buyer）を
+ * 指定月（またはJST当月）の activity_logs（action=phone_call, target_type=buyer）を
  * 担当者名別に集計して返す
+ * クエリパラメータ: year（年）, month（月、1-12）
  */
 router.get('/call-ranking', async (req: Request, res: Response) => {
   try {
-    // JSTで当月の開始・終了をUTC ISOに変換
+    // クエリパラメータから年月を取得（指定がなければ当月）
     const now = new Date();
     const jstOffset = 9 * 60 * 60 * 1000;
     const jstNow = new Date(now.getTime() + jstOffset);
-    const year = jstNow.getUTCFullYear();
-    const month = jstNow.getUTCMonth(); // 0-indexed
+    const year = req.query.year ? parseInt(req.query.year as string, 10) : jstNow.getUTCFullYear();
+    const month = req.query.month ? parseInt(req.query.month as string, 10) - 1 : jstNow.getUTCMonth(); // 0-indexed
 
     // JST月初 00:00:00 → UTC
     const fromJst = new Date(Date.UTC(year, month, 1, 0, 0, 0) - jstOffset);
