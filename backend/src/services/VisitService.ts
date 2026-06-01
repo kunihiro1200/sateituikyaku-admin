@@ -61,9 +61,10 @@ export class VisitService {
         updateData.visit_ratio = visitData.visitRatio;
       }
 
-      // Auto-set visit acquisition date if not provided
+      // Auto-set visit acquisition date if not provided（JSTで今日の日付をYYYY-MM-DD形式で設定）
       if (!visitData.visitAcquisitionDate && visitData.visitDate) {
-        updateData.visit_acquisition_date = new Date();
+        const jstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+        updateData.visit_acquisition_date = jstNow.toISOString().slice(0, 10);
       }
 
       const { data, error } = await supabase
