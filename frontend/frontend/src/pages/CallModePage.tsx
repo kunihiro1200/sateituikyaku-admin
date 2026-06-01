@@ -4232,7 +4232,7 @@ HP：https://ifoo-oita.com/
       
       await api.post(endpoint, {
         assignee: seller.visitAssignee || seller.assignedTo || employee?.name,
-        notes: `決定日: ${editedExclusiveDecisionDate}\n競合: ${editedCompetitors.join(', ')}\n要因: ${editedExclusiveOtherDecisionFactors.join(', ')}${editedCompetitorNameAndReason ? `\n競合名・理由: ${editedCompetitorNameAndReason}` : ''}`,
+        notes: `決定日: ${editedExclusiveDecisionDate}\n競合: ${editedCompetitors.join(', ')}\n要因: ${editedExclusiveOtherDecisionFactors.join(', ')}`,
       });
 
       setSuccessMessage(`${statusLabel}の通知を送信しました（4つのフィールドも保存しました）`);
@@ -5975,6 +5975,7 @@ HP：https://ifoo-oita.com/
                         type="datetime-local"
                         inputRef={appointmentDateRef}
                         value={editedAppointmentDate}
+                        onClick={() => appointmentDateRef.current?.showPicker?.()}
                         onChange={(e) => {
                           const newDate = e.target.value;
                           setEditedAppointmentDate(newDate);
@@ -8713,7 +8714,8 @@ HP：https://ifoo-oita.com/
         <DialogContent>
           <CallRankingDisplay
             key={rankingDialogOpen ? 'open' : 'closed'}
-            allowedInitials={normalInitials}
+            allowedInitials={normalInitials.filter((i) => i !== 'K')}
+            showMonthSelector={true}
           />
         </DialogContent>
         <DialogActions>
@@ -8731,7 +8733,7 @@ HP：https://ifoo-oita.com/
             key={yearlyRankingDialogOpen ? 'open' : 'closed'}
             title="1番電話年間累計ランキング"
             endpoint="/api/sellers/call-ranking-yearly"
-            allowedInitials={normalInitials}
+            allowedInitials={normalInitials.filter((i) => i !== 'K')}
             yearlyMode={true}
           />
         </DialogContent>
@@ -8750,6 +8752,7 @@ HP：https://ifoo-oita.com/
             key={callTrackingRankingDialogOpen ? 'open' : 'closed'}
             title="追客電話月間ランキング"
             endpoint="/api/sellers/call-tracking-ranking"
+            showMonthSelector={true}
           />
         </DialogContent>
         <DialogActions>
@@ -8767,7 +8770,7 @@ HP：https://ifoo-oita.com/
             key={visitRankingDialogOpen ? 'open' : 'closed'}
             title="訪問予約者月間ランキング"
             endpoint="/api/sellers/visit-ranking"
-            allowedInitials={normalInitials}
+            allowedInitials={normalInitials.filter((i) => i !== 'K')}
           />
         </DialogContent>
         <DialogActions>
@@ -8785,7 +8788,7 @@ HP：https://ifoo-oita.com/
             key={visitRankingYearlyDialogOpen ? 'open' : 'closed'}
             title="訪問予約者年間ランキング"
             endpoint="/api/sellers/visit-ranking-yearly"
-            allowedInitials={normalInitials}
+            allowedInitials={normalInitials.filter((i) => i !== 'K')}
             yearlyMode={true}
           />
         </DialogContent>

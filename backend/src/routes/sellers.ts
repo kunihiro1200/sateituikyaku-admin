@@ -1442,16 +1442,17 @@ router.get('/visit-stats', async (req: Request, res: Response) => {
 /**
  * 1番電話ランキングを取得
  * GET /api/sellers/call-ranking
- * 当月（JST）の first_call_person 件数をスタッフ別に集計して返す
+ * 指定月（またはJST当月）の first_call_person 件数をスタッフ別に集計して返す
+ * クエリパラメータ: year（年）, month（月、1-12）
  */
 router.get('/call-ranking', async (req: Request, res: Response) => {
   try {
-    // JSTで当月の開始日・終了日を計算
+    // クエリパラメータから年月を取得（指定がなければ当月）
     const now = new Date();
     const jstOffset = 9 * 60 * 60 * 1000;
     const jstNow = new Date(now.getTime() + jstOffset);
-    const year = jstNow.getUTCFullYear();
-    const month = jstNow.getUTCMonth(); // 0-indexed
+    const year = req.query.year ? parseInt(req.query.year as string, 10) : jstNow.getUTCFullYear();
+    const month = req.query.month ? parseInt(req.query.month as string, 10) - 1 : jstNow.getUTCMonth(); // 0-indexed
 
     const fromDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
     const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
@@ -1690,16 +1691,17 @@ router.get('/visit-ranking-yearly', async (req: Request, res: Response) => {
 /**
  * 追客電話ランキングを取得
  * GET /api/sellers/call-tracking-ranking
- * Google Spreadsheet「売主追客ログ」から当月のデータを集計してランキングを返す
+ * Google Spreadsheet「売主追客ログ」から指定月（または当月）のデータを集計してランキングを返す
+ * クエリパラメータ: year（年）, month（月、1-12）
  */
 router.get('/call-tracking-ranking', async (req: Request, res: Response) => {
   try {
-    // JSTで当月の開始日・終了日を計算
+    // クエリパラメータから年月を取得（指定がなければ当月）
     const now = new Date();
     const jstOffset = 9 * 60 * 60 * 1000;
     const jstNow = new Date(now.getTime() + jstOffset);
-    const year = jstNow.getUTCFullYear();
-    const month = jstNow.getUTCMonth(); // 0-indexed
+    const year = req.query.year ? parseInt(req.query.year as string, 10) : jstNow.getUTCFullYear();
+    const month = req.query.month ? parseInt(req.query.month as string, 10) - 1 : jstNow.getUTCMonth(); // 0-indexed
 
     const fromDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
     const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();

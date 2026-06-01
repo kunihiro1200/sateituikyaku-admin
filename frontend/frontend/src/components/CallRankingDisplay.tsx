@@ -7,6 +7,9 @@ import {
   Alert,
   Button,
   LinearProgress,
+  FormControl,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   EmojiEvents as TrophyIcon,
@@ -14,6 +17,7 @@ import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
 } from '@mui/icons-material';
+import type { SelectChangeEvent } from '@mui/material';
 import api from '../services/api';
 
 interface RankingEntry {
@@ -36,6 +40,8 @@ interface CallRankingDisplayProps {
   allowedInitials?: string[];
   /** 年間累計表示モード（trueの場合、期間を "2026年1月〜YYYY年M月" 形式で表示） */
   yearlyMode?: boolean;
+  /** 月選択プルダウンを表示するか（デフォルト: false） */
+  showMonthSelector?: boolean;
 }
 
 // 順位ごとの色設定
@@ -60,17 +66,59 @@ function isExcluded(initial: string): boolean {
   return EXCLUDED_PATTERNS.some((p) => initial.includes(p));
 }
 
-const CallRankingDisplay = ({ title = '1番電話月間ランキング', endpoint = '/api/sellers/call-ranking', allowedInitials, yearlyMode = false }: CallRankingDisplayProps) => {
+// 月選択肢を生成（2026年1月から現在月まで）
+function generateMonthOptions(): { value: string; label: string }[] {
+  const now = new Date();
+  const jstOffset = 9 * 60 * 60 * 1000;
+  const jstNow = new Date(now.getTime() + jstOffset);
+  const currentYear = jstNow.getUTCFullYear();
+  const currentMonth = jstNow.getUTCMonth(); // 0-indexed
+
+  const options: { value: string; label: string }[] = [];
+  // 2026年1月から現在月まで
+  const startYear = 2026;
+  const startMonth = 0; // 1月（0-indexed）
+
+  for (let y = startYear; y <= currentYear; y++) {
+    const mStart = y === startYear ? startMonth : 0;
+    const mEnd = y === currentYear ? currentMonth : 11;
+    for (let m = mStart; m <= mEnd; m++) {
+      options.push({
+        value: `${y}-${m + 1}`,
+        label: `${y}年${m + 1}月`,
+      });
+    }
+  }
+
+  // 新しい月が先頭に来るように逆順にする
+  return options.reverse();
+}
+
+const CallRankingDisplay = ({ title = '1番電話月間ランキング', endpoint = '/api/sellers/call-ranking', allowedInitials, yearlyMode = false, showMonthSelector = false }: CallRankingDisplayProps) => {
   const [data, setData] = useState<RankingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
+  // 月選択の状態（デフォルトは当月）
+  const now = new Date();
+  const jstOffset = 9 * 60 * 60 * 1000;
+  const jstNow = new Date(now.getTime() + jstOffset);
+  const [selectedMonth, setSelectedMonth] = useState<string>(`${jstNow.getUTCFullYear()}-${jstNow.getUTCMonth() + 1}`);
+
+  const monthOptions = generateMonthOptions();
+
   const fetchRanking = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get(endpoint, { timeout: 5000 });
+      let url = endpoint;
+      if (showMonthSelector && selectedMonth) {
+        const [year, month] = selectedMonth.split('-');
+        const separator = endpoint.includes('?') ? '&' : '?';
+        url = `${endpoint}${separator}year=${year}&month=${month}`;
+      }
+      const response = await api.get(url, { timeout: 5000 });
       setData(response.data);
     } catch (err: any) {
       if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
@@ -81,11 +129,15 @@ const CallRankingDisplay = ({ title = '1番電話月間ランキング', endpoin
     } finally {
       setLoading(false);
     }
-  }, [endpoint]);
+  }, [endpoint, showMonthSelector, selectedMonth]);
 
   useEffect(() => {
     fetchRanking();
   }, [fetchRanking]);
+
+  const handleMonthChange = (event: SelectChangeEvent<string>) => {
+    setSelectedMonth(event.target.value);
+  };
 
   // 期間表示（月間: "2026年4月"、年間: "2026年1月〜2026年4月"）
   const formatPeriod = (from: string, to?: string): string => {
@@ -99,35 +151,93 @@ const CallRankingDisplay = ({ title = '1番電話月間ランキング', endpoin
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-        <CircularProgress size={24} />
+      <Box>
+        {/* 月選択プルダウン（ローディング中も表示） */}
+        {showMonthSelector && (
+          <Box sx={{ mb: 1.5 }}>
+            <FormControl size="small" fullWidth>
+              <Select
+                value={selectedMonth}
+                onChange={handleMonthChange}
+                sx={{ fontSize: '0.875rem' }}
+              >
+                {monthOptions.map((opt) => (
+                  <MenuItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        )}
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+          <CircularProgress size={24} />
+        </Box>
       </Box>
     );
   }
 
   if (error) {
     return (
-      <Alert
-        severity="error"
-        action={
-          <Button color="inherit" size="small" onClick={fetchRanking} startIcon={<RefreshIcon />}>
-            再試行
-          </Button>
-        }
-      >
-        {error}
-      </Alert>
+      <Box>
+        {showMonthSelector && (
+          <Box sx={{ mb: 1.5 }}>
+            <FormControl size="small" fullWidth>
+              <Select
+                value={selectedMonth}
+                onChange={handleMonthChange}
+                sx={{ fontSize: '0.875rem' }}
+              >
+                {monthOptions.map((opt) => (
+                  <MenuItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        )}
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={fetchRanking} startIcon={<RefreshIcon />}>
+              再試行
+            </Button>
+          }
+        >
+          {error}
+        </Alert>
+      </Box>
     );
   }
 
   if (!data || data.rankings.length === 0) {
     return (
-      <Paper sx={{ p: 2, textAlign: 'center', bgcolor: '#FAFAFA' }}>
-        <TrophyIcon sx={{ fontSize: 32, color: 'text.disabled', mb: 0.5 }} />
-        <Typography variant="body2" color="text.secondary">
-          今月はまだ記録がありません
-        </Typography>
-      </Paper>
+      <Box>
+        {showMonthSelector && (
+          <Box sx={{ mb: 1.5 }}>
+            <FormControl size="small" fullWidth>
+              <Select
+                value={selectedMonth}
+                onChange={handleMonthChange}
+                sx={{ fontSize: '0.875rem' }}
+              >
+                {monthOptions.map((opt) => (
+                  <MenuItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        )}
+        <Paper sx={{ p: 2, textAlign: 'center', bgcolor: '#FAFAFA' }}>
+          <TrophyIcon sx={{ fontSize: 32, color: 'text.disabled', mb: 0.5 }} />
+          <Typography variant="body2" color="text.secondary">
+            この月はまだ記録がありません
+          </Typography>
+        </Paper>
+      </Box>
     );
   }
 
@@ -142,12 +252,31 @@ const CallRankingDisplay = ({ title = '1番電話月間ランキング', endpoin
 
   if (filteredRankings.length === 0) {
     return (
-      <Paper sx={{ p: 2, textAlign: 'center', bgcolor: '#FAFAFA' }}>
-        <TrophyIcon sx={{ fontSize: 32, color: 'text.disabled', mb: 0.5 }} />
-        <Typography variant="body2" color="text.secondary">
-          今月はまだ記録がありません
-        </Typography>
-      </Paper>
+      <Box>
+        {showMonthSelector && (
+          <Box sx={{ mb: 1.5 }}>
+            <FormControl size="small" fullWidth>
+              <Select
+                value={selectedMonth}
+                onChange={handleMonthChange}
+                sx={{ fontSize: '0.875rem' }}
+              >
+                {monthOptions.map((opt) => (
+                  <MenuItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        )}
+        <Paper sx={{ p: 2, textAlign: 'center', bgcolor: '#FAFAFA' }}>
+          <TrophyIcon sx={{ fontSize: 32, color: 'text.disabled', mb: 0.5 }} />
+          <Typography variant="body2" color="text.secondary">
+            この月はまだ記録がありません
+          </Typography>
+        </Paper>
+      </Box>
     );
   }
 
@@ -157,6 +286,25 @@ const CallRankingDisplay = ({ title = '1番電話月間ランキング', endpoin
 
   return (
     <Box>
+      {/* 月選択プルダウン */}
+      {showMonthSelector && (
+        <Box sx={{ mb: 1.5 }}>
+          <FormControl size="small" fullWidth>
+            <Select
+              value={selectedMonth}
+              onChange={handleMonthChange}
+              sx={{ fontSize: '0.875rem' }}
+            >
+              {monthOptions.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      )}
+
       {/* ヘッダー */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
         <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontWeight: 'bold' }}>
@@ -231,7 +379,7 @@ const CallRankingDisplay = ({ title = '1番電話月間ランキング', endpoin
           endIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
           sx={{ mt: 0.5, color: 'text.secondary' }}
         >
-          {expanded ? '折りたたむ' : `残り${data.rankings.length - DISPLAY_LIMIT}名を表示`}
+          {expanded ? '折りたたむ' : `残り${filteredRankings.length - DISPLAY_LIMIT}名を表示`}
         </Button>
       )}
     </Box>
