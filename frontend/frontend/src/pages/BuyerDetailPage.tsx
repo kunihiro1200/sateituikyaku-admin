@@ -4059,6 +4059,7 @@ TEL：097-533-2022`;
             key={buyerCallRankingDialogOpen ? 'open' : 'closed'}
             title="月間電話ランキング"
             endpoint="/api/buyers/call-ranking"
+            showMonthSelector={true}
           />
         </DialogContent>
         <DialogActions>
