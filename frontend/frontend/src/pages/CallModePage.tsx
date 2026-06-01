@@ -5968,22 +5968,23 @@ HP：https://ifoo-oita.com/
                   // 編集モード
                   <Grid container spacing={2}>
                     <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
                       <TextField
-                        fullWidth
+                        sx={{ flex: 2 }}
                         size="small"
-                        label="訪問予定日時"
-                        type="datetime-local"
-                        inputRef={appointmentDateRef}
-                        value={editedAppointmentDate}
+                        label="訪問予定日"
+                        type="date"
+                        value={editedAppointmentDate ? editedAppointmentDate.split('T')[0] : ''}
                         onChange={(e) => {
-                          const newDate = e.target.value;
+                          const datePart = e.target.value;
+                          const timePart = editedAppointmentDate ? (editedAppointmentDate.split('T')[1] || '00:00') : '00:00';
+                          const newDate = datePart ? `${datePart}T${timePart}` : '';
                           setEditedAppointmentDate(newDate);
-                          
+
                           // 訪問日を削除した場合、営担と訪問査定取得者もクリア
                           if (!newDate) {
                             setEditedAssignedTo('');
                             setEditedVisitValuationAcquirer('');
-                            console.log('🗑️ 訪問日を削除したため、営担と訪問査定取得者もクリアしました');
                             return;
                           }
 
@@ -6004,64 +6005,55 @@ HP：https://ifoo-oita.com/
                               setHearingWarningItems([]);
                             }
                           }
-                          
-                          // 訪問日が入力された場合、次電日を訪問日の1週間後に自動設定（営担の有無に関係なく）
+
+                          // 訪問日が入力された場合、次電日を訪問日の1週間後に自動設定
                           try {
-                            // datetime-local の値は "YYYY-MM-DDTHH:mm" 形式
-                            // new Date() はタイムゾーンずれの可能性があるため、文字列から直接日付を取り出す
-                            const datePart = newDate ? newDate.split('T')[0] : '';
                             if (datePart && /^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
                               const [y, m, d] = datePart.split('-').map(Number);
-                              const visitDate = new Date(y, m - 1, d); // ローカル時刻でDate生成（タイムゾーンなし）
+                              const visitDate = new Date(y, m - 1, d);
                               visitDate.setDate(visitDate.getDate() + 7);
                               const pad = (n: number) => String(n).padStart(2, '0');
                               const nextCallDateStr = `${visitDate.getFullYear()}-${pad(visitDate.getMonth() + 1)}-${pad(visitDate.getDate())}`;
                               setEditedNextCallDate(nextCallDateStr);
                               setStatusChanged(true);
                               statusChangedRef.current = true;
-                              console.log('📅 次電日を訪問日の1週間後に自動設定しました:', nextCallDateStr);
                             }
                           } catch (err) {
                             console.error('次電日の自動設定に失敗:', err);
                           }
-                          
-                          // 訪問査定日時が入力された場合、現在のログインユーザーを訪問査定取得者に自動設定
-                          // 訪問日を変更した場合は常に自動設定（既存の値を上書き）
-                          console.log('📅 訪問日が設定されました:', newDate);
-                          console.log('   現在の訪問査定取得者:', editedVisitValuationAcquirer);
-                          console.log('   ログインユーザー:', employee?.email);
-                          
+
+                          // 訪問査定取得者を現在のログインユーザーに自動設定
                           if (newDate && employee?.email) {
-                            console.log('🔍 訪問査定取得者を自動設定します...');
                             try {
-                              // 現在のログインユーザーのメールアドレスからスタッフを検索
                               const currentStaff = employees.find(emp => emp.email === employee.email);
-                              console.log('   スタッフ検索結果:', currentStaff);
-                              
                               if (currentStaff) {
-                                // スタッフが見つかった場合、訪問査定取得者に設定
                                 const initials = currentStaff.initials || currentStaff.name || currentStaff.email;
                                 setEditedVisitValuationAcquirer(initials);
-                                console.log('✅ 訪問査定取得者を自動設定しました:', initials);
-                              } else {
-                                // スタッフが見つからない場合は警告をログに出力
-                                console.warn('⚠️ ログインユーザーがスタッフ一覧に見つかりません:', employee.email);
-                                console.warn('   スタッフ一覧:', employees.map(e => ({ email: e.email, initials: e.initials })));
                               }
                             } catch (error) {
-                              // エラーが発生しても処理を続行（自動設定をスキップ）
                               console.error('❌ 訪問査定取得者の自動設定に失敗:', error);
-                            }
-                          } else {
-                            if (!newDate) {
-                              console.log('   訪問日が空欄のため、自動設定をスキップ');
-                            } else if (!employee?.email) {
-                              console.warn('⚠️ ログインユーザー情報が取得できません');
                             }
                           }
                         }}
                         InputLabelProps={{ shrink: true }}
                       />
+                      <TextField
+                        sx={{ flex: 1 }}
+                        size="small"
+                        label="時間 (例: 14:00)"
+                        type="text"
+                        inputRef={appointmentDateRef}
+                        placeholder="14:00"
+                        value={editedAppointmentDate ? (editedAppointmentDate.split('T')[1] || '') : ''}
+                        onChange={(e) => {
+                          const timePart = e.target.value;
+                          const datePart = editedAppointmentDate ? editedAppointmentDate.split('T')[0] : '';
+                          const newDate = datePart ? `${datePart}T${timePart}` : '';
+                          setEditedAppointmentDate(newDate);
+                        }}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                      </Box>
                     </Grid>
                     {/* ヒアリング未確認項目のインライン警告 */}
                     {hearingWarningItems.length > 0 && (
