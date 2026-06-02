@@ -7529,13 +7529,17 @@ HP：https://ifoo-oita.com/
               );
             })()}
             {/* ポータルサイト掲載メリットボタン（物件住所がある場合に常に表示） */}
-            {(propInfo.address || seller?.propertyAddress) && (
+            {(propInfo.address || seller?.propertyAddress) && seller?.id && (
               <Box sx={{ mb: 1.5 }}>
                 <Button
                   variant="contained"
                   size="small"
                   startIcon={<span style={{ fontSize: '1.1em' }}>🏡</span>}
-                  onClick={() => window.open(`/sellers/${seller?.id}/portal-merits`, '_blank')}
+                  onClick={() => {
+                    // 別タブで開いた後、元のタブにフォーカスを戻す（このページのままにする）
+                    window.open(`/sellers/${seller.id}/portal-merits`, '_blank', 'noopener,noreferrer');
+                    window.focus();
+                  }}
                   sx={{
                     background: 'linear-gradient(135deg, #bf360c 0%, #e64a19 100%)',
                     color: 'white',
