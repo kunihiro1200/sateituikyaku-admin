@@ -251,7 +251,7 @@ const PortalMeritsPage = () => {
       {/* 本文 */}
       <Box
         className="print-container"
-        sx={{ pt: '60px', px: { xs: 2, sm: 4 }, pb: 6, maxWidth: 800, mx: 'auto' }}
+        sx={{ pt: '80px', px: { xs: 2, sm: 4 }, pb: 6, maxWidth: 800, mx: 'auto' }}
       >
         {/* 印刷時のみ表示するタイトル行 */}
         {text && (
