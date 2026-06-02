@@ -353,6 +353,11 @@ export const replacePlaceholders = (
         /https:\/\/ifoo-oita\.com\/testsite\/wp-content\/uploads\/2020\/12\/d58af49c9c6dd87c7aee1845265204b6\.pdf/g,
         'https://drive.google.com/file/d/1yo-tNvpLU0zYV0hR8NtlF5oUcH16TUeJ/view?usp=sharing'
       );
+
+      // FI売主の場合は会社名を「株式会社くじら不動産」に変更
+      // 件名・本文に含まれる「株式会社いふう」「㈱いふう」を全て置換
+      result = result.replace(/株式会社いふう/g, '株式会社くじら不動産');
+      result = result.replace(/㈱いふう/g, '㈱くじら不動産');
     }
     
     return result;
