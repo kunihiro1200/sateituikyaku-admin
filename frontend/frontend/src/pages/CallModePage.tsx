@@ -79,6 +79,7 @@ import CollapsibleSection from '../components/CollapsibleSection';
 import CommentHighlightsPanel from '../components/CommentHighlightsPanel';
 import HouseMakerModal from '../components/HouseMakerModal';
 import MansionModal, { MANSION_BRANDS } from '../components/MansionModal';
+import PortalMeritsModal from '../components/PortalMeritsModal';
 
 import { formatCurrentStatusDetailed } from '../utils/propertyStatusFormatter';
 import PageNavigation from '../components/PageNavigation';
@@ -754,6 +755,7 @@ const CallModePage = () => {
   // ハウスメーカーモーダルの状態
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
   const [mansionModalOpen, setMansionModalOpen] = useState(false);
+  const [portalMeritsOpen, setPortalMeritsOpen] = useState(false);
 
   // 不通確認ダイアログの状態
   const [unreachableConfirmOpen, setUnreachableConfirmOpen] = useState(false);
@@ -7528,6 +7530,33 @@ HP：https://ifoo-oita.com/
                 </Box>
               );
             })()}
+            {/* ポータルサイト掲載メリットボタン（物件住所がある場合に常に表示） */}
+            {(propInfo.address || seller?.propertyAddress) && (
+              <Box sx={{ mb: 1.5 }}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<span style={{ fontSize: '1.1em' }}>🏡</span>}
+                  onClick={() => setPortalMeritsOpen(true)}
+                  sx={{
+                    background: 'linear-gradient(135deg, #bf360c 0%, #e64a19 100%)',
+                    color: 'white',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    px: 2,
+                    py: 0.7,
+                    borderRadius: 2,
+                    boxShadow: '0 2px 8px rgba(191,54,12,0.3)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #e64a19 0%, #ff5722 100%)',
+                      boxShadow: '0 4px 12px rgba(191,54,12,0.4)',
+                    },
+                  }}
+                >
+                  ポータル掲載メリット
+                </Button>
+              </Box>
+            )}
             <CommentHighlightsPanel
               commentHtml={savedComments}
               quickButtonIds={[
@@ -7571,6 +7600,16 @@ HP：https://ifoo-oita.com/
               onClose={() => setMansionModalOpen(false)}
               address={propInfo.address || seller?.propertyAddress || ''}
             />
+
+            {/* ポータルサイト掲載メリットモーダル */}
+            {seller && (
+              <PortalMeritsModal
+                open={portalMeritsOpen}
+                onClose={() => setPortalMeritsOpen(false)}
+                sellerId={seller.id}
+                propertyAddress={propInfo.address || seller.propertyAddress}
+              />
+            )}
 
             {/* コメント入力・編集エリア（直接書き込み可能） */}
             <Box sx={{ mb: 2 }}>

@@ -3214,6 +3214,97 @@ JSONのみ返してください。`;
 });
 
 // ============================================================
+// ポータルサイト掲載メリット生成エンドポイント（OpenAI APIで住所から箇条書きを生成）
+// ============================================================
+
+/**
+ * POST /api/sellers/:id/portal-merits
+ * 物件住所・種別・築年・間取り・構造などをもとに
+ * ChatGPTがポータルサイト掲載時のアピールポイントを箇条書きで生成する
+ */
+router.post('/:id/portal-merits', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const seller = await sellerService.getSeller(id);
+    if (!seller) return res.status(404).json({ error: 'Seller not found' });
+
+    const address = (seller as any).propertyAddress || (seller as any).property_address || '';
+    if (!address) return res.status(400).json({ error: '物件住所が設定されていません' });
+    if (!process.env.OPENAI_API_KEY) return res.status(500).json({ error: 'OPENAI_API_KEYが設定されていません' });
+
+    // 物件情報を収集
+    const propertyType = (seller as any).propertyType || (seller as any).property_type || '';
+    const buildYear    = (seller as any).buildYear    || (seller as any).build_year    || '';
+    const floorPlan    = (seller as any).floorPlan    || (seller as any).floor_plan    || '';
+    const structure    = (seller as any).structure    || '';
+    const landArea     = (seller as any).landArea     || (seller as any).land_area     || '';
+    const buildingArea = (seller as any).buildingArea || (seller as any).building_area || '';
+
+    // 補足情報の文字列を組み立て
+    const details: string[] = [];
+    if (propertyType) details.push(`種別: ${propertyType}`);
+    if (buildYear)    details.push(`築年: ${buildYear}年`);
+    if (floorPlan)    details.push(`間取り: ${floorPlan}`);
+    if (structure)    details.push(`構造: ${structure}`);
+    if (landArea)     details.push(`土地面積: ${landArea}㎡`);
+    if (buildingArea) details.push(`建物面積: ${buildingArea}㎡`);
+
+    const detailStr = details.length > 0 ? `\n物件情報: ${details.join(' / ')}` : '';
+
+    const prompt = `以下の不動産物件について、ポータルサイト（SUUMO・アットホーム・LIFULL HOME'S等）に掲載する際の売却につながるアピールポイントを、できるだけ多くの箇条書きで列挙してください。
+
+物件住所: ${address}${detailStr}
+
+【カテゴリ別に整理して出力してください】
+- 立地・アクセス
+- 住環境（緑・公園・静けさなど）
+- 買物・生活利便
+- 子育て環境（学校・保育園など）
+- 物件の特徴・スペック（築年・構造・間取り等）
+- 売主向けに響く表現・キャッチコピー
+
+【ルール】
+- 各カテゴリにできるだけ多くの項目を挙げること（1カテゴリ最低3項目以上を目標）
+- 実際の周辺施設（スーパー・駅・学校など）の名称を具体的に挙げること
+- 数字（距離・徒歩分数など）を積極的に入れること
+- 出力はプレーンテキスト（Markdownなし）の箇条書きで、カテゴリ見出しの後に「・」で始まる項目を列挙する形式にすること`;
+
+    const axios = (await import('axios')).default;
+    const completion = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'あなたは日本の不動産売却に精通したプロのコンサルタントです。物件の立地・周辺施設・物件スペックなどを踏まえ、売主・買主の双方に響く具体的で説得力のある掲載アピールポイントを生成してください。'
+          },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 55000,
+      }
+    );
+
+    const text: string = completion.data.choices[0]?.message?.content?.trim() || '';
+    res.json({ text, address });
+
+  } catch (error: any) {
+    console.error('[portal-merits] エラー:', error?.message || error);
+    res.status(500).json({ error: error?.response?.data?.error?.message || error?.message || 'メリット生成に失敗しました' });
+  }
+});
+
+
+// ============================================================
 // 住所読み仮名取得エンドポイント（OpenAI APIで住所のひらがな読みを取得）
 // ============================================================
 
