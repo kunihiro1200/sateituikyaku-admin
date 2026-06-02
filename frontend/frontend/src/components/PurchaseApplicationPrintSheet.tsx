@@ -40,6 +40,7 @@ const PurchaseApplicationPrintSheet = React.forwardRef<HTMLDivElement, PurchaseA
           fontSize: '10pt',
           color: '#000',
           boxSizing: 'border-box',
+          position: 'relative',
           '@media print': {
             width: '210mm',
             minHeight: '297mm',
@@ -48,6 +49,12 @@ const PurchaseApplicationPrintSheet = React.forwardRef<HTMLDivElement, PurchaseA
           },
         }}
       >
+        {/* 10万円キャンペーンチェックボックス（1500万超のみ） */}
+        {propertyPrice && Number(propertyPrice) > 15000000 && (
+          <Box sx={{ position: 'absolute', top: '8mm', right: '14mm', fontSize: '16pt' }}>
+            ☐
+          </Box>
+        )}
         {/* タイトル */}
         <Typography
           sx={{
