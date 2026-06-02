@@ -184,11 +184,12 @@ ${extraPagesHtml}
 // ============================================================
 // ページ2: 買付申込書
 export function generatePage2Html(propertyAddress: string, propertyPrice: number | null): string {
-  const priceStr = propertyPrice ? propertyPrice.toLocaleString('ja-JP') : '';
+  const numPrice = propertyPrice ? Number(propertyPrice) : null;
+  const priceStr = numPrice ? numPrice.toLocaleString('ja-JP') : '';
   const tdStyle = 'border:1px solid #000;padding:4px 8px;font-size:9pt;';
   const thStyle = 'border:1px solid #000;padding:4px 8px;font-size:9pt;width:140px;';
   return `<div style="width:100%;height:100%;padding:8mm 14mm;background:#fff;font-family:${FONT};font-size:9pt;color:#000;box-sizing:border-box;overflow:hidden;position:relative;">
-    ${propertyPrice && propertyPrice > 15000000 ? `<div style="position:absolute;top:8mm;right:14mm;font-size:9pt;">☐</div>` : ''}
+    ${numPrice && numPrice > 15000000 ? `<div style="position:absolute;top:8mm;right:14mm;font-size:14pt;">☐</div>` : ''}
     <div style="font-size:16pt;font-weight:bold;text-align:center;text-decoration:underline;margin-bottom:10px;">買付申込書</div>
     <div style="text-align:right;margin-bottom:12px;font-size:9pt;">　　　　年　　　月　　　日</div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
