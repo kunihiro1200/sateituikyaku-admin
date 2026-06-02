@@ -7553,7 +7553,7 @@ HP：https://ifoo-oita.com/
                     },
                   }}
                 >
-                  ポータル掲載メリット
+                  物件の長所
                 </Button>
               </Box>
             )}

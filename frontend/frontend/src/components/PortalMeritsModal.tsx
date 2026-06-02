@@ -160,7 +160,7 @@ export const PortalMeritsModal = ({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography component="span" sx={{ fontSize: '1.3rem' }}>🏡</Typography>
             <Typography variant="h6" component="span" sx={{ fontWeight: 'bold' }}>
-              ポータルサイト掲載メリット
+              物件の長所
             </Typography>
           </Box>
           {propertyAddress && (
