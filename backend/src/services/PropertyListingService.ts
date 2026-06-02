@@ -184,6 +184,12 @@ export class PropertyListingService {
   }
 
   async update(propertyNumber: string, updates: Record<string, any>) {
+    // price が更新された場合、sales_price も同期する（公開サイトの価格表示に反映するため）
+    if ('price' in updates && updates.price !== undefined) {
+      updates.sales_price = updates.price;
+      console.log(`[PropertyListingService] Syncing sales_price with price for ${propertyNumber}: ${updates.price}`);
+    }
+
     // 住所またはGoogle Map URLが更新された場合、配信エリアを再計算
     if (updates.address || updates.google_map_url) {
       try {
