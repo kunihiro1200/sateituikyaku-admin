@@ -254,6 +254,9 @@ export function generatePage2Html(propertyAddress: string, propertyPrice: number
       <div style="margin-bottom:8px;">本売買契約は、住宅ローン特約付きの契約として締結するものとします。（住宅ローン審査が否認となった場合には、契約を白紙解除できる特約を付します。）</div>
       <div style="font-size:8pt;font-weight:bold;">※本申込は購入意思を示すものであり、先に他のお客様より申込が入っている場合には、2番手以降での受付となる可能性があることをあらかじめご了承ください。</div>
     </div>
+    ${propertyPrice && propertyPrice > 15000000 ? `
+    <div style="padding-left:4px;margin-top:12px;"><div style="font-weight:bold;font-size:10pt;">７，10万円キャンペーン　□お渡し済み</div></div>
+    ` : ''}
   </div>`;
 }
 
