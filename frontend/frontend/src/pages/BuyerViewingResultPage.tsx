@@ -228,6 +228,7 @@ export default function BuyerViewingResultPage() {
   });
   const [isOfferFailedFlag, setIsOfferFailedFlag] = useState(false); // 買付外れましたフラグ
   const [offerFailedChatSentPopupOpen, setOfferFailedChatSentPopupOpen] = useState(false);
+  const [campaignHandedOver, setCampaignHandedOver] = useState(false); // 10万円キャンペーンお渡し済みチェック
   const [normalInitials, setNormalInitials] = useState<string[]>([]);
   const [calendarOpened, setCalendarOpened] = useState(false); // カレンダーを開いたかどうか
   const [leaveWarningDialog, setLeaveWarningDialog] = useState<{ open: boolean; targetUrl: string }>({ open: false, targetUrl: '' });
@@ -1030,6 +1031,7 @@ export default function BuyerViewingResultPage() {
       const response = await api.post(`/api/buyers/${buyer.buyer_number}/send-offer-chat`, {
         propertyNumber: linkedProperties[0].property_number,
         offerComment: buyer.offer_comment || '',
+        campaignHandedOver: campaignHandedOver,
       });
 
       if (response.data.success) {
@@ -2267,6 +2269,22 @@ export default function BuyerViewingResultPage() {
                 </Box>
               )}
             </Box>
+
+            {/* 10万円キャンペーンお渡し済みチェック（買付外れでない場合のみ） */}
+            {!isOfferFailed() && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <input
+                  type="checkbox"
+                  id="campaign-handed-over"
+                  checked={campaignHandedOver}
+                  onChange={(e) => setCampaignHandedOver(e.target.checked)}
+                  style={{ width: 18, height: 18, cursor: 'pointer' }}
+                />
+                <label htmlFor="campaign-handed-over" style={{ cursor: 'pointer', fontSize: '0.95rem', fontWeight: 'bold' }}>
+                  10万円キャンペーン お渡し済み
+                </label>
+              </Box>
+            )}
 
             {/* 買付チャット送信ボタン or 買付ハズレチャット送信ボタン */}
             <Box>
