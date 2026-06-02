@@ -4,6 +4,33 @@ import { Box, CircularProgress, Typography, Button, Divider } from '@mui/materia
 import { Refresh as RefreshIcon } from '@mui/icons-material';
 import api from '../services/api';
 
+// ── タブのタイトル・ファビコンを動的に設定 ──
+function usePageMeta(title: string) {
+  useEffect(() => {
+    // タイトル
+    document.title = title;
+
+    // 赤背景に白文字「物件」のSVGファビコン
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <rect width="32" height="32" rx="6" fill="#bf360c"/>
+      <text x="16" y="22" font-size="13" font-family="'Hiragino Sans','Meiryo',sans-serif"
+        font-weight="bold" fill="white" text-anchor="middle">物件</text>
+    </svg>`;
+    const svgUrl = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+
+    // 既存ファビコンを差し替え
+    let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = svgUrl;
+
+    // アンマウント時は元に戻さない（別タブなので不要）
+  }, [title]);
+}
+
 // テキストをカテゴリ別にパースして整形表示
 function ParsedMerits({ text }: { text: string }) {
   const lines = text.split('\n');
@@ -68,6 +95,9 @@ const PortalMeritsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const hasFetched = useRef(false);
+
+  // タブのタイトル・ファビコンを設定（住所が取得できたら更新）
+  usePageMeta(address ? `物件の長所 | ${address}` : '物件の長所');
 
   const generate = async () => {
     setLoading(true);
