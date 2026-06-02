@@ -391,8 +391,15 @@ export default function BuyerViewingResultPage() {
       const res = await api.get(`/api/buyers/${buyer_number}`);
       buyerRef.current = res.data;
       setBuyer(res.data);
-      // 内覧結果・後続対応の初期値をセット
-      setViewingResultEditValue(res.data.viewing_result_follow_up || '');
+      // 内覧結果・後続対応の初期値をセット（空の場合はデフォルトテンプレート）
+      const VIEWING_RESULT_DEFAULT_TEMPLATE = 
+        '<p>・お客の属性：</p>' +
+        '<p>・内覧理由：</p>' +
+        '<p>・物件の気に入っている点：</p>' +
+        '<p>・懸念事項：</p>' +
+        '<p>・予算：</p>' +
+        '<p>・時期：</p>';
+      setViewingResultEditValue(res.data.viewing_result_follow_up || VIEWING_RESULT_DEFAULT_TEMPLATE);
       // 気づきフィールドの初期値をセット
       setInsightExecutorValue(res.data.viewing_insight_executor || '');
       setInsightCompanionValue(res.data.viewing_insight_companion || '');
@@ -1900,7 +1907,17 @@ export default function BuyerViewingResultPage() {
             </Box>
             {/* RichTextEditor + 保存ボタン */}
             {(() => {
-              const isDirty = viewingResultEditValue !== (buyer?.viewing_result_follow_up || '');
+              const VIEWING_RESULT_DEFAULT_TEMPLATE = 
+                '<p>・お客の属性：</p>' +
+                '<p>・内覧理由：</p>' +
+                '<p>・物件の気に入っている点：</p>' +
+                '<p>・懸念事項：</p>' +
+                '<p>・予算：</p>' +
+                '<p>・時期：</p>';
+              const savedValue = buyer?.viewing_result_follow_up || '';
+              const isDirty = savedValue
+                ? viewingResultEditValue !== savedValue
+                : viewingResultEditValue !== VIEWING_RESULT_DEFAULT_TEMPLATE && viewingResultEditValue !== '';
               return (
                 <>
                   <Box sx={{
