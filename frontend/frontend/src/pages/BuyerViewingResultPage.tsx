@@ -2264,7 +2264,7 @@ export default function BuyerViewingResultPage() {
                     fieldType="textarea"
                     multiline
                     rows={3}
-                    placeholder="価格交渉がある場合は、書いてください。仮審査をいつ受けて、いつまでの決済希望等、スケジュール感もあれば記載してください。"
+                    placeholder=""
                   />
                 </Box>
               )}
