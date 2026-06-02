@@ -7536,8 +7536,9 @@ HP：https://ifoo-oita.com/
                   size="small"
                   startIcon={<span style={{ fontSize: '1.1em' }}>🏡</span>}
                   onClick={() => {
-                    // 別タブで開いた後、元のタブにフォーカスを戻す（このページのままにする）
-                    window.open(`/sellers/${seller.id}/portal-merits`, '_blank', 'noopener,noreferrer');
+                    // noopener を外して newWin を取得し、blur() で元タブに留まる
+                    const newWin = window.open(`/sellers/${seller.id}/portal-merits`, '_blank');
+                    if (newWin) newWin.blur();
                     window.focus();
                   }}
                   sx={{
