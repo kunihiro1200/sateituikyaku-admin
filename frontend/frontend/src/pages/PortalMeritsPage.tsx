@@ -1,16 +1,14 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Box, CircularProgress, Typography, Button, Divider } from '@mui/material';
-import { Refresh as RefreshIcon } from '@mui/icons-material';
+import { Refresh as RefreshIcon, Print as PrintIcon } from '@mui/icons-material';
 import api from '../services/api';
 
 // ── タブのタイトル・ファビコンを動的に設定 ──
 function usePageMeta(title: string) {
   useEffect(() => {
-    // タイトル
     document.title = title;
 
-    // 赤背景に白文字「物件」のSVGファビコン
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
       <rect width="32" height="32" rx="6" fill="#bf360c"/>
       <text x="16" y="22" font-size="13" font-family="'Hiragino Sans','Meiryo',sans-serif"
@@ -18,7 +16,6 @@ function usePageMeta(title: string) {
     </svg>`;
     const svgUrl = `data:image/svg+xml,${encodeURIComponent(svg)}`;
 
-    // 既存ファビコンを差し替え
     let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
     if (!link) {
       link = document.createElement('link');
@@ -26,8 +23,6 @@ function usePageMeta(title: string) {
       document.head.appendChild(link);
     }
     link.href = svgUrl;
-
-    // アンマウント時は元に戻さない（別タブなので不要）
   }, [title]);
 }
 
@@ -55,33 +50,34 @@ function ParsedMerits({ text }: { text: string }) {
   return (
     <>
       {sections.map((sec, idx) => (
-        <Box key={idx} sx={{ mb: 2.5 }}>
+        <Box key={idx} className="merit-section" sx={{ mb: 1.2 }}>
           {sec.heading && (
             <Typography
-              variant="subtitle1"
+              className="merit-heading"
+              variant="subtitle2"
               sx={{
                 fontWeight: 'bold',
                 color: '#1a237e',
-                borderLeft: '5px solid #1a237e',
-                pl: 1.5,
-                mb: 1,
-                fontSize: '1rem',
+                borderLeft: '4px solid #1a237e',
+                pl: 1,
+                mb: 0.5,
+                fontSize: '0.88rem',
               }}
             >
               {sec.heading}
             </Typography>
           )}
           {sec.items.map((item, i) => (
-            <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5, pl: 1 }}>
-              <Typography component="span" sx={{ color: '#1976d2', fontWeight: 'bold', mt: '2px', flexShrink: 0 }}>
+            <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.3, mb: 0.2, pl: 0.5 }}>
+              <Typography component="span" sx={{ color: '#1976d2', fontWeight: 'bold', flexShrink: 0, fontSize: '0.8rem', lineHeight: 1.6 }}>
                 ・
               </Typography>
-              <Typography variant="body1" sx={{ lineHeight: 1.8, fontSize: '0.95rem' }}>
+              <Typography variant="body2" sx={{ lineHeight: 1.6, fontSize: '0.8rem' }}>
                 {item}
               </Typography>
             </Box>
           ))}
-          {idx < sections.length - 1 && <Divider sx={{ mt: 2 }} />}
+          {idx < sections.length - 1 && <Divider sx={{ mt: 1 }} />}
         </Box>
       ))}
     </>
@@ -96,7 +92,7 @@ const PortalMeritsPage = () => {
   const [loading, setLoading] = useState(true);
   const hasFetched = useRef(false);
 
-  // タブのタイトル・ファビコンを設定（住所が取得できたら更新）
+  // タブのタイトル・ファビコンを設定
   usePageMeta(address ? `物件の長所 | ${address}` : '物件の長所');
 
   const generate = async () => {
@@ -148,7 +144,70 @@ const PortalMeritsPage = () => {
 
   return (
     <>
-      {/* ツールバー */}
+      {/* 印刷用グローバルCSS */}
+      <style>{`
+        @media print {
+          /* ツールバーを非表示 */
+          .no-print { display: none !important; }
+
+          /* A4・余白最小・白黒 */
+          @page {
+            size: A4 portrait;
+            margin: 10mm 12mm 10mm 12mm;
+          }
+
+          body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            color: #000 !important;
+            background: white !important;
+            font-size: 8pt !important;
+          }
+
+          /* コンテナ幅をA4に合わせる */
+          .print-container {
+            padding-top: 0 !important;
+            max-width: 100% !important;
+          }
+
+          /* タイトル行 */
+          .print-title {
+            font-size: 11pt !important;
+            font-weight: bold !important;
+            margin-bottom: 4mm !important;
+            border-bottom: 1pt solid #000 !important;
+            padding-bottom: 2mm !important;
+          }
+
+          /* セクション見出しを白黒・小サイズに */
+          .merit-heading {
+            font-size: 8.5pt !important;
+            color: #000 !important;
+            border-left: 3pt solid #000 !important;
+            margin-bottom: 1mm !important;
+            padding-left: 3mm !important;
+          }
+
+          /* 箇条書き本文 */
+          .merit-section {
+            margin-bottom: 3mm !important;
+          }
+
+          /* 区切り線を細く */
+          hr, [class*="MuiDivider"] {
+            border-color: #ccc !important;
+            margin: 2mm 0 !important;
+          }
+
+          /* 全フォント強制 */
+          * {
+            font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif !important;
+            line-height: 1.5 !important;
+          }
+        }
+      `}</style>
+
+      {/* ツールバー（印刷時非表示） */}
       <Box className="no-print" sx={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
         bgcolor: '#bf360c', color: 'white', px: 3, py: 1,
@@ -165,19 +224,41 @@ const PortalMeritsPage = () => {
             </Typography>
           )}
         </Box>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<RefreshIcon />}
-          onClick={generate}
-          sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.6)', '&:hover': { borderColor: 'white' } }}
-        >
-          再生成
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<RefreshIcon />}
+            onClick={generate}
+            sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.6)', '&:hover': { borderColor: 'white' } }}
+          >
+            再生成
+          </Button>
+          {text && (
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<PrintIcon />}
+              onClick={() => window.print()}
+              sx={{ bgcolor: 'white', color: '#bf360c', fontWeight: 'bold', '&:hover': { bgcolor: '#fbe9e7' } }}
+            >
+              A4印刷
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {/* 本文 */}
-      <Box sx={{ pt: '60px', px: { xs: 2, sm: 4 }, pb: 6, maxWidth: 800, mx: 'auto' }}>
+      <Box
+        className="print-container"
+        sx={{ pt: '60px', px: { xs: 2, sm: 4 }, pb: 6, maxWidth: 800, mx: 'auto' }}
+      >
+        {/* 印刷時のみ表示するタイトル行 */}
+        {text && (
+          <Box className="print-title" sx={{ display: 'none', '@media print': { display: 'block' } }}>
+            🏡 物件の長所　{address && `— ${address}`}
+          </Box>
+        )}
         {text && <ParsedMerits text={text} />}
       </Box>
     </>
