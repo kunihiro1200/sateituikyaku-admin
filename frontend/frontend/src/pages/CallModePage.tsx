@@ -79,7 +79,6 @@ import CollapsibleSection from '../components/CollapsibleSection';
 import CommentHighlightsPanel from '../components/CommentHighlightsPanel';
 import HouseMakerModal from '../components/HouseMakerModal';
 import MansionModal, { MANSION_BRANDS } from '../components/MansionModal';
-import PortalMeritsModal from '../components/PortalMeritsModal';
 
 import { formatCurrentStatusDetailed } from '../utils/propertyStatusFormatter';
 import PageNavigation from '../components/PageNavigation';
@@ -755,7 +754,6 @@ const CallModePage = () => {
   // ハウスメーカーモーダルの状態
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
   const [mansionModalOpen, setMansionModalOpen] = useState(false);
-  const [portalMeritsOpen, setPortalMeritsOpen] = useState(false);
 
   // 不通確認ダイアログの状態
   const [unreachableConfirmOpen, setUnreachableConfirmOpen] = useState(false);
@@ -7537,7 +7535,7 @@ HP：https://ifoo-oita.com/
                   variant="contained"
                   size="small"
                   startIcon={<span style={{ fontSize: '1.1em' }}>🏡</span>}
-                  onClick={() => setPortalMeritsOpen(true)}
+                  onClick={() => window.open(`/sellers/${seller?.id}/portal-merits`, '_blank')}
                   sx={{
                     background: 'linear-gradient(135deg, #bf360c 0%, #e64a19 100%)',
                     color: 'white',
@@ -7600,16 +7598,6 @@ HP：https://ifoo-oita.com/
               onClose={() => setMansionModalOpen(false)}
               address={propInfo.address || seller?.propertyAddress || ''}
             />
-
-            {/* ポータルサイト掲載メリットモーダル */}
-            {seller && (
-              <PortalMeritsModal
-                open={portalMeritsOpen}
-                onClose={() => setPortalMeritsOpen(false)}
-                sellerId={seller.id}
-                propertyAddress={propInfo.address || seller.propertyAddress}
-              />
-            )}
 
             {/* コメント入力・編集エリア（直接書き込み可能） */}
             <Box sx={{ mb: 2 }}>

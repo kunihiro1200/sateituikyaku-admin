@@ -31,6 +31,7 @@ import PublicPropertiesPage from './pages/PublicPropertiesPage';
 import PublicPropertyDetailPage from './pages/PublicPropertyDetailPage';
 import { PropertyListingSyncDashboard } from './pages/PropertyListingSyncDashboard';
 import AreaReportPage from './pages/AreaReportPage';
+import PortalMeritsPage from './pages/PortalMeritsPage';
 import BuyerCandidateListPage from './pages/BuyerCandidateListPage';
 import SharedItemsPage from './pages/SharedItemsPage';
 import SharedItemDetailPage from './pages/SharedItemDetailPage';
@@ -372,6 +373,7 @@ function App() {
         }
       />
       <Route path="/sellers/:sellerId/area-report" element={<AreaReportPage />} />
+      <Route path="/sellers/:sellerId/portal-merits" element={<PortalMeritsPage />} />
       <Route
         path="/sellers/:id/sales-history"
         element={
