@@ -650,7 +650,14 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
       const commentLines: string[] = inlineComment ? [inlineComment] : [];
       for (let i = startIdx + 1; i < lines.length; i++) {
         const line = lines[i].trim();
-        if (line.startsWith('査定依頼') || line.includes('査定依頼 --')) break;
+        // 「株式会社」「査定依頼」「HOME4Uをご利用」など本文終端パターンで終了
+        if (
+          line.startsWith('査定依頼') ||
+          line.includes('査定依頼 --') ||
+          line.startsWith('HOME4Uをご利用') ||
+          line.startsWith('貴社への査定依頼') ||
+          line.startsWith('【 査定依頼')
+        ) break;
         if (line) commentLines.push(line);
         // 空行2行連続で終了（コメントの区切り）
         if (!line && commentLines.length > 0) break;
@@ -659,6 +666,13 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
     };
     const memo = extractMemo(cleanedBody);
     console.log(`[home4u-transfer] memo抽出結果: "${memo}"`);
+    // HOME4Uログアウト周辺の行をデバッグ出力（コメント取得問題の診断用）
+    const debugLines = cleanedBody.split('\n');
+    const debugIdx = debugLines.findIndex(l => l.trim() === 'HOME4Uログアウト' || l.trim().startsWith('HOME4Uログアウト'));
+    if (debugIdx !== -1) {
+      const surrounding = debugLines.slice(Math.max(0, debugIdx - 1), debugIdx + 6);
+      console.log(`[home4u-transfer] HOME4Uログアウト周辺行: ${JSON.stringify(surrounding)}`);
+    }
     console.log(`[home4u-transfer] 本文先頭300文字: ${cleanedBody.substring(0, 300).replace(/\n/g, '\\n')}`);
 
     // 依頼日時（曜日部分を除去して解析）

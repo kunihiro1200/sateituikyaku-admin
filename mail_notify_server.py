@@ -347,6 +347,13 @@ def check_new_emails(service, notified_ids):
                     # （バックエンド側でも同じチェックをしているが、ここでも事前フィルタ）
                     if 'HOME4Uログアウト' in body:
                         logging.info("  [DB転記] HOME4U検知 → home4u-transfer を非同期実行します")
+                        # コメント部分デバッグ：HOME4Uログアウト周辺を出力
+                        body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+                        for idx, line in enumerate(body_lines):
+                            if 'HOME4Uログアウト' in line:
+                                surrounding = body_lines[max(0, idx-1):idx+6]
+                                logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
+                                break
                         trigger_home4u_transfer(body)
                     else:
                         logging.info(f"  [スキップ] HOME4Uだが本文に「HOME4Uログアウト」なし: {subject[:50]}")
@@ -362,6 +369,13 @@ def check_new_emails(service, notified_ids):
                 body = decode_body(msg_detail["payload"])
                 if body and 'HOME4Uログアウト' in body:
                     logging.info(f"\n[{datetime.now().strftime('%H:%M:%S')}] 🔔 HOME4U本文検知（Re:スキップ回避）: {subject}")
+                    # コメント部分デバッグ：HOME4Uログアウト周辺を出力
+                    body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+                    for idx, line in enumerate(body_lines):
+                        if 'HOME4Uログアウト' in line:
+                            surrounding = body_lines[max(0, idx-1):idx+6]
+                            logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
+                            break
                     trigger_home4u_transfer(body)
 
                 notified_ids.add(msg_id)
