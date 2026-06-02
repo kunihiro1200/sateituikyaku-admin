@@ -153,7 +153,7 @@ const PortalMeritsPage = () => {
           /* A4・余白最小・白黒 */
           @page {
             size: A4 portrait;
-            margin: 10mm 12mm 10mm 12mm;
+            margin: 14mm 12mm 10mm 12mm;
           }
 
           body {
@@ -166,7 +166,7 @@ const PortalMeritsPage = () => {
 
           /* コンテナ幅をA4に合わせる */
           .print-container {
-            padding-top: 0 !important;
+            padding-top: 4mm !important;
             max-width: 100% !important;
           }
 

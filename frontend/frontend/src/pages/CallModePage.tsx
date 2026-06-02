@@ -7445,7 +7445,7 @@ HP：https://ifoo-oita.com/
 
 
             {/* AIコメントまとめフィールド（クイックボタン関連項目をAIで抽出） */}
-            {/* ハウスメーカーボタン（コメントにハウスメーカー名が含まれる場合のみ表示） */}
+            {/* ハウスメーカー・マンション・物件の長所ボタンを横並びで表示 */}
             {(() => {
               const HOUSE_MAKERS = [
                 '一条工務店', '一条',
@@ -7461,105 +7461,98 @@ HP：https://ifoo-oita.com/
                 'ハウスメーカー',
               ];
               const plainComment = savedComments.replace(/<[^>]+>/g, '');
-              const detected = HOUSE_MAKERS.some((m) => plainComment.includes(m));
-              if (!detected) return null;
-              return (
-                <Box sx={{ mb: 1.5 }}>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<span style={{ fontSize: '1.1em' }}>🏠</span>}
-                    onClick={() => setHouseMakerModalOpen(true)}
-                    sx={{
-                      background: 'linear-gradient(135deg, #1a237e 0%, #283593 100%)',
-                      color: 'white',
-                      fontWeight: 700,
-                      fontSize: '0.82rem',
-                      px: 2,
-                      py: 0.7,
-                      borderRadius: 2,
-                      boxShadow: '0 2px 8px rgba(26,35,126,0.3)',
-                      '&:hover': {
-                        background: 'linear-gradient(135deg, #283593 0%, #3949ab 100%)',
-                        boxShadow: '0 4px 12px rgba(26,35,126,0.4)',
-                      },
-                    }}
-                  >
-                    ハウスメーカー
-                  </Button>
-                </Box>
-              );
-            })()}
-            {/* マンションボタン（種別がマンションかつ物件住所にマンション名が含まれる場合のみ表示） */}
-            {(() => {
-              // propInfo.propertyType は normalizePropertyType 済み（'apartment'）
-              // seller.propertyType が未正規化の場合も考慮して直接チェック
+              const showHouseMaker = HOUSE_MAKERS.some((m) => plainComment.includes(m));
+
               const rawType = propInfo.propertyType || seller?.propertyType || '';
               const isApartment = rawType === 'apartment' || rawType === 'マ' || rawType === 'マンション';
-              if (!isApartment) return null;
-              // propInfo.address と seller.propertyAddress の両方を結合して検索
-              const address = (propInfo.address || '') + ' ' + (seller?.propertyAddress || '');
-              const detected = MANSION_BRANDS.some((m) => address.includes(m));
-              if (!detected) return null;
+              const mansionAddress = (propInfo.address || '') + ' ' + (seller?.propertyAddress || '');
+              const showMansion = isApartment && MANSION_BRANDS.some((m) => mansionAddress.includes(m));
+
+              const showPortalMerits = !!(propInfo.address || seller?.propertyAddress) && !!seller?.id;
+
+              if (!showHouseMaker && !showMansion && !showPortalMerits) return null;
+
               return (
-                <Box sx={{ mb: 1.5 }}>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<span style={{ fontSize: '1.1em' }}>🏢</span>}
-                    onClick={() => setMansionModalOpen(true)}
-                    sx={{
-                      background: 'linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%)',
-                      color: 'white',
-                      fontWeight: 700,
-                      fontSize: '0.82rem',
-                      px: 2,
-                      py: 0.7,
-                      borderRadius: 2,
-                      boxShadow: '0 2px 8px rgba(27,94,32,0.3)',
-                      '&:hover': {
-                        background: 'linear-gradient(135deg, #2e7d32 0%, #388e3c 100%)',
-                        boxShadow: '0 4px 12px rgba(27,94,32,0.4)',
-                      },
-                    }}
-                  >
-                    マンション
-                  </Button>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
+                  {showHouseMaker && (
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<span style={{ fontSize: '1.1em' }}>🏠</span>}
+                      onClick={() => setHouseMakerModalOpen(true)}
+                      sx={{
+                        background: 'linear-gradient(135deg, #1a237e 0%, #283593 100%)',
+                        color: 'white',
+                        fontWeight: 700,
+                        fontSize: '0.82rem',
+                        px: 2,
+                        py: 0.7,
+                        borderRadius: 2,
+                        boxShadow: '0 2px 8px rgba(26,35,126,0.3)',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #283593 0%, #3949ab 100%)',
+                          boxShadow: '0 4px 12px rgba(26,35,126,0.4)',
+                        },
+                      }}
+                    >
+                      ハウスメーカー
+                    </Button>
+                  )}
+                  {showMansion && (
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<span style={{ fontSize: '1.1em' }}>🏢</span>}
+                      onClick={() => setMansionModalOpen(true)}
+                      sx={{
+                        background: 'linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%)',
+                        color: 'white',
+                        fontWeight: 700,
+                        fontSize: '0.82rem',
+                        px: 2,
+                        py: 0.7,
+                        borderRadius: 2,
+                        boxShadow: '0 2px 8px rgba(27,94,32,0.3)',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #2e7d32 0%, #388e3c 100%)',
+                          boxShadow: '0 4px 12px rgba(27,94,32,0.4)',
+                        },
+                      }}
+                    >
+                      マンション
+                    </Button>
+                  )}
+                  {showPortalMerits && (
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<span style={{ fontSize: '1.1em' }}>🏡</span>}
+                      onClick={() => {
+                        const newWin = window.open(`/sellers/${seller!.id}/portal-merits`, '_blank');
+                        if (newWin) newWin.blur();
+                        window.focus();
+                      }}
+                      sx={{
+                        background: 'linear-gradient(135deg, #bf360c 0%, #e64a19 100%)',
+                        color: 'white',
+                        fontWeight: 700,
+                        fontSize: '0.82rem',
+                        px: 2,
+                        py: 0.7,
+                        borderRadius: 2,
+                        boxShadow: '0 2px 8px rgba(191,54,12,0.3)',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #e64a19 0%, #ff5722 100%)',
+                          boxShadow: '0 4px 12px rgba(191,54,12,0.4)',
+                        },
+                      }}
+                    >
+                      物件の長所
+                    </Button>
+                  )}
                 </Box>
               );
             })()}
-            {/* ポータルサイト掲載メリットボタン（物件住所がある場合に常に表示） */}
-            {(propInfo.address || seller?.propertyAddress) && seller?.id && (
-              <Box sx={{ mb: 1.5 }}>
-                <Button
-                  variant="contained"
-                  size="small"
-                  startIcon={<span style={{ fontSize: '1.1em' }}>🏡</span>}
-                  onClick={() => {
-                    // noopener を外して newWin を取得し、blur() で元タブに留まる
-                    const newWin = window.open(`/sellers/${seller.id}/portal-merits`, '_blank');
-                    if (newWin) newWin.blur();
-                    window.focus();
-                  }}
-                  sx={{
-                    background: 'linear-gradient(135deg, #bf360c 0%, #e64a19 100%)',
-                    color: 'white',
-                    fontWeight: 700,
-                    fontSize: '0.82rem',
-                    px: 2,
-                    py: 0.7,
-                    borderRadius: 2,
-                    boxShadow: '0 2px 8px rgba(191,54,12,0.3)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #e64a19 0%, #ff5722 100%)',
-                      boxShadow: '0 4px 12px rgba(191,54,12,0.4)',
-                    },
-                  }}
-                >
-                  物件の長所
-                </Button>
-              </Box>
-            )}
             <CommentHighlightsPanel
               commentHtml={savedComments}
               quickButtonIds={[
