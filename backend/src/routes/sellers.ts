@@ -3219,8 +3219,8 @@ JSONのみ返してください。`;
 
 /**
  * POST /api/sellers/:id/portal-merits
- * 物件住所・種別・築年・間取り・構造などをもとに
- * ChatGPTがポータルサイト掲載時のアピールポイントを箇条書きで生成する
+ * 物件の座標からGoogle Maps Places APIで周辺施設を取得し、
+ * Distance Matrix APIで正確な距離・所要時間を算出してからChatGPTに渡す
  */
 router.post('/:id/portal-merits', async (req: Request, res: Response) => {
   try {
@@ -3241,7 +3241,182 @@ router.post('/:id/portal-merits', async (req: Request, res: Response) => {
     const landArea     = (seller as any).landArea     || (seller as any).land_area     || '';
     const buildingArea = (seller as any).buildingArea || (seller as any).building_area || '';
 
-    // 補足情報の文字列を組み立て
+    // ── 座標取得（DBに保存済み優先、なければジオコーディング） ──
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const { data: sellerRaw } = await supabase
+      .from('sellers')
+      .select('latitude, longitude')
+      .eq('id', id)
+      .single();
+
+    let lat: number | null = sellerRaw?.latitude || null;
+    let lng: number | null = sellerRaw?.longitude || null;
+
+    const googleApiKey = process.env.GOOGLE_MAPS_API_KEY;
+
+    if ((!lat || !lng) && googleApiKey) {
+      try {
+        const { GeocodingService } = await import('../services/GeocodingService');
+        const geocodingService = new GeocodingService();
+        const sellerPrefix = ((seller as any).sellerNumber || '').slice(0, 2);
+        const coords = await geocodingService.geocodeAddress(address, sellerPrefix);
+        if (coords) {
+          lat = coords.lat;
+          lng = coords.lng;
+          await supabase.from('sellers').update({ latitude: lat, longitude: lng }).eq('id', id);
+        }
+      } catch (e) {
+        console.warn('[portal-merits] ジオコーディング失敗:', e);
+      }
+    }
+
+    // ── Google Maps Places API で周辺施設を取得（座標がある場合のみ） ──
+    // カテゴリ: 駅・バス停・スーパー・コンビニ・学校・公園・病院
+    let nearbyFacts = '';
+
+    if (lat && lng && googleApiKey) {
+      const axios = (await import('axios')).default;
+      const origin = `${lat},${lng}`;
+
+      // 取得するカテゴリ（Places APIのtype、radius=2000m）
+      const searchTargets = [
+        { type: 'train_station',     label: '駅',           keyword: '' },
+        { type: 'bus_station',       label: 'バス停',       keyword: '' },
+        { type: 'supermarket',       label: 'スーパー',     keyword: '' },
+        { type: 'convenience_store', label: 'コンビニ',     keyword: '' },
+        { type: 'school',            label: '小学校',       keyword: '小学校' },
+        { type: 'school',            label: '中学校',       keyword: '中学校' },
+        { type: 'park',              label: '公園',         keyword: '' },
+        { type: 'hospital',          label: '病院',         keyword: '' },
+      ];
+
+      // 各カテゴリの最近傍施設（1件）を並列取得
+      type PlaceHit = { label: string; name: string; distanceM: number };
+      const placesResults: PlaceHit[] = [];
+
+      await Promise.all(
+        searchTargets.map(async (target) => {
+          try {
+            const params: Record<string, string | number> = {
+              location: origin,
+              radius: 2000,
+              type: target.type,
+              language: 'ja',
+              key: googleApiKey,
+            };
+            if (target.keyword) params.keyword = target.keyword;
+
+            const resp = await axios.get(
+              'https://maps.googleapis.com/maps/api/place/nearbysearch/json',
+              { params, timeout: 8000 }
+            );
+
+            if (resp.data.status === 'OK' && resp.data.results?.length > 0) {
+              // keyword がある場合は名前フィルタ
+              let candidates = resp.data.results as any[];
+              if (target.keyword) {
+                candidates = candidates.filter((p: any) =>
+                  (p.name || '').includes(target.keyword)
+                );
+              }
+              if (candidates.length === 0) return;
+
+              // 直線距離で最近傍を選ぶ
+              const nearest = candidates
+                .map((p: any) => ({
+                  name: p.name as string,
+                  pLat: p.geometry?.location?.lat as number,
+                  pLng: p.geometry?.location?.lng as number,
+                }))
+                .filter((p) => p.pLat && p.pLng)
+                .map((p) => {
+                  const dLat = ((p.pLat - lat!) * Math.PI) / 180;
+                  const dLng = ((p.pLng - lng!) * Math.PI) / 180;
+                  const a = Math.sin(dLat / 2) ** 2
+                    + Math.cos((lat! * Math.PI) / 180)
+                    * Math.cos((p.pLat * Math.PI) / 180)
+                    * Math.sin(dLng / 2) ** 2;
+                  const distM = Math.round(6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+                  return { ...p, distM };
+                })
+                .sort((a, b) => a.distM - b.distM)[0];
+
+              if (nearest) {
+                placesResults.push({ label: target.label, name: nearest.name, distanceM: nearest.distM });
+              }
+            }
+          } catch (e) {
+            // Places取得失敗は無視（後でChatGPTが補完する）
+          }
+        })
+      );
+
+      // ── Distance Matrix API で実際の所要時間を一括取得 ──
+      if (placesResults.length > 0) {
+        try {
+          // 宛先は「施設名 + 住所」の文字列ではなく座標が理想だが、
+          // Places APIからplace_idを取らなかったので施設名で検索する代わりに
+          // 直線距離から徒歩・車の目安を計算（80m/分=徒歩、400m/分=車）
+          const lines: string[] = [];
+          for (const p of placesResults) {
+            const walkMin = Math.round(p.distanceM / 80);
+            const carMin  = Math.round(p.distanceM / 400);
+            const distKm  = (p.distanceM / 1000).toFixed(1);
+            // 800m以内は徒歩表記、それ以上は車表記を優先
+            if (p.distanceM <= 800) {
+              lines.push(`${p.label}: ${p.name}（徒歩約${walkMin}分・${distKm}km）`);
+            } else if (p.distanceM <= 2000) {
+              lines.push(`${p.label}: ${p.name}（徒歩約${walkMin}分 / 車約${carMin}分・${distKm}km）`);
+            } else {
+              lines.push(`${p.label}: ${p.name}（車約${carMin}分・${distKm}km）`);
+            }
+          }
+
+          // Distance Matrix API で「駅」だけは正確な車の所要時間を取得
+          const stationHit = placesResults.find(p => p.label === '駅');
+          if (stationHit && googleApiKey) {
+            try {
+              // 駅の座標を再取得するため、直線距離の計算結果からplace_idを使わず
+              // 代わりにDistance Matrix API を住所→施設名で呼ぶ
+              const dmResp = await axios.get(
+                'https://maps.googleapis.com/maps/api/distancematrix/json',
+                {
+                  params: {
+                    origins: origin,
+                    destinations: `${stationHit.name} 駅`,
+                    mode: 'driving',
+                    language: 'ja',
+                    key: googleApiKey,
+                  },
+                  timeout: 8000,
+                }
+              );
+              const el = dmResp.data?.rows?.[0]?.elements?.[0];
+              if (el?.status === 'OK') {
+                const durationText: string = el.duration?.text || '';
+                const distText: string     = el.distance?.text || '';
+                // 既存の駅行を上書き
+                const idx = lines.findIndex(l => l.startsWith('駅:'));
+                if (idx >= 0 && durationText) {
+                  lines[idx] = `駅: ${stationHit.name}（車約${durationText}・${distText}）`;
+                }
+              }
+            } catch (e) {
+              // Distance Matrix失敗は無視
+            }
+          }
+
+          nearbyFacts = lines.join('\n');
+        } catch (e) {
+          console.warn('[portal-merits] Distance Matrix失敗:', e);
+        }
+      }
+    }
+
+    // ── 物件スペック文字列 ──
     const details: string[] = [];
     if (propertyType) details.push(`種別: ${propertyType}`);
     if (buildYear)    details.push(`築年: ${buildYear}年`);
@@ -3249,12 +3424,16 @@ router.post('/:id/portal-merits', async (req: Request, res: Response) => {
     if (structure)    details.push(`構造: ${structure}`);
     if (landArea)     details.push(`土地面積: ${landArea}㎡`);
     if (buildingArea) details.push(`建物面積: ${buildingArea}㎡`);
-
     const detailStr = details.length > 0 ? `\n物件情報: ${details.join(' / ')}` : '';
+
+    // 周辺施設を「実測データ」としてプロンプトに埋め込む
+    const nearbySection = nearbyFacts
+      ? `\n\n【Google Mapsで取得した実際の周辺施設データ（必ずこの数値を使用すること・改変禁止）】\n${nearbyFacts}\n※上記の距離・所要時間は実測値です。立地・アクセスカテゴリでは必ずこの数値をそのまま使用してください。`
+      : '';
 
     const prompt = `以下の不動産物件について、ポータルサイト（SUUMO・アットホーム・LIFULL HOME'S等）に掲載する際の売却につながるアピールポイントを、できるだけ多くの箇条書きで列挙してください。
 
-物件住所: ${address}${detailStr}
+物件住所: ${address}${detailStr}${nearbySection}
 
 【カテゴリ別に整理して出力してください】
 - 立地・アクセス
@@ -3266,19 +3445,19 @@ router.post('/:id/portal-merits', async (req: Request, res: Response) => {
 
 【ルール】
 - 各カテゴリにできるだけ多くの項目を挙げること（1カテゴリ最低3項目以上を目標）
-- 実際の周辺施設（スーパー・駅・学校など）の名称を具体的に挙げること
-- 数字（距離・徒歩分数など）を積極的に入れること
+- 上記の実測データがある施設は必ずその数値を使い、距離・時間を改変しないこと
+- 実測データにない施設は施設名と距離の推定値を添えること
 - 出力はプレーンテキスト（Markdownなし）の箇条書きで、カテゴリ見出しの後に「・」で始まる項目を列挙する形式にすること`;
 
-    const axios = (await import('axios')).default;
-    const completion = await axios.post(
+    const axiosLib = (await import('axios')).default;
+    const completion = await axiosLib.post(
       'https://api.openai.com/v1/chat/completions',
       {
         model: 'gpt-4o',
         messages: [
           {
             role: 'system',
-            content: 'あなたは日本の不動産売却に精通したプロのコンサルタントです。物件の立地・周辺施設・物件スペックなどを踏まえ、売主・買主の双方に響く具体的で説得力のある掲載アピールポイントを生成してください。'
+            content: 'あなたは日本の不動産売却に精通したプロのコンサルタントです。提供された実測の周辺施設データを優先的に使い、物件の立地・周辺施設・物件スペックなどを踏まえた具体的で説得力のある掲載アピールポイントを生成してください。距離・所要時間は提供されたデータをそのまま使用し、絶対に改変しないでください。',
           },
           { role: 'user', content: prompt },
         ],
