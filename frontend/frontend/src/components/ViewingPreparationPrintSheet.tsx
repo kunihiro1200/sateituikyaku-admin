@@ -161,8 +161,15 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
           fontSize: '8pt',
           color: '#000',
           boxSizing: 'border-box',
+          position: 'relative',
         }}
       >
+        {/* 10万円キャンペーンチェックボックス（1500万超のみ） */}
+        {(Number(property.price || property.listing_price) || 0) > 15000000 && (
+          <Box sx={{ position: 'absolute', top: '8mm', right: '10mm', fontSize: '16pt' }}>
+            ☐
+          </Box>
+        )}
         {/* ヘッダー（白黒） */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, pb: 0.5, borderBottom: '2px solid #000' }}>
           <Typography sx={{ fontSize: '11pt', fontWeight: 'bold', color: '#000' }}>
