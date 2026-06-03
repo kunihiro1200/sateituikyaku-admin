@@ -15,7 +15,7 @@ import sys
 import logging
 import threading
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timezone
 
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -320,7 +320,7 @@ def trigger_ieul_transfer(body: str):
     threading.Thread(target=_call, daemon=True).start()
 
 
-def check_new_emails(service, notified_ids):
+def check_new_emails(service, notified_ids, start_timestamp_ms=None):
     """新着メールをチェックしてイエウールならDB転記する"""
     try:
         results = service.users().messages().list(
@@ -336,6 +336,13 @@ def check_new_emails(service, notified_ids):
 
             if msg_id in notified_ids:
                 continue
+
+            # 起動時刻より前のメールはスキップ（再起動時の二重転記防止）
+            if start_timestamp_ms is not None:
+                msg_ts = int(msg.get("internalDate", 0))
+                if msg_ts < start_timestamp_ms:
+                    notified_ids.add(msg_id)
+                    continue
 
             msg_detail = service.users().messages().get(
                 userId="me",
@@ -438,30 +445,19 @@ def main():
         logging.error(f"起動失敗: {e}")
         sys.exit(1)
     logging.info("接続成功！監視を開始します。\n")
+    # 起動時刻を記録（これより前のメールはcheck_new_emails内でスキップする）
+    start_timestamp_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    logging.info(f"起動時刻タイムスタンプ: {start_timestamp_ms}（これより前のメールは処理しない）")
 
+    # 過去の通知済みIDを読み込む（DB登録済みメールの二重転記防止）
     notified_ids = load_notified_ids()
-
-    # 起動時点の既存メールをスキップ登録
-    logging.info("起動時チェック：現時点の全メールをスキップ登録中...")
-    try:
-        for query in ["is:unread", "is:read"]:
-            results = service.users().messages().list(
-                userId="me",
-                q=query,
-                maxResults=100
-            ).execute()
-            for msg in results.get("messages", []):
-                notified_ids.add(msg["id"])
-        save_notified_ids(notified_ids)
-        logging.info(f"スキップ登録完了（合計 {len(notified_ids)} 件）。これ以降に届くメールを監視します。")
-    except Exception as e:
-        logging.info(f"スキップ処理エラー: {e}")
+    logging.info(f"通知済みID読み込み: {len(notified_ids)}件")
 
     logging.info("新着メールの監視を開始します...\n")
 
     while True:
         try:
-            notified_ids = check_new_emails(service, notified_ids)
+            notified_ids = check_new_emails(service, notified_ids, start_timestamp_ms)
             time.sleep(CHECK_INTERVAL)
         except KeyboardInterrupt:
             logging.info("\n停止しました。")
