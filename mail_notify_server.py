@@ -225,6 +225,17 @@ def decode_body(payload):
     if collected:
         # 全パートのtext/plainを結合（返信メールで本文と引用が別パートに分かれる場合に対応）
         plain_text = "\n".join(collected)
+
+        # text/plainが空白・改行のみの場合はtext/htmlにフォールバック
+        # （Gmailスレッドメールでtext/plainに\r\nだけ入っているケースに対応）
+        if not plain_text.strip():
+            logging.info("  [本文取得] text/plainが空白のみ→text/htmlにフォールバック")
+            html_collected = []
+            extract_text_html(payload, html_collected)
+            if html_collected:
+                return "\n".join(html_collected)
+            return ""
+
         # text/htmlも取得して、コメント部分（HOME4Uログアウト行の前）がtext/htmlにのみある場合に備える
         # text/plainにHOME4Uログアウトが含まれていればそのまま使用
         if 'HOME4Uログアウト' in plain_text:
