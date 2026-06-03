@@ -691,14 +691,14 @@ export default function PropertyReportPage() {
               <Button
                 variant="outlined"
                 size="small"
-                onClick={() =>
+                onClick={() => {
                   navigate(`/property-listings/${propertyNumber}/tsubotanka`, {
                     state: {
                       landAreaSqm: reportData.land_area ?? null,
                       price: reportData.price ?? null,
                     },
-                  })
-                }
+                  });
+                }}
                 sx={{
                   borderColor: '#2e7d32',
                   color: '#2e7d32',
