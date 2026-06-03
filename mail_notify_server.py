@@ -201,10 +201,18 @@ def decode_body(payload):
             data = part.get("body", {}).get("data", "")
             if data:
                 html = base64.urlsafe_b64decode(data).decode("utf-8", errors="ignore")
-                # HTMLタグを除去してプレーンテキスト化
-                text = re.sub(r'<[^>]+>', '', html)
+                # <br>, <br/>, <p>, <div>, <tr> タグを改行に変換（改行構造を保持するため）
+                text = re.sub(r'<br\s*/?>', '\n', html, flags=re.IGNORECASE)
+                text = re.sub(r'</?p[^>]*>', '\n', text, flags=re.IGNORECASE)
+                text = re.sub(r'</?div[^>]*>', '\n', text, flags=re.IGNORECASE)
+                text = re.sub(r'</?tr[^>]*>', '\n', text, flags=re.IGNORECASE)
+                text = re.sub(r'<td[^>]*>', ' ', text, flags=re.IGNORECASE)
+                # 残りのHTMLタグを除去
+                text = re.sub(r'<[^>]+>', '', text)
                 # HTMLエンティティを変換
-                text = text.replace('&nbsp;', ' ').replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+                text = text.replace('&nbsp;', ' ').replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&').replace('&#39;', "'").replace('&quot;', '"')
+                # 連続する空行を2行以内に圧縮
+                text = re.sub(r'\n{3,}', '\n\n', text)
                 collected.append(text)
         elif mime.startswith("multipart/"):
             for sub in part.get("parts", []):
@@ -216,14 +224,39 @@ def decode_body(payload):
 
     if collected:
         # 全パートのtext/plainを結合（返信メールで本文と引用が別パートに分かれる場合に対応）
-        return "\n".join(collected)
+        plain_text = "\n".join(collected)
+        # text/htmlも取得して、コメント部分（HOME4Uログアウト行の前）がtext/htmlにのみある場合に備える
+        # text/plainにHOME4Uログアウトが含まれていればそのまま使用
+        if 'HOME4Uログアウト' in plain_text:
+            return plain_text
+        # text/plainにHOME4Uログアウトが含まれない場合はtext/htmlと結合
+        html_collected = []
+        extract_text_html(payload, html_collected)
+        if html_collected:
+            html_text = "\n".join(html_collected)
+            if 'HOME4Uログアウト' in html_text:
+                logging.info("  [本文取得] text/plainにHOME4Uログアウトなし→text/htmlと結合")
+                # コメント（text/plain先頭）+ HOME4U本文（text/html）の形で結合
+                return plain_text + "\n" + html_text
+        return plain_text
 
     # text/plainが空の場合はtext/htmlからフォールバック取得
     html_collected = []
     extract_text_html(payload, html_collected)
     if html_collected:
         logging.info("  [本文取得] text/plainが空のためtext/htmlから取得")
-        return "\n".join(html_collected)
+        html_text = "\n".join(html_collected)
+        # HOME4Uログアウト周辺をデバッグ出力
+        if 'HOME4Uログアウト' in html_text:
+            lines = html_text.split('\n')
+            for idx, line in enumerate(lines):
+                if 'HOME4Uログアウト' in line:
+                    surrounding = lines[max(0, idx-1):idx+8]
+                    logging.info(f"  [HTML本文] HOME4Uログアウト周辺: {surrounding}")
+                    break
+        else:
+            logging.info(f"  [HTML本文] HOME4Uログアウトが見つからない。先頭200文字: {repr(html_text[:200])}")
+        return html_text
 
     return ""
 
