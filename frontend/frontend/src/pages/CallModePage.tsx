@@ -1742,6 +1742,12 @@ const CallModePage = () => {
             pageDataCache.set(sellerDetailCacheKey(id!), freshData, 30 * 1000);
             setSeller(freshData);
             setUnreachableStatus(freshData.unreachableStatus || null);
+            // 保存処理中でない場合のみ saved* を更新（保存直後のバックグラウンド取得でボタン色が狂わないようにする）
+            if (!savingLockRef.current) {
+              setSavedUnreachableStatus(freshData.unreachableStatus || null);
+              setEditedFirstCallPerson(freshData.firstCallPerson || '');
+              setSavedFirstCallPerson(freshData.firstCallPerson || '');
+            }
             // コメントが未保存（dirty）の場合は上書きしない
             if (editableCommentsRef.current === savedCommentsRef.current) {
               setEditableComments(freshData.comments || '');
@@ -7586,7 +7592,7 @@ HP：https://ifoo-oita.com/
                       },
                     }}
                   >
-                    手元残計算
+                    計算
                   </Button>
                 </Box>
               );
