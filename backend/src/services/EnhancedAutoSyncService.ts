@@ -1440,36 +1440,11 @@ export class EnhancedAutoSyncService {
       }
     }
 
-    // 訪問関連フィールドを追加
-    if (visitAcquisitionDate) {
-      updateData.visit_acquisition_date = this.formatVisitDate(visitAcquisitionDate);
-    }
-    if (visitDate) {
-      // 訪問時間が空欄の場合は visit_date を更新しない（DBの既存時刻を保持）
-      // 訪問時間がある場合のみ visit_date を更新する
-      // 理由: スプシの「訪問時間」列はDBに同期されていないため、
-      //       空欄のまま同期が走ると毎回 00:00:00 で上書きされてしまう
-      const hasVisitTime = visitTime && String(visitTime).trim() !== '';
-      if (hasVisitTime) {
-        updateData.visit_date = this.combineVisitDateAndTime(visitDate, visitTime);
-      }
-      // visitTime が空欄の場合は visit_date を updateData に含めない（DBの既存値を保持）
-    }
-    if (visitTime) {
-      updateData.visit_time = this.formatVisitTime(visitTime);
-    }
-    if (visitValuationAcquirer) {
-      updateData.visit_valuation_acquirer = String(visitValuationAcquirer);
-    }
-    // visit_assigneeの更新ロジック
-    // - 値がある場合のみ更新（visit_valuation_acquirer と同じ方式）
-    // - 空文字・undefinedの場合はDBの既存値を保持（スプシ空欄でDBを上書きしない）
-    // 理由: カレンダー送信後にスプシへの書き戻しが完了する前にcron同期が走ると
-    //       スプシの空欄でDBの値が消えてしまう問題を防ぐ（2026年6月修正）
-    if (visitAssignee !== undefined && visitAssignee !== null && visitAssignee !== '') {
-      updateData.visit_assignee = String(visitAssignee);
-    }
-    // visitAssignee が空・undefined の場合は updateData に含めない（DBの既存値を保持）
+    // 訪問関連フィールド（visit_acquisition_date, visit_date, visit_time,
+    // visit_valuation_acquirer, visit_assignee）はスプシ→DB同期の対象外。
+    // これらは管理画面（通話モードページ）からのみ入力するため、
+    // スプシからの同期で上書きすると訪問予約データが消える問題が発生する。
+    // （2026年6月: スプシ→DB同期から完全除外）
 
     // コミュニケーションフィールドを追加
     const phoneContactPerson = row['電話担当（任意）'];
@@ -1775,34 +1750,11 @@ export class EnhancedAutoSyncService {
       }
     }
 
-    // 訪問関連フィールドを追加
-    if (visitAcquisitionDate) {
-      encryptedData.visit_acquisition_date = this.formatVisitDate(visitAcquisitionDate);
-    }
-    if (visitDate) {
-      // 訪問時間が空欄の場合は visit_date を更新しない（DBの既存時刻を保持）
-      // 訪問時間がある場合のみ visit_date を更新する
-      const hasVisitTime = visitTime && String(visitTime).trim() !== '';
-      if (hasVisitTime) {
-        encryptedData.visit_date = this.combineVisitDateAndTime(visitDate, visitTime);
-      }
-      // visitTime が空欄の場合は visit_date を encryptedData に含めない（DBの既存値を保持）
-    }
-    if (visitTime) {
-      encryptedData.visit_time = this.formatVisitTime(visitTime);
-    }
-    if (visitValuationAcquirer) {
-      encryptedData.visit_valuation_acquirer = String(visitValuationAcquirer);
-    }
-    // visit_assigneeの更新ロジック
-    // - 値がある場合のみ更新（visit_valuation_acquirer と同じ方式）
-    // - 空文字・undefinedの場合はDBの既存値を保持（スプシ空欄でDBを上書きしない）
-    // 理由: カレンダー送信後にスプシへの書き戻しが完了する前にcron同期が走ると
-    //       スプシの空欄でDBの値が消えてしまう問題を防ぐ（2026年6月修正）
-    if (visitAssignee !== undefined && visitAssignee !== null && visitAssignee !== '') {
-      encryptedData.visit_assignee = String(visitAssignee);
-    }
-    // visitAssignee が空・undefined の場合は encryptedData に含めない（DBの既存値を保持）
+    // 訪問関連フィールド（visit_acquisition_date, visit_date, visit_time,
+    // visit_valuation_acquirer, visit_assignee）はスプシ→DB同期の対象外。
+    // これらは管理画面（通話モードページ）からのみ入力するため、
+    // スプシからの同期で上書きすると訪問予約データが消える問題が発生する。
+    // （2026年6月: スプシ→DB同期から完全除外）
 
     // コミュニケーションフィールドを追加
     const phoneContactPerson = row['電話担当（任意）'];
