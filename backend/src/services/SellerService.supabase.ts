@@ -2431,10 +2431,12 @@ export class SellerService extends BaseRepository {
       if (assignee) {
         // イニシャルまたは名前から従業員情報を取得
         const employee = employeeMap.get(assignee);
-        const employeeKey = assignee; // イニシャルをキーとして使用
         const employeeName = employee?.name || assignee;
         const employeeInitials = employee?.initials || assignee;
         const employeeId = employee?.id || assignee;
+        // 同一従業員が異なる形式（イニシャル・名前・メール）で登録されていても
+        // employeeId をキーにすることで重複集計を防ぐ
+        const employeeKey = employeeId;
 
         if (!statsByEmployee[employeeKey]) {
           statsByEmployee[employeeKey] = {
