@@ -964,10 +964,11 @@ app.get('/api/test/tateuri-price-check-small', async (req, res) => {
 });
 // Sidebar counts endpoint (authentication not required) - must be registered before other /api/sellers routes
 app.use('/api/floor-plan-compare', floorPlanCompareRoutes); // 間取り図比較（認証不要・公開）★sellerRoutesより前に登録
-app.use('/api/sellers', sellerRoutes);
+// 認証不要の転記ルートは sellerRoutes（router.use(authenticate)を含む）より前に登録する
 app.use('/api/sellers', ieulTransferRoutes);
 app.use('/api/sellers', home4uTransferRoutes);
 app.use('/api/sellers', athomeTransferRoutes);
+app.use('/api/sellers', sellerRoutes);
 app.use('/api/sellers', sellersManagementRoutes);
 app.use('/properties', propertyRoutes);
 app.use('/api/sellers', valuationRoutes);
