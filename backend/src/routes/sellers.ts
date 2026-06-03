@@ -259,7 +259,25 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
     // ============================================================
     // 1. メール本文解析（GASのtransferIeuru相当）
     // ============================================================
-    const cleanedBody = mailBody.replace(/\r?\n|\r/g, ' ');
+    // Gmailスレッドヘッダー除去:
+    // 「イエウール運営事務局\r\n18:26...\r\nTo 自分\r\n株式会社威風本店\r\n...」のような
+    // Gmailが付加するスレッドヘッダーが本文先頭に入る場合がある。
+    // 「=====」区切り線か「■ 査定依頼情報」か「依頼日時」の手前までを捨てる。
+    const bodyStartPatterns = [
+      /={10,}/,           // ====== 区切り線
+      /■\s*査定依頼情報/, // ■ 査定依頼情報
+      /依頼日時/,          // 依頼日時
+    ];
+    let trimmedBody = mailBody;
+    for (const pat of bodyStartPatterns) {
+      const m = trimmedBody.search(pat);
+      if (m > 0) {
+        trimmedBody = trimmedBody.slice(m);
+        console.log(`[ieul-transfer] スレッドヘッダーを除去しました（先頭${m}文字をスキップ）`);
+        break;
+      }
+    }
+    const cleanedBody = trimmedBody.replace(/\r?\n|\r/g, ' ');
 
     const extractData = (text: string, from: string, to: string): string => {
       const fromIndex = text.indexOf(from);
