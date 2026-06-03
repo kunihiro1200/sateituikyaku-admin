@@ -588,21 +588,210 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
   try {
     console.log('[home4u-transfer] HOME4Uメール本文解析開始');
 
-    // 改行がない、または改行が少ない場合（メール監視サーバーから送信された場合）の前処理
-    // ■の前に改行を挿入して、extractData2が正しく動作するようにする
-    // 条件: ■が含まれているのに改行が3つ未満の場合（改行ありでも本文が1行に詰まっているケース対応）
+    // ============================================================
+    // フォーマット判定・正規化
+    // HOME4Uのメールには2種類のフォーマットが存在する:
+    //
+    // 【旧フォーマット】■ラベル形式（2026年6月以前の標準フォーマット）
+    //   ■お名前　　　　　　　: 寺師　忠博
+    //   ■電話番号　　　　　　: 09013411489
+    //
+    // 【新フォーマット】スペース区切り形式（2026年6月以降に確認された新フォーマット）
+    //   査定ナンバー SA2606-XXXXXXX
+    //   姓 寺師 名 忠博
+    //   電話番号 09013411489
+    //   物件都道府県 福岡県 物件市区町村 福岡市東区 ...
+    //
+    // 新フォーマットは「査定ナンバー」「姓 X 名 Y」のパターンで判定し、
+    // ■形式に正規化してから既存のパース処理に渡す。
+    // ============================================================
     let preprocessedBody = mailBody;
-    const hasEnoughNewlines = (mailBody.match(/\n/g) || []).length >= 10;
-    if (!hasEnoughNewlines) {
-      // ■の前に改行を挿入
-      preprocessedBody = mailBody.replace(/■/g, '\n■');
-      // 「HOME4Uログアウト」の後にも改行を挿入
-      preprocessedBody = preprocessedBody.replace(/HOME4Uログアウト/g, 'HOME4Uログアウト\n');
-      // 「査定依頼 株式会社」の前にも改行を挿入
-      preprocessedBody = preprocessedBody.replace(/査定依頼 株式会社/g, '\n査定依頼 株式会社');
-      // 区切り線の前後に改行を挿入
-      preprocessedBody = preprocessedBody.replace(/-{10,}/g, '\n-----------------------------------------------------------------\n');
-      console.log('[home4u-transfer] 改行不足テキストを前処理しました');
+
+    // 新フォーマット判定：「査定ナンバー」かつ「姓 」パターンが含まれる
+    const isNewFormat = /査定ナンバー\s+SA\d+/.test(mailBody) && /姓\s+\S/.test(mailBody);
+
+    if (isNewFormat) {
+      // 新フォーマット → ■形式に変換する
+      console.log('[home4u-transfer] 新フォーマット（スペース区切り）を検出。■形式に正規化します');
+
+      // まず全体を行に分割（改行あり・なし両対応）
+      // 新フォーマットはスペース区切りで1行に詰まっている場合もある
+      // 「査定ナンバー」「査定依頼日付」「査定依頼時刻」などのキーワード前で改行を挿入
+      const newFormatKeywords = [
+        '査定ナンバー', '査定依頼日付', '査定依頼時刻',
+        '物件種別', '物件都道府県', '物件市区町村', '物件町字', '物件丁目番地号',
+        '物件建物名', '物件号室', '専有延べ床面積', '土地面積', '間取り',
+        '階数', '戸数', '築年', '現況', '賃料', '名義',
+        '物件の名義人本人',
+        '姓', 'カナ姓', '年齢', '電話番号2', 'メールアドレス',
+        '査定依頼者郵便番号', '査定依頼者住所', '査定依頼者建物名号室',
+        '不動産会社への要望', '査定の理由', 'ご希望', '売却の希望時期',
+        '査定方法', 'ご要望ご質問',
+      ];
+      // キーワードの前に改行を挿入（スペース区切りを行区切りに変換）
+      let normalized = mailBody;
+      for (const kw of newFormatKeywords) {
+        // キーワードが行頭にない場合、前に改行を挿入
+        normalized = normalized.replace(new RegExp('(?<!\\n)' + kw + '(?=\\s+\\S)', 'g'), '\n' + kw);
+      }
+      // 「電話番号 XXXXXXX」の前にも改行（「電話番号2」より先にマッチしないよう注意）
+      normalized = normalized.replace(/(?<!\n)電話番号(?!2)(?=\s+\d)/g, '\n電話番号');
+      // 「名 X」の前に改行（「物件の名義人本人」の後の「姓 X 名 Y」対応）
+      normalized = normalized.replace(/(?<=姓\s+\S+)\s+名\s+/g, '\n名 ');
+
+      // 行ごとに ■形式に変換
+      const lines = normalized.split('\n');
+      const convertedLines: string[] = [];
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) { convertedLines.push(''); continue; }
+
+        // 新フォーマットの各パターンを ■形式に変換
+        // 「査定ナンバー SA2606-XXXXXXX」→「■査定ナンバー　　　　　: SA2606-XXXXXXX」
+        const m_sateiNo = line.match(/^査定ナンバー\s+(.+)/);
+        if (m_sateiNo) { convertedLines.push('■査定ナンバー　　　　　: ' + m_sateiNo[1].trim()); continue; }
+
+        // 「査定依頼日付 2026/06/02 査定依頼時刻 18:02:37」→「■ご依頼日　　　　　　　: 2026/06/02 18:02:37」
+        const m_date = line.match(/^査定依頼日付\s+(\d{4}\/\d{2}\/\d{2})/);
+        if (m_date) {
+          const timeMatch = line.match(/査定依頼時刻\s+(\d{2}:\d{2}:\d{2})/);
+          const timeStr = timeMatch ? ' ' + timeMatch[1] : '';
+          convertedLines.push('■ご依頼日　　　　　　　: ' + m_date[1] + timeStr);
+          continue;
+        }
+
+        // 「物件種別 一戸建て」→「■物件種別　　　　　　　: 一戸建て」
+        const m_type = line.match(/^物件種別\s+(.+)/);
+        if (m_type) { convertedLines.push('■物件種別　　　　　　　: ' + m_type[1].trim()); continue; }
+
+        // 「物件都道府県 福岡県 物件市区町村 福岡市東区 物件町字 西戸崎 物件丁目番地号 2丁目4-17」
+        // → 「■物件所在地　　　　　　: 福岡県福岡市東区西戸崎2丁目4-17」に結合
+        const m_pref = line.match(/^物件都道府県\s+(\S+)/);
+        if (m_pref) {
+          const pref = m_pref[1];
+          const city = (line.match(/物件市区町村\s+(\S+)/) || [])[1] || '';
+          const town = (line.match(/物件町字\s+(\S+)/) || [])[1] || '';
+          const block = (line.match(/物件丁目番地号\s+(\S+)/) || [])[1] || '';
+          const bldg = (line.match(/物件建物名\s+(\S+)/) || [])[1] || '';
+          const roomNo = (line.match(/物件号室\s+(\S+)/) || [])[1] || '';
+          const addr = [pref, city, town, block, bldg !== '物件建物名' ? bldg : '', roomNo !== '物件号室' ? roomNo : ''].join('').replace(/\s+/g, '');
+          convertedLines.push('■物件所在地　　　　　　: ' + addr);
+          continue;
+        }
+        // 物件詳細キーワード単独行はスキップ（上のm_prefで既に処理済み）
+        if (/^(物件建物名|物件号室|物件市区町村|物件町字|物件丁目番地号)\s/.test(line)) continue;
+
+        // 「専有延べ床面積 198 平米」→「■建物（専有）面積　　　: 198 平米」
+        const m_bldgArea = line.match(/^専有延べ床面積\s+(\S+)/);
+        if (m_bldgArea) { convertedLines.push('■建物（専有）面積　　　: ' + m_bldgArea[1] + ' 平米'); continue; }
+
+        // 「土地面積 116 平米」→「■土地面積　　　　　　　: 116 平米」
+        const m_landArea = line.match(/^土地面積\s+(\S+)/);
+        if (m_landArea) { convertedLines.push('■土地面積　　　　　　　: ' + m_landArea[1] + ' 平米'); continue; }
+
+        // 「間取り 3LK/3LDK」→「■間取り　　　　　　　　: 3LK/3LDK」
+        const m_layout = line.match(/^間取り\s+(.+)/);
+        if (m_layout) { convertedLines.push('■間取り　　　　　　　　: ' + m_layout[1].trim()); continue; }
+
+        // 「築年 2005 年」→「■築年（西暦）　　　　　: 2005 年」
+        const m_year = line.match(/^築年\s+(\d+)/);
+        if (m_year) { convertedLines.push('■築年（西暦）　　　　　: ' + m_year[1] + ' 年'); continue; }
+
+        // 「現況 居住中」→「■現況　　　　　　　　　: 居住中」
+        const m_status = line.match(/^現況\s+(.+)/);
+        if (m_status) { convertedLines.push('■現況　　　　　　　　　: ' + m_status[1].trim()); continue; }
+
+        // 「名義 物件の名義人本人」→ スキップ（不要）
+        if (/^名義\s+/.test(line)) continue;
+
+        // 「姓 寺師」→ 次行の「名 忠博」と組み合わせて「■お名前　　　　　　　: 寺師 忠博」
+        const m_sei = line.match(/^姓\s+(\S+)/);
+        if (m_sei) {
+          // 同一行に「名 X」がある場合（スペースで並んでいる場合）
+          const m_mei_inline = line.match(/名\s+(\S+)/);
+          if (m_mei_inline) {
+            convertedLines.push('■お名前　　　　　　　: ' + m_sei[1] + '　' + m_mei_inline[1]);
+          } else {
+            // 次行で「名 X」を探す（行分割済み想定）
+            convertedLines.push('■お名前　　　　　　　: ' + m_sei[1] + '　__MEI_PLACEHOLDER__');
+          }
+          continue;
+        }
+        // 「名 忠博」→ 直前行のプレースホルダーを置換
+        const m_mei = line.match(/^名\s+(\S+)/);
+        if (m_mei) {
+          // 直前行にプレースホルダーがあれば置換
+          if (convertedLines.length > 0 && convertedLines[convertedLines.length - 1].includes('__MEI_PLACEHOLDER__')) {
+            convertedLines[convertedLines.length - 1] = convertedLines[convertedLines.length - 1].replace('__MEI_PLACEHOLDER__', m_mei[1]);
+          }
+          continue;
+        }
+
+        // 「カナ姓 テラシ カナ名 タダヒロ」→「■フリガナ　　　　　　　: テラシ タダヒロ」
+        const m_kana = line.match(/^カナ姓\s+(\S+)/);
+        if (m_kana) {
+          const kanaName = (line.match(/カナ名\s+(\S+)/) || [])[1] || '';
+          convertedLines.push('■フリガナ　　　　　　　: ' + m_kana[1] + (kanaName ? '　' + kanaName : '')); continue;
+        }
+
+        // 「年齢 58」→「■年齢　　　　　　　　　: 58 歳」
+        const m_age = line.match(/^年齢\s+(\d+)/);
+        if (m_age) { convertedLines.push('■年齢　　　　　　　　　: ' + m_age[1] + ' 歳'); continue; }
+
+        // 「電話番号 09013411489」→「■電話番号　　　　　　　: 09013411489」
+        const m_tel = line.match(/^電話番号(?!2)\s+(\d+)/);
+        if (m_tel) { convertedLines.push('■電話番号　　　　　　　: ' + m_tel[1]); continue; }
+
+        // 「電話番号2 XXXXXXX」→「■第二電話番号（任意）　: XXXXXXX」
+        const m_tel2 = line.match(/^電話番号2\s+(\S+)/);
+        if (m_tel2) { convertedLines.push('■第二電話番号（任意）　: ' + m_tel2[1]); continue; }
+
+        // 「メールアドレス xxx@xxx.com」→「■E-mail　　　　　　　　: xxx@xxx.com」
+        const m_email = line.match(/^メールアドレス\s+(\S+)/);
+        if (m_email) { convertedLines.push('■E-mail　　　　　　　　: ' + m_email[1]); continue; }
+
+        // 「査定依頼者住所 福岡県...」→「■ご住所　　　　　　　　: / 　　　　　　　　　　　　: 福岡県...」形式に変換
+        const m_addr = line.match(/^査定依頼者住所\s+(.+)/);
+        if (m_addr) {
+          convertedLines.push('■ご住所　　　　　　　　:');
+          convertedLines.push('　　　　　　　　　　　　: ' + m_addr[1].trim());
+          continue;
+        }
+
+        // 「査定の理由 住み替え／...」→「■査定の理由　　　　　　: 住み替え／...」
+        const m_reason = line.match(/^査定の理由\s+(.+)/);
+        if (m_reason) { convertedLines.push('■査定の理由　　　　　　: ' + m_reason[1].trim()); continue; }
+
+        // 「売却の希望時期 条件があえばいつでも良い」→「■売却の希望時期　　　　: 条件があえばいつでも良い」
+        const m_timing = line.match(/^売却の希望時期\s+(.+)/);
+        if (m_timing) { convertedLines.push('■売却の希望時期　　　　: ' + m_timing[1].trim()); continue; }
+
+        // 「査定方法 机上査定（簡易査定）」→「■査定方法　　　　　　　: 机上査定（簡易査定）」
+        const m_method = line.match(/^査定方法\s+(.+)/);
+        if (m_method) { convertedLines.push('■査定方法　　　　　　　: ' + m_method[1].trim()); continue; }
+
+        // その他の行はそのまま保持
+        convertedLines.push(rawLine);
+      }
+
+      preprocessedBody = convertedLines.join('\n');
+      console.log('[home4u-transfer] 新フォーマット正規化完了');
+
+    } else {
+      // 旧フォーマット（■形式）: 改行が少ない場合の前処理
+      const hasEnoughNewlines = (mailBody.match(/\n/g) || []).length >= 10;
+      if (!hasEnoughNewlines) {
+        // ■の前に改行を挿入
+        preprocessedBody = mailBody.replace(/■/g, '\n■');
+        // 「HOME4Uログアウト」の後にも改行を挿入
+        preprocessedBody = preprocessedBody.replace(/HOME4Uログアウト/g, 'HOME4Uログアウト\n');
+        // 「査定依頼 株式会社」の前にも改行を挿入
+        preprocessedBody = preprocessedBody.replace(/査定依頼 株式会社/g, '\n査定依頼 株式会社');
+        // 区切り線の前後に改行を挿入
+        preprocessedBody = preprocessedBody.replace(/-{10,}/g, '\n-----------------------------------------------------------------\n');
+        console.log('[home4u-transfer] 改行不足テキストを前処理しました');
+      }
     }
 
     // 改行で統一し、行頭の引用符（> ）のみ除去（行中の > は残す）
