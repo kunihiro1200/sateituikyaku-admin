@@ -643,22 +643,28 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
     //   査定依頼 株式会社威風...  ← ここで終了
     const extractMemo = (text: string): string => {
       const lines = text.split('\n');
-      const startIdx = lines.findIndex(l => l.trim() === 'HOME4Uログアウト' || l.trim().startsWith('HOME4Uログアウト'));
+      // 行頭の引用符（> ）を除去してから判定
+      const cleanLine = (l: string) => l.replace(/^[>\s]+/, '').trim();
+      const startIdx = lines.findIndex(l => {
+        const c = cleanLine(l);
+        return c === 'HOME4Uログアウト' || c.startsWith('HOME4Uログアウト');
+      });
       if (startIdx === -1) return '';
       // HOME4Uログアウト行自体にコメントが同行にある場合（例: "HOME4Uログアウト林5/26..."）
-      const startLine = lines[startIdx].trim();
+      const startLine = cleanLine(lines[startIdx]);
       const inlineComment = startLine.replace('HOME4Uログアウト', '').trim();
       // 次の行から「査定依頼」が出るまでを収集
       const commentLines: string[] = inlineComment ? [inlineComment] : [];
       for (let i = startIdx + 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        // 「株式会社」「査定依頼」「HOME4Uをご利用」など本文終端パターンで終了
+        const line = cleanLine(lines[i]);
+        // 「査定依頼」「HOME4Uをご利用」など本文終端パターンで終了
         if (
           line.startsWith('査定依頼') ||
           line.includes('査定依頼 --') ||
           line.startsWith('HOME4Uをご利用') ||
           line.startsWith('貴社への査定依頼') ||
-          line.startsWith('【 査定依頼')
+          line.startsWith('【 査定依頼') ||
+          line.startsWith('【査定依頼')
         ) break;
         if (line) commentLines.push(line);
         // 空行2行連続で終了（コメントの区切り）
