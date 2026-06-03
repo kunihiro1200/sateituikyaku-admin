@@ -35,13 +35,27 @@ function ParsedMerits({ text }: { text: string }) {
   for (const raw of lines) {
     const line = raw.trim();
     if (!line) continue;
-    if (/^[・•\-]/.test(line)) {
+
+    // 見出し判定：【...】形式、または「・」「-」で始まらない行
+    // ただし箇条書き行（・ • - で始まる）は見出しではない
+    const isBullet = /^[・•\-]/.test(line);
+    // 【...】形式は確実に見出し
+    const isBracketHeading = /^【.+】/.test(line);
+
+    if (isBracketHeading) {
+      // 【カテゴリ名】 → 見出しとして扱う（【】を除去して表示）
+      const heading = line.replace(/^【/, '').replace(/】.*$/, '');
+      current = { heading, items: [] };
+      sections.push(current);
+    } else if (isBullet) {
+      // 箇条書き行
       if (!current) {
         current = { heading: '', items: [] };
         sections.push(current);
       }
       current.items.push(line.replace(/^[・•\-]\s*/, ''));
     } else {
+      // 「・」なしの通常テキスト行 → 見出しとして扱う
       current = { heading: line, items: [] };
       sections.push(current);
     }
