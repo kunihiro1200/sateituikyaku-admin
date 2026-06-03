@@ -28,6 +28,14 @@ interface LocationState {
   price?: number | null;        // 現状価格（円単位）
 }
 
+// 仲介手数料計算（万円単位）
+// 800万円以下: 一律33万円（税込）
+// 800万円超: (売買価格 × 3% + 6万円) × 1.1（税込）
+const calcChuckai = (priceMan: number): number => {
+  if (priceMan <= 800) return 33;
+  return Math.round((priceMan * 0.03 + 6) * 1.1 * 10) / 10;
+};
+
 export default function TsubotankaCalcPage() {
   const { propertyNumber } = useParams<{ propertyNumber: string }>();
   const navigate = useNavigate();
@@ -42,14 +50,17 @@ export default function TsubotankaCalcPage() {
   // 現状価格（万円単位で入力）
   const [priceInput, setPriceInput] = useState<string>('');
 
-  // 初期値をstateから設定
+  // 初期値をstate（同タブ遷移）またはsessionStorage（新タブ）から設定
   useEffect(() => {
-    if (state?.landAreaSqm) {
-      const tsubo = state.landAreaSqm * SQM_TO_TSUBO;
-      setTsuboInput(String(Math.round(tsubo * 10) / 10)); // 小数点1桁
+    const stored = sessionStorage.getItem(`tsubotanka_${propertyNumber}`);
+    const data: LocationState | null = stored ? JSON.parse(stored) : state;
+
+    if (data?.landAreaSqm) {
+      const tsubo = data.landAreaSqm * SQM_TO_TSUBO;
+      setTsuboInput(String(Math.round(tsubo * 10) / 10));
     }
-    if (state?.price && state.price > 0) {
-      const man = Math.floor(state.price / 10000);
+    if (data?.price && data.price > 0) {
+      const man = Math.floor(data.price / 10000);
       setPriceInput(String(man));
     }
   }, []);
@@ -91,7 +102,7 @@ export default function TsubotankaCalcPage() {
   const rows = calcRows();
 
   return (
-    <Container maxWidth="sm" sx={{ py: 3 }}>
+    <Container maxWidth="md" sx={{ py: 3 }}>
       {/* ヘッダー */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
         <IconButton
@@ -197,11 +208,21 @@ export default function TsubotankaCalcPage() {
                     売買価格
                   </TableCell>
                   <TableCell sx={{ width: 24 }} />
-                  <TableCell sx={{ width: 80, fontSize: '0.8rem' }} />
+                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', fontSize: '0.8rem' }}>
+                    仲介手数料
+                  </TableCell>
+                  <TableCell sx={{ width: 24 }} />
+                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', fontSize: '0.8rem' }}>
+                    手元残
+                  </TableCell>
+                  <TableCell sx={{ width: 24 }} />
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rows.map((row, index) => (
+                {rows.map((row, index) => {
+                  const chuckai = calcChuckai(row.price);
+                  const temotozan = Math.round((row.price - chuckai) * 10) / 10;
+                  return (
                   <TableRow
                     key={index}
                     sx={{
@@ -220,7 +241,7 @@ export default function TsubotankaCalcPage() {
                     <TableCell sx={{ textAlign: 'right', fontSize: '0.85rem', fontWeight: row.isCurrentPrice ? 'bold' : 'normal', color: row.isCurrentPrice ? SECTION_COLORS.property.main : 'inherit' }}>
                       {row.tsubotanka}
                     </TableCell>
-                    <TableCell sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
+                    <TableCell sx={{ fontSize: '0.75rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
                       万円/坪
                     </TableCell>
                     {/* 売買価格 */}
@@ -239,9 +260,23 @@ export default function TsubotankaCalcPage() {
                     <TableCell sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
                       万円
                     </TableCell>
-                    <TableCell />
+                    {/* 仲介手数料 */}
+                    <TableCell sx={{ textAlign: 'right', fontSize: '0.85rem', color: '#c62828' }}>
+                      {chuckai.toLocaleString('ja-JP')}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
+                      万円
+                    </TableCell>
+                    {/* 手元残 */}
+                    <TableCell sx={{ textAlign: 'right', fontSize: '0.85rem', fontWeight: 'bold', color: '#1b5e20' }}>
+                      {temotozan.toLocaleString('ja-JP')}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
+                      万円
+                    </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </TableContainer>

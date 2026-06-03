@@ -692,12 +692,15 @@ export default function PropertyReportPage() {
                 variant="outlined"
                 size="small"
                 onClick={() => {
-                  navigate(`/property-listings/${propertyNumber}/tsubotanka`, {
-                    state: {
+                  // sessionStorageに坪単価計算用データを保存して新しいタブで開く
+                  sessionStorage.setItem(
+                    `tsubotanka_${propertyNumber}`,
+                    JSON.stringify({
                       landAreaSqm: reportData.land_area ?? null,
                       price: reportData.price ?? null,
-                    },
-                  });
+                    })
+                  );
+                  window.open(`/property-listings/${propertyNumber}/tsubotanka`, '_blank');
                 }}
                 sx={{
                   borderColor: '#2e7d32',
