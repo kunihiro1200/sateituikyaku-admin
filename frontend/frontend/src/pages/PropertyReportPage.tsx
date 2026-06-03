@@ -656,7 +656,7 @@ export default function PropertyReportPage() {
             </Button>
           )}
           <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
               <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>
                 報告 -{' '}
                 <Box
@@ -672,7 +672,7 @@ export default function PropertyReportPage() {
                   </Typography>
                 )}
               </Typography>
-              {/* Gmail送信ボタン（売主氏名の右） */}
+              {/* Gmail送信ボタン */}
               <Button
                 variant="outlined"
                 size="small"
@@ -681,6 +681,7 @@ export default function PropertyReportPage() {
                 sx={{
                   borderColor: '#1a73e8',
                   color: '#1a73e8',
+                  whiteSpace: 'nowrap',
                   '&:hover': { borderColor: '#1557b0', backgroundColor: '#1a73e808' },
                 }}
               >
@@ -701,6 +702,7 @@ export default function PropertyReportPage() {
                 sx={{
                   borderColor: '#2e7d32',
                   color: '#2e7d32',
+                  whiteSpace: 'nowrap',
                   '&:hover': { borderColor: '#1b5e20', backgroundColor: '#2e7d3208' },
                 }}
               >
