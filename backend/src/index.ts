@@ -29,6 +29,9 @@ import redisClient, { connectRedis } from './config/redis';
 import authRoutes from './routes/auth';
 import authSupabaseRoutes from './routes/auth.supabase';
 import sellerRoutes from './routes/sellers';
+import ieulTransferRoutes from './routes/ieul-transfer';
+import home4uTransferRoutes from './routes/home4u-transfer';
+import athomeTransferRoutes from './routes/athome-transfer';
 import sellersManagementRoutes from './routes/sellersManagement';
 import propertyRoutes from './routes/properties';
 import valuationRoutes from './routes/valuations';
@@ -962,6 +965,9 @@ app.get('/api/test/tateuri-price-check-small', async (req, res) => {
 // Sidebar counts endpoint (authentication not required) - must be registered before other /api/sellers routes
 app.use('/api/floor-plan-compare', floorPlanCompareRoutes); // 間取り図比較（認証不要・公開）★sellerRoutesより前に登録
 app.use('/api/sellers', sellerRoutes);
+app.use('/api/sellers', ieulTransferRoutes);
+app.use('/api/sellers', home4uTransferRoutes);
+app.use('/api/sellers', athomeTransferRoutes);
 app.use('/api/sellers', sellersManagementRoutes);
 app.use('/properties', propertyRoutes);
 app.use('/api/sellers', valuationRoutes);
