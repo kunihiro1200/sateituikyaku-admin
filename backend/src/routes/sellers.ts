@@ -259,25 +259,7 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
     // ============================================================
     // 1. メール本文解析（GASのtransferIeuru相当）
     // ============================================================
-    // Gmailスレッドヘッダー除去:
-    // 「イエウール運営事務局\r\n18:26...\r\nTo 自分\r\n株式会社威風本店\r\n...」のような
-    // Gmailが付加するスレッドヘッダーが本文先頭に入る場合がある。
-    // 「=====」区切り線か「■ 査定依頼情報」か「依頼日時」の手前までを捨てる。
-    const bodyStartPatterns = [
-      /={10,}/,           // ====== 区切り線
-      /■\s*査定依頼情報/, // ■ 査定依頼情報
-      /依頼日時/,          // 依頼日時
-    ];
-    let trimmedBody = mailBody;
-    for (const pat of bodyStartPatterns) {
-      const m = trimmedBody.search(pat);
-      if (m > 0) {
-        trimmedBody = trimmedBody.slice(m);
-        console.log(`[ieul-transfer] スレッドヘッダーを除去しました（先頭${m}文字をスキップ）`);
-        break;
-      }
-    }
-    const cleanedBody = trimmedBody.replace(/\r?\n|\r/g, ' ');
+    const cleanedBody = mailBody.replace(/\r?\n|\r/g, ' ');
 
     const extractData = (text: string, from: string, to: string): string => {
       const fromIndex = text.indexOf(from);
@@ -341,19 +323,11 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
     const landAreaNum = extractNumeric(landArea);
 
     // ユーザ情報
-    // 全角スペースの数が揺れる場合があるため正規表現で柔軟に抽出
-    const extractField = (text: string, label: string): string => {
-      const regex = new RegExp(label + '[\u3000\s]*:[\u3000\s]*([^\u3000\r\n]+)');
-      const m = text.match(regex);
-      return m ? m[1].trim() : '';
-    };
-    const name = extractField(cleanedBody, '氏名');
-    const furigana = extractField(cleanedBody, 'フリガナ');
-    const age = extractField(cleanedBody, '年齢');
-    const address = extractField(cleanedBody, '住所');
-    const tel = extractField(cleanedBody, '電話番号').replace(/-/g, '');
-    console.log(`[ieul-transfer] name=${name} tel=${tel}`);
-    console.log(`[ieul-transfer] cleanedBody先頭500: ${cleanedBody.substring(0, 500).replace(/\n/g, '\\n')}`);
+    const name = extractData(cleanedBody, '氏名　　　　　　: ', 'フリガナ');
+    const furigana = extractData(cleanedBody, 'フリガナ　　　　: ', '年齢');
+    const age = extractData(cleanedBody, '年齢　　　　　　: ', '住所');
+    const address = extractData(cleanedBody, '住所　　　　　　: ', '電話番号');
+    const tel = extractData(cleanedBody, '電話番号　　　　: ', 'Email').replace(/-/g, '');
     // Emailフィールドのスペースは可変（"Email 　　　　　: " または "Email　　　　　 : "）
     const emailMatch = cleanedBody.match(/Email[\s　]+:[\s　]*([^\s　\r\n]+)/);
     const email = emailMatch ? emailMatch[1].trim() : '';
