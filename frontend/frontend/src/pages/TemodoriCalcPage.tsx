@@ -100,18 +100,18 @@ const TemodoriCalcPage = () => {
   const isFlat = priceYen > 0 && priceYen <= 8_000_000;
 
   // ── 坪単価計算 ──
-  // 土地面積（㎡）：編集可能
+  // 土地面積（坪単位で入力）：編集可能
   const [landAreaInput, setLandAreaInput] = useState('');
   // 価格（万円）：編集可能
   const [tsuboPriceInput, setTsuboPriceInput] = useState('');
 
-  // 坪単価計算
-  const landAreaNum = parseFloat(landAreaInput) || 0;
+  // 坪単価計算（入力は坪、変換して㎡も表示）
+  const tsuboNum = parseFloat(landAreaInput) || 0;
+  const sqmFromTsubo = tsuboNum > 0 ? tsuboNum * 3.30578 : 0;
   const tsuboPriceYen = parseFloat(tsuboPriceInput) > 0
     ? Math.round(parseFloat(tsuboPriceInput) * 10_000)
     : 0;
-  const tsubo = landAreaNum > 0 ? sqmToTsubo(landAreaNum) : 0;
-  const tsubotanka = tsubo > 0 && tsuboPriceYen > 0 ? tsuboPriceYen / tsubo : 0;
+  const tsubotanka = tsuboNum > 0 && tsuboPriceYen > 0 ? tsuboPriceYen / tsuboNum : 0;
 
   // ── seller情報取得してデフォルト値をセット ──
   useEffect(() => {
@@ -138,11 +138,13 @@ const TemodoriCalcPage = () => {
         // 土地面積：土地（当社調べ）優先、なければ物件情報の土地面積、なければseller直接の土地面積
         const landAreaVerified =
           property?.landAreaVerified ?? seller?.landAreaVerified ?? null;
-        const landArea =
+        const landAreaSqm =
           landAreaVerified || property?.landArea || seller?.landArea || null;
 
-        if (landArea) {
-          setLandAreaInput(String(landArea));
+        if (landAreaSqm) {
+          // ㎡ → 坪に変換してデフォルト値としてセット（小数2位）
+          const tsuboVal = Number(landAreaSqm) / 3.30578;
+          setLandAreaInput(tsuboVal.toFixed(2));
         }
 
         // 価格：査定額２（中間額）をデフォルトに（円 → 万円に変換してセット）
@@ -305,14 +307,14 @@ const TemodoriCalcPage = () => {
         {/* ══════════════════════════════════════════════
             坪単価セクション
         ══════════════════════════════════════════════ */}
-        <Box sx={{ mt: 3 }}>
+        <Box sx={{ bgcolor: '#f1f8e9', borderRadius: 2, p: 2.5, mt: 3 }}>
           <Typography variant="subtitle1" fontWeight={700} color="#2e7d32" mb={2}>
             📐 坪単価計算
           </Typography>
 
           <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
 
-            {/* 土地面積入力 */}
+            {/* 土地面積入力（坪） */}
             <Typography variant="subtitle2" color="text.secondary" mb={1.5} fontWeight={600}>
               土地面積
             </Typography>
@@ -320,17 +322,17 @@ const TemodoriCalcPage = () => {
               fullWidth
               type="number"
               label="土地面積"
-              placeholder="例：165.0"
+              placeholder="例：50.0"
               value={landAreaInput}
               onChange={(e) => setLandAreaInput(e.target.value)}
               InputProps={{
-                endAdornment: <InputAdornment position="end">㎡</InputAdornment>,
+                endAdornment: <InputAdornment position="end">坪</InputAdornment>,
                 inputProps: { min: 0, step: 0.01 },
               }}
               helperText={
-                landAreaNum > 0
-                  ? `約 ${sqmToTsubo(landAreaNum).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} 坪`
-                  : '土地面積を入力（㎡）'
+                tsuboNum > 0
+                  ? `約 ${sqmFromTsubo.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ㎡`
+                  : '土地面積を入力（坪）'
               }
               sx={{ mb: 3 }}
             />
@@ -362,9 +364,9 @@ const TemodoriCalcPage = () => {
                     <Typography variant="h6" fontWeight={800} color="#2e7d32">
                       坪単価
                     </Typography>
-                    {tsubo > 0 && (
+                    {tsuboNum > 0 && (
                       <Typography variant="caption" color="text.secondary">
-                        {landAreaNum}㎡ ÷ {tsubo.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}坪
+                        {tsuboNum}坪（約{sqmFromTsubo.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}㎡）
                       </Typography>
                     )}
                   </Box>
