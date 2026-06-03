@@ -350,12 +350,9 @@ def check_new_emails(service, notified_ids):
                     subject = header["value"]
                     break
 
-            # 返信・転送はスキップ（ただしHOME4Uは件名にRe:が付くため除外）
+            # 返信・転送はスキップ
             reply_prefix_pattern = re.compile(r'^(Re|Fwd?|FW|RE|転送)\s*:', re.IGNORECASE)
-            is_reply = reply_prefix_pattern.match(subject) is not None
-            is_home4u = HOME4U_SUBJECT_PREFIX in subject
-
-            if is_reply and not is_home4u:
+            if reply_prefix_pattern.match(subject):
                 notified_ids.add(msg_id)
                 save_notified_ids(notified_ids)
                 continue
