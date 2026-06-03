@@ -350,9 +350,9 @@ def check_new_emails(service, notified_ids):
                     subject = header["value"]
                     break
 
-            # 返信・転送はスキップ
+            # 返信・転送はスキップ（HOME4Uはすべて「Re: [HOME4U] 査定依頼」の形式で届くため除外）
             reply_prefix_pattern = re.compile(r'^(Re|Fwd?|FW|RE|転送)\s*:', re.IGNORECASE)
-            if reply_prefix_pattern.match(subject):
+            if reply_prefix_pattern.match(subject) and HOME4U_SUBJECT_PREFIX not in subject:
                 notified_ids.add(msg_id)
                 save_notified_ids(notified_ids)
                 continue
