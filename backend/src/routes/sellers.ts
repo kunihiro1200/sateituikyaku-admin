@@ -3722,8 +3722,17 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
     // 辞書で直接マッチする場合はOpenAI APIを呼ばずに返す
     // 長い地名から先にマッチさせる（「香椎照葉」が「香椎」より先にマッチするように）
     const sortedEntries = Object.entries(localReadingDict).sort((a, b) => b[0].length - a[0].length);
+
+    // 区名より後ろの部分（町名以降）を抽出して、そこにマッチを絞る
+    // 例: 「福岡県福岡市早良区賀茂1丁目27-7」→「賀茂1丁目27-7」
+    // これにより「早良区」の「早良」が辞書マッチしなくなる
+    const afterKuMatch = address.match(/[都道府県].+?[市].+?[区](.+)/);
+    const addressAfterKu = afterKuMatch ? afterKuMatch[1] : null;
+
     for (const [placeName, reading] of sortedEntries) {
-      if (address.includes(placeName)) {
+      // 区より後ろの部分がある場合はそこだけでマッチ（区名自体にヒットしないよう）
+      const targetString = addressAfterKu !== null ? addressAfterKu : address;
+      if (targetString.includes(placeName)) {
         return res.json({ address, reading });
       }
     }
