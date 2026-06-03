@@ -156,6 +156,7 @@ const TemodoriCalcPage = () => {
             // バックエンドは円単位で返す → 万円に変換
             const val2Man = Math.round(val2Num / 10000);
             setTsuboPriceInput(String(val2Man));
+            setPriceInput(String(val2Man)); // 手元残計算の売買価格にも同じ値をセット
           }
         }
       })
