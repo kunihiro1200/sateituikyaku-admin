@@ -33,7 +33,6 @@ import {
 import { Search as SearchIcon, ExpandMore as ExpandMoreIcon, Clear as ClearIcon, Sync as SyncIcon, RecordVoiceOver as RecordVoiceOverIcon } from '@mui/icons-material';
 import IconButton from '@mui/material/IconButton';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import api from '../services/api';
 import WorkTaskDetailModal from '../components/WorkTaskDetailModal';
 import { WorkTask, getStatusCategories, filterTasksByStatus, calculateTaskStatus, getCategoryGroupColor } from '../utils/workTaskStatusUtils';
@@ -294,13 +293,12 @@ export default function WorkTasksPage() {
           </Button>
           <Button
             variant="outlined"
-            color="secondary"
+            color="success"
             size="small"
-            startIcon={<CompareArrowsIcon />}
-            onClick={() => navigate('/floor-plan-compare')}
-            sx={{ whiteSpace: 'nowrap' }}
+            onClick={() => window.open('https://docs.google.com/spreadsheets/d/1MO2vs0mDUFCgM-rjXXPRIy3pKKdfIFvUDwacM-2174g/edit?gid=0#gid=0', '_blank', 'noopener,noreferrer')}
+            sx={{ whiteSpace: 'nowrap', fontWeight: 'bold' }}
           >
-            間取り図比較
+            業務依頼集計表
           </Button>
           <Button
             variant="contained"
