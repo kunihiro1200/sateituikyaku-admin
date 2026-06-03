@@ -337,18 +337,19 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None):
             if msg_id in notified_ids:
                 continue
 
-            # 起動時刻より前のメールはスキップ（再起動時の二重転記防止）
-            if start_timestamp_ms is not None:
-                msg_ts = int(msg.get("internalDate", 0))
-                if msg_ts < start_timestamp_ms:
-                    notified_ids.add(msg_id)
-                    continue
-
             msg_detail = service.users().messages().get(
                 userId="me",
                 id=msg_id,
                 format="full"
             ).execute()
+
+            # 起動時刻より前のメールはスキップ（再起動時の二重転記防止）
+            # internalDateはget()レスポンスにのみ含まれる（list()には含まれない）
+            if start_timestamp_ms is not None:
+                msg_ts = int(msg_detail.get("internalDate", 0))
+                if msg_ts < start_timestamp_ms:
+                    notified_ids.add(msg_id)
+                    continue
 
             headers = msg_detail["payload"]["headers"]
             subject = ""
