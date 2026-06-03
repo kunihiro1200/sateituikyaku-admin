@@ -54,7 +54,72 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
     // ============================================================
     // 1. メール本文解析（GASのtransferIeuru相当）
     // ============================================================
-    const cleanedBody = mailBody.replace(/\r?\n|\r/g, ' ');
+
+    // Gmailスレッドヘッダー除去:
+    // 返信スレッドで届いた場合、本文先頭に「イエウール運営事務局\n6:20 (XX 分前)\nTo 自分\n...」
+    // のようなヘッダーが混入する。「■ 査定依頼情報」または「============」が出現する直前までを除去する。
+    let processedMailBody = mailBody;
+    const bodyStartPatterns = [
+      /={10,}/,          // ===...===
+      /■\s*査定依頼情報/,
+    ];
+    for (const pattern of bodyStartPatterns) {
+      const m = processedMailBody.match(pattern);
+      if (m && m.index !== undefined && m.index > 0) {
+        // パターンより前にGmailヘッダーがある可能性があるので、
+        // 「詳細は下記URLで」が含まれている行以降を本文とする
+        const urlLineIdx = processedMailBody.indexOf('詳細は下記URLでご確認ください');
+        if (urlLineIdx !== -1 && urlLineIdx < m.index) {
+          // URL行から始まる部分を本文として使う
+          processedMailBody = processedMailBody.slice(urlLineIdx);
+          console.log('[ieul-transfer] Gmailスレッドヘッダーを除去しました');
+          break;
+        }
+      }
+    }
+
+    // Gmailスレッド形式（スペース区切り1行）の場合、
+    // 「物件住所」の後に改行がなくスペースで区切られるケースに対応するため
+    // 「■ 不動産情報」以降のブロックを改行区切りに正規化する
+    // （スペース区切りの場合: "物件住所　　　　: 福岡県... マンション名..." のように1行になる）
+    const hasLineBreaks = /物件住所[\s　]*:[\s　]*(.*?)[\r\n]/.test(processedMailBody);
+    if (!hasLineBreaks) {
+      // スペース区切り形式の場合、「■」や主要フィールドラベルの前に改行を挿入して正規化
+      console.log('[ieul-transfer] スペース区切り形式を検出 → 改行を正規化します');
+      processedMailBody = processedMailBody
+        .replace(/ (■ 査定依頼情報)/g, '\n$1')
+        .replace(/ (■ 不動産情報)/g, '\n$1')
+        .replace(/ (■ ユーザ情報)/g, '\n$1')
+        .replace(/ (依頼日時[\s　]*[:：])/g, '\n$1')
+        .replace(/ (同時査定社数[\s　]*[:：])/g, '\n$1')
+        .replace(/ (物件種別[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (物件住所[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (マンション名[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (部屋番号[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (建物名[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (専有面積[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (建物面積[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (土地面積[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (延べ床面積[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (間取り[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (築年数[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (物件の状況[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (物件との関係[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (氏名[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (フリガナ[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (年齢[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (住所[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (電話番号[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (Email[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (希望連絡時間[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (査定理由[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (査定会社への要望[:：])/g, '\n$1')
+        .replace(/ (買い替え有無[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (査定方法[\s　　]*[:：])/g, '\n$1')
+        .replace(/ (コメント[\s　　]*[:：])/g, '\n$1');
+    }
+
+    const cleanedBody = processedMailBody.replace(/\r?\n|\r/g, ' ');
 
     const extractData = (text: string, from: string, to: string): string => {
       const fromIndex = text.indexOf(from);
@@ -100,7 +165,8 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
 
     // 物件住所（改行ありの本文から直接抽出）
     // 「物件住所」〜「マンション名」の間を取得（スペース数が可変なので \s* で対応）
-    const addrMatch = mailBody.match(/物件住所[\s　]*:[\s　]*(.*?)[\r\n]/);
+    // processedMailBody（改行正規化済み）から取得する
+    const addrMatch = processedMailBody.match(/物件住所[\s　]*:[\s　]*(.*?)[\r\n]/);
     const fullPropertyAddress = addrMatch ? addrMatch[1].replace(/^大分県/, '').trim() : '';
     console.log(`[ieul-transfer] 物件住所抽出: "${fullPropertyAddress}"`);
 
