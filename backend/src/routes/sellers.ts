@@ -341,11 +341,19 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
     const landAreaNum = extractNumeric(landArea);
 
     // ユーザ情報
-    const name = extractData(cleanedBody, '氏名　　　　　　: ', 'フリガナ');
-    const furigana = extractData(cleanedBody, 'フリガナ　　　　: ', '年齢');
-    const age = extractData(cleanedBody, '年齢　　　　　　: ', '住所');
-    const address = extractData(cleanedBody, '住所　　　　　　: ', '電話番号');
-    const tel = extractData(cleanedBody, '電話番号　　　　: ', 'Email').replace(/-/g, '');
+    // 全角スペースの数が揺れる場合があるため正規表現で柔軟に抽出
+    const extractField = (text: string, label: string): string => {
+      const regex = new RegExp(label + '[\u3000\s]*:[\u3000\s]*([^\u3000\r\n]+)');
+      const m = text.match(regex);
+      return m ? m[1].trim() : '';
+    };
+    const name = extractField(cleanedBody, '氏名');
+    const furigana = extractField(cleanedBody, 'フリガナ');
+    const age = extractField(cleanedBody, '年齢');
+    const address = extractField(cleanedBody, '住所');
+    const tel = extractField(cleanedBody, '電話番号').replace(/-/g, '');
+    console.log(`[ieul-transfer] name=${name} tel=${tel}`);
+    console.log(`[ieul-transfer] cleanedBody先頭500: ${cleanedBody.substring(0, 500).replace(/\n/g, '\\n')}`);
     // Emailフィールドのスペースは可変（"Email 　　　　　: " または "Email　　　　　 : "）
     const emailMatch = cleanedBody.match(/Email[\s　]+:[\s　]*([^\s　\r\n]+)/);
     const email = emailMatch ? emailMatch[1].trim() : '';
