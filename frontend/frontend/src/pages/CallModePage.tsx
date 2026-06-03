@@ -7478,8 +7478,8 @@ HP：https://ifoo-oita.com/
 
               const showPortalMerits = !!(propInfo.address || seller?.propertyAddress) && !!seller?.id;
 
-              if (!showHouseMaker && !showMansion && !showPortalMerits) return null;
-
+              // 手元残計算は常に表示するため、条件なしでBoxを返す
+              // （他のボタンは既存の条件フラグで制御）
               return (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
                   {showHouseMaker && (
@@ -7558,6 +7558,36 @@ HP：https://ifoo-oita.com/
                       物件の長所
                     </Button>
                   )}
+                  {/* 手元残計算ボタン（常に表示） */}
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<span style={{ fontSize: '1.1em' }}>🧮</span>}
+                    onClick={() => {
+                      const newWin = window.open(
+                        seller?.id ? `/sellers/${seller.id}/temodori-calc` : '/sellers/0/temodori-calc',
+                        '_blank'
+                      );
+                      if (newWin) newWin.blur();
+                      window.focus();
+                    }}
+                    sx={{
+                      background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
+                      color: 'white',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      px: 2,
+                      py: 0.7,
+                      borderRadius: 2,
+                      boxShadow: '0 2px 8px rgba(21,101,192,0.3)',
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #1976d2 0%, #1e88e5 100%)',
+                        boxShadow: '0 4px 12px rgba(21,101,192,0.4)',
+                      },
+                    }}
+                  >
+                    手元残計算
+                  </Button>
                 </Box>
               );
             })()}
