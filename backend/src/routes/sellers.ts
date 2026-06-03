@@ -520,24 +520,15 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
       building_area: areaValue ? parseFloat(areaValue) : null,
     });
 
-    // ============================================================
-    // 4. DB→スプシ即時同期
-    // ============================================================
-    try {
-      const syncService = await createSpreadsheetSyncService();
-      if (syncService) {
-        const syncResult = await syncService.syncToSpreadsheet(seller.id);
-        if (syncResult.success) {
-          console.log(`[ieul-transfer] スプシ同期成功: ${sellerNumber}`);
-        } else {
-          console.warn(`[ieul-transfer] スプシ同期失敗（DB登録は成功）: ${syncResult.error}`);
-        }
-      }
-    } catch (syncErr: any) {
-      console.warn(`[ieul-transfer] スプシ同期エラー（DB登録は成功）: ${syncErr.message}`);
-    }
+    // DB INSERT完了後すぐにレスポンスを返す（スプシ同期はバックグラウンドで実行）
+    res.json({
+      success: true,
+      sellerNumber,
+      sellerId: seller.id,
+      message: `${sellerNumber} をDBに登録しました`,
+    });
 
-    // サイドバーカウントを非同期で更新（レスポンスをブロックしない）
+    // ① サイドバーカウントを最優先で即時更新（未着手カテゴリーへの反映）
     import('../services/SellerSidebarCountsUpdateService').then(({ SellerSidebarCountsUpdateService }) => {
       const { createClient } = require('@supabase/supabase-js');
       const supabaseForCounts = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -547,11 +538,22 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
       );
     });
 
-    return res.json({
-      success: true,
-      sellerNumber,
-      sellerId: seller.id,
-      message: `${sellerNumber} をDBに登録しました`,
+    // ② DB→スプシ同期（バックグラウンド実行 - サイドバー更新の後）
+    createSpreadsheetSyncService().then(syncService => {
+      if (!syncService) return;
+      syncService.syncToSpreadsheet(seller.id)
+        .then(syncResult => {
+          if (syncResult.success) {
+            console.log(`[ieul-transfer] スプシ同期成功: ${sellerNumber}`);
+          } else {
+            console.warn(`[ieul-transfer] スプシ同期失敗（DB登録は成功）: ${syncResult.error}`);
+          }
+        })
+        .catch((syncErr: any) => {
+          console.warn(`[ieul-transfer] スプシ同期エラー（DB登録は成功）: ${syncErr.message}`);
+        });
+    }).catch((syncErr: any) => {
+      console.warn(`[ieul-transfer] スプシ同期初期化エラー（DB登録は成功）: ${syncErr.message}`);
     });
 
   } catch (error: any) {
@@ -898,22 +900,15 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
       building_area: buildingArea ? parseFloat(buildingArea) : null,
     });
 
-    // DB→スプシ即時同期
-    try {
-      const syncService = await createSpreadsheetSyncService();
-      if (syncService) {
-        const syncResult = await syncService.syncToSpreadsheet(seller.id);
-        if (syncResult.success) {
-          console.log(`[home4u-transfer] スプシ同期成功: ${sellerNumber}`);
-        } else {
-          console.warn(`[home4u-transfer] スプシ同期失敗（DB登録は成功）: ${syncResult.error}`);
-        }
-      }
-    } catch (syncErr: any) {
-      console.warn(`[home4u-transfer] スプシ同期エラー（DB登録は成功）: ${syncErr.message}`);
-    }
+    // DB INSERT完了後すぐにレスポンスを返す（スプシ同期はバックグラウンドで実行）
+    res.json({
+      success: true,
+      sellerNumber,
+      sellerId: seller.id,
+      message: `${sellerNumber} をDBに登録しました`,
+    });
 
-    // サイドバーカウントを非同期で更新（レスポンスをブロックしない）
+    // ① サイドバーカウントを最優先で即時更新（未着手カテゴリーへの反映）
     import('../services/SellerSidebarCountsUpdateService').then(({ SellerSidebarCountsUpdateService }) => {
       const { createClient } = require('@supabase/supabase-js');
       const supabaseForCounts = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
@@ -923,11 +918,22 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
       );
     });
 
-    return res.json({
-      success: true,
-      sellerNumber,
-      sellerId: seller.id,
-      message: `${sellerNumber} をDBに登録しました`,
+    // ② DB→スプシ同期（バックグラウンド実行 - サイドバー更新の後）
+    createSpreadsheetSyncService().then(syncService => {
+      if (!syncService) return;
+      syncService.syncToSpreadsheet(seller.id)
+        .then(syncResult => {
+          if (syncResult.success) {
+            console.log(`[home4u-transfer] スプシ同期成功: ${sellerNumber}`);
+          } else {
+            console.warn(`[home4u-transfer] スプシ同期失敗（DB登録は成功）: ${syncResult.error}`);
+          }
+        })
+        .catch((syncErr: any) => {
+          console.warn(`[home4u-transfer] スプシ同期エラー（DB登録は成功）: ${syncErr.message}`);
+        });
+    }).catch((syncErr: any) => {
+      console.warn(`[home4u-transfer] スプシ同期初期化エラー（DB登録は成功）: ${syncErr.message}`);
     });
 
   } catch (error: any) {
