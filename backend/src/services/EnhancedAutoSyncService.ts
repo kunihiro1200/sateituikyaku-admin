@@ -1462,15 +1462,14 @@ export class EnhancedAutoSyncService {
       updateData.visit_valuation_acquirer = String(visitValuationAcquirer);
     }
     // visit_assigneeの更新ロジック
-    // - 空文字の場合はnullでクリア
-    // - 値がある場合はその値で更新（「外す」を含む）
-    // - undefinedの場合（スプシにカラムが存在しない等）は更新しない（DBの既存値を保持）
-    if (visitAssignee === '') {
-      updateData.visit_assignee = null;
-    } else if (visitAssignee !== undefined && visitAssignee !== null) {
+    // - 値がある場合のみ更新（visit_valuation_acquirer と同じ方式）
+    // - 空文字・undefinedの場合はDBの既存値を保持（スプシ空欄でDBを上書きしない）
+    // 理由: カレンダー送信後にスプシへの書き戻しが完了する前にcron同期が走ると
+    //       スプシの空欄でDBの値が消えてしまう問題を防ぐ（2026年6月修正）
+    if (visitAssignee !== undefined && visitAssignee !== null && visitAssignee !== '') {
       updateData.visit_assignee = String(visitAssignee);
     }
-    // visitAssignee が undefined の場合は updateData に含めない（DBの既存値を保持）
+    // visitAssignee が空・undefined の場合は updateData に含めない（DBの既存値を保持）
 
     // コミュニケーションフィールドを追加
     const phoneContactPerson = row['電話担当（任意）'];
@@ -1796,15 +1795,14 @@ export class EnhancedAutoSyncService {
       encryptedData.visit_valuation_acquirer = String(visitValuationAcquirer);
     }
     // visit_assigneeの更新ロジック
-    // - 空文字の場合はnullでクリア
-    // - 値がある場合はその値で設定（「外す」を含む）
-    // - undefinedの場合（スプシにカラムが存在しない等）は設定しない（DBの既存値を保持）
-    if (visitAssignee === '') {
-      encryptedData.visit_assignee = null;
-    } else if (visitAssignee !== undefined && visitAssignee !== null) {
+    // - 値がある場合のみ更新（visit_valuation_acquirer と同じ方式）
+    // - 空文字・undefinedの場合はDBの既存値を保持（スプシ空欄でDBを上書きしない）
+    // 理由: カレンダー送信後にスプシへの書き戻しが完了する前にcron同期が走ると
+    //       スプシの空欄でDBの値が消えてしまう問題を防ぐ（2026年6月修正）
+    if (visitAssignee !== undefined && visitAssignee !== null && visitAssignee !== '') {
       encryptedData.visit_assignee = String(visitAssignee);
     }
-    // visitAssignee が undefined の場合は encryptedData に含めない（DBの既存値を保持）
+    // visitAssignee が空・undefined の場合は encryptedData に含めない（DBの既存値を保持）
 
     // コミュニケーションフィールドを追加
     const phoneContactPerson = row['電話担当（任意）'];
