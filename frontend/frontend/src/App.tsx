@@ -19,6 +19,7 @@ import WorkTasksPage from './pages/WorkTasksPage';
 import PropertyListingsPage from './pages/PropertyListingsPage';
 import PropertyListingDetailPage from './pages/PropertyListingDetailPage';
 import PropertyReportPage from './pages/PropertyReportPage';
+import TsubotankaCalcPage from './pages/TsubotankaCalcPage';
 import BuyersPage from './pages/BuyersPage';
 import NewBuyerPage from './pages/NewBuyerPage';
 import BuyerDetailPage from './pages/BuyerDetailPage';
@@ -242,6 +243,14 @@ function App() {
         element={
           <ProtectedRoute>
             <PropertyReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/property-listings/:propertyNumber/tsubotanka"
+        element={
+          <ProtectedRoute>
+            <TsubotankaCalcPage />
           </ProtectedRoute>
         }
       />

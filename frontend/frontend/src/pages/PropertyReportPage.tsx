@@ -62,6 +62,7 @@ interface ReportData {
   report_memo?: string;
   price?: number | null; // 売買価格（円単位）
   price_reduction_history?: string; // 値下げ履歴
+  land_area?: number | null; // 土地面積（㎡）
 }
 
 // 今日からN週間後の日付文字列（YYYY-MM-DD）を返す
@@ -221,6 +222,7 @@ export default function PropertyReportPage() {
         report_memo: d.report_memo || '',
         price: d.price ?? null, // 売買価格（BS列「価格」）
         price_reduction_history: d.price_reduction_history || '',
+        land_area: d.land_area ?? null, // 土地面積（㎡）
       };
       setReportData(initial);
       setSavedData(initial);
@@ -683,6 +685,26 @@ export default function PropertyReportPage() {
                 }}
               >
                 Gmail送信
+              </Button>
+              {/* 坪単価計算ボタン */}
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() =>
+                  navigate(`/property-listings/${propertyNumber}/tsubotanka`, {
+                    state: {
+                      landAreaSqm: reportData.land_area ?? null,
+                      price: reportData.price ?? null,
+                    },
+                  })
+                }
+                sx={{
+                  borderColor: '#2e7d32',
+                  color: '#2e7d32',
+                  '&:hover': { borderColor: '#1b5e20', backgroundColor: '#2e7d3208' },
+                }}
+              >
+                坪単価計算
               </Button>
             </Box>
             {reportData.address && (
