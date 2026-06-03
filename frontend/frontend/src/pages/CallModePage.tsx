@@ -1741,9 +1741,9 @@ const CallModePage = () => {
           if (freshData && freshData.id) {
             pageDataCache.set(sellerDetailCacheKey(id!), freshData, 30 * 1000);
             setSeller(freshData);
-            setUnreachableStatus(freshData.unreachableStatus || null);
-            // 保存処理中でない場合のみ saved* を更新（保存直後のバックグラウンド取得でボタン色が狂わないようにする）
+            // 保存処理中でない場合のみ編集値・saved* を更新（保存直後のバックグラウンド取得でボタン色が狂わないようにする）
             if (!savingLockRef.current) {
+              setUnreachableStatus(freshData.unreachableStatus || null);
               setSavedUnreachableStatus(freshData.unreachableStatus || null);
               setEditedFirstCallPerson(freshData.firstCallPerson || '');
               setSavedFirstCallPerson(freshData.firstCallPerson || '');
