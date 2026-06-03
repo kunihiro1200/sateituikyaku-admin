@@ -326,7 +326,7 @@ def check_new_emails(service, notified_ids):
         results = service.users().messages().list(
             userId="me",
             q="newer_than:1d",
-            maxResults=10
+            maxResults=50
         ).execute()
 
         messages = results.get("messages", [])
@@ -350,9 +350,12 @@ def check_new_emails(service, notified_ids):
                     subject = header["value"]
                     break
 
-            # 返信・転送はスキップ
+            # 返信・転送はスキップ（ただしHOME4Uは件名にRe:が付くため除外）
             reply_prefix_pattern = re.compile(r'^(Re|Fwd?|FW|RE|転送)\s*:', re.IGNORECASE)
-            if reply_prefix_pattern.match(subject):
+            is_reply = reply_prefix_pattern.match(subject) is not None
+            is_home4u = HOME4U_SUBJECT_PREFIX in subject
+
+            if is_reply and not is_home4u:
                 notified_ids.add(msg_id)
                 save_notified_ids(notified_ids)
                 continue
@@ -410,6 +413,11 @@ def check_new_emails(service, notified_ids):
                             logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
                             break
                     trigger_home4u_transfer(body)
+                else:
+                    # HOME4U関連かどうか件名でチェックしてデバッグ出力
+                    if 'HOME4U' in subject or 'home4u' in subject.lower():
+                        logging.info(f"  [未処理] HOME4U件名だが本文にHOME4Uログアウトなし: {subject[:80]}")
+                        logging.info(f"  [未処理] 本文先頭: {repr(body[:200]) if body else '(空)'}")
 
                 notified_ids.add(msg_id)
                 save_notified_ids(notified_ids)
