@@ -4264,8 +4264,16 @@ HP：https://ifoo-oita.com/
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
-        <Button variant="contained" onClick={() => navigate(-1)}>
-          元のページに戻る
+        <Button variant="contained" onClick={() => {
+          sessionStorage.removeItem('sellersScrollPosition');
+          sessionStorage.removeItem('selectedSellerId');
+          sessionStorage.removeItem('sellersPage');
+          pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
+          pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+          pageDataCache.invalidateByPrefix('sidebar_expanded:');
+          navigate('/');
+        }}>
+          売主一覧に戻る
         </Button>
       </Container>
     );
