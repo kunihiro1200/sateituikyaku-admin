@@ -388,9 +388,13 @@ export function generateWrongNumberText(phoneNumber: string | null | undefined):
 // 電話番号間違いボタン: 本文への挿入
 export function insertWrongNumberText(body: string, insertionText: string): string {
   const triggers = [
+    // いふう系（大分）
     '株式会社いふうです。',
     '"株式会社いふう"です。',
     '不動産会社のいふうです。',
+    // くじら不動産系（福岡・FI売主）
+    '株式会社くじら不動産です。',
+    'くじら不動産です。',
   ];
 
   // 最初に出現するトリガーを探す

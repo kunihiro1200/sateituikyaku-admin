@@ -70,10 +70,16 @@ const RichTextEmailEditor: React.FC<RichTextEmailEditorProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // 初期値の設定
+  // 外部からのvalue変更を追跡するフラグ
+  const isExternalUpdate = useRef(false);
+
+  // 初期値の設定・外部からの更新
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
+      // フォーカス中でも外部更新（ボタンクリックなど）を反映する
+      isExternalUpdate.current = true;
       editorRef.current.innerHTML = value;
+      isExternalUpdate.current = false;
     }
   }, [value]);
 
