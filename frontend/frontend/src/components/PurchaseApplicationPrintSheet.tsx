@@ -63,7 +63,10 @@ const PurchaseApplicationPrintSheet = React.forwardRef<HTMLDivElement, PurchaseA
         </Typography>
 
         {/* 日付 */}
-        <Box sx={{ textAlign: 'right', mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography sx={{ fontSize: '14pt' }}>
+            {(Number(propertyPrice) || 0) > 15000000 ? '☐' : ''}
+          </Typography>
           <Typography sx={{ fontSize: '10pt' }}>
             {'　　　　'}年{'　　　'}月{'　　　'}日
           </Typography>
