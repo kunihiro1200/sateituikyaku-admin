@@ -639,10 +639,39 @@ export class EnhancedBuyerDistributionService {
       };
     }
 
-    // Find matching areas
-    const matchedAreas = buyerAreas.filter(buyerArea => 
+    // 別府市エリア番号一覧（㊶別府市全域の判定に使用）
+    // ⑨=U+2468, ⑩=U+2469, ⑪=U+246A, ⑫=U+246B, ⑬=U+246C, ⑭=U+246D, ⑮=U+246E, ㊷=U+32B7, ㊸=U+32B8
+    const BEPPU_AREA_NUMBERS = ['\u2468', '\u2469', '\u246A', '\u246B', '\u246C', '\u246D', '\u246E', '\u32B7', '\u32B8'];
+
+    // 大分市エリア番号一覧（㊵大分市全域の判定に使用）
+    // ①=U+2460, ②=U+2461, ③=U+2462, ④=U+2463, ⑤=U+2464, ⑥=U+2465, ⑦=U+2466, ⑧=U+2467
+    const OITA_AREA_NUMBERS = ['\u2460', '\u2461', '\u2462', '\u2463', '\u2464', '\u2465', '\u2466', '\u2467'];
+
+    const matchedAreas: string[] = [];
+
+    // ㊵（U+32B5）= 大分市全域: 買主が㊵を選択していて、物件が大分市エリア（①〜⑧）のいずれかであれば該当
+    const OITA_ALL = '\u32B5'; // ㊵
+    if (buyerAreas.includes(OITA_ALL)) {
+      const isOitaProperty = propertyAreas.some(a => OITA_AREA_NUMBERS.includes(a));
+      if (isOitaProperty) {
+        matchedAreas.push(OITA_ALL);
+      }
+    }
+
+    // ㊶（U+32B6）= 別府市全域: 買主が㊶を選択していて、物件が別府市エリア（⑨〜⑮㊷㊸）のいずれかであれば該当
+    const BEPPU_ALL = '\u32B6'; // ㊶
+    if (buyerAreas.includes(BEPPU_ALL)) {
+      const isBeppuProperty = propertyAreas.some(a => BEPPU_AREA_NUMBERS.includes(a));
+      if (isBeppuProperty) {
+        matchedAreas.push(BEPPU_ALL);
+      }
+    }
+
+    // 通常のエリアマッチング（直接一致）
+    const directMatches = buyerAreas.filter(buyerArea => 
       propertyAreas.includes(buyerArea)
     );
+    matchedAreas.push(...directMatches);
 
     return {
       matched: matchedAreas.length > 0,
