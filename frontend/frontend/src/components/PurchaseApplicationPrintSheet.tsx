@@ -59,16 +59,13 @@ const PurchaseApplicationPrintSheet = React.forwardRef<HTMLDivElement, PurchaseA
             textUnderlineOffset: '4px',
           }}
         >
-          買付申込書 ☐
+          買付申込書
         </Typography>
 
         {/* 日付 */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1, mb: 3 }}>
+        <Box sx={{ textAlign: 'right', mb: 3 }}>
           <Typography sx={{ fontSize: '10pt' }}>
             {'　　　　'}年{'　　　'}月{'　　　'}日
-          </Typography>
-          <Typography sx={{ fontSize: '14pt' }}>
-            ☐
           </Typography>
         </Box>
 
