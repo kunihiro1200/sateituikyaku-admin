@@ -190,7 +190,7 @@ export function generatePage2Html(propertyAddress: string, propertyPrice: number
   const thStyle = 'border:1px solid #000;padding:4px 8px;font-size:9pt;width:140px;';
   return `<div style="width:100%;height:100%;padding:8mm 14mm;background:#fff;font-family:${FONT};font-size:9pt;color:#000;box-sizing:border-box;overflow:hidden;">
     <div style="font-size:16pt;font-weight:bold;text-align:center;text-decoration:underline;margin-bottom:10px;">買付申込書</div>
-    <div style="text-align:right;margin-bottom:12px;font-size:9pt;">　　　　年　　　月　　　日</div>
+    <div style="text-align:right;margin-bottom:12px;font-size:9pt;">　　　　年　　　月　　　日${numPrice && numPrice > 15000000 ? '　☐' : ''}</div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
       <tr><td style="${thStyle}">住所</td><td colspan="3" style="${tdStyle}"></td></tr>
       <tr><td colspan="4" style="${tdStyle}">□借家　□持ち家（売却ご予定　ある・なし）</td></tr>
