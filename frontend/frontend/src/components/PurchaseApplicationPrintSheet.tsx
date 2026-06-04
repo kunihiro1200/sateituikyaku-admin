@@ -50,11 +50,9 @@ const PurchaseApplicationPrintSheet = React.forwardRef<HTMLDivElement, PurchaseA
         }}
       >
         {/* 10万円キャンペーンチェックボックス（1500万超のみ） */}
-        {(Number(propertyPrice) || 0) > 15000000 && (
-          <Box sx={{ position: 'absolute', top: '8mm', right: '14mm', fontSize: '16pt' }}>
-            ☐
-          </Box>
-        )}
+        <Box sx={{ position: 'absolute', top: '15mm', right: '20mm', fontSize: '18pt', fontWeight: 'bold' }}>
+          ☐
+        </Box>
         {/* タイトル */}
         <Typography
           sx={{
