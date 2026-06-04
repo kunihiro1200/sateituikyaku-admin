@@ -1869,7 +1869,7 @@ export class BuyerService {
 
   private matchesPropertyTypeCriteria(buyer: any, propertyType: string | null): boolean {
     const desiredType = (buyer.desired_property_type || '').trim();
-    if (desiredType === '指定なし') return true;
+    if (desiredType === '指定なし' || desiredType === '条件次第') return true;
     if (!desiredType) return false;
     if (!propertyType) return false;
 

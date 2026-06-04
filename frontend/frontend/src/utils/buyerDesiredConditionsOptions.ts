@@ -30,6 +30,7 @@ export const DESIRED_PROPERTY_TYPE_OPTIONS = [
   { value: '戸建て', label: '戸建て' },
   { value: 'マンション', label: 'マンション' },
   { value: '土地', label: '土地' },
+  { value: '収益物件', label: '収益物件' },
   { value: '戸建て・土地', label: '戸建て・土地' },
   { value: '戸建て・マンション', label: '戸建て・マンション' },
   { value: '戸建て・マンション・土地', label: '戸建て・マンション・土地' },
