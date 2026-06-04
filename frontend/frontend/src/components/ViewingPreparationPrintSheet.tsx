@@ -166,7 +166,7 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
       >
         {/* 10万円キャンペーンチェックボックス（1500万超のみ） */}
         {(Number(property.price || property.listing_price) || 0) > 15000000 && (
-          <Box sx={{ position: 'absolute', top: '8mm', right: '10mm', fontSize: '16pt' }}>
+          <Box sx={{ position: 'absolute', top: '4mm', right: '10mm', fontSize: '18pt', zIndex: 10 }}>
             ☐
           </Box>
         )}
