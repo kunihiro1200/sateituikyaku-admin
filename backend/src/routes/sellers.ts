@@ -2370,7 +2370,7 @@ router.post('/:id/portal-merits', async (req: Request, res: Response) => {
         { type: 'hospital',          label: '病院',         keyword: '' },
       ];
 
-      // 各カテゴリの最近傍施設（1件）を並列取得
+      // 各カテゴリの近傍施設を並列取得（駅のみ上位3件、それ以外は最近傍1件）
       type PlaceHit = { label: string; name: string; distanceM: number };
       const placesResults: PlaceHit[] = [];
 
@@ -2401,8 +2401,8 @@ router.post('/:id/portal-merits', async (req: Request, res: Response) => {
               }
               if (candidates.length === 0) return;
 
-              // 直線距離で最近傍を選ぶ
-              const nearest = candidates
+              // 直線距離で近い順にソート
+              const sorted = candidates
                 .map((p: any) => ({
                   name: p.name as string,
                   pLat: p.geometry?.location?.lat as number,
@@ -2419,10 +2419,25 @@ router.post('/:id/portal-merits', async (req: Request, res: Response) => {
                   const distM = Math.round(6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
                   return { ...p, distM };
                 })
-                .sort((a, b) => a.distM - b.distM)[0];
+                .sort((a, b) => a.distM - b.distM);
 
-              if (nearest) {
-                placesResults.push({ label: target.label, name: nearest.name, distanceM: nearest.distM });
+              // 駅のみ上位3件まで取得（複数駅が近い場合を考慮）、それ以外は1件
+              if (target.label === '駅') {
+                const top3 = sorted.slice(0, 3);
+                // 1位を必ず追加
+                if (top3.length > 0) {
+                  placesResults.push({ label: '駅', name: top3[0].name, distanceM: top3[0].distM });
+                }
+                // 2位以降は1位との距離差が500m以内の場合のみ追加
+                for (let i = 1; i < top3.length; i++) {
+                  if (top3[i].distM - top3[0].distM <= 500) {
+                    placesResults.push({ label: '駅', name: top3[i].name, distanceM: top3[i].distM });
+                  }
+                }
+              } else {
+                if (sorted.length > 0) {
+                  placesResults.push({ label: target.label, name: sorted[0].name, distanceM: sorted[0].distM });
+                }
               }
             }
           } catch (e) {
@@ -2434,8 +2449,6 @@ router.post('/:id/portal-merits', async (req: Request, res: Response) => {
       // ── Distance Matrix API で実際の所要時間を一括取得 ──
       if (placesResults.length > 0) {
         try {
-          // 宛先は「施設名 + 住所」の文字列ではなく座標が理想だが、
-          // Places APIからplace_idを取らなかったので施設名で検索する代わりに
           // 直線距離から徒歩・車の目安を計算（80m/分=徒歩、400m/分=車）
           const lines: string[] = [];
           for (const p of placesResults) {
@@ -2452,19 +2465,17 @@ router.post('/:id/portal-merits', async (req: Request, res: Response) => {
             }
           }
 
-          // Distance Matrix API で「駅」だけは正確な車の所要時間を取得
-          const stationHit = placesResults.find(p => p.label === '駅');
-          if (stationHit && googleApiKey) {
+          // Distance Matrix API で駅は徒歩の正確な所要時間を取得（全駅対象）
+          const stationHits = placesResults.filter(p => p.label === '駅');
+          for (const stationHit of stationHits) {
             try {
-              // 駅の座標を再取得するため、直線距離の計算結果からplace_idを使わず
-              // 代わりにDistance Matrix API を住所→施設名で呼ぶ
               const dmResp = await axios.get(
                 'https://maps.googleapis.com/maps/api/distancematrix/json',
                 {
                   params: {
                     origins: origin,
                     destinations: `${stationHit.name} 駅`,
-                    mode: 'driving',
+                    mode: 'walking',
                     language: 'ja',
                     key: googleApiKey,
                   },
@@ -2475,10 +2486,10 @@ router.post('/:id/portal-merits', async (req: Request, res: Response) => {
               if (el?.status === 'OK') {
                 const durationText: string = el.duration?.text || '';
                 const distText: string     = el.distance?.text || '';
-                // 既存の駅行を上書き
-                const idx = lines.findIndex(l => l.startsWith('駅:'));
+                // 対応する駅行を上書き（同名駅の最初のマッチを更新）
+                const idx = lines.findIndex(l => l.startsWith(`駅: ${stationHit.name}`));
                 if (idx >= 0 && durationText) {
-                  lines[idx] = `駅: ${stationHit.name}（車約${durationText}・${distText}）`;
+                  lines[idx] = `駅: ${stationHit.name}（徒歩約${durationText}・${distText}）`;
                 }
               }
             } catch (e) {
