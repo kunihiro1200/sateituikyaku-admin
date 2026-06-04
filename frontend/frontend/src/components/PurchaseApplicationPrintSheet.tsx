@@ -40,7 +40,6 @@ const PurchaseApplicationPrintSheet = React.forwardRef<HTMLDivElement, PurchaseA
           fontSize: '10pt',
           color: '#000',
           boxSizing: 'border-box',
-          position: 'relative',
           '@media print': {
             width: '210mm',
             minHeight: '297mm',
@@ -49,10 +48,6 @@ const PurchaseApplicationPrintSheet = React.forwardRef<HTMLDivElement, PurchaseA
           },
         }}
       >
-        {/* 10万円キャンペーンチェックボックス（1500万超のみ） */}
-        <Box sx={{ position: 'absolute', top: '15mm', right: '20mm', fontSize: '18pt', fontWeight: 'bold' }}>
-          ☐
-        </Box>
         {/* タイトル */}
         <Typography
           sx={{
@@ -67,8 +62,11 @@ const PurchaseApplicationPrintSheet = React.forwardRef<HTMLDivElement, PurchaseA
           買付申込書
         </Typography>
 
-        {/* 日付 */}
-        <Box sx={{ textAlign: 'right', mb: 3 }}>
+        {/* 日付 + チェックボックス */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Box sx={{ fontSize: '14pt' }}>
+            {(Number(propertyPrice) || 0) > 15000000 && '☐'}
+          </Box>
           <Typography sx={{ fontSize: '10pt' }}>
             {'　　　　'}年{'　　　'}月{'　　　'}日
           </Typography>
