@@ -901,6 +901,11 @@ export class EnhancedBuyerDistributionService {
   private filterByLatestStatusConsolidated(consolidatedBuyer: ConsolidatedBuyer): boolean {
     const status = consolidatedBuyer.mostPermissiveStatus || '';
     
+    // 「買付外れました」は配信対象にする（先にチェック）
+    if (status.includes('買付外れました')) {
+      return true;
+    }
+    
     // Exclude if contains "買付" or "D"
     if (status.includes('買付') || status.includes('D')) {
       return false;

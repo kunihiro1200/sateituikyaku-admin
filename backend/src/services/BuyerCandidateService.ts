@@ -97,7 +97,6 @@ export class BuyerCandidateService {
         .select('buyer_number,name,latest_status,desired_area,desired_property_type,reception_date,email,phone_number,property_number,distribution_type,inquiry_source,broker_inquiry,price_range_house,price_range_apartment,price_range_land')
         .is('deleted_at', null)  // 削除済みを除外
         .eq('distribution_type', '要')  // 配信種別が「要」のみ取得（DBレベルで絞り込み）
-        .not('latest_status', 'like', '%買付%')  // 買付済みを除外
         .not('latest_status', 'like', '%D%')  // D確度を除外
         .order('reception_date', { ascending: false, nullsFirst: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
@@ -429,6 +428,11 @@ export class BuyerCandidateService {
    */
   private matchesStatus(buyer: any): boolean {
     const latestStatus = (buyer.latest_status || '').trim();
+
+    // 「買付外れました」は配信対象にする（先にチェック）
+    if (latestStatus.includes('買付外れました')) {
+      return true;
+    }
 
     // 「買付」を含む場合は除外
     if (latestStatus.includes('買付')) {

@@ -209,11 +209,17 @@ export class BuyerCandidateService {
 
   /**
    * 最新状況によるフィルタリング
+   * - 「買付外れました」: 配信対象にする
    * - 買付またはDを含む場合: 除外
    * - それ以外: 条件を満たす
    */
   private matchesStatus(buyer: any): boolean {
     const latestStatus = (buyer.latest_status || '').trim();
+
+    // 「買付外れました」は配信対象にする（先にチェック）
+    if (latestStatus.includes('買付外れました')) {
+      return true;
+    }
 
     // 買付またはDを含む場合は除外
     if (latestStatus.includes('買付') || latestStatus.includes('D')) {
