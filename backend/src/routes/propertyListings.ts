@@ -2189,29 +2189,47 @@ router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, r
       return Buffer.from(r.data).toString('utf-8');
     };
 
-    // ── STEP 1: 物件個別ページから「この物件が属するエリア」のoz_コードを取得 ──
-    // 物件ページには全エリアのナビが含まれており、
-    // href="/tochi/oita/sc_oita/oz_44201106/">大字葛木</a> のパターンで対応関係がある。
-    // 物件の所在地から町名を取り出し、それに一致するoz_コードを探す。
+    // ── STEP 1: 物件個別ページから oz_コード と 座標 を取得 ──
     let areaCode = '';
+    let targetLat = 0;
+    let targetLng = 0;
     try {
       const propHtml = await fetchHtml(suumo_url);
+
+      // 座標取得（/kankyo/ ページを叩かずに物件ページ本体から取得を試みる）
+      // まず物件ページから取れるか確認、なければ /kankyo/ ページを取得
+      const latM = propHtml.match(/([3][0-9]\.[0-9]{5,})/);
+      const lngM = propHtml.match(/([1][3][0-9]\.[0-9]{5,})/);
+      if (latM && lngM) {
+        targetLat = parseFloat(latM[1]);
+        targetLng = parseFloat(lngM[1]);
+      } else {
+        // /kankyo/ ページから取得
+        try {
+          const kankyoUrl = suumo_url.replace(/\/$/, '') + '/kankyo/';
+          const kankyoHtml = await fetchHtml(kankyoUrl);
+          const kLatM = kankyoHtml.match(/([3][0-9]\.[0-9]{5,})/);
+          const kLngM = kankyoHtml.match(/([1][3][0-9]\.[0-9]{5,})/);
+          if (kLatM && kLngM) {
+            targetLat = parseFloat(kLatM[1]);
+            targetLng = parseFloat(kLngM[1]);
+          }
+        } catch { /* 座標取得失敗は無視 */ }
+      }
 
       // 物件の所在地を取得（例: 大分県大分市大字葛木115番10）
       const addrMatch = propHtml.match(/所在地[\s\S]{0,300}?((?:大分|福岡|熊本|佐賀|長崎|宮崎|鹿児島|沖縄)[県市][^\n<]{3,50})/);
       const fullAddress = addrMatch ? addrMatch[1].replace(/<[^>]+>/g, '').trim() : '';
 
       // 住所から市区町村以下の部分（大字葛木 など）を抽出
-      // 「大分市大字葛木115番10」→「大字葛木」「葛木」などを候補に
       const townCandidates: string[] = [];
       const townMatch = fullAddress.match(/(?:大分市|福岡市|熊本市)[^\s　]*?((?:大字|字)?[^\s　0-9０-９番地号\-]{2,8})/);
       if (townMatch) {
-        townCandidates.push(townMatch[1]);                          // 例: 大字葛木
-        townCandidates.push(townMatch[1].replace('大字', ''));      // 例: 葛木
+        townCandidates.push(townMatch[1]);
+        townCandidates.push(townMatch[1].replace('大字', ''));
       }
 
       // oz_ コードと地名のマッピングを全件取得
-      // パターン: href="/tochi/oita/sc_oita/oz_44201106/">大字葛木</a>
       const ozMapPattern = /href="\/tochi\/[^"]*\/(oz_[0-9]+)\/"[^>]*>([^<]{2,20})<\/a>/g;
       let ozMapMatch;
       const ozMap: Array<{ code: string; name: string }> = [];
@@ -2345,11 +2363,52 @@ router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, r
 
     // 重複排除（同じURLの物件）
     const seen = new Set<string>();
-    const uniqueCases = cases.filter((c) => {
+    const dedupedCases = cases.filter((c) => {
       if (seen.has(c.url)) return false;
       seen.add(c.url);
       return true;
     });
+
+    // ── STEP 4: 座標が取れている場合は各物件の座標を取得して1km以内でフィルタリング ──
+    // Haversine距離計算（km）
+    const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+
+    let uniqueCases = dedupedCases;
+
+    if (targetLat && targetLng && dedupedCases.length > 0) {
+      // 各物件の /kankyo/ ページから座標を取得して距離判定
+      // 並列で最大10件まで取得（タイムアウト対策）
+      const RADIUS_KM = 1.0;
+      const casesWithDistance = await Promise.all(
+        dedupedCases.map(async (c) => {
+          if (!c.url) return { ...c, distKm: 999 };
+          try {
+            const kankyoUrl = c.url.replace(/\/$/, '') + '/kankyo/';
+            const kHtml = await fetchHtml(kankyoUrl);
+            const kLatM = kHtml.match(/([3][0-9]\.[0-9]{5,})/);
+            const kLngM = kHtml.match(/([1][3][0-9]\.[0-9]{5,})/);
+            if (kLatM && kLngM) {
+              const distKm = haversineKm(targetLat, targetLng, parseFloat(kLatM[1]), parseFloat(kLngM[1]));
+              return { ...c, distKm };
+            }
+          } catch { /* 座標取得失敗は除外しない */ }
+          return { ...c, distKm: 0 }; // 座標取れない場合は含める
+        })
+      );
+
+      // 1km以内 + 座標不明（distKm=0）のものを残す、距離順にソート
+      uniqueCases = casesWithDistance
+        .filter((c) => c.distKm <= RADIUS_KM || c.distKm === 0)
+        .sort((a, b) => a.distKm - b.distKm)
+        .map(({ distKm, ...rest }) => rest);
+    }
 
     res.json({
       cases: uniqueCases,

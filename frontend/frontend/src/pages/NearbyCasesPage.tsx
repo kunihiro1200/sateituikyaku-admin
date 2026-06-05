@@ -203,7 +203,6 @@ export default function NearbyCasesPage() {
       <tr style="background:#e3f2fd;">
         <th style="padding:6px 10px;border:1px solid #bbb;text-align:center;">No</th>
         <th style="padding:6px 10px;border:1px solid #bbb;">所在地</th>
-        <th style="padding:6px 10px;border:1px solid #bbb;text-align:right;">価格</th>
         <th style="padding:6px 10px;border:1px solid #bbb;text-align:right;">面積</th>
         <th style="padding:6px 10px;border:1px solid #bbb;text-align:right;">坪数</th>
         <th style="padding:6px 10px;border:1px solid #bbb;text-align:right;">坪単価</th>
@@ -412,7 +411,7 @@ export default function NearbyCasesPage() {
               <TableHead>
                 <TableRow sx={{ backgroundColor: '#e3f2fd' }}>
                   <TableCell sx={{ fontWeight: 'bold', whiteSpace: 'nowrap', minWidth: 36 }}>No</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', minWidth: 180 }}>物件名・所在地</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', minWidth: 160 }}>所在地</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', whiteSpace: 'nowrap' }}>価格</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', whiteSpace: 'nowrap' }}>面積</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', whiteSpace: 'nowrap' }}>坪数</TableCell>
@@ -439,24 +438,19 @@ export default function NearbyCasesPage() {
                       <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
                         {isTarget ? '★' : i + 1}
                       </TableCell>
-                      <TableCell sx={{ fontSize: '0.82rem', maxWidth: 260 }}>
+                      <TableCell sx={{ fontSize: '0.82rem', maxWidth: 220 }}>
                         {c.url ? (
                           <Link
                             href={c.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            sx={{ fontSize: '0.82rem', display: 'block', mb: 0.3 }}
+                            sx={{ fontSize: '0.82rem', display: 'block' }}
                           >
-                            {c.title}
+                            {c.address !== '-' ? c.address : c.url}
                           </Link>
                         ) : (
-                          <Typography variant="body2" sx={{ fontSize: '0.82rem', mb: 0.3 }}>
-                            {c.title}
-                          </Typography>
-                        )}
-                        {c.address !== '-' && (
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                            {c.address}
+                          <Typography variant="body2" sx={{ fontSize: '0.82rem' }}>
+                            {c.address !== '-' ? c.address : '-'}
                           </Typography>
                         )}
                       </TableCell>
