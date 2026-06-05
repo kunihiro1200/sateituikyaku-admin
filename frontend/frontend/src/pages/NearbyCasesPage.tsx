@@ -18,9 +18,6 @@ import {
   Snackbar,
   Link,
   Chip,
-  Checkbox,
-  Switch,
-  FormControlLabel,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -52,19 +49,6 @@ interface NearbyCase {
   url: string;
 }
 
-// Haversine距離計算（km）
-const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-};
-
-// 住所文字列からSUUMOのアドレスパターンで緯度経度を推定する（簡易）
-// 実際にはバックエンドから返ってきた target_lat/lng を使う
-
 export default function NearbyCasesPage() {
   const { propertyNumber } = useParams<{ propertyNumber: string }>();
   const navigate = useNavigate();
@@ -74,7 +58,7 @@ export default function NearbyCasesPage() {
 
   const state = location.state as LocationState | null;
 
-  const [allCases, setAllCases] = useState<NearbyCase[]>([]);   // 全件
+  const [cases, setCases] = useState<NearbyCase[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sourceUrl, setSourceUrl] = useState<string>('');
@@ -83,14 +67,6 @@ export default function NearbyCasesPage() {
   const [price, setPrice] = useState<number | null>(null);
   const [landArea, setLandArea] = useState<number | null>(null);
   const [propertyType, setPropertyType] = useState<string>('');
-  const [targetLat, setTargetLat] = useState<number>(0);
-  const [targetLng, setTargetLng] = useState<number>(0);
-
-  // チェックボックス
-  const [checkedUrls, setCheckedUrls] = useState<Set<string>>(new Set());
-
-  // 1kmフィルタ
-  const [filterRadius, setFilterRadius] = useState(false);
 
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success',
@@ -99,18 +75,14 @@ export default function NearbyCasesPage() {
   useEffect(() => {
     const stored = sessionStorage.getItem(`nearby_cases_${propertyNumber}`);
     const data: LocationState | null = stored ? JSON.parse(stored) : state;
-
     if (data) {
       setSuumoUrl(data.suumoUrl || '');
       setAddress(data.address || '');
       setPrice(data.price ?? null);
       setLandArea(data.landArea ?? null);
       setPropertyType(data.propertyType || '');
-      if (data.suumoUrl) {
-        fetchCases(data.suumoUrl);
-      } else {
-        setError('SUUMO URLが設定されていません。報告ページでSUUMO URLを登録してください。');
-      }
+      if (data.suumoUrl) fetchCases(data.suumoUrl);
+      else setError('SUUMO URLが設定されていません。報告ページでSUUMO URLを登録してください。');
     } else {
       fetchPropertyData();
     }
@@ -128,7 +100,7 @@ export default function NearbyCasesPage() {
       setLandArea(d.land_area ?? null);
       setPropertyType(d.property_type || '');
       if (url) fetchCases(url);
-      else setError('SUUMO URLが設定されていません。報告ページでSUUMO URLを登録してください。');
+      else setError('SUUMO URLが設定されていません。');
     } catch {
       setError('物件データの取得に失敗しました。');
     }
@@ -138,16 +110,13 @@ export default function NearbyCasesPage() {
     if (!propertyNumber || !url) return;
     setLoading(true);
     setError(null);
-    setAllCases([]);
-    setCheckedUrls(new Set());
+    setCases([]);
     try {
       const res = await api.get(`/api/property-listings/${propertyNumber}/nearby-cases`, {
         params: { suumo_url: url },
       });
-      setAllCases(res.data.cases || []);
+      setCases(res.data.cases || []);
       setSourceUrl(res.data.source_url || '');
-      if (res.data.target_lat) setTargetLat(res.data.target_lat);
-      if (res.data.target_lng) setTargetLng(res.data.target_lng);
     } catch (err: any) {
       setError(err.response?.data?.error || '周辺事例の取得に失敗しました');
     } finally {
@@ -155,138 +124,68 @@ export default function NearbyCasesPage() {
     }
   };
 
-  // 1kmフィルタ適用後のケース
-  const displayCases = filterRadius && targetLat && targetLng
-    ? allCases.filter((c) => {
-        // 各物件の住所から緯度経度を推定することはできないため、
-        // バックエンドから返ってきた target_lat/lng を基準に、
-        // 物件URLのSUUMO物件ページに含まれる座標（33.XXXXX パターン）で判定
-        // ここでは住所の大字レベルの一致で簡易フィルタ（正確な座標フィルタはバックエンド実装済み）
-        return true; // 全件表示（座標フィルタはバックエンドで実装）
-      })
-    : allCases;
-
   // 対象物件の坪換算
   const targetTsubo = landArea ? Math.round((landArea / 3.30578) * 10) / 10 : null;
   const targetPriceMan = price ? Math.floor(price / 10000) : null;
   const targetTsubotanka = targetTsubo && targetPriceMan
     ? Math.round((targetPriceMan / targetTsubo) * 10) / 10 : null;
 
-  // チェック操作
-  const handleCheck = (url: string) => {
-    setCheckedUrls((prev) => {
-      const next = new Set(prev);
-      if (next.has(url)) next.delete(url);
-      else next.add(url);
-      return next;
-    });
-  };
-
-  const handleCheckAll = () => {
-    if (checkedUrls.size === displayCases.length) {
-      setCheckedUrls(new Set());
-    } else {
-      setCheckedUrls(new Set(displayCases.map((c) => c.url)));
-    }
-  };
-
-  // チェックされたケースのみ（または全件）取得
-  const getTargetCases = () =>
-    checkedUrls.size > 0
-      ? displayCases.filter((c) => checkedUrls.has(c.url))
-      : displayCases;
-
-  // テキストコピー（タブ区切りTSV形式 → メール/スプレッドシートで列が揃う）
-  const buildTableText = (targetCases: NearbyCase[]): string => {
-    const header = ['No', '所在地', '価格', '面積', '坪数', '坪単価', '建築条件'].join('\t');
-    const lines = targetCases.map((c, i) => [
-      String(i + 1),
-      c.address !== '-' ? c.address : '-',
-      c.price,
-      c.area,
-      c.tsubo,
-      c.tsubo_tanka,
-      c.building_condition,
-    ].join('\t'));
-    const targetInfo = targetPriceMan
-      ? `★\t${address}（対象物件）\t${targetPriceMan.toLocaleString('ja-JP')}万円\t${landArea ? landArea + '㎡' : '-'}\t${targetTsubo ? targetTsubo + '坪' : '-'}\t${targetTsubotanka ? targetTsubotanka + '万円/坪' : '-'}\t${propertyType || '-'}`
-      : '';
-    const rows = [header, ...lines, ...(targetInfo ? [targetInfo] : [])];
-    return `【周辺土地事例】SUUMO掲載中（${new Date().toLocaleDateString('ja-JP')}）\n${rows.join('\n')}`;
-  };
-
-  const handleCopyText = async () => {
-    const text = buildTableText(getTargetCases());
-    try {
-      await navigator.clipboard.writeText(text);
-      const n = checkedUrls.size > 0 ? `${checkedUrls.size}件を` : '';
-      setSnackbar({ open: true, message: `${n}テキストコピーしました`, severity: 'success' });
-    } catch {
-      setSnackbar({ open: true, message: 'コピーに失敗しました', severity: 'error' });
-    }
-  };
-
-  // HTMLテーブルコピー（Gmailに貼り付けるとテーブルになる）
+  // HTMLテーブルをクリップボードにコピー（Gmailに貼ると表になる）
   const handleCopyHtmlTable = async () => {
-    const targetCases = getTargetCases();
     const priceManStr = targetPriceMan ? `${targetPriceMan.toLocaleString('ja-JP')}万円` : '-';
     const tsuboStr = targetTsubo ? `${targetTsubo}坪` : '-';
     const tankaStr = targetTsubotanka ? `<b>${targetTsubotanka}万円/坪</b>` : '-';
 
-    const thead = `<tr style="background:#e3f2fd;">
-      <th style="padding:6px 10px;border:1px solid #bbb;text-align:center;">No</th>
-      <th style="padding:6px 10px;border:1px solid #bbb;">所在地</th>
-      <th style="padding:6px 10px;border:1px solid #bbb;text-align:right;">価格</th>
-      <th style="padding:6px 10px;border:1px solid #bbb;text-align:right;">面積</th>
-      <th style="padding:6px 10px;border:1px solid #bbb;text-align:right;">坪数</th>
-      <th style="padding:6px 10px;border:1px solid #bbb;text-align:right;">坪単価</th>
-      <th style="padding:6px 10px;border:1px solid #bbb;text-align:center;">建築条件</th>
+    const cellStyle = 'padding:5px 10px;border:1px solid #ddd;';
+    const thead = `<tr style="background:#e3f2fd;font-weight:bold;">
+      <td style="${cellStyle}text-align:center;">No</td>
+      <td style="${cellStyle}">所在地</td>
+      <td style="${cellStyle}text-align:right;">価格</td>
+      <td style="${cellStyle}text-align:right;">面積</td>
+      <td style="${cellStyle}text-align:right;">坪数</td>
+      <td style="${cellStyle}text-align:right;">坪単価</td>
+      <td style="${cellStyle}text-align:center;">建築条件</td>
     </tr>`;
 
-    const tbody = targetCases.map((c, i) => `
+    const tbody = cases.map((c, i) => `
       <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f9f9f9'}">
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:center;">${i + 1}</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;">${c.address !== '-' ? c.address : ''}</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right;">${c.price}</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right;">${c.area}</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right;">${c.tsubo}</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right;"><b>${c.tsubo_tanka}</b></td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:center;">${c.building_condition}</td>
+        <td style="${cellStyle}text-align:center;">${i + 1}</td>
+        <td style="${cellStyle}">${c.address !== '-' ? c.address : ''}</td>
+        <td style="${cellStyle}text-align:right;">${c.price}</td>
+        <td style="${cellStyle}text-align:right;">${c.area}</td>
+        <td style="${cellStyle}text-align:right;">${c.tsubo}</td>
+        <td style="${cellStyle}text-align:right;"><b>${c.tsubo_tanka}</b></td>
+        <td style="${cellStyle}text-align:center;">${c.building_condition}</td>
       </tr>`).join('');
 
     const targetRow = `
       <tr style="background:#fff8e1;font-weight:bold;">
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:center;">★</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;">${address}（対象物件）</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right;">${priceManStr}</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right;">${landArea ? `${landArea}㎡` : '-'}</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right;">${tsuboStr}</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right;">${tankaStr}</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:center;">${propertyType || '-'}</td>
+        <td style="${cellStyle}text-align:center;">★</td>
+        <td style="${cellStyle}">${address}（対象物件）</td>
+        <td style="${cellStyle}text-align:right;">${priceManStr}</td>
+        <td style="${cellStyle}text-align:right;">${landArea ? `${landArea}㎡` : '-'}</td>
+        <td style="${cellStyle}text-align:right;">${tsuboStr}</td>
+        <td style="${cellStyle}text-align:right;">${tankaStr}</td>
+        <td style="${cellStyle}text-align:center;">-</td>
       </tr>`;
 
-    const html = `<table style="border-collapse:collapse;font-size:13px;font-family:sans-serif;">
-  <thead>${thead}</thead>
-  <tbody>${tbody}${targetRow}</tbody>
+    const html = `<p style="font-size:13px;font-family:sans-serif;margin-bottom:6px;">【周辺土地事例】SUUMO掲載中（${new Date().toLocaleDateString('ja-JP')}）</p>
+<table style="border-collapse:collapse;font-size:13px;font-family:sans-serif;">
+  <tbody>${thead}${tbody}${targetRow}</tbody>
 </table>
-<p style="font-size:11px;color:#888;margin-top:6px;">出典：SUUMO掲載中物件（${new Date().toLocaleDateString('ja-JP')}時点）</p>`;
+<p style="font-size:11px;color:#888;margin-top:6px;">出典：SUUMO　半径1km圏内</p>`;
 
     try {
       await navigator.clipboard.write([
         new ClipboardItem({
           'text/html': new Blob([html], { type: 'text/html' }),
-          'text/plain': new Blob([buildTableText(targetCases)], { type: 'text/plain' }),
         }),
       ]);
-      const n = checkedUrls.size > 0 ? `${checkedUrls.size}件の` : '';
-      setSnackbar({ open: true, message: `${n}HTMLテーブルをコピーしました（Gmailに貼り付けると表になります）`, severity: 'success' });
+      setSnackbar({ open: true, message: 'HTMLテーブルをコピーしました（Gmailに貼り付けると表になります）', severity: 'success' });
     } catch {
-      handleCopyText();
+      setSnackbar({ open: true, message: 'コピーに失敗しました', severity: 'error' });
     }
   };
-
-  const isAllChecked = displayCases.length > 0 && checkedUrls.size === displayCases.length;
-  const isIndeterminate = checkedUrls.size > 0 && checkedUrls.size < displayCases.length;
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
@@ -335,27 +234,16 @@ export default function NearbyCasesPage() {
 
       {/* アクションボタン */}
       <Box sx={{ display: 'flex', gap: 1.5, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-        {displayCases.length > 0 && (
-          <>
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<ContentCopyIcon />}
-              onClick={handleCopyHtmlTable}
-              sx={{ backgroundColor: '#1a73e8', '&:hover': { backgroundColor: '#1557b0' } }}
-            >
-              {checkedUrls.size > 0 ? `選択${checkedUrls.size}件をコピー` : 'メール用テーブルをコピー'}
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<ContentCopyIcon />}
-              onClick={handleCopyText}
-              sx={{ borderColor: '#666', color: '#666' }}
-            >
-              テキストをコピー
-            </Button>
-          </>
+        {cases.length > 0 && (
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<ContentCopyIcon />}
+            onClick={handleCopyHtmlTable}
+            sx={{ backgroundColor: '#1a73e8', '&:hover': { backgroundColor: '#1557b0' } }}
+          >
+            メール用テーブルをコピー
+          </Button>
         )}
         <Button
           variant="outlined"
@@ -402,37 +290,21 @@ export default function NearbyCasesPage() {
       )}
 
       {/* 周辺事例テーブル */}
-      {!loading && displayCases.length > 0 && (
+      {!loading && cases.length > 0 && (
         <Paper sx={{ p: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, flexWrap: 'wrap', gap: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Typography variant="body2" fontWeight="bold" color="text.secondary">
-                周辺販売中土地（{displayCases.length}件）
-                {checkedUrls.size > 0 && (
-                  <Typography component="span" sx={{ ml: 1, color: SECTION_COLORS.property.main, fontWeight: 'bold' }}>
-                    {checkedUrls.size}件選択中
-                  </Typography>
-                )}
-              </Typography>
-            </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+            <Typography variant="body2" fontWeight="bold" color="text.secondary">
+              周辺販売中土地（{cases.length}件）
+            </Typography>
             <Typography variant="caption" color="text.secondary">
-              出典：SUUMO　{new Date().toLocaleDateString('ja-JP')}時点
+              出典：SUUMO　{new Date().toLocaleDateString('ja-JP')}時点　半径1km圏内
             </Typography>
           </Box>
           <TableContainer sx={{ overflowX: 'auto' }}>
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ backgroundColor: '#e3f2fd' }}>
-                  {/* チェックボックス列 */}
-                  <TableCell padding="checkbox" sx={{ width: 40 }}>
-                    <Checkbox
-                      size="small"
-                      checked={isAllChecked}
-                      indeterminate={isIndeterminate}
-                      onChange={handleCheckAll}
-                    />
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', whiteSpace: 'nowrap', minWidth: 36 }}>No</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', whiteSpace: 'nowrap', width: 36 }}>No</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', minWidth: 160 }}>所在地</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', whiteSpace: 'nowrap' }}>価格</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', whiteSpace: 'nowrap' }}>面積</TableCell>
@@ -442,43 +314,24 @@ export default function NearbyCasesPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {displayCases.map((c, i) => {
+                {cases.map((c, i) => {
                   const isTarget = suumoUrl && c.url &&
                     suumoUrl.includes(c.url.replace('https://suumo.jp', ''));
-                  const isChecked = checkedUrls.has(c.url);
                   return (
                     <TableRow
                       key={i}
-                      onClick={() => handleCheck(c.url)}
                       sx={{
-                        cursor: 'pointer',
-                        backgroundColor: isChecked
-                          ? '#e8f5e9'
-                          : isTarget
-                          ? '#fff3e0'
-                          : i % 2 === 0 ? 'white' : '#fafafa',
-                        '&:hover': { backgroundColor: isChecked ? '#c8e6c9' : '#f0f0f0' },
+                        backgroundColor: isTarget ? '#fff3e0' : i % 2 === 0 ? 'white' : '#fafafa',
+                        '&:hover': { backgroundColor: '#f0f0f0' },
                       }}
                     >
-                      <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          size="small"
-                          checked={isChecked}
-                          onChange={() => handleCheck(c.url)}
-                        />
-                      </TableCell>
                       <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
                         {isTarget ? '★' : i + 1}
                       </TableCell>
                       <TableCell sx={{ fontSize: '0.82rem', maxWidth: 220 }}>
                         {c.url ? (
-                          <Link
-                            href={c.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            sx={{ fontSize: '0.82rem', display: 'block' }}
-                          >
+                          <Link href={c.url} target="_blank" rel="noopener noreferrer"
+                            sx={{ fontSize: '0.82rem', display: 'block' }}>
                             {c.address !== '-' ? c.address : c.url}
                           </Link>
                         ) : (
@@ -514,6 +367,33 @@ export default function NearbyCasesPage() {
                     </TableRow>
                   );
                 })}
+                {/* 対象物件行（常に最下行に表示） */}
+                {targetPriceMan && (
+                  <TableRow sx={{ backgroundColor: '#fff8e1', fontWeight: 'bold', borderTop: '2px solid #ffe082' }}>
+                    <TableCell sx={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#e65100' }}>★</TableCell>
+                    <TableCell sx={{ fontSize: '0.82rem', fontWeight: 'bold' }}>
+                      {address}（対象物件）
+                    </TableCell>
+                    <TableCell sx={{ textAlign: 'right', fontSize: '0.85rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                      {targetPriceMan.toLocaleString('ja-JP')}万円
+                    </TableCell>
+                    <TableCell sx={{ textAlign: 'right', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                      {landArea ? `${landArea}㎡` : '-'}
+                    </TableCell>
+                    <TableCell sx={{ textAlign: 'right', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                      {targetTsubo ? `${targetTsubo}坪` : '-'}
+                    </TableCell>
+                    <TableCell sx={{
+                      textAlign: 'right', fontWeight: 'bold', fontSize: '0.9rem',
+                      whiteSpace: 'nowrap', color: SECTION_COLORS.property.main,
+                    }}>
+                      {targetTsubotanka ? `${targetTsubotanka}万円/坪` : '-'}
+                    </TableCell>
+                    <TableCell sx={{ textAlign: 'center', fontSize: '0.82rem' }}>
+                      {propertyType || '-'}
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </TableContainer>
@@ -521,7 +401,7 @@ export default function NearbyCasesPage() {
       )}
 
       {/* 取得結果が0件 */}
-      {!loading && !error && displayCases.length === 0 && suumoUrl && (
+      {!loading && !error && cases.length === 0 && suumoUrl && (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="body2" color="text.secondary">
             周辺事例が見つかりませんでした。
@@ -533,11 +413,8 @@ export default function NearbyCasesPage() {
         </Paper>
       )}
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
-      >
+      <Snackbar open={snackbar.open} autoHideDuration={4000}
+        onClose={() => setSnackbar((p) => ({ ...p, open: false }))}>
         <Alert severity={snackbar.severity} onClose={() => setSnackbar((p) => ({ ...p, open: false }))}>
           {snackbar.message}
         </Alert>
