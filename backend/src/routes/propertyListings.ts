@@ -2159,96 +2159,70 @@ router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, r
   const { suumo_url } = req.query as { suumo_url?: string };
 
   try {
-    // suumo_url から oz_XXXXXXXX（エリアコード）を抽出
-    // 例: https://suumo.jp/tochi/oita/sc_oita/nc_76870269/ → sc_oita を元にエリア一覧ページへ
-    let listUrl = '';
-
-    if (suumo_url && suumo_url.includes('suumo.jp/tochi/')) {
-      // nc_XXXXXXXX（物件番号）をエリア一覧URLに変換
-      // https://suumo.jp/tochi/oita/sc_oita/nc_76870269/
-      //  → https://suumo.jp/tochi/oita/sc_oita/ (市区町村一覧) からエリアコードを抽出
-      const match = suumo_url.match(/suumo\.jp\/tochi\/([^/]+)\/([^/]+)\//);
-      if (match) {
-        const pref = match[1]; // oita
-        const city = match[2]; // sc_oita
-        listUrl = `https://suumo.jp/tochi/${pref}/${city}/`;
-      }
-    }
-
-    if (!listUrl) {
+    if (!suumo_url || !suumo_url.includes('suumo.jp/tochi/')) {
       res.status(400).json({ error: 'SUUMO URLからエリアを特定できませんでした。SUUMO URLを正しく設定してください。' });
       return;
     }
 
-    // SUUMOエリア一覧ページを取得
+    // https://suumo.jp/tochi/oita/sc_oita/nc_76870269/
+    //   → pref=oita, city=sc_oita
+    const cityMatch = suumo_url.match(/suumo\.jp\/tochi\/([^/]+)\/([^/]+)\//);
+    if (!cityMatch) {
+      res.status(400).json({ error: 'SUUMO URLの形式が不正です。' });
+      return;
+    }
+    const pref = cityMatch[1];
+    const city = cityMatch[2];
+
     const axios = require('axios');
-    const response = await axios.get(listUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Trident/7.0) rv:11.0) like Gecko',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'ja,en-US;q=0.7,en;q=0.3',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-      },
-      timeout: 15000,
-    });
+    const fetchHtml = async (url: string): Promise<string> => {
+      const r = await axios.get(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml',
+          'Accept-Language': 'ja,en-US;q=0.9',
+        },
+        timeout: 20000,
+        responseType: 'arraybuffer',
+      });
+      // SUUMOはUTF-8なのでそのままデコード
+      return Buffer.from(r.data).toString('utf-8');
+    };
 
-    const html: string = response.data;
-
-    // エリア一覧ページから oz_XXXXXXXX を抽出してエリアコード候補を取得
-    // 物件のSUUMO URLのnc番号からエリアを割り出すため、
-    // まず物件ページから実際のエリアコードを取得する
+    // ── STEP 1: 物件個別ページからエリアコード（oz_XXXXXXXX）を取得 ──
     let areaCode = '';
-    if (suumo_url) {
-      try {
-        const propResponse = await axios.get(suumo_url, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-            'Accept': 'text/html',
-            'Accept-Language': 'ja',
-          },
-          timeout: 15000,
-        });
-        const propHtml: string = propResponse.data;
-        // パンくずリストからエリアコードを抽出
-        // 例: href="/tochi/oita/sc_oita/oz_44201106/"
-        const ozMatch = propHtml.match(/\/tochi\/[^/]+\/[^/]+\/(oz_[0-9]+)\//);
-        if (ozMatch) {
-          areaCode = ozMatch[1];
-        }
-      } catch {
-        // 物件ページ取得失敗時はエリアコードなし
-      }
-    }
+    try {
+      const propHtml = await fetchHtml(suumo_url);
+      const ozMatch = propHtml.match(/\/tochi\/[^"]*\/(oz_[0-9]+)\//);
+      if (ozMatch) areaCode = ozMatch[1];
+    } catch { /* エリアコード取得失敗は無視 */ }
 
-    // エリアコードがあれば oz ページを取得、なければ市区町村全体ページを使用
-    let targetUrl = listUrl;
-    if (areaCode) {
-      const match = listUrl.match(/suumo\.jp\/tochi\/([^/]+)\/([^/]+)\//);
-      if (match) {
-        targetUrl = `https://suumo.jp/tochi/${match[1]}/${match[2]}/${areaCode}/`;
-      }
-    }
+    // ── STEP 2: エリア一覧ページを取得 ──
+    const targetUrl = areaCode
+      ? `https://suumo.jp/tochi/${pref}/${city}/${areaCode}/`
+      : `https://suumo.jp/tochi/${pref}/${city}/`;
 
-    let targetHtml = html;
-    if (targetUrl !== listUrl) {
-      try {
-        const areaResponse = await axios.get(targetUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-            'Accept': 'text/html',
-            'Accept-Language': 'ja',
-          },
-          timeout: 15000,
-        });
-        targetHtml = areaResponse.data;
-      } catch {
-        // エリアページ取得失敗時は市区町村全体ページを使用
-      }
-    }
+    const targetHtml = await fetchHtml(targetUrl);
 
-    // 物件データを抽出
-    const cases: Array<{
+    // ── STEP 3: 物件ブロック単位で解析 ──
+    // SUUMOのHTML構造:
+    //   各物件は <h2 class="..."><a href="/tochi/.../nc_XXXXXXXX/">タイトル</a></h2> で始まり
+    //   その後に 物件名・販売価格・所在地・土地面積・坪単価 などが並ぶ
+    // 戦略: nc_XXXXXXXX の出現位置でHTMLを物件ブロックに分割し、
+    //        各ブロック内から必要なデータを抽出する
+
+    // HTMLタグを除去するヘルパー
+    const stripTags = (s: string) => s.replace(/<[^>]+>/g, '').replace(/&[a-zA-Z]+;/g, (m) => {
+      const map: Record<string, string> = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&nbsp;': ' ', '&quot;': '"' };
+      return map[m] || m;
+    }).replace(/\s+/g, ' ').trim();
+
+    // 各物件のnc_URLでHTMLを分割
+    // nc_XXXXXXXX が含まれる h2 タグの直前で分割
+    const blockSplitPattern = /(?=<h2[^>]*>\s*<a[^>]+\/tochi\/[^"]*nc_[0-9]+[^"]*")/g;
+    const rawBlocks = targetHtml.split(blockSplitPattern).slice(1); // 最初のブロックはナビなどなので除外
+
+    interface NearbyCase {
       title: string;
       price: string;
       address: string;
@@ -2257,121 +2231,131 @@ router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, r
       tsubo_tanka: string;
       building_condition: string;
       url: string;
-    }> = [];
+    }
 
-    // SUUMO物件リストのパターンを解析
-    // 価格パターン: 1260万円
-    const pricePattern = /販売価格[^0-9]*([0-9,]+(?:万[0-9,]+)?円(?:[^<\n]*万円)?)/g;
+    const cases: NearbyCase[] = [];
 
-    // 物件ブロックを抽出（各nc_番号のブロック）
-    const propertyBlocks = targetHtml.split(/(?=<article|(?=class="[^"]*cassette))/);
+    for (const block of rawBlocks) {
+      // このブロックが物件リストのブロックかチェック（nc_ URLが含まれるか）
+      const urlMatch = block.match(/<a[^>]+href="(\/tochi\/[^"]*nc_([0-9]+)[^"]*)"/);
+      if (!urlMatch) continue;
 
-    // シンプルな正規表現で各物件を抽出
-    // nc_番号のURLパターン
-    const ncPattern = /href="(\/tochi\/[^"]*nc_[0-9]+\/[^"]*)"/g;
-    const ncUrls: string[] = [];
-    let ncMatch;
-    while ((ncMatch = ncPattern.exec(targetHtml)) !== null) {
-      const url = 'https://suumo.jp' + ncMatch[1];
-      if (!ncUrls.includes(url)) {
-        ncUrls.push(url);
+      const ncPath = urlMatch[1];
+      const url = `https://suumo.jp${ncPath}`;
+
+      // タイトル: <h2 ...><a ...>タイトル</a></h2>
+      const titleMatch = block.match(/<h2[^>]*>\s*<a[^>]+>[^<]*<\/a>\s*<\/h2>/);
+      let title = '';
+      if (titleMatch) {
+        title = stripTags(titleMatch[0]);
       }
-    }
-
-    // 物件リスト要素を正規表現で抽出
-    // タイトル（見出し）、価格、面積、所在地を取得
-    const listItemPattern = /<li[^>]*class="[^"]*cassette[^"]*"[^>]*>([\s\S]*?)<\/li>/g;
-
-    // テキストからHTMLタグを除去するヘルパー
-    const stripTags = (str: string) => str.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-
-    // 物件データを段落ごとに解析
-    // SUUMOのHTML構造: 各物件は h2 > a でタイトル、その後に価格・面積などが続く
-    const h2Pattern = /<h2[^>]*>([\s\S]*?)<\/h2>/g;
-    let h2Match;
-    const titleBlocks: string[] = [];
-    while ((h2Match = h2Pattern.exec(targetHtml)) !== null) {
-      const title = stripTags(h2Match[1]);
-      if (title && title.length > 5 && !title.includes('広告') && !title.includes('お知らせ')) {
-        titleBlocks.push(title);
+      // タイトルが取れなかった場合 <h2> 内テキストを取得
+      if (!title) {
+        const h2m = block.match(/<h2[^>]*>([\s\S]*?)<\/h2>/);
+        if (h2m) title = stripTags(h2m[1]);
       }
-    }
-
-    // 価格ブロック抽出（「販売価格」ラベルの後の価格）
-    const fullPricePattern = /販売価格\s*(?:<[^>]+>\s*)*([0-9,]+万[0-9,]*円(?:[^<\n]*万円)?)/g;
-    let priceMatch;
-    const prices: string[] = [];
-    while ((priceMatch = fullPricePattern.exec(targetHtml)) !== null) {
-      prices.push(priceMatch[1].trim());
-    }
-
-    // 面積ブロック抽出（「土地面積」ラベルの後の値）
-    const areaPattern = /土地面積\s*(?:<[^>]+>\s*)*([0-9,.]+m2[^<\n]*(?:\([^)]+\))?)/g;
-    let areaMatch;
-    const areas: string[] = [];
-    while ((areaMatch = areaPattern.exec(targetHtml)) !== null) {
-      areas.push(areaMatch[1].replace(/\s+/g, '').trim());
-    }
-
-    // 坪単価ブロック抽出
-    const tsuboPattern = /坪単価\s*(?:<[^>]+>\s*)*([0-9,.]+万円\/坪|-)/g;
-    let tsuboMatch;
-    const tsuboTankas: string[] = [];
-    while ((tsuboMatch = tsuboPattern.exec(targetHtml)) !== null) {
-      tsuboTankas.push(tsuboMatch[1].trim());
-    }
-
-    // 所在地ブロック抽出
-    const addressPattern = /所在地\s*(?:<[^>]+>\s*)*大分県([^<\n]{3,50}?)(?:\s*\[|<)/g;
-    let addressMatch;
-    const addresses: string[] = [];
-    while ((addressMatch = addressPattern.exec(targetHtml)) !== null) {
-      const addr = addressMatch[1].replace(/\s+/g, '').trim();
-      if (addr.length > 2) {
-        addresses.push('大分市' + addr);
+      // 物件名ラベル（コラム付きの場合 物件名が別にある）
+      const propNameMatch = block.match(/物件名[^<]*<\/[^>]+>\s*([^<\n]+)/);
+      if (propNameMatch && propNameMatch[1].trim() && !title.includes('区画')) {
+        // 物件名が取れていればそれを優先
+        const pname = propNameMatch[1].trim();
+        if (pname.length > 3) title = pname;
       }
-    }
+      if (!title) title = '-';
 
-    // 建築条件ラベル抽出
-    const conditionPattern = /建築条件(?:付土地|なし土地|付き土地|付)/g;
-    let condMatch;
-    const conditions: string[] = [];
-    while ((condMatch = conditionPattern.exec(targetHtml)) !== null) {
-      conditions.push(condMatch[0].replace('付土地', 'あり').replace('なし土地', 'なし').replace('付き土地', 'あり').replace('付', 'あり'));
-    }
+      // 販売価格: 「販売価格</dt> ... 価格テキスト」 または 「<strong>価格</strong>」
+      let price = '-';
+      // パターンA: 販売価格 ラベルの直後
+      const priceMatch = block.match(/販売価格[\s\S]{0,80}?([0-9,]+万[0-9,]*円(?:～[0-9,]+万[0-9,]*円)?)/);
+      if (priceMatch) {
+        price = priceMatch[1].trim();
+      }
 
-    // データを結合（タイトル数に合わせる）
-    const count = Math.min(titleBlocks.length, Math.max(prices.length, 1));
-    for (let i = 0; i < count && i < 20; i++) {
-      // 坪換算（1坪 = 3.30578㎡）
-      const areaStr = areas[i] || '';
-      const sqmMatch = areaStr.match(/([0-9,.]+)m2/);
-      let tsuboStr = '-';
-      if (sqmMatch) {
-        const sqm = parseFloat(sqmMatch[1].replace(',', ''));
-        if (!isNaN(sqm)) {
-          tsuboStr = (sqm / 3.30578).toFixed(1) + '坪';
+      // 所在地
+      let address = '-';
+      const addrMatch = block.match(/所在地[\s\S]{0,100}?((?:大分|福岡|熊本|佐賀|長崎|宮崎|鹿児島|沖縄)[県市]\S{2,40})/);
+      if (addrMatch) {
+        address = addrMatch[1].replace(/<[^>]+>/g, '').trim();
+        // 「[地図]」などの余分なテキストを除去
+        address = address.replace(/\[.+?\]/g, '').replace(/\s+/g, ' ').trim();
+      }
+
+      // 土地面積
+      let area = '-';
+      let tsubo = '-';
+      // パターン: 土地面積 179.37m2～188.34m2（54.25坪～56.97坪）（登記）
+      //      または: 土地面積 234.15m2（登記）
+      const areaMatch = block.match(/土地面積[\s\S]{0,60}?([0-9,.]+(?:m2|㎡)(?:[^<（\n]{0,30})?)/);
+      if (areaMatch) {
+        area = areaMatch[1].replace(/<[^>]+>/g, '').replace(/\s+/g, '').trim();
+        // 坪数が面積文字列内に含まれている場合（例: 179.37m2～188.34m2（54.25坪～56.97坪））
+        const tsuboInArea = area.match(/（([0-9.]+坪(?:～[0-9.]+坪)?)/);
+        if (tsuboInArea) {
+          tsubo = tsuboInArea[1];
+        } else {
+          // 坪換算（面積の最初の数値から計算）
+          const sqmNum = area.match(/([0-9,.]+)(?:m2|㎡)/);
+          if (sqmNum) {
+            const sqm = parseFloat(sqmNum[1].replace(',', ''));
+            if (!isNaN(sqm) && sqm > 0) {
+              tsubo = `${(sqm / 3.30578).toFixed(1)}坪`;
+            }
+          }
         }
       }
 
-      cases.push({
-        title: titleBlocks[i] || '-',
-        price: prices[i] || '-',
-        address: addresses[i] || '-',
-        area: areaStr || '-',
-        tsubo: tsuboStr,
-        tsubo_tanka: tsuboTankas[i] || '-',
-        building_condition: i < conditions.length ? conditions[i] : '-',
-        url: ncUrls[i] || '',
-      });
+      // 坪単価
+      let tsubo_tanka = '-';
+      // パターン: 坪単価 17.8万円／坪 または 坪単価 -
+      const tankaMatch = block.match(/坪単価[\s\S]{0,60}?([0-9,.]+万円[\/／]坪)/);
+      if (tankaMatch) {
+        tsubo_tanka = tankaMatch[1].replace('／', '/');
+      }
+      // 坪単価が「-」の場合でも面積と価格から計算可能なら計算
+      if (tsubo_tanka === '-' && tsubo !== '-' && price !== '-') {
+        const tsuboNum = tsubo.match(/([0-9.]+)坪/);
+        const priceNum = price.match(/([0-9,]+)万/);
+        if (tsuboNum && priceNum) {
+          const t = parseFloat(tsuboNum[1]);
+          const p = parseInt(priceNum[1].replace(',', ''), 10);
+          if (t > 0 && p > 0) {
+            tsubo_tanka = `${(p / t).toFixed(1)}万円/坪（計算値）`;
+          }
+        }
+      }
+
+      // 建築条件
+      let building_condition = 'なし';
+      // 「建築条件付土地」ラベルがブロック内（タイトルより前）にあるか
+      const condIdx = block.indexOf('建築条件付土地');
+      const titleIdx = block.indexOf('<h2');
+      if (condIdx !== -1 && condIdx < titleIdx + 200) {
+        building_condition = 'あり';
+      } else if (block.includes('建築条件なし')) {
+        building_condition = 'なし';
+      } else if (block.match(/建ぺい率/)) {
+        // 建ぺい率の記述があれば物件情報確定ブロック
+        building_condition = 'なし'; // デフォルト
+      }
+
+      cases.push({ title, price, address, area, tsubo, tsubo_tanka, building_condition, url });
     }
 
+    // 重複排除（同じURLの物件）
+    const seen = new Set<string>();
+    const uniqueCases = cases.filter((c) => {
+      if (seen.has(c.url)) return false;
+      seen.add(c.url);
+      return true;
+    });
+
     res.json({
-      cases,
+      cases: uniqueCases,
       source_url: targetUrl,
       area_code: areaCode,
-      total: cases.length,
+      total: uniqueCases.length,
     });
+
   } catch (error: any) {
     console.error('[nearby-cases] Error:', error.message);
     res.status(500).json({ error: '周辺事例の取得に失敗しました: ' + (error.message || '') });
