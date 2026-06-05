@@ -12,7 +12,7 @@ const driveService = new GoogleDriveService();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB制限
+    fileSize: 10 * 1024 * 1024, // 10MB制限/ファイル
   },
   fileFilter: (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
     // PDFと画像ファイルのみ許可
@@ -246,6 +246,135 @@ router.post('/folders/:sellerNumber/files', authenticate, upload.single('file'),
       return res.status(400).json({ error: error.message });
     }
     
+    res.status(500).json({ error: error.message || 'ファイルのアップロードに失敗しました' });
+  }
+});
+
+
+/**
+ * POST /api/drive/folders/:sellerNumber/files/batch
+ * 複数ファイルを一括アップロード（並列処理）
+ * フォルダ作成は1回だけ実行し、全ファイルを並列でアップロードする
+ */
+router.post('/folders/:sellerNumber/files/batch', authenticate, upload.array('files', 20), async (req: Request & { files?: Express.Multer.File[] }, res: Response) => {
+  try {
+    const { sellerNumber } = req.params;
+    const files = (req as Request & { files?: Express.Multer.File[] }).files;
+
+    if (!sellerNumber) {
+      return res.status(400).json({ error: '売主番号が必要です' });
+    }
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: 'ファイルが必要です' });
+    }
+
+    // 売主情報を取得（フォルダ作成に必要なため1回だけ実行）
+    const baseRepo = new BaseRepository();
+    let seller: any = null;
+    let sellerError: any = null;
+
+    const result1 = await (baseRepo as any).table('sellers')
+      .select('id, name, property_address')
+      .eq('seller_number', sellerNumber)
+      .single();
+    seller = result1.data;
+    sellerError = result1.error;
+
+    if (sellerError || !seller) {
+      const result2 = await (baseRepo as any).table('property_listings')
+        .select('property_number, address')
+        .eq('property_number', sellerNumber)
+        .single();
+      if (!result2.error && result2.data) {
+        seller = {
+          id: result2.data.property_number,
+          name: null,
+          property_address: result2.data.address || '',
+        };
+        sellerError = null;
+      }
+    }
+
+    if (sellerError || !seller) {
+      return res.status(404).json({ error: '売主が見つかりません' });
+    }
+
+    const propertyAddress = seller.property_address || '';
+    let sellerName = '';
+    if (seller.name) {
+      try {
+        sellerName = decrypt(seller.name);
+      } catch {
+        sellerName = seller.name;
+      }
+    }
+
+    // フォルダ取得または作成（1回だけ）
+    const folder = await driveService.getOrCreateSellerFolder(
+      seller.id,
+      sellerNumber,
+      propertyAddress,
+      sellerName
+    );
+
+    // fileNames はJSON文字列の配列で送られてくる想定（UTF-8ファイル名保持のため）
+    let fileNames: string[] = [];
+    try {
+      fileNames = JSON.parse(req.body.fileNames || '[]');
+    } catch {
+      fileNames = [];
+    }
+
+    // 全ファイルを並列アップロード
+    const results = await Promise.allSettled(
+      files.map(async (file, index) => {
+        let fileName = fileNames[index] || file.originalname;
+        // multerのoriginalname はLatin-1エンコードのため変換
+        if (!fileNames[index] && file.originalname) {
+          try {
+            fileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+          } catch {
+            fileName = file.originalname;
+          }
+        }
+
+        console.log(`📁 Batch uploading file [${index + 1}/${files.length}]: "${fileName}"`);
+        const uploadedFile = await driveService.uploadFile(
+          folder.folderId,
+          file.buffer,
+          fileName,
+          file.mimetype
+        );
+        return { fileName, file: uploadedFile };
+      })
+    );
+
+    const succeeded = results
+      .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+      .map((r) => r.value);
+
+    const failed = results
+      .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+      .map((r, i) => ({ fileName: fileNames[i] || `ファイル${i + 1}`, reason: r.reason?.message || 'アップロード失敗' }));
+
+    return res.json({
+      success: true,
+      uploaded: succeeded.length,
+      failed: failed.length,
+      files: succeeded.map((s) => s.file),
+      errors: failed,
+    });
+  } catch (error: any) {
+    console.error('Error batch uploading files:', error);
+
+    if (error.message === 'GOOGLE_AUTH_REQUIRED') {
+      return res.status(401).json({
+        error: 'Google認証が必要です',
+        code: 'GOOGLE_AUTH_REQUIRED',
+      });
+    }
+
     res.status(500).json({ error: error.message || 'ファイルのアップロードに失敗しました' });
   }
 });
