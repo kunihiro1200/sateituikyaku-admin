@@ -38,6 +38,8 @@ import {
   List as ListIcon,
   Image as ImageIcon,
   AutoFixHigh as AutoFixHighIcon,
+  Map as MapIcon,
+  ContentCopy as ContentCopyIcon,
 } from '@mui/icons-material';
 import {
   FormControl,
@@ -710,6 +712,33 @@ export default function PropertyReportPage() {
                 }}
               >
                 坪単価計算
+              </Button>
+              {/* 周辺事例ボタン */}
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<MapIcon />}
+                onClick={() => {
+                  sessionStorage.setItem(
+                    `nearby_cases_${propertyNumber}`,
+                    JSON.stringify({
+                      suumoUrl: reportData.suumo_url || '',
+                      address: reportData.address || '',
+                      price: reportData.price ?? null,
+                      landArea: reportData.land_area ?? null,
+                      propertyType: '',
+                    })
+                  );
+                  window.open(`/property-listings/${propertyNumber}/nearby-cases`, '_blank');
+                }}
+                sx={{
+                  borderColor: '#e65100',
+                  color: '#e65100',
+                  whiteSpace: 'nowrap',
+                  '&:hover': { borderColor: '#bf360c', backgroundColor: '#e6510008' },
+                }}
+              >
+                周辺事例
               </Button>
             </Box>
             {reportData.address && (

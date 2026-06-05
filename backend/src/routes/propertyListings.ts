@@ -2152,4 +2152,230 @@ router.post('/:propertyNumber/sync-house-maker', async (req: Request, res: Respo
   }
 });
 
+// ===== 周辺事例取得エンドポイント =====
+// SUUMO URLから周辺エリアの土地物件一覧を取得する
+router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, res: Response) => {
+  const { propertyNumber } = req.params;
+  const { suumo_url } = req.query as { suumo_url?: string };
+
+  try {
+    // suumo_url から oz_XXXXXXXX（エリアコード）を抽出
+    // 例: https://suumo.jp/tochi/oita/sc_oita/nc_76870269/ → sc_oita を元にエリア一覧ページへ
+    let listUrl = '';
+
+    if (suumo_url && suumo_url.includes('suumo.jp/tochi/')) {
+      // nc_XXXXXXXX（物件番号）をエリア一覧URLに変換
+      // https://suumo.jp/tochi/oita/sc_oita/nc_76870269/
+      //  → https://suumo.jp/tochi/oita/sc_oita/ (市区町村一覧) からエリアコードを抽出
+      const match = suumo_url.match(/suumo\.jp\/tochi\/([^/]+)\/([^/]+)\//);
+      if (match) {
+        const pref = match[1]; // oita
+        const city = match[2]; // sc_oita
+        listUrl = `https://suumo.jp/tochi/${pref}/${city}/`;
+      }
+    }
+
+    if (!listUrl) {
+      res.status(400).json({ error: 'SUUMO URLからエリアを特定できませんでした。SUUMO URLを正しく設定してください。' });
+      return;
+    }
+
+    // SUUMOエリア一覧ページを取得
+    const axios = require('axios');
+    const response = await axios.get(listUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Trident/7.0) rv:11.0) like Gecko',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ja,en-US;q=0.7,en;q=0.3',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+      },
+      timeout: 15000,
+    });
+
+    const html: string = response.data;
+
+    // エリア一覧ページから oz_XXXXXXXX を抽出してエリアコード候補を取得
+    // 物件のSUUMO URLのnc番号からエリアを割り出すため、
+    // まず物件ページから実際のエリアコードを取得する
+    let areaCode = '';
+    if (suumo_url) {
+      try {
+        const propResponse = await axios.get(suumo_url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            'Accept': 'text/html',
+            'Accept-Language': 'ja',
+          },
+          timeout: 15000,
+        });
+        const propHtml: string = propResponse.data;
+        // パンくずリストからエリアコードを抽出
+        // 例: href="/tochi/oita/sc_oita/oz_44201106/"
+        const ozMatch = propHtml.match(/\/tochi\/[^/]+\/[^/]+\/(oz_[0-9]+)\//);
+        if (ozMatch) {
+          areaCode = ozMatch[1];
+        }
+      } catch {
+        // 物件ページ取得失敗時はエリアコードなし
+      }
+    }
+
+    // エリアコードがあれば oz ページを取得、なければ市区町村全体ページを使用
+    let targetUrl = listUrl;
+    if (areaCode) {
+      const match = listUrl.match(/suumo\.jp\/tochi\/([^/]+)\/([^/]+)\//);
+      if (match) {
+        targetUrl = `https://suumo.jp/tochi/${match[1]}/${match[2]}/${areaCode}/`;
+      }
+    }
+
+    let targetHtml = html;
+    if (targetUrl !== listUrl) {
+      try {
+        const areaResponse = await axios.get(targetUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            'Accept': 'text/html',
+            'Accept-Language': 'ja',
+          },
+          timeout: 15000,
+        });
+        targetHtml = areaResponse.data;
+      } catch {
+        // エリアページ取得失敗時は市区町村全体ページを使用
+      }
+    }
+
+    // 物件データを抽出
+    const cases: Array<{
+      title: string;
+      price: string;
+      address: string;
+      area: string;
+      tsubo: string;
+      tsubo_tanka: string;
+      building_condition: string;
+      url: string;
+    }> = [];
+
+    // SUUMO物件リストのパターンを解析
+    // 価格パターン: 1260万円
+    const pricePattern = /販売価格[^0-9]*([0-9,]+(?:万[0-9,]+)?円(?:[^<\n]*万円)?)/g;
+
+    // 物件ブロックを抽出（各nc_番号のブロック）
+    const propertyBlocks = targetHtml.split(/(?=<article|(?=class="[^"]*cassette))/);
+
+    // シンプルな正規表現で各物件を抽出
+    // nc_番号のURLパターン
+    const ncPattern = /href="(\/tochi\/[^"]*nc_[0-9]+\/[^"]*)"/g;
+    const ncUrls: string[] = [];
+    let ncMatch;
+    while ((ncMatch = ncPattern.exec(targetHtml)) !== null) {
+      const url = 'https://suumo.jp' + ncMatch[1];
+      if (!ncUrls.includes(url)) {
+        ncUrls.push(url);
+      }
+    }
+
+    // 物件リスト要素を正規表現で抽出
+    // タイトル（見出し）、価格、面積、所在地を取得
+    const listItemPattern = /<li[^>]*class="[^"]*cassette[^"]*"[^>]*>([\s\S]*?)<\/li>/g;
+
+    // テキストからHTMLタグを除去するヘルパー
+    const stripTags = (str: string) => str.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+
+    // 物件データを段落ごとに解析
+    // SUUMOのHTML構造: 各物件は h2 > a でタイトル、その後に価格・面積などが続く
+    const h2Pattern = /<h2[^>]*>([\s\S]*?)<\/h2>/g;
+    let h2Match;
+    const titleBlocks: string[] = [];
+    while ((h2Match = h2Pattern.exec(targetHtml)) !== null) {
+      const title = stripTags(h2Match[1]);
+      if (title && title.length > 5 && !title.includes('広告') && !title.includes('お知らせ')) {
+        titleBlocks.push(title);
+      }
+    }
+
+    // 価格ブロック抽出（「販売価格」ラベルの後の価格）
+    const fullPricePattern = /販売価格\s*(?:<[^>]+>\s*)*([0-9,]+万[0-9,]*円(?:[^<\n]*万円)?)/g;
+    let priceMatch;
+    const prices: string[] = [];
+    while ((priceMatch = fullPricePattern.exec(targetHtml)) !== null) {
+      prices.push(priceMatch[1].trim());
+    }
+
+    // 面積ブロック抽出（「土地面積」ラベルの後の値）
+    const areaPattern = /土地面積\s*(?:<[^>]+>\s*)*([0-9,.]+m2[^<\n]*(?:\([^)]+\))?)/g;
+    let areaMatch;
+    const areas: string[] = [];
+    while ((areaMatch = areaPattern.exec(targetHtml)) !== null) {
+      areas.push(areaMatch[1].replace(/\s+/g, '').trim());
+    }
+
+    // 坪単価ブロック抽出
+    const tsuboPattern = /坪単価\s*(?:<[^>]+>\s*)*([0-9,.]+万円\/坪|-)/g;
+    let tsuboMatch;
+    const tsuboTankas: string[] = [];
+    while ((tsuboMatch = tsuboPattern.exec(targetHtml)) !== null) {
+      tsuboTankas.push(tsuboMatch[1].trim());
+    }
+
+    // 所在地ブロック抽出
+    const addressPattern = /所在地\s*(?:<[^>]+>\s*)*大分県([^<\n]{3,50}?)(?:\s*\[|<)/g;
+    let addressMatch;
+    const addresses: string[] = [];
+    while ((addressMatch = addressPattern.exec(targetHtml)) !== null) {
+      const addr = addressMatch[1].replace(/\s+/g, '').trim();
+      if (addr.length > 2) {
+        addresses.push('大分市' + addr);
+      }
+    }
+
+    // 建築条件ラベル抽出
+    const conditionPattern = /建築条件(?:付土地|なし土地|付き土地|付)/g;
+    let condMatch;
+    const conditions: string[] = [];
+    while ((condMatch = conditionPattern.exec(targetHtml)) !== null) {
+      conditions.push(condMatch[0].replace('付土地', 'あり').replace('なし土地', 'なし').replace('付き土地', 'あり').replace('付', 'あり'));
+    }
+
+    // データを結合（タイトル数に合わせる）
+    const count = Math.min(titleBlocks.length, Math.max(prices.length, 1));
+    for (let i = 0; i < count && i < 20; i++) {
+      // 坪換算（1坪 = 3.30578㎡）
+      const areaStr = areas[i] || '';
+      const sqmMatch = areaStr.match(/([0-9,.]+)m2/);
+      let tsuboStr = '-';
+      if (sqmMatch) {
+        const sqm = parseFloat(sqmMatch[1].replace(',', ''));
+        if (!isNaN(sqm)) {
+          tsuboStr = (sqm / 3.30578).toFixed(1) + '坪';
+        }
+      }
+
+      cases.push({
+        title: titleBlocks[i] || '-',
+        price: prices[i] || '-',
+        address: addresses[i] || '-',
+        area: areaStr || '-',
+        tsubo: tsuboStr,
+        tsubo_tanka: tsuboTankas[i] || '-',
+        building_condition: i < conditions.length ? conditions[i] : '-',
+        url: ncUrls[i] || '',
+      });
+    }
+
+    res.json({
+      cases,
+      source_url: targetUrl,
+      area_code: areaCode,
+      total: cases.length,
+    });
+  } catch (error: any) {
+    console.error('[nearby-cases] Error:', error.message);
+    res.status(500).json({ error: '周辺事例の取得に失敗しました: ' + (error.message || '') });
+  }
+});
+
 export default router;

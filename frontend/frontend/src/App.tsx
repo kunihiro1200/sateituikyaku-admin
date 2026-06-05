@@ -20,6 +20,7 @@ import PropertyListingsPage from './pages/PropertyListingsPage';
 import PropertyListingDetailPage from './pages/PropertyListingDetailPage';
 import PropertyReportPage from './pages/PropertyReportPage';
 import TsubotankaCalcPage from './pages/TsubotankaCalcPage';
+import NearbyCasesPage from './pages/NearbyCasesPage';
 import BuyersPage from './pages/BuyersPage';
 import NewBuyerPage from './pages/NewBuyerPage';
 import BuyerDetailPage from './pages/BuyerDetailPage';
@@ -251,6 +252,14 @@ function App() {
         element={
           <ProtectedRoute>
             <TsubotankaCalcPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/property-listings/:propertyNumber/nearby-cases"
+        element={
+          <ProtectedRoute>
+            <NearbyCasesPage />
           </ProtectedRoute>
         }
       />
