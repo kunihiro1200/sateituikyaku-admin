@@ -2196,37 +2196,40 @@ router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, r
     try {
       const propHtml = await fetchHtml(suumo_url);
 
-      // 座標取得（/kankyo/ ページを叩かずに物件ページ本体から取得を試みる）
-      // まず物件ページから取れるか確認、なければ /kankyo/ ページを取得
-      const latM = propHtml.match(/([3][0-9]\.[0-9]{5,})/);
-      const lngM = propHtml.match(/([1][3][0-9]\.[0-9]{5,})/);
-      if (latM && lngM) {
-        targetLat = parseFloat(latM[1]);
-        targetLng = parseFloat(lngM[1]);
-      } else {
-        // /kankyo/ ページから取得
-        try {
-          const kankyoUrl = suumo_url.replace(/\/$/, '') + '/kankyo/';
-          const kankyoHtml = await fetchHtml(kankyoUrl);
-          const kLatM = kankyoHtml.match(/([3][0-9]\.[0-9]{5,})/);
-          const kLngM = kankyoHtml.match(/([1][3][0-9]\.[0-9]{5,})/);
-          if (kLatM && kLngM) {
-            targetLat = parseFloat(kLatM[1]);
-            targetLng = parseFloat(kLngM[1]);
-          }
-        } catch { /* 座標取得失敗は無視 */ }
+      // 座標取得: initIdo/initKeido パターン（SUUMOの個別物件ページ本体に含まれる）
+      const idoM = propHtml.match(/initIdo\s*:\s*'([0-9.]+)'/);
+      const keidoM = propHtml.match(/initKeido\s*:\s*'([0-9.]+)'/);
+      if (idoM && keidoM) {
+        targetLat = parseFloat(idoM[1]);
+        targetLng = parseFloat(keidoM[1]);
       }
 
-      // 物件の所在地を取得（例: 大分県大分市大字葛木115番10）
-      const addrMatch = propHtml.match(/所在地[\s\S]{0,300}?((?:大分|福岡|熊本|佐賀|長崎|宮崎|鹿児島|沖縄)[県市][^\n<]{3,50})/);
-      const fullAddress = addrMatch ? addrMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+      // 物件の所在地を取得
+      // SUUMO物件詳細ページ: <th>住所</th><td><p>大分県大分市大字葛木115番10</p>
+      const addrPatterns = [
+        /住所<\/th>\s*<td[^>]*>\s*<p>((?:大分|福岡|熊本|佐賀|長崎|宮崎|鹿児島|沖縄|東京|大阪|愛知)[^\n<]{3,60})<\/p>/,
+        /<dt[^>]*>所在地<\/dt>\s*<dd[^>]*>([\s\S]{0,200}?)<\/dd>/,
+      ];
+      let fullAddress = '';
+      for (const pat of addrPatterns) {
+        const m = propHtml.match(pat);
+        if (m) {
+          fullAddress = m[1].replace(/<[^>]+>/g, '').trim();
+          if (fullAddress.length > 5) break;
+        }
+      }
 
-      // 住所から市区町村以下の部分（大字葛木 など）を抽出
+      // 住所から町名を抽出してoz_コードを特定
       const townCandidates: string[] = [];
-      const townMatch = fullAddress.match(/(?:大分市|福岡市|熊本市)[^\s　]*?((?:大字|字)?[^\s　0-9０-９番地号\-]{2,8})/);
-      if (townMatch) {
-        townCandidates.push(townMatch[1]);
-        townCandidates.push(townMatch[1].replace('大字', ''));
+      const daijiMatch = fullAddress.match(/大字([^\s　0-9０-９番地号\-ー]{2,8})/);
+      if (daijiMatch) {
+        townCandidates.push('大字' + daijiMatch[1]);
+        townCandidates.push(daijiMatch[1]);
+      }
+      const townMatch2 = fullAddress.match(/[市区][^\s　]*((?:大字|字|町|丁目)?[^\s　0-9０-９番地号\-ー]{2,8})/);
+      if (townMatch2 && !townCandidates.includes(townMatch2[1])) {
+        townCandidates.push(townMatch2[1]);
+        townCandidates.push(townMatch2[1].replace(/^大字/, '').replace(/^字/, ''));
       }
 
       // oz_ コードと地名のマッピングを全件取得
@@ -2237,25 +2240,16 @@ router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, r
         ozMap.push({ code: ozMapMatch[1], name: ozMapMatch[2].trim() });
       }
 
-      // 町名候補でoz_コードを探す
       for (const candidate of townCandidates) {
         const found = ozMap.find(o => o.name.includes(candidate) || candidate.includes(o.name));
-        if (found) {
-          areaCode = found.code;
-          break;
-        }
+        if (found) { areaCode = found.code; break; }
       }
-
-      // 見つからない場合は住所全体で部分一致検索
       if (!areaCode && fullAddress) {
         for (const oz of ozMap) {
-          if (fullAddress.includes(oz.name) && oz.name.length >= 2) {
-            areaCode = oz.code;
-            break;
-          }
+          if (fullAddress.includes(oz.name) && oz.name.length >= 2) { areaCode = oz.code; break; }
         }
       }
-    } catch { /* エリアコード取得失敗は無視 */ }
+    } catch { /* 失敗は無視 */ }
 
     // ── STEP 2: エリア一覧ページを取得 ──
     const targetUrl = areaCode
@@ -2363,11 +2357,53 @@ router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, r
 
     // 重複排除（同じURLの物件）
     const seen = new Set<string>();
-    const uniqueCases = cases.filter((c) => {
+    const dedupedCases = cases.filter((c) => {
       if (seen.has(c.url)) return false;
       seen.add(c.url);
       return true;
     });
+
+    // ── STEP 4: 各物件ページから座標を取得して1km以内でフィルタリング ──
+    // Haversine距離計算（km）
+    const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+
+    let uniqueCases = dedupedCases;
+
+    if (targetLat && targetLng && dedupedCases.length > 0) {
+      const RADIUS_KM = 1.0;
+      // 各物件ページから座標を取得（並列、タイムアウト5秒/件）
+      const casesWithCoords = await Promise.all(
+        dedupedCases.map(async (c) => {
+          if (!c.url) return { ...c, distKm: 999 };
+          try {
+            const cHtml = await fetchHtml(c.url);
+            const idoM = cHtml.match(/initIdo\s*:\s*'([0-9.]+)'/);
+            const keidoM = cHtml.match(/initKeido\s*:\s*'([0-9.]+)'/);
+            if (idoM && keidoM) {
+              const distKm = haversineKm(
+                targetLat, targetLng,
+                parseFloat(idoM[1]), parseFloat(keidoM[1])
+              );
+              return { ...c, distKm };
+            }
+          } catch { /* 座標取得失敗は含める */ }
+          return { ...c, distKm: 0 }; // 座標取れない場合は含める
+        })
+      );
+
+      uniqueCases = casesWithCoords
+        .filter((c) => c.distKm <= RADIUS_KM || c.distKm === 0)
+        .sort((a, b) => a.distKm - b.distKm)
+        .map(({ distKm, ...rest }) => rest);
+    }
 
     res.json({
       cases: uniqueCases,

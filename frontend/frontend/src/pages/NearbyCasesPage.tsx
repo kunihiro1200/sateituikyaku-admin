@@ -196,16 +196,23 @@ export default function NearbyCasesPage() {
       ? displayCases.filter((c) => checkedUrls.has(c.url))
       : displayCases;
 
-  // テキストコピー
+  // テキストコピー（タブ区切りTSV形式 → メール/スプレッドシートで列が揃う）
   const buildTableText = (targetCases: NearbyCase[]): string => {
-    const lines = targetCases.map((c, i) => {
-      const addr = (c.address !== '-' ? c.address : '-').slice(0, 28).padEnd(28);
-      return `${String(i + 1).padStart(2)}. ${addr}  ${c.price.padEnd(18)}  ${(c.area + '(' + c.tsubo + ')').slice(0,18).padEnd(18)}  ${c.tsubo_tanka.padEnd(12)}  ${c.building_condition}`;
-    });
+    const header = ['No', '所在地', '価格', '面積', '坪数', '坪単価', '建築条件'].join('\t');
+    const lines = targetCases.map((c, i) => [
+      String(i + 1),
+      c.address !== '-' ? c.address : '-',
+      c.price,
+      c.area,
+      c.tsubo,
+      c.tsubo_tanka,
+      c.building_condition,
+    ].join('\t'));
     const targetInfo = targetPriceMan
-      ? `\n★ 対象物件（${address}）: ${targetPriceMan.toLocaleString('ja-JP')}万円 / ${targetTsubo}坪 / ${targetTsubotanka}万円/坪`
+      ? `★\t${address}（対象物件）\t${targetPriceMan.toLocaleString('ja-JP')}万円\t${landArea ? landArea + '㎡' : '-'}\t${targetTsubo ? targetTsubo + '坪' : '-'}\t${targetTsubotanka ? targetTsubotanka + '万円/坪' : '-'}\t${propertyType || '-'}`
       : '';
-    return `【周辺土地事例】SUUMO掲載中（${new Date().toLocaleDateString('ja-JP')}）\n${'─'.repeat(80)}\n  No  所在地                            価格                面積（坪）          坪単価        建築条件\n${'─'.repeat(80)}\n${lines.join('\n')}${targetInfo}`;
+    const rows = [header, ...lines, ...(targetInfo ? [targetInfo] : [])];
+    return `【周辺土地事例】SUUMO掲載中（${new Date().toLocaleDateString('ja-JP')}）\n${rows.join('\n')}`;
   };
 
   const handleCopyText = async () => {
