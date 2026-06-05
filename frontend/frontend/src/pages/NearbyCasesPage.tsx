@@ -18,6 +18,7 @@ import {
   Snackbar,
   Link,
   Chip,
+  Checkbox,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -68,6 +69,9 @@ export default function NearbyCasesPage() {
   const [landArea, setLandArea] = useState<number | null>(null);
   const [propertyType, setPropertyType] = useState<string>('');
 
+  // チェックボックス（選択した行だけコピー、未選択なら全件）
+  const [checkedUrls, setCheckedUrls] = useState<Set<string>>(new Set());
+
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success',
   });
@@ -111,6 +115,7 @@ export default function NearbyCasesPage() {
     setLoading(true);
     setError(null);
     setCases([]);
+    setCheckedUrls(new Set());
     try {
       const res = await api.get(`/api/property-listings/${propertyNumber}/nearby-cases`, {
         params: { suumo_url: url },
@@ -130,6 +135,26 @@ export default function NearbyCasesPage() {
   const targetTsubotanka = targetTsubo && targetPriceMan
     ? Math.round((targetPriceMan / targetTsubo) * 10) / 10 : null;
 
+  // チェック操作
+  const handleCheck = (url: string) => {
+    setCheckedUrls((prev) => {
+      const next = new Set(prev);
+      if (next.has(url)) next.delete(url); else next.add(url);
+      return next;
+    });
+  };
+  const handleCheckAll = () => {
+    if (checkedUrls.size === cases.length) setCheckedUrls(new Set());
+    else setCheckedUrls(new Set(cases.map((c) => c.url)));
+  };
+  const isAllChecked = cases.length > 0 && checkedUrls.size === cases.length;
+  const isIndeterminate = checkedUrls.size > 0 && checkedUrls.size < cases.length;
+
+  // コピー対象：チェックがあればチェック分のみ、なければ全件
+  const copyTargetCases = checkedUrls.size > 0
+    ? cases.filter((c) => checkedUrls.has(c.url))
+    : cases;
+
   // HTMLテーブルをクリップボードにコピー（Gmailに貼ると表になる）
   const handleCopyHtmlTable = async () => {
     const priceManStr = targetPriceMan ? `${targetPriceMan.toLocaleString('ja-JP')}万円` : '-';
@@ -147,7 +172,7 @@ export default function NearbyCasesPage() {
       <td style="${cellStyle}text-align:center;">建築条件</td>
     </tr>`;
 
-    const tbody = cases.map((c, i) => `
+    const tbody = copyTargetCases.map((c, i) => `
       <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f9f9f9'}">
         <td style="${cellStyle}text-align:center;">${i + 1}</td>
         <td style="${cellStyle}">${c.address !== '-' ? c.address : ''}</td>
@@ -242,7 +267,7 @@ export default function NearbyCasesPage() {
             onClick={handleCopyHtmlTable}
             sx={{ backgroundColor: '#1a73e8', '&:hover': { backgroundColor: '#1557b0' } }}
           >
-            メール用テーブルをコピー
+            {checkedUrls.size > 0 ? `選択${checkedUrls.size}件をコピー` : 'メール用テーブルをコピー'}
           </Button>
         )}
         <Button
@@ -295,6 +320,11 @@ export default function NearbyCasesPage() {
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
             <Typography variant="body2" fontWeight="bold" color="text.secondary">
               周辺販売中土地（{cases.length}件）
+              {checkedUrls.size > 0 && (
+                <Typography component="span" sx={{ ml: 1, color: SECTION_COLORS.property.main, fontWeight: 'bold' }}>
+                  {checkedUrls.size}件選択中
+                </Typography>
+              )}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               出典：SUUMO　{new Date().toLocaleDateString('ja-JP')}時点　半径1km圏内
@@ -304,6 +334,14 @@ export default function NearbyCasesPage() {
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ backgroundColor: '#e3f2fd' }}>
+                  <TableCell padding="checkbox" sx={{ width: 40 }}>
+                    <Checkbox
+                      size="small"
+                      checked={isAllChecked}
+                      indeterminate={isIndeterminate}
+                      onChange={handleCheckAll}
+                    />
+                  </TableCell>
                   <TableCell sx={{ fontWeight: 'bold', whiteSpace: 'nowrap', width: 36 }}>No</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', minWidth: 160 }}>所在地</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', whiteSpace: 'nowrap' }}>価格</TableCell>
@@ -315,22 +353,25 @@ export default function NearbyCasesPage() {
               </TableHead>
               <TableBody>
                 {cases.map((c, i) => {
-                  const isTarget = suumoUrl && c.url &&
-                    suumoUrl.includes(c.url.replace('https://suumo.jp', ''));
+                  const isChecked = checkedUrls.has(c.url);
                   return (
                     <TableRow
                       key={i}
+                      onClick={() => handleCheck(c.url)}
                       sx={{
-                        backgroundColor: isTarget ? '#fff3e0' : i % 2 === 0 ? 'white' : '#fafafa',
-                        '&:hover': { backgroundColor: '#f0f0f0' },
+                        cursor: 'pointer',
+                        backgroundColor: isChecked ? '#e8f5e9' : i % 2 === 0 ? 'white' : '#fafafa',
+                        '&:hover': { backgroundColor: isChecked ? '#c8e6c9' : '#f0f0f0' },
                       }}
                     >
-                      <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
-                        {isTarget ? '★' : i + 1}
+                      <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox size="small" checked={isChecked} onChange={() => handleCheck(c.url)} />
                       </TableCell>
+                      <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>{i + 1}</TableCell>
                       <TableCell sx={{ fontSize: '0.82rem', maxWidth: 220 }}>
                         {c.url ? (
                           <Link href={c.url} target="_blank" rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
                             sx={{ fontSize: '0.82rem', display: 'block' }}>
                             {c.address !== '-' ? c.address : c.url}
                           </Link>
@@ -356,20 +397,17 @@ export default function NearbyCasesPage() {
                         {c.tsubo_tanka}
                       </TableCell>
                       <TableCell sx={{ textAlign: 'center', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
-                        <Chip
-                          label={c.building_condition}
-                          size="small"
-                          variant="outlined"
+                        <Chip label={c.building_condition} size="small" variant="outlined"
                           color={c.building_condition === 'なし' ? 'success' : 'warning'}
-                          sx={{ fontSize: '0.72rem', height: 20 }}
-                        />
+                          sx={{ fontSize: '0.72rem', height: 20 }} />
                       </TableCell>
                     </TableRow>
                   );
                 })}
-                {/* 対象物件行（常に最下行に表示） */}
+                {/* ★対象物件行（チェックボックスなし、常に最下行に表示） */}
                 {targetPriceMan && (
-                  <TableRow sx={{ backgroundColor: '#fff8e1', fontWeight: 'bold', borderTop: '2px solid #ffe082' }}>
+                  <TableRow sx={{ backgroundColor: '#fff8e1', borderTop: '2px solid #ffe082' }}>
+                    <TableCell padding="checkbox" />
                     <TableCell sx={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#e65100' }}>★</TableCell>
                     <TableCell sx={{ fontSize: '0.82rem', fontWeight: 'bold' }}>
                       {address}（対象物件）
