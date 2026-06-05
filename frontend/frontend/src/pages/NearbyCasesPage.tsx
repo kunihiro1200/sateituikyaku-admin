@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
@@ -19,6 +19,10 @@ import {
   Link,
   Chip,
   Checkbox,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -27,6 +31,7 @@ import {
   ContentCopy as ContentCopyIcon,
   Refresh as RefreshIcon,
   OpenInNew as OpenInNewIcon,
+  TableChart as TableChartIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
@@ -56,6 +61,7 @@ export default function NearbyCasesPage() {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const previewRef = useRef<HTMLDivElement>(null);
 
   const state = location.state as LocationState | null;
 
@@ -68,9 +74,9 @@ export default function NearbyCasesPage() {
   const [price, setPrice] = useState<number | null>(null);
   const [landArea, setLandArea] = useState<number | null>(null);
   const [propertyType, setPropertyType] = useState<string>('');
-
-  // チェックボックス（選択した行だけコピー、未選択なら全件）
   const [checkedUrls, setCheckedUrls] = useState<Set<string>>(new Set());
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [copyDone, setCopyDone] = useState(false);
 
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success',
@@ -129,13 +135,11 @@ export default function NearbyCasesPage() {
     }
   };
 
-  // 対象物件の坪換算
   const targetTsubo = landArea ? Math.round((landArea / 3.30578) * 10) / 10 : null;
   const targetPriceMan = price ? Math.floor(price / 10000) : null;
   const targetTsubotanka = targetTsubo && targetPriceMan
     ? Math.round((targetPriceMan / targetTsubo) * 10) / 10 : null;
 
-  // チェック操作
   const handleCheck = (url: string) => {
     setCheckedUrls((prev) => {
       const next = new Set(prev);
@@ -149,113 +153,25 @@ export default function NearbyCasesPage() {
   };
   const isAllChecked = cases.length > 0 && checkedUrls.size === cases.length;
   const isIndeterminate = checkedUrls.size > 0 && checkedUrls.size < cases.length;
+  const copyTargetCases = checkedUrls.size > 0 ? cases.filter((c) => checkedUrls.has(c.url)) : cases;
 
-  // コピー対象：チェックがあればチェック分のみ、なければ全件
-  const copyTargetCases = checkedUrls.size > 0
-    ? cases.filter((c) => checkedUrls.has(c.url))
-    : cases;
+  // プレビューダイアログを開く
+  const handleOpenPreview = () => {
+    setCopyDone(false);
+    setPreviewOpen(true);
+  };
 
-  // HTMLテーブルをクリップボードにコピー（Gmailに貼ると表になる）
-  const handleCopyHtmlTable = async () => {
-    const priceManStr = targetPriceMan ? `${targetPriceMan.toLocaleString('ja-JP')}万円` : '-';
-    const tsuboStr = targetTsubo ? `${targetTsubo}坪` : '-';
-    const tankaStr = targetTsubotanka ? `<b>${targetTsubotanka}万円/坪</b>` : '-';
-
-    const cellStyle = 'padding:5px 10px;border:1px solid #ddd;';
-    const thead = `<tr style="background:#e3f2fd;font-weight:bold;">
-      <td style="${cellStyle}text-align:center;">No</td>
-      <td style="${cellStyle}">所在地</td>
-      <td style="${cellStyle}text-align:right;">価格</td>
-      <td style="${cellStyle}text-align:right;">面積</td>
-      <td style="${cellStyle}text-align:right;">坪数</td>
-      <td style="${cellStyle}text-align:right;">坪単価</td>
-      <td style="${cellStyle}text-align:center;">建築条件</td>
-    </tr>`;
-
-    const tbody = copyTargetCases.map((c, i) => `
-      <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f9f9f9'}">
-        <td style="${cellStyle}text-align:center;">${i + 1}</td>
-        <td style="${cellStyle}">${c.address !== '-' ? c.address : ''}</td>
-        <td style="${cellStyle}text-align:right;">${c.price}</td>
-        <td style="${cellStyle}text-align:right;">${c.area}</td>
-        <td style="${cellStyle}text-align:right;">${c.tsubo}</td>
-        <td style="${cellStyle}text-align:right;"><b>${c.tsubo_tanka}</b></td>
-        <td style="${cellStyle}text-align:center;">${c.building_condition}</td>
-      </tr>`).join('');
-
-    const targetRow = `
-      <tr style="background:#fff8e1;font-weight:bold;">
-        <td style="${cellStyle}text-align:center;">★</td>
-        <td style="${cellStyle}">${address}（対象物件）</td>
-        <td style="${cellStyle}text-align:right;">${priceManStr}</td>
-        <td style="${cellStyle}text-align:right;">${landArea ? `${landArea}㎡` : '-'}</td>
-        <td style="${cellStyle}text-align:right;">${tsuboStr}</td>
-        <td style="${cellStyle}text-align:right;">${tankaStr}</td>
-        <td style="${cellStyle}text-align:center;">-</td>
-      </tr>`;
-
-    const html = `<p style="font-size:13px;font-family:sans-serif;margin-bottom:6px;">【周辺土地事例】SUUMO掲載中（${new Date().toLocaleDateString('ja-JP')}）</p>
-<table style="border-collapse:collapse;font-size:13px;font-family:sans-serif;">
-  <tbody>${thead}${tbody}${targetRow}</tbody>
-</table>
-<p style="font-size:11px;color:#888;margin-top:6px;">出典：SUUMO　半径1km圏内</p>`;
-
-    const copyHtml = async (): Promise<boolean> => {
-      // 方法1: ClipboardItem API（Chrome 76+, Edge, Safari 13.1+）
-      if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
-        try {
-          await navigator.clipboard.write([
-            new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }) }),
-          ]);
-          return true;
-        } catch {
-          // fallthrough
-        }
-      }
-
-      // 方法2: contenteditable + execCommand
-      // ブラウザはオフスクリーン要素のコピーを拒否するため、
-      // 画面内の小さな contenteditable div を使う
-      const el = document.createElement('div');
-      el.setAttribute('contenteditable', 'true');
-      el.style.cssText = [
-        'position:fixed',
-        'top:0',
-        'left:0',
-        'width:1px',
-        'height:1px',
-        'overflow:hidden',
-        'opacity:0.01',
-        'font-size:1px',
-      ].join(';');
-      el.innerHTML = html;
-      document.body.appendChild(el);
-      el.focus();
-      try {
-        const sel = window.getSelection();
-        const range = document.createRange();
-        range.selectNodeContents(el);
-        sel?.removeAllRanges();
-        sel?.addRange(range);
-        const ok = document.execCommand('copy');
-        sel?.removeAllRanges();
-        return ok;
-      } finally {
-        document.body.removeChild(el);
-      }
-    };
-
-    try {
-      const ok = await copyHtml();
-      if (ok) {
-        const n = checkedUrls.size > 0 ? `${checkedUrls.size}件を` : '';
-        setSnackbar({ open: true, message: `${n}コピーしました（Gmailに貼り付けると表になります）`, severity: 'success' });
-      } else {
-        setSnackbar({ open: true, message: 'コピーに失敗しました。ブラウザのクリップボード権限を確認してください。', severity: 'error' });
-      }
-    } catch (e: any) {
-      setSnackbar({ open: true, message: `コピーエラー: ${e?.message || '不明'}`, severity: 'error' });
-    }
+  // ダイアログ内のテーブルを全選択してコピー
+  const handleSelectAndCopy = () => {
+    if (!previewRef.current) return;
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(previewRef.current);
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    document.execCommand('copy');
+    setCopyDone(true);
+    setSnackbar({ open: true, message: 'コピーしました。Gmailに貼り付けてください。', severity: 'success' });
   };
 
   return (
@@ -309,11 +225,11 @@ export default function NearbyCasesPage() {
           <Button
             variant="contained"
             size="small"
-            startIcon={<ContentCopyIcon />}
-            onClick={handleCopyHtmlTable}
+            startIcon={<TableChartIcon />}
+            onClick={handleOpenPreview}
             sx={{ backgroundColor: '#1a73e8', '&:hover': { backgroundColor: '#1557b0' } }}
           >
-            {checkedUrls.size > 0 ? `選択${checkedUrls.size}件をコピー` : 'メール用テーブルをコピー'}
+            {checkedUrls.size > 0 ? `選択${checkedUrls.size}件をメール用にコピー` : 'メール用テーブルをコピー'}
           </Button>
         )}
         <Button
@@ -381,12 +297,7 @@ export default function NearbyCasesPage() {
               <TableHead>
                 <TableRow sx={{ backgroundColor: '#e3f2fd' }}>
                   <TableCell padding="checkbox" sx={{ width: 40 }}>
-                    <Checkbox
-                      size="small"
-                      checked={isAllChecked}
-                      indeterminate={isIndeterminate}
-                      onChange={handleCheckAll}
-                    />
+                    <Checkbox size="small" checked={isAllChecked} indeterminate={isIndeterminate} onChange={handleCheckAll} />
                   </TableCell>
                   <TableCell sx={{ fontWeight: 'bold', whiteSpace: 'nowrap', width: 36 }}>No</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', minWidth: 160 }}>所在地</TableCell>
@@ -401,15 +312,11 @@ export default function NearbyCasesPage() {
                 {cases.map((c, i) => {
                   const isChecked = checkedUrls.has(c.url);
                   return (
-                    <TableRow
-                      key={i}
-                      onClick={() => handleCheck(c.url)}
-                      sx={{
-                        cursor: 'pointer',
-                        backgroundColor: isChecked ? '#e8f5e9' : i % 2 === 0 ? 'white' : '#fafafa',
-                        '&:hover': { backgroundColor: isChecked ? '#c8e6c9' : '#f0f0f0' },
-                      }}
-                    >
+                    <TableRow key={i} onClick={() => handleCheck(c.url)} sx={{
+                      cursor: 'pointer',
+                      backgroundColor: isChecked ? '#e8f5e9' : i % 2 === 0 ? 'white' : '#fafafa',
+                      '&:hover': { backgroundColor: isChecked ? '#c8e6c9' : '#f0f0f0' },
+                    }}>
                       <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
                         <Checkbox size="small" checked={isChecked} onChange={() => handleCheck(c.url)} />
                       </TableCell>
@@ -427,19 +334,10 @@ export default function NearbyCasesPage() {
                           </Typography>
                         )}
                       </TableCell>
-                      <TableCell sx={{ textAlign: 'right', fontSize: '0.85rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                        {c.price}
-                      </TableCell>
-                      <TableCell sx={{ textAlign: 'right', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
-                        {c.area}
-                      </TableCell>
-                      <TableCell sx={{ textAlign: 'right', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
-                        {c.tsubo}
-                      </TableCell>
-                      <TableCell sx={{
-                        textAlign: 'right', fontWeight: 'bold', fontSize: '0.9rem',
-                        whiteSpace: 'nowrap', color: SECTION_COLORS.property.main,
-                      }}>
+                      <TableCell sx={{ textAlign: 'right', fontSize: '0.85rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{c.price}</TableCell>
+                      <TableCell sx={{ textAlign: 'right', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>{c.area}</TableCell>
+                      <TableCell sx={{ textAlign: 'right', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>{c.tsubo}</TableCell>
+                      <TableCell sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: '0.9rem', whiteSpace: 'nowrap', color: SECTION_COLORS.property.main }}>
                         {c.tsubo_tanka}
                       </TableCell>
                       <TableCell sx={{ textAlign: 'center', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
@@ -450,32 +348,21 @@ export default function NearbyCasesPage() {
                     </TableRow>
                   );
                 })}
-                {/* ★対象物件行（チェックボックスなし、常に最下行に表示） */}
+                {/* ★対象物件行 */}
                 {targetPriceMan && (
                   <TableRow sx={{ backgroundColor: '#fff8e1', borderTop: '2px solid #ffe082' }}>
                     <TableCell padding="checkbox" />
                     <TableCell sx={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#e65100' }}>★</TableCell>
-                    <TableCell sx={{ fontSize: '0.82rem', fontWeight: 'bold' }}>
-                      {address}（対象物件）
-                    </TableCell>
+                    <TableCell sx={{ fontSize: '0.82rem', fontWeight: 'bold' }}>{address}（対象物件）</TableCell>
                     <TableCell sx={{ textAlign: 'right', fontSize: '0.85rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                       {targetPriceMan.toLocaleString('ja-JP')}万円
                     </TableCell>
-                    <TableCell sx={{ textAlign: 'right', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
-                      {landArea ? `${landArea}㎡` : '-'}
-                    </TableCell>
-                    <TableCell sx={{ textAlign: 'right', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
-                      {targetTsubo ? `${targetTsubo}坪` : '-'}
-                    </TableCell>
-                    <TableCell sx={{
-                      textAlign: 'right', fontWeight: 'bold', fontSize: '0.9rem',
-                      whiteSpace: 'nowrap', color: SECTION_COLORS.property.main,
-                    }}>
+                    <TableCell sx={{ textAlign: 'right', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>{landArea ? `${landArea}㎡` : '-'}</TableCell>
+                    <TableCell sx={{ textAlign: 'right', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>{targetTsubo ? `${targetTsubo}坪` : '-'}</TableCell>
+                    <TableCell sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: '0.9rem', whiteSpace: 'nowrap', color: SECTION_COLORS.property.main }}>
                       {targetTsubotanka ? `${targetTsubotanka}万円/坪` : '-'}
                     </TableCell>
-                    <TableCell sx={{ textAlign: 'center', fontSize: '0.82rem' }}>
-                      {propertyType || '-'}
-                    </TableCell>
+                    <TableCell sx={{ textAlign: 'center', fontSize: '0.82rem' }}>{propertyType || '-'}</TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -487,15 +374,99 @@ export default function NearbyCasesPage() {
       {/* 取得結果が0件 */}
       {!loading && !error && cases.length === 0 && suumoUrl && (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="body2" color="text.secondary">
-            周辺事例が見つかりませんでした。
-          </Typography>
+          <Typography variant="body2" color="text.secondary">周辺事例が見つかりませんでした。</Typography>
           <Button variant="outlined" size="small" href={sourceUrl || suumoUrl}
             target="_blank" rel="noopener noreferrer" sx={{ mt: 2 }}>
             SUUMOで直接確認する
           </Button>
         </Paper>
       )}
+
+      {/* ============================================================
+          メール用プレビューダイアログ
+          ここにHTMLテーブルを表示し、「全選択してコピー」ボタンで
+          クリップボードにコピーする
+          ============================================================ */}
+      <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="lg" fullWidth>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+            <Typography variant="h6" fontWeight="bold">メール貼り付け用プレビュー</Typography>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<ContentCopyIcon />}
+              onClick={handleSelectAndCopy}
+              sx={{
+                backgroundColor: copyDone ? '#388e3c' : '#1a73e8',
+                '&:hover': { backgroundColor: copyDone ? '#2e7d32' : '#1557b0' },
+              }}
+            >
+              {copyDone ? '✓ コピー済み' : '全選択してコピー'}
+            </Button>
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+            「全選択してコピー」を押した後、Gmailの本文にCtrl+V（またはCmd+V）で貼り付けてください
+          </Typography>
+        </DialogTitle>
+        <DialogContent dividers>
+          {/* このdivの内容がそのままコピーされる */}
+          <div ref={previewRef} style={{ userSelect: 'text', cursor: 'text' }}>
+            <p style={{ fontSize: '13px', fontFamily: 'sans-serif', marginBottom: '6px' }}>
+              【周辺土地事例】SUUMO掲載中（{new Date().toLocaleDateString('ja-JP')}）
+            </p>
+            <table style={{ borderCollapse: 'collapse', fontSize: '13px', fontFamily: 'sans-serif', width: '100%' }}>
+              <tbody>
+                {/* ヘッダー行 */}
+                <tr style={{ background: '#e3f2fd', fontWeight: 'bold' }}>
+                  {['No', '所在地', '価格', '面積', '坪数', '坪単価', '建築条件'].map((h) => (
+                    <td key={h} style={{ padding: '6px 10px', border: '1px solid #bbb' }}>{h}</td>
+                  ))}
+                </tr>
+                {/* データ行 */}
+                {copyTargetCases.map((c, i) => (
+                  <tr key={i} style={{ background: i % 2 === 0 ? '#ffffff' : '#f9f9f9' }}>
+                    <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'center' }}>{i + 1}</td>
+                    <td style={{ padding: '5px 10px', border: '1px solid #ddd' }}>{c.address !== '-' ? c.address : ''}</td>
+                    <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'right' }}>{c.price}</td>
+                    <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'right' }}>{c.area}</td>
+                    <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'right' }}>{c.tsubo}</td>
+                    <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'right' }}>
+                      <strong>{c.tsubo_tanka}</strong>
+                    </td>
+                    <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'center' }}>{c.building_condition}</td>
+                  </tr>
+                ))}
+                {/* ★対象物件行 */}
+                {targetPriceMan && (
+                  <tr style={{ background: '#fff8e1', fontWeight: 'bold' }}>
+                    <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'center', color: '#e65100' }}>★</td>
+                    <td style={{ padding: '5px 10px', border: '1px solid #ddd' }}>{address}（対象物件）</td>
+                    <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'right' }}>
+                      {targetPriceMan.toLocaleString('ja-JP')}万円
+                    </td>
+                    <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'right' }}>
+                      {landArea ? `${landArea}㎡` : '-'}
+                    </td>
+                    <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'right' }}>
+                      {targetTsubo ? `${targetTsubo}坪` : '-'}
+                    </td>
+                    <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'right' }}>
+                      <strong>{targetTsubotanka ? `${targetTsubotanka}万円/坪` : '-'}</strong>
+                    </td>
+                    <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'center' }}>-</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            <p style={{ fontSize: '11px', color: '#888', marginTop: '6px' }}>
+              出典：SUUMO　半径1km圏内
+            </p>
+          </div>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPreviewOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar open={snackbar.open} autoHideDuration={4000}
         onClose={() => setSnackbar((p) => ({ ...p, open: false }))}>
