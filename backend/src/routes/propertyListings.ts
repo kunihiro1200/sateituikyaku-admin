@@ -2247,22 +2247,16 @@ router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, r
     const targetHtml = await fetchHtml(targetUrl);
 
     // ── STEP 3: 物件ブロック単位で解析 ──
-    // SUUMOのHTML構造:
-    //   各物件は <h2 class="..."><a href="/tochi/.../nc_XXXXXXXX/">タイトル</a></h2> で始まり
-    //   その後に 物件名・販売価格・所在地・土地面積・坪単価 などが並ぶ
-    // 戦略: nc_XXXXXXXX の出現位置でHTMLを物件ブロックに分割し、
-    //        各ブロック内から必要なデータを抽出する
-
     // HTMLタグを除去するヘルパー
-    const stripTags = (s: string) => s.replace(/<[^>]+>/g, '').replace(/&[a-zA-Z]+;/g, (m) => {
-      const map: Record<string, string> = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&nbsp;': ' ', '&quot;': '"' };
-      return map[m] || m;
-    }).replace(/\s+/g, ' ').trim();
+    const stripTags = (s: string) =>
+      s.replace(/<[^>]+>/g, '').replace(/&[a-zA-Z]+;/g, (m) => {
+        const map: Record<string, string> = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&nbsp;': ' ', '&quot;': '"' };
+        return map[m] || m;
+      }).replace(/\s+/g, ' ').trim();
 
-    // 各物件のnc_URLでHTMLを分割
-    // nc_XXXXXXXX が含まれる h2 タグの直前で分割
+    // h2 > a[href*=nc_] の直前で物件ブロックを分割
     const blockSplitPattern = /(?=<h2[^>]*>\s*<a[^>]+\/tochi\/[^"]*nc_[0-9]+[^"]*")/g;
-    const rawBlocks = targetHtml.split(blockSplitPattern).slice(1); // 最初のブロックはナビなどなので除外
+    const rawBlocks = targetHtml.split(blockSplitPattern).slice(1);
 
     interface NearbyCase {
       title: string;
@@ -2278,107 +2272,73 @@ router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, r
     const cases: NearbyCase[] = [];
 
     for (const block of rawBlocks) {
-      // このブロックが物件リストのブロックかチェック（nc_ URLが含まれるか）
-      const urlMatch = block.match(/<a[^>]+href="(\/tochi\/[^"]*nc_([0-9]+)[^"]*)"/);
+      // URL: h2内のaタグから取得
+      const urlMatch = block.match(/href="(\/tochi\/[^"]*nc_[0-9]+[^"]*)"/);
       if (!urlMatch) continue;
+      const url = `https://suumo.jp${urlMatch[1]}`;
 
-      const ncPath = urlMatch[1];
-      const url = `https://suumo.jp${ncPath}`;
+      // タイトル: <h2><a href="...">タイトル</a></h2> のaタグ直接テキスト
+      const titleMatch = block.match(/<h2[^>]*>\s*<a[^>]+>([^<]+)<\/a>/);
+      const title = titleMatch ? titleMatch[1].trim() : '-';
 
-      // タイトル: <h2 ...><a ...>タイトル</a></h2>
-      const titleMatch = block.match(/<h2[^>]*>\s*<a[^>]+>[^<]*<\/a>\s*<\/h2>/);
-      let title = '';
-      if (titleMatch) {
-        title = stripTags(titleMatch[0]);
-      }
-      // タイトルが取れなかった場合 <h2> 内テキストを取得
-      if (!title) {
-        const h2m = block.match(/<h2[^>]*>([\s\S]*?)<\/h2>/);
-        if (h2m) title = stripTags(h2m[1]);
-      }
-      // 物件名ラベル（コラム付きの場合 物件名が別にある）
-      const propNameMatch = block.match(/物件名[^<]*<\/[^>]+>\s*([^<\n]+)/);
-      if (propNameMatch && propNameMatch[1].trim() && !title.includes('区画')) {
-        // 物件名が取れていればそれを優先
-        const pname = propNameMatch[1].trim();
-        if (pname.length > 3) title = pname;
-      }
-      if (!title) title = '-';
-
-      // 販売価格: 「販売価格</dt> ... 価格テキスト」 または 「<strong>価格</strong>」
+      // 販売価格: <dt>販売価格</dt> ... <span class="dottable-value">価格</span>
       let price = '-';
-      // パターンA: 販売価格 ラベルの直後
-      const priceMatch = block.match(/販売価格[\s\S]{0,80}?([0-9,]+万[0-9,]*円(?:～[0-9,]+万[0-9,]*円)?)/);
-      if (priceMatch) {
-        price = priceMatch[1].trim();
+      const priceM = block.match(/<dt[^>]*>販売価格<\/dt>[\s\S]{0,300}?<span[^>]*class="dottable-value"[^>]*>([\s\S]{0,100}?)<\/span>/);
+      if (priceM) {
+        price = stripTags(priceM[1]);
+      } else {
+        // フォールバック: dottable-valueなしの場合
+        const priceM2 = block.match(/<dt[^>]*>販売価格<\/dt>\s*<dd[^>]*>([\s\S]{0,200}?)<\/dd>/);
+        if (priceM2) price = stripTags(priceM2[1]);
       }
 
-      // 所在地
+      // 所在地: <dt>所在地</dt><dd>VALUE</dd>
       let address = '-';
-      const addrMatch = block.match(/所在地[\s\S]{0,100}?((?:大分|福岡|熊本|佐賀|長崎|宮崎|鹿児島|沖縄)[県市]\S{2,40})/);
-      if (addrMatch) {
-        address = addrMatch[1].replace(/<[^>]+>/g, '').trim();
-        // 「[地図]」などの余分なテキストを除去
-        address = address.replace(/\[.+?\]/g, '').replace(/\s+/g, ' ').trim();
-      }
+      const addrM = block.match(/<dt[^>]*>所在地<\/dt>\s*<dd[^>]*>([\s\S]{0,200}?)<\/dd>/);
+      if (addrM) address = stripTags(addrM[1]);
 
-      // 土地面積
+      // 土地面積: <dt>土地面積</dt><dd>179.37m<sup>2</sup>～... </dd>
+      // <sup>2</sup> が混入するのでstrip後に処理
       let area = '-';
       let tsubo = '-';
-      // パターン: 土地面積 179.37m2～188.34m2（54.25坪～56.97坪）（登記）
-      //      または: 土地面積 234.15m2（登記）
-      const areaMatch = block.match(/土地面積[\s\S]{0,60}?([0-9,.]+(?:m2|㎡)(?:[^<（\n]{0,30})?)/);
-      if (areaMatch) {
-        area = areaMatch[1].replace(/<[^>]+>/g, '').replace(/\s+/g, '').trim();
-        // 坪数が面積文字列内に含まれている場合（例: 179.37m2～188.34m2（54.25坪～56.97坪））
-        const tsuboInArea = area.match(/（([0-9.]+坪(?:～[0-9.]+坪)?)/);
-        if (tsuboInArea) {
-          tsubo = tsuboInArea[1];
+      const areaM = block.match(/<dt[^>]*>土地面積<\/dt>\s*<dd[^>]*>([\s\S]{0,300}?)<\/dd>/);
+      if (areaM) {
+        const areaRaw = stripTags(areaM[1]); // "179.37m2～188.34m2（54.25坪～56.97坪）（登記）"
+        area = areaRaw.replace('（登記）', '').trim();
+        // 坪数を面積文字列から取得
+        const tsuboM = areaRaw.match(/（([0-9.]+坪(?:～[0-9.]+坪)?)/);
+        if (tsuboM) {
+          tsubo = tsuboM[1];
         } else {
-          // 坪換算（面積の最初の数値から計算）
-          const sqmNum = area.match(/([0-9,.]+)(?:m2|㎡)/);
-          if (sqmNum) {
-            const sqm = parseFloat(sqmNum[1].replace(',', ''));
-            if (!isNaN(sqm) && sqm > 0) {
-              tsubo = `${(sqm / 3.30578).toFixed(1)}坪`;
-            }
+          // 坪換算
+          const sqmM = areaRaw.match(/([0-9,.]+)m2/);
+          if (sqmM) {
+            const sqm = parseFloat(sqmM[1].replace(',', ''));
+            if (!isNaN(sqm) && sqm > 0) tsubo = `${(sqm / 3.30578).toFixed(1)}坪`;
           }
         }
       }
 
-      // 坪単価
+      // 坪単価: <dt>坪単価</dt><dd>17.8万円／坪</dd> または <dd>-</dd>
       let tsubo_tanka = '-';
-      // パターン: 坪単価 17.8万円／坪 または 坪単価 -
-      const tankaMatch = block.match(/坪単価[\s\S]{0,60}?([0-9,.]+万円[\/／]坪)/);
-      if (tankaMatch) {
-        tsubo_tanka = tankaMatch[1].replace('／', '/');
+      const tankaM = block.match(/<dt[^>]*>坪単価<\/dt>\s*<dd[^>]*>([\s\S]{0,100}?)<\/dd>/);
+      if (tankaM) {
+        const tankaRaw = stripTags(tankaM[1]).replace('／', '/').replace(/\s+/g, '');
+        if (tankaRaw && tankaRaw !== '-') tsubo_tanka = tankaRaw;
       }
-      // 坪単価が「-」の場合でも面積と価格から計算可能なら計算
+      // 坪単価が「-」のとき、価格÷坪数で計算
       if (tsubo_tanka === '-' && tsubo !== '-' && price !== '-') {
         const tsuboNum = tsubo.match(/([0-9.]+)坪/);
         const priceNum = price.match(/([0-9,]+)万/);
         if (tsuboNum && priceNum) {
           const t = parseFloat(tsuboNum[1]);
-          const p = parseInt(priceNum[1].replace(',', ''), 10);
-          if (t > 0 && p > 0) {
-            tsubo_tanka = `${(p / t).toFixed(1)}万円/坪（計算値）`;
-          }
+          const p = parseInt(priceNum[1].replace(/,/g, ''), 10);
+          if (t > 0 && p > 0) tsubo_tanka = `${(p / t).toFixed(1)}万円/坪`;
         }
       }
 
-      // 建築条件
-      let building_condition = 'なし';
-      // 「建築条件付土地」ラベルがブロック内（タイトルより前）にあるか
-      const condIdx = block.indexOf('建築条件付土地');
-      const titleIdx = block.indexOf('<h2');
-      if (condIdx !== -1 && condIdx < titleIdx + 200) {
-        building_condition = 'あり';
-      } else if (block.includes('建築条件なし')) {
-        building_condition = 'なし';
-      } else if (block.match(/建ぺい率/)) {
-        // 建ぺい率の記述があれば物件情報確定ブロック
-        building_condition = 'なし'; // デフォルト
-      }
+      // 建築条件: ブロック内に「建築条件付土地」ラベルがあればあり
+      const building_condition = block.includes('建築条件付土地') ? 'あり' : 'なし';
 
       cases.push({ title, price, address, area, tsubo, tsubo_tanka, building_condition, url });
     }
