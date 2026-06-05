@@ -155,70 +155,9 @@ export default function NearbyCasesPage() {
   const isIndeterminate = checkedUrls.size > 0 && checkedUrls.size < cases.length;
   const copyTargetCases = checkedUrls.size > 0 ? cases.filter((c) => checkedUrls.has(c.url)) : cases;
 
-  // プレビューダイアログを開く
-  const handleOpenPreview = async () => {
+  // プレビューダイアログを開く（開いた直後に自動でコピー実行）
+  const handleOpenPreview = () => {
     setCopyDone(false);
-
-    const priceManStr = targetPriceMan ? `${targetPriceMan.toLocaleString('ja-JP')}万円` : '-';
-    const tsuboStr = targetTsubo ? `${targetTsubo}坪` : '-';
-    const tankaStr = targetTsubotanka ? `${targetTsubotanka}万円/坪` : '-';
-    const cellStyle = 'padding:5px 10px;border:1px solid #ddd;';
-
-    const theadHtml = `<tr style="background:#e3f2fd;font-weight:bold;">
-      <td style="${cellStyle}">No</td>
-      <td style="${cellStyle}">所在地</td>
-      <td style="${cellStyle}">価格</td>
-      <td style="${cellStyle}">面積</td>
-      <td style="${cellStyle}">坪数</td>
-      <td style="${cellStyle}font-weight:bold;">坪単価</td>
-      <td style="${cellStyle}">建築条件</td>
-    </tr>`;
-
-    const tbodyHtml = copyTargetCases.map((c, i) => `
-      <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f9f9f9'}">
-        <td style="${cellStyle}">${i + 1}</td>
-        <td style="${cellStyle}">${c.address !== '-' ? c.address : ''}</td>
-        <td style="${cellStyle}">${c.price}</td>
-        <td style="${cellStyle}">${c.area}</td>
-        <td style="${cellStyle}">${c.tsubo}</td>
-        <td style="${cellStyle}font-weight:bold;color:#1976d2;">${c.tsubo_tanka}</td>
-        <td style="${cellStyle}">${c.building_condition}</td>
-      </tr>`).join('');
-
-    const targetRowHtml = targetPriceMan ? `
-      <tr style="background:#fff8e1;font-weight:bold;">
-        <td style="${cellStyle}color:#e65100;">★</td>
-        <td style="${cellStyle}">${address}（対象物件）</td>
-        <td style="${cellStyle}">${priceManStr}</td>
-        <td style="${cellStyle}">${landArea ? `${landArea}㎡` : '-'}</td>
-        <td style="${cellStyle}">${tsuboStr}</td>
-        <td style="${cellStyle}font-weight:bold;color:#1976d2;">${tankaStr}</td>
-        <td style="${cellStyle}">-</td>
-      </tr>` : '';
-
-    const html = `<p style="font-size:13px;font-family:sans-serif;margin-bottom:6px;">【周辺土地事例】SUUMO掲載中（${new Date().toLocaleDateString('ja-JP')}）</p>
-<table style="border-collapse:collapse;font-size:13px;font-family:sans-serif;">
-  <tbody>${theadHtml}${tbodyHtml}${targetRowHtml}</tbody>
-</table>
-<p style="font-size:11px;color:#888;margin-top:6px;">出典：SUUMO　半径1km圏内</p>`;
-
-    // ClipboardItem でHTMLをコピー（HTTPS環境で動作）
-    if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
-      try {
-        await navigator.clipboard.write([
-          new ClipboardItem({
-            'text/html': new Blob([html], { type: 'text/html' }),
-          }),
-        ]);
-        const n = checkedUrls.size > 0 ? `${checkedUrls.size}件を` : '';
-        setSnackbar({ open: true, message: `${n}HTMLテーブルをコピーしました。Gmailに貼り付けると表になります。`, severity: 'success' });
-        return;
-      } catch {
-        // 失敗したらプレビューを開く
-      }
-    }
-
-    // ClipboardItem非対応の場合はプレビューダイアログを開く
     setPreviewOpen(true);
   };
 
@@ -226,39 +165,36 @@ export default function NearbyCasesPage() {
   const handleSelectAndCopy = async () => {
     if (!previewRef.current) return;
 
-    // まず ClipboardItem（HTML形式）で試す
-    const htmlContent = previewRef.current.innerHTML;
-    if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
-      try {
-        await navigator.clipboard.write([
-          new ClipboardItem({
-            'text/html': new Blob([htmlContent], { type: 'text/html' }),
-            'text/plain': new Blob([previewRef.current.innerText || ''], { type: 'text/plain' }),
-          }),
-        ]);
-        setCopyDone(true);
-        setSnackbar({ open: true, message: 'HTMLテーブルをコピーしました。Gmailに貼り付けてください。', severity: 'success' });
-        return;
-      } catch {
-        // ClipboardItem失敗 → 手動選択に切り替え
-      }
-    }
-
-    // フォールバック: DOMのrangeを使ってHTMLごと選択状態にする
-    // ユーザーが Ctrl+C を押せるように選択状態にする
     const sel = window.getSelection();
     const range = document.createRange();
     range.selectNodeContents(previewRef.current);
     sel?.removeAllRanges();
     sel?.addRange(range);
-    // execCommand は HTML を保持したままコピーできる（テーブル構造ごと）
     const ok = document.execCommand('copy');
+    sel?.removeAllRanges();
     if (ok) {
       setCopyDone(true);
-      setSnackbar({ open: true, message: 'コピーしました。Gmailに貼り付けてください（Ctrl+V）。', severity: 'success' });
-    } else {
-      // 選択状態のまま残してユーザーに手動コピーを促す
-      setSnackbar({ open: true, message: '表が選択されました。Ctrl+C（Mac: Cmd+C）でコピーしてください。', severity: 'success' });
+      const n = checkedUrls.size > 0 ? `${checkedUrls.size}件を` : '';
+      setSnackbar({ open: true, message: `${n}コピーしました。Gmailの本文にCtrl+Vで貼り付けてください。`, severity: 'success' });
+    }
+  };
+
+  // ダイアログが開いたら即コピー実行
+  const handlePreviewMount = (node: HTMLDivElement | null) => {
+    (previewRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    if (node) {
+      setTimeout(() => {
+        const sel = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+        document.execCommand('copy');
+        sel?.removeAllRanges();
+        setCopyDone(true);
+        const n = checkedUrls.size > 0 ? `${checkedUrls.size}件を` : '';
+        setSnackbar({ open: true, message: `${n}コピーしました。Gmailの本文にCtrl+Vで貼り付けてください。`, severity: 'success' });
+      }, 100);
     }
   };
 
@@ -489,16 +425,16 @@ export default function NearbyCasesPage() {
                 '&:hover': { backgroundColor: copyDone ? '#2e7d32' : '#1557b0' },
               }}
             >
-              {copyDone ? '✓ コピー済み' : '全選択してコピー'}
+              {copyDone ? '✓ コピー済み' : '再度コピー'}
             </Button>
           </Box>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-            「全選択してコピー」→ Gmailの本文でCtrl+V（Cmd+V）で貼り付けると表になります
+            このダイアログを開いた時点でコピー済みです。Gmailの本文でCtrl+V（Cmd+V）で貼り付けてください
           </Typography>
         </DialogTitle>
         <DialogContent dividers>
           {/* このdivの内容がそのままコピーされる */}
-          <div ref={previewRef} style={{ userSelect: 'text', cursor: 'text' }}>
+          <div ref={handlePreviewMount} style={{ userSelect: 'text', cursor: 'text' }}>
             <p style={{ fontSize: '13px', fontFamily: 'sans-serif', marginBottom: '6px' }}>
               【周辺土地事例】SUUMO掲載中（{new Date().toLocaleDateString('ja-JP')}）
             </p>
