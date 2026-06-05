@@ -217,30 +217,20 @@ export default function NearbyCasesPage() {
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   };
 
-  // コピーボタン：ClipboardItemでHTMLとテキスト両方をクリップボードに書き込む
+  // コピーボタン：text/htmlのみClipboardItemに渡す（text/plainを渡すとGmailがテキスト優先になるため）
   const handleCopy = async () => {
-    const html = buildHtml();
-
-    // text/plain にも★行を含める
-    const targetLine = targetPriceMan
-      ? `\n★ ${address}（対象物件） ${targetPriceMan.toLocaleString('ja-JP')}万円 ${targetTsubo ? `${targetTsubo}坪` : ''} ${targetTsubotanka ? `${targetTsubotanka}万円/坪` : ''}`
-      : '';
-    const plainText = `【周辺土地事例】SUUMO掲載中（${new Date().toLocaleDateString('ja-JP')}）\n` +
-      copyTargetCases.map((c, i) =>
-        `${i + 1}. ${c.address !== '-' ? c.address : ''} ${c.price} ${c.tsubo_tanka}`
-      ).join('\n') + targetLine;
+    const html = `<html><body>${buildHtml()}</body></html>`;
 
     try {
       await navigator.clipboard.write([
         new ClipboardItem({
           'text/html': new Blob([html], { type: 'text/html' }),
-          'text/plain': new Blob([plainText], { type: 'text/plain' }),
         }),
       ]);
       const n = checkedUrls.size > 0 ? `${checkedUrls.size}件を` : '';
       setSnackbar({
         open: true,
-        message: `${n}コピーしました。※Gmailが「書式なしテキスト」モードの場合はAボタンで「書式付き」に切り替えてから貼り付けてください。`,
+        message: `${n}コピーしました。※テキストになる場合はGmailの「A」ボタンで「書式付きテキスト」に切り替えてから貼り付けてください。`,
         severity: 'success',
       });
     } catch (e) {
