@@ -155,22 +155,16 @@ export default function NearbyCasesPage() {
       <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f9f9f9'}">
         <td style="padding:5px 10px;border:1px solid #ddd;text-align:center">${i + 1}</td>
         <td style="padding:5px 10px;border:1px solid #ddd">${c.address !== '-' ? c.address : ''}</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${c.price}</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${c.area}</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${c.tsubo}</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right"><strong>${c.tsubo_tanka}</strong></td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:center">${c.building_condition}</td>
+        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${c.price}　<strong><u>（${c.tsubo_tanka}）</u></strong></td>
+        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${c.area} / ${c.tsubo}</td>
       </tr>`).join('');
 
     const targetRow = targetPriceMan ? `
       <tr style="background:#fff8e1;font-weight:bold">
         <td style="padding:5px 10px;border:1px solid #ddd;text-align:center;color:#e65100">★</td>
         <td style="padding:5px 10px;border:1px solid #ddd">${address}（対象物件）</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${targetPriceMan.toLocaleString('ja-JP')}万円</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${landArea ? `${landArea}㎡` : '-'}</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${targetTsubo ? `${targetTsubo}坪` : '-'}</td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right"><strong>${targetTsubotanka ? `${targetTsubotanka}万円/坪` : '-'}</strong></td>
-        <td style="padding:5px 10px;border:1px solid #ddd;text-align:center">-</td>
+        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${targetPriceMan.toLocaleString('ja-JP')}万円　<strong><u>（${targetTsubotanka ? `${targetTsubotanka}万円/坪` : '-'}）</u></strong></td>
+        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${landArea ? `${landArea}㎡` : '-'} / ${targetTsubo ? `${targetTsubo}坪` : '-'}</td>
       </tr>` : '';
 
     return `
@@ -179,11 +173,6 @@ export default function NearbyCasesPage() {
       </p>
       <table style="border-collapse:collapse;font-size:13px;font-family:sans-serif">
         <tbody>
-          <tr style="background:#e3f2fd;font-weight:bold">
-            ${['No', '所在地', '価格', '面積', '坪数', '坪単価', '建築条件']
-              .map(h => `<td style="padding:6px 10px;border:1px solid #bbb">${h}</td>`)
-              .join('')}
-          </tr>
           ${rows}
           ${targetRow}
         </tbody>
