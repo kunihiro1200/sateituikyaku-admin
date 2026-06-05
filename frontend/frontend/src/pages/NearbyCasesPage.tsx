@@ -156,8 +156,69 @@ export default function NearbyCasesPage() {
   const copyTargetCases = checkedUrls.size > 0 ? cases.filter((c) => checkedUrls.has(c.url)) : cases;
 
   // プレビューダイアログを開く
-  const handleOpenPreview = () => {
+  const handleOpenPreview = async () => {
     setCopyDone(false);
+
+    const priceManStr = targetPriceMan ? `${targetPriceMan.toLocaleString('ja-JP')}万円` : '-';
+    const tsuboStr = targetTsubo ? `${targetTsubo}坪` : '-';
+    const tankaStr = targetTsubotanka ? `${targetTsubotanka}万円/坪` : '-';
+    const cellStyle = 'padding:5px 10px;border:1px solid #ddd;';
+
+    const theadHtml = `<tr style="background:#e3f2fd;font-weight:bold;">
+      <td style="${cellStyle}">No</td>
+      <td style="${cellStyle}">所在地</td>
+      <td style="${cellStyle}">価格</td>
+      <td style="${cellStyle}">面積</td>
+      <td style="${cellStyle}">坪数</td>
+      <td style="${cellStyle}font-weight:bold;">坪単価</td>
+      <td style="${cellStyle}">建築条件</td>
+    </tr>`;
+
+    const tbodyHtml = copyTargetCases.map((c, i) => `
+      <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f9f9f9'}">
+        <td style="${cellStyle}">${i + 1}</td>
+        <td style="${cellStyle}">${c.address !== '-' ? c.address : ''}</td>
+        <td style="${cellStyle}">${c.price}</td>
+        <td style="${cellStyle}">${c.area}</td>
+        <td style="${cellStyle}">${c.tsubo}</td>
+        <td style="${cellStyle}font-weight:bold;color:#1976d2;">${c.tsubo_tanka}</td>
+        <td style="${cellStyle}">${c.building_condition}</td>
+      </tr>`).join('');
+
+    const targetRowHtml = targetPriceMan ? `
+      <tr style="background:#fff8e1;font-weight:bold;">
+        <td style="${cellStyle}color:#e65100;">★</td>
+        <td style="${cellStyle}">${address}（対象物件）</td>
+        <td style="${cellStyle}">${priceManStr}</td>
+        <td style="${cellStyle}">${landArea ? `${landArea}㎡` : '-'}</td>
+        <td style="${cellStyle}">${tsuboStr}</td>
+        <td style="${cellStyle}font-weight:bold;color:#1976d2;">${tankaStr}</td>
+        <td style="${cellStyle}">-</td>
+      </tr>` : '';
+
+    const html = `<p style="font-size:13px;font-family:sans-serif;margin-bottom:6px;">【周辺土地事例】SUUMO掲載中（${new Date().toLocaleDateString('ja-JP')}）</p>
+<table style="border-collapse:collapse;font-size:13px;font-family:sans-serif;">
+  <tbody>${theadHtml}${tbodyHtml}${targetRowHtml}</tbody>
+</table>
+<p style="font-size:11px;color:#888;margin-top:6px;">出典：SUUMO　半径1km圏内</p>`;
+
+    // ClipboardItem でHTMLをコピー（HTTPS環境で動作）
+    if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': new Blob([html], { type: 'text/html' }),
+          }),
+        ]);
+        const n = checkedUrls.size > 0 ? `${checkedUrls.size}件を` : '';
+        setSnackbar({ open: true, message: `${n}HTMLテーブルをコピーしました。Gmailに貼り付けると表になります。`, severity: 'success' });
+        return;
+      } catch {
+        // 失敗したらプレビューを開く
+      }
+    }
+
+    // ClipboardItem非対応の場合はプレビューダイアログを開く
     setPreviewOpen(true);
   };
 
