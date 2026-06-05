@@ -200,53 +200,61 @@ export default function NearbyCasesPage() {
 </table>
 <p style="font-size:11px;color:#888;margin-top:6px;">出典：SUUMO　半径1km圏内</p>`;
 
-    // 方法1: ClipboardItem（モダンブラウザ）
-    // 方法2: 隠しdivにHTMLを入れてselectionでコピー（フォールバック）
-    const copyWithFallback = async () => {
-      // まず ClipboardItem を試す
-      if (typeof ClipboardItem !== 'undefined') {
+    const copyHtml = async (): Promise<boolean> => {
+      // 方法1: ClipboardItem API（Chrome 76+, Edge, Safari 13.1+）
+      if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
         try {
           await navigator.clipboard.write([
             new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }) }),
           ]);
           return true;
         } catch {
-          // 失敗したらフォールバックへ
+          // fallthrough
         }
       }
-      // フォールバック: 隠しdivに描画してdocument.execCommand('copy')
-      const div = document.createElement('div');
-      div.style.position = 'fixed';
-      div.style.top = '-9999px';
-      div.style.left = '-9999px';
-      div.style.opacity = '0';
-      div.style.pointerEvents = 'none';
-      div.innerHTML = html;
-      document.body.appendChild(div);
+
+      // 方法2: contenteditable + execCommand
+      // ブラウザはオフスクリーン要素のコピーを拒否するため、
+      // 画面内の小さな contenteditable div を使う
+      const el = document.createElement('div');
+      el.setAttribute('contenteditable', 'true');
+      el.style.cssText = [
+        'position:fixed',
+        'top:0',
+        'left:0',
+        'width:1px',
+        'height:1px',
+        'overflow:hidden',
+        'opacity:0.01',
+        'font-size:1px',
+      ].join(';');
+      el.innerHTML = html;
+      document.body.appendChild(el);
+      el.focus();
       try {
-        const selection = window.getSelection();
+        const sel = window.getSelection();
         const range = document.createRange();
-        range.selectNodeContents(div);
-        selection?.removeAllRanges();
-        selection?.addRange(range);
-        const success = document.execCommand('copy');
-        selection?.removeAllRanges();
-        return success;
+        range.selectNodeContents(el);
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+        const ok = document.execCommand('copy');
+        sel?.removeAllRanges();
+        return ok;
       } finally {
-        document.body.removeChild(div);
+        document.body.removeChild(el);
       }
     };
 
     try {
-      const ok = await copyWithFallback();
+      const ok = await copyHtml();
       if (ok) {
         const n = checkedUrls.size > 0 ? `${checkedUrls.size}件を` : '';
         setSnackbar({ open: true, message: `${n}コピーしました（Gmailに貼り付けると表になります）`, severity: 'success' });
       } else {
-        setSnackbar({ open: true, message: 'コピーに失敗しました。ブラウザの設定を確認してください。', severity: 'error' });
+        setSnackbar({ open: true, message: 'コピーに失敗しました。ブラウザのクリップボード権限を確認してください。', severity: 'error' });
       }
-    } catch {
-      setSnackbar({ open: true, message: 'コピーに失敗しました', severity: 'error' });
+    } catch (e: any) {
+      setSnackbar({ open: true, message: `コピーエラー: ${e?.message || '不明'}`, severity: 'error' });
     }
   };
 
