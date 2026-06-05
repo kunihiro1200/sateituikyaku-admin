@@ -24,7 +24,6 @@ import {
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
-  ContentCopy as ContentCopyIcon,
   Refresh as RefreshIcon,
   OpenInNew as OpenInNewIcon,
 } from '@mui/icons-material';
@@ -199,19 +198,23 @@ export default function NearbyCasesPage() {
   <meta charset="UTF-8">
   <title>周辺事例コピー用</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #f5f5f5; }
+    body { font-family: sans-serif; padding: 20px; background: #f5f5f5; margin: 0; }
     .instructions {
-      background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px;
-      padding: 12px 16px; margin-bottom: 16px; font-size: 14px; color: #333;
+      background: #fff3cd; border: 2px solid #ffc107; border-radius: 6px;
+      padding: 12px 16px; margin-bottom: 16px; font-size: 15px; color: #333;
+      line-height: 1.8;
     }
-    .instructions strong { color: #e65100; }
+    .instructions .step { font-size: 17px; font-weight: bold; color: #e65100; }
     .content { background: white; padding: 16px; border-radius: 4px; display: inline-block; }
   </style>
 </head>
 <body>
   <div class="instructions">
-    <strong>① Ctrl+A（全選択）→ ② Ctrl+C（コピー）→ ③ Gmailの本文でCtrl+V（貼り付け）</strong><br>
-    ※ Gmailが「書式なしテキスト」モードの場合は、作成画面右下の「A」ボタンをクリックして「書式付きテキスト」に切り替えてください。
+    <div class="step">① このページ内でCtrl+A（全選択）</div>
+    <div class="step">② Ctrl+C（コピー）</div>
+    <div class="step">③ Gmailの本文欄でCtrl+V（貼り付け）</div>
+    <br>
+    ⚠️ Gmailが「書式なしテキスト」モードの場合：作成画面の下部「A」ボタンをクリックして<strong>「書式付きテキスト」に切り替え</strong>てから貼り付けてください。
   </div>
   <div class="content">
     ${buildHtml()}
@@ -221,30 +224,12 @@ export default function NearbyCasesPage() {
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
-    // 開いたあとURLを解放（少し遅延させて確実に開かせてから）
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   };
 
-  // ClipboardItem でHTMLコピー（ブラウザ対応している場合）
-  const handleCopy = async () => {
-    const html = buildHtml();
-    try {
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          'text/html': new Blob([html], { type: 'text/html' }),
-          'text/plain': new Blob([`【周辺土地事例】SUUMO掲載中（${new Date().toLocaleDateString('ja-JP')}）\n` +
-            copyTargetCases.map((c, i) =>
-              `${i + 1}. ${c.address !== '-' ? c.address : ''} ${c.price} ${c.tsubo_tanka}`
-            ).join('\n')], { type: 'text/plain' }),
-        }),
-      ]);
-      const n = checkedUrls.size > 0 ? `${checkedUrls.size}件を` : '';
-      setSnackbar({ open: true, message: `${n}コピーしました。Gmailの本文でCtrl+Vで貼り付けてください。`, severity: 'success' });
-    } catch {
-      // フォールバック: プレビュータブを開く
-      handleOpenPreview();
-      setSnackbar({ open: true, message: 'プレビュータブを開きました。Ctrl+A → Ctrl+C → Gmailに貼り付けてください。', severity: 'success' });
-    }
+  // コピー = プレビュータブを開く（ClipboardItemはGmailと相性が悪いため廃止）
+  const handleCopy = () => {
+    handleOpenPreview();
   };
 
   return (
@@ -298,11 +283,11 @@ export default function NearbyCasesPage() {
           <Button
             variant="contained"
             size="small"
-            startIcon={<ContentCopyIcon />}
+            startIcon={<OpenInNewIcon />}
             onClick={handleCopy}
             sx={{ backgroundColor: '#1a73e8', '&:hover': { backgroundColor: '#1557b0' } }}
           >
-            {checkedUrls.size > 0 ? `選択${checkedUrls.size}件をコピー` : 'メール用テーブルをコピー'}
+            {checkedUrls.size > 0 ? `選択${checkedUrls.size}件をGmailにコピー` : 'Gmailにコピー（別タブで開く）'}
           </Button>
         )}
         {cases.length > 0 && (
