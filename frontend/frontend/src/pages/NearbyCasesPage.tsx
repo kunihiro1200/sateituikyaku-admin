@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
@@ -57,7 +57,7 @@ export default function NearbyCasesPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   // コピー用隠しdiv（常にDOMに存在、ClipboardItemのsource）
-  const hiddenTableRef = useRef<HTMLDivElement>(null);
+  // ※ buildHtml() に移行したため不要
 
   const state = location.state as LocationState | null;
 
@@ -149,33 +149,101 @@ export default function NearbyCasesPage() {
   const isIndeterminate = checkedUrls.size > 0 && checkedUrls.size < cases.length;
   const copyTargetCases = checkedUrls.size > 0 ? cases.filter((c) => checkedUrls.has(c.url)) : cases;
 
-  // ボタンクリック直後（ユーザーのジェスチャー内）に ClipboardItem でHTMLコピー
+  // コピー用HTMLを生成するヘルパー
+  const buildHtml = () => {
+    const rows = copyTargetCases.map((c, i) => `
+      <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f9f9f9'}">
+        <td style="padding:5px 10px;border:1px solid #ddd;text-align:center">${i + 1}</td>
+        <td style="padding:5px 10px;border:1px solid #ddd">${c.address !== '-' ? c.address : ''}</td>
+        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${c.price}</td>
+        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${c.area}</td>
+        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${c.tsubo}</td>
+        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right"><strong>${c.tsubo_tanka}</strong></td>
+        <td style="padding:5px 10px;border:1px solid #ddd;text-align:center">${c.building_condition}</td>
+      </tr>`).join('');
+
+    const targetRow = targetPriceMan ? `
+      <tr style="background:#fff8e1;font-weight:bold">
+        <td style="padding:5px 10px;border:1px solid #ddd;text-align:center;color:#e65100">★</td>
+        <td style="padding:5px 10px;border:1px solid #ddd">${address}（対象物件）</td>
+        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${targetPriceMan.toLocaleString('ja-JP')}万円</td>
+        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${landArea ? `${landArea}㎡` : '-'}</td>
+        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${targetTsubo ? `${targetTsubo}坪` : '-'}</td>
+        <td style="padding:5px 10px;border:1px solid #ddd;text-align:right"><strong>${targetTsubotanka ? `${targetTsubotanka}万円/坪` : '-'}</strong></td>
+        <td style="padding:5px 10px;border:1px solid #ddd;text-align:center">-</td>
+      </tr>` : '';
+
+    return `
+      <p style="font-size:13px;font-family:sans-serif;margin-bottom:6px">
+        【周辺土地事例】SUUMO掲載中（${new Date().toLocaleDateString('ja-JP')}）
+      </p>
+      <table style="border-collapse:collapse;font-size:13px;font-family:sans-serif">
+        <tbody>
+          <tr style="background:#e3f2fd;font-weight:bold">
+            ${['No', '所在地', '価格', '面積', '坪数', '坪単価', '建築条件']
+              .map(h => `<td style="padding:6px 10px;border:1px solid #bbb">${h}</td>`)
+              .join('')}
+          </tr>
+          ${rows}
+          ${targetRow}
+        </tbody>
+      </table>
+      <p style="font-size:11px;color:#888;margin-top:6px">出典：SUUMO　半径1km圏内</p>`;
+  };
+
+  // 別タブでHTMLプレビューを開く（最も確実なGmail貼り付け方法）
+  const handleOpenPreview = () => {
+    const html = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>周辺事例コピー用</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f5f5f5; }
+    .instructions {
+      background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px;
+      padding: 12px 16px; margin-bottom: 16px; font-size: 14px; color: #333;
+    }
+    .instructions strong { color: #e65100; }
+    .content { background: white; padding: 16px; border-radius: 4px; display: inline-block; }
+  </style>
+</head>
+<body>
+  <div class="instructions">
+    <strong>① Ctrl+A（全選択）→ ② Ctrl+C（コピー）→ ③ Gmailの本文でCtrl+V（貼り付け）</strong><br>
+    ※ Gmailが「書式なしテキスト」モードの場合は、作成画面右下の「A」ボタンをクリックして「書式付きテキスト」に切り替えてください。
+  </div>
+  <div class="content">
+    ${buildHtml()}
+  </div>
+</body>
+</html>`;
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    // 開いたあとURLを解放（少し遅延させて確実に開かせてから）
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  };
+
+  // ClipboardItem でHTMLコピー（ブラウザ対応している場合）
   const handleCopy = async () => {
-    if (!hiddenTableRef.current) return;
-    const html = hiddenTableRef.current.innerHTML;
+    const html = buildHtml();
     try {
       await navigator.clipboard.write([
         new ClipboardItem({
           'text/html': new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([`【周辺土地事例】SUUMO掲載中（${new Date().toLocaleDateString('ja-JP')}）\n` +
+            copyTargetCases.map((c, i) =>
+              `${i + 1}. ${c.address !== '-' ? c.address : ''} ${c.price} ${c.tsubo_tanka}`
+            ).join('\n')], { type: 'text/plain' }),
         }),
       ]);
       const n = checkedUrls.size > 0 ? `${checkedUrls.size}件を` : '';
       setSnackbar({ open: true, message: `${n}コピーしました。Gmailの本文でCtrl+Vで貼り付けてください。`, severity: 'success' });
-    } catch (e) {
-      // フォールバック: DOM選択によるコピー
-      const sel = window.getSelection();
-      const range = document.createRange();
-      range.selectNodeContents(hiddenTableRef.current);
-      sel?.removeAllRanges();
-      sel?.addRange(range);
-      const ok = document.execCommand('copy');
-      sel?.removeAllRanges();
-      if (ok) {
-        const n = checkedUrls.size > 0 ? `${checkedUrls.size}件を` : '';
-        setSnackbar({ open: true, message: `${n}コピーしました。`, severity: 'success' });
-      } else {
-        setSnackbar({ open: true, message: `コピーに失敗しました: ${(e as any)?.message || ''}`, severity: 'error' });
-      }
+    } catch {
+      // フォールバック: プレビュータブを開く
+      handleOpenPreview();
+      setSnackbar({ open: true, message: 'プレビュータブを開きました。Ctrl+A → Ctrl+C → Gmailに貼り付けてください。', severity: 'success' });
     }
   };
 
@@ -235,6 +303,17 @@ export default function NearbyCasesPage() {
             sx={{ backgroundColor: '#1a73e8', '&:hover': { backgroundColor: '#1557b0' } }}
           >
             {checkedUrls.size > 0 ? `選択${checkedUrls.size}件をコピー` : 'メール用テーブルをコピー'}
+          </Button>
+        )}
+        {cases.length > 0 && (
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<OpenInNewIcon />}
+            onClick={handleOpenPreview}
+            sx={{ borderColor: '#1a73e8', color: '#1a73e8' }}
+          >
+            {checkedUrls.size > 0 ? `選択${checkedUrls.size}件をプレビューで開く` : 'プレビューで開く（確実）'}
           </Button>
         )}
         <Button
@@ -387,64 +466,7 @@ export default function NearbyCasesPage() {
         </Paper>
       )}
 
-      {/*
-        コピー用隠しHTMLテーブル
-        画面外に配置。ClipboardItem.write() でこのdivのinnerHTMLをコピーする。
-      */}
-      <div
-        ref={hiddenTableRef}
-        aria-hidden="true"
-        style={{
-          position: 'fixed',
-          top: '-9999px',
-          left: 0,
-          width: '800px',
-          height: 'auto',
-          overflow: 'hidden',
-          pointerEvents: 'none',
-          zIndex: -1,
-        }}
-      >
-        <p style={{ fontSize: '13px', fontFamily: 'sans-serif', marginBottom: '6px' }}>
-          {`【周辺土地事例】SUUMO掲載中（${new Date().toLocaleDateString('ja-JP')}）`}
-        </p>
-        <table style={{ borderCollapse: 'collapse', fontSize: '13px', fontFamily: 'sans-serif' }}>
-          <tbody>
-            <tr style={{ background: '#e3f2fd', fontWeight: 'bold' }}>
-              {['No', '所在地', '価格', '面積', '坪数', '坪単価', '建築条件'].map((h) => (
-                <td key={h} style={{ padding: '6px 10px', border: '1px solid #bbb' }}>{h}</td>
-              ))}
-            </tr>
-            {copyTargetCases.map((c, i) => (
-              <tr key={i} style={{ background: i % 2 === 0 ? '#ffffff' : '#f9f9f9' }}>
-                <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'center' }}>{i + 1}</td>
-                <td style={{ padding: '5px 10px', border: '1px solid #ddd' }}>{c.address !== '-' ? c.address : ''}</td>
-                <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'right' }}>{c.price}</td>
-                <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'right' }}>{c.area}</td>
-                <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'right' }}>{c.tsubo}</td>
-                <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'right' }}>
-                  <strong>{c.tsubo_tanka}</strong>
-                </td>
-                <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'center' }}>{c.building_condition}</td>
-              </tr>
-            ))}
-            {targetPriceMan && (
-              <tr style={{ background: '#fff8e1', fontWeight: 'bold' }}>
-                <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'center', color: '#e65100' }}>★</td>
-                <td style={{ padding: '5px 10px', border: '1px solid #ddd' }}>{address}（対象物件）</td>
-                <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'right' }}>{targetPriceMan.toLocaleString('ja-JP')}万円</td>
-                <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'right' }}>{landArea ? `${landArea}㎡` : '-'}</td>
-                <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'right' }}>{targetTsubo ? `${targetTsubo}坪` : '-'}</td>
-                <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'right' }}>
-                  <strong>{targetTsubotanka ? `${targetTsubotanka}万円/坪` : '-'}</strong>
-                </td>
-                <td style={{ padding: '5px 10px', border: '1px solid #ddd', textAlign: 'center' }}>-</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-        <p style={{ fontSize: '11px', color: '#888', marginTop: '6px' }}>出典：SUUMO　半径1km圏内</p>
-      </div>
+      {/* 隠しdivは不要（buildHtml()で動的生成方式に変更済み） */}
 
       <Snackbar open={snackbar.open} autoHideDuration={4000}
         onClose={() => setSnackbar((p) => ({ ...p, open: false }))}>
