@@ -2189,12 +2189,54 @@ router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, r
       return Buffer.from(r.data).toString('utf-8');
     };
 
-    // ── STEP 1: 物件個別ページからエリアコード（oz_XXXXXXXX）を取得 ──
+    // ── STEP 1: 物件個別ページから「この物件が属するエリア」のoz_コードを取得 ──
+    // 物件ページには全エリアのナビが含まれており、
+    // href="/tochi/oita/sc_oita/oz_44201106/">大字葛木</a> のパターンで対応関係がある。
+    // 物件の所在地から町名を取り出し、それに一致するoz_コードを探す。
     let areaCode = '';
     try {
       const propHtml = await fetchHtml(suumo_url);
-      const ozMatch = propHtml.match(/\/tochi\/[^"]*\/(oz_[0-9]+)\//);
-      if (ozMatch) areaCode = ozMatch[1];
+
+      // 物件の所在地を取得（例: 大分県大分市大字葛木115番10）
+      const addrMatch = propHtml.match(/所在地[\s\S]{0,300}?((?:大分|福岡|熊本|佐賀|長崎|宮崎|鹿児島|沖縄)[県市][^\n<]{3,50})/);
+      const fullAddress = addrMatch ? addrMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+
+      // 住所から市区町村以下の部分（大字葛木 など）を抽出
+      // 「大分市大字葛木115番10」→「大字葛木」「葛木」などを候補に
+      const townCandidates: string[] = [];
+      const townMatch = fullAddress.match(/(?:大分市|福岡市|熊本市)[^\s　]*?((?:大字|字)?[^\s　0-9０-９番地号\-]{2,8})/);
+      if (townMatch) {
+        townCandidates.push(townMatch[1]);                          // 例: 大字葛木
+        townCandidates.push(townMatch[1].replace('大字', ''));      // 例: 葛木
+      }
+
+      // oz_ コードと地名のマッピングを全件取得
+      // パターン: href="/tochi/oita/sc_oita/oz_44201106/">大字葛木</a>
+      const ozMapPattern = /href="\/tochi\/[^"]*\/(oz_[0-9]+)\/"[^>]*>([^<]{2,20})<\/a>/g;
+      let ozMapMatch;
+      const ozMap: Array<{ code: string; name: string }> = [];
+      while ((ozMapMatch = ozMapPattern.exec(propHtml)) !== null) {
+        ozMap.push({ code: ozMapMatch[1], name: ozMapMatch[2].trim() });
+      }
+
+      // 町名候補でoz_コードを探す
+      for (const candidate of townCandidates) {
+        const found = ozMap.find(o => o.name.includes(candidate) || candidate.includes(o.name));
+        if (found) {
+          areaCode = found.code;
+          break;
+        }
+      }
+
+      // 見つからない場合は住所全体で部分一致検索
+      if (!areaCode && fullAddress) {
+        for (const oz of ozMap) {
+          if (fullAddress.includes(oz.name) && oz.name.length >= 2) {
+            areaCode = oz.code;
+            break;
+          }
+        }
+      }
     } catch { /* エリアコード取得失敗は無視 */ }
 
     // ── STEP 2: エリア一覧ページを取得 ──
