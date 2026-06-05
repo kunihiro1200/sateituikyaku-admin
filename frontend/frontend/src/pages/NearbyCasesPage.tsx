@@ -24,6 +24,7 @@ import {
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
+  ContentCopy as ContentCopyIcon,
   Refresh as RefreshIcon,
   OpenInNew as OpenInNewIcon,
 } from '@mui/icons-material';
@@ -227,9 +228,35 @@ export default function NearbyCasesPage() {
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   };
 
-  // コピー = プレビュータブを開く（ClipboardItemはGmailと相性が悪いため廃止）
-  const handleCopy = () => {
-    handleOpenPreview();
+  // コピーボタン：ClipboardItemでHTMLとテキスト両方をクリップボードに書き込む
+  const handleCopy = async () => {
+    const html = buildHtml();
+
+    // text/plain にも★行を含める
+    const targetLine = targetPriceMan
+      ? `\n★ ${address}（対象物件） ${targetPriceMan.toLocaleString('ja-JP')}万円 ${targetTsubo ? `${targetTsubo}坪` : ''} ${targetTsubotanka ? `${targetTsubotanka}万円/坪` : ''}`
+      : '';
+    const plainText = `【周辺土地事例】SUUMO掲載中（${new Date().toLocaleDateString('ja-JP')}）\n` +
+      copyTargetCases.map((c, i) =>
+        `${i + 1}. ${c.address !== '-' ? c.address : ''} ${c.price} ${c.tsubo_tanka}`
+      ).join('\n') + targetLine;
+
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([plainText], { type: 'text/plain' }),
+        }),
+      ]);
+      const n = checkedUrls.size > 0 ? `${checkedUrls.size}件を` : '';
+      setSnackbar({
+        open: true,
+        message: `${n}コピーしました。※Gmailが「書式なしテキスト」モードの場合はAボタンで「書式付き」に切り替えてから貼り付けてください。`,
+        severity: 'success',
+      });
+    } catch (e) {
+      setSnackbar({ open: true, message: `コピーに失敗しました: ${(e as any)?.message || ''}`, severity: 'error' });
+    }
   };
 
   return (
@@ -283,11 +310,11 @@ export default function NearbyCasesPage() {
           <Button
             variant="contained"
             size="small"
-            startIcon={<OpenInNewIcon />}
+            startIcon={<ContentCopyIcon />}
             onClick={handleCopy}
             sx={{ backgroundColor: '#1a73e8', '&:hover': { backgroundColor: '#1557b0' } }}
           >
-            {checkedUrls.size > 0 ? `選択${checkedUrls.size}件をGmailにコピー` : 'Gmailにコピー（別タブで開く）'}
+            {checkedUrls.size > 0 ? `選択${checkedUrls.size}件をコピー` : 'メール用テーブルをコピー'}
           </Button>
         )}
         {cases.length > 0 && (
