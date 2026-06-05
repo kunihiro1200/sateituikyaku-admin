@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
@@ -56,8 +56,8 @@ export default function NearbyCasesPage() {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  // コピー用隠しdiv（常にDOMに存在、ClipboardItemのsource）
-  // ※ buildHtml() に移行したため不要
+  // コピー用隠しdiv（execCommandによるDOM選択コピー用）
+  const hiddenTableRef = useRef<HTMLDivElement>(null);
 
   const state = location.state as LocationState | null;
 
@@ -217,24 +217,27 @@ export default function NearbyCasesPage() {
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   };
 
-  // コピーボタン：text/htmlのみClipboardItemに渡す（text/plainを渡すとGmailがテキスト優先になるため）
-  const handleCopy = async () => {
-    const html = `<html><body>${buildHtml()}</body></html>`;
-
-    try {
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          'text/html': new Blob([html], { type: 'text/html' }),
-        }),
-      ]);
+  // コピーボタン：DOMを直接選択してexecCommand('copy')で書式付きコピー
+  // ClipboardItem方式はGmailとの相性問題があるためexecCommand方式を採用
+  const handleCopy = () => {
+    const el = hiddenTableRef.current;
+    if (!el) return;
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    const ok = document.execCommand('copy');
+    sel?.removeAllRanges();
+    if (ok) {
       const n = checkedUrls.size > 0 ? `${checkedUrls.size}件を` : '';
       setSnackbar({
         open: true,
-        message: `${n}コピーしました。※テキストになる場合はGmailの「A」ボタンで「書式付きテキスト」に切り替えてから貼り付けてください。`,
+        message: `${n}コピーしました。Gmailの本文でCtrl+Vで貼り付けてください。`,
         severity: 'success',
       });
-    } catch (e) {
-      setSnackbar({ open: true, message: `コピーに失敗しました: ${(e as any)?.message || ''}`, severity: 'error' });
+    } else {
+      setSnackbar({ open: true, message: 'コピーに失敗しました。', severity: 'error' });
     }
   };
 
@@ -459,7 +462,24 @@ export default function NearbyCasesPage() {
 
       {/* 隠しdivは不要（buildHtml()で動的生成方式に変更済み） */}
 
-      <Snackbar open={snackbar.open} autoHideDuration={4000}
+      {/*
+        コピー用隠しテーブル（画面外）
+        execCommand('copy') でこのdivの内容を書式付きでコピーする
+      */}
+      <div
+        ref={hiddenTableRef}
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          top: '-9999px',
+          left: 0,
+          width: '800px',
+          pointerEvents: 'none',
+          zIndex: -1,
+          background: 'white',
+        }}
+        dangerouslySetInnerHTML={{ __html: buildHtml() }}
+      />      <Snackbar open={snackbar.open} autoHideDuration={4000}
         onClose={() => setSnackbar((p) => ({ ...p, open: false }))}>
         <Alert severity={snackbar.severity} onClose={() => setSnackbar((p) => ({ ...p, open: false }))}>
           {snackbar.message}
