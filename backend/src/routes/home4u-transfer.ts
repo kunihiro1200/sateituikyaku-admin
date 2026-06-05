@@ -490,6 +490,45 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
     }
     console.log(`[home4u-transfer] 売主番号採番: ${sellerNumber}`);
 
+    // ============================================================
+    // INSERT直前に再度重複チェック（非同期スレッドの競合防止）
+    // trigger_home4u_transferが並行して呼ばれた場合、最初の重複チェック時には
+    // まだDBに登録されていないため両方が通過してしまう。INSERT直前に再チェックすることで防ぐ。
+    // ============================================================
+    {
+      const { decrypt: decryptForFinal } = await import('../utils/encryption');
+      const supabaseFinal = (await import('../config/supabase')).default;
+      const { data: finalCheck } = await supabaseFinal
+        .from('sellers')
+        .select('id, seller_number, phone_number, inquiry_detailed_datetime')
+        .is('deleted_at', null);
+      if (finalCheck) {
+        for (const existing of finalCheck) {
+          if (!existing.phone_number) continue;
+          try {
+            const decryptedPhone = decryptForFinal(existing.phone_number);
+            if (decryptedPhone === tel) {
+              const existingDatetime = existing.inquiry_detailed_datetime;
+              const isSameDatetime = existingDatetime && inquiryDateTimeISO
+                ? existingDatetime === inquiryDateTimeISO || existingDatetime.startsWith(inquiryDateTimeISO.replace(' ', 'T'))
+                : !existingDatetime && !inquiryDateTimeISO;
+              if (isSameDatetime) {
+                console.log(`[home4u-transfer] ⏭ INSERT直前再チェックで重複スキップ: ${existing.seller_number}`);
+                return res.json({
+                  success: true,
+                  skipped: true,
+                  message: `重複スキップ（INSERT直前）: ${existing.seller_number} と一致`,
+                  duplicateSeller: existing.seller_number,
+                });
+              }
+            }
+          } catch {
+            // 復号失敗はスキップ
+          }
+        }
+      }
+    }
+
     // DB INSERT
     const { encrypt } = await import('../utils/encryption');
     const supabase = (await import('../config/supabase')).default;
