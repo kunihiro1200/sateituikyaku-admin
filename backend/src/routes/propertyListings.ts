@@ -2363,57 +2363,18 @@ router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, r
 
     // 重複排除（同じURLの物件）
     const seen = new Set<string>();
-    const dedupedCases = cases.filter((c) => {
+    const uniqueCases = cases.filter((c) => {
       if (seen.has(c.url)) return false;
       seen.add(c.url);
       return true;
     });
 
-    // ── STEP 4: 座標が取れている場合は各物件の座標を取得して1km以内でフィルタリング ──
-    // Haversine距離計算（km）
-    const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-      const R = 6371;
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLng = (lng2 - lng1) * Math.PI / 180;
-      const a = Math.sin(dLat / 2) ** 2 +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    };
-
-    let uniqueCases = dedupedCases;
-
-    if (targetLat && targetLng && dedupedCases.length > 0) {
-      // 各物件の /kankyo/ ページから座標を取得して距離判定
-      // 並列で最大10件まで取得（タイムアウト対策）
-      const RADIUS_KM = 1.0;
-      const casesWithDistance = await Promise.all(
-        dedupedCases.map(async (c) => {
-          if (!c.url) return { ...c, distKm: 999 };
-          try {
-            const kankyoUrl = c.url.replace(/\/$/, '') + '/kankyo/';
-            const kHtml = await fetchHtml(kankyoUrl);
-            const kLatM = kHtml.match(/([3][0-9]\.[0-9]{5,})/);
-            const kLngM = kHtml.match(/([1][3][0-9]\.[0-9]{5,})/);
-            if (kLatM && kLngM) {
-              const distKm = haversineKm(targetLat, targetLng, parseFloat(kLatM[1]), parseFloat(kLngM[1]));
-              return { ...c, distKm };
-            }
-          } catch { /* 座標取得失敗は除外しない */ }
-          return { ...c, distKm: 0 }; // 座標取れない場合は含める
-        })
-      );
-
-      // 1km以内 + 座標不明（distKm=0）のものを残す、距離順にソート
-      uniqueCases = casesWithDistance
-        .filter((c) => c.distKm <= RADIUS_KM || c.distKm === 0)
-        .sort((a, b) => a.distKm - b.distKm)
-        .map(({ distKm, ...rest }) => rest);
-    }
-
     res.json({
       cases: uniqueCases,
       source_url: targetUrl,
       area_code: areaCode,
+      target_lat: targetLat,
+      target_lng: targetLng,
       total: uniqueCases.length,
     });
 
