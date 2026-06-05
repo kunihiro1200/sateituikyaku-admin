@@ -395,13 +395,14 @@ export default function NearbyCasesPage() {
         ref={hiddenTableRef}
         aria-hidden="true"
         style={{
-          position: 'absolute',
-          left: '-9999px',
-          top: 0,
-          width: '1px',
-          height: '1px',
+          position: 'fixed',
+          top: '-9999px',
+          left: 0,
+          width: '800px',
+          height: 'auto',
           overflow: 'hidden',
-          opacity: 0,
+          pointerEvents: 'none',
+          zIndex: -1,
         }}
       >
         <p style={{ fontSize: '13px', fontFamily: 'sans-serif', marginBottom: '6px' }}>

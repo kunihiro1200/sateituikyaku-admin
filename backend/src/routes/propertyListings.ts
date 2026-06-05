@@ -2355,11 +2355,16 @@ router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, r
       cases.push({ title, price, address, area, tsubo, tsubo_tanka, building_condition, url });
     }
 
-    // 重複排除（同じURLの物件）
+    // 重複排除（同じURLの物件）＋対象物件自身を除外
+    // suumo_url（対象物件のURL）と同じURLをリストから除く
+    const targetNcPath = suumo_url ? suumo_url.replace('https://suumo.jp', '').replace(/\/$/, '') : '';
     const seen = new Set<string>();
     const dedupedCases = cases.filter((c) => {
       if (seen.has(c.url)) return false;
       seen.add(c.url);
+      // 対象物件自身を除外
+      const cNcPath = c.url.replace('https://suumo.jp', '').replace(/\/$/, '');
+      if (targetNcPath && cNcPath === targetNcPath) return false;
       return true;
     });
 
