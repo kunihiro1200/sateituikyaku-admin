@@ -162,16 +162,43 @@ export default function NearbyCasesPage() {
   };
 
   // ダイアログ内のテーブルを全選択してコピー
-  const handleSelectAndCopy = () => {
+  const handleSelectAndCopy = async () => {
     if (!previewRef.current) return;
+
+    // まず ClipboardItem（HTML形式）で試す
+    const htmlContent = previewRef.current.innerHTML;
+    if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': new Blob([htmlContent], { type: 'text/html' }),
+            'text/plain': new Blob([previewRef.current.innerText || ''], { type: 'text/plain' }),
+          }),
+        ]);
+        setCopyDone(true);
+        setSnackbar({ open: true, message: 'HTMLテーブルをコピーしました。Gmailに貼り付けてください。', severity: 'success' });
+        return;
+      } catch {
+        // ClipboardItem失敗 → 手動選択に切り替え
+      }
+    }
+
+    // フォールバック: DOMのrangeを使ってHTMLごと選択状態にする
+    // ユーザーが Ctrl+C を押せるように選択状態にする
     const sel = window.getSelection();
     const range = document.createRange();
     range.selectNodeContents(previewRef.current);
     sel?.removeAllRanges();
     sel?.addRange(range);
-    document.execCommand('copy');
-    setCopyDone(true);
-    setSnackbar({ open: true, message: 'コピーしました。Gmailに貼り付けてください。', severity: 'success' });
+    // execCommand は HTML を保持したままコピーできる（テーブル構造ごと）
+    const ok = document.execCommand('copy');
+    if (ok) {
+      setCopyDone(true);
+      setSnackbar({ open: true, message: 'コピーしました。Gmailに貼り付けてください（Ctrl+V）。', severity: 'success' });
+    } else {
+      // 選択状態のまま残してユーザーに手動コピーを促す
+      setSnackbar({ open: true, message: '表が選択されました。Ctrl+C（Mac: Cmd+C）でコピーしてください。', severity: 'success' });
+    }
   };
 
   return (
@@ -405,7 +432,7 @@ export default function NearbyCasesPage() {
             </Button>
           </Box>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-            「全選択してコピー」を押した後、Gmailの本文にCtrl+V（またはCmd+V）で貼り付けてください
+            「全選択してコピー」→ Gmailの本文でCtrl+V（Cmd+V）で貼り付けると表になります
           </Typography>
         </DialogTitle>
         <DialogContent dividers>
