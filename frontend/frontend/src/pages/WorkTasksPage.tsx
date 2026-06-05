@@ -283,6 +283,15 @@ export default function WorkTasksPage() {
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button
             variant="outlined"
+            color="secondary"
+            size="small"
+            onClick={() => window.open('https://drive.google.com/drive/u/0/folders/108hNc7AkCfx6kwgBl0kQean4C_5IwoT2', '_blank', 'noopener,noreferrer')}
+            sx={{ whiteSpace: 'nowrap', fontWeight: 'bold' }}
+          >
+            雛形
+          </Button>
+          <Button
+            variant="outlined"
             color="info"
             size="small"
             startIcon={<RecordVoiceOverIcon />}
