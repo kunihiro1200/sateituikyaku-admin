@@ -68,6 +68,77 @@ function invalidateDuplicatesCache(sellerId: string): void {
 }
 
 // 認証不要のエンドポイントを先に定義
+
+/**
+ * employeesテーブルから「名前→イニシャル」の正規化関数を構築する
+ * - 全角→半角変換
+ * - 小文字→大文字変換
+ * - 氏名フル（例: 国広智子）→ イニシャル（K）への変換
+ * 上記全ての表記揺れを統一してランキング集計に使用する
+ */
+async function buildNormalizeInitialMap(supabase: any): Promise<(raw: string) => string> {
+  try {
+    const { data: employees } = await supabase
+      .from('employees')
+      .select('initials, name')
+      .not('initials', 'is', null);
+
+    // 名前→イニシャルのマップ（例: "国広智子" → "K"）
+    const nameToInitial = new Map<string, string>();
+    // イニシャルの正規化マップ（例: "ｗ" → "W", "k" → "K"）
+    const normalizedInitials = new Map<string, string>();
+
+    for (const emp of employees || []) {
+      const initial: string = emp.initials ? String(emp.initials).trim() : '';
+      const name: string = emp.name ? String(emp.name).trim() : '';
+      if (!initial) continue;
+
+      // 名前→イニシャル
+      if (name) {
+        nameToInitial.set(name, initial);
+      }
+
+      // 全角英字→半角 / 小文字→大文字 の正規化マップを登録
+      const halfWidth = initial
+        .replace(/[Ａ-Ｚａ-ｚ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+      const upper = halfWidth.toUpperCase();
+      // 全角版・小文字版→正規イニシャルに対応付け
+      if (halfWidth !== initial) normalizedInitials.set(initial, upper);
+      if (upper !== initial && upper !== halfWidth) normalizedInitials.set(halfWidth.toLowerCase(), upper);
+      normalizedInitials.set(initial.toLowerCase(), upper);
+      normalizedInitials.set(halfWidth, upper);
+      normalizedInitials.set(upper, upper); // 自分自身も登録
+    }
+
+    return (raw: string): string => {
+      const trimmed = raw.trim();
+
+      // 1. 名前（フル）→イニシャル変換（例: 国広智子 → K）
+      if (nameToInitial.has(trimmed)) {
+        return nameToInitial.get(trimmed)!;
+      }
+
+      // 2. 全角・小文字等の表記揺れ正規化
+      // まず全角→半角変換してから大文字化
+      const halfWidth = trimmed.replace(/[Ａ-Ｚａ-ｚ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+      const upper = halfWidth.toUpperCase();
+      if (normalizedInitials.has(upper)) {
+        return normalizedInitials.get(upper)!;
+      }
+      if (normalizedInitials.has(trimmed)) {
+        return normalizedInitials.get(trimmed)!;
+      }
+
+      // 3. マッチしない場合は変換結果をそのまま返す（未知の値はそのまま）
+      return upper || trimmed;
+    };
+  } catch (err) {
+    console.error('[buildNormalizeInitialMap] エラー:', err);
+    // エラー時はそのまま返す関数
+    return (raw: string) => raw.trim();
+  }
+}
+
 /**
  * サイドバー用の売主カテゴリカウントを取得
  * 各カテゴリの条件に合う売主のみを取得してカウント
@@ -537,6 +608,9 @@ router.get('/call-ranking', async (req: Request, res: Response) => {
 
     const supabase = (await import('../config/supabase')).default;
 
+    // employeesテーブルから名前→イニシャルの正規化マップを取得
+    const normalizeInitial = await buildNormalizeInitialMap(supabase);
+
     const { data, error } = await supabase
       .from('sellers')
       .select('first_call_person')
@@ -550,10 +624,11 @@ router.get('/call-ranking', async (req: Request, res: Response) => {
       throw error;
     }
 
-    // アプリ側で集計
+    // アプリ側で集計（正規化済みイニシャルでカウント）
     const counts = new Map<string, number>();
     for (const row of data || []) {
-      const initial = row.first_call_person as string;
+      const raw = (row.first_call_person as string).trim();
+      const initial = normalizeInitial(raw);
       counts.set(initial, (counts.get(initial) || 0) + 1);
     }
 
@@ -599,6 +674,9 @@ router.get('/call-ranking-yearly', async (req: Request, res: Response) => {
 
     const supabase = (await import('../config/supabase')).default;
 
+    // employeesテーブルから名前→イニシャルの正規化マップを取得
+    const normalizeInitial = await buildNormalizeInitialMap(supabase);
+
     const { data, error } = await supabase
       .from('sellers')
       .select('first_call_person')
@@ -612,10 +690,11 @@ router.get('/call-ranking-yearly', async (req: Request, res: Response) => {
       throw error;
     }
 
-    // アプリ側で集計
+    // アプリ側で集計（正規化済みイニシャルでカウント）
     const counts = new Map<string, number>();
     for (const row of data || []) {
-      const initial = row.first_call_person as string;
+      const raw = (row.first_call_person as string).trim();
+      const initial = normalizeInitial(raw);
       counts.set(initial, (counts.get(initial) || 0) + 1);
     }
 
@@ -661,6 +740,9 @@ router.get('/visit-ranking', async (req: Request, res: Response) => {
 
     const supabase = (await import('../config/supabase')).default;
 
+    // employeesテーブルから名前→イニシャルの正規化マップを取得
+    const normalizeInitial = await buildNormalizeInitialMap(supabase);
+
     const { data, error } = await supabase
       .from('sellers')
       .select('visit_valuation_acquirer')
@@ -674,10 +756,11 @@ router.get('/visit-ranking', async (req: Request, res: Response) => {
       throw error;
     }
 
-    // アプリ側で集計
+    // アプリ側で集計（正規化済みイニシャルでカウント）
     const counts = new Map<string, number>();
     for (const row of data || []) {
-      const initial = row.visit_valuation_acquirer as string;
+      const raw = (row.visit_valuation_acquirer as string).trim();
+      const initial = normalizeInitial(raw);
       counts.set(initial, (counts.get(initial) || 0) + 1);
     }
 
@@ -723,6 +806,9 @@ router.get('/visit-ranking-yearly', async (req: Request, res: Response) => {
 
     const supabase = (await import('../config/supabase')).default;
 
+    // employeesテーブルから名前→イニシャルの正規化マップを取得
+    const normalizeInitial = await buildNormalizeInitialMap(supabase);
+
     const { data, error } = await supabase
       .from('sellers')
       .select('visit_valuation_acquirer')
@@ -736,10 +822,11 @@ router.get('/visit-ranking-yearly', async (req: Request, res: Response) => {
       throw error;
     }
 
-    // アプリ側で集計
+    // アプリ側で集計（正規化済みイニシャルでカウント）
     const counts = new Map<string, number>();
     for (const row of data || []) {
-      const initial = row.visit_valuation_acquirer as string;
+      const raw = (row.visit_valuation_acquirer as string).trim();
+      const initial = normalizeInitial(raw);
       counts.set(initial, (counts.get(initial) || 0) + 1);
     }
 
@@ -831,6 +918,10 @@ router.get('/call-tracking-ranking', async (req: Request, res: Response) => {
     const currentMonthStart = new Date(year, month, 1);
     const currentMonthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
 
+    // employeesテーブルから名前→イニシャルの正規化マップを取得
+    const supabaseForNormalize = (await import('../config/supabase')).default;
+    const normalizeInitial = await buildNormalizeInitialMap(supabaseForNormalize);
+
     for (const row of dataRows) {
       const dateStr = row[effectiveDateIdx]; // 日付列
       const initial1 = row[effectiveFirstHalfIdx]; // 担当（前半）列
@@ -876,13 +967,13 @@ router.get('/call-tracking-ranking', async (req: Request, res: Response) => {
 
       // E列のイニシャルをカウント
       if (initial1 && String(initial1).trim() !== '') {
-        const initial = String(initial1).trim();
+        const initial = normalizeInitial(String(initial1).trim());
         counts.set(initial, (counts.get(initial) || 0) + 1);
       }
 
       // F列のイニシャルをカウント
       if (initial2 && String(initial2).trim() !== '') {
-        const initial = String(initial2).trim();
+        const initial = normalizeInitial(String(initial2).trim());
         counts.set(initial, (counts.get(initial) || 0) + 1);
       }
     }
