@@ -200,13 +200,51 @@ export default function NearbyCasesPage() {
 </table>
 <p style="font-size:11px;color:#888;margin-top:6px;">出典：SUUMO　半径1km圏内</p>`;
 
+    // 方法1: ClipboardItem（モダンブラウザ）
+    // 方法2: 隠しdivにHTMLを入れてselectionでコピー（フォールバック）
+    const copyWithFallback = async () => {
+      // まず ClipboardItem を試す
+      if (typeof ClipboardItem !== 'undefined') {
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }) }),
+          ]);
+          return true;
+        } catch {
+          // 失敗したらフォールバックへ
+        }
+      }
+      // フォールバック: 隠しdivに描画してdocument.execCommand('copy')
+      const div = document.createElement('div');
+      div.style.position = 'fixed';
+      div.style.top = '-9999px';
+      div.style.left = '-9999px';
+      div.style.opacity = '0';
+      div.style.pointerEvents = 'none';
+      div.innerHTML = html;
+      document.body.appendChild(div);
+      try {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(div);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        const success = document.execCommand('copy');
+        selection?.removeAllRanges();
+        return success;
+      } finally {
+        document.body.removeChild(div);
+      }
+    };
+
     try {
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          'text/html': new Blob([html], { type: 'text/html' }),
-        }),
-      ]);
-      setSnackbar({ open: true, message: 'HTMLテーブルをコピーしました（Gmailに貼り付けると表になります）', severity: 'success' });
+      const ok = await copyWithFallback();
+      if (ok) {
+        const n = checkedUrls.size > 0 ? `${checkedUrls.size}件を` : '';
+        setSnackbar({ open: true, message: `${n}コピーしました（Gmailに貼り付けると表になります）`, severity: 'success' });
+      } else {
+        setSnackbar({ open: true, message: 'コピーに失敗しました。ブラウザの設定を確認してください。', severity: 'error' });
+      }
     } catch {
       setSnackbar({ open: true, message: 'コピーに失敗しました', severity: 'error' });
     }
