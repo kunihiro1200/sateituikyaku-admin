@@ -444,20 +444,22 @@ export function isInquiryDateElapsed3Days(inquiryDate: string | Date | null | un
 
 /**
  * 次電日変更確認ダイアログを表示すべきか判定する
- * 4条件がすべて true の場合のみ true を返す
+ * 5条件がすべて true の場合のみ true を返す
  * @param isElapsed 反響日付から3日以上経過しているか
  * @param isFollowingUp 状況（当社）が「追客中」を含むか
  * @param pageEdited ページで編集操作が行われたか
  * @param nextCallDateUnchanged 次電日が変更されていないか
- * @returns 4条件すべて true の場合のみ true
+ * @param nextCallDateEmpty 次電日が未設定（空文字）か
+ * @returns 5条件すべて true の場合のみ true
  */
 export function shouldShowReminderDialog(
   isElapsed: boolean,
   isFollowingUp: boolean,
   pageEdited: boolean,
-  nextCallDateUnchanged: boolean
+  nextCallDateUnchanged: boolean,
+  nextCallDateEmpty: boolean
 ): boolean {
-  return isElapsed && isFollowingUp && pageEdited && nextCallDateUnchanged;
+  return isElapsed && isFollowingUp && pageEdited && nextCallDateUnchanged && nextCallDateEmpty;
 }
 
 
@@ -2347,7 +2349,8 @@ const CallModePage = () => {
       isInquiryDateElapsed3Days(seller?.inquiryDate),
       editedStatus?.includes('追客中') ?? false,
       pageEdited,
-      editedNextCallDate === savedNextCallDate
+      editedNextCallDate === savedNextCallDate,
+      !editedNextCallDate
     )) {
       setNextCallDateReminderDialog({ open: true, onProceed: onConfirm });
       return;
@@ -7215,12 +7218,21 @@ HP：https://ifoo-oita.com/
                   // ⚠️ new Date() を使用しない（UTC解釈で+9時間ずれるため）
                   const detailedDatetime = seller.inquiryDetailedDateTime || seller.inquiryDetailedDatetime;
                   const formattedDatetime = (() => {
-                    if (!detailedDatetime) return '－';
-                    const rawDt = String(detailedDatetime);
-                    const matchDt = rawDt.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
-                    if (matchDt) {
-                      const sec = matchDt[6] ? `:${matchDt[6]}` : ':00';
-                      return `${matchDt[1]}/${matchDt[2]}/${matchDt[3]} ${matchDt[4]}:${matchDt[5]}${sec}`;
+                    if (detailedDatetime) {
+                      const rawDt = String(detailedDatetime);
+                      const matchDt = rawDt.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
+                      if (matchDt) {
+                        const sec = matchDt[6] ? `:${matchDt[6]}` : ':00';
+                        return `${matchDt[1]}/${matchDt[2]}/${matchDt[3]} ${matchDt[4]}:${matchDt[5]}${sec}`;
+                      }
+                    }
+                    // inquiry_detailed_datetime がない場合は inquiryDate（反響日付）でフォールバック
+                    if (seller.inquiryDate) {
+                      const rawDate = String(seller.inquiryDate);
+                      const matchDate = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                      if (matchDate) {
+                        return `${matchDate[1]}/${matchDate[2]}/${matchDate[3]}`;
+                      }
                     }
                     return '－';
                   })();
