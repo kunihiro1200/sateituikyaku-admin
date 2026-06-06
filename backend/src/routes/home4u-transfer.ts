@@ -358,7 +358,11 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
     const age = extractData2(cleanedBody, '■年齢');
     const tel = extractData2(cleanedBody, '■電話番号').replace(/-/g, '');
     const secondTel = extractData2(cleanedBody, '■第二電話番号（任意）');
-    const email = extractData2(cleanedBody, '■E-mail');
+    const email = (() => {
+      const raw = extractData2(cleanedBody, '■E-mail');
+      // @が含まれていない場合はメールアドレス未入力とみなして空欄にする
+      return raw.includes('@') ? raw : '';
+    })();
     const assessmentReason = extractData2(cleanedBody, '■査定の理由');
     const desiredSaleTime = extractData2(cleanedBody, '■売却の希望時期');
     const assessmentMethod = extractData2(cleanedBody, '■査定方法');
