@@ -992,6 +992,7 @@ router.post(
 
       let result;
 
+      // FI 物件番号（くじら不動産案件）でも送信元アドレスは同じ。署名はフロントエンド側で切り替え済み。
       const senderEmail = 'tenant@ifoo-oita.com'; // 常に固定（文字化け防止）
       const sellerWithEmail = { ...seller, email: recipientEmail } as any;
 

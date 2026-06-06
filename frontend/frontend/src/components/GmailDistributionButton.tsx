@@ -36,11 +36,22 @@ interface GmailDistributionButtonProps {
 }
 
 const DEFAULT_SENDER = 'tenant@ifoo-oita.com';
-const SIGNATURE = `*****************************
+const SIGNATURE_IFOO = `*****************************
 株式会社いふう
 大分市舞鶴町1-3-30
 TEL:097-533-2022
 ******************************`;
+const SIGNATURE_KUJIRA = `〒810-0073福岡市中央区舞鶴3-1-10オフィスニューガイアセレス赤坂門No.19-201
+株式会社くじら不動産
+TEL:092-401-5331
+Mail:tenant@ifoo-oita.com`;
+
+/** 物件番号が FI で始まる場合は「くじら不動産」の署名・送信元を使用する */
+const isFukkuokaIfu = (pn: string) => pn.toUpperCase().includes('FI');
+const getSenderByPropertyNumber = (pn: string) =>
+  isFukkuokaIfu(pn) ? 'tenant@ifoo-oita.com' : DEFAULT_SENDER;
+const getSignatureByPropertyNumber = (pn: string) =>
+  isFukkuokaIfu(pn) ? SIGNATURE_KUJIRA : SIGNATURE_IFOO;
 
 export default function GmailDistributionButton({
   propertyNumber,
@@ -83,7 +94,7 @@ export default function GmailDistributionButton({
     url?: string;
     base64Data?: string;
   }>>([]);
-  const [senderAddress, setSenderAddress] = useState<string>(DEFAULT_SENDER);
+  const [senderAddress, setSenderAddress] = useState<string>(getSenderByPropertyNumber(propertyNumber));
   const [employees, setEmployees] = useState<any[]>([]);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -170,14 +181,14 @@ export default function GmailDistributionButton({
       .replace(/\{priceChangeText\}/g, generatePriceChangeText())
       .replace(/\{propertyType\}/g, propertyType || '')
       .replace(/\{price\}/g, getPriceText())
-      .replace(/\{signature\}/g, SIGNATURE)
+      .replace(/\{signature\}/g, getSignatureByPropertyNumber(propertyNumber))
       .replace(/\{buyerName\}/g, buyerName || '')
       .replace(/\{propertyImages\}/g, ''); // 画像はバックエンドで埋め込むためプレビューでは空
   };
 
   const handleButtonClick = () => {
     if (!senderAddress || senderAddress.trim() === '') {
-      setSenderAddress(DEFAULT_SENDER);
+      setSenderAddress(getSenderByPropertyNumber(propertyNumber));
     }
     setIsTestMode(false);
     setTemplateSelectorOpen(true);
@@ -186,7 +197,7 @@ export default function GmailDistributionButton({
   // テスト送信ボタンクリック → まずスタッフ選択へ
   const handleTestButtonClick = () => {
     if (!senderAddress || senderAddress.trim() === '') {
-      setSenderAddress(DEFAULT_SENDER);
+      setSenderAddress(getSenderByPropertyNumber(propertyNumber));
     }
     setIsTestMode(true);
     setTestStaffSelectorOpen(true);
