@@ -352,148 +352,7 @@ const TemodoriCalcPage = () => {
           </Box>
         </Box>
 
-        {/* 下段：譲渡所得税（取得費不明）手元残計算（全幅） */}
-        <Box sx={{ bgcolor: '#fff8e1', borderRadius: 2, p: 2.5, mt: 3 }}>
-          <Typography variant="subtitle1" fontWeight={700} color="#e65100" mb={2}>
-            🏦 譲渡所得税（取得費不明）の手元残計算
-          </Typography>
-
-          <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
-            <Typography variant="subtitle2" color="text.secondary" mb={0.5} fontWeight={600}>
-              売買価格を入力してください
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-              査定額２（中間額）がデフォルト値として設定されます
-            </Typography>
-            <TextField
-              type="number"
-              label="売買価格"
-              placeholder="例：3000"
-              value={jotoInput}
-              onChange={(e) => setJotoInput(e.target.value)}
-              InputProps={{
-                endAdornment: <InputAdornment position="end">万円</InputAdornment>,
-                inputProps: { min: 0, step: 0.1 },
-              }}
-              sx={{
-                width: { xs: '100%', sm: 320 },
-                '& .MuiOutlinedInput-root': { fontSize: '1.2rem', fontWeight: 600 },
-              }}
-            />
-          </Paper>
-
-          {jotoYen > 0 && (
-            <Paper elevation={3} sx={{ p: 3, mt: 2.5, borderRadius: 2, border: '2px solid #e65100' }}>
-
-              {/* 売買価格 */}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                <Typography variant="body1" color="text.secondary">売買価格</Typography>
-                <Box sx={{ textAlign: 'right' }}>
-                  <Typography variant="h6" fontWeight={700}>{formatMan(jotoYen)}</Typography>
-                  <Typography variant="caption" color="text.secondary">{formatYen(jotoYen)}</Typography>
-                </Box>
-              </Box>
-
-              <Divider sx={{ my: 1.5 }} />
-
-              {/* 取得費 */}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
-                <Box>
-                  <Typography variant="body1" color="text.secondary">取得費（概算）</Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                    売買価格 × 5%
-                  </Typography>
-                </Box>
-                <Box sx={{ textAlign: 'right' }}>
-                  <Typography variant="h6" fontWeight={700} color="text.secondary">−{formatMan(shotokuhi)}</Typography>
-                  <Typography variant="caption" color="text.secondary">{formatYen(shotokuhi)}</Typography>
-                </Box>
-              </Box>
-
-              {/* 仲介手数料 */}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
-                <Box>
-                  <Typography variant="body1" color="text.secondary">仲介手数料（税込）</Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                    {jotoIsFlat ? '800万円以下 → 一律33万円' : '売買価格 × 3%＋6万円 × 消費税'}
-                  </Typography>
-                </Box>
-                <Box sx={{ textAlign: 'right' }}>
-                  <Typography variant="h6" fontWeight={700} color="text.secondary">−{formatMan(jotoCommission)}</Typography>
-                  <Typography variant="caption" color="text.secondary">{formatYen(jotoCommission)}</Typography>
-                </Box>
-              </Box>
-
-              <Divider sx={{ my: 1.5 }} />
-
-              {/* 利益 */}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                <Box>
-                  <Typography variant="body1" fontWeight={600} color="text.primary">利益</Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                    売買価格 − 取得費 − 仲介手数料
-                  </Typography>
-                </Box>
-                <Box sx={{ textAlign: 'right' }}>
-                  <Typography variant="h6" fontWeight={700} color="text.primary">{formatMan(rieki)}</Typography>
-                  <Typography variant="caption" color="text.secondary">{formatYen(rieki)}</Typography>
-                </Box>
-              </Box>
-
-              <Divider sx={{ my: 1.5 }} />
-
-              {/* 譲渡所得税 */}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
-                <Box>
-                  <Typography variant="body1" color="error.main" fontWeight={600}>譲渡所得税</Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                    利益 × 20%
-                  </Typography>
-                </Box>
-                <Box sx={{ textAlign: 'right' }}>
-                  <Typography variant="h6" fontWeight={700} color="error.main">−{formatMan(jotoZei)}</Typography>
-                  <Typography variant="caption" color="text.secondary">{formatYen(jotoZei)}</Typography>
-                </Box>
-              </Box>
-
-              <Divider sx={{ my: 1.5, borderWidth: 2, borderColor: '#e65100' }} />
-
-              {/* 手元残 */}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
-                  <Typography variant="h6" fontWeight={800} color="#e65100">手元残</Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                    売買価格 − 譲渡所得税 − 仲介手数料
-                  </Typography>
-                </Box>
-                <Box sx={{ textAlign: 'right' }}>
-                  <Typography variant="h5" fontWeight={800} color="#e65100">{formatMan(jotoTemodori)}</Typography>
-                  <Typography variant="caption" color="text.secondary">{formatYen(jotoTemodori)}</Typography>
-                </Box>
-              </Box>
-            </Paper>
-          )}
-
-          <Box sx={{ mt: 2, p: 2, bgcolor: '#ffe0b2', borderRadius: 1.5 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.8 }}>
-              【計算方法】取得費不明の場合、売買価格の5%を概算取得費として使用します
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.8 }}>
-              ・取得費（概算）＝ 売買価格 × 5%
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.8 }}>
-              ・利益 ＝ 売買価格 − 取得費 − 仲介手数料
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.8 }}>
-              ・譲渡所得税 ＝ 利益 × 20%
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.8 }}>
-              ・手元残 ＝ 売買価格 − 譲渡所得税 − 仲介手数料
-            </Typography>
-          </Box>
-        </Box>
-
-        {/* 収益物件　利回り計算（全幅） */}
+        {/* 収益物件　利回り計算（全幅） - 譲渡所得税の前に表示 */}
         <Box sx={{ bgcolor: '#f3e5f5', borderRadius: 2, p: 2.5, mt: 3 }}>
           <Typography variant="subtitle1" fontWeight={700} color="#6a1b9a" mb={2}>
             🏘️ 収益物件　利回り計算
@@ -645,6 +504,148 @@ const TemodoriCalcPage = () => {
             </Typography>
           </Box>
         </Box>
+
+        {/* 譲渡所得税（取得費不明）手元残計算（全幅） */}
+        <Box sx={{ bgcolor: '#fff8e1', borderRadius: 2, p: 2.5, mt: 3 }}>
+          <Typography variant="subtitle1" fontWeight={700} color="#e65100" mb={2}>
+            🏦 譲渡所得税（取得費不明）の手元残計算
+          </Typography>
+
+          <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
+            <Typography variant="subtitle2" color="text.secondary" mb={0.5} fontWeight={600}>
+              売買価格を入力してください
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+              査定額２（中間額）がデフォルト値として設定されます
+            </Typography>
+            <TextField
+              type="number"
+              label="売買価格"
+              placeholder="例：3000"
+              value={jotoInput}
+              onChange={(e) => setJotoInput(e.target.value)}
+              InputProps={{
+                endAdornment: <InputAdornment position="end">万円</InputAdornment>,
+                inputProps: { min: 0, step: 0.1 },
+              }}
+              sx={{
+                width: { xs: '100%', sm: 320 },
+                '& .MuiOutlinedInput-root': { fontSize: '1.2rem', fontWeight: 600 },
+              }}
+            />
+          </Paper>
+
+          {jotoYen > 0 && (
+            <Paper elevation={3} sx={{ p: 3, mt: 2.5, borderRadius: 2, border: '2px solid #e65100' }}>
+
+              {/* 売買価格 */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                <Typography variant="body1" color="text.secondary">売買価格</Typography>
+                <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="h6" fontWeight={700}>{formatMan(jotoYen)}</Typography>
+                  <Typography variant="caption" color="text.secondary">{formatYen(jotoYen)}</Typography>
+                </Box>
+              </Box>
+
+              <Divider sx={{ my: 1.5 }} />
+
+              {/* 取得費 */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                <Box>
+                  <Typography variant="body1" color="text.secondary">取得費（概算）</Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    売買価格 × 5%
+                  </Typography>
+                </Box>
+                <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="h6" fontWeight={700} color="text.secondary">−{formatMan(shotokuhi)}</Typography>
+                  <Typography variant="caption" color="text.secondary">{formatYen(shotokuhi)}</Typography>
+                </Box>
+              </Box>
+
+              {/* 仲介手数料 */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                <Box>
+                  <Typography variant="body1" color="text.secondary">仲介手数料（税込）</Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    {jotoIsFlat ? '800万円以下 → 一律33万円' : '売買価格 × 3%＋6万円 × 消費税'}
+                  </Typography>
+                </Box>
+                <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="h6" fontWeight={700} color="text.secondary">−{formatMan(jotoCommission)}</Typography>
+                  <Typography variant="caption" color="text.secondary">{formatYen(jotoCommission)}</Typography>
+                </Box>
+              </Box>
+
+              <Divider sx={{ my: 1.5 }} />
+
+              {/* 利益 */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                <Box>
+                  <Typography variant="body1" fontWeight={600} color="text.primary">利益</Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    売買価格 − 取得費 − 仲介手数料
+                  </Typography>
+                </Box>
+                <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="h6" fontWeight={700} color="text.primary">{formatMan(rieki)}</Typography>
+                  <Typography variant="caption" color="text.secondary">{formatYen(rieki)}</Typography>
+                </Box>
+              </Box>
+
+              <Divider sx={{ my: 1.5 }} />
+
+              {/* 譲渡所得税 */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                <Box>
+                  <Typography variant="body1" color="error.main" fontWeight={600}>譲渡所得税</Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    利益 × 20%
+                  </Typography>
+                </Box>
+                <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="h6" fontWeight={700} color="error.main">−{formatMan(jotoZei)}</Typography>
+                  <Typography variant="caption" color="text.secondary">{formatYen(jotoZei)}</Typography>
+                </Box>
+              </Box>
+
+              <Divider sx={{ my: 1.5, borderWidth: 2, borderColor: '#e65100' }} />
+
+              {/* 手元残 */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography variant="h6" fontWeight={800} color="#e65100">手元残</Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    売買価格 − 譲渡所得税 − 仲介手数料
+                  </Typography>
+                </Box>
+                <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="h5" fontWeight={800} color="#e65100">{formatMan(jotoTemodori)}</Typography>
+                  <Typography variant="caption" color="text.secondary">{formatYen(jotoTemodori)}</Typography>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          <Box sx={{ mt: 2, p: 2, bgcolor: '#ffe0b2', borderRadius: 1.5 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.8 }}>
+              【計算方法】取得費不明の場合、売買価格の5%を概算取得費として使用します
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.8 }}>
+              ・取得費（概算）＝ 売買価格 × 5%
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.8 }}>
+              ・利益 ＝ 売買価格 − 取得費 − 仲介手数料
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.8 }}>
+              ・譲渡所得税 ＝ 利益 × 20%
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.8 }}>
+              ・手元残 ＝ 売買価格 − 譲渡所得税 − 仲介手数料
+            </Typography>
+          </Box>
+        </Box>
+
 
       </Box>
     </>
