@@ -200,7 +200,6 @@ export const calculatePropertyStatus = (
   const offerStatus = listing.offer_status || '';
   const offerConditions = [
     { offer: '専任片手', atbb: '専任・公開中' },
-    { offer: '一般他決', atbb: '一般・公開中' },
     { offer: '専任両手', atbb: '専任・公開中' },
     { offer: '一般両手', atbb: '一般・公開中' },
     { offer: '一般片手', atbb: '一般・公開中' },

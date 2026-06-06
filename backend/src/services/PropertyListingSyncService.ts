@@ -1352,10 +1352,10 @@ export class PropertyListingSyncService {
     }
 
     // ⑦ 買付申込み（内覧なし）２
+    // ※「一般他決」は他社で成約済みのため、買付申込みに含めない
     const kaitsukeStatus = row['買付'];
     if (
       (kaitsukeStatus === '専任片手' && atbbStatus === '専任・公開中') ||
-      (kaitsukeStatus === '一般他決' && atbbStatus === '一般・公開中') ||
       (kaitsukeStatus === '専任両手' && atbbStatus === '専任・公開中') ||
       (kaitsukeStatus === '一般両手' && atbbStatus === '一般・公開中') ||
       (kaitsukeStatus === '一般片手' && atbbStatus === '一般・公開中')
