@@ -288,30 +288,39 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
       return m ? m[1] : '';
     };
 
-    // メモ（HOME4Uログアウト行の次の行から「査定依頼」が現れる行の手前まで）
-    // 構造例:
-    //   HOME4Uログアウト         ← この行の次から取得
-    //   林5/26　不通・留守×      ← 1行コメント
+    // メモ抽出：以下の2パターンに対応
+    //
+    // 【パターンA】HOME4Uログアウトの後にコメント（Gmailで返信後に書いた場合）
+    //   HOME4Uログアウト
+    //   林5/26　不通・留守×      ← コメント（空行があっても最大2行まで読み飛ばす）
     //   査定依頼 株式会社威風...  ← ここで終了
     //
-    //   HOME4Uログアウト
-    //   林5/26　不通・留守×      ← 2行コメント
-    //   電話番号確認済み
-    //   査定依頼 株式会社威風...  ← ここで終了
+    // 【パターンB】HOME4Uログアウトの前にコメント（本文の先頭に書いた場合）
+    //   林5/26　不通・留守×      ← コメント
+    //   HOME4Uログアウト         ← ここで終了
+    //
+    // 【パターンC】HOME4Uログアウト同一行にコメント
+    //   HOME4Uログアウト林5/26...  ← 同行コメント
     const extractMemo = (text: string): string => {
       const lines = text.split('\n');
       // 行頭の引用符（> ）を除去してから判定
       const cleanLine = (l: string) => l.replace(/^[>\s]+/, '').trim();
+
+      // HOME4Uログアウト行のインデックスを取得
       const startIdx = lines.findIndex(l => {
         const c = cleanLine(l);
         return c === 'HOME4Uログアウト' || c.startsWith('HOME4Uログアウト');
       });
       if (startIdx === -1) return '';
-      // HOME4Uログアウト行自体にコメントが同行にある場合（例: "HOME4Uログアウト林5/26..."）
+
+      // HOME4Uログアウト行自体にコメントが同行にある場合（パターンC）
       const startLine = cleanLine(lines[startIdx]);
       const inlineComment = startLine.replace('HOME4Uログアウト', '').trim();
-      // 次の行から「査定依頼」が出るまでを収集
-      const commentLines: string[] = inlineComment ? [inlineComment] : [];
+
+      // パターンA：HOME4Uログアウトの後の行からコメントを収集
+      // 空行は最大2行まで読み飛ばす（Gmailの返信形式で空行が入ることがある）
+      const afterLines: string[] = inlineComment ? [inlineComment] : [];
+      let consecutiveEmptyLines = 0;
       for (let i = startIdx + 1; i < lines.length; i++) {
         const line = cleanLine(lines[i]);
         // 「査定依頼」「HOME4Uをご利用」など本文終端パターンで終了
@@ -321,13 +330,45 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
           line.startsWith('HOME4Uをご利用') ||
           line.startsWith('貴社への査定依頼') ||
           line.startsWith('【 査定依頼') ||
-          line.startsWith('【査定依頼')
+          line.startsWith('【査定依頼') ||
+          line.startsWith('■') // HOME4U本文の■キーワードが出たら終了
         ) break;
-        if (line) commentLines.push(line);
-        // 空行2行連続で終了（コメントの区切り）
-        if (!line && commentLines.length > 0) break;
+        if (line) {
+          afterLines.push(line);
+          consecutiveEmptyLines = 0;
+        } else {
+          consecutiveEmptyLines++;
+          // 空行が3行以上連続したら終了（コメントの区切りとみなす）
+          if (consecutiveEmptyLines >= 3) break;
+          // すでにコメントを取得済みかつ空行2行目なら終了
+          if (consecutiveEmptyLines >= 2 && afterLines.length > 0) break;
+        }
       }
-      return commentLines.join('\n').trim();
+
+      // パターンA でコメントが取れた場合はそのまま返す
+      if (afterLines.length > 0) {
+        return afterLines.join('\n').trim();
+      }
+
+      // パターンB：HOME4Uログアウトの前の行からコメントを収集
+      // HOME4Uログアウト行の手前から遡って、本文終端ではない行を収集
+      const beforeLines: string[] = [];
+      for (let i = startIdx - 1; i >= 0; i--) {
+        const line = cleanLine(lines[i]);
+        if (!line) continue; // 空行はスキップ
+        // 本文終端・引用ヘッダーなどが出たら終了
+        if (
+          line.startsWith('査定依頼') ||
+          line.startsWith('HOME4Uをご利用') ||
+          line.startsWith('On ') || // Gmailの引用ヘッダー（英語）
+          line.match(/^\d{4}年\d{1,2}月\d{1,2}日/) // 日付ヘッダー
+        ) break;
+        beforeLines.unshift(line);
+        // 最大3行まで
+        if (beforeLines.length >= 3) break;
+      }
+
+      return beforeLines.join('\n').trim();
     };
     const memo = extractMemo(cleanedBody);
     console.log(`[home4u-transfer] memo抽出結果: "${memo}"`);
