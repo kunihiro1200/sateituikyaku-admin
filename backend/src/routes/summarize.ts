@@ -831,6 +831,21 @@ router.post('/house-maker-info', authenticate, async (req: Request, res: Respons
 });
 
 /**
+ * Whisper API用の一時キーを返す（認証済みユーザーのみ）
+ * フロントエンドがVercelを経由せずOpenAIに直接送信するために使用
+ * GET /api/summarize/whisper-key
+ * Response: { apiKey: string }
+ */
+router.get('/whisper-key', authenticate, async (req: Request, res: Response) => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: 'OpenAI API key not configured' });
+  }
+  // 認証済みユーザーのみアクセス可能（社内管理システム専用）
+  return res.json({ apiKey });
+});
+
+/**
  * 通話内容を文字起こし（Whisper API）
  * POST /api/summarize/transcribe
  * Body: multipart/form-data { audio: File }

@@ -14,17 +14,61 @@ const MAX_CHUNK_BYTES = 24 * 1024 * 1024; // 24MB
 const MAX_PARALLEL = 3;
 
 /**
- * 1チャンクをWhisper APIで文字起こし
+ * バックエンドからWhisper APIキーを取得し、直接OpenAIに送信する
+ * Vercelのタイムアウト制約を回避するためブラウザから直接送信
  */
-async function transcribeChunk(blob: Blob, mimeType: string, index: number): Promise<string> {
+async function transcribeChunkDirect(blob: Blob, mimeType: string, index: number, apiKey: string): Promise<string> {
   const formData = new FormData();
   const ext = mimeType.includes('ogg') ? 'ogg' : 'webm';
-  formData.append('audio', blob, `recording_${index}.${ext}`);
-  const res = await api.post('/api/summarize/transcribe', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 180000,
+  formData.append('file', blob, `recording_${index}.${ext}`);
+  formData.append('model', 'whisper-1');
+  formData.append('language', 'ja');
+
+  const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: formData,
   });
-  return res.data?.transcript || '';
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const errMsg = (errorData as any)?.error?.message || `HTTP ${response.status}`;
+    if (response.status === 429) {
+      throw new Error('APIの利用制限に達しました。しばらく待ってから再試行してください。');
+    }
+    throw new Error(`文字起こしに失敗しました: ${errMsg}`);
+  }
+
+  const data = await response.json();
+  return data?.text || '';
+}
+
+/**
+ * バックエンド経由でWhisper APIキーを取得（キャッシュあり）
+ */
+let cachedApiKey: string | null = null;
+let cachedApiKeyExpiry = 0;
+
+async function getWhisperApiKey(): Promise<string> {
+  const now = Date.now();
+  // 10分キャッシュ
+  if (cachedApiKey && now < cachedApiKeyExpiry) {
+    return cachedApiKey;
+  }
+  const res = await api.get('/api/summarize/whisper-key');
+  cachedApiKey = res.data?.apiKey || '';
+  cachedApiKeyExpiry = now + 10 * 60 * 1000;
+  return cachedApiKey!;
+}
+
+/**
+ * 1チャンクをWhisper APIで文字起こし（直接送信）
+ */
+async function transcribeChunk(blob: Blob, mimeType: string, index: number): Promise<string> {
+  const apiKey = await getWhisperApiKey();
+  return transcribeChunkDirect(blob, mimeType, index, apiKey);
 }
 
 /**
