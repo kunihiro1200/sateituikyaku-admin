@@ -2134,67 +2134,6 @@ export default function BuyerViewingResultPage() {
         </Box>
       </Paper>
 
-      {/* 気づき一覧テーブル（全買主） */}
-      {(() => {
-        if (allInsightBuyers.length === 0) return null;
-        return (
-          <Paper sx={{ p: 3, mt: 3, bgcolor: '#e8f4fd', border: '1px solid #90caf9' }}>
-            <Typography variant="h6" gutterBottom sx={{ color: '#1565c0' }}>
-              気づき一覧（全買主）
-            </Typography>
-            <Box sx={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#bbdefb' }}>
-                    {['買主番号', '物件住所', '内覧日', '内覧者（後続担当）', '随行者', '実行者コメント', '随行者コメント'].map((h) => (
-                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid #90caf9', whiteSpace: 'nowrap', color: '#1565c0' }}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {allInsightBuyers.map((b: any, idx: number) => (
-                    <tr key={b.buyer_number} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#e3f2fd' }}>
-                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #90caf9', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                        <span
-                          style={{ color: '#1976d2', cursor: 'pointer', textDecoration: 'underline', fontWeight: 'bold' }}
-                          onClick={() => navigate(`/buyers/${b.buyer_number}`)}
-                        >
-                          {b.buyer_number}
-                        </span>
-                      </td>
-                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #90caf9', verticalAlign: 'top' }}>
-                        {b.property_address || '-'}
-                      </td>
-                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #90caf9', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                        {b.viewing_date ? String(b.viewing_date).split('T')[0] : '-'}
-                      </td>
-                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #90caf9', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                        {b.follow_up_assignee || '-'}
-                      </td>
-                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #90caf9', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                        {b.name || '-'}
-                      </td>
-                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #90caf9', verticalAlign: 'top', minWidth: '200px' }}>
-                        {b.viewing_insight_executor
-                          ? <span dangerouslySetInnerHTML={{ __html: b.viewing_insight_executor }} />
-                          : '-'}
-                      </td>
-                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #90caf9', verticalAlign: 'top', minWidth: '200px' }}>
-                        {b.viewing_insight_companion
-                          ? <span dangerouslySetInnerHTML={{ __html: b.viewing_insight_companion }} />
-                          : '-'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Box>
-          </Paper>
-        );
-      })()}
-
       {/* 買付情報セクション（条件付き表示） */}
       {shouldShowOfferSection() && (
         <Paper 
@@ -2264,7 +2203,7 @@ export default function BuyerViewingResultPage() {
                     fieldType="textarea"
                     multiline
                     rows={3}
-                    placeholder=""
+                    placeholder="価格交渉がある場合は、書いてください。仮審査をいつ受けて、いつまでの決済希望等、スケジュール感もあれば記載してください。"
                   />
                 </Box>
               )}
@@ -2307,6 +2246,68 @@ export default function BuyerViewingResultPage() {
           </Box>
         </Paper>
       )}
+
+      {/* 気づき一覧テーブル（全買主） */}
+      {(() => {
+        if (allInsightBuyers.length === 0) return null;
+        return (
+          <Paper sx={{ p: 3, mt: 3, bgcolor: '#e8f4fd', border: '1px solid #90caf9' }}>
+            <Typography variant="h6" gutterBottom sx={{ color: '#1565c0' }}>
+              気づき一覧（全買主）
+            </Typography>
+            <Box sx={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#bbdefb' }}>
+                    {['買主番号', '物件住所', '内覧日', '内覧者（後続担当）', '随行者', '実行者コメント', '随行者コメント'].map((h) => (
+                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid #90caf9', whiteSpace: 'nowrap', color: '#1565c0' }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {allInsightBuyers.map((b: any, idx: number) => (
+                    <tr key={b.buyer_number} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#e3f2fd' }}>
+                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #90caf9', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                        <span
+                          style={{ color: '#1976d2', cursor: 'pointer', textDecoration: 'underline', fontWeight: 'bold' }}
+                          onClick={() => navigate(`/buyers/${b.buyer_number}`)}
+                        >
+                          {b.buyer_number}
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #90caf9', verticalAlign: 'top' }}>
+                        {b.property_address || '-'}
+                      </td>
+                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #90caf9', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                        {b.viewing_date ? String(b.viewing_date).split('T')[0] : '-'}
+                      </td>
+                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #90caf9', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                        {b.follow_up_assignee || '-'}
+                      </td>
+                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #90caf9', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                        {b.name || '-'}
+                      </td>
+                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #90caf9', verticalAlign: 'top', minWidth: '200px' }}>
+                        {b.viewing_insight_executor
+                          ? <span dangerouslySetInnerHTML={{ __html: b.viewing_insight_executor }} />
+                          : '-'}
+                      </td>
+                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #90caf9', verticalAlign: 'top', minWidth: '200px' }}>
+                        {b.viewing_insight_companion
+                          ? <span dangerouslySetInnerHTML={{ __html: b.viewing_insight_companion }} />
+                          : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Box>
+          </Paper>
+        );
+      })()}
+
 
       {/* 物件の買主リストセクション */}
       {linkedProperties.length > 0 && (
