@@ -133,128 +133,10 @@ router.get('/folders/:sellerNumber', authenticate, async (req: Request, res: Res
 });
 
 /**
- * POST /api/drive/folders/:sellerNumber/files
- * ファイルをアップロード
- */
-router.post('/folders/:sellerNumber/files', authenticate, upload.single('file'), async (req: Request & { file?: Express.Multer.File }, res: Response) => {
-  try {
-    const { sellerNumber } = req.params;
-    const file = (req as Request & { file?: Express.Multer.File }).file;
-
-    if (!sellerNumber) {
-      return res.status(400).json({ error: '売主番号が必要です' });
-    }
-
-    if (!file) {
-      return res.status(400).json({ error: 'ファイルが必要です' });
-    }
-
-    // 売主情報を取得（物件住所と依頼者名も含む）
-    const baseRepo = new BaseRepository();
-    let seller: any = null;
-    let sellerError: any = null;
-
-    // まず sellers テーブルで seller_number 検索
-    const result1 = await (baseRepo as any).table('sellers')
-      .select('id, name, property_address')
-      .eq('seller_number', sellerNumber)
-      .single();
-    seller = result1.data;
-    sellerError = result1.error;
-
-    // 見つからない場合は property_listings テーブルから検索してフォールバック
-    if (sellerError || !seller) {
-      const result2 = await (baseRepo as any).table('property_listings')
-        .select('property_number, address')
-        .eq('property_number', sellerNumber)
-        .single();
-      if (!result2.error && result2.data) {
-        // property_listings から仮の seller オブジェクトを構築
-        seller = {
-          id: result2.data.property_number,
-          name: null,
-          property_address: result2.data.address || '',
-        };
-        sellerError = null;
-      }
-    }
-
-    if (sellerError || !seller) {
-      console.error('Seller not found:', { sellerNumber, error: sellerError });
-      return res.status(404).json({ error: '売主が見つかりません' });
-    }
-
-    // 物件住所を取得（sellersテーブルのproperty_addressカラムから直接取得）
-    const propertyAddress = seller.property_address || '';
-    // 依頼者名を復号化（暗号化されている場合）
-    let sellerName = '';
-    if (seller.name) {
-      try {
-        sellerName = decrypt(seller.name);
-      } catch {
-        // 復号化に失敗した場合はそのまま使用（暗号化されていない可能性）
-        sellerName = seller.name;
-      }
-    }
-
-    // フォルダを取得または作成
-    const folder = await driveService.getOrCreateSellerFolder(
-      seller.id, 
-      sellerNumber,
-      propertyAddress,
-      sellerName
-    );
-    
-    // ファイル名を取得
-    // フォームデータから送信されたfileNameを優先（UTF-8エンコード済み）
-    // multerのoriginalname はLatin-1でエンコードされるため日本語が文字化けする
-    let fileName = req.body.fileName || file.originalname;
-    
-    // originalname がLatin-1でエンコードされている場合、UTF-8にデコード
-    if (!req.body.fileName && file.originalname) {
-      try {
-        // Latin-1 → Buffer → UTF-8 変換
-        fileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-      } catch (e) {
-        // 変換に失敗した場合はそのまま使用
-        fileName = file.originalname;
-      }
-    }
-    
-    console.log(`📁 Uploading file: "${fileName}" (original: "${file.originalname}")`);
-    
-    // ファイルをアップロード
-    const uploadedFile = await driveService.uploadFile(
-      folder.folderId,
-      file.buffer,
-      fileName,
-      file.mimetype
-    );
-
-    res.json({ file: uploadedFile });
-  } catch (error: any) {
-    console.error('Error uploading file:', error);
-    
-    if (error.message === 'GOOGLE_AUTH_REQUIRED') {
-      return res.status(401).json({ 
-        error: 'Google認証が必要です',
-        code: 'GOOGLE_AUTH_REQUIRED'
-      });
-    }
-    
-    if (error.message?.includes('許可されていないファイル形式')) {
-      return res.status(400).json({ error: error.message });
-    }
-    
-    res.status(500).json({ error: error.message || 'ファイルのアップロードに失敗しました' });
-  }
-});
-
-
-/**
  * POST /api/drive/folders/:sellerNumber/files/batch
  * 複数ファイルを一括アップロード（並列処理）
  * フォルダ作成は1回だけ実行し、全ファイルを並列でアップロードする
+ * NOTE: /files より先に定義しないと /files ルートにマッチしてしまう
  */
 router.post('/folders/:sellerNumber/files/batch', authenticate, upload.array('files', 20), async (req: Request & { files?: Express.Multer.File[] }, res: Response) => {
   try {
@@ -375,6 +257,125 @@ router.post('/folders/:sellerNumber/files/batch', authenticate, upload.array('fi
       });
     }
 
+    res.status(500).json({ error: error.message || 'ファイルのアップロードに失敗しました' });
+  }
+});
+
+
+/**
+ * POST /api/drive/folders/:sellerNumber/files
+ * ファイルを1件アップロード（後方互換用）
+ */
+router.post('/folders/:sellerNumber/files', authenticate, upload.single('file'), async (req: Request & { file?: Express.Multer.File }, res: Response) => {
+  try {
+    const { sellerNumber } = req.params;
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+
+    if (!sellerNumber) {
+      return res.status(400).json({ error: '売主番号が必要です' });
+    }
+
+    if (!file) {
+      return res.status(400).json({ error: 'ファイルが必要です' });
+    }
+
+    // 売主情報を取得（物件住所と依頼者名も含む）
+    const baseRepo = new BaseRepository();
+    let seller: any = null;
+    let sellerError: any = null;
+
+    // まず sellers テーブルで seller_number 検索
+    const result1 = await (baseRepo as any).table('sellers')
+      .select('id, name, property_address')
+      .eq('seller_number', sellerNumber)
+      .single();
+    seller = result1.data;
+    sellerError = result1.error;
+
+    // 見つからない場合は property_listings テーブルから検索してフォールバック
+    if (sellerError || !seller) {
+      const result2 = await (baseRepo as any).table('property_listings')
+        .select('property_number, address')
+        .eq('property_number', sellerNumber)
+        .single();
+      if (!result2.error && result2.data) {
+        // property_listings から仮の seller オブジェクトを構築
+        seller = {
+          id: result2.data.property_number,
+          name: null,
+          property_address: result2.data.address || '',
+        };
+        sellerError = null;
+      }
+    }
+
+    if (sellerError || !seller) {
+      console.error('Seller not found:', { sellerNumber, error: sellerError });
+      return res.status(404).json({ error: '売主が見つかりません' });
+    }
+
+    // 物件住所を取得（sellersテーブルのproperty_addressカラムから直接取得）
+    const propertyAddress = seller.property_address || '';
+    // 依頼者名を復号化（暗号化されている場合）
+    let sellerName = '';
+    if (seller.name) {
+      try {
+        sellerName = decrypt(seller.name);
+      } catch {
+        // 復号化に失敗した場合はそのまま使用（暗号化されていない可能性）
+        sellerName = seller.name;
+      }
+    }
+
+    // フォルダを取得または作成
+    const folder = await driveService.getOrCreateSellerFolder(
+      seller.id, 
+      sellerNumber,
+      propertyAddress,
+      sellerName
+    );
+    
+    // ファイル名を取得
+    // フォームデータから送信されたfileNameを優先（UTF-8エンコード済み）
+    // multerのoriginalname はLatin-1でエンコードされるため日本語が文字化けする
+    let fileName = req.body.fileName || file.originalname;
+    
+    // originalname がLatin-1でエンコードされている場合、UTF-8にデコード
+    if (!req.body.fileName && file.originalname) {
+      try {
+        // Latin-1 → Buffer → UTF-8 変換
+        fileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+      } catch (e) {
+        // 変換に失敗した場合はそのまま使用
+        fileName = file.originalname;
+      }
+    }
+    
+    console.log(`📁 Uploading file: "${fileName}" (original: "${file.originalname}")`);
+    
+    // ファイルをアップロード
+    const uploadedFile = await driveService.uploadFile(
+      folder.folderId,
+      file.buffer,
+      fileName,
+      file.mimetype
+    );
+
+    res.json({ file: uploadedFile });
+  } catch (error: any) {
+    console.error('Error uploading file:', error);
+    
+    if (error.message === 'GOOGLE_AUTH_REQUIRED') {
+      return res.status(401).json({ 
+        error: 'Google認証が必要です',
+        code: 'GOOGLE_AUTH_REQUIRED'
+      });
+    }
+    
+    if (error.message?.includes('許可されていないファイル形式')) {
+      return res.status(400).json({ error: error.message });
+    }
+    
     res.status(500).json({ error: error.message || 'ファイルのアップロードに失敗しました' });
   }
 });
