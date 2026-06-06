@@ -653,6 +653,10 @@ export class SellerService extends BaseRepository {
     if (data.inquiryDate !== undefined) {
       updates.inquiry_date = data.inquiryDate;
     }
+    // 反響詳細日時（inquiry_detailed_datetime）の更新
+    if ((data as any).inquiryDetailedDateTime !== undefined) {
+      updates.inquiry_detailed_datetime = (data as any).inquiryDetailedDateTime || null;
+    }
 
     // 郵送ステータスフィールド
     if ((data as any).mailingStatus !== undefined) {
