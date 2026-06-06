@@ -399,6 +399,8 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
 
     // ============================================================
     // 重複チェック（同一電話番号 かつ 同一反響日時の場合のみスキップ）
+    // HOME4Uは1つの査定依頼を複数社に同時配信するため、
+    // 同じ電話番号+同じ反響日時のメールが短時間に複数届く。
     // 過去に同じ人から別の時期に依頼が来た場合は新規登録する
     // ============================================================
     {
@@ -407,7 +409,7 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
 
       const { data: allSellers, error: fetchError } = await supabaseForCheck
         .from('sellers')
-        .select('id, seller_number, phone_number, inquiry_detailed_datetime')
+        .select('id, seller_number, phone_number, inquiry_detailed_datetime, created_at')
         .is('deleted_at', null);
 
       if (!fetchError && allSellers) {
@@ -418,16 +420,25 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
             if (decryptedPhone === tel) {
               // 電話番号が一致しても、反響日時が異なれば別依頼として登録する
               const existingDatetime = existing.inquiry_detailed_datetime;
+
+              // 比較1: 反響日時が同一（タイムゾーン差を吸収するためstartsWith使用）
               const isSameDatetime = existingDatetime && inquiryDateTimeISO
-                ? existingDatetime === inquiryDateTimeISO || existingDatetime.startsWith(inquiryDateTimeISO.replace(' ', 'T'))
+                ? existingDatetime === inquiryDateTimeISO || existingDatetime.startsWith(inquiryDateTimeISO)
                 : !existingDatetime && !inquiryDateTimeISO;
 
-              if (isSameDatetime) {
-                console.log(`[home4u-transfer] ⏭ 重複スキップ: 電話番号・反響日時が既存売主 ${existing.seller_number} と一致`);
+              // 比較2: 同じ電話番号で直近10分以内に登録されたレコードがある場合もスキップ
+              // （HOME4Uは同じ案件を複数社に配信するため、短時間に同内容のメールが複数届く）
+              const createdAt = existing.created_at ? new Date(existing.created_at) : null;
+              const now = new Date();
+              const isRecentDuplicate = createdAt && (now.getTime() - createdAt.getTime()) < 10 * 60 * 1000; // 10分以内
+
+              if (isSameDatetime || isRecentDuplicate) {
+                const reason = isSameDatetime ? '反響日時一致' : '直近10分以内に同一電話番号で登録済み';
+                console.log(`[home4u-transfer] ⏭ 重複スキップ: ${reason} (既存: ${existing.seller_number})`);
                 return res.json({
                   success: true,
                   skipped: true,
-                  message: `重複スキップ: 電話番号・反響日時が既存売主 ${existing.seller_number} と一致するため登録しませんでした`,
+                  message: `重複スキップ: ${reason} - 既存売主 ${existing.seller_number}`,
                   duplicateSeller: existing.seller_number,
                 });
               } else {

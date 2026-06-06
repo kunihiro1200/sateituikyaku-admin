@@ -223,6 +223,8 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
 
     // ============================================================
     // 1.5. 重複チェック（同一電話番号 かつ 同一反響日時の場合のみスキップ）
+    // イエウールも同じ案件を複数社に配信する可能性があるため、
+    // 直近10分以内の同一電話番号登録もスキップする。
     // 過去に同じ人から別の時期に依頼が来た場合は新規登録する
     // ============================================================
     {
@@ -231,7 +233,7 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
 
       const { data: allSellers, error: fetchError } = await supabaseForCheck
         .from('sellers')
-        .select('id, seller_number, phone_number, inquiry_detailed_datetime')
+        .select('id, seller_number, phone_number, inquiry_detailed_datetime, created_at')
         .is('deleted_at', null);
 
       if (!fetchError && allSellers) {
@@ -247,12 +249,19 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
                 ? existingDatetime === requestDate || existingDatetime.startsWith(requestDate.replace(' ', 'T'))
                 : !existingDatetime && !requestDate; // 両方nullの場合のみ重複とみなす
 
-              if (isSameDatetime) {
-                console.log(`[ieul-transfer] ⏭ 重複スキップ: 電話番号・反響日時が既存売主 ${existing.seller_number} と一致`);
+              // 同じ電話番号で直近10分以内に登録されたレコードがある場合もスキップ
+              // （査定サイトは同じ案件を複数社に配信するため、短時間に同内容のメールが複数届く）
+              const createdAt = existing.created_at ? new Date(existing.created_at) : null;
+              const now = new Date();
+              const isRecentDuplicate = createdAt && (now.getTime() - createdAt.getTime()) < 10 * 60 * 1000; // 10分以内
+
+              if (isSameDatetime || isRecentDuplicate) {
+                const reason = isSameDatetime ? '反響日時一致' : '直近10分以内に同一電話番号で登録済み';
+                console.log(`[ieul-transfer] ⏭ 重複スキップ: ${reason} (既存: ${existing.seller_number})`);
                 return res.json({
                   success: true,
                   skipped: true,
-                  message: `重複スキップ: 電話番号・反響日時が既存売主 ${existing.seller_number} と一致するため登録しませんでした`,
+                  message: `重複スキップ: ${reason} - 既存売主 ${existing.seller_number}`,
                   duplicateSeller: existing.seller_number,
                 });
               } else {

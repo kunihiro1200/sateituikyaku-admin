@@ -1871,23 +1871,33 @@ export class EnhancedAutoSyncService {
       encryptedData.exclusive_other_decision_meeting = exclusiveOtherDecisionMeeting ? String(exclusiveOtherDecisionMeeting) : null;
     }
 
-    // 🛡️ 重複防止チェック: 同じ電話番号+同じ反響日付のデータが既にDBに存在する場合はスキップ
+    // 🛡️ 重複防止チェック: 同じ電話番号ハッシュのデータが既にDBに存在する場合はスキップ
     // （スプレッドシートに同一人物が複数行入力された場合の重複登録を防止）
+    // チェック1: phone_number_hash + inquiry_date の完全一致
+    // チェック2: phone_number_hash のみ一致 + inquiry_dateがどちらかnull（HOME4U/イエウール転記直後はinquiry_dateが設定されないケースがある）
     const phoneHashForDupCheck = encryptedData.phone_number_hash;
     const inquiryDateForDupCheck = encryptedData.inquiry_date;
-    if (phoneHashForDupCheck && inquiryDateForDupCheck) {
-      const { data: existingDuplicate } = await this.supabase
+    if (phoneHashForDupCheck) {
+      let query = this.supabase
         .from('sellers')
-        .select('seller_number')
+        .select('seller_number, inquiry_date')
         .eq('phone_number_hash', phoneHashForDupCheck)
-        .eq('inquiry_date', inquiryDateForDupCheck)
         .is('deleted_at', null)
         .neq('seller_number', sellerNumber)
-        .limit(1);
+        .limit(5);
 
-      if (existingDuplicate && existingDuplicate.length > 0) {
-        console.log(`⚠️ ${sellerNumber}: 重複スキップ（同一電話番号+反響日付が ${existingDuplicate[0].seller_number} に既存）`);
-        return;
+      const { data: existingDuplicates } = await query;
+
+      if (existingDuplicates && existingDuplicates.length > 0) {
+        // 同じ電話番号ハッシュを持つ既存レコードがある場合
+        for (const dup of existingDuplicates) {
+          // 反響日付が同じ、またはどちらかがnullの場合は重複とみなす
+          const isSameOrUnknownDate = !inquiryDateForDupCheck || !dup.inquiry_date || inquiryDateForDupCheck === dup.inquiry_date;
+          if (isSameOrUnknownDate) {
+            console.log(`⚠️ ${sellerNumber}: 重複スキップ（同一電話番号ハッシュが ${dup.seller_number} に既存, inquiry_date: 既存=${dup.inquiry_date}, 今回=${inquiryDateForDupCheck}）`);
+            return;
+          }
+        }
       }
     }
 
