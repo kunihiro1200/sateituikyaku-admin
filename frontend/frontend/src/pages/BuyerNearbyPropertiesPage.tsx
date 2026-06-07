@@ -57,8 +57,10 @@ interface BuyerInfo {
 }
 
 const PUBLIC_BASE = 'https://property-site-frontend-kappa.vercel.app/public/properties';
-const SIGNATURE_EMAIL = `\n\n*********************\n株式会社いふう\n大分市舞鶴町1-3-30\nTEL:097-533-2022（10時～18時）\nMail:tenant@ifoo-oita.com\n定休日：水曜\n*********************`;
-const SIGNATURE_SMS = `\n\n株式会社いふう`;
+const SIGNATURE_EMAIL_DEFAULT = `\n\n*********************\n株式会社いふう\n大分市舞鶴町1-3-30\nTEL:097-533-2022（10時～18時）\nMail:tenant@ifoo-oita.com\n定休日：水曜\n*********************`;
+const SIGNATURE_EMAIL_FI = `\n\n*********************\n株式会社くじら不動産（株式会社いふう）\n〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201\nTEL:092-401-5331\n*********************`;
+const SIGNATURE_SMS_DEFAULT = `\n\n株式会社いふう`;
+const SIGNATURE_SMS_FI = `\n\n株式会社くじら不動産（株式会社いふう）\nTEL:092-401-5331`;
 
 export default function BuyerNearbyPropertiesPage() {
   const { buyer_number } = useParams<{ buyer_number: string }>();
@@ -137,7 +139,9 @@ export default function BuyerNearbyPropertiesPage() {
     const baseAddr = baseProperty?.address || baseProperty?.display_address || '';
     const baseUrl = baseProperty ? `${PUBLIC_BASE}/${baseProperty.property_number}` : '';
     const nearbyLines = props.map(p => `${p.display_address || p.address || ''}\n${PUBLIC_BASE}/${p.property_number}`).join('\n\n');
-    return `${buyerName}様\n\nこの度は${baseAddr}のお問合せをいただきありがとうございます。\n近隣の物件として下記物件もございますのでご興味ございましたら、お問合せくださいませ。\n\n【お問合せ物件】\n${baseAddr}\n${baseUrl}\n\n【近隣物件】\n${nearbyLines}${SIGNATURE_EMAIL}`;
+    const hasFI = baseProperty?.property_number ? baseProperty.property_number.toUpperCase().includes('FI') : false;
+    const signature = hasFI ? SIGNATURE_EMAIL_FI : SIGNATURE_EMAIL_DEFAULT;
+    return `${buyerName}様\n\nこの度は${baseAddr}のお問合せをいただきありがとうございます。\n近隣の物件として下記物件もございますのでご興味ございましたら、お問合せくださいませ。\n\n【お問合せ物件】\n${baseAddr}\n${baseUrl}\n\n【近隣物件】\n${nearbyLines}${signature}`;
   };
 
   // SMS本文生成
@@ -146,7 +150,9 @@ export default function BuyerNearbyPropertiesPage() {
     const baseAddr = baseProperty?.address || baseProperty?.display_address || '';
     const baseUrl = baseProperty ? `${PUBLIC_BASE}/${baseProperty.property_number}` : '';
     const nearbyLines = props.map(p => `${p.display_address || p.address || ''}\n${PUBLIC_BASE}/${p.property_number}`).join('\n\n');
-    return `${buyerName}様\n\nこの度は${baseAddr}のお問合せをいただきありがとうございます。\n近隣の物件として下記物件もございますのでご興味ございましたら、お問合せくださいませ。\n\n【お問合せ物件】\n${baseAddr}\n${baseUrl}\n\n【近隣物件】\n${nearbyLines}${SIGNATURE_SMS}`;
+    const hasFI = baseProperty?.property_number ? baseProperty.property_number.toUpperCase().includes('FI') : false;
+    const signature = hasFI ? SIGNATURE_SMS_FI : SIGNATURE_SMS_DEFAULT;
+    return `${buyerName}様\n\nこの度は${baseAddr}のお問合せをいただきありがとうございます。\n近隣の物件として下記物件もございますのでご興味ございましたら、お問合せくださいませ。\n\n【お問合せ物件】\n${baseAddr}\n${baseUrl}\n\n【近隣物件】\n${nearbyLines}${signature}`;
   };
 
   const openEmailDialog = () => {

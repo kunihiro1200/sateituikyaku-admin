@@ -398,14 +398,24 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
           /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の物件はこちらから↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties\nお気軽にお問い合わせください。/g,
           ''
         );
+        // 会社名を置換
+        mergedContent.body = mergedContent.body.replace(/株式会社 いふう/g, '株式会社くじら不動産（株式会社いふう）');
+        mergedContent.body = mergedContent.body.replace(/株式会社いふうと申します。/g, '株式会社くじら不動産と申します。');
+        mergedContent.body = mergedContent.body.replace(/いふうにてお手伝い/g, 'くじら不動産にてお手伝い');
+        mergedContent.subject = mergedContent.subject.replace(/株式会社いふう/g, '株式会社くじら不動産');
+        // 署名の住所・TELを福岡用に置換
         mergedContent.body = mergedContent.body.replace(
           /〒870-0044\n?大分市舞鶴町1丁目3-30/g,
-          '福岡市中央区舞鶴3丁目1－10'
+          '〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201'
         );
         mergedContent.body = mergedContent.body.replace(
           /〒870-0044大分市舞鶴町1丁目3-30/g,
-          '福岡市中央区舞鶴3丁目1－10'
+          '〒810-0073福岡市中央区舞鶴3-1-10オフィスニューガイアセレス赤坂門No.19 -201'
         );
+        mergedContent.body = mergedContent.body.replace(/大分市舞鶴町1-3-30/g, '〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
+        mergedContent.body = mergedContent.body.replace(/TEL：097-533-2022/g, 'TEL：092-401-5331');
+        mergedContent.body = mergedContent.body.replace(/TEL:097-533-2022/g, 'TEL:092-401-5331');
+        mergedContent.body = mergedContent.body.replace(/097-533-2022/g, '092-401-5331');
       }
       // 業者問合せ判定: broker_inquiry === '業者問合せ' の場合、不要ブロックを削除
       if (buyer.broker_inquiry === '業者問合せ') {
@@ -473,7 +483,7 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
       mergedContent.body, buyer, propertyDataForPlaceholders, staffInfoForMerge
     );
 
-    // FI物件判定: 問合せ物件番号に「FI」が含まれる場合、建売専門サイトリンクを削除し住所を置換
+    // FI物件判定: 問合せ物件番号に「FI」が含まれる場合、建売専門サイトリンクを削除し署名を福岡用に置換
     const hasFIProperty = propertyIds.some((id: string) => id.toUpperCase().includes('FI'));
     if (hasFIProperty) {
       // ★大分市の新築建売専門サイト↓↓...お気軽にお問い合わせください。ブロックを削除
@@ -485,15 +495,24 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
         /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の物件はこちらから↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties\nお気軽にお問い合わせください。/g,
         ''
       );
-      // 署名欄の住所を置換: 〒870-0044大分市舞鶴町1丁目3-30 → 福岡市中央区舞鶴3丁目1－10
+      // 会社名を置換: 株式会社 いふう / 株式会社いふう → 株式会社くじら不動産（株式会社いふう）
+      mergedContent.body = mergedContent.body.replace(/株式会社 いふう/g, '株式会社くじら不動産（株式会社いふう）');
+      mergedContent.body = mergedContent.body.replace(/株式会社いふうと申します。/g, '株式会社くじら不動産と申します。');
+      mergedContent.body = mergedContent.body.replace(/いふうにてお手伝い/g, 'くじら不動産にてお手伝い');
+      mergedContent.subject = mergedContent.subject.replace(/株式会社いふう/g, '株式会社くじら不動産');
+      // 署名の住所・TELを福岡用に置換
       mergedContent.body = mergedContent.body.replace(
         /〒870-0044\n?大分市舞鶴町1丁目3-30/g,
-        '福岡市中央区舞鶴3丁目1－10'
+        '〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201'
       );
       mergedContent.body = mergedContent.body.replace(
         /〒870-0044大分市舞鶴町1丁目3-30/g,
-        '福岡市中央区舞鶴3丁目1－10'
+        '〒810-0073福岡市中央区舞鶴3-1-10オフィスニューガイアセレス赤坂門No.19 -201'
       );
+      mergedContent.body = mergedContent.body.replace(/大分市舞鶴町1-3-30/g, '〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
+      mergedContent.body = mergedContent.body.replace(/TEL：097-533-2022/g, 'TEL：092-401-5331');
+      mergedContent.body = mergedContent.body.replace(/TEL:097-533-2022/g, 'TEL:092-401-5331');
+      mergedContent.body = mergedContent.body.replace(/097-533-2022/g, '092-401-5331');
     }
 
     // 業者問合せ判定: broker_inquiry === '業者問合せ' の場合、不要ブロックを削除
