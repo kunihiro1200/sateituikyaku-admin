@@ -13,6 +13,61 @@ const staffService = new StaffManagementService();
 const sellerService = new SellerService();
 
 /**
+ * FI物件判定: 件名・本文を福岡（くじら不動産）用に置換するヘルパー
+ */
+function applyFIBranding(subject: string, body: string): { subject: string; body: string } {
+  // 件名: 【株式会社いふうでございます】→【株式会社くじら不動産でございます】
+  subject = subject.replace(/株式会社いふう/g, '株式会社くじら不動産');
+  subject = subject.replace(/㈱いふう/g, '株式会社くじら不動産');
+
+  // 本文: 会社名テキスト置換
+  body = body.replace(/株式会社いふうと申します。/g, '株式会社くじら不動産と申します。');
+  body = body.replace(/いふうにてお手伝い/g, 'くじら不動産にてお手伝い');
+  body = body.replace(/株式会社 いふう\n/g, '株式会社くじら不動産（株式会社いふう）\n');
+  body = body.replace(/株式会社 いふう$/gm, '株式会社くじら不動産（株式会社いふう）');
+
+  // 本文: 大分専用サイトリンク削除
+  body = body.replace(
+    /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の情報はこちらから検索可能です↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties/g,
+    ''
+  );
+  body = body.replace(
+    /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の物件はこちらから↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties\nお気軽にお問い合わせください。/g,
+    ''
+  );
+
+  // 本文: 大分署名ブロック全体を福岡署名に置換（住所・TEL・FAX・Mail・HP）
+  // パターン1: ***で囲まれた署名ブロック
+  body = body.replace(
+    /\*{3,}\n株式会社 いふう[\s\S]*?\*{3,}/g,
+    `***************************\n株式会社くじら不動産（株式会社いふう）\n〒810-0073\n福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201\nTEL：092-401-5331\nFAX：092-401-5332\nHP：https://kujira-fudosan.com/\n***************************`
+  );
+  // パターン2: 〒870-0044 形式の住所行
+  body = body.replace(/〒870-0044\n?大分市舞鶴町1丁目3-30/g, '〒810-0073\n福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
+  body = body.replace(/〒870-0044大分市舞鶴町1丁目3-30/g, '〒810-0073福岡市中央区舞鶴3-1-10オフィスニューガイアセレス赤坂門No.19 -201');
+  // パターン3: 住所のみ（〒なし）
+  body = body.replace(/大分市舞鶴町1-3-30/g, '〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
+  body = body.replace(/大分市舞鶴町1丁目3-30/g, '福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
+  // TEL置換
+  body = body.replace(/TEL：097-533-2022/g, 'TEL：092-401-5331');
+  body = body.replace(/TEL:097-533-2022/g, 'TEL:092-401-5331');
+  // FAX置換（大分FAXを福岡FAXに）
+  body = body.replace(/FAX：097-529-7160/g, 'FAX：092-401-5332');
+  body = body.replace(/FAX:097-529-7160/g, 'FAX:092-401-5332');
+  // TEL行の後にFAX・HPを追加（まだFAX行がない場合）
+  body = body.replace(/(TEL[：:]092-401-5331)\n(?!FAX)/g, '$1\nFAX：092-401-5332\nHP：https://kujira-fudosan.com/\n');
+  // Mail・HP行（大分用）を削除
+  body = body.replace(/MAIL:tenant@ifoo-oita\.com\s*\n?/g, '');
+  body = body.replace(/HP：https:\/\/ifoo-oita\.com\/\s*\n?/g, '');
+  body = body.replace(/採用HP：https:\/\/en-gage\.net\/ifoo-oita\/\s*\n?/g, '');
+  body = body.replace(/店休日：毎週水曜日 年末年始、GW、盆\s*\n?/g, '');
+  body = body.replace(/定休日：水曜\s*\n?/g, '');
+  body = body.replace(/営業時間：10時～18時\s*\n?/g, '');
+
+  return { subject, body };
+}
+
+/**
  * Debug endpoint - Google Sheets認証テスト
  * GET /api/email-templates/debug
  */
@@ -205,17 +260,7 @@ router.post('/property/merge', async (req, res) => {
     let finalSubject = mergedSubject;
     let finalBody = mergedBody;
     if (propertyNumber.toUpperCase().includes('FI')) {
-      finalBody = finalBody.replace(/株式会社 いふう/g, '株式会社くじら不動産（株式会社いふう）');
-      finalBody = finalBody.replace(/株式会社いふうと申します。/g, '株式会社くじら不動産と申します。');
-      finalBody = finalBody.replace(/いふうにてお手伝い/g, 'くじら不動産にてお手伝い');
-      finalSubject = finalSubject.replace(/株式会社いふう/g, '株式会社くじら不動産');
-      finalBody = finalBody.replace(/〒870-0044\n?大分市舞鶴町1丁目3-30/g, '〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
-      finalBody = finalBody.replace(/〒870-0044大分市舞鶴町1丁目3-30/g, '〒810-0073福岡市中央区舞鶴3-1-10オフィスニューガイアセレス赤坂門No.19 -201');
-      finalBody = finalBody.replace(/大分市舞鶴町1-3-30/g, '〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
-      finalBody = finalBody.replace(/TEL：097-533-2022/g, 'TEL：092-401-5331');
-      finalBody = finalBody.replace(/TEL:097-533-2022/g, 'TEL:092-401-5331');
-      finalBody = finalBody.replace(/097-533-2022/g, '092-401-5331');
-      finalBody = finalBody.replace(/tenant@ifoo-oita\.com/g, 'tenant@ifoo-oita.com');
+      ({ subject: finalSubject, body: finalBody } = applyFIBranding(finalSubject, finalBody));
     }
 
     res.json({ subject: finalSubject, body: finalBody, sellerName, sellerEmail });
@@ -446,32 +491,7 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
       // FI物件判定（物件なしの場合もpropertyIdsで判定）
       const hasFIPropertyNoMatch = propertyIds.some((id: string) => id.toUpperCase().includes('FI'));
       if (hasFIPropertyNoMatch) {
-        mergedContent.body = mergedContent.body.replace(
-          /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の情報はこちらから検索可能です↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties/g,
-          ''
-        );
-        mergedContent.body = mergedContent.body.replace(
-          /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の物件はこちらから↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties\nお気軽にお問い合わせください。/g,
-          ''
-        );
-        // 会社名を置換
-        mergedContent.body = mergedContent.body.replace(/株式会社 いふう/g, '株式会社くじら不動産（株式会社いふう）');
-        mergedContent.body = mergedContent.body.replace(/株式会社いふうと申します。/g, '株式会社くじら不動産と申します。');
-        mergedContent.body = mergedContent.body.replace(/いふうにてお手伝い/g, 'くじら不動産にてお手伝い');
-        mergedContent.subject = mergedContent.subject.replace(/株式会社いふう/g, '株式会社くじら不動産');
-        // 署名の住所・TELを福岡用に置換
-        mergedContent.body = mergedContent.body.replace(
-          /〒870-0044\n?大分市舞鶴町1丁目3-30/g,
-          '〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201'
-        );
-        mergedContent.body = mergedContent.body.replace(
-          /〒870-0044大分市舞鶴町1丁目3-30/g,
-          '〒810-0073福岡市中央区舞鶴3-1-10オフィスニューガイアセレス赤坂門No.19 -201'
-        );
-        mergedContent.body = mergedContent.body.replace(/大分市舞鶴町1-3-30/g, '〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
-        mergedContent.body = mergedContent.body.replace(/TEL：097-533-2022/g, 'TEL：092-401-5331');
-        mergedContent.body = mergedContent.body.replace(/TEL:097-533-2022/g, 'TEL:092-401-5331');
-        mergedContent.body = mergedContent.body.replace(/097-533-2022/g, '092-401-5331');
+        ({ subject: mergedContent.subject, body: mergedContent.body } = applyFIBranding(mergedContent.subject, mergedContent.body));
       }
       // 業者問合せ判定: broker_inquiry === '業者問合せ' の場合、不要ブロックを削除
       if (buyer.broker_inquiry === '業者問合せ') {
@@ -542,33 +562,7 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
     // FI物件判定: 問合せ物件番号に「FI」が含まれる場合、建売専門サイトリンクを削除し署名を福岡用に置換
     const hasFIProperty = propertyIds.some((id: string) => id.toUpperCase().includes('FI'));
     if (hasFIProperty) {
-      // ★大分市の新築建売専門サイト↓↓...お気軽にお問い合わせください。ブロックを削除
-      mergedContent.body = mergedContent.body.replace(
-        /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の情報はこちらから検索可能です↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties/g,
-        ''
-      );
-      mergedContent.body = mergedContent.body.replace(
-        /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の物件はこちらから↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties\nお気軽にお問い合わせください。/g,
-        ''
-      );
-      // 会社名を置換: 株式会社 いふう / 株式会社いふう → 株式会社くじら不動産（株式会社いふう）
-      mergedContent.body = mergedContent.body.replace(/株式会社 いふう/g, '株式会社くじら不動産（株式会社いふう）');
-      mergedContent.body = mergedContent.body.replace(/株式会社いふうと申します。/g, '株式会社くじら不動産と申します。');
-      mergedContent.body = mergedContent.body.replace(/いふうにてお手伝い/g, 'くじら不動産にてお手伝い');
-      mergedContent.subject = mergedContent.subject.replace(/株式会社いふう/g, '株式会社くじら不動産');
-      // 署名の住所・TELを福岡用に置換
-      mergedContent.body = mergedContent.body.replace(
-        /〒870-0044\n?大分市舞鶴町1丁目3-30/g,
-        '〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201'
-      );
-      mergedContent.body = mergedContent.body.replace(
-        /〒870-0044大分市舞鶴町1丁目3-30/g,
-        '〒810-0073福岡市中央区舞鶴3-1-10オフィスニューガイアセレス赤坂門No.19 -201'
-      );
-      mergedContent.body = mergedContent.body.replace(/大分市舞鶴町1-3-30/g, '〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
-      mergedContent.body = mergedContent.body.replace(/TEL：097-533-2022/g, 'TEL：092-401-5331');
-      mergedContent.body = mergedContent.body.replace(/TEL:097-533-2022/g, 'TEL:092-401-5331');
-      mergedContent.body = mergedContent.body.replace(/097-533-2022/g, '092-401-5331');
+      ({ subject: mergedContent.subject, body: mergedContent.body } = applyFIBranding(mergedContent.subject, mergedContent.body));
     }
 
     // 業者問合せ判定: broker_inquiry === '業者問合せ' の場合、不要ブロックを削除

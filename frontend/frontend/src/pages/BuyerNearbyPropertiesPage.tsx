@@ -58,7 +58,7 @@ interface BuyerInfo {
 
 const PUBLIC_BASE = 'https://property-site-frontend-kappa.vercel.app/public/properties';
 const SIGNATURE_EMAIL_DEFAULT = `\n\n*********************\n株式会社いふう\n大分市舞鶴町1-3-30\nTEL:097-533-2022（10時～18時）\nMail:tenant@ifoo-oita.com\n定休日：水曜\n*********************`;
-const SIGNATURE_EMAIL_FI = `\n\n*********************\n株式会社くじら不動産（株式会社いふう）\n〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201\nTEL:092-401-5331\n*********************`;
+const SIGNATURE_EMAIL_FI = `\n\n*********************\n株式会社くじら不動産（株式会社いふう）\n〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201\nTEL:092-401-5331\nFAX:092-401-5332\nHP:https://kujira-fudosan.com/\n*********************`;
 const SIGNATURE_SMS_DEFAULT = `\n\n株式会社いふう`;
 const SIGNATURE_SMS_FI = `\n\n株式会社くじら不動産（株式会社いふう）\nTEL:092-401-5331`;
 

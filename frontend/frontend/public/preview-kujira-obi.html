@@ -1,0 +1,102 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>くじら不動産ロゴバナー プレビュー</title>
+  <!-- ブルーのファビコン（SVG埋め込み） -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231BAADB'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='20' font-family='serif'>🐋</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 30px;
+      margin: 0;
+      padding: 40px 20px;
+      box-sizing: border-box;
+    }
+    h2 { color: #333; margin: 0; font-family: sans-serif; }
+
+    .banner {
+      display: flex;
+      align-items: center;
+      background-color: #1BAADB;
+      border-radius: 6px;
+      overflow: hidden;
+      width: 100%;
+      max-width: 900px;
+      height: 100px;
+      border: 2px solid #1590BF;
+    }
+
+    /* 左：ロゴ表示エリア */
+    .banner-logo {
+      background-color: #1590BF;
+      height: 100%;
+      width: 140px;
+      min-width: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    .banner-logo img {
+      width: 124px;
+      height: auto;
+      max-height: 84px;
+      object-fit: contain;
+      filter: brightness(0) invert(1);
+    }
+
+    /* 右：テキスト */
+    .banner-text {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 20px;
+    }
+    .banner-text span {
+      font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', 'Yu Gothic', sans-serif;
+      font-size: 34px;
+      font-weight: 900;
+      color: white;
+      white-space: nowrap;
+      letter-spacing: 2px;
+    }
+
+    .note {
+      color: #555;
+      font-size: 14px;
+      text-align: center;
+      line-height: 2;
+      font-family: sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <h2>プレビュー（Win + Shift + S でスクショ保存）</h2>
+
+  <div class="banner">
+    <div class="banner-logo">
+      <!-- くじら不動産サイトのロゴを直接使用 -->
+      <img src="https://kujira-fudosan.com/logo.png"
+           alt="株式会社くじら不動産"
+           onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+      <!-- ロゴ読み込み失敗時のフォールバック -->
+      <span style="display:none; color:white; font-size:28px;">🐋</span>
+    </div>
+    <div class="banner-text">
+      <span>㈱いふう　（株式会社くじら不動産）</span>
+    </div>
+  </div>
+
+  <p class="note">Win + Shift + S でバナー部分をスクショできます</p>
+</body>
+</html>
