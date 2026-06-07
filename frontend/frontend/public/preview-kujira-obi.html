@@ -3,8 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <title>くじら不動産ロゴバナー プレビュー</title>
-  <!-- ブルーのファビコン（SVG埋め込み） -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231BAADB'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='20' font-family='serif'>🐋</text></svg>">
+  <!-- ブルーのファビコン（JSで強制上書き） -->
+  <link rel="icon" id="favicon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231BAADB'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='20' font-family='serif'>🐋</text></svg>">
+  <script>
+    // 既存のfaviconを全て削除してブルーのくじらファビコンを強制適用
+    (function() {
+      var svgFavicon = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231BAADB'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='20' font-family='serif'>🐋</text></svg>";
+      function setFavicon() {
+        var links = document.querySelectorAll("link[rel*='icon']");
+        links.forEach(function(l) { l.parentNode.removeChild(l); });
+        var link = document.createElement('link');
+        link.rel = 'icon';
+        link.href = svgFavicon;
+        document.head.appendChild(link);
+      }
+      setFavicon();
+      // DOMContentLoaded後にも再適用（React等が上書きするのを防ぐ）
+      document.addEventListener('DOMContentLoaded', setFavicon);
+    })();
+  </script>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@900&display=swap" rel="stylesheet">
   <style>
     body {
