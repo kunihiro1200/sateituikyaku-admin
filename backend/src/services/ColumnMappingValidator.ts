@@ -147,8 +147,8 @@ export class ColumnMappingValidator {
 
     const trimmed = value.trim();
     
-    // AAで始まり、その後に数字が続くパターン
-    const pattern = /^AA\d+$/;
+    // AAで始まり、その後に数字が続くパターン（ハイフン付き枝番も許可）
+    const pattern = /^AA\d+(-\d+)?$/;
     return pattern.test(trimmed);
   }
 

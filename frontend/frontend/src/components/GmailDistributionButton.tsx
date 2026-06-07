@@ -411,16 +411,17 @@ export default function GmailDistributionButton({
       setSenderAddress(getSenderByPropertyNumber(propertyNumber));
       setSelectedImages([]);
 
+      // 1件以上送信成功した場合は送信履歴を保存（一部失敗でも履歴は残す）
+      if (result.successCount > 0 && !isTestMode) {
+        onSendSuccess?.({
+          successCount: result.successCount,
+          subject: replacePlaceholders(selectedTemplate.subject, buyerName),
+          senderAddress,
+          body: editedBody || replacePlaceholders(selectedTemplate.body, buyerName),
+        });
+      }
+
       if (result.success) {
-        // 通常送信時のみ親コンポーネントへ通知（履歴保存のため）
-        if (!isTestMode) {
-          onSendSuccess?.({
-            successCount: result.successCount,
-            subject: replacePlaceholders(selectedTemplate.subject, buyerName),
-            senderAddress,
-            body: editedBody || replacePlaceholders(selectedTemplate.body, buyerName),
-          });
-        }
         setSnackbar({
           open: true,
           message: isTestMode

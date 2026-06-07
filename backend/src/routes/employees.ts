@@ -376,32 +376,54 @@ router.get('/is-sales', async (req: Request, res: Response) => {
       return res.json({ isSales: false });
     }
 
-    const { GoogleSheetsClient } = require('../services/GoogleSheetsClient');
-    const client = new GoogleSheetsClient({
-      spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
-      sheetName: 'スタッフ',
-      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
-    });
-    await client.authenticate();
-    const rows = await client.readAll();
-
     const normalizedEmail = email.trim().toLowerCase();
-    const matched = rows.find((row: any) => {
-      const rowEmail = (row['メアド'] || row['メールアドレス'] || row['email'] || '').trim().toLowerCase();
-      return rowEmail === normalizedEmail;
-    });
 
-    if (!matched) {
-      console.log(`[is-sales] No staff found for email: ${email}`);
-      return res.json({ isSales: false });
+    // まずスプレッドシートから判定を試みる
+    let isSales = false;
+    try {
+      const { GoogleSheetsClient } = require('../services/GoogleSheetsClient');
+      const client = new GoogleSheetsClient({
+        spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
+        sheetName: 'スタッフ',
+        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+      });
+      await client.authenticate();
+      const rows = await client.readAll();
+
+      const matched = rows.find((row: any) => {
+        const rowEmail = (row['メアド'] || row['メールアドレス'] || row['email'] || '').trim().toLowerCase();
+        return rowEmail === normalizedEmail;
+      });
+
+      if (matched) {
+        const salesRawValue = matched['営業'];
+        const salesStr = String(salesRawValue || '').toUpperCase().trim();
+        isSales = salesStr === 'TRUE' || salesStr === '1' || salesStr === 'YES' || salesRawValue === true;
+        console.log(`[is-sales] email=${email}, salesRawValue=${JSON.stringify(salesRawValue)}, type=${typeof salesRawValue}, isSales=${isSales}`);
+      } else {
+        console.log(`[is-sales] No staff found for email: ${email}`);
+        console.log(`[is-sales] Available emails:`, rows.map((r: any) => (r['メアド'] || r['メールアドレス'] || r['email'] || '').trim().toLowerCase()).filter(Boolean));
+      }
+    } catch (sheetError: any) {
+      console.error('[is-sales] Spreadsheet read failed:', sheetError.message);
     }
 
-    const isSales = String(matched['営業'] || '').toUpperCase() === 'TRUE';
-    console.log(`[is-sales] email=${email}, isSales=${isSales}`);
+    // スプレッドシートで判定できなかった場合のフォールバック（営業メールリスト）
+    if (!isSales) {
+      const salesEmails = [
+        'hiromitsu-kakui@ifoo-oita.com',
+        'tomoko.kunihiro@ifoo-oita.com',
+        'yuuko.yamamoto@ifoo-oita.com',
+      ];
+      if (salesEmails.includes(normalizedEmail)) {
+        isSales = true;
+        console.log(`[is-sales] Fallback: ${email} matched sales email list`);
+      }
+    }
+
     return res.json({ isSales });
   } catch (error: any) {
     console.error('[is-sales] Failed:', error.message);
-    // エラー時はfalseを返す（安全側に倒す）
     return res.json({ isSales: false });
   }
 });

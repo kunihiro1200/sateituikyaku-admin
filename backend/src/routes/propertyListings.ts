@@ -904,6 +904,31 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
 
     const allErrors = [errors, failedResults].filter(e => e).join(', ');
 
+    // property_chat_history に送信履歴を保存（1件以上成功した場合）
+    // フロントエンド側のonSendSuccessコールバックに依存せず、バックエンド側でも確実に記録する
+    if (successCount > 0) {
+      try {
+        const { error: chatHistoryError } = await supabase
+          .from('property_chat_history')
+          .insert({
+            property_number: propertyNumber,
+            chat_type: 'seller_gmail',
+            subject: subject || '',
+            message: content || '',
+            sender_name: req.employee?.name || req.employee?.initials || 'system',
+            sent_at: new Date().toISOString(),
+          });
+
+        if (chatHistoryError) {
+          console.error('[send-distribution-emails] property_chat_history insert error:', chatHistoryError);
+        } else {
+          console.log(`[send-distribution-emails] property_chat_history saved for ${propertyNumber}`);
+        }
+      } catch (chatHistoryErr) {
+        console.error('[send-distribution-emails] Failed to save property_chat_history:', chatHistoryErr);
+      }
+    }
+
     // activity_logsに記録（メール送信成功後）
     // 各買主ごとに記録
     const { ActivityLogService } = await import('../services/ActivityLogService');

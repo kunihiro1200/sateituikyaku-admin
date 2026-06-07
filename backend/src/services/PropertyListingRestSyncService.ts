@@ -458,8 +458,8 @@ export class PropertyListingRestSyncService {
       return false;
     }
 
-    // 物件番号の形式チェック（AA + 数字）
-    if (!data.property_number.match(/^AA\d+$/)) {
+    // 物件番号の形式チェック（AA + 数字、ハイフン付き枝番も許可）
+    if (!data.property_number.match(/^AA\d+(-\d+)?$/)) {
       return false;
     }
 

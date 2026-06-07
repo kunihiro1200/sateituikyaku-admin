@@ -597,7 +597,11 @@ export class TokiExtractService {
 - roof_type: 「① 構造」欄から屋根部分のみ（例：鉄骨鉄筋コンクリート造陸屋根14階建 → "陸屋根"）
   対象：瓦ぶき、スレートぶき、亜鉛メッキ鋼板ぶき、草ぶき、陸屋根、セメント瓦ぶき、アルミニュームぶき、板ぶき、杉皮ぶき、石板ぶき、銅板ぶき、ルーフィングぶき、ビニール板ぶき、合金メッキ鋼板ぶき
 - floors: 「① 構造」欄から「〇階建」の数字のみ（例：14階建 → "14"）
-- building_area: 「② 床面積 ㎡」欄に記載されている全階の面積を合計した値（「：」→「.」変換、全角→半角変換してから合計する）。例：1階202.05 + 2階20.43 + 3階〜13階580.64×11 + 14階591.76 = 7201.28 のように全階分を足し合わせること
+- building_floor_areas: 「② 床面積 ㎡」欄に記載されている各階の面積を配列で返すこと（「：」→「.」変換、全角→半角変換）。
+  各要素は { "floor": "1階", "area": "202.05" } の形式で返す。
+  同じ面積の階が連続する場合（例：「3階〜13階 580.64」）は、各階を個別に展開せず1要素として返す。
+  例：[{"floor": "1階", "area": "202.05"}, {"floor": "2階", "area": "20.43"}, {"floor": "3階〜13階", "area": "580.64"}, {"floor": "14階", "area": "591.76"}]
+  ※ 合計は計算しないこと。各階の面積をそのまま返すだけでよい。
 
 ■ 専有部分の建物の表示（表題部（専有部分の建物の表示）から取得）
 - floor_number: 「③ 床面積 ㎡」欄の「〇階部分」から数字のみ（例：１０階部分 → "10"）
@@ -625,7 +629,7 @@ export class TokiExtractService {
   "structure": null,
   "roof_type": null,
   "floors": null,
-  "building_area": null,
+  "building_floor_areas": [],
   "floor_number": null,
   "room_number": null,
   "exclusive_area": null,
@@ -678,6 +682,32 @@ export class TokiExtractService {
     }
 
     // 型変換して返す
+    // building_floor_areas から延べ床面積を計算
+    let buildingArea: string | null = null;
+    if (Array.isArray(raw.building_floor_areas) && raw.building_floor_areas.length > 0) {
+      let total = 0;
+      for (const item of raw.building_floor_areas) {
+        const areaStr = String(item.area ?? '0').replace(/,/g, '');
+        const areaNum = parseFloat(areaStr);
+        if (isNaN(areaNum)) continue;
+
+        // 「3階〜13階」のような範囲表記の場合、階数を計算して掛ける
+        const floorStr = String(item.floor ?? '');
+        const rangeMatch = floorStr.match(/(\d+)階[〜~～―\-](\d+)階/);
+        if (rangeMatch) {
+          const startFloor = parseInt(rangeMatch[1], 10);
+          const endFloor = parseInt(rangeMatch[2], 10);
+          const floorCount = endFloor - startFloor + 1;
+          total += areaNum * floorCount;
+        } else {
+          total += areaNum;
+        }
+      }
+      // 小数点以下2桁で丸める
+      buildingArea = (Math.round(total * 100) / 100).toString();
+      console.log(`[TokiExtract] 延べ床面積計算: ${raw.building_floor_areas.length}階分 → ${buildingArea}`);
+    }
+
     return {
       ownerAddress: raw.owner_address ?? null,
       ownerName: raw.owner_name ?? null,
@@ -695,7 +725,7 @@ export class TokiExtractService {
       structure: raw.structure ?? null,
       roofType: raw.roof_type ?? null,
       floors: raw.floors ?? null,
-      buildingArea: raw.building_area ?? null,
+      buildingArea,
       floorNumber: raw.floor_number ?? null,
       roomNumber: raw.room_number ?? null,
       exclusiveArea: raw.exclusive_area ?? null,
@@ -1131,7 +1161,10 @@ export class TokiExtractService {
 - roof_type: 「① 構造」欄から屋根部分のみ（例：陸屋根、瓦葺、スレート葺、亜鉛メッキ鋼板葺、合金メッキ鋼板葺、金属板葺、セメント瓦葺）
 - floors: 「① 構造」欄から「〇階建」の数字のみ（例：14階建 → "14"）
 - basement_floors: 「① 構造」欄に「地下〇階」がある場合、地下階数の数字のみ（なければ null）
-- building_area: 「② 床面積 ㎡」欄の全階の面積を合計した値（「：」→「.」変換後に合計）
+- building_floor_areas: 「② 床面積 ㎡」欄に記載されている各階の面積を配列で返すこと（「：」→「.」変換、全角→半角変換）。
+  各要素は { "floor": "1階", "area": "202.05" } の形式で返す。
+  同じ面積の階が連続する場合（例：「3階〜13階 580.64」）は、各階を個別に展開せず1要素として返す。
+  ※ 合計は計算しないこと。各階の面積をそのまま返すだけでよい。
 
 【専有部分の建物の表示】
 対象：「表題部（専有部分の建物の表示）」
@@ -1177,7 +1210,7 @@ export class TokiExtractService {
   "roof_type": null,
   "floors": null,
   "basement_floors": null,
-  "building_area": null,
+  "building_floor_areas": [],
   "floor_number": null,
   "room_number": null,
   "exclusive_area": null,
@@ -1265,7 +1298,30 @@ export class TokiExtractService {
       roofType: raw.roof_type ?? null,
       floors: raw.floors ?? null,
       basementFloors: raw.basement_floors ?? null,
-      buildingArea: normalizeNumericString(raw.building_area),
+      buildingArea: (() => {
+        // building_floor_areas から延べ床面積を計算
+        if (Array.isArray(raw.building_floor_areas) && raw.building_floor_areas.length > 0) {
+          let total = 0;
+          for (const item of raw.building_floor_areas) {
+            const areaStr = String(item.area ?? '0').replace(/,/g, '');
+            const areaNum = parseFloat(areaStr);
+            if (isNaN(areaNum)) continue;
+            const floorStr = String(item.floor ?? '');
+            const rangeMatch = floorStr.match(/(\d+)階[〜~～―\-](\d+)階/);
+            if (rangeMatch) {
+              const startFloor = parseInt(rangeMatch[1], 10);
+              const endFloor = parseInt(rangeMatch[2], 10);
+              total += areaNum * (endFloor - startFloor + 1);
+            } else {
+              total += areaNum;
+            }
+          }
+          const result = (Math.round(total * 100) / 100).toString();
+          console.log(`[TokiKeiyaku] 延べ床面積計算: ${raw.building_floor_areas.length}階分 → ${result}`);
+          return result;
+        }
+        return normalizeNumericString(raw.building_area) ?? null;
+      })(),
       floorNumber: raw.floor_number ?? null,
       roomNumber: raw.room_number ?? null,
       exclusiveArea: normalizeNumericString(raw.exclusive_area),

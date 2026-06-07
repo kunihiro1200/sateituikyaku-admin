@@ -1247,26 +1247,16 @@ export default function PropertyListingDetailPage() {
     }
   };
 
-  // 値下げ配信メール送信成功時のハンドラ（送信履歴を保存して左列を更新する）
+  // 値下げ配信メール送信成功時のハンドラ（バックエンド側で送信履歴を保存済みなので、ここでは左列のリフレッシュのみ行う）
   const handleGmailDistributionSendSuccess = async (result: {
     successCount: number;
     subject: string;
     senderAddress: string;
     body: string;
   }) => {
-    try {
-      await propertyListingApi.saveSellerSendHistory(propertyNumber!, {
-        chat_type: 'seller_gmail',
-        subject: result.subject,
-        message: result.body,
-        sender_name: employee?.name || employee?.initials || '不明',
-      });
-      // 履歴保存後に左列の売主への送信履歴表示を更新する
-      setSellerSendHistoryRefreshTrigger(prev => prev + 1);
-    } catch (err) {
-      // 履歴保存失敗時はコンソールに記録し、UIには影響させない
-      console.error('[値下げ配信メール送信履歴] 保存に失敗しました:', err);
-    }
+    // バックエンドのsend-distribution-emailsエンドポイントで
+    // property_chat_historyに既に保存されるため、フロントエンド側は表示の更新のみ
+    setSellerSendHistoryRefreshTrigger(prev => prev + 1);
   };
 
   // メール送信実行

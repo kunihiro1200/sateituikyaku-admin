@@ -17,8 +17,8 @@ export class MultiplePropertyNumberParser {
       .map(part => part.trim())
       .filter(part => part.length > 0);
 
-    // 物件番号フォーマット（AA + 数字）に一致するもののみを返す
-    const propertyNumberPattern = /^AA\d+$/;
+    // 物件番号フォーマット（AA + 数字、ハイフン付き枝番も許可）に一致するもののみを返す
+    const propertyNumberPattern = /^AA\d+(-\d+)?$/;
     
     return parts.filter(part => propertyNumberPattern.test(part));
   }
@@ -31,7 +31,7 @@ export class MultiplePropertyNumberParser {
       return false;
     }
 
-    const pattern = /^AA\d+$/;
+    const pattern = /^AA\d+(-\d+)?$/;
     return pattern.test(propertyNumber.trim());
   }
 

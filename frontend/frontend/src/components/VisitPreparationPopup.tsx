@@ -354,24 +354,21 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         <span>（リンクなし）</span>
       ),
     },
-    // 9. 評価ポイント！（売主番号に応じてリンク先を変更）
+    // 9. 評価ポイント！（GAS経由で物件名を自動入力してスプレッドシートを開く）
     {
       label: '評価ポイント！',
       content: (() => {
         // FI始まり = 福岡店、AA始まり = 大分店
         const isFukuoka = sellerNumber?.startsWith('FI');
         const isOita = sellerNumber?.startsWith('AA');
-        const url = isFukuoka
-          ? 'https://docs.google.com/spreadsheets/d/1319AyjQXSC8APWLvm4vRnuI0z6zezzWOKQQ4cxyZ-5o/edit?gid=26251715#gid=26251715'
-          : isOita
-          ? 'https://docs.google.com/spreadsheets/d/1319AyjQXSC8APWLvm4vRnuI0z6zezzWOKQQ4cxyZ-5o/edit?gid=25766722#gid=25766722'
-          : null;
-        return url ? (
-          <a href={url} target="_blank" rel="noopener noreferrer">
+        const store = isFukuoka ? 'fukuoka' : isOita ? 'oita' : null;
+        if (!store) return <span>（対象外）</span>;
+        const gasBaseUrl = 'https://script.google.com/macros/s/AKfycbyALsQ0vdt4cRc_Q0uRNm34X27MTmW1CwAT9oN_wJs6rfEsgTfrXUfm7Xvr7EilNCMb/exec';
+        const gasUrl = `${gasBaseUrl}?property=${encodeURIComponent(propertyAddress || '')}&store=${store}`;
+        return (
+          <a href={gasUrl} target="_blank" rel="noopener noreferrer">
             評価ポイント！
           </a>
-        ) : (
-          <span>（対象外）</span>
         );
       })(),
     },
