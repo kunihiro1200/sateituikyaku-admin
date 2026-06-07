@@ -27,6 +27,7 @@ function applyFIBranding(subject: string, body: string): { subject: string; body
   body = body.replace(/株式会社いふうと申します。/g, '株式会社くじら不動産と申します。');
   body = body.replace(/不動産会社の㈱いふうです。/g, '不動産会社の株式会社くじら不動産です。');
   body = body.replace(/㈱いふうです。/g, '株式会社くじら不動産です。');
+  body = body.replace(/株式会社いふうです。/g, '株式会社くじら不動産（株式会社いふう）です。');
   body = body.replace(/いふうにてお手伝い/g, 'くじら不動産にてお手伝い');
   body = body.replace(/是非いふうにて/g, '是非くじら不動産にて');
 
