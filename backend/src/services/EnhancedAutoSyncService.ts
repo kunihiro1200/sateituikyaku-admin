@@ -1541,20 +1541,49 @@ export class EnhancedAutoSyncService {
     }
 
     // 査定額を追加（万円→円に変換）
-    const val1 = this.parseNumeric(valuation1);
-    const val2 = this.parseNumeric(valuation2);
-    const val3 = this.parseNumeric(valuation3);
-    if (val1 !== null) updateData.valuation_amount_1 = val1 * 10000;
-    if (val2 !== null) updateData.valuation_amount_2 = val2 * 10000;
-    if (val3 !== null) updateData.valuation_amount_3 = val3 * 10000;
+    // 🚨 重要: スプシ手入力列（査定額1）がある場合は常に上書き。
+    // 自動計算列（査定額1（自動計算）v）のみの場合は、DBに既に値があれば上書きしない。
+    // これにより、管理画面で手入力した査定額が自動同期で消えることを防ぐ。
+    {
+      // DBの現在値を取得
+      const { data: currentSeller } = await this.supabase
+        .from('sellers')
+        .select('valuation_amount_1, valuation_amount_2, valuation_amount_3, fixed_asset_tax_road_price')
+        .eq('seller_number', sellerNumber)
+        .single();
 
-    // 固定資産税路線価を追加（円/㎡、万円変換不要）
-    const fixedAssetTaxRoadPrice = row['固定資産税路線価'];
-    const parsedFixedAssetTaxRoadPrice = this.parseNumeric(fixedAssetTaxRoadPrice);
-    if (parsedFixedAssetTaxRoadPrice !== null) {
-      updateData.fixed_asset_tax_road_price = parsedFixedAssetTaxRoadPrice;
-    } else if (fixedAssetTaxRoadPrice === '' || fixedAssetTaxRoadPrice === null || fixedAssetTaxRoadPrice === undefined) {
-      updateData.fixed_asset_tax_road_price = null;
+      const hasManualSheet1 = !!(row['査定額1'] && String(row['査定額1']).trim() !== '');
+      const hasManualSheet2 = !!(row['査定額2'] && String(row['査定額2']).trim() !== '');
+      const hasManualSheet3 = !!(row['査定額3'] && String(row['査定額3']).trim() !== '');
+
+      const val1 = this.parseNumeric(valuation1);
+      const val2 = this.parseNumeric(valuation2);
+      const val3 = this.parseNumeric(valuation3);
+
+      // スプシ手入力列に値がある → 常に上書き
+      // スプシが自動計算列のみ → DBがnullの場合のみ更新（手入力値を保護）
+      if (val1 !== null && (hasManualSheet1 || currentSeller?.valuation_amount_1 === null)) {
+        updateData.valuation_amount_1 = val1 * 10000;
+      }
+      if (val2 !== null && (hasManualSheet2 || currentSeller?.valuation_amount_2 === null)) {
+        updateData.valuation_amount_2 = val2 * 10000;
+      }
+      if (val3 !== null && (hasManualSheet3 || currentSeller?.valuation_amount_3 === null)) {
+        updateData.valuation_amount_3 = val3 * 10000;
+      }
+
+      // 固定資産税路線価: スプシ手入力査定額がある場合は上書きしない（手入力時はnullにしている）
+      const fixedAssetTaxRoadPrice = row['固定資産税路線価'];
+      const parsedFixedAssetTaxRoadPrice = this.parseNumeric(fixedAssetTaxRoadPrice);
+      if (parsedFixedAssetTaxRoadPrice !== null) {
+        // 手入力査定額がDBに存在する（スプシ手入力列なし＆DB値あり）場合は路線価を上書きしない
+        const dbHasManualValuation = !hasManualSheet1 && currentSeller?.valuation_amount_1 !== null;
+        if (!dbHasManualValuation) {
+          updateData.fixed_asset_tax_road_price = parsedFixedAssetTaxRoadPrice;
+        }
+      } else if (fixedAssetTaxRoadPrice === '' || fixedAssetTaxRoadPrice === null || fixedAssetTaxRoadPrice === undefined) {
+        updateData.fixed_asset_tax_road_price = null;
+      }
     }
 
     // 専任他決打合せを追加（CZ列、列104、0-indexed: 103）
@@ -1851,18 +1880,47 @@ export class EnhancedAutoSyncService {
     }
 
     // 査定額を追加（万円→円に変換）
-    const val1 = this.parseNumeric(valuation1);
-    const val2 = this.parseNumeric(valuation2);
-    const val3 = this.parseNumeric(valuation3);
-    if (val1 !== null) encryptedData.valuation_amount_1 = val1 * 10000;
-    if (val2 !== null) encryptedData.valuation_amount_2 = val2 * 10000;
-    if (val3 !== null) encryptedData.valuation_amount_3 = val3 * 10000;
+    // 🚨 重要: スプシ手入力列（査定額1）がある場合は常に上書き。
+    // 自動計算列（査定額1（自動計算）v）のみの場合は、DBに既に値があれば上書きしない。
+    // これにより、管理画面で手入力した査定額が自動同期で消えることを防ぐ。
+    {
+      // DBの現在値を取得（seller_numberで検索）
+      const { data: currentSellerForValuation } = await this.supabase
+        .from('sellers')
+        .select('valuation_amount_1, valuation_amount_2, valuation_amount_3')
+        .eq('seller_number', sellerNumber)
+        .single();
 
-    // 固定資産税路線価を追加（円/㎡、万円変換不要）
-    const fixedAssetTaxRoadPriceNew = row['固定資産税路線価'];
-    const parsedFixedAssetTaxRoadPriceNew = this.parseNumeric(fixedAssetTaxRoadPriceNew);
-    if (parsedFixedAssetTaxRoadPriceNew !== null) {
-      encryptedData.fixed_asset_tax_road_price = parsedFixedAssetTaxRoadPriceNew;
+      const hasManualSheet1 = !!(row['査定額1'] && String(row['査定額1']).trim() !== '');
+      const hasManualSheet2 = !!(row['査定額2'] && String(row['査定額2']).trim() !== '');
+      const hasManualSheet3 = !!(row['査定額3'] && String(row['査定額3']).trim() !== '');
+
+      const val1 = this.parseNumeric(valuation1);
+      const val2 = this.parseNumeric(valuation2);
+      const val3 = this.parseNumeric(valuation3);
+
+      // スプシ手入力列に値がある → 常に上書き
+      // スプシが自動計算列のみ → DBがnullの場合のみ更新（手入力値を保護）
+      if (val1 !== null && (hasManualSheet1 || currentSellerForValuation?.valuation_amount_1 === null)) {
+        encryptedData.valuation_amount_1 = val1 * 10000;
+      }
+      if (val2 !== null && (hasManualSheet2 || currentSellerForValuation?.valuation_amount_2 === null)) {
+        encryptedData.valuation_amount_2 = val2 * 10000;
+      }
+      if (val3 !== null && (hasManualSheet3 || currentSellerForValuation?.valuation_amount_3 === null)) {
+        encryptedData.valuation_amount_3 = val3 * 10000;
+      }
+
+      // 固定資産税路線価を追加（円/㎡、万円変換不要）
+      // 手入力査定額がDBに存在する（スプシ手入力列なし＆DB値あり）場合は路線価を上書きしない
+      const fixedAssetTaxRoadPriceNew = row['固定資産税路線価'];
+      const parsedFixedAssetTaxRoadPriceNew = this.parseNumeric(fixedAssetTaxRoadPriceNew);
+      if (parsedFixedAssetTaxRoadPriceNew !== null) {
+        const dbHasManualValuationForSync = !hasManualSheet1 && currentSellerForValuation?.valuation_amount_1 !== null;
+        if (!dbHasManualValuationForSync) {
+          encryptedData.fixed_asset_tax_road_price = parsedFixedAssetTaxRoadPriceNew;
+        }
+      }
     }
 
     // 専任他決打合せを追加（CZ列、列104、0-indexed: 103）
