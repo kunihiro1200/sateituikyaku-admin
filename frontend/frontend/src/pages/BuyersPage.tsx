@@ -816,7 +816,12 @@ export default function BuyersPage() {
                             <Typography
                               variant="body2"
                               fontWeight="bold"
-                              sx={{ color: SECTION_COLORS.buyer.main, fontSize: '14px' }}
+                              sx={{
+                                color: buyer.buyer_number?.startsWith('FK')
+                                  ? '#d32f2f'
+                                  : SECTION_COLORS.buyer.main,
+                                fontSize: '14px',
+                              }}
                             >
                               {buyer.buyer_number || '-'}
                             </Typography>
@@ -926,7 +931,7 @@ export default function BuyersPage() {
                               '&:hover .copy-icon': { visibility: 'visible' },
                             }}
                           >
-                            <Typography variant="body2" fontWeight="bold" sx={{ color: SECTION_COLORS.buyer.main }}>
+                            <Typography variant="body2" fontWeight="bold" sx={{ color: buyer.buyer_number?.startsWith('FK') ? '#d32f2f' : SECTION_COLORS.buyer.main }}>
                               {buyer.buyer_number || '-'}
                             </Typography>
                             {buyer.buyer_number && (
