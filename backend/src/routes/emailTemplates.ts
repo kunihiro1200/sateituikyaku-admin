@@ -16,57 +16,72 @@ const sellerService = new SellerService();
  * FI物件判定: 件名・本文を福岡（くじら不動産）用に置換するヘルパー
  */
 function applyFIBranding(subject: string, body: string): { subject: string; body: string } {
-  // 件名: 各種いふう表記 → くじら不動産表記に置換
-  // パターン1: 括弧付き（スプレッドシートテンプレートで使われる形式）
-  subject = subject.replace(/（[㈱株式会社　 ]*いふう[）)]/g, '（株くじら不動産）');
-  subject = subject.replace(/\([㈱株式会社　 ]*いふう[）)]/g, '（株くじら不動産）');
+  // ── 件名 ──────────────────────────────────────────────
+  // パターン1: 括弧付き （株いふう）（㈱いふう）（株式会社いふう）など
+  subject = subject.replace(/[（(][㈱株式会社　 ]*いふう[）)]/g, '（株くじら不動産）');
   // パターン2: 括弧なし
   subject = subject.replace(/株式会社いふう/g, '株式会社くじら不動産（株式会社いふう）');
   subject = subject.replace(/㈱いふう/g, '株式会社くじら不動産（株式会社いふう）');
 
-  // 本文: 会社名テキスト置換
+  // ── 本文: 会社名テキスト置換 ─────────────────────────────
   body = body.replace(/株式会社いふうと申します。/g, '株式会社くじら不動産と申します。');
+  body = body.replace(/不動産会社の㈱いふうです。/g, '不動産会社の株式会社くじら不動産です。');
+  body = body.replace(/㈱いふうです。/g, '株式会社くじら不動産です。');
   body = body.replace(/いふうにてお手伝い/g, 'くじら不動産にてお手伝い');
-  body = body.replace(/株式会社 いふう\n/g, '株式会社くじら不動産（株式会社いふう）\n');
-  body = body.replace(/株式会社 いふう$/gm, '株式会社くじら不動産（株式会社いふう）');
+  body = body.replace(/是非いふうにて/g, '是非くじら不動産にて');
 
-  // 本文: 大分専用サイトリンク削除
+  // ── 本文: 大分専用サイトリンクを福岡用に変更 or 削除 ────────────
+  // 大分建売専門サイトリンク → 福岡建売専門サイトリンクに変更
   body = body.replace(
-    /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の情報はこちらから検索可能です↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties/g,
+    /★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri/g,
+    '★福岡市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/fukuoka-tateuri'
+  );
+  // 非公開情報リンクを削除（単独行パターン）
+  body = body.replace(
+    /\n?★非公開の情報はこちらから検索可能です↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties/g,
     ''
   );
   body = body.replace(
-    /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の物件はこちらから↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties\nお気軽にお問い合わせください。/g,
+    /\n?★非公開の物件はこちらから↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties\nお気軽にお問い合わせください。/g,
+    ''
+  );
+  body = body.replace(
+    /\n?★非公開の物件はこちらから↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties/g,
     ''
   );
 
-  // 本文: 大分署名ブロック全体を福岡署名に置換（住所・TEL・FAX・Mail・HP）
-  // パターン1: ***で囲まれた署名ブロック
-  body = body.replace(
-    /\*{3,}\n株式会社 いふう[\s\S]*?\*{3,}/g,
-    `***************************\n株式会社くじら不動産（株式会社いふう）\n〒810-0073\n福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201\nTEL：092-401-5331\nFAX：092-401-5332\nHP：https://kujira-fudosan.com/\n***************************`
-  );
-  // パターン2: 〒870-0044 形式の住所行
+  // ── 本文: 署名ブロック全体を福岡署名に置換 ─────────────────────
+  const kujiraSignature =
+    `***************************\n` +
+    `株式会社くじら不動産（株式会社いふう）\n` +
+    `〒810-0073\n` +
+    `福岡市中央区舞鶴3-1-10\n` +
+    `オフィスニューガイアセレス赤坂門No.19 -201\n` +
+    `TEL：092-401-5331\n` +
+    `FAX：092-401-5332\n` +
+    `HP：https://kujira-fudosan.com/\n` +
+    `***************************`;
+
+  // パターン1: ***で囲まれた署名ブロック全体を置換
+  body = body.replace(/\*{3,}[\s\S]*?株式会社 いふう[\s\S]*?\*{3,}/g, kujiraSignature);
+  // パターン2: ***で囲まれているが会社名が既にずれているケース（〒870から始まる）
+  body = body.replace(/\*{3,}\n〒870-0044[\s\S]*?\*{3,}/g, kujiraSignature);
+
+  // ── 本文: 個別の住所・TEL置換（署名ブロック外に残ったもの） ────────
   body = body.replace(/〒870-0044\n?大分市舞鶴町1丁目3-30/g, '〒810-0073\n福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
-  body = body.replace(/〒870-0044大分市舞鶴町1丁目3-30/g, '〒810-0073福岡市中央区舞鶴3-1-10オフィスニューガイアセレス赤坂門No.19 -201');
-  // パターン3: 住所のみ（〒なし）
   body = body.replace(/大分市舞鶴町1-3-30/g, '〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
   body = body.replace(/大分市舞鶴町1丁目3-30/g, '福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
-  // TEL置換
   body = body.replace(/TEL：097-533-2022/g, 'TEL：092-401-5331');
   body = body.replace(/TEL:097-533-2022/g, 'TEL:092-401-5331');
-  // FAX置換（大分FAXを福岡FAXに）
   body = body.replace(/FAX：097-529-7160/g, 'FAX：092-401-5332');
   body = body.replace(/FAX:097-529-7160/g, 'FAX:092-401-5332');
-  // TEL行の後にFAX・HPを追加（まだFAX行がない場合）
-  body = body.replace(/(TEL[：:]092-401-5331)\n(?!FAX)/g, '$1\nFAX：092-401-5332\nHP：https://kujira-fudosan.com/\n');
-  // Mail・HP行（大分用）を削除
-  body = body.replace(/MAIL:tenant@ifoo-oita\.com\s*\n?/g, '');
-  body = body.replace(/HP：https:\/\/ifoo-oita\.com\/\s*\n?/g, '');
-  body = body.replace(/採用HP：https:\/\/en-gage\.net\/ifoo-oita\/\s*\n?/g, '');
-  body = body.replace(/店休日：毎週水曜日 年末年始、GW、盆\s*\n?/g, '');
-  body = body.replace(/定休日：水曜\s*\n?/g, '');
-  body = body.replace(/営業時間：10時～18時\s*\n?/g, '');
+  // ★★ 非公開情報配信中ブロック削除
+  body = body.replace(
+    /\n?★★ 非公開情報配信中！！ ★★\nメールで公開前の最新情報を優先的にご案内しております。物件探しにぜひご活用ください！\n配信希望／配信内容変更は こちら から（アンケートフォームに移動します）\nhttps:\/\/bit\.ly\/3TT9ZIH/g,
+    ''
+  );
+  // 残った署名中の「株式会社 いふう」を置換（ブロック置換で漏れたケース）
+  body = body.replace(/株式会社 いふう/g, '株式会社くじら不動産（株式会社いふう）');
 
   return { subject, body };
 }
