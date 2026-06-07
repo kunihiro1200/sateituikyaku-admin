@@ -26,18 +26,23 @@ export function generateSmsBody(
   params: {
     sellerName?: string | null;
     address?: string | null;
+    propertyNumber?: string | null;
   }
 ): string {
   // sellerName が null/undefined の場合は「オーナー」で代替する（要件4.5）
   const sellerName = params.sellerName ?? 'オーナー';
   // address が null/undefined の場合は空文字で代替する
   const address = params.address ?? '';
+  // FI 物件番号の場合はくじら不動産（株式会社いふう）を使用
+  const companyName = (params.propertyNumber ?? '').toUpperCase().includes('FI')
+    ? '株式会社くじら不動産（株式会社いふう）'
+    : '株式会社いふう';
 
   switch (templateId) {
     case 'viewing_inquiry':
-      return `${sellerName}様\n\nお世話になっております。\n${address}の内覧についてご連絡させていただきました。\nご都合のよい日時をお知らせいただけますでしょうか。\n\n株式会社いふう`;
+      return `${sellerName}様\n\nお世話になっております。\n${address}の内覧についてご連絡させていただきました。\nご都合のよい日時をお知らせいただけますでしょうか。\n\n${companyName}`;
 
     case 'empty':
-      return '株式会社いふう';
+      return companyName;
   }
 }

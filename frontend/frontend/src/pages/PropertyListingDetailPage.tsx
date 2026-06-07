@@ -1163,13 +1163,27 @@ export default function PropertyListingDetailPage() {
   const handleOpenEmailDialog = () => {
     if (!data?.seller_email) return;
     const defaultTemplate = emailTemplates[0];
-    const subject = defaultTemplate ? defaultTemplate.subject : '';
-    const body = defaultTemplate ? defaultTemplate.content.replace(/\n/g, '<br>') : '';
+    let subject = defaultTemplate ? defaultTemplate.subject : '';
+    let body = defaultTemplate ? defaultTemplate.content : '';
+    // FI 物件番号の場合は会社名・署名をくじら不動産に置換
+    if ((propertyNumber ?? '').toUpperCase().includes('FI')) {
+      subject = subject
+        .replace(/株式会社いふう/g, '株式会社くじら不動産（株式会社いふう）')
+        .replace(/（株）いふう/g, '株式会社くじら不動産（株式会社いふう）');
+      body = body
+        .replace(/株式会社いふう/g, '株式会社くじら不動産（株式会社いふう）')
+        .replace(/（株）いふう/g, '株式会社くじら不動産（株式会社いふう）')
+        .replace(/大分市舞鶴町1-3-30/g, '福岡市中央区舞鶴3-1-10')
+        .replace(/大分市舞鶴町1丁目3-30/g, '福岡市中央区舞鶴3-1-10')
+        .replace(/TEL：097-533-2022/g, 'TEL：092-401-5331')
+        .replace(/TEL:097-533-2022/g, 'TEL:092-401-5331');
+    }
+    const htmlBody = body.replace(/\n/g, '<br>');
     setEditableEmailRecipient(data.seller_email);
     setEditableEmailSubject(subject);
-    setEditableEmailBody(body);
+    setEditableEmailBody(htmlBody);
     setSelectedImages([]);
-    setEmailDialog({ open: true, subject, body, recipient: data.seller_email });
+    setEmailDialog({ open: true, subject, body: htmlBody, recipient: data.seller_email });
   };
 
   // SMSテンプレート選択ハンドラ
@@ -1178,6 +1192,7 @@ export default function PropertyListingDetailPage() {
     const body = generateSmsBody(templateId, {
       sellerName: data?.seller_name,
       address: data?.display_address || data?.address,
+      propertyNumber: propertyNumber,
     });
     setSmsDialog({ open: true, body, templateName: template.name });
     setSmsTemplateMenuAnchor(null);
