@@ -388,11 +388,12 @@ export class BuyerService {
   async getByBuyerNumber(buyerNumber: string, includeDeleted: boolean = false): Promise<any | null> {
     console.log(`[BuyerService.getByBuyerNumber] buyerNumber=${buyerNumber} (type: ${typeof buyerNumber})`);
     
-    // BY_プレフィックス形式（例: BY_MN28sl8yi5yLNI）はそのまま文字列で検索
+    // BY_プレフィックス形式（例: BY_MN28sl8yi5yLNI）またはFK形式（例: FK1）はそのまま文字列で検索
     // 数値形式の場合はintに変換して検索
     const isByPrefix = /^BY_[A-Za-z0-9_]+$/.test(buyerNumber);
-    const searchValue = isByPrefix ? buyerNumber : parseInt(buyerNumber, 10);
-    console.log(`[BuyerService.getByBuyerNumber] searchValue=${searchValue} (isByPrefix=${isByPrefix})`);
+    const isFkPrefix = /^FK\d+$/.test(buyerNumber);
+    const searchValue = (isByPrefix || isFkPrefix) ? buyerNumber : parseInt(buyerNumber, 10);
+    console.log(`[BuyerService.getByBuyerNumber] searchValue=${searchValue} (isByPrefix=${isByPrefix}, isFkPrefix=${isFkPrefix})`);
     
     let query = this.supabase
       .from('buyers')
@@ -881,9 +882,10 @@ export class BuyerService {
     // Apply second inquiry rule: force pinrich to '登録不要（不可）' if inquiry_source is '2件目以降'
     const finalAllowedData = this.applySecondInquiryRule(allowedData);
 
-    // BY_プレフィックス形式はそのまま文字列で、数値形式はintに変換
+    // BY_プレフィックス形式またはFK形式はそのまま文字列で、数値形式はintに変換
     const isByPrefixUpdate = /^BY_[A-Za-z0-9_]+$/.test(buyerNumber);
-    const buyerNumberValue = isByPrefixUpdate ? buyerNumber : parseInt(buyerNumber, 10);
+    const isFkPrefixUpdate = /^FK\d+$/.test(buyerNumber);
+    const buyerNumberValue = (isByPrefixUpdate || isFkPrefixUpdate) ? buyerNumber : parseInt(buyerNumber, 10);
     console.log('[BuyerService.update] buyerNumberValue:', buyerNumberValue);
 
     const { data, error } = await this.supabase
@@ -3102,11 +3104,12 @@ export class BuyerService {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(buyerIdOrNumber);
     const isNumeric = /^\d+$/.test(buyerIdOrNumber);
     const isByPrefix = /^BY_[A-Za-z0-9_]+$/.test(buyerIdOrNumber);
+    const isFkPrefix = /^FK\d+$/.test(buyerIdOrNumber);
 
     // buyer_numberで削除（主キーがTEXTのため、buyer_numberで特定するのが確実）
     let query = this.supabase.from('buyers').delete();
 
-    if (isNumeric || isByPrefix) {
+    if (isNumeric || isByPrefix || isFkPrefix) {
       // 数値形式またはBY_プレフィックス形式はbuyer_numberで削除
       query = query.eq('buyer_number', buyerIdOrNumber);
     } else if (isUuid) {
