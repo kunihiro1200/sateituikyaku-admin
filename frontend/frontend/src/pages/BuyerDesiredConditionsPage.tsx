@@ -94,7 +94,8 @@ export default function BuyerDesiredConditionsPage() {
   const isUuid = buyer_number ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(buyer_number) : false;
   const isNumericBuyerNumber = buyer_number ? /^\d+$/.test(buyer_number) : false;
   const isByPrefixBuyerNumber = buyer_number ? /^BY_[A-Za-z0-9_]+$/.test(buyer_number) : false;
-  const isValidBuyerNumber = isUuid || isNumericBuyerNumber || isByPrefixBuyerNumber;
+  const isFkPrefixBuyerNumber = buyer_number ? /^FK\d+$/.test(buyer_number) : false;
+  const isValidBuyerNumber = isUuid || isNumericBuyerNumber || isByPrefixBuyerNumber || isFkPrefixBuyerNumber;
 
   useEffect(() => {
     if (buyer_number && isValidBuyerNumber) {
