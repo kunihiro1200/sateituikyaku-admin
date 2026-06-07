@@ -102,7 +102,15 @@ const ONSEN_OPTIONS = ['あり', 'なし', 'どちらでも'] as const;
 // 高層階フィルター選択肢
 const FLOOR_OPTIONS = ['高層階', '低層階', 'どちらでも'] as const;
 
-const SIGNATURE_EMAIL = `\n\n××××××××××××××××××××××××××××\n株式会社いふう\n大分市舞鶴町1-3-30\nSTビル１F\n097-533-2022\ntenant@ifoo-oita.com\n定休日：水曜\n営業時間：10時～18時\n××××××××××××××××××××××××××××`;
+// 署名を物件住所（福岡県か否か）に応じて切り替える関数
+const getSignatureEmail = (address?: string): string => {
+  const isFukuoka = address ? address.includes('福岡') : false;
+  if (isFukuoka) {
+    return `\n\n××××××××××××××××××××××××××××\n株式会社くじら不動産\n福岡市中央区舞靀3－1－10\nTEL：092-401-5331\nMAIL: tenant@ifoo-oita.com\n××××××××××××××××××××××××××××`;
+  }
+  // デフォルト：大分店署名
+  return `\n\n××××××××××××××××××××××××××××\n株式会社いふう\n大分市舞鶴町1-3-30\nSTビル１F\n097-533-2022\ntenant@ifoo-oita.com\n定休日：水曜\n営業時間：10時～18時\n××××××××××××××××××××××××××××`;
+};
 
 export default function OtherCompanyDistributionPage() {
   const navigate = useNavigate();
@@ -289,6 +297,29 @@ export default function OtherCompanyDistributionPage() {
     // 物件種別が「土地」以外の場合は「指定なし」のままにして、ユーザーに入力を促す
   };
 
+  // 人物写真フィルター: 縦長画像（縦 > 横）を除外する
+  const filterOutPortraitImages = (imageUrls: string[]): Promise<string[]> => {
+    return Promise.all(
+      imageUrls.map(
+        (url) =>
+          new Promise<string | null>((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              // 縦長（height > width * 0.95）は人物写真とみなして除外
+              if (img.height > img.width * 0.95) {
+                console.log('[画像フィルター] 縦長画像を除外:', url, `${img.width}x${img.height}`);
+                resolve(null);
+              } else {
+                resolve(url);
+              }
+            };
+            img.onerror = () => resolve(url); // 読み込みエラーは除外しない
+            img.src = url;
+          })
+      )
+    ).then((results) => results.filter((url): url is string => url !== null));
+  };
+
   const handleScrape = async () => {
     if (!propertyUrl.trim()) return;
     setScraping(true);
@@ -306,13 +337,14 @@ export default function OtherCompanyDistributionPage() {
       // 自動入力を実行
       autoFillFromScrapedData(result.data);
       
-      // 画像を自動選択（最初の3枚）
+      // 画像を自動選択（人物写真を除外して最初の3枚）
       if (result.data.images && result.data.images.length > 0) {
-        const firstThreeImages: ImageFile[] = result.data.images.slice(0, 3).map((imgUrl: string, index: number) => ({
+        const filteredImages = await filterOutPortraitImages(result.data.images);
+        const firstThreeImages: ImageFile[] = filteredImages.slice(0, 3).map((imgUrl: string, index: number) => ({
           id: `scraped-${Date.now()}-${index}`,
           name: `物件画像${index + 1}.jpg`,
           source: 'url' as const,
-          size: 0, // URLの場合はサイズ不明
+          size: 0,
           mimeType: 'image/jpeg',
           previewUrl: imgUrl,
           url: imgUrl,
@@ -369,9 +401,10 @@ export default function OtherCompanyDistributionPage() {
       // 自動入力を実行
       autoFillFromScrapedData(result.data);
 
-      // 画像を自動選択（最初の3枚）
+      // 画像を自動選択（人物写真を除外して最初の3枚）
       if (result.data.images && result.data.images.length > 0) {
-        const firstThreeImages: ImageFile[] = result.data.images.slice(0, 3).map((imgUrl: string, index: number) => ({
+        const filteredImages = await filterOutPortraitImages(result.data.images);
+        const firstThreeImages: ImageFile[] = filteredImages.slice(0, 3).map((imgUrl: string, index: number) => ({
           id: `scraped-suumo-${Date.now()}-${index}`,
           name: `物件画像${index + 1}.jpg`,
           source: 'url' as const,
@@ -579,12 +612,12 @@ export default function OtherCompanyDistributionPage() {
         return `<img src="${imgSrc}" alt="物件画像${index + 1}" style="max-width: 600px; width: 100%; height: auto; margin: 10px 0; display: block;" />`;
       }).join('');
       
-      return `${buyerName}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br><br>${propertyAddress}/${propertyPrice}/<br><br>${imageHtml}<br>他の画像はこちらから<br><a href="${linkUrl}">${linkUrl}</a>${commentSection}<br>${propertyInfo}<br>★建売専門HPはこちら<br><a href="https://sateituikyaku-admin-frontend.vercel.app/tateuri">https://sateituikyaku-admin-frontend.vercel.app/tateuri</a>${SIGNATURE_EMAIL.replace(/\n/g, '<br>')}`;
+      return `${buyerName}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br><br>${propertyAddress}/${propertyPrice}/<br><br>${imageHtml}<br>他の画像はこちらから<br><a href="${linkUrl}">${linkUrl}</a>${commentSection}<br>${propertyInfo}<br>★建売専門HPはこちら<br><a href="https://sateituikyaku-admin-frontend.vercel.app/tateuri">https://sateituikyaku-admin-frontend.vercel.app/tateuri</a>${getSignatureEmail(previewData?.address).replace(/\n/g, '<br>')}`;
     }
     
     // スクレイピングデータがない場合は従来フォーマット
     const urlLine = linkUrl ? `<br>物件情報はこちら: <a href="${linkUrl}">${linkUrl}</a><br>` : '';
-    return `${buyerName}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br>他社様の物件でも気になる物件がございましたらまとめてご案内可能ですのでお申し付けくださいませ。${urlLine}<br>★建売専門HPはこちら<br><a href="https://sateituikyaku-admin-frontend.vercel.app/tateuri">https://sateituikyaku-admin-frontend.vercel.app/tateuri</a>${SIGNATURE_EMAIL.replace(/\n/g, '<br>')}`;
+    return `${buyerName}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br>他社様の物件でも気になる物件がございましたらまとめてご案内可能ですのでお申し付けくださいませ。${urlLine}<br>★建売専門HPはこちら<br><a href="https://sateituikyaku-admin-frontend.vercel.app/tateuri">https://sateituikyaku-admin-frontend.vercel.app/tateuri</a>${getSignatureEmail(previewData?.address).replace(/\n/g, '<br>')}`;
   };
 
   const openEmailDialog = () => {
