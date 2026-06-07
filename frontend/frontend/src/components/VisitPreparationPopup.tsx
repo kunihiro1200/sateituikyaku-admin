@@ -354,7 +354,28 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         <span>（リンクなし）</span>
       ),
     },
-    // 9. ハウスメーカー（コメントにハウスメーカー名がある場合のみ）
+    // 9. 評価ポイント！（売主番号に応じてリンク先を変更）
+    {
+      label: '評価ポイント！',
+      content: (() => {
+        // FI始まり = 福岡店、AA始まり = 大分店
+        const isFukuoka = sellerNumber?.startsWith('FI');
+        const isOita = sellerNumber?.startsWith('AA');
+        const url = isFukuoka
+          ? 'https://docs.google.com/spreadsheets/d/1319AyjQXSC8APWLvm4vRnuI0z6zezzWOKQQ4cxyZ-5o/edit?gid=26251715#gid=26251715'
+          : isOita
+          ? 'https://docs.google.com/spreadsheets/d/1319AyjQXSC8APWLvm4vRnuI0z6zezzWOKQQ4cxyZ-5o/edit?gid=25766722#gid=25766722'
+          : null;
+        return url ? (
+          <a href={url} target="_blank" rel="noopener noreferrer">
+            評価ポイント！
+          </a>
+        ) : (
+          <span>（対象外）</span>
+        );
+      })(),
+    },
+    // 10. ハウスメーカー（コメントにハウスメーカー名がある場合のみ）
     ...(hasHouseMaker ? [{
       label: 'ハウスメーカー',
       content: (
@@ -372,7 +393,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         </Box>
       ),
     }] : []),
-    // 9. マンション（物件住所にマンション名がある場合のみ）
+    // 11. マンション（物件住所にマンション名がある場合のみ）
     ...(hasMansion ? [{
       label: `マンション：${detectedMansionBrand}`,
       content: (
