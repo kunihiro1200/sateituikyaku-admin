@@ -354,21 +354,43 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         <span>（リンクなし）</span>
       ),
     },
-    // 9. 評価ポイント！（GAS経由で物件名を自動入力してスプレッドシートを開く）
+    // 9. 評価ポイント！（物件住所をコピーしてスプレッドシートを開く）
     {
       label: '評価ポイント！',
       content: (() => {
         // FI始まり = 福岡店、AA始まり = 大分店
         const isFukuoka = sellerNumber?.startsWith('FI');
         const isOita = sellerNumber?.startsWith('AA');
-        const store = isFukuoka ? 'fukuoka' : isOita ? 'oita' : null;
-        if (!store) return <span>（対象外）</span>;
-        const gasBaseUrl = 'https://script.google.com/macros/s/AKfycbyALsQ0vdt4cRc_Q0uRNm34X27MTmW1CwAT9oN_wJs6rfEsgTfrXUfm7Xvr7EilNCMb/exec';
-        const gasUrl = `${gasBaseUrl}?property=${encodeURIComponent(propertyAddress || '')}&store=${store}`;
+        if (!isFukuoka && !isOita) return <span>（対象外）</span>;
+        const url = isFukuoka
+          ? 'https://docs.google.com/spreadsheets/d/1319AyjQXSC8APWLvm4vRnuI0z6zezzWOKQQ4cxyZ-5o/edit?gid=26251715#gid=26251715'
+          : 'https://docs.google.com/spreadsheets/d/1319AyjQXSC8APWLvm4vRnuI0z6zezzWOKQQ4cxyZ-5o/edit?gid=25766722#gid=25766722';
+        const handleClick = async (ev: React.MouseEvent) => {
+          ev.preventDefault();
+          if (propertyAddress) {
+            try {
+              await navigator.clipboard.writeText(propertyAddress);
+            } catch {
+              // フォールバック
+              const el = document.createElement('textarea');
+              el.value = propertyAddress;
+              document.body.appendChild(el);
+              el.select();
+              document.execCommand('copy');
+              document.body.removeChild(el);
+            }
+          }
+          window.open(url, '_blank');
+        };
         return (
-          <a href={gasUrl} target="_blank" rel="noopener noreferrer">
-            評価ポイント！
-          </a>
+          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+            <a href={url} onClick={handleClick} style={{ cursor: 'pointer' }}>
+              評価ポイント！
+            </a>
+            <Typography component="span" sx={{ color: 'success.main', fontSize: '0.8rem' }}>
+              ※クリックで物件住所をコピー済み → B8セルにCtrl+V
+            </Typography>
+          </Box>
         );
       })(),
     },
