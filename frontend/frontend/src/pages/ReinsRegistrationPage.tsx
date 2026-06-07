@@ -59,14 +59,36 @@ const REINS_FIELDS: {
   { key: 'report_date_setting', label: '報告日設定', options: ['する', 'しない'] },
 ];
 
-function buildEmailBody(sellerName: string, suumoUrl: string): string {
+/** 物件番号に FI が含まれるかどうかで会社情報を切り替える */
+function isFiProperty(pn: string | undefined): boolean {
+  return (pn ?? '').toUpperCase().includes('FI');
+}
+
+const COMPANY_INFO_IFOO = `***************************
+株式会社 いふう
+〒870-0044
+大分市舞鶴町1丁目3-30
+TEL：097-533-2022
+HP：https://ifoo-oita.com/
+店休日：毎週水曜日　年末年始、GW、盆
+***************************`;
+
+const COMPANY_INFO_KUJIRA = `〒810-0073福岡市中央区舞鶴3-1-10オフィスニューガイアセレス赤坂門No.19-201
+株式会社くじら不動産
+TEL:092-401-5331
+Mail:tenant@ifoo-oita.com`;
+
+function buildEmailBody(sellerName: string, suumoUrl: string, propertyNumber?: string): string {
   const suumoLine = suumoUrl ? `■SUUMO\n${suumoUrl}` : '■SUUMO';
   // seller_name に既に「様」が含まれている場合は重複しないようにする
   const nameWithSama = sellerName.endsWith('様') ? sellerName : `${sellerName}様`;
+  const isFI = isFiProperty(propertyNumber);
+  const companyName = isFI ? '株式会社くじら不動産' : '株式会社いふう';
+  const companyInfo = isFI ? COMPANY_INFO_KUJIRA : COMPANY_INFO_IFOO;
   return `${nameWithSama}
 
 お世話になっております。
-株式会社いふうです。
+${companyName}です。
 
 本日、各サイトに正式に公開されましたので、レインズの登録証明書を送付いたします。
 （全国に募集を公開している証明です）
@@ -80,14 +102,7 @@ ${suumoLine}
 
 よろしくお願い申し上げます。
 
-***************************
-株式会社 いふう
-〒870-0044
-大分市舞鶴町1丁目3-30
-TEL：097-533-2022
-HP：https://ifoo-oita.com/
-店休日：毎週水曜日　年末年始、GW、盆
-***************************`;
+${companyInfo}`;
 }
 
 export default function ReinsRegistrationPage() {
@@ -105,7 +120,7 @@ export default function ReinsRegistrationPage() {
   const [gmailOpen, setGmailOpen] = useState(false);
   const [emailTo, setEmailTo] = useState('');
   const [emailCc, setEmailCc] = useState('');
-  const [emailSubject, setEmailSubject] = useState('サイト公開＆レインズ登録証明書のご案内（株式会社いふう）');
+  const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
@@ -157,7 +172,13 @@ export default function ReinsRegistrationPage() {
 
       setEmailTo(d.seller_email ?? '');
       setEmailCc(assigneeEmployee?.email ?? '');
-      setEmailBody(buildEmailBody(d.seller_name ?? '売主', d.suumo_url ?? ''));
+      const isFI = isFiProperty(propertyNumber);
+      setEmailSubject(
+        isFI
+          ? 'サイト公開＆レインズ登録証明書のご案内（株式会社くじら不動産）'
+          : 'サイト公開＆レインズ登録証明書のご案内（株式会社いふう）'
+      );
+      setEmailBody(buildEmailBody(d.seller_name ?? '売主', d.suumo_url ?? '', propertyNumber));
     } catch (error) {
       setSnackbar({ open: true, message: 'データの取得に失敗しました', severity: 'error' });
     } finally {
