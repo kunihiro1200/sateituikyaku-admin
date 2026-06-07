@@ -16,10 +16,13 @@ const sellerService = new SellerService();
  * FI物件判定: 件名・本文を福岡（くじら不動産）用に置換するヘルパー
  */
 function applyFIBranding(subject: string, body: string): { subject: string; body: string } {
-  // 件名: 各種いふう表記 → くじら不動産（いふう）表記に置換
+  // 件名: 各種いふう表記 → くじら不動産表記に置換
+  // パターン1: 括弧付き（スプレッドシートテンプレートで使われる形式）
+  subject = subject.replace(/（[㈱株式会社　 ]*いふう[）)]/g, '（株くじら不動産）');
+  subject = subject.replace(/\([㈱株式会社　 ]*いふう[）)]/g, '（株くじら不動産）');
+  // パターン2: 括弧なし
   subject = subject.replace(/株式会社いふう/g, '株式会社くじら不動産（株式会社いふう）');
   subject = subject.replace(/㈱いふう/g, '株式会社くじら不動産（株式会社いふう）');
-  subject = subject.replace(/株いふう/g, '株式会社くじら不動産（株式会社いふう）');
 
   // 本文: 会社名テキスト置換
   body = body.replace(/株式会社いふうと申します。/g, '株式会社くじら不動産と申します。');
