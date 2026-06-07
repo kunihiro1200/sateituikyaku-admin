@@ -352,6 +352,32 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
               />
             </ListItem>
           )}
+          {/* 評価ポイント！（物件番号に応じてリンク先を変更） */}
+          {propertyNumber && (propertyNumber.startsWith('FI') || propertyNumber.startsWith('AA')) && (
+            <ListItem
+              component="li"
+              sx={{ display: 'list-item', py: 0.5 }}
+            >
+              <ListItemText
+                primary={
+                  <Typography component="span">
+                    評価ポイント！：
+                    <a
+                      href={
+                        propertyNumber.startsWith('FI')
+                          ? 'https://docs.google.com/spreadsheets/d/1319AyjQXSC8APWLvm4vRnuI0z6zezzWOKQQ4cxyZ-5o/edit?gid=26251715#gid=26251715'
+                          : 'https://docs.google.com/spreadsheets/d/1319AyjQXSC8APWLvm4vRnuI0z6zezzWOKQQ4cxyZ-5o/edit?gid=25766722#gid=25766722'
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      評価ポイント！
+                    </a>
+                  </Typography>
+                }
+              />
+            </ListItem>
+          )}
         </List>
       </DialogContent>
       <DialogActions>
