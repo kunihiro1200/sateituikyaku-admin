@@ -18,51 +18,15 @@ export class EmailTemplateService {
    * \u30b9\u30d7\u30ec\u30c3\u30c9\u30b7\u30fc\u30c8\u304b\u3089\u8cb7\u4e3b\u7528\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u3092\u53d6\u5f97
    */
   async getTemplates(): Promise<EmailTemplate[]> {
-    try {
-      const client = new GoogleSheetsClient({
-        spreadsheetId: TEMPLATE_SPREADSHEET_ID,
-        sheetName: TEMPLATE_SHEET_NAME,
-        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
-      });
-      await client.authenticate();
-
-      // C\uff5eF\u5217\u3092\u53d6\u5f97\uff081\u884c\u76ee\u306f\u30d8\u30c3\u30c0\u30fc\uff09
-      const sheetsInstance = (client as any).sheets;
-      const response = await sheetsInstance.spreadsheets.values.get({
-        spreadsheetId: TEMPLATE_SPREADSHEET_ID,
-        range: `${TEMPLATE_SHEET_NAME}!C:F`,
-      });
-
-      const rows: any[][] = response.data.values || [];
-      const templates: EmailTemplate[] = [];
-
-      // 1\u884c\u76ee\u306f\u30d8\u30c3\u30c0\u30fc\u306a\u306e\u3067\u30b9\u30ad\u30c3\u30d7
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        const category = (row[0] || '').toString().trim(); // C\u5217: \u533a\u5206
-        const type = (row[1] || '').toString().trim();     // D\u5217: \u7a2e\u5225\uff08\u30bf\u30a4\u30c8\u30eb\uff09
-        const subject = (row[2] || '').toString().trim();  // E\u5217: \u4ef6\u540d
-        const body = (row[3] || '').toString().trim();     // F\u5217: \u672c\u6587
-
-        // 区分が「買主」の行のみ対象
-        if (category !== '\u8cb7\u4e3b' || !type) continue;
-
-        templates.push({
-          id: `buyer_sheet_${i}`,
-          name: type,
-          description: type,
-          subject,
-          body,
-          placeholders: [],
-        });
-      }
-
-      console.log(`[EmailTemplateService] \u30b9\u30d7\u30ec\u30c3\u30c9\u30b7\u30fc\u30c8\u304b\u3089${templates.length}\u4ef6\u306e\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u3092\u53d6\u5f97\u3057\u307e\u3057\u305f`);
-      return templates;
-    } catch (error: any) {
-      console.error('[EmailTemplateService] \u30b9\u30d7\u30ec\u30c3\u30c9\u30b7\u30fc\u30c8\u304b\u3089\u306e\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u53d6\u5f97\u306b\u5931\u6557:', error.message);
-      throw error;
+    // getSellerTemplates() と共有キャッシュを使用（キャッシュがあればスプレッドシートアクセス不要）
+    if (_templatesCache && Date.now() < _templatesCache.expiresAt) {
+      console.log('[EmailTemplateService] キャッシュから買主テンプレートを返します');
+      return _templatesCache.data.filter(t => t.id.startsWith('buyer_'));
     }
+
+    // キャッシュがない場合は getSellerTemplates() を呼んで全テンプレートをキャッシュに載せてから返す
+    await this.getSellerTemplates();
+    return (_templatesCache?.data || []).filter(t => t.id.startsWith('buyer_'));
   }
 
   /**

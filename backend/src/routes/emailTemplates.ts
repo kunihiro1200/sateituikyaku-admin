@@ -1,12 +1,14 @@
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { EmailTemplateService } from '../services/EmailTemplateService';
+import { BuyerTemplateService } from '../services/BuyerTemplateService';
 import { StaffManagementService } from '../services/StaffManagementService';
 import { SellerService } from '../services/SellerService.supabase';
 import { TemplateContext } from '../types/emailTemplate';
 
 const router = express.Router();
 const templateService = new EmailTemplateService();
+const buyerTemplateService = new BuyerTemplateService();
 const staffService = new StaffManagementService();
 const sellerService = new SellerService();
 
@@ -225,22 +227,59 @@ router.post('/property/merge', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const templates = await templateService.getTemplates();
-    res.json(templates);
+    // タイムアウト対策: 8秒以内にスプレッドシートから取得できない場合はハードコーディングにフォールバック
+    const timeoutMs = 8000;
+    const sheetsPromise = templateService.getTemplates();
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs));
+
+    const result = await Promise.race([sheetsPromise, timeoutPromise]);
+
+    if (result !== null) {
+      // スプレッドシートから取得成功
+      return res.json(result);
+    }
+
+    // タイムアウト: ハードコーディングテンプレートにフォールバック
+    console.warn('[emailTemplates] GET / timed out, falling back to hardcoded templates');
+    const fallbackTemplates = await buyerTemplateService.getBuyerTemplates();
+    // BuyerTemplate → EmailTemplate 形式に変換
+    const emailTemplates = fallbackTemplates.map(t => ({
+      id: t.id,
+      name: t.type,
+      description: t.type,
+      subject: t.subject || '',
+      body: t.content,
+      placeholders: [],
+    }));
+    return res.json(emailTemplates);
   } catch (error: any) {
     console.error('Error fetching templates:', error);
-    // 詳細なエラー情報を返す（デバッグ用）
-    res.status(500).json({
-      error: 'Failed to fetch email templates',
-      message: error.message,
-      env: {
-        hasGOOGLE_SERVICE_ACCOUNT_JSON: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
-        hasGOOGLE_SERVICE_ACCOUNT_EMAIL: !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-        hasGOOGLE_PRIVATE_KEY: !!process.env.GOOGLE_PRIVATE_KEY,
-        hasGOOGLE_SERVICE_ACCOUNT_KEY_PATH: !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
-        GOOGLE_SHEETS_TEMPLATE_SPREADSHEET_ID: process.env.GOOGLE_SHEETS_TEMPLATE_SPREADSHEET_ID || '(not set, using default)',
-      }
-    });
+    // エラー時もハードコーディングにフォールバック（空配列は返さない）
+    try {
+      const fallbackTemplates = await buyerTemplateService.getBuyerTemplates();
+      const emailTemplates = fallbackTemplates.map(t => ({
+        id: t.id,
+        name: t.type,
+        description: t.type,
+        subject: t.subject || '',
+        body: t.content,
+        placeholders: [],
+      }));
+      return res.json(emailTemplates);
+    } catch (fallbackError: any) {
+      // 詳細なエラー情報を返す（デバッグ用）
+      res.status(500).json({
+        error: 'Failed to fetch email templates',
+        message: error.message,
+        env: {
+          hasGOOGLE_SERVICE_ACCOUNT_JSON: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+          hasGOOGLE_SERVICE_ACCOUNT_EMAIL: !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+          hasGOOGLE_PRIVATE_KEY: !!process.env.GOOGLE_PRIVATE_KEY,
+          hasGOOGLE_SERVICE_ACCOUNT_KEY_PATH: !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+          GOOGLE_SHEETS_TEMPLATE_SPREADSHEET_ID: process.env.GOOGLE_SHEETS_TEMPLATE_SPREADSHEET_ID || '(not set, using default)',
+        }
+      });
+    }
   }
 });
 
