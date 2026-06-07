@@ -2184,14 +2184,21 @@ router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, r
   const { suumo_url } = req.query as { suumo_url?: string };
 
   try {
-    if (!suumo_url || !suumo_url.includes('suumo.jp/tochi/')) {
+    // suumo.jp/tochi/ または suumo.jp/chukoikkodate/ の両方を受け付ける
+    const isTochi = suumo_url && suumo_url.includes('suumo.jp/tochi/');
+    const isChukoikkodate = suumo_url && suumo_url.includes('suumo.jp/chukoikkodate/');
+    if (!suumo_url || (!isTochi && !isChukoikkodate)) {
       res.status(400).json({ error: 'SUUMO URLからエリアを特定できませんでした。SUUMO URLを正しく設定してください。' });
       return;
     }
 
     // https://suumo.jp/tochi/oita/sc_oita/nc_76870269/
-    //   → pref=oita, city=sc_oita
-    const cityMatch = suumo_url.match(/suumo\.jp\/tochi\/([^/]+)\/([^/]+)\//);
+    // https://suumo.jp/chukoikkodate/oita/sc_yufu/nc_21009172/
+    //   → pref=oita, city=sc_oita or sc_yufu
+    const urlPattern = isTochi
+      ? /suumo\.jp\/tochi\/([^/]+)\/([^/]+)\//
+      : /suumo\.jp\/chukoikkodate\/([^/]+)\/([^/]+)\//;
+    const cityMatch = suumo_url.match(urlPattern);
     if (!cityMatch) {
       res.status(400).json({ error: 'SUUMO URLの形式が不正です。' });
       return;
