@@ -433,6 +433,7 @@ export class EmailTemplateService {
 
   /**
    * 物件報告メール用プレースホルダー置換
+   * ●● → price（BS列「価格」）を万円フォーマットで置換
    * <<●所有者情報>> → 売主氏名 + 様
    * <<担当名（営業）名前>> → sales_assignee
    * <<担当名（営業）電話番号/メールアドレス/固定休>> → スタッフ情報
@@ -445,6 +446,14 @@ export class EmailTemplateService {
     staffInfo: { name?: string; phone?: string | null; email?: string | null; regularHoliday?: string | null } | null
   ): string {
     let result = text;
+
+    // ●● → price（BS列「価格」）を万円フォーマットで置換
+    // 例: 49800000 → 4,980万円
+    if (property['price'] != null && property['price'] > 0) {
+      const man = Math.floor(Number(property['price']) / 10000);
+      const priceFormatted = `${man.toLocaleString('ja-JP')}万円`;
+      result = result.replace(/●●/g, priceFormatted);
+    }
 
     // <<●所有者情報>> → 売主氏名 + 様
     result = result.replace(/<<●所有者情報>>/g, sellerName ? `${sellerName}様` : '');
