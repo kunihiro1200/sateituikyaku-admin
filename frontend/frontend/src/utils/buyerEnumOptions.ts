@@ -171,6 +171,20 @@ export const AREA_OPTIONS = [
   '⑲（よりｸ具ｼ亥漉遶狗浹・貞玄・大分市・Ν繝溘・繝ｫの荳倥∫浹蝙｣譚ｱ・北蟾昜ｸｭ螟ｮ逕ｺ）',
 ];
 
+// 福岡エリア（FK買主専用）
+export const FUKUOKA_AREA_OPTIONS = [
+  'F1 福岡市東区',
+  'F2 福岡市博多区',
+  'F3 福岡市中央区',
+  'F4 福岡市南区',
+  'F5 福岡市西区',
+  'F6 福岡市城南区',
+  'F7 福岡市早良区',
+  'F8 福岡市港区',
+  'F9 春日市',
+  'F10 大野城市',
+];
+
 // 希望物件種別
 export const DESIRED_PROPERTY_TYPE_OPTIONS = [
   '戸建て',
