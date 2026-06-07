@@ -199,7 +199,24 @@ router.post('/property/merge', async (req, res) => {
       staffInfo
     );
 
-    res.json({ subject: mergedSubject, body: mergedBody, sellerName, sellerEmail });
+    // FI物件判定: 物件番号に「FI」が含まれる場合、会社名・署名を福岡（くじら不動産）用に置換
+    let finalSubject = mergedSubject;
+    let finalBody = mergedBody;
+    if (propertyNumber.toUpperCase().includes('FI')) {
+      finalBody = finalBody.replace(/株式会社 いふう/g, '株式会社くじら不動産（株式会社いふう）');
+      finalBody = finalBody.replace(/株式会社いふうと申します。/g, '株式会社くじら不動産と申します。');
+      finalBody = finalBody.replace(/いふうにてお手伝い/g, 'くじら不動産にてお手伝い');
+      finalSubject = finalSubject.replace(/株式会社いふう/g, '株式会社くじら不動産');
+      finalBody = finalBody.replace(/〒870-0044\n?大分市舞鶴町1丁目3-30/g, '〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
+      finalBody = finalBody.replace(/〒870-0044大分市舞鶴町1丁目3-30/g, '〒810-0073福岡市中央区舞鶴3-1-10オフィスニューガイアセレス赤坂門No.19 -201');
+      finalBody = finalBody.replace(/大分市舞鶴町1-3-30/g, '〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
+      finalBody = finalBody.replace(/TEL：097-533-2022/g, 'TEL：092-401-5331');
+      finalBody = finalBody.replace(/TEL:097-533-2022/g, 'TEL:092-401-5331');
+      finalBody = finalBody.replace(/097-533-2022/g, '092-401-5331');
+      finalBody = finalBody.replace(/tenant@ifoo-oita\.com/g, 'tenant@ifoo-oita.com');
+    }
+
+    res.json({ subject: finalSubject, body: finalBody, sellerName, sellerEmail });
   } catch (error: any) {
     console.error('Error merging property template:', error);
     res.status(500).json({ error: 'Failed to merge property template', message: error.message });
