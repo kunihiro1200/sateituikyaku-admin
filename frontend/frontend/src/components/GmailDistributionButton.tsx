@@ -42,7 +42,7 @@ const SIGNATURE_IFOO = `*****************************
 TEL:097-533-2022
 ******************************`;
 const SIGNATURE_KUJIRA = `〒810-0073福岡市中央区舞鶴3-1-10オフィスニューガイアセレス赤坂門No.19-201
-株式会社くじら不動産
+株式会社くじら不動産（株式会社いふう）
 TEL:092-401-5331
 Mail:tenant@ifoo-oita.com`;
 
@@ -394,7 +394,7 @@ export default function GmailDistributionButton({
           address: propertyAddress || '',
           publicUrl: publicUrl || '',
           priceChangeText: generatePriceChangeText(),
-          signature: SIGNATURE,
+          signature: getSignatureByPropertyNumber(propertyNumber),
           buyerName: buyerName,
           propertyType: propertyType || '',
           price: getPriceText()
@@ -408,7 +408,7 @@ export default function GmailDistributionButton({
       );
 
       setConfirmationOpen(false);
-      setSenderAddress(DEFAULT_SENDER);
+      setSenderAddress(getSenderByPropertyNumber(propertyNumber));
       setSelectedImages([]);
 
       if (result.success) {
@@ -443,7 +443,7 @@ export default function GmailDistributionButton({
         severity: 'warning'
       });
       setConfirmationOpen(false);
-      setSenderAddress(DEFAULT_SENDER);
+      setSenderAddress(getSenderByPropertyNumber(propertyNumber));
       fallbackToGmailWebUI(buyerName);
     }
   };
@@ -488,7 +488,7 @@ export default function GmailDistributionButton({
         return;
       }
 
-      setSenderAddress(DEFAULT_SENDER);
+      setSenderAddress(getSenderByPropertyNumber(propertyNumber));
       setSnackbar({
         open: true,
         message: `Gmailを開きました (${emailsToSend.length}件の宛先)\n送信元: ${senderAddress}\n\n内容を確認して、Gmailで送信ボタンを押してください。`,
@@ -534,7 +534,7 @@ export default function GmailDistributionButton({
         open={templateSelectorOpen}
         onClose={() => {
           setTemplateSelectorOpen(false);
-          setSenderAddress(DEFAULT_SENDER);
+          setSenderAddress(getSenderByPropertyNumber(propertyNumber));
         }}
         onSelect={handleTemplateSelect}
         templates={templates}
@@ -547,7 +547,7 @@ export default function GmailDistributionButton({
         open={filterSummaryOpen}
         onClose={() => {
           setFilterSummaryOpen(false);
-          setSenderAddress(DEFAULT_SENDER);
+          setSenderAddress(getSenderByPropertyNumber(propertyNumber));
         }}
         onConfirm={handleFilterSummaryConfirm}
         buyers={(buyerData?.filteredBuyers || []) as any}
@@ -561,7 +561,7 @@ export default function GmailDistributionButton({
         open={confirmationOpen}
         onClose={() => {
           setConfirmationOpen(false);
-          setSenderAddress(DEFAULT_SENDER);
+          setSenderAddress(getSenderByPropertyNumber(propertyNumber));
           setSelectedImages([]);
         }}
         onConfirm={handleConfirmationConfirm}
@@ -582,7 +582,7 @@ export default function GmailDistributionButton({
         open={testTemplateSelectorOpen}
         onClose={() => {
           setTestTemplateSelectorOpen(false);
-          setSenderAddress(DEFAULT_SENDER);
+          setSenderAddress(getSenderByPropertyNumber(propertyNumber));
         }}
         onSelect={handleTestTemplateSelect}
         templates={templates}
@@ -596,7 +596,7 @@ export default function GmailDistributionButton({
         open={testStaffSelectorOpen}
         onClose={() => {
           setTestStaffSelectorOpen(false);
-          setSenderAddress(DEFAULT_SENDER);
+          setSenderAddress(getSenderByPropertyNumber(propertyNumber));
         }}
         onConfirm={handleTestStaffConfirm}
         employees={employees as StaffMember[]}

@@ -74,7 +74,7 @@ HP：https://ifoo-oita.com/
 ***************************`;
 
 const COMPANY_INFO_KUJIRA = `〒810-0073福岡市中央区舞鶴3-1-10オフィスニューガイアセレス赤坂門No.19-201
-株式会社くじら不動産
+株式会社くじら不動産（株式会社いふう）
 TEL:092-401-5331
 Mail:tenant@ifoo-oita.com`;
 
@@ -83,7 +83,7 @@ function buildEmailBody(sellerName: string, suumoUrl: string, propertyNumber?: s
   // seller_name に既に「様」が含まれている場合は重複しないようにする
   const nameWithSama = sellerName.endsWith('様') ? sellerName : `${sellerName}様`;
   const isFI = isFiProperty(propertyNumber);
-  const companyName = isFI ? '株式会社くじら不動産' : '株式会社いふう';
+  const companyName = isFI ? '株式会社くじら不動産（株式会社いふう）' : '株式会社いふう';
   const companyInfo = isFI ? COMPANY_INFO_KUJIRA : COMPANY_INFO_IFOO;
   return `${nameWithSama}
 
@@ -175,7 +175,7 @@ export default function ReinsRegistrationPage() {
       const isFI = isFiProperty(propertyNumber);
       setEmailSubject(
         isFI
-          ? 'サイト公開＆レインズ登録証明書のご案内（株式会社くじら不動産）'
+          ? 'サイト公開＆レインズ登録証明書のご案内（株式会社くじら不動産（株式会社いふう））'
           : 'サイト公開＆レインズ登録証明書のご案内（株式会社いふう）'
       );
       setEmailBody(buildEmailBody(d.seller_name ?? '売主', d.suumo_url ?? '', propertyNumber));
