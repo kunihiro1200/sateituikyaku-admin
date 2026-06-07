@@ -37,6 +37,7 @@ export const FUKUOKA_AREA_OPTIONS = [
   { value: 'F8 福岡市港区', label: 'F8 福岡市港区' },
   { value: 'F9 春日市', label: 'F9 春日市' },
   { value: 'F10 大野城市', label: 'F10 大野城市' },
+  { value: 'F11 福岡市全部', label: 'F11 福岡市全部' },
 ];
 
 /**

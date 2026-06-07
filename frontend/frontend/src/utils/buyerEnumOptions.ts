@@ -183,6 +183,7 @@ export const FUKUOKA_AREA_OPTIONS = [
   'F8 福岡市港区',
   'F9 春日市',
   'F10 大野城市',
+  'F11 福岡市全部',
 ];
 
 // 希望物件種別
