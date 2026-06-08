@@ -4255,7 +4255,7 @@ HP：https://ifoo-oita.com/
       
       await api.post(endpoint, {
         assignee: seller.visitAssignee || seller.assignedTo || employee?.name,
-        notes: `決定日: ${editedExclusiveDecisionDate}\n競合: ${editedCompetitors.join(', ')}\n要因: ${editedExclusiveOtherDecisionFactors.join(', ')}`,
+        notes: `決定日: ${editedExclusiveDecisionDate}\n競合: ${editedCompetitors.join(', ')}\n要因: ${editedExclusiveOtherDecisionFactors.join(', ')}${editedCompetitorNameAndReason ? `\n総合名・理由: ${editedCompetitorNameAndReason}` : ''}`,
       });
 
       setSuccessMessage(`${statusLabel}の通知を送信しました（4つのフィールドも保存しました）`);
