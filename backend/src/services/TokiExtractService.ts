@@ -2406,64 +2406,93 @@ export class TokiExtractService {
   }
 
   /**
-   * 謄本書き込み後に「媒介依頼」シートのIMPORTRANGEキャッシュをリフレッシュする
+   * 謄本書き込み後に「媒介依頼」シートのD2〜H2を売主リストから直接取得して書き込む
    *
    * 【問題】
-   * 同じスプレッドシート内の別シート（専任媒介契建物）にAPIで書き込むと、
-   * IMPORTRANGEのキャッシュがリセットされる。その後IMPORTRANGEが再読み込みする際に
-   * 一時的に空を返すが、A2の値が変化していないため再計算トリガーがかからず、
-   * D2〜H2（VLOOKUP+IMPORTRANGE数式）が永続的に空のままになる。
+   * 同じスプレッドシート内の別シートにAPIで書き込むとIMPORTRANGEの接続が切断され、
+   * D2〜H2（VLOOKUP+IMPORTRANGE数式）が新しく開いたタブで空のままになる。
    *
    * 【解決策】
-   * A2を一度空文字でクリアし、すぐ元の値を書き戻すことでVLOOKUPの再計算を強制トリガーする。
-   * クリア→書き戻しの2ステップにすることで、A2の値変化を確実に検知させる。
+   * IMPORTRANGEに依存せず、バックエンドが直接売主リストからA2の物件番号で
+   * 検索して得た値をD2〜H2に直接書き込む。
    *
-   * 【注意】
-   * 以前の実装（値をそのまま書き直す1ステップ）は余分な文字混入でVLOOKUPが
-   * ヒットしなくなる問題があったため、クリア→書き戻しの2ステップに変更。
+   * 売主リストの列マッピング（B列=1として）:
+   * - D2: 18列目（S列）= 依頼者住所（物件所在と異なる場合）
+   * - E2: 21列目（V列）= 名前（漢字のみ）
+   * - F2: 22列目（W列）= 電話番号（改行あり→スペースに変換）
+   * - G2: 23列目（X列）= メールアドレス
+   * - H2: 27列目（AB列）= 営担
    */
   private async refreshMediationSheetA2(spreadsheetUrl: string): Promise<void> {
     const spreadsheetId = this.extractSpreadsheetId(spreadsheetUrl);
     if (!spreadsheetId) return;
 
+    // 売主リストのスプレッドシートID（固定）
+    const SELLER_SHEET_ID = '1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I';
+
     try {
+      // Step1: 媒介依頼シートのA2（物件番号）を取得
       const mediationClient = new GoogleSheetsClient({
         spreadsheetId,
         sheetName: '媒介依頼',
         serviceAccountKeyPath:
           process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
       });
-
       await mediationClient.authenticate();
 
-      // A2の現在値を読み取る（FORMULA形式で取得して数式か値かを判別）
       const currentValues = await mediationClient.readRawRange('A2');
-      const currentA2 = currentValues?.[0]?.[0] ?? '';
+      const propertyNumber = currentValues?.[0]?.[0]?.trim() ?? '';
 
-      if (!currentA2) {
-        console.log('[TokiExtract] 媒介依頼シートA2が空のためリフレッシュをスキップ');
+      if (!propertyNumber) {
+        console.log('[TokiExtract] 媒介依頼シートA2が空のためスキップ');
         return;
       }
 
-      console.log(`[TokiExtract] 媒介依頼シートA2リフレッシュ開始: "${currentA2}"`);
-      console.log(`[TokiExtract] A2値の詳細: length=${currentA2.length}, charCodes=${Array.from(currentA2).map(c => c.charCodeAt(0)).join(',')}`);
+      console.log(`[TokiExtract] 媒介依頼シートD2〜H2補完開始: 物件番号="${propertyNumber}"`);
 
-      // Step1: A2を空文字でクリア（VLOOKUPに値変化を検知させる）
-      await mediationClient.writeRawCell('A2', '');
+      // Step2: 売主リストからB列（物件番号）で検索
+      const sellerClient = new GoogleSheetsClient({
+        spreadsheetId: SELLER_SHEET_ID,
+        sheetName: '売主リスト',
+        serviceAccountKeyPath:
+          process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+      });
+      await sellerClient.authenticate();
 
-      // Step2: 元の値を書き戻す（VLOOKUPの再計算をトリガー）
-      // IMPORTRANGEのキャッシュリセット後の再評価完了を待つ（3秒）
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // B列〜AB列を全行取得（B=1列目=index 0, AB=27列目=index 26）
+      const sellerRows = await sellerClient.readRawRange('B:AB');
+      if (!sellerRows || sellerRows.length === 0) {
+        console.warn('[TokiExtract] 売主リストの取得に失敗');
+        return;
+      }
 
-      // 余分な文字を除去して書き戻す
-      const cleanA2 = currentA2.trim().replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
-      console.log(`[TokiExtract] 書き戻す値: "${cleanA2}" (length=${cleanA2.length})`);
-      await mediationClient.writeRawCell('A2', cleanA2);
+      // B列（index=0）で物件番号を検索
+      const matchRow = sellerRows.find(row => row[0]?.trim() === propertyNumber);
+      if (!matchRow) {
+        console.warn(`[TokiExtract] 売主リストに物件番号"${propertyNumber}"が見つかりません`);
+        return;
+      }
 
-      console.log(`[TokiExtract] 媒介依頼シートA2リフレッシュ完了: "${currentA2}"`);
+      // 列マッピング（B列=index 0）
+      const d2Value = matchRow[17] ?? ''; // 18列目(index 17): 依頼者住所
+      const e2Value = matchRow[20] ?? ''; // 21列目(index 20): 名前（漢字のみ）
+      const f2Value = (matchRow[21] ?? '').replace(/\n/g, ' ').trim(); // 22列目(index 21): 電話番号
+      const g2Value = matchRow[22] ?? ''; // 23列目(index 22): メールアドレス
+      const h2Value = matchRow[26] ?? ''; // 27列目(index 26): 営担
+
+      console.log(`[TokiExtract] D2="${d2Value}", E2="${e2Value}", F2="${f2Value}", G2="${g2Value}", H2="${h2Value}"`);
+
+      // Step3: 媒介依頼シートのD2〜H2に直接書き込む
+      await mediationClient.writeRawCell('D2', d2Value);
+      await mediationClient.writeRawCell('E2', e2Value);
+      await mediationClient.writeRawCell('F2', f2Value);
+      await mediationClient.writeRawCell('G2', g2Value);
+      await mediationClient.writeRawCell('H2', h2Value);
+
+      console.log('[TokiExtract] 媒介依頼シートD2〜H2補完完了');
     } catch (err: any) {
-      // リフレッシュ失敗は致命的ではないのでログのみ
-      console.warn(`[TokiExtract] 媒介依頼シートA2リフレッシュ失敗（無視）: ${err.message}`);
+      // 補完失敗は致命的ではないのでログのみ
+      console.warn(`[TokiExtract] 媒介依頼シートD2〜H2補完失敗（無視）: ${err.message}`);
     }
   }
 }
