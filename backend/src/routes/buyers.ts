@@ -9,12 +9,14 @@ import { ValidationError, NotFoundError, ServiceError } from '../errors';
 import { authenticate } from '../middleware/auth';
 import { apiKeyAuth } from '../middleware/apiKeyAuth';
 import { BuyerLinkageCache } from '../services/BuyerLinkageCache';
+import { PropertyListingService } from '../services/PropertyListingService';
 
 const router = Router();
 const buyerService = new BuyerService();
 const buyerSyncService = new BuyerSyncService();
 const emailHistoryService = new EmailHistoryService();
 const buyerLinkageCache = new BuyerLinkageCache();
+const propertyListingService = new PropertyListingService();
 
 // 一覧取得
 router.get('/', async (req: Request, res: Response) => {
@@ -314,6 +316,32 @@ router.put('/:id', authenticateOrApiKey, async (req: Request, res: Response) => 
     // 🆕 キャッシュを無効化（サイドバーが即座に更新されるように）
     await invalidateBuyerStatusCache();
     console.log('[PUT /buyers/:id] Buyer status cache invalidated');
+
+    // 🆕 latest_status が更新された場合、property_listings.status を連動更新（スプシ同期込み）
+    if ('latest_status' in sanitizedData) {
+      const updatedBuyer = syncResult.buyer;
+      const propertyNumber = updatedBuyer?.property_number;
+      if (propertyNumber) {
+        try {
+          const newLatestStatus: string | null = sanitizedData.latest_status;
+          // 買主の latest_status → property_listings.status のマッピング
+          const LATEST_STATUS_TO_STATUS: Record<string, string> = {
+            '買（専任　両手）': '専任両手',
+            '買（専任　片手）': '専任片手',
+            '買（一般　両手）': '一般両手',
+            '買（一般　片手）': '一般片手',
+          };
+          const newStatus = newLatestStatus ? (LATEST_STATUS_TO_STATUS[newLatestStatus] ?? '') : '';
+          await propertyListingService.update(propertyNumber, { status: newStatus });
+          console.log(`[PUT /buyers/:id] property_listings.status updated to "${newStatus}" for property: ${propertyNumber}`);
+          // 買主リストキャッシュも無効化（ヘッダーバッジに即反映）
+          await buyerLinkageCache.invalidate(propertyNumber);
+        } catch (statusUpdateError: any) {
+          // 物件status更新失敗は買主更新の成否に影響させない
+          console.error(`[PUT /buyers/:id] Failed to update property_listings.status for ${propertyNumber}:`, statusUpdateError?.message || statusUpdateError);
+        }
+      }
+    }
 
     return res.json({
       ...syncResult.buyer,
@@ -2078,6 +2106,14 @@ router.delete('/:id', async (req: Request, res: Response) => {
           .update({ offer_status: '' })
           .eq('property_number', buyerBeforeDelete.property_number);
         console.log(`[DELETE /buyers/:id] offer_status cleared for property: ${buyerBeforeDelete.property_number}`);
+
+        // 🆕 status もクリア（スプシ同期込み）
+        try {
+          await propertyListingService.update(buyerBeforeDelete.property_number, { status: '' });
+          console.log(`[DELETE /buyers/:id] property_listings.status cleared for property: ${buyerBeforeDelete.property_number}`);
+        } catch (statusClearError: any) {
+          console.error(`[DELETE /buyers/:id] Failed to clear property_listings.status for ${buyerBeforeDelete.property_number}:`, statusClearError?.message || statusClearError);
+        }
       } else {
         console.log(`[DELETE /buyers/:id] offer_status NOT cleared (other purchase buyers exist) for property: ${buyerBeforeDelete.property_number}`);
       }

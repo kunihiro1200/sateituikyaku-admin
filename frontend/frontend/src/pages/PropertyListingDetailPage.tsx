@@ -3463,6 +3463,17 @@ export default function PropertyListingDetailPage() {
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.offer_comment || '-'}</Typography>
                   )}
                 </Grid>
+                {/* 買主最新状況（「買」を含む場合のみ表示・読み取り専用） */}
+                {buyers.filter(b => hasBuyerPurchaseStatus(b.latest_status)).length > 0 && (
+                  <Grid item xs={12}>
+                    <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>買主最新状況</Typography>
+                    {buyers.filter(b => hasBuyerPurchaseStatus(b.latest_status)).map((b, idx) => (
+                      <Typography key={idx} variant="body2" sx={{ fontWeight: 600, color: '#d32f2f' }}>
+                        {b.latest_status}
+                      </Typography>
+                    ))}
+                  </Grid>
+                )}
               </Grid>
             </EditableSection>
           </Box>
