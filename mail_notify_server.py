@@ -499,24 +499,25 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None):
                 notified_ids.add(msg_id)
                 save_notified_ids(notified_ids)
 
-            # HOME4Uは件名Re:でも本文に「HOME4Uログアウト」があれば必ず処理
+            # matched=Falseの場合: 件名にHOME4U_SUBJECT_PREFIXが含まれる場合のみ転記を試みる
+            # ※ 本文に「HOME4Uログアウト」が含まれていても、件名がHOME4U関連でなければ絶対に転記しない
+            # （他のメールのHTML引用にHOME4Uログアウトが混入するケースを防ぐ）
             else:
-                body = decode_body(msg_detail["payload"])
-                if body and 'HOME4Uログアウト' in body:
-                    logging.info(f"\n[{datetime.now().strftime('%H:%M:%S')}] 🔔 HOME4U本文検知（Re:スキップ回避）: {subject}")
-                    # コメント部分デバッグ：HOME4Uログアウト周辺を出力
-                    body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
-                    for idx, line in enumerate(body_lines):
-                        if 'HOME4Uログアウト' in line:
-                            surrounding = body_lines[max(0, idx-1):idx+6]
-                            logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
-                            break
-                    trigger_home4u_transfer(body)
-                else:
-                    # HOME4U関連かどうか件名でチェックしてデバッグ出力
-                    if 'HOME4U' in subject or 'home4u' in subject.lower():
+                if HOME4U_SUBJECT_PREFIX in subject:
+                    body = decode_body(msg_detail["payload"])
+                    if body and 'HOME4Uログアウト' in body:
+                        logging.info(f"\n[{datetime.now().strftime('%H:%M:%S')}] 🔔 HOME4U本文検知（Re:スキップ回避）: {subject}")
+                        # コメント部分デバッグ：HOME4Uログアウト周辺を出力
+                        body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+                        for idx, line in enumerate(body_lines):
+                            if 'HOME4Uログアウト' in line:
+                                surrounding = body_lines[max(0, idx-1):idx+6]
+                                logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
+                                break
+                        trigger_home4u_transfer(body)
+                    else:
                         logging.info(f"  [未処理] HOME4U件名だが本文にHOME4Uログアウトなし: {subject[:80]}")
-                        logging.info(f"  [未処理] 本文先頭: {repr(body[:200]) if body else '(空)'}")
+                # HOME4U以外のmatched=Falseはスキップ（本文にHOME4Uログアウトが含まれていても無視）
 
                 notified_ids.add(msg_id)
                 save_notified_ids(notified_ids)

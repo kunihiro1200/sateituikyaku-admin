@@ -406,11 +406,13 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
                 ? existingDatetime === inquiryDateTimeISO || existingDatetime.startsWith(inquiryDateTimeISO)
                 : !existingDatetime && !inquiryDateTimeISO;
 
-              // 比較2: 同じ電話番号で直近10分以内に登録されたレコードがある場合もスキップ
-              // （HOME4Uは同じ案件を複数社に配信するため、短時間に同内容のメールが複数届く）
+              // 比較2: 同じ電話番号で直近24時間以内に登録されたレコードがある場合もスキップ
+              // HOME4Uは同じ案件について「コメントなし」→「コメントあり」の2通を送ることがある。
+              // この2通は反響日時が微妙に異なるため isSameDatetime では捕捉できない。
+              // 24時間以内に同一電話番号で登録済みの場合は同一案件とみなしてスキップする。
               const createdAt = existing.created_at ? new Date(existing.created_at) : null;
               const now = new Date();
-              const isRecentDuplicate = createdAt && (now.getTime() - createdAt.getTime()) < 10 * 60 * 1000; // 10分以内
+              const isRecentDuplicate = createdAt && (now.getTime() - createdAt.getTime()) < 24 * 60 * 60 * 1000; // 24時間以内
 
               if (isSameDatetime || isRecentDuplicate) {
                 const reason = isSameDatetime ? '反響日時一致' : '直近10分以内に同一電話番号で登録済み';
