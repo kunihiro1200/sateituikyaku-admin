@@ -78,34 +78,53 @@ router.post('/athome-buyer-transfer', async (req: Request, res: Response) => {
     });
     await buyerSheetsClient.authenticate();
 
-    // 買主番号を採番（E列の最大値 + 1）
-    const allRows = await buyerSheetsClient.readAll();
-    const columnEValues = allRows
-      .map(row => row['買主番号'])
-      .filter(value => value !== null && value !== undefined)
-      .map(value => String(value));
+    // 買主番号を採番（E列のみ取得して最大値 + 1）
+    // readAll()は全列×全行で重すぎるため、E列だけを軽量に取得する
+    const rawEColumn = await buyerSheetsClient.readRawRange('E2:E');
+    const columnEValues = rawEColumn
+      .map(row => row[0])
+      .filter(value => value !== null && value !== undefined && value !== '');
 
     const maxNumber = columnEValues.length > 0
       ? Math.max(...columnEValues.map(v => parseInt(v) || 0))
       : 0;
     const buyerNumber = maxNumber + 1;
-    console.log(`[athome-buyer-transfer] 買主番号採番: ${buyerNumber}`);
+    console.log(`[athome-buyer-transfer] 買主番号採番: ${buyerNumber} (E列の行数: ${columnEValues.length}, 最大値: ${maxNumber})`);
 
     // 重複チェック（同じ電話番号が既にある場合はスキップ）- skipDuplicateCheck=trueで無視可能
+    // 電話番号列のみを取得して軽量にチェック
     if (tel && !req.body.skipDuplicateCheck) {
-      const existingRow = allRows.find(row => {
-        const existingPhone = String(row['●電話番号\n（ハイフン不要）'] || '').replace(/[-\s－　]/g, '');
-        return existingPhone === tel;
-      });
-      if (existingRow) {
-        const existingBuyerNumber = existingRow['買主番号'];
-        console.log(`[athome-buyer-transfer] ⏭ 重複スキップ: 電話番号が既存買主 ${existingBuyerNumber} と一致`);
-        return res.json({
-          success: true,
-          skipped: true,
-          message: `重複スキップ: 電話番号が既存買主 ${existingBuyerNumber} と一致するため登録しませんでした`,
-          duplicateBuyer: existingBuyerNumber,
-        });
+      const headers = await buyerSheetsClient.getHeaders();
+      // 電話番号列のインデックスを取得
+      const phoneColIndex = headers.findIndex(h => h.includes('電話番号'));
+      
+      if (phoneColIndex >= 0) {
+        // インデックスからA1記法の列文字に変換（AA列以降にも対応）
+        const colToLetter = (col: number): string => {
+          let letter = '';
+          let c = col;
+          while (c >= 0) {
+            letter = String.fromCharCode(65 + (c % 26)) + letter;
+            c = Math.floor(c / 26) - 1;
+          }
+          return letter;
+        };
+        const phoneColLetter = colToLetter(phoneColIndex);
+        const rawPhoneColumn = await buyerSheetsClient.readRawRange(`${phoneColLetter}2:${phoneColLetter}`);
+        
+        for (let i = 0; i < rawPhoneColumn.length; i++) {
+          const existingPhone = String(rawPhoneColumn[i]?.[0] || '').replace(/[-\s－　]/g, '');
+          if (existingPhone === tel) {
+            const existingBuyerNumber = rawEColumn[i]?.[0] || '不明';
+            console.log(`[athome-buyer-transfer] ⏭ 重複スキップ: 電話番号が既存買主 ${existingBuyerNumber} と一致`);
+            return res.json({
+              success: true,
+              skipped: true,
+              message: `重複スキップ: 電話番号が既存買主 ${existingBuyerNumber} と一致するため登録しませんでした`,
+              duplicateBuyer: existingBuyerNumber,
+            });
+          }
+        }
       }
     }
 

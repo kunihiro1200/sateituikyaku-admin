@@ -848,20 +848,20 @@ router.post('/inquiries', inquiryRateLimiter, async (req: Request, res: Response
       await syncService.authenticate();
       console.log('[Inquiry] Authentication successful');
       
-      // 買主番号を採番
-      const allRows = await syncService['sheetsClient'].readAll();
-      console.log(`[Inquiry] Read ${allRows.length} rows from sheet`);
+      // 買主番号を採番（E列のみ取得して最大値 + 1）
+      // readAll()は全列×全行で重すぎるため、E列だけを軽量に取得する
+      const rawEColumn = await syncService['sheetsClient'].readRawRange('E2:E');
+      console.log(`[Inquiry] Read ${rawEColumn.length} rows from E column`);
       
-      const columnEValues = allRows
-        .map(row => row['買主番号'])
-        .filter(value => value !== null && value !== undefined)
-        .map(value => String(value));
+      const columnEValues = rawEColumn
+        .map((row: string[]) => row[0])
+        .filter((value: string | undefined | null) => value !== null && value !== undefined && value !== '');
       
       const maxNumber = columnEValues.length > 0
-        ? Math.max(...columnEValues.map(v => parseInt(v) || 0))
+        ? Math.max(...columnEValues.map((v: string) => parseInt(v) || 0))
         : 0;
       const buyerNumber = maxNumber + 1;
-      console.log(`[Inquiry] Generated buyer number: ${buyerNumber}`);
+      console.log(`[Inquiry] Generated buyer number: ${buyerNumber} (E列の行数: ${columnEValues.length}, 最大値: ${maxNumber})`);
 
       // フィールドマッピング（正しいカラム名を使用）
       const normalizedPhone = phone.replace(/[^0-9]/g, ''); // 数字のみ抽出

@@ -52,11 +52,17 @@ BACKEND_ATHOME_BUYER_TRANSFER_URL = os.environ.get(
     "BACKEND_ATHOME_BUYER_TRANSFER_URL",
     "https://sateituikyaku-admin-backend.vercel.app/api/buyers/athome-buyer-transfer"
 )
+BACKEND_LIFULL_TRANSFER_URL = os.environ.get(
+    "BACKEND_LIFULL_TRANSFER_URL",
+    "https://sateituikyaku-admin-backend.vercel.app/api/sellers/lifull-transfer"
+)
 HOME4U_SUBJECT_PREFIX = "[HOME4U] 査定依頼"
 # HOME4Uは件名部分一致で検知（地域を問わず全て対応）
 # ※本文に「HOME4Uログアウト」が含まれることが絶対条件（バックエンド側でもチェック）
 ATHOME_BUYER_SUBJECT_PREFIX = "【反響】アットホーム"
 # アットホーム反響メールは件名部分一致で検知（買主リストに転記）
+LIFULL_SUBJECT_KEYWORD = "【LIFULL HOME'S】＜実名＞査定依頼がありました"
+# LIFULL HOME'Sは件名完全一致で検知
 CRON_SECRET = os.environ.get(
     "CRON_SECRET",
     "a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s="
@@ -338,6 +344,35 @@ def trigger_athome_buyer_transfer(body: str):
     threading.Thread(target=_call, daemon=True).start()
 
 
+def trigger_lifull_transfer(body: str):
+    """LIFULL HOME'Sメール本文をバックエンドに送ってDB即時転記 + スプシ同期"""
+    def _call():
+        try:
+            logging.info("  [DB転記] /api/sellers/lifull-transfer 呼び出し開始...")
+            payload = json.dumps({"body": body}).encode("utf-8")
+            req = urllib.request.Request(
+                BACKEND_LIFULL_TRANSFER_URL,
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {CRON_SECRET}",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                result = json.loads(resp.read().decode("utf-8"))
+                if result.get("skipped"):
+                    logging.info(f"  [DB転記] ⏭ スキップ（重複）: {result.get('message', '')}")
+                elif result.get("success"):
+                    logging.info(f"  [DB転記] ✅ LIFULL転記完了: {result.get('message', 'OK')} ({result.get('sellerNumber', '')})")
+                else:
+                    logging.info(f"  [DB転記] ❌ 失敗: {result.get('error', '不明なエラー')}")
+        except Exception as e:
+            logging.info(f"  [DB転記] ❌ エラー: {e}")
+
+    threading.Thread(target=_call, daemon=True).start()
+
+
 def trigger_ieul_transfer(body: str):
     """
     イエウールメール本文をバックエンドに送ってDB即時転記 + スプシ同期を行う。
@@ -407,8 +442,9 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None):
                     break
 
             # 返信・転送はスキップ（HOME4Uはすべて「Re: [HOME4U] 査定依頼」の形式で届くため除外）
+            # LIFULL HOME'Sも「Re: 【LIFULL HOME'S】＜実名＞査定依頼がありました」で届く場合がある
             reply_prefix_pattern = re.compile(r'^(Re|Fwd?|FW|RE|転送)\s*:', re.IGNORECASE)
-            if reply_prefix_pattern.match(subject) and HOME4U_SUBJECT_PREFIX not in subject:
+            if reply_prefix_pattern.match(subject) and HOME4U_SUBJECT_PREFIX not in subject and LIFULL_SUBJECT_KEYWORD not in subject:
                 notified_ids.add(msg_id)
                 save_notified_ids(notified_ids)
                 continue
@@ -420,6 +456,8 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None):
                     return keyword in subject
                 if keyword == "【反響】アットホーム":
                     return keyword in subject  # 部分一致
+                if keyword == "【LIFULL HOME'S】＜実名＞査定依頼がありました":
+                    return keyword in subject  # 部分一致（Re:付きで届く場合がある）
                 return subject == keyword
 
             matched = any(subject_matches(subject, keyword) for keyword in SUBJECT_KEYWORDS)
@@ -451,8 +489,11 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None):
                 elif ATHOME_BUYER_SUBJECT_PREFIX in subject:
                     logging.info("  [DB転記] アットホーム反響（買主）検知 → athome-buyer-transfer を非同期実行します")
                     trigger_athome_buyer_transfer(body)
+                elif LIFULL_SUBJECT_KEYWORD in subject:
+                    logging.info("  [DB転記] LIFULL HOME'S検知 → lifull-transfer を非同期実行します")
+                    trigger_lifull_transfer(body)
                 else:
-                    logging.info(f"  [スキップ] イエウール・HOME4U・アットホーム反響以外のため転記なし: {subject[:50]}")
+                    logging.info(f"  [スキップ] イエウール・HOME4U・アットホーム反響・LIFULL以外のため転記なし: {subject[:50]}")
 
                 # 通知済みとして記録（matchedの場合も必ず記録する）
                 notified_ids.add(msg_id)
