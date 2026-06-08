@@ -2446,14 +2446,19 @@ export class TokiExtractService {
       }
 
       console.log(`[TokiExtract] 媒介依頼シートA2リフレッシュ開始: "${currentA2}"`);
+      console.log(`[TokiExtract] A2値の詳細: length=${currentA2.length}, charCodes=${Array.from(currentA2).map(c => c.charCodeAt(0)).join(',')}`);
 
       // Step1: A2を空文字でクリア（VLOOKUPに値変化を検知させる）
       await mediationClient.writeRawCell('A2', '');
 
       // Step2: 元の値を書き戻す（VLOOKUPの再計算をトリガー）
-      // 少し待ってから書き戻すことでGoogleスプレッドシートが変化を確実に検知する
-      await new Promise(resolve => setTimeout(resolve, 500));
-      await mediationClient.writeRawCell('A2', currentA2);
+      // IMPORTRANGEのキャッシュリセット後の再評価完了を待つ（3秒）
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // 余分な文字を除去して書き戻す
+      const cleanA2 = currentA2.trim().replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+      console.log(`[TokiExtract] 書き戻す値: "${cleanA2}" (length=${cleanA2.length})`);
+      await mediationClient.writeRawCell('A2', cleanA2);
 
       console.log(`[TokiExtract] 媒介依頼シートA2リフレッシュ完了: "${currentA2}"`);
     } catch (err: any) {
