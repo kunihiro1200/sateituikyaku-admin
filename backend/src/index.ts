@@ -32,6 +32,7 @@ import sellerRoutes from './routes/sellers';
 import ieulTransferRoutes from './routes/ieul-transfer';
 import home4uTransferRoutes from './routes/home4u-transfer';
 import athomeTransferRoutes from './routes/athome-transfer';
+import athomeBuyerTransferRoutes from './routes/athome-buyer-transfer';
 import sellersManagementRoutes from './routes/sellersManagement';
 import propertyRoutes from './routes/properties';
 import valuationRoutes from './routes/valuations';
@@ -990,6 +991,7 @@ app.use('/cache', cacheRoutes);
 app.use('/api/drive', driveRoutes);
 app.use('/api/work-tasks', workTaskRoutes);
 app.use('/api/property-listings', propertyListingRoutes);
+app.use('/api/buyers', athomeBuyerTransferRoutes); // アットホーム反響メール買主転記（認証不要・CRON_SECRET認証）
 app.use('/api/buyers', buyerRoutes);
 app.use('/api/buyer-sidebar-counts', buyerSidebarCountsRoutes);
 app.use('/api', viewingResultRoutes);
