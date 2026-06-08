@@ -91,8 +91,8 @@ router.post('/athome-buyer-transfer', async (req: Request, res: Response) => {
     const buyerNumber = maxNumber + 1;
     console.log(`[athome-buyer-transfer] 買主番号採番: ${buyerNumber}`);
 
-    // 重複チェック（同じ電話番号が既にある場合はスキップ）
-    if (tel) {
+    // 重複チェック（同じ電話番号が既にある場合はスキップ）- skipDuplicateCheck=trueで無視可能
+    if (tel && !req.body.skipDuplicateCheck) {
       const existingRow = allRows.find(row => {
         const existingPhone = String(row['●電話番号\n（ハイフン不要）'] || '').replace(/[-\s－　]/g, '');
         return existingPhone === tel;
