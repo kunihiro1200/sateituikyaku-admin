@@ -388,11 +388,12 @@ export class BuyerService {
   async getByBuyerNumber(buyerNumber: string, includeDeleted: boolean = false): Promise<any | null> {
     console.log(`[BuyerService.getByBuyerNumber] buyerNumber=${buyerNumber} (type: ${typeof buyerNumber})`);
     
-    // BY_プレフィックス形式（例: BY_MN28sl8yi5yLNI）はそのまま文字列で検索
+    // BY_プレフィックス形式（例: BY_MN28sl8yi5yLNI）またはFK形式（例: FK1）はそのまま文字列で検索
     // 数値形式の場合はintに変換して検索
     const isByPrefix = /^BY_[A-Za-z0-9_]+$/.test(buyerNumber);
-    const searchValue = isByPrefix ? buyerNumber : parseInt(buyerNumber, 10);
-    console.log(`[BuyerService.getByBuyerNumber] searchValue=${searchValue} (isByPrefix=${isByPrefix})`);
+    const isFkPrefix = /^FK\d+$/.test(buyerNumber);
+    const searchValue = (isByPrefix || isFkPrefix) ? buyerNumber : parseInt(buyerNumber, 10);
+    console.log(`[BuyerService.getByBuyerNumber] searchValue=${searchValue} (isByPrefix=${isByPrefix}, isFkPrefix=${isFkPrefix})`);
     
     let query = this.supabase
       .from('buyers')
@@ -605,9 +606,45 @@ export class BuyerService {
   /**
    * 新規買主を作成
    */
+  /**
+   * 買主データから福岡物件かどうかを判定する
+   * - property_number がある場合: property_listings.address に「福岡」が含まれるか確認
+   * - other_company_property がある場合: その住所に「福岡」が含まれるか確認
+   */
+  private async isFukuokaBuyer(buyerData: Partial<any>): Promise<boolean> {
+    try {
+      // 自社物件の場合: property_listingsから住所を取得
+      if (buyerData.property_number) {
+        const firstPropertyNumber = String(buyerData.property_number).split(',')[0].trim();
+        const { data: listing } = await this.supabase
+          .from('property_listings')
+          .select('address')
+          .eq('property_number', firstPropertyNumber)
+          .maybeSingle();
+        if (listing?.address && listing.address.includes('福岡')) {
+          console.log(`[BuyerService] 福岡物件判定: property_number=${firstPropertyNumber}, address=${listing.address}`);
+          return true;
+        }
+      }
+      // 他社物件の場合: other_company_property の住所を確認
+      if (buyerData.other_company_property) {
+        const otherProp = String(buyerData.other_company_property);
+        if (otherProp.includes('福岡')) {
+          console.log(`[BuyerService] 福岡物件判定: other_company_property に「福岡」含む`);
+          return true;
+        }
+      }
+      return false;
+    } catch (err: any) {
+      console.warn(`[BuyerService] 福岡判定失敗（通常採番にフォールバック）: ${err.message}`);
+      return false;
+    }
+  }
+
   async create(buyerData: Partial<any>): Promise<any> {
-    // 買主番号を自動生成
-    const buyerNumber = await this.generateBuyerNumber();
+    // 福岡物件かどうかを判定して買主番号を自動生成
+    const isFukuoka = await this.isFukuokaBuyer(buyerData);
+    const buyerNumber = await this.generateBuyerNumber(isFukuoka);
 
     const newBuyer = {
       ...buyerData,
@@ -641,10 +678,10 @@ export class BuyerService {
       });
     }
 
-    // DB保存成功後、採番スプレッドシートのB2セルを更新
+    // DB保存成功後、採番スプレッドシートのセルを更新（FK→C2、通常→B2）
     // 失敗しても登録自体は成功とする（警告ログのみ）
     try {
-      const client = await this.initBuyerNumberClient();
+      const client = await this.initBuyerNumberClient(isFukuoka);
       await client.updateBuyerNumber(buyerNumber);
     } catch (updateError: any) {
       console.warn(`[BuyerService] Failed to update buyer number cell after registration (buyer_number=${buyerNumber}): ${updateError.message}`);
@@ -709,15 +746,17 @@ export class BuyerService {
 
   /**
    * 買主番号採番用スプレッドシートクライアントを初期化
+   * @param isFukuoka 福岡物件の場合は true（C2セル使用）、通常は false（B2セル使用）
    */
-  private async initBuyerNumberClient(): Promise<BuyerNumberSpreadsheetClient> {
+  private async initBuyerNumberClient(isFukuoka: boolean = false): Promise<BuyerNumberSpreadsheetClient> {
     const spreadsheetId = process.env.BUYER_NUMBER_SPREADSHEET_ID;
     if (!spreadsheetId) {
       throw new Error('BUYER_NUMBER_SPREADSHEET_ID is not set');
     }
 
     const sheetName = process.env.BUYER_NUMBER_SHEET_NAME || '連番';
-    const cell = process.env.BUYER_NUMBER_CELL || 'B2';
+    // 福岡（FK）はJ2セル、通常はB2セル（環境変数 BUYER_NUMBER_CELL のデフォルト）
+    const cell = isFukuoka ? 'J2' : (process.env.BUYER_NUMBER_CELL || 'B2');
 
     const sheetsClient = new GoogleSheetsClient({
       spreadsheetId,
@@ -729,14 +768,15 @@ export class BuyerService {
 
     await sheetsClient.authenticate();
 
-    return new BuyerNumberSpreadsheetClient(sheetsClient, cell);
+    return new BuyerNumberSpreadsheetClient(sheetsClient, cell, isFukuoka ? 'FK' : '');
   }
 
   /**
-   * 買主番号を自動生成（スプレッドシートの連番シートB2セル+1）
+   * 買主番号を自動生成
+   * @param isFukuoka 福岡物件の場合は FK○○、通常は数字のみ
    */
-  private async generateBuyerNumber(): Promise<string> {
-    const client = await this.initBuyerNumberClient();
+  private async generateBuyerNumber(isFukuoka: boolean = false): Promise<string> {
+    const client = await this.initBuyerNumberClient(isFukuoka);
     return client.getNextBuyerNumber();
   }
 
@@ -842,9 +882,10 @@ export class BuyerService {
     // Apply second inquiry rule: force pinrich to '登録不要（不可）' if inquiry_source is '2件目以降'
     const finalAllowedData = this.applySecondInquiryRule(allowedData);
 
-    // BY_プレフィックス形式はそのまま文字列で、数値形式はintに変換
+    // BY_プレフィックス形式またはFK形式はそのまま文字列で、数値形式はintに変換
     const isByPrefixUpdate = /^BY_[A-Za-z0-9_]+$/.test(buyerNumber);
-    const buyerNumberValue = isByPrefixUpdate ? buyerNumber : parseInt(buyerNumber, 10);
+    const isFkPrefixUpdate = /^FK\d+$/.test(buyerNumber);
+    const buyerNumberValue = (isByPrefixUpdate || isFkPrefixUpdate) ? buyerNumber : parseInt(buyerNumber, 10);
     console.log('[BuyerService.update] buyerNumberValue:', buyerNumberValue);
 
     const { data, error } = await this.supabase
@@ -3063,11 +3104,12 @@ export class BuyerService {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(buyerIdOrNumber);
     const isNumeric = /^\d+$/.test(buyerIdOrNumber);
     const isByPrefix = /^BY_[A-Za-z0-9_]+$/.test(buyerIdOrNumber);
+    const isFkPrefix = /^FK\d+$/.test(buyerIdOrNumber);
 
     // buyer_numberで削除（主キーがTEXTのため、buyer_numberで特定するのが確実）
     let query = this.supabase.from('buyers').delete();
 
-    if (isNumeric || isByPrefix) {
+    if (isNumeric || isByPrefix || isFkPrefix) {
       // 数値形式またはBY_プレフィックス形式はbuyer_numberで削除
       query = query.eq('buyer_number', buyerIdOrNumber);
     } else if (isUuid) {

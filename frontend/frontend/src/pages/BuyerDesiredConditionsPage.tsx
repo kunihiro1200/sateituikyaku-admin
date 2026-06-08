@@ -28,7 +28,7 @@ import api, { buyerApi } from '../services/api';
 import { InlineEditableField } from '../components/InlineEditableField';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import {
-  AREA_OPTIONS,
+  getAreaOptions,
   DESIRED_PROPERTY_TYPE_OPTIONS,
   PARKING_SPACES_OPTIONS,
   PRICE_RANGE_DETACHED_OPTIONS,
@@ -51,7 +51,7 @@ interface Buyer {
 
 const DESIRED_CONDITIONS_FIELDS = [
   { key: 'desired_timing', label: '希望時期', inlineEditable: true, fieldType: 'text' },
-  { key: 'desired_area', label: '★エリア', inlineEditable: false, fieldType: 'multiselect', options: AREA_OPTIONS },
+  { key: 'desired_area', label: '★エリア', inlineEditable: false, fieldType: 'multiselect', options: [] as { value: string; label: string }[] },
   { key: 'desired_property_type', label: '★希望種別', inlineEditable: true, fieldType: 'dropdown', options: DESIRED_PROPERTY_TYPE_OPTIONS },
   { key: 'desired_building_age', label: '★築年数', inlineEditable: true, fieldType: 'dropdown', options: BUILDING_AGE_OPTIONS },
   { key: 'desired_floor_plan', label: '★間取り', inlineEditable: true, fieldType: 'dropdown', options: FLOOR_PLAN_OPTIONS },
@@ -68,6 +68,13 @@ const DESIRED_CONDITIONS_FIELDS = [
   { key: 'high_floor_required', label: '★高層階', inlineEditable: true, fieldType: 'dropdown', options: HIGH_FLOOR_OPTIONS },
   { key: 'corner_room_required', label: '★角部屋', inlineEditable: true, fieldType: 'dropdown', options: CORNER_ROOM_OPTIONS },
 ];
+
+const getDesiredConditionsFields = (buyerNumber?: string | null) => {
+  const areaOptions = getAreaOptions(buyerNumber);
+  return DESIRED_CONDITIONS_FIELDS.map((field) =>
+    field.key === 'desired_area' ? { ...field, options: areaOptions } : field
+  );
+};
 
 export default function BuyerDesiredConditionsPage() {
   const { buyer_number } = useParams<{ buyer_number: string }>();
@@ -94,7 +101,8 @@ export default function BuyerDesiredConditionsPage() {
   const isUuid = buyer_number ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(buyer_number) : false;
   const isNumericBuyerNumber = buyer_number ? /^\d+$/.test(buyer_number) : false;
   const isByPrefixBuyerNumber = buyer_number ? /^BY_[A-Za-z0-9_]+$/.test(buyer_number) : false;
-  const isValidBuyerNumber = isUuid || isNumericBuyerNumber || isByPrefixBuyerNumber;
+  const isFkPrefixBuyerNumber = buyer_number ? /^FK\d+$/.test(buyer_number) : false;
+  const isValidBuyerNumber = isUuid || isNumericBuyerNumber || isByPrefixBuyerNumber || isFkPrefixBuyerNumber;
 
   useEffect(() => {
     if (buyer_number && isValidBuyerNumber) {
@@ -440,7 +448,7 @@ export default function BuyerDesiredConditionsPage() {
           希望条件
         </Typography>
         <Grid container spacing={2}>
-          {DESIRED_CONDITIONS_FIELDS.map((field) => (
+          {getDesiredConditionsFields(buyer_number).map((field) => (
             <Grid item xs={12} sm={6} md={4} key={field.key}>
               <Box>
                 <Typography

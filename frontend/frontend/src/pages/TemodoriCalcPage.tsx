@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Box, Typography, TextField, InputAdornment, Divider, Paper, CircularProgress } from '@mui/material';
+import { Box, Typography, TextField, InputAdornment, Divider, Paper, CircularProgress, Button, Snackbar, Alert } from '@mui/material';
 import CalculateIcon from '@mui/icons-material/Calculate';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 // タブのタイトル・ファビコンを動的に設定
 function usePageMeta(title: string) {
@@ -118,6 +119,44 @@ const TemodoriCalcPage = () => {
   const calcYield = chinryoYearYen > 0 && shuuekiPriceYen > 0
     ? (chinryoYearYen / shuuekiPriceYen) * 100
     : 0;
+
+  // コピー通知用
+  const [copySnackOpen, setCopySnackOpen] = useState(false);
+
+  // トークテキスト（利回り別売買価格の説明文）生成
+  const TALK_YIELDS = [5, 6, 7, 8, 9, 10];
+  const talkYieldPrices = TALK_YIELDS.map((y) => ({
+    yieldRate: y,
+    price: chinryoYearYen > 0 ? Math.round(chinryoYearYen / (y / 100)) : 0,
+  }));
+  const chinryoManStr = parseFloat(chinryoInput) > 0 ? `${parseFloat(chinryoInput)}` : '';
+  const nenkanChinryoStr = chinryoYearYen > 0 ? `${chinryoYearYen.toLocaleString()}円` : '';
+
+  const buildTalkText = (): string => {
+    if (chinryoMonthYen <= 0) return '';
+    const rows = talkYieldPrices
+      .map(({ yieldRate, price }) => `${yieldRate}％の場合${price.toLocaleString()}円`)
+      .join('、');
+    const price6 = talkYieldPrices.find((r) => r.yieldRate === 6)?.price ?? 0;
+    return `現状の表面利回りの計算は、月額賃料${chinryoManStr}万円で年間賃料は${nenkanChinryoStr}となり、${rows}となります。基本的に利回り８～１０％が売れる目安となりますが、売出価格は６％の${price6.toLocaleString()}円でも良いかと思います。如何でしょうか？`;
+  };
+
+  const talkText = buildTalkText();
+
+  // 売買価格からの利回りトークテキスト生成
+  const buildYieldTalkText = (): string => {
+    if (calcYield <= 0) return '';
+    const priceStr = `${shuuekiPriceYen.toLocaleString()}円`;
+    return `ご希望の売買価格は${priceStr}とのことですが、この場合利回りは${calcYield.toFixed(2)}％となります。`;
+  };
+
+  const yieldTalkText = buildYieldTalkText();
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopySnackOpen(true);
+    });
+  };
 
   // seller情報取得してデフォルト値をセット
   useEffect(() => {
@@ -443,6 +482,41 @@ const TemodoriCalcPage = () => {
             </Paper>
           )}
 
+          {/* トークテキスト（利回り別説明文） */}
+          {talkText && (
+            <Paper elevation={2} sx={{ p: 3, mt: 2.5, borderRadius: 2, border: '1.5px solid #ce93d8', bgcolor: '#fce4ec' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                <Typography variant="subtitle2" fontWeight={700} color="#6a1b9a">
+                  💬 トーク文例
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<ContentCopyIcon fontSize="small" />}
+                  onClick={() => handleCopy(talkText)}
+                  sx={{ ml: 2, flexShrink: 0, borderColor: '#6a1b9a', color: '#6a1b9a', '&:hover': { borderColor: '#4a148c', bgcolor: '#ede7f6' } }}
+                >
+                  コピー
+                </Button>
+              </Box>
+              <Typography
+                variant="body2"
+                sx={{
+                  lineHeight: 1.9,
+                  color: '#37474f',
+                  bgcolor: 'white',
+                  p: 2,
+                  borderRadius: 1,
+                  border: '1px solid #e0e0e0',
+                  whiteSpace: 'pre-wrap',
+                  fontSize: '0.88rem',
+                }}
+              >
+                {talkText}
+              </Typography>
+            </Paper>
+          )}
+
           {/* 売買価格から利回り逆算 */}
           <Paper elevation={2} sx={{ p: 3, borderRadius: 2, mt: 2.5 }}>
             <Typography variant="subtitle2" color="text.secondary" mb={0.5} fontWeight={600}>
@@ -480,6 +554,40 @@ const TemodoriCalcPage = () => {
                     {calcYield.toFixed(2)}%
                   </Typography>
                 </Box>
+
+                {/* 売買価格利回りトークテキスト */}
+                {yieldTalkText && (
+                  <Box sx={{ mt: 2, p: 2, bgcolor: '#fce4ec', borderRadius: 1.5, border: '1px solid #ce93d8' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                      <Typography variant="caption" fontWeight={700} color="#6a1b9a">
+                        💬 トーク文例
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<ContentCopyIcon fontSize="small" />}
+                        onClick={() => handleCopy(yieldTalkText)}
+                        sx={{ ml: 2, flexShrink: 0, borderColor: '#6a1b9a', color: '#6a1b9a', '&:hover': { borderColor: '#4a148c', bgcolor: '#ede7f6' } }}
+                      >
+                        コピー
+                      </Button>
+                    </Box>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        lineHeight: 1.9,
+                        color: '#37474f',
+                        bgcolor: 'white',
+                        p: 1.5,
+                        borderRadius: 1,
+                        border: '1px solid #e0e0e0',
+                        fontSize: '0.88rem',
+                      }}
+                    >
+                      {yieldTalkText}
+                    </Typography>
+                  </Box>
+                )}
               </>
             )}
             {chinryoMonthYen === 0 && (
@@ -648,6 +756,18 @@ const TemodoriCalcPage = () => {
 
 
       </Box>
+
+      {/* コピー完了通知 */}
+      <Snackbar
+        open={copySnackOpen}
+        autoHideDuration={2000}
+        onClose={() => setCopySnackOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setCopySnackOpen(false)} severity="success" sx={{ width: '100%' }}>
+          コピーしました
+        </Alert>
+      </Snackbar>
     </>
   );
 };

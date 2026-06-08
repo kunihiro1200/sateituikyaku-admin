@@ -65,6 +65,7 @@ interface ReportData {
   price?: number | null; // 売買価格（円単位）
   price_reduction_history?: string; // 値下げ履歴
   land_area?: number | null; // 土地面積（㎡）
+  property_type?: string; // 種別（土地・中古一戸建て・マンション等）
 }
 
 // 今日からN週間後の日付文字列（YYYY-MM-DD）を返す
@@ -225,6 +226,7 @@ export default function PropertyReportPage() {
         price: d.price ?? null, // 売買価格（BS列「価格」）
         price_reduction_history: d.price_reduction_history || '',
         land_area: d.land_area ?? null, // 土地面積（㎡）
+        property_type: d.property_type || '', // 種別（土地・中古一戸建て・マンション等）
       };
       setReportData(initial);
       setSavedData(initial);
@@ -726,7 +728,7 @@ export default function PropertyReportPage() {
                       address: reportData.address || '',
                       price: reportData.price ?? null,
                       landArea: reportData.land_area ?? null,
-                      propertyType: '',
+                      propertyType: reportData.property_type || '',
                     })
                   );
                   window.open(`/property-listings/${propertyNumber}/nearby-cases`, '_blank');

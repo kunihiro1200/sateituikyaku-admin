@@ -36,7 +36,7 @@ import {
   DISTRIBUTION_TYPE_OPTIONS,
 } from '../utils/buyerFieldOptions';
 import {
-  AREA_OPTIONS,
+  getAreaOptions,
   DESIRED_PROPERTY_TYPE_OPTIONS,
   PARKING_SPACES_OPTIONS,
   PRICE_RANGE_DETACHED_OPTIONS,
@@ -1027,7 +1027,7 @@ export default function NewBuyerPage() {
                       renderValue={(selected) => (
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                           {(selected as string[]).map((val) => {
-                            const opt = AREA_OPTIONS.find((o) => o.value === val);
+                            const opt = getAreaOptions(nextBuyerNumber).find((o) => o.value === val);
                             return (
                               <Chip
                                 key={val}
@@ -1045,7 +1045,7 @@ export default function NewBuyerPage() {
                       )}
                       MenuProps={{ PaperProps: { style: { maxHeight: 400 } } }}
                     >
-                      {AREA_OPTIONS.map((opt) => (
+                      {getAreaOptions(nextBuyerNumber).map((opt) => (
                         <MenuItem key={opt.value} value={opt.value} dense>
                           <Checkbox size="small" checked={desiredArea.includes(opt.value)} sx={{ p: 0, mr: 1 }} />
                           <Typography variant="body2">{opt.label}</Typography>

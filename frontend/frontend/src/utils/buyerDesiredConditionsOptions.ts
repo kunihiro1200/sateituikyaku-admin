@@ -2,7 +2,7 @@
  * 買主希望条件の選択肢定義
  */
 
-// 希望エリア
+// 希望エリア（大分・別府向け）
 export const AREA_OPTIONS = [
   { value: '①中学校（王子、碩田学園、大分西）', label: '①中学校（王子、碩田学園、大分西）' },
   { value: '②中学校（滝尾、城東、原川）', label: '②中学校（滝尾、城東、原川）' },
@@ -24,6 +24,32 @@ export const AREA_OPTIONS = [
   { value: '㊷別府駅周辺（中央町、駅前本町、上田の湯町、野口中町、西野口町、駅前町）', label: '㊷別府駅周辺（中央町、駅前本町、上田の湯町、野口中町、西野口町、駅前町）' },
   { value: '㊸鉄輪線より下（南立石２区、東荘園、ルミールの丘、石垣東、亀川中央町）', label: '㊸鉄輪線より下（南立石２区、東荘園、ルミールの丘、石垣東、亀川中央町）' },
 ];
+
+// 希望エリア（福岡向け・FK買主専用）
+export const FUKUOKA_AREA_OPTIONS = [
+  { value: 'F1 福岡市東区', label: 'F1 福岡市東区' },
+  { value: 'F2 福岡市博多区', label: 'F2 福岡市博多区' },
+  { value: 'F3 福岡市中央区', label: 'F3 福岡市中央区' },
+  { value: 'F4 福岡市南区', label: 'F4 福岡市南区' },
+  { value: 'F5 福岡市西区', label: 'F5 福岡市西区' },
+  { value: 'F6 福岡市城南区', label: 'F6 福岡市城南区' },
+  { value: 'F7 福岡市早良区', label: 'F7 福岡市早良区' },
+  { value: 'F8 福岡市港区', label: 'F8 福岡市港区' },
+  { value: 'F9 春日市', label: 'F9 春日市' },
+  { value: 'F10 大野城市', label: 'F10 大野城市' },
+  { value: 'F11 福岡市全部', label: 'F11 福岡市全部' },
+];
+
+/**
+ * 買主番号がFKで始まるかどうかで使用するエリア選択肢を返す
+ * FK○○ → 福岡エリア、それ以外 → 大分エリア
+ */
+export const getAreaOptions = (buyerNumber?: string | null) => {
+  if (buyerNumber && /^FK/i.test(buyerNumber)) {
+    return FUKUOKA_AREA_OPTIONS;
+  }
+  return AREA_OPTIONS;
+};
 
 // 希望種別
 export const DESIRED_PROPERTY_TYPE_OPTIONS = [

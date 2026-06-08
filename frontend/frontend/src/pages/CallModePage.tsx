@@ -3229,6 +3229,16 @@ const CallModePage = () => {
       setEditedManualValuationAmount1(amount1InManEn.toString());
       setEditedManualValuationAmount2(amount2InManEn?.toString() || '');
       setEditedManualValuationAmount3(amount3InManEn?.toString() || '');
+
+      // seller stateも更新（SMSテンプレートなどがseller.valuationAmount1を参照するため）
+      setSeller(prev => prev ? {
+        ...prev,
+        valuationAmount1: amount1,
+        valuationAmount2: amount2 ?? undefined,
+        valuationAmount3: amount3 ?? undefined,
+        fixedAssetTaxRoadPrice: undefined,
+        valuationAssignee: assignedBy,
+      } : prev);
       
       // ローカルstateを更新済みのため再読み込みは不要（再読み込みするとスクロール位置がリセットされ画面が一瞬真っ白になる）
     } catch (err: any) {
@@ -4245,7 +4255,7 @@ HP：https://ifoo-oita.com/
       
       await api.post(endpoint, {
         assignee: seller.visitAssignee || seller.assignedTo || employee?.name,
-        notes: `決定日: ${editedExclusiveDecisionDate}\n競合: ${editedCompetitors.join(', ')}\n要因: ${editedExclusiveOtherDecisionFactors.join(', ')}`,
+        notes: `決定日: ${editedExclusiveDecisionDate}\n競合: ${editedCompetitors.join(', ')}\n要因: ${editedExclusiveOtherDecisionFactors.join(', ')}${editedCompetitorNameAndReason ? `\n総合名・理由: ${editedCompetitorNameAndReason}` : ''}`,
       });
 
       setSuccessMessage(`${statusLabel}の通知を送信しました（4つのフィールドも保存しました）`);
