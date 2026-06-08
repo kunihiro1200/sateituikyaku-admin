@@ -2406,14 +2406,59 @@ export class TokiExtractService {
   }
 
   /**
-   * 謄本書き込み後に「媒介依頼」シートのA2を再セットする
-   * ⚠️ 2026年6月8日: A2への書き込みが媒介依頼シートのD2〜H2（ドロップダウン・手動入力値）を
-   * 消してしまうため、この処理を無効化した。
-   * Googleスプレッドシート側のスクリプト/IMPORTRANGEトリガーによる副作用と判断。
-   * VLOOKUPの再計算は不要（謄本書き込み先は専任媒介シートであり、媒介依頼シートとは別）。
+   * 謄本書き込み後に「媒介依頼」シートのIMPORTRANGEキャッシュをリフレッシュする
+   *
+   * 【問題】
+   * 同じスプレッドシート内の別シート（専任媒介契建物）にAPIで書き込むと、
+   * IMPORTRANGEのキャッシュがリセットされる。その後IMPORTRANGEが再読み込みする際に
+   * 一時的に空を返すが、A2の値が変化していないため再計算トリガーがかからず、
+   * D2〜H2（VLOOKUP+IMPORTRANGE数式）が永続的に空のままになる。
+   *
+   * 【解決策】
+   * A2を一度空文字でクリアし、すぐ元の値を書き戻すことでVLOOKUPの再計算を強制トリガーする。
+   * クリア→書き戻しの2ステップにすることで、A2の値変化を確実に検知させる。
+   *
+   * 【注意】
+   * 以前の実装（値をそのまま書き直す1ステップ）は余分な文字混入でVLOOKUPが
+   * ヒットしなくなる問題があったため、クリア→書き戻しの2ステップに変更。
    */
-  private async refreshMediationSheetA2(_spreadsheetUrl: string): Promise<void> {
-    // 意図的にスキップ（D2〜H2消去の副作用防止）
-    console.log('[TokiExtract] 媒介依頼シートA2リフレッシュをスキップ（D2〜H2保護のため無効化）');
+  private async refreshMediationSheetA2(spreadsheetUrl: string): Promise<void> {
+    const spreadsheetId = this.extractSpreadsheetId(spreadsheetUrl);
+    if (!spreadsheetId) return;
+
+    try {
+      const mediationClient = new GoogleSheetsClient({
+        spreadsheetId,
+        sheetName: '媒介依頼',
+        serviceAccountKeyPath:
+          process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+      });
+
+      await mediationClient.authenticate();
+
+      // A2の現在値を読み取る（FORMULA形式で取得して数式か値かを判別）
+      const currentValues = await mediationClient.readRawRange('A2');
+      const currentA2 = currentValues?.[0]?.[0] ?? '';
+
+      if (!currentA2) {
+        console.log('[TokiExtract] 媒介依頼シートA2が空のためリフレッシュをスキップ');
+        return;
+      }
+
+      console.log(`[TokiExtract] 媒介依頼シートA2リフレッシュ開始: "${currentA2}"`);
+
+      // Step1: A2を空文字でクリア（VLOOKUPに値変化を検知させる）
+      await mediationClient.writeRawCell('A2', '');
+
+      // Step2: 元の値を書き戻す（VLOOKUPの再計算をトリガー）
+      // 少し待ってから書き戻すことでGoogleスプレッドシートが変化を確実に検知する
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await mediationClient.writeRawCell('A2', currentA2);
+
+      console.log(`[TokiExtract] 媒介依頼シートA2リフレッシュ完了: "${currentA2}"`);
+    } catch (err: any) {
+      // リフレッシュ失敗は致命的ではないのでログのみ
+      console.warn(`[TokiExtract] 媒介依頼シートA2リフレッシュ失敗（無視）: ${err.message}`);
+    }
   }
 }
