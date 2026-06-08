@@ -800,6 +800,9 @@ export class TokiExtractService {
     }
 
     console.log('[TokiExtract] スプレッドシートへの書き込み完了');
+
+    // 媒介依頼シートのIMPORTRANGE再計算トリガー
+    await this.refreshMediationSheetA2(spreadsheetUrl);
   }
 
   /**
@@ -1092,6 +1095,9 @@ export class TokiExtractService {
     }
 
     console.log('[TokiKodate] スプレッドシートへの書き込み完了');
+
+    // 媒介依頼シートのIMPORTRANGE再計算トリガー
+    await this.refreshMediationSheetA2(spreadsheetUrl);
   }
 
   /**
@@ -1453,6 +1459,9 @@ export class TokiExtractService {
     }
 
     console.log('[TokiKeiyaku] スプレッドシートへの書き込み完了');
+
+    // 媒介依頼シートのIMPORTRANGE再計算トリガー
+    await this.refreshMediationSheetA2(spreadsheetUrl);
   }
 
   // -------------------------------------------------------
@@ -2100,6 +2109,9 @@ export class TokiExtractService {
     }
 
     console.log('[TokiKodateKeiyaku] スプレッドシートへの書き込み完了');
+
+    // 媒介依頼シートのIMPORTRANGE再計算トリガー
+    await this.refreshMediationSheetA2(spreadsheetUrl);
   }
 
   // -------------------------------------------------------
@@ -2334,6 +2346,9 @@ export class TokiExtractService {
     }
 
     console.log('[TokiTochi] スプレッドシートへの書き込み完了');
+
+    // 媒介依頼シートのIMPORTRANGE再計算トリガー
+    await this.refreshMediationSheetA2(spreadsheetUrl);
   }
 
   // -------------------------------------------------------
@@ -2388,5 +2403,17 @@ export class TokiExtractService {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * 謄本書き込み後に「媒介依頼」シートのA2を再セットする
+   * ⚠️ 2026年6月8日: A2への書き込みが媒介依頼シートのD2〜H2（ドロップダウン・手動入力値）を
+   * 消してしまうため、この処理を無効化した。
+   * Googleスプレッドシート側のスクリプト/IMPORTRANGEトリガーによる副作用と判断。
+   * VLOOKUPの再計算は不要（謄本書き込み先は専任媒介シートであり、媒介依頼シートとは別）。
+   */
+  private async refreshMediationSheetA2(_spreadsheetUrl: string): Promise<void> {
+    // 意図的にスキップ（D2〜H2消去の副作用防止）
+    console.log('[TokiExtract] 媒介依頼シートA2リフレッシュをスキップ（D2〜H2保護のため無効化）');
   }
 }
