@@ -56,6 +56,7 @@ interface NearbyCase {
   built_year?: string;
   // 中古一戸建て専用
   building_area?: string;
+  land_area_str?: string;   // 土地面積
   // マンション専用
   exclusive_area?: string;
   floor_plan?: string;
@@ -188,6 +189,7 @@ export default function NearbyCasesPage() {
       headerCols = `<th style="padding:5px 10px;border:1px solid #ddd;background:#e3f2fd">所在地</th>
         <th style="padding:5px 10px;border:1px solid #ddd;background:#e3f2fd;text-align:right">価格</th>
         <th style="padding:5px 10px;border:1px solid #ddd;background:#e3f2fd;text-align:right">建物面積</th>
+        <th style="padding:5px 10px;border:1px solid #ddd;background:#e3f2fd;text-align:right">土地面積</th>
         <th style="padding:5px 10px;border:1px solid #ddd;background:#e3f2fd">築年月</th>`;
       rows = copyTargetCases.map((c, i) => `
         <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f9f9f9'}">
@@ -195,6 +197,7 @@ export default function NearbyCasesPage() {
           <td style="padding:5px 10px;border:1px solid #ddd">${c.address !== '-' ? c.address : ''}</td>
           <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${c.price}</td>
           <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${c.building_area || '-'}</td>
+          <td style="padding:5px 10px;border:1px solid #ddd;text-align:right">${c.land_area_str || '-'}</td>
           <td style="padding:5px 10px;border:1px solid #ddd">${c.built_year || '-'}</td>
         </tr>`).join('');
     } else {
@@ -337,6 +340,7 @@ export default function NearbyCasesPage() {
           <TableCell sx={{ fontWeight: 'bold', minWidth: 160 }}>所在地</TableCell>
           <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', whiteSpace: 'nowrap' }}>価格</TableCell>
           <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', whiteSpace: 'nowrap' }}>建物面積</TableCell>
+          <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', whiteSpace: 'nowrap' }}>土地面積</TableCell>
           <TableCell sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>
             築年月 <span style={{ color: '#c62828', fontSize: '0.75rem' }}>必須</span>
           </TableCell>
@@ -416,6 +420,7 @@ export default function NearbyCasesPage() {
           {addressCell}
           <TableCell sx={{ textAlign: 'right', fontSize: '0.85rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{c.price}</TableCell>
           <TableCell sx={{ textAlign: 'right', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>{c.building_area || '-'}</TableCell>
+          <TableCell sx={{ textAlign: 'right', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>{c.land_area_str || '-'}</TableCell>
           <TableCell sx={{ fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
             {hasBuiltYear
               ? <Typography component="span" sx={{ fontSize: '0.82rem', fontWeight: 'bold' }}>{c.built_year}</Typography>

@@ -2346,6 +2346,7 @@ router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, r
       built_year?: string;       // 築年数（必須）
       // 中古一戸建て専用
       building_area?: string;    // 建物面積（必須）
+      land_area_str?: string;    // 土地面積
       // マンション専用
       exclusive_area?: string;   // 専有面積（必須）
       floor_plan?: string;       // 間取り
@@ -2421,6 +2422,11 @@ router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, r
         const bldAreaM = block.match(/<dt[^>]*>建物面積<\/dt>\s*<dd[^>]*>([\s\S]{0,300}?)<\/dd>/);
         if (bldAreaM) building_area = stripTags(bldAreaM[1]).replace('（登記）', '').trim();
 
+        // 土地面積
+        let land_area_str = '-';
+        const landAreaM = block.match(/<dt[^>]*>土地面積<\/dt>\s*<dd[^>]*>([\s\S]{0,300}?)<\/dd>/);
+        if (landAreaM) land_area_str = stripTags(landAreaM[1]).replace('（登記）', '').trim();
+
         // 築年数（必須）: 「築年月」または「築年数」
         let built_year = '-';
         const builtM = block.match(/<dt[^>]*>築年月<\/dt>\s*<dd[^>]*>([\s\S]{0,200}?)<\/dd>/);
@@ -2431,7 +2437,7 @@ router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, r
           if (builtM2) built_year = stripTags(builtM2[1]).trim();
         }
 
-        cases.push({ case_type: 'chukoikkodate', title, price, address, building_area, built_year, url });
+        cases.push({ case_type: 'chukoikkodate', title, price, address, building_area, land_area_str, built_year, url });
       }
 
     } else {
