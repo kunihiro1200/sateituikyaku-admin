@@ -690,34 +690,72 @@ export default function SellersPage() {
   // 売主番号コピー用の状態
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info'>('success');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info' | 'warning'>('success');
 
-  // 転記実行ボタン用の状態
-  const [sellerManualSyncing, setSellerManualSyncing] = useState(false);
+  // 転記ステップ1（メール→スプシ）用の状態
+  const [step1Syncing, setStep1Syncing] = useState(false);
+  // 転記ステップ2（スプシ→DB）用の状態
+  const [step2Syncing, setStep2Syncing] = useState(false);
 
-  const handleSellerManualSync = async () => {
-    setSellerManualSyncing(true);
-    setSnackbarMessage('転記実行中... メール→売主リスト→DBの順に処理しています（数分かかります）');
+  // ステップ1: メール→売主リストスプシ（GAS実行）
+  const handleStep1Sync = async () => {
+    setStep1Syncing(true);
+    setSnackbarMessage('メール→スプシ転記中... GASを実行しています');
     setSnackbarSeverity('info');
     setSnackbarOpen(true);
     try {
-      const res = await api.post('/api/sellers/manual-sync');
-      setSnackbarMessage(res.data?.message || '転記が完了しました');
+      const res = await api.post('/api/sellers/manual-sync-step1');
+      if (res.data?.timeout) {
+        setSnackbarMessage('GASがタイムアウトしました。スプレッドシートを確認してから「スプシ→DB転記」を実行してください。');
+        setSnackbarSeverity('warning');
+      } else {
+        setSnackbarMessage(res.data?.message || 'メール→スプシの転記が完了しました');
+        setSnackbarSeverity('success');
+      }
+      setSnackbarOpen(true);
+    } catch (err: any) {
+      const resData = err?.response?.data;
+      if (resData?.timeout) {
+        setSnackbarMessage('GASがタイムアウトしました。スプレッドシートを確認してから「スプシ→DB転記」を実行してください。');
+        setSnackbarSeverity('warning');
+      } else {
+        setSnackbarMessage(resData?.error || 'メール転記中にエラーが発生しました');
+        setSnackbarSeverity('error');
+      }
+      setSnackbarOpen(true);
+    } finally {
+      setStep1Syncing(false);
+    }
+  };
+
+  // ステップ2: スプシ→DB転記
+  const handleStep2Sync = async () => {
+    setStep2Syncing(true);
+    setSnackbarMessage('スプシ→DB転記中...');
+    setSnackbarSeverity('info');
+    setSnackbarOpen(true);
+    try {
+      const res = await api.post('/api/sellers/manual-sync-step2');
+      setSnackbarMessage(res.data?.message || 'DBへの転記が完了しました');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
-      // データを再取得（売主リスト + サイドバーカウント両方）
+      // データを再取得
       pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
       pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
       fetchSellers();
-      // サイドバーカウントは少し遅らせて取得（DBへの書き込み完了を待つ）
       setTimeout(() => fetchSidebarCounts(true), 1000);
     } catch (err: any) {
-      const msg = err?.response?.data?.error || '転記中にエラーが発生しました';
-      setSnackbarMessage(msg);
-      setSnackbarSeverity('error');
+      const resData = err?.response?.data;
+      if (resData?.timeout) {
+        setSnackbarMessage('DB転記がタイムアウトしました。しばらく待ってからもう一度実行してください。');
+        setSnackbarSeverity('warning');
+      } else {
+        setSnackbarMessage(resData?.error || 'DB転記中にエラーが発生しました');
+        setSnackbarSeverity('error');
+      }
       setSnackbarOpen(true);
     } finally {
-      setSellerManualSyncing(false);
+      setStep2Syncing(false);
     }
   };
 
@@ -762,12 +800,23 @@ export default function SellersPage() {
               variant="contained"
               color="primary"
               size="small"
-              startIcon={sellerManualSyncing ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
-              onClick={handleSellerManualSync}
-              disabled={sellerManualSyncing}
+              startIcon={step1Syncing ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
+              onClick={handleStep1Sync}
+              disabled={step1Syncing || step2Syncing}
               sx={{ whiteSpace: 'nowrap' }}
             >
-              {sellerManualSyncing ? '転記実行中...' : '転記実行'}
+              {step1Syncing ? 'メール→スプシ転記中...' : 'メール→スプシ'}
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              size="small"
+              startIcon={step2Syncing ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
+              onClick={handleStep2Sync}
+              disabled={step1Syncing || step2Syncing}
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              {step2Syncing ? 'スプシ→DB転記中...' : 'スプシ→DB'}
             </Button>
             <Button
               variant="outlined"

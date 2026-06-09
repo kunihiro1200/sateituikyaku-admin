@@ -3325,8 +3325,94 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
 });
 
 /**
+ * POST /api/sellers/manual-sync-step1
+ * 手動転記ステップ1：メール転記GAS（メール→売主リストスプシ）のみ実行
+ */
+router.post('/manual-sync-step1', async (_req: Request, res: Response) => {
+  const STEP1_URL = 'https://script.google.com/macros/s/AKfycbyBbOeDPwwrlLX8w8xbyumP8eRjKFkYkzFjiKP0zzdeNY5M3njdEOICcH9sWpj6hQ/exec';
+
+  try {
+    console.log('[seller manual-sync-step1] GAS開始: メール→売主リストスプシ');
+    const step1Res = await axios.get(STEP1_URL, { timeout: 55000 }); // Vercelの60秒制限内に収める
+    const step1Data = step1Res.data;
+    console.log('[seller manual-sync-step1] GAS完了:', step1Data);
+
+    if (step1Data?.success === false) {
+      return res.status(500).json({
+        success: false,
+        error: 'メール転記GASでエラーが発生しました',
+        detail: step1Data.error,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'メール→売主リストへの転記が完了しました。続けて「スプシ→DB転記」を実行してください。',
+      data: step1Data,
+    });
+  } catch (error: any) {
+    console.error('[seller manual-sync-step1] エラー:', error);
+    // タイムアウトの場合はGASが裏で動き続けている可能性を伝える
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      return res.status(408).json({
+        success: false,
+        error: 'GASの処理がタイムアウトしました。スプレッドシートを確認してから「スプシ→DB転記」を実行してください。',
+        timeout: true,
+      });
+    }
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/sellers/manual-sync-step2
+ * 手動転記ステップ2：スプシ→DB転記のみ実行（additionOnly）
+ */
+router.post('/manual-sync-step2', async (_req: Request, res: Response) => {
+  const BACKEND_URL = process.env.BACKEND_URL || 'https://sateituikyaku-admin-backend.vercel.app';
+  const CRON_SECRET = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
+
+  try {
+    console.log('[seller manual-sync-step2] スプシ→DB転記開始');
+    const step2Res = await axios.post(
+      `${BACKEND_URL}/api/sync/trigger?additionOnly=true`,
+      {},
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${CRON_SECRET}`,
+        },
+        timeout: 55000, // Vercelの60秒制限内に収める
+      }
+    );
+    const step2Data = step2Res.data;
+    console.log('[seller manual-sync-step2] 完了:', step2Data);
+
+    const added = step2Data?.data?.added ?? 0;
+    return res.json({
+      success: true,
+      message: added > 0
+        ? `DBへの転記が完了しました（${added}件追加）`
+        : 'DBへの転記が完了しました（新規追加なし）',
+      data: step2Data,
+    });
+  } catch (error: any) {
+    console.error('[seller manual-sync-step2] エラー:', error);
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      return res.status(408).json({
+        success: false,
+        error: 'DB転記がタイムアウトしました。しばらく待ってからもう一度実行してください。',
+        timeout: true,
+      });
+    }
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * POST /api/sellers/manual-sync
- * 手動転記実行：①メール転記GAS（メール→売主リストスプシ）→ ②/api/sync/trigger（スプシ→DB）を順番に実行
+ * 旧エンドポイント（後方互換性のため残す）→ step1+step2を順番に実行
+ * @deprecated manual-sync-step1 と manual-sync-step2 を個別に使用してください
  */
 router.post('/manual-sync', async (_req: Request, res: Response) => {
   const STEP1_URL = 'https://script.google.com/macros/s/AKfycbyBbOeDPwwrlLX8w8xbyumP8eRjKFkYkzFjiKP0zzdeNY5M3njdEOICcH9sWpj6hQ/exec';
@@ -3335,7 +3421,7 @@ router.post('/manual-sync', async (_req: Request, res: Response) => {
 
   try {
     console.log('[seller manual-sync] ステップ1開始: メール転記GAS（メール→売主リストスプシ）');
-    const step1Res = await axios.get(STEP1_URL, { timeout: 300000 });
+    const step1Res = await axios.get(STEP1_URL, { timeout: 55000 });
     const step1Data = step1Res.data;
     console.log('[seller manual-sync] ステップ1完了:', step1Data);
 
@@ -3356,7 +3442,7 @@ router.post('/manual-sync', async (_req: Request, res: Response) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${CRON_SECRET}`,
         },
-        timeout: 300000,
+        timeout: 55000,
       }
     );
     const step2Data = step2Res.data;
