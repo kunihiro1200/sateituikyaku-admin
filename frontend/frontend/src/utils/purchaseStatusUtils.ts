@@ -2,20 +2,27 @@
  * 買付状況判定ユーティリティ
  *
  * 物件の買付状況を判定するための純粋関数を提供する。
- * - 条件1（買主側）: latest_status に「買」が含まれるか
+ * - 条件1（買主側）: latest_status に「買」が含まれ、かつ「買付外れました」ではないか
  * - 条件2（物件側）: offer_status に空でない値があるか
  * - 両方成立時は条件1を優先
  */
 
 /**
- * 条件1の判定: latest_status に「買」が含まれるか
+ * 「買」を含むが買付成立とみなさないステータス一覧
+ */
+const EXCLUDED_PURCHASE_STATUSES = ['買付外れました'];
+
+/**
+ * 条件1の判定: latest_status が有効な買付ステータスか
+ * 「買」を含む かつ 除外ステータス（「買付外れました」等）ではない場合に true
  * @param latestStatus 買主の最新状況
- * @returns 「買」を含む場合 true、null・空文字・含まない場合 false
+ * @returns 有効な買付ステータスの場合 true、null・空文字・含まない・除外対象の場合 false
  */
 export function hasBuyerPurchaseStatus(
   latestStatus: string | null | undefined
 ): boolean {
   if (!latestStatus) return false;
+  if (EXCLUDED_PURCHASE_STATUSES.includes(latestStatus)) return false;
   return latestStatus.includes('買');
 }
 
