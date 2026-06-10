@@ -7168,6 +7168,18 @@ HP：https://ifoo-oita.com/
                             ヘッダーの「📷 画像」ボタンから売買事例画像を選び、<strong>🤖ボタン</strong>を押すと自動で読み取れます。または手動で入力してください。
                           </Typography>
 
+                          {/* 画像から読み取るショートカットボタン */}
+                          <Button
+                            variant="outlined"
+                            color="secondary"
+                            size="small"
+                            startIcon={<ImageIcon />}
+                            onClick={() => setDocumentModalOpen(true)}
+                            sx={{ mb: 2 }}
+                          >
+                            📷 画像を開いて売買事例を読み取る
+                          </Button>
+
                           {/* 売買事例入力テーブル */}
                           <Box sx={{ overflowX: 'auto', mb: 2 }}>
                             <Box sx={{ display: 'grid', gridTemplateColumns: '60px 100px 100px 110px 1fr', gap: 1, mb: 1 }}>
