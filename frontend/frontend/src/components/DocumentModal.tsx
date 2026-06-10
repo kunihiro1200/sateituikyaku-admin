@@ -517,6 +517,50 @@ const DocumentModal = ({ open, onClose, sellerNumber, onFolderUrlReady, onSalesC
               </Typography>
               <Chip label={`${files.length}件`} size="small" variant="outlined" />
             </Box>
+
+            {/* 売買事例一括読み取りボタン */}
+            {onSalesCasesExtracted && files.some((f) => f.mimeType.startsWith('image/')) && (
+              <Box sx={{ mb: 1.5 }}>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  size="small"
+                  disabled={extractingFileId !== null}
+                  startIcon={extractingFileId !== null ? <CircularProgress size={16} color="inherit" /> : <span>🤖</span>}
+                  onClick={async () => {
+                    const imageFiles = files.filter((f) => f.mimeType.startsWith('image/'));
+                    if (imageFiles.length === 0) return;
+                    setError(null);
+                    const allCases: any[] = [];
+                    for (const imgFile of imageFiles) {
+                      try {
+                        setExtractingFileId(imgFile.id);
+                        const res = await api.post(`/api/drive/files/${imgFile.id}/extract-sales-cases`);
+                        if (res.data.cases && res.data.cases.length > 0) {
+                          allCases.push(...res.data.cases);
+                        }
+                      } catch {
+                        // 1枚失敗しても続行
+                      }
+                    }
+                    setExtractingFileId(null);
+                    if (allCases.length > 0) {
+                      onSalesCasesExtracted(allCases);
+                      onClose();
+                    } else {
+                      setError('売買事例が見つかりませんでした。');
+                    }
+                  }}
+                >
+                  {extractingFileId !== null
+                    ? `読み取り中...（画像${files.filter((f) => f.mimeType.startsWith('image/')).length}枚）`
+                    : `🤖 売買事例を一括読み取り（画像${files.filter((f) => f.mimeType.startsWith('image/')).length}枚）`}
+                </Button>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                  ※ 複数枚あれば全て読み取って合算します
+                </Typography>
+              </Box>
+            )}
             <List dense>
               {files.map((file) => (
                 <ListItem
