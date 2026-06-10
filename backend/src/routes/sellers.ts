@@ -3886,23 +3886,23 @@ router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Re
     };
 
     // AIによる担当者強み分析（Anthropic Claude）
-    // キャッシュ確認：exclusive_analysis_qaテーブルのai_analysisカラムに保存済みなら再利用
+    // キャッシュ確認：assignee + target_month でキャッシュを検索（seller_idに依存しない）
     let aiAnalysis = '';
     try {
       const supabaseForCache = createClient(
         process.env.SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_KEY!
       );
-      const decisionDateObj2 = new Date(exclusiveDecisionDate);
-      const cacheMonth = `${decisionDateObj2.getFullYear()}-${String(decisionDateObj2.getMonth() + 1).padStart(2, '0')}`;
+      const cacheMonth = `${decisionYear}-${String(decisionMonth).padStart(2, '0')}`;
 
-      // キャッシュ確認
+      // assignee + target_month で検索（どの売主から開いても同じキャッシュを使う）
       const { data: cachedQa } = await supabaseForCache
         .from('exclusive_analysis_qa')
-        .select('ai_analysis')
-        .eq('seller_id', id)
+        .select('id, ai_analysis')
         .eq('assignee', assignee)
         .eq('target_month', cacheMonth)
+        .not('ai_analysis', 'is', null)
+        .limit(1)
         .maybeSingle();
 
       if (cachedQa?.ai_analysis) {
