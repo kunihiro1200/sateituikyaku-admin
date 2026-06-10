@@ -1184,6 +1184,25 @@ function SellerStatusSidebarComponent({
           </Box>
         );
       })()}
+
+      {/* 📚 学習ライブラリボタン */}
+      <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid', borderColor: '#ce93d8' }}>
+        <Button
+          fullWidth
+          variant="contained"
+          onClick={() => window.open('/sales-learning-library', '_blank', 'noopener,noreferrer')}
+          sx={{
+            bgcolor: '#9c27b0',
+            color: '#fff',
+            fontWeight: 'bold',
+            fontSize: '0.85rem',
+            py: 1,
+            '&:hover': { bgcolor: '#6a1b9a' },
+          }}
+        >
+          📚 営業学習ライブラリ
+        </Button>
+      </Box>
     </Box>
   );
 
