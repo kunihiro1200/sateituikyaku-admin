@@ -1292,6 +1292,62 @@ router.get('/exclusive-monthly-summary', async (req: Request, res: Response) => 
 });
 
 /**
+ * GET /api/sellers/other-decision-monthly-summary
+ * 担当者別・月別の他決案件件数サマリーを返す（2026年5月以降）
+ * ⚠️ /:id より前に定義必須
+ */
+router.get('/other-decision-monthly-summary', async (req: Request, res: Response) => {
+  try {
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    const OTHER_DECISION_STATUSES = ['他決→追客', '他決→追客不要', '他決→専任', '他決→一般', '一般→他決', '専任→他社専任'];
+
+    const { data, error } = await supabase
+      .from('sellers')
+      .select('id, seller_number, visit_assignee, contract_year_month, property_address, address')
+      .in('status', OTHER_DECISION_STATUSES)
+      .gte('contract_year_month', '2026-05-01')
+      .is('deleted_at', null)
+      .order('contract_year_month', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    const summary: Record<string, Record<string, { count: number; sellerIds: string[] }>> = {};
+    for (const row of (data || [])) {
+      const assignee = row.visit_assignee;
+      if (!assignee) continue;
+      const d = new Date(row.contract_year_month);
+      if (isNaN(d.getTime())) continue;
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (!summary[assignee]) summary[assignee] = {};
+      if (!summary[assignee][ym]) summary[assignee][ym] = { count: 0, sellerIds: [] };
+      summary[assignee][ym].count++;
+      summary[assignee][ym].sellerIds.push(row.id);
+    }
+
+    const result: Record<string, { yearMonth: string; label: string; count: number; sellerIds: string[] }[]> = {};
+    for (const [assignee, months] of Object.entries(summary)) {
+      result[assignee] = Object.entries(months)
+        .map(([ym, mdata]) => {
+          const [y, m] = ym.split('-');
+          return { yearMonth: ym, label: `${y}年${parseInt(m)}月`, count: mdata.count, sellerIds: mdata.sellerIds };
+        })
+        .sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+    }
+
+    return res.json({ summary: result });
+  } catch (error) {
+    console.error('[other-decision-monthly-summary] Error:', error);
+    return res.status(500).json({ error: 'Failed to get other decision monthly summary' });
+  }
+});
+
+/**
  * 売主情報を取得
  */
 router.get('/:id', async (req: Request, res: Response) => {

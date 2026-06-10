@@ -308,8 +308,15 @@ function SellerStatusSidebarComponent({
     Record<string, { yearMonth: string; label: string; count: number; sellerIds: string[] }[]>
   >({});
 
+  // 他決・月別サマリー（担当者別）
+  const [otherDecisionMonthlySummary, setOtherDecisionMonthlySummary] = useState<
+    Record<string, { yearMonth: string; label: string; count: number; sellerIds: string[] }[]>
+  >({});
+
   // 専任月別セクション専用の展開state（売主リストのexpandedCategoryと完全に分離）
   const [exclusiveExpandedMonth, setExclusiveExpandedMonth] = useState<string | null>(null);
+  // 他決月別セクション専用の展開state
+  const [otherDecisionExpandedMonth, setOtherDecisionExpandedMonth] = useState<string | null>(null);
 
   // 専任月別サマリーを取得（初回のみ）
   useEffect(() => {
@@ -323,6 +330,21 @@ function SellerStatusSidebarComponent({
       }
     };
     fetchSummary();
+    return () => { cancelled = true; };
+  }, []);
+
+  // 他決月別サマリーを取得（初回のみ）
+  useEffect(() => {
+    let cancelled = false;
+    const fetchOtherDecisionSummary = async () => {
+      try {
+        const res = await api.get('/api/sellers/other-decision-monthly-summary');
+        if (!cancelled) setOtherDecisionMonthlySummary(res.data?.summary || {});
+      } catch (e) {
+        // エラーは無視
+      }
+    };
+    fetchOtherDecisionSummary();
     return () => { cancelled = true; };
   }, []);
   
@@ -821,44 +843,7 @@ function SellerStatusSidebarComponent({
             );
           })()}
 
-          {/* ↳ 【専任】月別サブカテゴリー */}
-          {(exclusiveMonthlySummary[assignee] || []).map(({ yearMonth, label, count, sellerIds }) => {
-            const exclusiveColor = '#ff6d00';
-            return (
-              <Box key={yearMonth} sx={{ bgcolor: '#e8f5e9', borderRadius: 1 }}>
-                <Button
-                  fullWidth
-                  onClick={() => {
-                    // sellerIdsの最初の売主の分析ページを別タブで開く
-                    if (sellerIds.length > 0) {
-                      window.open(`/sellers/${sellerIds[0]}/exclusive-analysis`, '_blank', 'noopener,noreferrer');
-                    }
-                  }}
-                  sx={{
-                    justifyContent: 'space-between',
-                    textAlign: 'left',
-                    fontSize: '0.8rem',
-                    py: 0.75,
-                    pl: 4,
-                    pr: 1.5,
-                    color: exclusiveColor,
-                    bgcolor: 'transparent',
-                    borderRadius: 1,
-                    '&:hover': { bgcolor: '#fff3e0' },
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <span>↳ 【専任】{label}</span>
-                    <Chip
-                      label={count}
-                      size="small"
-                      sx={{ height: 18, fontSize: '0.65rem', bgcolor: '#fff3e0', color: exclusiveColor, fontWeight: 'bold' }}
-                    />
-                  </Box>
-                </Button>
-              </Box>
-            );
-          })}
+          {/* ↳ 【専任】月別サブカテゴリーは下部の「専任媒介 取得分析」セクションに統合済み */}
         </Box>
       );
     });
@@ -1088,6 +1073,106 @@ function SellerStatusSidebarComponent({
                             label="分析"
                             size="small"
                             sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#ff6d00', color: 'white' }}
+                          />
+                        </Button>
+                      ))}
+                    </Box>
+                  </Collapse>
+                </Box>
+              );
+            })}
+          </Box>
+        );
+      })()}
+
+      {/* 【他決】月別分析セクション（2026年5月以降） */}
+      {(() => {
+        const allMonths = new Map<string, { label: string; yearMonth: string; entries: { assignee: string; count: number; sellerIds: string[] }[] }>();
+        Object.entries(otherDecisionMonthlySummary).forEach(([assignee, months]) => {
+          months.forEach(({ yearMonth, label, count, sellerIds }) => {
+            if (!allMonths.has(yearMonth)) {
+              allMonths.set(yearMonth, { label, yearMonth, entries: [] });
+            }
+            allMonths.get(yearMonth)!.entries.push({ assignee, count, sellerIds });
+          });
+        });
+
+        if (allMonths.size === 0) return null;
+
+        const sortedMonths = Array.from(allMonths.values()).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+
+        return (
+          <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: '#ef9a9a', bgcolor: '#fff5f5', borderRadius: 1, px: 0.5 }}>
+            <Typography variant="caption" sx={{ px: 1.5, py: 0.5, display: 'block', color: '#c62828', fontWeight: 'bold', fontSize: '0.75rem' }}>
+              ── 他決 分析 ──
+            </Typography>
+            {sortedMonths.map(({ yearMonth, label, entries }) => {
+              const totalCount = entries.reduce((sum, e) => sum + e.count, 0);
+              const isExpanded = otherDecisionExpandedMonth === yearMonth;
+              return (
+                <Box key={yearMonth}>
+                  <Button
+                    fullWidth
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOtherDecisionExpandedMonth(isExpanded ? null : yearMonth);
+                    }}
+                    sx={{
+                      justifyContent: 'space-between',
+                      textAlign: 'left',
+                      fontSize: '0.85rem',
+                      py: 1,
+                      px: 1.5,
+                      color: isExpanded ? 'white' : '#c62828',
+                      bgcolor: isExpanded ? '#e53935' : 'transparent',
+                      borderRadius: isExpanded ? '4px 4px 0 0' : 1,
+                      '&:hover': { bgcolor: isExpanded ? '#e53935' : '#ffebee' },
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span>【他決】{label}</span>
+                      <Chip
+                        label={totalCount}
+                        size="small"
+                        sx={{
+                          height: 20, fontSize: '0.7rem',
+                          bgcolor: isExpanded ? 'rgba(255,255,255,0.3)' : '#ffebee',
+                          color: isExpanded ? 'white' : '#c62828',
+                          fontWeight: 'bold',
+                        }}
+                      />
+                    </Box>
+                    {isExpanded ? <ExpandLess /> : <ExpandMore />}
+                  </Button>
+                  <Collapse in={isExpanded}>
+                    <Box sx={{ bgcolor: '#fff5f5', border: 1, borderColor: '#ef9a9a', borderTop: 0, borderRadius: '0 0 4px 4px' }}>
+                      {entries.map(({ assignee, count, sellerIds }) => (
+                        <Button
+                          key={assignee}
+                          fullWidth
+                          onClick={() => {
+                            if (sellerIds.length > 0) {
+                              window.open(`/sellers/${sellerIds[0]}/other-decision-analysis`, '_blank', 'noopener,noreferrer');
+                            }
+                          }}
+                          sx={{
+                            justifyContent: 'space-between',
+                            textAlign: 'left',
+                            fontSize: '0.82rem',
+                            py: 0.75,
+                            pl: 3,
+                            pr: 1.5,
+                            color: '#b71c1c',
+                            '&:hover': { bgcolor: '#ffcdd2' },
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <span>📉 {assignee}（{count}件）</span>
+                          </Box>
+                          <Chip
+                            label="分析"
+                            size="small"
+                            sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#e53935', color: 'white' }}
                           />
                         </Button>
                       ))}
