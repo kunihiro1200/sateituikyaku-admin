@@ -1368,6 +1368,190 @@ router.get('/learning-library/other-decision', authenticate, async (req: Request
 });
 
 /**
+ * GET /api/sellers/learning-library/textbook
+ * 全Q&A回答を統合して営業教科書をAI生成（24時間キャッシュ）
+ * 回答が増えるたびに自動更新される
+ */
+router.get('/learning-library/textbook', authenticate, async (req: Request, res: Response) => {
+  try {
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+
+    // キャッシュ確認（learning_textbook_cache テーブル）
+    const { data: cached } = await supabase
+      .from('learning_textbook_cache')
+      .select('textbook_json, answer_count, updated_at')
+      .eq('id', 'main')
+      .maybeSingle();
+
+    // 現在の回答数を取得
+    const { count: exclusiveAnswerCount } = await supabase
+      .from('exclusive_analysis_qa')
+      .select('id', { count: 'exact', head: true });
+    const { count: otherAnswerCount } = await supabase
+      .from('other_decision_analysis_qa')
+      .select('id', { count: 'exact', head: true });
+    const totalAnswerCount = (exclusiveAnswerCount || 0) + (otherAnswerCount || 0);
+
+    // キャッシュ有効チェック：24時間以内 AND 回答数が変わっていない AND forceでない
+    const forceRegenerate = req.query.force === 'true';
+    if (!forceRegenerate && cached?.textbook_json) {
+      const ageHours = (Date.now() - new Date(cached.updated_at).getTime()) / (1000 * 60 * 60);
+      if (ageHours < 24 && cached.answer_count === totalAnswerCount) {
+        return res.json({ textbook: cached.textbook_json, cached: true, answerCount: totalAnswerCount });
+      }
+    }
+
+    // 全Q&A回答を収集
+    const { data: exclusiveQAs } = await supabase
+      .from('exclusive_analysis_qa')
+      .select('assignee, target_month, ai_questions, answers')
+      .order('target_month', { ascending: false });
+
+    const { data: otherQAs } = await supabase
+      .from('other_decision_analysis_qa')
+      .select('assignee, target_month, ai_questions, answers')
+      .order('target_month', { ascending: false });
+
+    // 回答済みQ&Aだけ抽出
+    const collectAnsweredQA = (records: any[], type: 'exclusive' | 'other') => {
+      const result: { type: string; assignee: string; month: string; question: string; answer: string }[] = [];
+      for (const rec of records || []) {
+        const questions: { id: string; question: string }[] = rec.ai_questions || [];
+        const answers: { questionId: string; answer: string }[] = rec.answers || [];
+        for (const q of questions) {
+          const ans = answers.find(a => a.questionId === q.id)?.answer?.trim();
+          if (ans) {
+            result.push({
+              type,
+              assignee: rec.assignee,
+              month: rec.target_month,
+              question: q.question,
+              answer: ans,
+            });
+          }
+        }
+      }
+      return result;
+    };
+
+    const exclusiveAnswered = collectAnsweredQA(exclusiveQAs || [], 'exclusive');
+    const otherAnswered = collectAnsweredQA(otherQAs || [], 'other');
+    const allAnswered = [...exclusiveAnswered, ...otherAnswered];
+
+    // AI分析キャッシュも収集（成功・失敗パターン把握用）
+    const { data: exclusiveAiCaches } = await supabase
+      .from('exclusive_ai_analysis_cache')
+      .select('assignee, target_month, ai_analysis, case_count');
+    const { data: otherAiCaches } = await supabase
+      .from('other_decision_ai_analysis_cache')
+      .select('assignee, target_month, ai_analysis, case_count');
+
+    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicApiKey) {
+      return res.status(500).json({ error: 'ANTHROPIC_API_KEY が未設定です' });
+    }
+
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+
+    // データが少ない場合は簡易モード
+    const hasEnoughData = allAnswered.length >= 3;
+
+    const prompt = `あなたは不動産会社の営業研修の専門家です。
+以下は実際の営業担当者へのインタビューQ&Aと、AI分析データです。
+これを元に、**新入社員が読む営業教科書**を作成してください。
+
+${allAnswered.length > 0 ? `【担当者インタビュー回答（${allAnswered.length}件）】
+${allAnswered.map(a => `
+[${a.type === 'exclusive' ? '専任取得' : '他決'}・${a.assignee}・${a.month}]
+Q: ${a.question}
+A: ${a.answer}`).join('\n')}` : ''}
+
+${(exclusiveAiCaches || []).length > 0 ? `【専任媒介取得のAI分析サマリー】
+${(exclusiveAiCaches || []).slice(0, 5).map(c => `${c.assignee}（${c.target_month}・${c.case_count}件）: ${c.ai_analysis?.substring(0, 200)}...`).join('\n\n')}` : ''}
+
+${(otherAiCaches || []).length > 0 ? `【他決パターンのAI分析サマリー】
+${(otherAiCaches || []).slice(0, 5).map(c => `${c.assignee}（${c.target_month}・${c.case_count}件）: ${c.ai_analysis?.substring(0, 200)}...`).join('\n\n')}` : ''}
+
+以下の形式でJSON（他のテキストは不要）で教科書を作成してください。
+"AA14000において"のような案件番号は絶対に使わない。
+担当者名も「ある担当者は」などに抽象化すること。
+
+{
+  "lastUpdated": "現在日時（ISO形式）",
+  "answerCount": ${allAnswered.length},
+  "chapters": [
+    {
+      "id": "ch1",
+      "title": "専任媒介を取るために",
+      "icon": "🏆",
+      "summary": "このチャプターの要約（100文字以内）",
+      "scenarios": [
+        {
+          "id": "s1",
+          "situation": "こういう状況のとき（具体的な場面を30文字以内で）",
+          "question": "新人がよく直面する問い・疑問",
+          "answer": "先輩担当者たちの実践から学んだ対応法（具体的に150文字以内）",
+          "tips": ["ポイント1", "ポイント2"]
+        }
+      ]
+    },
+    {
+      "id": "ch2",
+      "title": "他決を防ぐために",
+      "icon": "⚠️",
+      "summary": "...",
+      "scenarios": [...]
+    },
+    {
+      "id": "ch3",
+      "title": "売主との信頼関係を築くために",
+      "icon": "🤝",
+      "summary": "...",
+      "scenarios": [...]
+    }
+  ]
+}
+
+${hasEnoughData ? 'データが十分あるので具体的な内容で作成してください。' : 'まだデータが少ないので、現時点のデータから推測できる範囲で骨格を作成してください。データが増えると内容が充実します。'}`;
+
+    const message = await anthropic.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 3000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const content = message.content[0];
+    if (content.type !== 'text') {
+      return res.status(500).json({ error: 'AI応答が不正です' });
+    }
+
+    let textbook: any = null;
+    try {
+      const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) textbook = JSON.parse(jsonMatch[0]);
+    } catch {
+      return res.status(500).json({ error: '教科書のパースに失敗しました' });
+    }
+
+    // キャッシュ保存
+    await supabase
+      .from('learning_textbook_cache')
+      .upsert({
+        id: 'main',
+        textbook_json: textbook,
+        answer_count: totalAnswerCount,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'id' });
+
+    return res.json({ textbook, cached: false, answerCount: totalAnswerCount });
+  } catch (error) {
+    console.error('[learning-library/textbook] Error:', error);
+    return res.status(500).json({ error: 'Failed to generate textbook' });
+  }
+});
+
+/**
  * GET /api/sellers/exclusive-monthly-summary
  * 担当者別・月別の専任媒介取得件数サマリーを返す
  * ⚠️ /:id より前に定義必須（Express のルートマッチング順序のため）
