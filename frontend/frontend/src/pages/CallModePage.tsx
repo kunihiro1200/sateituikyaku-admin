@@ -3199,10 +3199,9 @@ const CallModePage = () => {
       return;
     }
 
-    // 対象物件の専有面積（buildingArea）
-    const targetArea = property?.buildingAreaVerified || property?.buildingArea || seller?.buildingArea || 0;
-    // 対象物件の階数（buildYear欄等から直接取得は難しいため、ユーザー入力の事例から推定）
-    // 対象物件の階は editedPropertyFloor があれば使うが、ない場合は事例の平均階に近い事例を優先
+    // 対象物件の専有面積（㎡）。300㎡超は異常値とみなし0扱い
+    const rawTargetArea = property?.buildingAreaVerified || property?.buildingArea || seller?.buildingArea || 0;
+    const targetArea = (rawTargetArea > 0 && rawTargetArea <= 300) ? rawTargetArea : 0;
 
     // 現在の年月（比較基準）
     const now = new Date();
@@ -3211,8 +3210,8 @@ const CallModePage = () => {
     // 各事例に調整スコアを付ける
     const scoredRows = validRows.map((r) => {
       const floor = parseFloat(r.floor) || 1;
-      const area = parseFloat(r.exclusiveArea) || targetArea || 70;
-      const price = parseFloat(r.price);
+      const price = parseFloat(r.price); // 万円単位
+      const area = r.exclusiveArea.trim() ? (parseFloat(r.exclusiveArea) || 0) : 0;
 
       // 販売年月のパース（"2024/06" or "2024-06" 形式）
       let rowYM = 0;
@@ -3223,14 +3222,11 @@ const CallModePage = () => {
         }
       }
 
-      // 販売時期スコア（近いほど高い、最大1.0）
-      // 直近6ヶ月以内=1.0、1年以内=0.9、2年以内=0.8、それ以上=0.7
+      // 販売時期スコア（近いほど高い）
       let timeScore = 0.7;
       if (rowYM > 0) {
-        const diffMonths =
-          (nowYM - rowYM > 0 ? nowYM - rowYM : 0);
-        const yearDiff = Math.floor(diffMonths / 100);
-        const monthDiff = diffMonths % 100;
+        const yearDiff = Math.floor((nowYM - rowYM) / 100);
+        const monthDiff = (nowYM - rowYM) % 100;
         const totalMonths = yearDiff * 12 + monthDiff;
         if (totalMonths <= 6) timeScore = 1.0;
         else if (totalMonths <= 12) timeScore = 0.9;
@@ -3238,22 +3234,23 @@ const CallModePage = () => {
         else timeScore = 0.7;
       }
 
-      // 階数補正（高い階ほど+、低い階ほど-）
-      // 1階ごとに約0.5%の価値差（業界標準的な概算）
-      const floorAdjustment = 1 + (floor - 3) * 0.005; // 3階基準
+      // 階数補正（高い階ほど+、3階基準で1階ごと0.5%）
+      const floorAdjustment = 1 + (floor - 3) * 0.005;
 
-      // 面積補正（対象物件と事例の面積差を補正）
-      // 面積が異なる場合、単価（万円/㎡）を基準に換算
+      // 面積補正：事例の専有面積と対象物件の専有面積が両方有効な場合のみ適用
+      // ※ 面積は必ず㎡単位（300以下）で妥当性チェック
       let areaAdjustedPrice = price;
-      if (targetArea > 0 && area > 0 && Math.abs(area - targetArea) > 2) {
-        const unitPricePerSqm = price / area;
+      if (
+        targetArea > 0 && targetArea <= 300 &&
+        area > 0 && area <= 300 &&
+        Math.abs(area - targetArea) > 2
+      ) {
+        const unitPricePerSqm = price / area; // 万円/㎡
         areaAdjustedPrice = unitPricePerSqm * targetArea;
       }
 
-      // 調整済み価格
       const adjustedPrice = areaAdjustedPrice * floorAdjustment;
-
-      return { ...r, adjustedPrice, timeScore, floor, area };
+      return { ...r, adjustedPrice, timeScore, floor, area, price };
     });
 
     // 時期スコアで重み付けした加重平均を計算
@@ -3261,27 +3258,19 @@ const CallModePage = () => {
     const weightedAvg =
       scoredRows.reduce((sum, r) => sum + r.adjustedPrice * r.timeScore, 0) / totalWeight;
 
-    // 事例の最高額（調整済み）
+    // 生の最高価格（万円）
+    const rawMaxPrice = Math.max(...scoredRows.map((r) => r.price));
+    // 調整済み最高価格
     const maxAdjusted = Math.max(...scoredRows.map((r) => r.adjustedPrice));
-
-    // 査定額ルール：
-    // - 査定額3（最高額）は事例の最高調整額より少し上（+0〜+50万程度）
-    // - 査定額1（最低額）= 査定額3 - 200〜300万
-    // - 査定額2（中間額）= 査定額1と3の中間付近
-
-    // 査定額3：最高事例の調整済み価格を基準（ただし売買事例に存在する価格より高く設定）
-    // 実際の事例最高価格（面積補正前の生の最高価格）
-    const rawMaxPrice = Math.max(...scoredRows.map((r) => parseFloat(r.price)));
+    // 査定額3のベース：生の最高価格と調整済み最高価格の大きい方（事例より低くならない）
     const baseMax = Math.max(maxAdjusted, rawMaxPrice);
 
-    // 査定額3 = 最高事例価格をベースに若干上乗せ（最大+50万、10万単位丸め）
-    const amount3Raw = baseMax + 20;
-    const amount3 = Math.round(amount3Raw / 10) * 10;
+    // 査定額3 = 最高事例価格 + 20万（10万単位丸め）
+    const amount3 = Math.round((baseMax + 20) / 10) * 10;
 
-    // 幅は200〜250万（加重平均との差を参考に調整、200万未満にはしない）
-    const spread = Math.max(200, Math.min(300, Math.round((amount3 - weightedAvg) * 1.2 / 10) * 10));
-
-    const amount1 = Math.max(amount3 - spread, Math.round(weightedAvg * 0.9 / 10) * 10);
+    // 査定額1〜3の幅: 200〜300万
+    const spread = Math.max(200, Math.min(300, Math.round((amount3 - weightedAvg) / 10) * 10));
+    const amount1 = Math.round(Math.max(amount3 - spread, weightedAvg * 0.92) / 10) * 10;
     const amount2 = Math.round(((amount1 + amount3) / 2) / 10) * 10;
 
     setAiValuation({ amount1, amount2, amount3 });
