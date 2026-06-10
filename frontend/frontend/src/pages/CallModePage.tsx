@@ -8156,7 +8156,7 @@ HP：https://ifoo-oita.com/
                         <Button
                           variant="outlined"
                           size="small"
-                          onClick={() => navigate(`/sellers/${id}/exclusive-analysis`)}
+                          onClick={() => window.open(`/sellers/${id}/exclusive-analysis`, '_blank', 'noopener,noreferrer')}
                           sx={{
                             borderColor: '#ff6d00',
                             color: '#ff6d00',
