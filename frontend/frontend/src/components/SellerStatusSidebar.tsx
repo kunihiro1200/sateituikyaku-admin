@@ -301,6 +301,31 @@ function SellerStatusSidebarComponent({
   
   // 展開中のカテゴリ（nullの場合は全カテゴリ表示）
   const [expandedCategory, setExpandedCategory] = useState<StatusCategory | null>(null);
+
+  // 専任媒介・月別サマリー（担当者別）
+  const [exclusiveMonthlySummary, setExclusiveMonthlySummary] = useState<
+    Record<string, { yearMonth: string; label: string; count: number; sellerIds: string[] }[]>
+  >({});
+
+  // 専任月別サマリーを取得（初回のみ）
+  useEffect(() => {
+    let cancelled = false;
+    const fetchSummary = async () => {
+      try {
+        const res = await fetch('/api/sellers/exclusive-monthly-summary', {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setExclusiveMonthlySummary(data.summary || {});
+      } catch (e) {
+        // サイドバーのオプション機能なのでエラーは無視
+      }
+    };
+    fetchSummary();
+    return () => { cancelled = true; };
+  }, []);
   
   // 通話モードページの場合、現在の売主のカテゴリを判定
   const currentSellerCategory = isCallMode ? getSellerCategory(currentSeller) : null;
@@ -796,6 +821,45 @@ function SellerStatusSidebarComponent({
               </Box>
             );
           })()}
+
+          {/* ↳ 【専任】月別サブカテゴリー */}
+          {(exclusiveMonthlySummary[assignee] || []).map(({ yearMonth, label, count, sellerIds }) => {
+            const exclusiveColor = '#ff6d00';
+            return (
+              <Box key={yearMonth} sx={{ bgcolor: '#e8f5e9', borderRadius: 1 }}>
+                <Button
+                  fullWidth
+                  onClick={() => {
+                    // sellerIdsの最初の売主の分析ページを別タブで開く
+                    if (sellerIds.length > 0) {
+                      window.open(`/sellers/${sellerIds[0]}/exclusive-analysis`, '_blank', 'noopener,noreferrer');
+                    }
+                  }}
+                  sx={{
+                    justifyContent: 'space-between',
+                    textAlign: 'left',
+                    fontSize: '0.8rem',
+                    py: 0.75,
+                    pl: 4,
+                    pr: 1.5,
+                    color: exclusiveColor,
+                    bgcolor: 'transparent',
+                    borderRadius: 1,
+                    '&:hover': { bgcolor: '#fff3e0' },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <span>↳ 【専任】{label}</span>
+                    <Chip
+                      label={count}
+                      size="small"
+                      sx={{ height: 18, fontSize: '0.65rem', bgcolor: '#fff3e0', color: exclusiveColor, fontWeight: 'bold' }}
+                    />
+                  </Box>
+                </Button>
+              </Box>
+            );
+          })}
         </Box>
       );
     });
