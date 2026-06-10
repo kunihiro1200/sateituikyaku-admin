@@ -3185,7 +3185,7 @@ const CallModePage = () => {
   }, []); // 依存配列を空にして、refを通じて最新版を参照
 
   // AI査定計算ロジック（売買事例から査定額1/2/3を算出）
-  const calculateAiValuation = async () => {
+  const calculateAiValuation = () => {
     setAiValuationError(null);
     setAiValuation(null);
 
@@ -3243,34 +3243,6 @@ const CallModePage = () => {
     const amount1 = amount2 - spread12;
 
     setAiValuation({ amount1, amount2, amount3 });
-
-    // 計算結果をDBに即時保存（万円→円変換）
-    try {
-      const assignedBy = employee?.name || '';
-      await api.put(`/api/sellers/${id}`, {
-        valuationAmount1: amount1 * 10000,
-        valuationAmount2: amount2 * 10000,
-        valuationAmount3: amount3 * 10000,
-        valuationAssignee: assignedBy,
-        fixedAssetTaxRoadPrice: null,
-      });
-      setIsManualValuation(true);
-      setValuationAssignee(assignedBy);
-      setEditedManualValuationAmount1(String(amount1));
-      setEditedManualValuationAmount2(String(amount2));
-      setEditedManualValuationAmount3(String(amount3));
-      setSeller(prev => prev ? {
-        ...prev,
-        valuationAmount1: amount1 * 10000,
-        valuationAmount2: amount2 * 10000,
-        valuationAmount3: amount3 * 10000,
-        fixedAssetTaxRoadPrice: undefined,
-        valuationAssignee: assignedBy,
-      } : prev);
-      setSuccessMessage('AI査定額をDBに保存しました');
-    } catch {
-      // DB保存失敗でも表示は継続
-    }
   };
 
   // 手入力査定額を保存する関数
@@ -7294,9 +7266,48 @@ HP：https://ifoo-oita.com/
                               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
                                 ※ 階数補正・専有面積換算・販売時期の重み付けを適用した提案値です。上の手入力フォームに反映してご確認ください。
                               </Typography>
-                              <Typography variant="caption" color="success.main" sx={{ display: 'block', mt: 1 }}>
-                                ✅ 計算と同時にDBへ自動保存済み
-                              </Typography>
+                              <Button
+                                variant="contained"
+                                color="secondary"
+                                size="small"
+                                disabled={savingManualValuation}
+                                onClick={async () => {
+                                  const a1 = aiValuation.amount1;
+                                  const a2 = aiValuation.amount2;
+                                  const a3 = aiValuation.amount3;
+                                  setEditedManualValuationAmount1(String(a1));
+                                  setEditedManualValuationAmount2(String(a2));
+                                  setEditedManualValuationAmount3(String(a3));
+                                  try {
+                                    setSavingManualValuation(true);
+                                    const assignedBy = employee?.name || '';
+                                    await api.put(`/api/sellers/${id}`, {
+                                      valuationAmount1: a1 * 10000,
+                                      valuationAmount2: a2 * 10000,
+                                      valuationAmount3: a3 * 10000,
+                                      valuationAssignee: assignedBy,
+                                      fixedAssetTaxRoadPrice: null,
+                                    });
+                                    setIsManualValuation(true);
+                                    setValuationAssignee(assignedBy);
+                                    setSeller(prev => prev ? {
+                                      ...prev,
+                                      valuationAmount1: a1 * 10000,
+                                      valuationAmount2: a2 * 10000,
+                                      valuationAmount3: a3 * 10000,
+                                      fixedAssetTaxRoadPrice: undefined,
+                                      valuationAssignee: assignedBy,
+                                    } : prev);
+                                    setSuccessMessage('AI査定額をDBに保存しました');
+                                  } catch {
+                                    setError('AI査定額の保存に失敗しました');
+                                  } finally {
+                                    setSavingManualValuation(false);
+                                  }
+                                }}
+                              >
+                                {savingManualValuation ? '保存中...' : 'この査定額を採用してDBに保存'}
+                              </Button>
                             </Paper>
                           )}
                         </Grid>
