@@ -2898,7 +2898,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       if (emailDist === '新着配信、即公開（期日関係無）') {
         return '公開前配信メールを「新着配信」に変更して、同時に公開もお願い致します。公開方法→https://docs.google.com/document/d/145LKr_Q7ftxnRVvNalaKPO1NH_FqncOlOY5bqP5P48c/edit?usp=sharing';
       }
-      if (emailDist.includes('要') && emailDist.includes('期日通り')) {
+      if (emailDist.includes('要') && !emailDist.includes('不要') && emailDist.includes('期日通り')) {
+        // 「不要」は除外し、「要」かつ「期日通り」の場合のみマッチ
         return '公開前配信・要、サイト公開は期日通りでおねがいします';
       }
       return '';
