@@ -3590,6 +3590,7 @@ router.get('/:id/exclusive-analysis/qa', authenticate, async (req: Request, res:
 /**
  * POST /api/sellers/:id/exclusive-analysis/qa/generate
  * AIが専任取得要因に関する質問を生成して保存・返す
+ * 過去に回答済みの質問と被らないよう、回答履歴をAIに渡す
  */
 router.post('/:id/exclusive-analysis/qa/generate', authenticate, async (req: Request, res: Response) => {
   try {
@@ -3614,6 +3615,37 @@ router.post('/:id/exclusive-analysis/qa/generate', authenticate, async (req: Req
     const d = new Date(seller.contract_year_month);
     const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
+    // ── 過去の回答履歴を取得（同担当者の全月分） ──
+    // 回答済み質問：被らないようAIに伝える
+    // 回答なし質問：再利用OK（ただし同月の現在のQAは除く）
+    const { data: pastQaRecords } = await supabase
+      .from('exclusive_analysis_qa')
+      .select('target_month, ai_questions, answers')
+      .eq('seller_id', id)
+      .eq('assignee', seller.visit_assignee)
+      .neq('target_month', targetMonth) // 今月以外の過去分
+      .order('target_month', { ascending: false })
+      .limit(12); // 直近1年分
+
+    // 回答済みの質問文を収集
+    const answeredQuestions: string[] = [];
+    // 回答なし（空欄）の質問文を収集（再出題OKだが把握しておく）
+    const unansweredQuestions: string[] = [];
+
+    for (const record of pastQaRecords || []) {
+      const questions: { id: string; question: string }[] = record.ai_questions || [];
+      const answers: { questionId: string; answer: string }[] = record.answers || [];
+
+      for (const q of questions) {
+        const answer = answers.find(a => a.questionId === q.id);
+        if (answer?.answer && answer.answer.trim() !== '') {
+          answeredQuestions.push(q.question);
+        } else {
+          unansweredQuestions.push(q.question);
+        }
+      }
+    }
+
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
     if (!anthropicApiKey) {
       return res.status(500).json({ error: 'ANTHROPIC_API_KEY が設定されていません' });
@@ -3632,21 +3664,32 @@ router.post('/:id/exclusive-analysis/qa/generate', authenticate, async (req: Req
     const monthLabel = assigneeStats?.monthLabel || targetMonth;
     const caseCount = sameMonthCases?.length || 1;
 
+    // 過去質問のコンテキストを構築
+    const pastQaContext = answeredQuestions.length > 0
+      ? `\n【過去に回答済みの質問（これらと同じ内容・同じ角度の質問は絶対に避けること）】\n${answeredQuestions.map((q, i) => `- ${q}`).join('\n')}\n`
+      : '';
+
+    const unansweredContext = unansweredQuestions.length > 0
+      ? `\n【過去に質問したが未回答の質問（同じ内容は避け、別の角度から聞くこと）】\n${unansweredQuestions.map((q) => `- ${q}`).join('\n')}\n`
+      : '';
+
     const prompt = `あなたは不動産営業の研修コーチです。
 営業担当「${seller.visit_assignee}」が${monthLabel}に${caseCount}件の専任媒介を取得しました。
 
 【取得案件データ】
 ${JSON.stringify(caseSummaries, null, 2)}
-
+${pastQaContext}${unansweredContext}
 この担当者が「なぜ専任を取れたのか」を他スタッフが学べるよう、以下の条件で質問を5つ作成してください：
 
 条件：
 - 具体的で答えやすい質問にする
 - 訪問査定・提案内容・売主との関係構築など、**訪問時の行動**に焦点を当てる
-- 「追客電話」「1番電話」「電話対応」に関する質問は**絶対に含めない**（これらは事務スタッフ担当のため）
+- 「追客電話」「1番電話」「電話対応」に関する質問は**絶対に含めない**（事務スタッフ担当のため）
 - 「はい/いいえ」で終わらない、具体的エピソードを引き出す質問
+- 過去に回答済みの質問と**同じ内容・同じ角度の質問は絶対に出さない**（上記リスト参照）
 - 競合他社に勝てた理由・訪問時の差別化ポイントを明らかにする質問を含める
 - 査定額の提示方法・説明の工夫・売主の不安解消など訪問内容に踏み込む
+- 毎回新しい視点（例：売主の感情面・競合との具体的な違い・今月特有の要因など）から質問する
 
 JSON配列形式で返してください（他のテキストは不要）：
 [
