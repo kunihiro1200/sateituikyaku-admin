@@ -170,7 +170,7 @@ export default function FukuokaTateuriPage() {
       {/* SEOメタタグ */}
       <Helmet>
         <title>福岡の建売専門サイト｜新築一戸建て物件情報｜株式会社くじら不動産</title>
-        <meta name="description" content={`福岡県の建売住宅専門サイト。現在${properties.length}件の新築建売物件を掲載中。福岡市・春日市・大野城市など福岡県内の物件情報を地図付きでご紹介。株式会社くじら不動産（097-533-2022）`} />
+        <meta name="description" content={`福岡県の建売住宅専門サイト。現在${properties.length}件の新築建売物件を掲載中。福岡市・春日市・大野城市など福岡県内の物件情報を地図付きでご紹介。株式会社くじら不動産（092-401-5331）`} />
         <meta name="keywords" content="福岡 建売,福岡市 建売住宅,福岡 新築一戸建て,福岡 不動産,建売住宅 福岡県,福岡市 新築,春日市 建売,大野城市 建売,福岡 住宅購入" />
         <meta name="robots" content="index, follow" />
         <link rel="canonical" href="https://fukuoka-tateuri.com/fukuoka-tateuri" />
@@ -204,7 +204,7 @@ export default function FukuokaTateuriPage() {
       <header style={{ background: '#2196F3', color: '#fff', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 'bold', margin: 0 }}>🏠 福岡の建売専門サイト</h1>
-          <p style={{ fontSize: 12, margin: '2px 0 0', opacity: 0.85 }}>株式会社くじら不動産｜福岡市中央区舞鶴3-1-10　オフィスニューガイアセレス赤坂門N0.19　<a href="tel:0975332022" style={{ color: 'inherit', textDecoration: 'none' }}>097-533-2022</a>　大分県知事（3）第3183号</p>
+          <p style={{ fontSize: 12, margin: '2px 0 0', opacity: 0.85 }}>株式会社くじら不動産｜福岡市中央区舞鶴3－1－10　<a href="tel:0924015331" style={{ color: 'inherit', textDecoration: 'none' }}>092-401-5331</a>　大分県知事（3）第3183号</p>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <a href="https://kujira-fudosan.com/" target="_blank" rel="noopener noreferrer" style={{ color: '#fff', textDecoration: 'none', fontSize: 13, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', borderRadius: 6, padding: '5px 12px', fontWeight: 'bold' }}>HP</a>
@@ -379,8 +379,8 @@ export default function FukuokaTateuriPage() {
       <footer style={{ background: '#333', color: '#ccc', padding: '12px 24px', fontSize: 11, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
         <div>
           <strong style={{ color: '#fff' }}>株式会社くじら不動産</strong>
-          　大分市舞鶴町1-3-30 STビル１F
-          　<a href="tel:0975332022" style={{ color: '#2196F3', textDecoration: 'none' }}>097-533-2022</a>
+          　福岡市中央区舞鶴3－1－10
+          　<a href="tel:0924015331" style={{ color: '#2196F3', textDecoration: 'none' }}>092-401-5331</a>
           　大分県知事（3）第3183号
         </div>
         <div style={{ color: '#888' }}>

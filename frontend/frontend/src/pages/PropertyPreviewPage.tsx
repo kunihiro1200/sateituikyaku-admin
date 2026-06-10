@@ -292,14 +292,27 @@ export default function PropertyPreviewPage() {
   ].filter(Boolean) as { label: string; value: string }[];
 
   // ── SEO用データ生成 ──────────────────────────────────
+
+  // ドメインに応じてcanonical URLを動的に設定
+  const currentDomain = typeof window !== 'undefined' ? window.location.origin : 'https://oita-tateuri.com';
+  const canonicalUrl = `${currentDomain}/property-preview/${slug}`;
+
+  // 福岡ドメイン判定
+  const isFukuokaDomain = typeof window !== 'undefined' && window.location.hostname.includes('fukuoka-tateuri.com');
+
+  // ドメインに応じた会社情報
+  const companyInfo = isFukuokaDomain
+    ? { name: '株式会社くじら不動産', address: '福岡市中央区舞鶴3－1－10', phone: '092-401-5331' }
+    : { name: '株式会社いふう', address: '大分市舞鶴町1-3-30 STビル１F', phone: '097-533-2022' };
+
   const seoTitle = (() => {
     const parts: string[] = [];
     if (cleanTitle) parts.push(cleanTitle);
     if (showPrice && data.price) parts.push(cleanPrice(data.price));
     if (showAddress && data.address) parts.push(data.address);
     return parts.length > 0
-      ? `${parts.join(' | ')} | 株式会社いふう`
-      : '物件情報 | 株式会社いふう';
+      ? `${parts.join(' | ')} | ${companyInfo.name}`
+      : `物件情報 | ${companyInfo.name}`;
   })();
 
   const seoDescription = (() => {
@@ -312,20 +325,17 @@ export default function PropertyPreviewPage() {
     if (showArea && data.area) parts.push(`面積：${data.area}`);
     const base = parts.join('　');
     return base.length > 0
-      ? `${base}。株式会社いふう（097-533-2022）にお問い合わせください。`
-      : '株式会社いふうの物件情報です。お気軽にお問い合わせください。';
+      ? `${base}。${companyInfo.name}（${companyInfo.phone}）にお問い合わせください。`
+      : `${companyInfo.name}の物件情報です。お気軽にお問い合わせください。`;
   })();
 
   const seoKeywords = [
-    '建売', '新築一戸建て', '福岡', '不動産',
+    '建売', '新築一戸建て', isFukuokaDomain ? '福岡' : '大分', '不動産',
     ...(data.address ? [data.address.replace(/[0-9０-９\-－]/g, '').trim()] : []),
     ...(data.layout ? [data.layout] : []),
-    '株式会社いふう',
+    companyInfo.name,
   ].filter(Boolean);
 
-  // ドメインに応じてcanonical URLを動的に設定
-  const currentDomain = typeof window !== 'undefined' ? window.location.origin : 'https://oita-tateuri.com';
-  const canonicalUrl = `${currentDomain}/property-preview/${slug}`;
   const ogImage = data.images?.[0] || '';
 
   // JSON-LD 構造化データ（不動産物件）
@@ -360,15 +370,23 @@ export default function PropertyPreviewPage() {
     }),
     seller: {
       '@type': 'RealEstateAgent',
-      name: '株式会社いふう',
-      telephone: '097-533-2022',
-      address: {
-        '@type': 'PostalAddress',
-        streetAddress: '舞鶴町1-3-30 STビル１F',
-        addressLocality: '大分市',
-        addressRegion: '大分県',
-        addressCountry: 'JP',
-      },
+      name: companyInfo.name,
+      telephone: companyInfo.phone,
+      address: isFukuokaDomain
+        ? {
+            '@type': 'PostalAddress',
+            streetAddress: '舞鶴3－1－10',
+            addressLocality: '福岡市中央区',
+            addressRegion: '福岡県',
+            addressCountry: 'JP',
+          }
+        : {
+            '@type': 'PostalAddress',
+            streetAddress: '舞鶴町1-3-30 STビル１F',
+            addressLocality: '大分市',
+            addressRegion: '大分県',
+            addressCountry: 'JP',
+          },
     },
   };
 
@@ -389,7 +407,7 @@ export default function PropertyPreviewPage() {
         <meta property="og:type" content="website" />
         <meta property="og:url" content={canonicalUrl} />
         {ogImage && <meta property="og:image" content={ogImage} />}
-        <meta property="og:site_name" content="福岡の建売専門サイト｜株式会社いふう" />
+        <meta property="og:site_name" content={`${isFukuokaDomain ? '福岡' : '大分'}の建売専門サイト｜${companyInfo.name}`} />
         <meta property="og:locale" content="ja_JP" />
 
         {/* Twitter Card */}
@@ -419,8 +437,11 @@ export default function PropertyPreviewPage() {
         </div>
         {/* 右端の署名 */}
         <div style={{ textAlign: 'right', opacity: 0.95, flexShrink: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 'bold' }}>株式会社いふう</div>
-          <div style={{ fontSize: 11, marginTop: 2, opacity: 0.85 }}>大分市舞鶴町1-3-30 STビル１F</div>
+          <div style={{ fontSize: 15, fontWeight: 'bold' }}>{companyInfo.name}</div>
+          <div style={{ fontSize: 11, marginTop: 2, opacity: 0.85 }}>{companyInfo.address}</div>
+          <div style={{ fontSize: 13, marginTop: 2 }}>
+            <a href={`tel:${companyInfo.phone.replace(/-/g, '')}`} style={{ color: 'inherit', textDecoration: 'none' }}>{companyInfo.phone}</a>
+          </div>
         </div>
       </div>
 
@@ -532,8 +553,8 @@ export default function PropertyPreviewPage() {
 
         {/* 署名 + 印刷ボタン（目立たない小さな丸ボタン） */}
         <div style={{ background: 'white', borderRadius: 10, padding: 24, textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: 16, position: 'relative' }}>
-          <div style={{ fontSize: 17, fontWeight: 'bold', marginBottom: 4 }}>株式会社いふう</div>
-          <div style={{ fontSize: 13, color: '#666', marginBottom: 2 }}>大分市舞鶴町1-3-30 STビル１F</div>
+          <div style={{ fontSize: 17, fontWeight: 'bold', marginBottom: 4 }}>{companyInfo.name}</div>
+          <div style={{ fontSize: 13, color: '#666', marginBottom: 2 }}>{companyInfo.address}</div>
           {/* 印刷ボタン（目立たない小さな丸ボタン・右下隅） */}
           <button
             onClick={() => setShowPrintSheet(true)}
