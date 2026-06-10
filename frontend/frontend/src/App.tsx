@@ -51,6 +51,7 @@ import KoteiKazeiComparePage from './pages/KoteiKazeiComparePage';
 import SalesHistoryPage from './pages/SalesHistoryPage';
 import SellerExclusiveAnalysisPage from './pages/SellerExclusiveAnalysisPage';
 import SellerOtherDecisionAnalysisPage from './pages/SellerOtherDecisionAnalysisPage';
+import SalesLearningLibraryPage from './pages/SalesLearningLibraryPage';
 import PropertyPreviewPage from './pages/PropertyPreviewPage';
 import TateuriPage from './pages/TateuriPage';
 import TateuriManagePage from './pages/TateuriManagePage';
@@ -417,6 +418,14 @@ function App() {
         element={
           <ProtectedRoute>
             <SellerOtherDecisionAnalysisPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sales-learning-library"
+        element={
+          <ProtectedRoute>
+            <SalesLearningLibraryPage />
           </ProtectedRoute>
         }
       />

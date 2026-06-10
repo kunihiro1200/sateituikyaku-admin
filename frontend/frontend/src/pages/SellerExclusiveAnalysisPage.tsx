@@ -18,8 +18,6 @@ import {
   Card,
   CardContent,
   TextField,
-  FormControlLabel,
-  Switch,
   Snackbar,
   Skeleton,
   LinearProgress,
@@ -91,7 +89,6 @@ export default function SellerExclusiveAnalysisPage() {
   const [qa, setQa] = useState<QaRecord | null>(null);
   const [qaGenerating, setQaGenerating] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [isPublished, setIsPublished] = useState(false);
   const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
 
@@ -133,7 +130,6 @@ export default function SellerExclusiveAnalysisPage() {
           const map: Record<string, string> = {};
           (res.data.qa.answers || []).forEach((a: QaAnswer) => { map[a.questionId] = a.answer; });
           setAnswers(map);
-          setIsPublished(res.data.qa.is_published);
         }
       } catch (err) { /* 無視 */ }
     };
@@ -168,7 +164,7 @@ export default function SellerExclusiveAnalysisPage() {
     try {
       setSaving(true);
       const answersArray = (qa.ai_questions || []).map(q => ({ questionId: q.id, answer: answers[q.id] || '' }));
-      const res = await api.put(`/api/sellers/${id}/exclusive-analysis/qa/answer`, { answers: answersArray, isPublished });
+      const res = await api.put(`/api/sellers/${id}/exclusive-analysis/qa/answer`, { answers: answersArray });
       setQa(res.data.qa);
       setSnackbar({ open: true, message: '回答を保存しました' });
     } catch {
@@ -339,10 +335,6 @@ export default function SellerExclusiveAnalysisPage() {
                   ))}
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 3, flexWrap: 'wrap' }}>
-                  <FormControlLabel
-                    control={<Switch checked={isPublished} onChange={(e) => setIsPublished(e.target.checked)} color="success" />}
-                    label={<Typography variant="body2">他スタッフに公開する{isPublished && <Chip label="公開中" size="small" sx={{ ml: 1, bgcolor: '#2e7d32', color: '#fff', height: 18, fontSize: '0.65rem' }} />}</Typography>}
-                  />
                   <Button variant="contained" startIcon={saving ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />} onClick={handleSaveAnswers} disabled={saving} sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}>
                     {saving ? '保存中...' : '回答を保存'}
                   </Button>
@@ -352,7 +344,7 @@ export default function SellerExclusiveAnalysisPage() {
                 </Box>
                 {qa.answers?.some((a: QaAnswer) => a.answer) && (
                   <Alert severity="success" sx={{ mt: 2 }} icon={false}>
-                    <Typography variant="caption">最終保存済み · {qa.is_published ? '他スタッフに公開中' : '非公開'}</Typography>
+                    <Typography variant="caption">回答保存済み</Typography>
                   </Alert>
                 )}
               </Box>

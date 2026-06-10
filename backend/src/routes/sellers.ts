@@ -1237,6 +1237,137 @@ router.patch('/:id/coordinates', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/sellers/learning-library/exclusive
+ * 専任媒介Q&A学習ライブラリ：回答済みエントリーを返す
+ */
+router.get('/learning-library/exclusive', authenticate, async (req: Request, res: Response) => {
+  try {
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+
+    // QAレコード（回答が1つ以上あるもの）を取得
+    const { data: qaRecords } = await supabase
+      .from('exclusive_analysis_qa')
+      .select('id, seller_id, assignee, target_month, ai_questions, answers')
+      .gte('target_month', '2026-05')
+      .order('target_month', { ascending: false });
+
+    // AI分析キャッシュを取得
+    const { data: aiCaches } = await supabase
+      .from('exclusive_ai_analysis_cache')
+      .select('assignee, target_month, ai_analysis');
+
+    const aiMap = new Map<string, string>();
+    for (const c of aiCaches || []) {
+      aiMap.set(`${c.assignee}:${c.target_month}`, c.ai_analysis);
+    }
+
+    // 担当者×月でグループ化し、案件数を取得
+    const groupMap = new Map<string, any>();
+    for (const qa of qaRecords || []) {
+      const hasAnswer = (qa.answers || []).some((a: any) => a.answer?.trim());
+      const key = `${qa.assignee}:${qa.target_month}`;
+      if (!groupMap.has(key)) {
+        groupMap.set(key, {
+          id: key,
+          assignee: qa.assignee,
+          targetMonth: qa.target_month,
+          aiAnalysis: aiMap.get(key) || '',
+          questions: qa.ai_questions || [],
+          answers: qa.answers || [],
+          caseCount: 0,
+        });
+      }
+    }
+
+    // 案件数を追加取得
+    for (const [key, entry] of groupMap.entries()) {
+      const [assignee, targetMonth] = key.split(':');
+      const monthStart = `${targetMonth}-01`;
+      const [y, m] = targetMonth.split('-');
+      const nextM = parseInt(m) === 12 ? `${parseInt(y)+1}-01-01` : `${y}-${String(parseInt(m)+1).padStart(2,'0')}-01`;
+      const { count } = await supabase
+        .from('sellers')
+        .select('id', { count: 'exact', head: true })
+        .eq('visit_assignee', assignee)
+        .in('status', ['専任媒介', '他決→専任', 'リースバック（専任）'])
+        .gte('contract_year_month', monthStart)
+        .lt('contract_year_month', nextM)
+        .is('deleted_at', null);
+      entry.caseCount = count || 0;
+    }
+
+    return res.json({ entries: Array.from(groupMap.values()) });
+  } catch (error) {
+    console.error('[learning-library/exclusive] Error:', error);
+    return res.status(500).json({ error: 'Failed to get exclusive library' });
+  }
+});
+
+/**
+ * GET /api/sellers/learning-library/other-decision
+ * 他決Q&A学習ライブラリ：回答済みエントリーを返す
+ */
+router.get('/learning-library/other-decision', authenticate, async (req: Request, res: Response) => {
+  try {
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+
+    const { data: qaRecords } = await supabase
+      .from('other_decision_analysis_qa')
+      .select('id, seller_id, assignee, target_month, ai_questions, answers')
+      .gte('target_month', '2026-05')
+      .order('target_month', { ascending: false });
+
+    const { data: aiCaches } = await supabase
+      .from('other_decision_ai_analysis_cache')
+      .select('assignee, target_month, ai_analysis');
+
+    const aiMap = new Map<string, string>();
+    for (const c of aiCaches || []) {
+      aiMap.set(`${c.assignee}:${c.target_month}`, c.ai_analysis);
+    }
+
+    const OTHER_DECISION_STATUSES = ['他決→追客', '他決→追客不要', '他決→専任', '他決→一般', '一般→他決', '専任→他社専任'];
+
+    const groupMap = new Map<string, any>();
+    for (const qa of qaRecords || []) {
+      const key = `${qa.assignee}:${qa.target_month}`;
+      if (!groupMap.has(key)) {
+        groupMap.set(key, {
+          id: key,
+          assignee: qa.assignee,
+          targetMonth: qa.target_month,
+          aiAnalysis: aiMap.get(key) || '',
+          questions: qa.ai_questions || [],
+          answers: qa.answers || [],
+          caseCount: 0,
+        });
+      }
+    }
+
+    for (const [key, entry] of groupMap.entries()) {
+      const [assignee, targetMonth] = key.split(':');
+      const monthStart = `${targetMonth}-01`;
+      const [y, m] = targetMonth.split('-');
+      const nextM = parseInt(m) === 12 ? `${parseInt(y)+1}-01-01` : `${y}-${String(parseInt(m)+1).padStart(2,'0')}-01`;
+      const { count } = await supabase
+        .from('sellers')
+        .select('id', { count: 'exact', head: true })
+        .eq('visit_assignee', assignee)
+        .in('status', OTHER_DECISION_STATUSES)
+        .gte('contract_year_month', monthStart)
+        .lt('contract_year_month', nextM)
+        .is('deleted_at', null);
+      entry.caseCount = count || 0;
+    }
+
+    return res.json({ entries: Array.from(groupMap.values()) });
+  } catch (error) {
+    console.error('[learning-library/other-decision] Error:', error);
+    return res.status(500).json({ error: 'Failed to get other decision library' });
+  }
+});
+
+/**
  * GET /api/sellers/exclusive-monthly-summary
  * 担当者別・月別の専任媒介取得件数サマリーを返す
  * ⚠️ /:id より前に定義必須（Express のルートマッチング順序のため）
