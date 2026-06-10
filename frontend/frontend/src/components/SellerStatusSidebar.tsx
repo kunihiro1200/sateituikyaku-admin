@@ -994,6 +994,111 @@ function SellerStatusSidebarComponent({
         {renderCategoryButton('visitOtherDecision', '訪問後他決', '#ff9800')}
         {renderCategoryButton('unvisitedOtherDecision', '未訪問他決', '#ff5722')}
       </Box>
+
+      {/* 【専任媒介】月別分析セクション（2026年5月以降） */}
+      {(() => {
+        // 全担当者の月をフラットにまとめてユニーク月リストを作成
+        const allMonths = new Map<string, { label: string; yearMonth: string; entries: { assignee: string; count: number; sellerIds: string[] }[] }>();
+        Object.entries(exclusiveMonthlySummary).forEach(([assignee, months]) => {
+          months.forEach(({ yearMonth, label, count, sellerIds }) => {
+            if (!allMonths.has(yearMonth)) {
+              allMonths.set(yearMonth, { label, yearMonth, entries: [] });
+            }
+            allMonths.get(yearMonth)!.entries.push({ assignee, count, sellerIds });
+          });
+        });
+
+        if (allMonths.size === 0) return null;
+
+        // 月を新しい順にソート
+        const sortedMonths = Array.from(allMonths.values()).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+
+        return (
+          <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: 'orange', bgcolor: '#fff8f0', borderRadius: 1, px: 0.5 }}>
+            <Typography variant="caption" sx={{ px: 1.5, py: 0.5, display: 'block', color: '#e65100', fontWeight: 'bold', fontSize: '0.75rem' }}>
+              ── 専任媒介 取得分析 ──
+            </Typography>
+            {sortedMonths.map(({ yearMonth, label, entries }) => {
+              const totalCount = entries.reduce((sum, e) => sum + e.count, 0);
+              const isExpanded = expandedCategory === (`exclusiveMonth:${yearMonth}` as any);
+              return (
+                <Box key={yearMonth}>
+                  {/* 月ヘッダーボタン */}
+                  <Button
+                    fullWidth
+                    onClick={() => {
+                      const cat = `exclusiveMonth:${yearMonth}` as any;
+                      setExpandedCategory(isExpanded ? null : cat);
+                    }}
+                    sx={{
+                      justifyContent: 'space-between',
+                      textAlign: 'left',
+                      fontSize: '0.85rem',
+                      py: 1,
+                      px: 1.5,
+                      color: isExpanded ? 'white' : '#e65100',
+                      bgcolor: isExpanded ? '#ff6d00' : 'transparent',
+                      borderRadius: isExpanded ? '4px 4px 0 0' : 1,
+                      '&:hover': { bgcolor: isExpanded ? '#ff6d00' : '#fff3e0' },
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span>【専任媒介】{label}</span>
+                      <Chip
+                        label={totalCount}
+                        size="small"
+                        sx={{
+                          height: 20, fontSize: '0.7rem',
+                          bgcolor: isExpanded ? 'rgba(255,255,255,0.3)' : '#fff3e0',
+                          color: isExpanded ? 'white' : '#e65100',
+                          fontWeight: 'bold',
+                        }}
+                      />
+                    </Box>
+                    {isExpanded ? <ExpandLess /> : <ExpandMore />}
+                  </Button>
+
+                  {/* 展開：担当者リスト */}
+                  <Collapse in={isExpanded}>
+                    <Box sx={{ bgcolor: '#fff8f0', border: 1, borderColor: '#ffb74d', borderTop: 0, borderRadius: '0 0 4px 4px' }}>
+                      {entries.map(({ assignee, count, sellerIds }) => (
+                        <Button
+                          key={assignee}
+                          fullWidth
+                          onClick={() => {
+                            if (sellerIds.length > 0) {
+                              window.open(`/sellers/${sellerIds[0]}/exclusive-analysis`, '_blank', 'noopener,noreferrer');
+                            }
+                          }}
+                          sx={{
+                            justifyContent: 'space-between',
+                            textAlign: 'left',
+                            fontSize: '0.82rem',
+                            py: 0.75,
+                            pl: 3,
+                            pr: 1.5,
+                            color: '#bf360c',
+                            '&:hover': { bgcolor: '#ffe0b2' },
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <span>📊 {assignee}（{count}件）</span>
+                          </Box>
+                          <Chip
+                            label="分析"
+                            size="small"
+                            sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#ff6d00', color: 'white' }}
+                          />
+                        </Button>
+                      ))}
+                    </Box>
+                  </Collapse>
+                </Box>
+              );
+            })}
+          </Box>
+        );
+      })()}
     </Box>
   );
 
