@@ -48,7 +48,7 @@ interface PreviewData {
 }
 
 // ── お問い合わせフォーム ──────────────────────────────
-function PreviewInquiryForm({ title, address, slug, sourceUrl }: { title: string; address: string; slug: string; sourceUrl: string }) {
+function PreviewInquiryForm({ title, address, slug, sourceUrl, companyPhone, companyName }: { title: string; address: string; slug: string; sourceUrl: string; companyPhone: string; companyName: string }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sending, setSending] = useState(false);
@@ -160,9 +160,9 @@ function PreviewInquiryForm({ title, address, slug, sourceUrl }: { title: string
       {/* 電話ボタン */}
       <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid #eee', textAlign: 'center' }}>
         <p style={{ fontSize: 13, color: '#666', marginBottom: 10 }}>お急ぎの方はお電話でもお問い合わせいただけます</p>
-        <a href="tel:0975332022"
+        <a href={`tel:${companyPhone.replace(/-/g, '')}`}
           style={{ display: 'block', padding: '12px', fontSize: 18, fontWeight: 'bold', color: '#4CAF50', border: '2px solid #4CAF50', borderRadius: 6, textDecoration: 'none', textAlign: 'center' }}>
-          📞 097-533-2022
+          📞 {companyPhone}
         </a>
         <p style={{ fontSize: 12, color: '#999', marginTop: 8 }}>10：00〜17：30（定休日：水曜日）</p>
       </div>
@@ -638,7 +638,7 @@ export default function PropertyPreviewPage() {
         </div>
 
         {/* お問い合わせフォーム */}
-        <PreviewInquiryForm title={data.title || ''} address={data.address || ''} slug={slug || ''} sourceUrl={data.source_url || ''} />
+        <PreviewInquiryForm title={data.title || ''} address={data.address || ''} slug={slug || ''} sourceUrl={data.source_url || ''} companyPhone={companyInfo.phone} companyName={companyInfo.name} />
 
       </div>
 
