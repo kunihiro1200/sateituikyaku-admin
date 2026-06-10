@@ -349,19 +349,64 @@ export class SellerSidebarCountsUpdateService {
 
       const visitCompletedCount = visitCompletedCountResult.count || 0;
 
+      // employeesテーブルからイニシャル正規化マップを構築（担当者表記揺れを統一）
+      let normalizeInitial: (raw: string) => string = (raw: string) => raw.trim();
+      try {
+        const { data: employees } = await this.supabase
+          .from('employees')
+          .select('initials, name')
+          .not('initials', 'is', null);
+
+        const nameToInitial = new Map<string, string>();
+        const normalizedInitials = new Map<string, string>();
+
+        for (const emp of employees || []) {
+          const initial: string = emp.initials ? String(emp.initials).trim() : '';
+          const name: string = emp.name ? String(emp.name).trim() : '';
+          if (!initial) continue;
+          if (name) nameToInitial.set(name, initial);
+
+          const halfWidth = initial.replace(/[Ａ-Ｚａ-ｚ]/g, (c: string) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+          const upper = halfWidth.toUpperCase();
+          if (halfWidth !== initial) normalizedInitials.set(initial, upper);
+          if (upper !== initial && upper !== halfWidth) normalizedInitials.set(halfWidth.toLowerCase(), upper);
+          normalizedInitials.set(initial.toLowerCase(), upper);
+          normalizedInitials.set(halfWidth, upper);
+          normalizedInitials.set(upper, upper);
+        }
+
+        normalizeInitial = (raw: string): string => {
+          const trimmed = raw.trim();
+          if (nameToInitial.has(trimmed)) return nameToInitial.get(trimmed)!;
+          const halfWidth = trimmed.replace(/[Ａ-Ｚａ-ｚ]/g, (c: string) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+          const upper = halfWidth.toUpperCase();
+          if (normalizedInitials.has(upper)) return normalizedInitials.get(upper)!;
+          if (normalizedInitials.has(trimmed)) return normalizedInitials.get(trimmed)!;
+          return upper || trimmed;
+        };
+      } catch (err) {
+        console.error('[SellerSidebarCountsUpdate] 正規化マップ構築エラー:', err);
+      }
+
       const todayCallAssignedSellers = todayCallAssignedResult.data || [];
       const todayCallAssignedCount = todayCallAssignedSellers.length;
       const todayCallAssignedCounts: Record<string, number> = {};
       todayCallAssignedSellers.forEach((s: any) => {
         const a = s.visit_assignee;
-        if (a) todayCallAssignedCounts[a] = (todayCallAssignedCounts[a] || 0) + 1;
+        if (a) {
+          const normalized = normalizeInitial(a);
+          todayCallAssignedCounts[normalized] = (todayCallAssignedCounts[normalized] || 0) + 1;
+        }
       });
 
       const allAssignedSellers = allAssignedResult.data || [];
       const visitAssignedCounts: Record<string, number> = {};
       allAssignedSellers.forEach((s: any) => {
         const a = s.visit_assignee;
-        if (a) visitAssignedCounts[a] = (visitAssignedCounts[a] || 0) + 1;
+        if (a) {
+          const normalized = normalizeInitial(a);
+          visitAssignedCounts[normalized] = (visitAssignedCounts[normalized] || 0) + 1;
+        }
       });
 
       const allTodayCallBase = [...(todayCallBaseResult1.data || []), ...(todayCallBaseResult2.data || [])];
