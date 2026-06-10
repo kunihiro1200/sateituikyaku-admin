@@ -1237,6 +1237,61 @@ router.patch('/:id/coordinates', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/sellers/exclusive-monthly-summary
+ * 担当者別・月別の専任媒介取得件数サマリーを返す
+ * ⚠️ /:id より前に定義必須（Express のルートマッチング順序のため）
+ * 2026年5月以降のデータを返す
+ */
+router.get('/exclusive-monthly-summary', async (req: Request, res: Response) => {
+  try {
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    const { data, error } = await supabase
+      .from('sellers')
+      .select('id, seller_number, visit_assignee, contract_year_month, property_address, address')
+      .in('status', ['専任媒介', '他決→専任', 'リースバック（専任）'])
+      .gte('contract_year_month', '2026-05-01')
+      .is('deleted_at', null)
+      .order('contract_year_month', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    const summary: Record<string, Record<string, { count: number; sellerIds: string[] }>> = {};
+    for (const row of (data || [])) {
+      const assignee = row.visit_assignee;
+      if (!assignee) continue;
+      const d = new Date(row.contract_year_month);
+      if (isNaN(d.getTime())) continue;
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (!summary[assignee]) summary[assignee] = {};
+      if (!summary[assignee][ym]) summary[assignee][ym] = { count: 0, sellerIds: [] };
+      summary[assignee][ym].count++;
+      summary[assignee][ym].sellerIds.push(row.id);
+    }
+
+    const result: Record<string, { yearMonth: string; label: string; count: number; sellerIds: string[] }[]> = {};
+    for (const [assignee, months] of Object.entries(summary)) {
+      result[assignee] = Object.entries(months)
+        .map(([ym, mdata]) => {
+          const [y, m] = ym.split('-');
+          return { yearMonth: ym, label: `${y}年${parseInt(m)}月`, count: mdata.count, sellerIds: mdata.sellerIds };
+        })
+        .sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+    }
+
+    return res.json({ summary: result });
+  } catch (error) {
+    console.error('[exclusive-monthly-summary] Error:', error);
+    return res.status(500).json({ error: 'Failed to get exclusive monthly summary' });
+  }
+});
+
+/**
  * 売主情報を取得
  */
 router.get('/:id', async (req: Request, res: Response) => {
@@ -3704,64 +3759,6 @@ router.put('/:id/exclusive-analysis/qa/answer', authenticate, async (req: Reques
   } catch (error) {
     console.error('[exclusive-analysis/qa/answer] Error:', error);
     return res.status(500).json({ error: 'Failed to save answer' });
-  }
-});
-
-/**
- * GET /api/sellers/exclusive-monthly-summary
- * 担当者別・月別の専任媒介取得件数サマリーを返す
- * サイドバーの「担当(Y)」の下に「↳ 【専任】2026年6月」を表示するために使用
- * 2026年5月以降のデータを返す
- */
-router.get('/exclusive-monthly-summary', authenticate, async (req: Request, res: Response) => {
-  try {
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_KEY!
-    );
-
-    const { data, error } = await supabase
-      .from('sellers')
-      .select('id, seller_number, visit_assignee, contract_year_month, property_address, address')
-      .in('status', ['専任媒介', '他決→専任', 'リースバック（専任）'])
-      .gte('contract_year_month', '2026-05-01')
-      .is('deleted_at', null)
-      .order('contract_year_month', { ascending: false });
-
-    if (error) {
-      return res.status(500).json({ error: error.message });
-    }
-
-    // 担当者別・月別に集計
-    const summary: Record<string, Record<string, { count: number; sellerIds: string[] }>> = {};
-
-    for (const row of (data || [])) {
-      const assignee = row.visit_assignee;
-      if (!assignee) continue;
-      const d = new Date(row.contract_year_month);
-      if (isNaN(d.getTime())) continue;
-      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      if (!summary[assignee]) summary[assignee] = {};
-      if (!summary[assignee][ym]) summary[assignee][ym] = { count: 0, sellerIds: [] };
-      summary[assignee][ym].count++;
-      summary[assignee][ym].sellerIds.push(row.id);
-    }
-
-    // レスポンス形式: { [assignee]: [{ yearMonth, label, count, sellerIds }] }
-    const result: Record<string, { yearMonth: string; label: string; count: number; sellerIds: string[] }[]> = {};
-    for (const [assignee, months] of Object.entries(summary)) {
-      result[assignee] = Object.entries(months)
-        .map(([ym, mdata]) => {
-          const [y, m] = ym.split('-');
-          return { yearMonth: ym, label: `${y}年${parseInt(m)}月`, count: mdata.count, sellerIds: mdata.sellerIds };
-        })
-        .sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
-    }
-
-    return res.json({ summary: result });
-  } catch (error) {
-    console.error('[exclusive-monthly-summary] Error:', error);
-    return res.status(500).json({ error: 'Failed to get exclusive monthly summary' });
   }
 });
 
