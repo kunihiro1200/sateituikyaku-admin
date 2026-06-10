@@ -3494,7 +3494,9 @@ router.post('/send-alert', async (req: Request, res: Response) => {
 
 /**
  * GET /api/sellers/:id/exclusive-analysis
- * 専任媒介分析：月ごとの競合・要因・理由データとAIまとめを返す
+ * 専任媒介取得分析：
+ * この売主の営業担当が、専任決定月に取得した全専任案件をまとめ、
+ * AIがその担当者の強みと取得理由を他スタッフ向けに分析する
  */
 router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Response) => {
   try {
@@ -3505,7 +3507,7 @@ router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Re
       process.env.SUPABASE_SERVICE_KEY!
     );
 
-    // 売主データを取得
+    // 起点となる売主データを取得
     const { data: seller, error } = await supabase
       .from('sellers')
       .select(`
@@ -3521,9 +3523,7 @@ router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Re
         exclusive_other_decision_factor,
         exclusive_other_decision_meeting,
         visit_assignee,
-        visit_valuation_acquirer,
-        phone_contact_person,
-        inquiry_date
+        visit_valuation_acquirer
       `)
       .eq('id', id)
       .is('deleted_at', null)
@@ -3533,133 +3533,148 @@ router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Re
       return res.status(404).json({ error: 'Seller not found' });
     }
 
-    // 専任決定日（contract_year_month）が無ければ空データを返す
     const exclusiveDecisionDate = seller.contract_year_month;
+    const assignee = seller.visit_assignee; // 営業担当（イニシャル等）
 
-    // アクティビティログから通話履歴を取得（月ごとの担当把握用）
-    const { data: activities } = await supabase
-      .from('activity_logs')
-      .select('id, activity_type, occurred_at, assignee, notes, created_at')
-      .eq('seller_id', id)
-      .order('occurred_at', { ascending: false })
-      .limit(200);
-
-    // 月ごとのデータを構築
-    // 専任決定日が基準：その月から現在までの各月を生成
-    let monthlyData: Array<{
-      yearMonth: string;       // 例: "2026-06"
-      label: string;           // 例: "2026年6月"
-      decisionDate: string | null;
-      competitors: string[];
-      factors: string[];
-      reason: string;
-      assignees: string[];     // その月の担当者（アクティビティログから）
-    }> = [];
-
-    if (exclusiveDecisionDate) {
-      const decisionDateObj = new Date(exclusiveDecisionDate);
-      const now = new Date();
-
-      // 決定月から現在月まで列挙
-      const startYear = decisionDateObj.getFullYear();
-      const startMonth = decisionDateObj.getMonth(); // 0-indexed
-      const endYear = now.getFullYear();
-      const endMonth = now.getMonth(); // 0-indexed
-
-      for (let y = startYear; y <= endYear; y++) {
-        const mStart = (y === startYear) ? startMonth : 0;
-        const mEnd = (y === endYear) ? endMonth : 11;
-        for (let m = mStart; m <= mEnd; m++) {
-          const ym = `${y}-${String(m + 1).padStart(2, '0')}`;
-          const label = `${y}年${m + 1}月`;
-
-          // その月のアクティビティログから担当者を収集
-          const monthActivities = (activities || []).filter(a => {
-            const d = new Date(a.occurred_at || a.created_at);
-            return d.getFullYear() === y && d.getMonth() === m;
-          });
-          const assigneeSet = new Set<string>();
-          monthActivities.forEach(a => {
-            if (a.assignee) assigneeSet.add(a.assignee);
-          });
-
-          // 決定月のみ専任データを設定、他月は空
-          const isDecisionMonth = (y === startYear && m === startMonth);
-
-          monthlyData.push({
-            yearMonth: ym,
-            label,
-            decisionDate: isDecisionMonth ? exclusiveDecisionDate : null,
-            competitors: isDecisionMonth
-              ? (seller.competitor_name || '').split(',').map((s: string) => s.trim()).filter(Boolean)
-              : [],
-            factors: isDecisionMonth
-              ? (seller.exclusive_other_decision_factor || '').split(',').map((s: string) => s.trim()).filter(Boolean)
-              : [],
-            reason: isDecisionMonth ? (seller.competitor_name_and_reason || '') : '',
-            assignees: Array.from(assigneeSet),
-          });
-        }
-      }
+    // 専任決定日がなければ空を返す
+    if (!exclusiveDecisionDate || !assignee) {
+      return res.json({
+        seller: {
+          id: seller.id,
+          sellerNumber: seller.seller_number,
+          propertyAddress: seller.property_address || seller.address,
+          status: seller.status,
+          exclusiveDecisionDate: exclusiveDecisionDate || null,
+          visitAssignee: assignee || null,
+        },
+        assigneeStats: null,
+        sameMonthCases: [],
+        aiAnalysis: '',
+      });
     }
 
-    // AIまとめ生成（Anthropic Claude使用）
-    let aiSummary = '';
+    // 専任決定月（YYYY-MM）を算出
+    const decisionDateObj = new Date(exclusiveDecisionDate);
+    const decisionYear = decisionDateObj.getFullYear();
+    const decisionMonth = decisionDateObj.getMonth() + 1; // 1-indexed
+    const monthStart = `${decisionYear}-${String(decisionMonth).padStart(2, '0')}-01`;
+    const nextMonth = decisionMonth === 12
+      ? `${decisionYear + 1}-01-01`
+      : `${decisionYear}-${String(decisionMonth + 1).padStart(2, '0')}-01`;
+
+    // 同じ営業担当が同月に取得した専任媒介の全案件を取得
+    // visit_assignee が同じ && contract_year_month が同月
+    const { data: sameMonthRaw } = await supabase
+      .from('sellers')
+      .select(`
+        id,
+        seller_number,
+        property_address,
+        address,
+        status,
+        contract_year_month,
+        competitor_name,
+        competitor_name_and_reason,
+        exclusive_other_decision_factor,
+        visit_assignee,
+        visit_valuation_acquirer,
+        inquiry_date
+      `)
+      .eq('visit_assignee', assignee)
+      .in('status', ['専任媒介', '他決→専任', 'リースバック（専任）'])
+      .gte('contract_year_month', monthStart)
+      .lt('contract_year_month', nextMonth)
+      .is('deleted_at', null)
+      .order('contract_year_month', { ascending: true });
+
+    const sameMonthCases = (sameMonthRaw || []).map((s: any) => ({
+      id: s.id,
+      sellerNumber: s.seller_number,
+      propertyAddress: s.property_address || s.address,
+      status: s.status,
+      decisionDate: s.contract_year_month,
+      competitors: (s.competitor_name || '').split(',').map((x: string) => x.trim()).filter(Boolean),
+      factors: (s.exclusive_other_decision_factor || '').split(',').map((x: string) => x.trim()).filter(Boolean),
+      reason: s.competitor_name_and_reason || '',
+      visitAssignee: s.visit_assignee,
+      isCurrentSeller: s.id === id,
+    }));
+
+    // 担当者の統計（全期間の専任取得件数）
+    const { count: totalExclusiveCount } = await supabase
+      .from('sellers')
+      .select('id', { count: 'exact', head: true })
+      .eq('visit_assignee', assignee)
+      .in('status', ['専任媒介', '他決→専任', 'リースバック（専任）'])
+      .is('deleted_at', null);
+
+    const assigneeStats = {
+      name: assignee,
+      monthLabel: `${decisionYear}年${decisionMonth}月`,
+      monthCount: sameMonthCases.length,
+      totalCount: totalExclusiveCount || 0,
+    };
+
+    // AIによる担当者強み分析（Anthropic Claude）
+    let aiAnalysis = '';
     try {
       const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-      if (anthropicApiKey && monthlyData.length > 0) {
+      if (anthropicApiKey && sameMonthCases.length > 0) {
         const { default: Anthropic } = await import('@anthropic-ai/sdk');
         const anthropic = new Anthropic({ apiKey: anthropicApiKey });
 
-        const dataForAI = monthlyData.map(m => ({
-          月: m.label,
-          決定日: m.decisionDate || '－',
-          競合: m.competitors.length > 0 ? m.competitors.join('、') : '－',
-          専任他決要因: m.factors.length > 0 ? m.factors.join('、') : '－',
-          理由: m.reason || '－',
-          担当者: m.assignees.length > 0 ? m.assignees.join('、') : '－',
+        // AI向けデータ整形
+        const caseSummaries = sameMonthCases.map((c: any, i: number) => ({
+          案件番号: c.sellerNumber,
+          物件住所: c.propertyAddress || '不明',
+          専任決定日: c.decisionDate || '不明',
+          競合: c.competitors.length > 0 ? c.competitors.join('・') : 'なし',
+          専任取得要因: c.factors.length > 0 ? c.factors.join('・') : '不明',
+          理由詳細: c.reason || '記載なし',
         }));
 
-        const prompt = `以下は不動産売主（${seller.seller_number}、物件: ${seller.property_address || seller.address}）の専任媒介取得後の月別データです。
-次の担当者への引き継ぎまとめを日本語で簡潔に書いてください（300文字以内）：
+        const prompt = `あなたは不動産会社の営業分析の専門家です。
+以下は営業担当「${assignee}」が${assigneeStats.monthLabel}に専任媒介を取得した案件の一覧です。
 
-${JSON.stringify(dataForAI, null, 2)}
+【案件一覧（${sameMonthCases.length}件）】
+${JSON.stringify(caseSummaries, null, 2)}
 
-まとめは以下の点を含めてください：
-- 専任を取得できた主な要因と競合状況
-- 今後の対応で注意すべき点
-- 担当者への申し送り事項`;
+この担当者がなぜ専任媒介を取得できたのか、以下の観点で他のスタッフに向けてわかりやすく分析してください（500文字以内）：
+
+1. **取得の共通要因** - 複数の案件に共通している成功要因
+2. **この担当者の強み** - 競合他社に勝てた理由
+3. **他のスタッフへのアドバイス** - 真似できる具体的なポイント
+
+なお、Markdownの見出し（##）は使わず、番号付きの段落形式で書いてください。`;
 
         const message = await anthropic.messages.create({
           model: 'claude-opus-4-5',
-          max_tokens: 500,
+          max_tokens: 700,
           messages: [{ role: 'user', content: prompt }],
         });
 
         const content = message.content[0];
         if (content.type === 'text') {
-          aiSummary = content.text;
+          aiAnalysis = content.text;
         }
       }
     } catch (aiErr) {
-      console.error('[exclusive-analysis] AI summary error:', aiErr);
-      // AIエラーはスキップ（データは返す）
+      console.error('[exclusive-analysis] AI error:', aiErr);
     }
 
     return res.json({
       seller: {
         id: seller.id,
         sellerNumber: seller.seller_number,
-        name: seller.name,
         propertyAddress: seller.property_address || seller.address,
         status: seller.status,
         exclusiveDecisionDate: exclusiveDecisionDate,
-        visitAssignee: seller.visit_assignee,
-        visitValuationAcquirer: seller.visit_valuation_acquirer,
+        visitAssignee: assignee,
         exclusiveOtherDecisionMeeting: seller.exclusive_other_decision_meeting,
       },
-      monthlyData,
-      aiSummary,
+      assigneeStats,
+      sameMonthCases,
+      aiAnalysis,
     });
   } catch (error) {
     console.error('[exclusive-analysis] Error:', error);
