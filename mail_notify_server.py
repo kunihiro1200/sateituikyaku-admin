@@ -494,6 +494,7 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                     # （バックエンド側でも同じチェックをしているが、ここでも事前フィルタ）
                     if 'HOME4Uログアウト' in body:
                         # 同一スレッドの重複転記防止（HOME4Uは同一案件を複数社に同時配信するため複数メールが届く）
+                        # コメントあり本文が後から届いた場合はバックエンド側でcomments欄をUPDATEする
                         thread_id = msg_detail.get("threadId", msg_id)
                         if thread_id in home4u_processed_threads:
                             logging.info(f"  [重複スキップ] HOME4U同一スレッド (threadId={thread_id}) は処理済みのためスキップ")
@@ -533,6 +534,7 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                     if body and 'HOME4Uログアウト' in body:
                         logging.info(f"\n[{datetime.now().strftime('%H:%M:%S')}] 🔔 HOME4U本文検知（Re:スキップ回避）: {subject}")
                         # 同一スレッドの重複転記防止
+                        # コメントあり本文が後から届いた場合はバックエンド側でcomments欄をUPDATEする
                         thread_id = msg_detail.get("threadId", msg_id)
                         if thread_id in home4u_processed_threads:
                             logging.info(f"  [重複スキップ] HOME4U同一スレッド (threadId={thread_id}) は処理済みのためスキップ")

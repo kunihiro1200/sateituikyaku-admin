@@ -415,6 +415,42 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
               if (isSameDatetime || isRecentDuplicate) {
                 const reason = isSameDatetime ? '反響日時一致' : '直近10分以内に同一電話番号で登録済み';
                 console.log(`[home4u-transfer] ⏭ 重複スキップ: ${reason} (既存: ${existing.seller_number})`);
+
+                // ============================================================
+                // コメントがある場合は既存レコードのcomments欄をUPDATEする
+                // （コメントなし1通目が先に登録され、コメントあり2通目がスキップされる問題の対策）
+                // memo = HOME4Uログアウトと査定依頼の間のスタッフメモ
+                // ============================================================
+                const memoForUpdate = (() => {
+                  const cleaned = mailBody.replace(/^[>\s]*/gm, '').replace(/\r\n|\r/g, '\n');
+                  const afterLogout = cleaned.split('HOME4Uログアウト')[1];
+                  if (!afterLogout) return '';
+                  return afterLogout.split(/査定依頼/)[0].trim();
+                })();
+                if (memoForUpdate) {
+                  // 既存のcommentsを取得してメモ部分だけ更新する
+                  const supabaseUpdate = (await import('../config/supabase')).default;
+                  const { data: existingSeller } = await supabaseUpdate
+                    .from('sellers')
+                    .select('id, comments')
+                    .eq('id', existing.id)
+                    .single();
+                  if (existingSeller) {
+                    const existingComments = existingSeller.comments || '';
+                    // 既存commentsが「\n【以下自動転記（HOME4U）】」で始まっている場合、先頭にメモを追加
+                    const updatedComments = existingComments.startsWith('\n【以下自動転記')
+                      ? memoForUpdate + existingComments
+                      : existingComments; // 既にメモがある場合は上書きしない
+                    if (updatedComments !== existingComments) {
+                      await supabaseUpdate
+                        .from('sellers')
+                        .update({ comments: updatedComments })
+                        .eq('id', existingSeller.id);
+                      console.log(`[home4u-transfer] ✅ コメント更新: ${existing.seller_number} → "${memoForUpdate}"`);
+                    }
+                  }
+                }
+
                 return res.json({
                   success: true,
                   skipped: true,
