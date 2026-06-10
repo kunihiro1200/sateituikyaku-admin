@@ -3870,6 +3870,8 @@ router.put('/:id/exclusive-analysis/qa/answer', authenticate, async (req: Reques
 router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    // skipAi=true の場合はAI分析をスキップして即座に返す（フロント側で段階的ロード用）
+    const skipAi = req.query.skipAi === 'true';
 
     const supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -3986,10 +3988,11 @@ router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Re
 
     // AIによる担当者強み分析（Anthropic Claude）
     // キャッシュ戦略：専用テーブル exclusive_ai_analysis_cache を使用
-    //   - 当月データ → 24時間で失効 OR 案件数が増えたら失効（月中に案件追加の可能性）
-    //   - 過去月データ → 永続キャッシュ（月が終わったら変わらない）
-    //   ※ QA（質問・回答）とは完全に独立したテーブルで管理
+    //   - 当月データ → 24時間で失効 OR 案件数が増えたら失効
+    //   - 過去月データ → 永続キャッシュ
+    //   ※ skipAi=true の場合はAI呼び出しをスキップ（フロント側の段階的ロード用）
     let aiAnalysis = '';
+    if (!skipAi) {
     try {
       const supabaseForCache = createClient(
         process.env.SUPABASE_URL!,
@@ -4011,12 +4014,10 @@ router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Re
         .maybeSingle();
 
       // キャッシュ有効性チェック
-      // 当月: 24時間以内 かつ 案件数が変わっていない → 有効
-      // 過去月: 永続有効
       let cacheValid = false;
       if (cachedAnalysis?.ai_analysis) {
         if (!isCurrentMonth) {
-          cacheValid = true; // 過去月は永続
+          cacheValid = true;
         } else {
           const updatedAt = new Date(cachedAnalysis.updated_at);
           const ageHours = (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60);
@@ -4028,7 +4029,6 @@ router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Re
       if (cacheValid) {
         aiAnalysis = cachedAnalysis!.ai_analysis;
       } else {
-        // キャッシュミスまたは失効：AI呼び出し
         const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
         if (anthropicApiKey && sameMonthCases.length > 0) {
           const { default: Anthropic } = await import('@anthropic-ai/sdk');
@@ -4071,7 +4071,6 @@ ${JSON.stringify(caseSummaries, null, 2)}
             aiAnalysis = content.text;
           }
 
-          // 専用キャッシュテーブルに保存（QAとは独立）
           if (aiAnalysis) {
             await supabaseForCache
               .from('exclusive_ai_analysis_cache')
@@ -4088,6 +4087,7 @@ ${JSON.stringify(caseSummaries, null, 2)}
     } catch (aiErr) {
       console.error('[exclusive-analysis] AI error:', aiErr);
     }
+    } // end if (!skipAi)
 
     return res.json({
       seller: {
