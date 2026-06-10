@@ -308,6 +308,9 @@ function SellerStatusSidebarComponent({
     Record<string, { yearMonth: string; label: string; count: number; sellerIds: string[] }[]>
   >({});
 
+  // 専任月別セクション専用の展開state（売主リストのexpandedCategoryと完全に分離）
+  const [exclusiveExpandedMonth, setExclusiveExpandedMonth] = useState<string | null>(null);
+
   // 専任月別サマリーを取得（初回のみ）
   useEffect(() => {
     let cancelled = false;
@@ -1016,15 +1019,16 @@ function SellerStatusSidebarComponent({
             </Typography>
             {sortedMonths.map(({ yearMonth, label, entries }) => {
               const totalCount = entries.reduce((sum, e) => sum + e.count, 0);
-              const isExpanded = expandedCategory === (`exclusiveMonth:${yearMonth}` as any);
+              // 専用stateを使う（売主リストのexpandedCategoryには影響しない）
+              const isExpanded = exclusiveExpandedMonth === yearMonth;
               return (
                 <Box key={yearMonth}>
                   {/* 月ヘッダーボタン */}
                   <Button
                     fullWidth
-                    onClick={() => {
-                      const cat = `exclusiveMonth:${yearMonth}` as any;
-                      setExpandedCategory(isExpanded ? null : cat);
+                    onClick={(e) => {
+                      e.stopPropagation(); // 上位のクリックイベントを止める
+                      setExclusiveExpandedMonth(isExpanded ? null : yearMonth);
                     }}
                     sx={{
                       justifyContent: 'space-between',
