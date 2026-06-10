@@ -4122,6 +4122,7 @@ ${JSON.stringify(caseSummaries, null, 2)}
 router.get('/:id/other-decision-analysis', authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const skipAi = req.query.skipAi === 'true';
 
     const supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -4233,25 +4234,55 @@ router.get('/:id/other-decision-analysis', authenticate, async (req: Request, re
       totalCount: totalOtherDecisionCount || 0,
     };
 
-    // AIによる他決要因分析（Anthropic Claude）
+    // AIによる他決要因分析（キャッシュ対応・skipAi対応）
+    // 過去月は永続キャッシュ、当月は24時間+件数変化で失効
     let aiAnalysis = '';
+    if (!skipAi) {
     try {
-      const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-      if (anthropicApiKey && sameMonthCases.length > 0) {
-        const { default: Anthropic } = await import('@anthropic-ai/sdk');
-        const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+      const supabaseForCache = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
-        const caseSummaries = sameMonthCases.map((c: any) => ({
-          案件番号: c.sellerNumber,
-          物件住所: c.propertyAddress || '不明',
-          他決ステータス: c.status,
-          他決決定日: c.decisionDate || '不明',
-          競合: c.competitors.length > 0 ? c.competitors.join('・') : 'なし',
-          他決要因: c.factors.length > 0 ? c.factors.join('・') : '不明',
-          理由詳細: c.reason || '記載なし',
-        }));
+      const nowJST = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      const currentYM = `${nowJST.getUTCFullYear()}-${String(nowJST.getUTCMonth() + 1).padStart(2, '0')}`;
+      const cacheMonth = `${decisionYear}-${String(decisionMonth).padStart(2, '0')}`;
+      const isCurrentMonth = cacheMonth === currentYM;
 
-        const prompt = `あなたは不動産会社の営業分析の専門家です。
+      // other_decision_ai_analysis_cache から取得
+      const { data: cached } = await supabaseForCache
+        .from('other_decision_ai_analysis_cache')
+        .select('ai_analysis, case_count, updated_at')
+        .eq('assignee', assignee)
+        .eq('target_month', cacheMonth)
+        .maybeSingle();
+
+      let cacheValid = false;
+      if (cached?.ai_analysis) {
+        if (!isCurrentMonth) {
+          cacheValid = true; // 過去月は永続
+        } else {
+          const ageHours = (Date.now() - new Date(cached.updated_at).getTime()) / (1000 * 60 * 60);
+          cacheValid = ageHours < 24 && cached.case_count === sameMonthCases.length;
+        }
+      }
+
+      if (cacheValid) {
+        aiAnalysis = cached!.ai_analysis;
+      } else {
+        const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+        if (anthropicApiKey && sameMonthCases.length > 0) {
+          const { default: Anthropic } = await import('@anthropic-ai/sdk');
+          const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+
+          const caseSummaries = sameMonthCases.map((c: any) => ({
+            案件番号: c.sellerNumber,
+            物件住所: c.propertyAddress || '不明',
+            他決ステータス: c.status,
+            他決決定日: c.decisionDate || '不明',
+            競合: c.competitors.length > 0 ? c.competitors.join('・') : 'なし',
+            他決要因: c.factors.length > 0 ? c.factors.join('・') : '不明',
+            理由詳細: c.reason || '記載なし',
+          }));
+
+          const prompt = `あなたは不動産会社の営業分析の専門家です。
 以下は営業担当「${assignee}」が${assigneeStats.monthLabel}に他決（他社に取られた）になった案件の一覧です。
 
 【他決案件一覧（${sameMonthCases.length}件）】
@@ -4265,20 +4296,33 @@ ${JSON.stringify(caseSummaries, null, 2)}
 
 なお、Markdownの見出し（##）は使わず、番号付きの段落形式で書いてください。`;
 
-        const message = await anthropic.messages.create({
-          model: 'claude-opus-4-5',
-          max_tokens: 700,
-          messages: [{ role: 'user', content: prompt }],
-        });
+          const message = await anthropic.messages.create({
+            model: 'claude-opus-4-5',
+            max_tokens: 700,
+            messages: [{ role: 'user', content: prompt }],
+          });
 
-        const content = message.content[0];
-        if (content.type === 'text') {
-          aiAnalysis = content.text;
+          const content = message.content[0];
+          if (content.type === 'text') aiAnalysis = content.text;
+
+          // キャッシュ保存
+          if (aiAnalysis) {
+            await supabaseForCache
+              .from('other_decision_ai_analysis_cache')
+              .upsert({
+                assignee,
+                target_month: cacheMonth,
+                ai_analysis: aiAnalysis,
+                case_count: sameMonthCases.length,
+                updated_at: new Date().toISOString(),
+              }, { onConflict: 'assignee,target_month' });
+          }
         }
       }
     } catch (aiErr) {
       console.error('[other-decision-analysis] AI error:', aiErr);
     }
+    } // end if (!skipAi)
 
     return res.json({
       seller: {
