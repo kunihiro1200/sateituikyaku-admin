@@ -9,6 +9,7 @@ import { useState, useEffect, memo } from 'react';
 import { Paper, Typography, Box, Button, Chip, Collapse, IconButton, List, ListItem, Divider, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { ExpandMore, ExpandLess, Edit, Email, Phone, Chat, LocationOn } from '@mui/icons-material';
+import api from '../services/api';
 import {
   StatusCategory,
   CategoryCounts,
@@ -312,13 +313,8 @@ function SellerStatusSidebarComponent({
     let cancelled = false;
     const fetchSummary = async () => {
       try {
-        const res = await fetch('/api/sellers/exclusive-monthly-summary', {
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled) setExclusiveMonthlySummary(data.summary || {});
+        const res = await api.get('/api/sellers/exclusive-monthly-summary');
+        if (!cancelled) setExclusiveMonthlySummary(res.data?.summary || {});
       } catch (e) {
         // サイドバーのオプション機能なのでエラーは無視
       }
