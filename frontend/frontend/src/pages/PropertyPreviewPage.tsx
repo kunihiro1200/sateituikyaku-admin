@@ -45,6 +45,7 @@ interface PreviewData {
   show_map?: boolean;
   points?: string[];
   image_categories?: Record<string, string[]>;
+  region?: string | null;
 }
 
 // ── お問い合わせフォーム ──────────────────────────────
@@ -297,8 +298,9 @@ export default function PropertyPreviewPage() {
   const currentDomain = typeof window !== 'undefined' ? window.location.origin : 'https://oita-tateuri.com';
   const canonicalUrl = `${currentDomain}/property-preview/${slug}`;
 
-  // 福岡ドメイン判定
-  const isFukuokaDomain = typeof window !== 'undefined' && window.location.hostname.includes('fukuoka-tateuri.com');
+  // 福岡判定：DBのregionフィールド、またはfukuoka-tateuri.comドメイン
+  const isFukuokaDomain = data.region === 'fukuoka' ||
+    (typeof window !== 'undefined' && window.location.hostname.includes('fukuoka-tateuri.com'));
 
   // ドメインに応じた会社情報
   const companyInfo = isFukuokaDomain
