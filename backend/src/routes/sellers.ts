@@ -3886,7 +3886,9 @@ router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Re
     };
 
     // AIによる担当者強み分析（Anthropic Claude）
-    // キャッシュ確認：assignee + target_month でキャッシュを検索（seller_idに依存しない）
+    // キャッシュ戦略：
+    //   - 当月データ → 24時間で失効（月中に案件が増える可能性があるため）
+    //   - 過去月データ → 永続キャッシュ（もう変わらないため）
     let aiAnalysis = '';
     try {
       const supabaseForCache = createClient(
@@ -3895,21 +3897,39 @@ router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Re
       );
       const cacheMonth = `${decisionYear}-${String(decisionMonth).padStart(2, '0')}`;
 
-      // assignee + target_month で検索（どの売主から開いても同じキャッシュを使う）
+      // 当月かどうか判定
+      const nowJST = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      const currentYM = `${nowJST.getUTCFullYear()}-${String(nowJST.getUTCMonth() + 1).padStart(2, '0')}`;
+      const isCurrentMonth = cacheMonth === currentYM;
+
+      // assignee + target_month で検索
       const { data: cachedQa } = await supabaseForCache
         .from('exclusive_analysis_qa')
-        .select('id, ai_analysis')
+        .select('id, ai_analysis, updated_at')
         .eq('assignee', assignee)
         .eq('target_month', cacheMonth)
         .not('ai_analysis', 'is', null)
         .limit(1)
         .maybeSingle();
 
+      // キャッシュ有効性チェック
+      // 当月: 24時間以内に更新されたものだけ有効
+      // 過去月: 永続有効
+      let cacheValid = false;
       if (cachedQa?.ai_analysis) {
-        // キャッシュヒット：AI呼び出しをスキップ
-        aiAnalysis = cachedQa.ai_analysis;
+        if (!isCurrentMonth) {
+          cacheValid = true; // 過去月は永続
+        } else {
+          const updatedAt = new Date(cachedQa.updated_at);
+          const ageHours = (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60);
+          cacheValid = ageHours < 24; // 当月は24時間以内のみ有効
+        }
+      }
+
+      if (cacheValid) {
+        aiAnalysis = cachedQa!.ai_analysis;
       } else {
-        // キャッシュミス：AI呼び出し
+        // キャッシュミスまたは失効：AI呼び出し
         const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
         if (anthropicApiKey && sameMonthCases.length > 0) {
           const { default: Anthropic } = await import('@anthropic-ai/sdk');
@@ -3952,7 +3972,7 @@ ${JSON.stringify(caseSummaries, null, 2)}
             aiAnalysis = content.text;
           }
 
-          // 結果をDBにキャッシュ保存（upsert）
+          // 結果をDBにキャッシュ保存
           if (aiAnalysis) {
             await supabaseForCache
               .from('exclusive_analysis_qa')
