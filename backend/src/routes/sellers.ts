@@ -3493,6 +3493,219 @@ router.post('/send-alert', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/sellers/:id/exclusive-analysis/qa
+ * 専任媒介分析QA：AIが生成した質問と担当者の回答を取得
+ */
+router.get('/:id/exclusive-analysis/qa', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    const { data: seller } = await supabase
+      .from('sellers')
+      .select('visit_assignee, contract_year_month')
+      .eq('id', id)
+      .single();
+
+    if (!seller?.visit_assignee || !seller?.contract_year_month) {
+      return res.json({ qa: null });
+    }
+
+    const d = new Date(seller.contract_year_month);
+    const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+    const { data: qa } = await supabase
+      .from('exclusive_analysis_qa')
+      .select('*')
+      .eq('seller_id', id)
+      .eq('assignee', seller.visit_assignee)
+      .eq('target_month', targetMonth)
+      .maybeSingle();
+
+    return res.json({ qa: qa || null, assignee: seller.visit_assignee, targetMonth });
+  } catch (error) {
+    console.error('[exclusive-analysis/qa GET] Error:', error);
+    return res.status(500).json({ error: 'Failed to get QA' });
+  }
+});
+
+/**
+ * POST /api/sellers/:id/exclusive-analysis/qa/generate
+ * AIが専任取得要因に関する質問を生成して保存・返す
+ */
+router.post('/:id/exclusive-analysis/qa/generate', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { sameMonthCases, assigneeStats } = req.body;
+
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    const { data: seller } = await supabase
+      .from('sellers')
+      .select('visit_assignee, contract_year_month')
+      .eq('id', id)
+      .single();
+
+    if (!seller?.visit_assignee || !seller?.contract_year_month) {
+      return res.status(400).json({ error: '営業担当または専任決定日が未設定です' });
+    }
+
+    const d = new Date(seller.contract_year_month);
+    const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicApiKey) {
+      return res.status(500).json({ error: 'ANTHROPIC_API_KEY が設定されていません' });
+    }
+
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+
+    const caseSummaries = (sameMonthCases || []).map((c: any) => ({
+      案件番号: c.sellerNumber,
+      競合: c.competitors?.join('・') || 'なし',
+      専任取得要因: c.factors?.join('・') || '不明',
+      理由詳細: c.reason || '記載なし',
+    }));
+
+    const monthLabel = assigneeStats?.monthLabel || targetMonth;
+    const caseCount = sameMonthCases?.length || 1;
+
+    const prompt = `あなたは不動産営業の研修コーチです。
+営業担当「${seller.visit_assignee}」が${monthLabel}に${caseCount}件の専任媒介を取得しました。
+
+【取得案件データ】
+${JSON.stringify(caseSummaries, null, 2)}
+
+この担当者が「なぜ専任を取れたのか」を他スタッフが学べるよう、以下の条件で質問を5つ作成してください：
+
+条件：
+- 具体的で答えやすい質問にする
+- 電話対応・訪問・提案・追客など行動面に踏み込む
+- 「はい/いいえ」で終わらない、具体的エピソードを引き出す質問
+- 競合との差別化ポイントを明らかにする質問を含める
+
+JSON配列形式で返してください（他のテキストは不要）：
+[
+  {"id": "q1", "question": "質問文"},
+  {"id": "q2", "question": "質問文"},
+  ...
+]`;
+
+    const message = await anthropic.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const content = message.content[0];
+    if (content.type !== 'text') {
+      return res.status(500).json({ error: 'AI応答が不正です' });
+    }
+
+    let aiQuestions: { id: string; question: string }[] = [];
+    try {
+      const jsonMatch = content.text.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        aiQuestions = JSON.parse(jsonMatch[0]);
+      }
+    } catch {
+      return res.status(500).json({ error: 'AI質問のパースに失敗しました' });
+    }
+
+    const { data: existing } = await supabase
+      .from('exclusive_analysis_qa')
+      .select('id, answers')
+      .eq('seller_id', id)
+      .eq('assignee', seller.visit_assignee)
+      .eq('target_month', targetMonth)
+      .maybeSingle();
+
+    const upsertData = {
+      seller_id: id,
+      assignee: seller.visit_assignee,
+      target_month: targetMonth,
+      ai_questions: aiQuestions,
+      answers: existing?.answers || [],
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: qa, error: upsertError } = await supabase
+      .from('exclusive_analysis_qa')
+      .upsert(upsertData, { onConflict: 'seller_id,assignee,target_month' })
+      .select()
+      .single();
+
+    if (upsertError) {
+      console.error('[exclusive-analysis/qa/generate] upsert error:', upsertError);
+      return res.status(500).json({ error: upsertError.message });
+    }
+
+    return res.json({ qa });
+  } catch (error) {
+    console.error('[exclusive-analysis/qa/generate] Error:', error);
+    return res.status(500).json({ error: 'Failed to generate QA' });
+  }
+});
+
+/**
+ * PUT /api/sellers/:id/exclusive-analysis/qa/answer
+ * 担当者の回答を保存
+ */
+router.put('/:id/exclusive-analysis/qa/answer', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { answers, isPublished } = req.body;
+
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    const { data: seller } = await supabase
+      .from('sellers')
+      .select('visit_assignee, contract_year_month')
+      .eq('id', id)
+      .single();
+
+    if (!seller?.visit_assignee || !seller?.contract_year_month) {
+      return res.status(400).json({ error: '営業担当または専任決定日が未設定です' });
+    }
+
+    const d = new Date(seller.contract_year_month);
+    const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+    const { data: qa, error } = await supabase
+      .from('exclusive_analysis_qa')
+      .update({
+        answers,
+        is_published: isPublished ?? false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('seller_id', id)
+      .eq('assignee', seller.visit_assignee)
+      .eq('target_month', targetMonth)
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json({ qa });
+  } catch (error) {
+    console.error('[exclusive-analysis/qa/answer] Error:', error);
+    return res.status(500).json({ error: 'Failed to save answer' });
+  }
+});
+
+/**
  * GET /api/sellers/:id/exclusive-analysis
  * 専任媒介取得分析：
  * この売主の営業担当が、専任決定月に取得した全専任案件をまとめ、
