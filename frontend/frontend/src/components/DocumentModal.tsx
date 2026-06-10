@@ -554,7 +554,7 @@ const DocumentModal = ({ open, onClose, sellerNumber, onFolderUrlReady, onSalesC
                 >
                   {extractingFileId !== null
                     ? `読み取り中...（画像${files.filter((f) => f.mimeType.startsWith('image/')).length}枚）`
-                    : `🤖 売買事例を一括読み取り（画像${files.filter((f) => f.mimeType.startsWith('image/')).length}枚）`}
+                    : `🤖 売買事例を一括読み取り（スクショのみ・${files.filter((f) => f.mimeType.startsWith('image/')).length}枚）`}
                 </Button>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
                   ※ 複数枚あれば全て読み取って合算します
