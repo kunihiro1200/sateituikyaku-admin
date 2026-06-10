@@ -4,6 +4,7 @@ import { GoogleDriveService } from '../services/GoogleDriveService';
 import { authenticate } from '../middleware/auth';
 import { BaseRepository } from '../repositories/BaseRepository';
 import { decrypt } from '../utils/encryption';
+import Anthropic from '@anthropic-ai/sdk';
 
 const router = Router();
 const driveService = new GoogleDriveService();
@@ -417,6 +418,86 @@ router.get('/files/:fileId/base64', authenticate, async (req: Request, res: Resp
   } catch (error: any) {
     console.error('[drive/base64] エラー:', error.message);
     return res.status(500).json({ error: error.message || 'ファイル取得に失敗しました' });
+  }
+});
+
+/**
+ * POST /api/drive/files/:fileId/extract-sales-cases
+ * 画像/PDFファイルからマンション売買事例をClaude Vision APIで抽出する
+ * レスポンス: { cases: [{ floor, exclusiveArea, price, yearMonth }] }
+ */
+router.post('/files/:fileId/extract-sales-cases', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { fileId } = req.params;
+    if (!fileId) return res.status(400).json({ error: 'fileIdが必要です' });
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEYが設定されていません' });
+
+    // Googleドライブからファイル取得
+    const fileData = await driveService.getFile(fileId);
+    if (!fileData) return res.status(404).json({ error: 'ファイルが見つかりません' });
+
+    const base64 = fileData.data.toString('base64');
+    const mimeType = fileData.mimeType || 'image/jpeg';
+
+    // PDFはClaudeのvision対応外なのでエラー
+    if (mimeType === 'application/pdf') {
+      return res.status(400).json({ error: 'PDFは直接読み取れません。画像（JPEG/PNG）として保存したものをアップロードしてください。' });
+    }
+
+    const client = new Anthropic({ apiKey });
+
+    const prompt = `この画像はマンションの販売履歴（売買事例）の一覧表です。
+表から以下の情報を全件抽出し、JSON配列で返してください。
+
+抽出項目:
+- floor: 所在階（数字のみ。"3階"なら3）
+- exclusiveArea: 専有面積（㎡の数値のみ。"70.78㎡"なら70.78）
+- price: 販売価格（万円の数値のみ。"1290.0万円"なら1290）
+- yearMonth: 公開年月（"2024/06"形式）
+
+注意:
+- 成約情報（成約年月・成約価格）ではなく「公開年月」「価格」の列を使ってください
+- 同じ部屋で複数の公開月がある場合は直近1件のみ抽出してください
+- 抽出できなかった項目はnullにしてください
+
+必ずこの形式のJSONのみを返してください（説明文不要）:
+[{"floor":3,"exclusiveArea":70.78,"price":1290,"yearMonth":"2024/06"},...]`;
+
+    const response = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 2048,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+              data: base64,
+            },
+          },
+          { type: 'text', text: prompt },
+        ],
+      }],
+    });
+
+    const responseText = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
+    console.log('[extract-sales-cases] Claude response:', responseText.substring(0, 500));
+
+    // JSONを抽出
+    const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      return res.status(500).json({ error: 'AIが売買事例を抽出できませんでした。画像が鮮明か確認してください。', raw: responseText });
+    }
+
+    const cases = JSON.parse(jsonMatch[0]);
+    return res.json({ success: true, cases });
+  } catch (error: any) {
+    console.error('[extract-sales-cases] エラー:', error.message);
+    return res.status(500).json({ error: error.message || '売買事例の抽出に失敗しました' });
   }
 });
 

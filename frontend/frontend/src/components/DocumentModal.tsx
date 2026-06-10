@@ -58,9 +58,10 @@ interface DocumentModalProps {
   onClose: () => void;
   sellerNumber: string;
   onFolderUrlReady?: (url: string) => void;
+  onSalesCasesExtracted?: (cases: Array<{ floor: number | null; exclusiveArea: number | null; price: number | null; yearMonth: string | null }>) => void;
 }
 
-const DocumentModal = ({ open, onClose, sellerNumber, onFolderUrlReady }: DocumentModalProps) => {
+const DocumentModal = ({ open, onClose, sellerNumber, onFolderUrlReady, onSalesCasesExtracted }: DocumentModalProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [files, setFiles] = useState<DriveFile[]>([]);
@@ -68,6 +69,7 @@ const DocumentModal = ({ open, onClose, sellerNumber, onFolderUrlReady }: Docume
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0); // 全体の進捗（0-100）
   const [uploadedCount, setUploadedCount] = useState(0);
+  const [extractingFileId, setExtractingFileId] = useState<string | null>(null); // 読み取り中のファイルID
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -553,6 +555,35 @@ const DocumentModal = ({ open, onClose, sellerNumber, onFolderUrlReady }: Docume
                     }
                   />
                   <ListItemSecondaryAction>
+                    {/* 売買事例を読み取るボタン（画像ファイルのみ、onSalesCasesExtractedが渡された場合のみ表示） */}
+                    {onSalesCasesExtracted && file.mimeType.startsWith('image/') && (
+                      <Tooltip title="売買事例をAIで読み取る">
+                        <IconButton
+                          size="small"
+                          color="secondary"
+                          disabled={extractingFileId === file.id}
+                          onClick={async () => {
+                            try {
+                              setExtractingFileId(file.id);
+                              setError(null);
+                              const res = await api.post(`/api/drive/files/${file.id}/extract-sales-cases`);
+                              if (res.data.cases && res.data.cases.length > 0) {
+                                onSalesCasesExtracted(res.data.cases);
+                                onClose();
+                              } else {
+                                setError('売買事例が見つかりませんでした。');
+                              }
+                            } catch (err: any) {
+                              setError(err.response?.data?.error || '読み取りに失敗しました');
+                            } finally {
+                              setExtractingFileId(null);
+                            }
+                          }}
+                        >
+                          {extractingFileId === file.id ? <CircularProgress size={18} /> : <span style={{ fontSize: 16 }}>🤖</span>}
+                        </IconButton>
+                      </Tooltip>
+                    )}
                     <Tooltip title="ダウンロード">
                       <IconButton
                         href={file.webContentLink}

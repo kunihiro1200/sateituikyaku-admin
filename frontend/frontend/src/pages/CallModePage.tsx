@@ -7158,14 +7158,14 @@ HP：https://ifoo-oita.com/
                       {(propInfo.propertyType === 'apartment' || editedPropertyType === 'apartment' || editedPropertyType === 'マンション' || editedPropertyType === 'マ') && (
                         <Grid item xs={12}>
                           <Divider sx={{ my: 2 }} />
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                          <Box id="ai-valuation-section" sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
                             <Typography variant="h6">
                               🤖 AI査定（売買事例から）
                             </Typography>
                             <Chip label="マンション専用" color="secondary" size="small" />
                           </Box>
                           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                            アットホーム等の売買事例PDFから事例を入力してください。階数・専有面積・販売価格・公開年月をもとにAIが査定額1〜3を提案します。
+                            ヘッダーの「📷 画像」ボタンから売買事例画像を選び、<strong>🤖ボタン</strong>を押すと自動で読み取れます。または手動で入力してください。
                           </Typography>
 
                           {/* 売買事例入力テーブル */}
@@ -9086,6 +9086,23 @@ HP：https://ifoo-oita.com/
           open={documentModalOpen}
           onClose={() => setDocumentModalOpen(false)}
           sellerNumber={seller.sellerNumber || ''}
+          onSalesCasesExtracted={(cases) => {
+            // 抽出された売買事例をAI査定フォームに反映
+            const rows = cases.slice(0, 10).map((c, i) => ({
+              id: String(Date.now() + i),
+              floor: c.floor != null ? String(c.floor) : '',
+              exclusiveArea: c.exclusiveArea != null ? String(c.exclusiveArea) : '',
+              price: c.price != null ? String(c.price) : '',
+              yearMonth: c.yearMonth || '',
+            }));
+            setSalesCaseRows(rows.length > 0 ? rows : [{ id: '1', floor: '', exclusiveArea: '', price: '', yearMonth: '' }]);
+            setAiValuation(null);
+            setAiValuationError(null);
+            // AI査定セクションにスクロール
+            setTimeout(() => {
+              document.getElementById('ai-valuation-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 300);
+          }}
         />
       )}
 
