@@ -202,9 +202,12 @@ export default function FukuokaTateuriPage() {
 
       {/* ヘッダー */}
       <header style={{ background: '#2196F3', color: '#fff', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 'bold', margin: 0 }}>🏠 福岡の建売専門サイト</h1>
-          <p style={{ fontSize: 12, margin: '2px 0 0', opacity: 0.85 }}>株式会社くじら不動産｜福岡市中央区舞鶴3－1－10　<a href="tel:0924015331" style={{ color: 'inherit', textDecoration: 'none' }}>092-401-5331</a>　大分県知事（3）第3183号</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <img src="/kujira-fudosan-logo.png" alt="くじら不動産ロゴ" style={{ height: 44, width: 'auto', objectFit: 'contain' }} />
+          <div>
+            <h1 style={{ fontSize: 20, fontWeight: 'bold', margin: 0 }}>福岡の建売専門サイト</h1>
+            <p style={{ fontSize: 12, margin: '2px 0 0', opacity: 0.85 }}>株式会社くじら不動産｜福岡市中央区舞鶴3－1－10　<a href="tel:0924015331" style={{ color: 'inherit', textDecoration: 'none' }}>092-401-5331</a></p>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <a href="https://kujira-fudosan.com/" target="_blank" rel="noopener noreferrer" style={{ color: '#fff', textDecoration: 'none', fontSize: 13, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', borderRadius: 6, padding: '5px 12px', fontWeight: 'bold' }}>HP</a>
@@ -381,7 +384,6 @@ export default function FukuokaTateuriPage() {
           <strong style={{ color: '#fff' }}>株式会社くじら不動産</strong>
           　福岡市中央区舞鶴3－1－10
           　<a href="tel:0924015331" style={{ color: '#2196F3', textDecoration: 'none' }}>092-401-5331</a>
-          　大分県知事（3）第3183号
         </div>
         <div style={{ color: '#888' }}>
           福岡県の建売住宅・新築一戸建て専門サイト
