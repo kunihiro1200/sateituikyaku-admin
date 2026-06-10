@@ -3492,5 +3492,185 @@ router.post('/send-alert', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/sellers/:id/exclusive-analysis
+ * 専任媒介分析：月ごとの競合・要因・理由データとAIまとめを返す
+ */
+router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    // 売主データを取得
+    const { data: seller, error } = await supabase
+      .from('sellers')
+      .select(`
+        id,
+        seller_number,
+        name,
+        address,
+        property_address,
+        status,
+        contract_year_month,
+        competitor_name,
+        competitor_name_and_reason,
+        exclusive_other_decision_factor,
+        exclusive_other_decision_meeting,
+        visit_assignee,
+        visit_valuation_acquirer,
+        phone_contact_person,
+        inquiry_date
+      `)
+      .eq('id', id)
+      .is('deleted_at', null)
+      .single();
+
+    if (error || !seller) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+
+    // 専任決定日（contract_year_month）が無ければ空データを返す
+    const exclusiveDecisionDate = seller.contract_year_month;
+
+    // アクティビティログから通話履歴を取得（月ごとの担当把握用）
+    const { data: activities } = await supabase
+      .from('activity_logs')
+      .select('id, activity_type, occurred_at, assignee, notes, created_at')
+      .eq('seller_id', id)
+      .order('occurred_at', { ascending: false })
+      .limit(200);
+
+    // 月ごとのデータを構築
+    // 専任決定日が基準：その月から現在までの各月を生成
+    let monthlyData: Array<{
+      yearMonth: string;       // 例: "2026-06"
+      label: string;           // 例: "2026年6月"
+      decisionDate: string | null;
+      competitors: string[];
+      factors: string[];
+      reason: string;
+      assignees: string[];     // その月の担当者（アクティビティログから）
+    }> = [];
+
+    if (exclusiveDecisionDate) {
+      const decisionDateObj = new Date(exclusiveDecisionDate);
+      const now = new Date();
+
+      // 決定月から現在月まで列挙
+      const startYear = decisionDateObj.getFullYear();
+      const startMonth = decisionDateObj.getMonth(); // 0-indexed
+      const endYear = now.getFullYear();
+      const endMonth = now.getMonth(); // 0-indexed
+
+      for (let y = startYear; y <= endYear; y++) {
+        const mStart = (y === startYear) ? startMonth : 0;
+        const mEnd = (y === endYear) ? endMonth : 11;
+        for (let m = mStart; m <= mEnd; m++) {
+          const ym = `${y}-${String(m + 1).padStart(2, '0')}`;
+          const label = `${y}年${m + 1}月`;
+
+          // その月のアクティビティログから担当者を収集
+          const monthActivities = (activities || []).filter(a => {
+            const d = new Date(a.occurred_at || a.created_at);
+            return d.getFullYear() === y && d.getMonth() === m;
+          });
+          const assigneeSet = new Set<string>();
+          monthActivities.forEach(a => {
+            if (a.assignee) assigneeSet.add(a.assignee);
+          });
+
+          // 決定月のみ専任データを設定、他月は空
+          const isDecisionMonth = (y === startYear && m === startMonth);
+
+          monthlyData.push({
+            yearMonth: ym,
+            label,
+            decisionDate: isDecisionMonth ? exclusiveDecisionDate : null,
+            competitors: isDecisionMonth
+              ? (seller.competitor_name || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+              : [],
+            factors: isDecisionMonth
+              ? (seller.exclusive_other_decision_factor || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+              : [],
+            reason: isDecisionMonth ? (seller.competitor_name_and_reason || '') : '',
+            assignees: Array.from(assigneeSet),
+          });
+        }
+      }
+    }
+
+    // AIまとめ生成（Anthropic Claude使用）
+    let aiSummary = '';
+    try {
+      const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+      if (anthropicApiKey && monthlyData.length > 0) {
+        const { default: Anthropic } = await import('@anthropic-ai/sdk');
+        const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+
+        const dataForAI = monthlyData.map(m => ({
+          月: m.label,
+          決定日: m.decisionDate || '－',
+          競合: m.competitors.length > 0 ? m.competitors.join('、') : '－',
+          専任他決要因: m.factors.length > 0 ? m.factors.join('、') : '－',
+          理由: m.reason || '－',
+          担当者: m.assignees.length > 0 ? m.assignees.join('、') : '－',
+        }));
+
+        const prompt = `以下は不動産売主（${seller.seller_number}、物件: ${seller.property_address || seller.address}）の専任媒介取得後の月別データです。
+次の担当者への引き継ぎまとめを日本語で簡潔に書いてください（300文字以内）：
+
+${JSON.stringify(dataForAI, null, 2)}
+
+まとめは以下の点を含めてください：
+- 専任を取得できた主な要因と競合状況
+- 今後の対応で注意すべき点
+- 担当者への申し送り事項`;
+
+        const message = await anthropic.messages.create({
+          model: 'claude-opus-4-5',
+          max_tokens: 500,
+          messages: [{ role: 'user', content: prompt }],
+        });
+
+        const content = message.content[0];
+        if (content.type === 'text') {
+          aiSummary = content.text;
+        }
+      }
+    } catch (aiErr) {
+      console.error('[exclusive-analysis] AI summary error:', aiErr);
+      // AIエラーはスキップ（データは返す）
+    }
+
+    return res.json({
+      seller: {
+        id: seller.id,
+        sellerNumber: seller.seller_number,
+        name: seller.name,
+        propertyAddress: seller.property_address || seller.address,
+        status: seller.status,
+        exclusiveDecisionDate: exclusiveDecisionDate,
+        visitAssignee: seller.visit_assignee,
+        visitValuationAcquirer: seller.visit_valuation_acquirer,
+        exclusiveOtherDecisionMeeting: seller.exclusive_other_decision_meeting,
+      },
+      monthlyData,
+      aiSummary,
+    });
+  } catch (error) {
+    console.error('[exclusive-analysis] Error:', error);
+    return res.status(500).json({
+      error: {
+        code: 'EXCLUSIVE_ANALYSIS_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to get exclusive analysis',
+      },
+    });
+  }
+});
+
 export default router;
 

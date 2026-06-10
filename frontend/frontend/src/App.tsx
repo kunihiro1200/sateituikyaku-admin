@@ -49,6 +49,7 @@ import MansionJyuchoPage from './pages/MansionJyuchoPage';
 import KenchikuGaiyoshoPage from './pages/KenchikuGaiyoshoPage';
 import KoteiKazeiComparePage from './pages/KoteiKazeiComparePage';
 import SalesHistoryPage from './pages/SalesHistoryPage';
+import SellerExclusiveAnalysisPage from './pages/SellerExclusiveAnalysisPage';
 import PropertyPreviewPage from './pages/PropertyPreviewPage';
 import TateuriPage from './pages/TateuriPage';
 import TateuriManagePage from './pages/TateuriManagePage';
@@ -399,6 +400,14 @@ function App() {
         element={
           <ProtectedRoute>
             <SalesHistoryPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sellers/:id/exclusive-analysis"
+        element={
+          <ProtectedRoute>
+            <SellerExclusiveAnalysisPage />
           </ProtectedRoute>
         }
       />

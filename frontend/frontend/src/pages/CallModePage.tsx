@@ -7923,6 +7923,25 @@ HP：https://ifoo-oita.com/
                   />
                 </Grid>
 
+                {/* 専任媒介の場合：分析レポートボタンを表示 */}
+                {editedStatus === '専任媒介' && id && (
+                  <Grid item xs={12}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => navigate(`/sellers/${id}/exclusive-analysis`)}
+                      sx={{
+                        borderColor: '#ff6d00',
+                        color: '#ff6d00',
+                        fontWeight: 'bold',
+                        '&:hover': { borderColor: '#e65100', backgroundColor: '#fff3e0' },
+                      }}
+                    >
+                      📊 専任媒介分析レポート（月別まとめ）
+                    </Button>
+                  </Grid>
+                )}
+
                 {/* 一般媒介の場合：専任（他決）決定日を編集可能な日付フィールドで表示 */}
                 {editedStatus === '一般媒介' && (
                   <Grid item xs={12}>
