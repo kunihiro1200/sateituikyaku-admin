@@ -20,7 +20,7 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import { api } from '../utils/api';
+import api from '../services/api';
 
 // 月別データの型
 interface MonthlyData {
