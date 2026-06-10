@@ -3687,5 +3687,195 @@ ${JSON.stringify(caseSummaries, null, 2)}
   }
 });
 
+/**
+ * GET /api/sellers/:id/other-decision-analysis
+ * 他決分析：この売主の営業担当が、他決決定月に他決になった全案件をまとめ、
+ * AIがその担当者の他決要因パターンと今後への改善点を分析する
+ */
+router.get('/:id/other-decision-analysis', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    // 起点となる売主データを取得
+    const { data: seller, error } = await supabase
+      .from('sellers')
+      .select(`
+        id,
+        seller_number,
+        address,
+        property_address,
+        status,
+        contract_year_month,
+        competitor_name,
+        competitor_name_and_reason,
+        exclusive_other_decision_factor,
+        exclusive_other_decision_meeting,
+        visit_assignee,
+        visit_valuation_acquirer
+      `)
+      .eq('id', id)
+      .is('deleted_at', null)
+      .single();
+
+    if (error || !seller) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+
+    const decisionDate = seller.contract_year_month;
+    const assignee = seller.visit_assignee;
+
+    if (!decisionDate || !assignee) {
+      return res.json({
+        seller: {
+          id: seller.id,
+          sellerNumber: seller.seller_number,
+          propertyAddress: seller.property_address || seller.address,
+          status: seller.status,
+          decisionDate: decisionDate || null,
+          visitAssignee: assignee || null,
+        },
+        assigneeStats: null,
+        sameMonthCases: [],
+        aiAnalysis: '',
+      });
+    }
+
+    // 他決決定月（YYYY-MM）を算出
+    const decisionDateObj = new Date(decisionDate);
+    const decisionYear = decisionDateObj.getFullYear();
+    const decisionMonth = decisionDateObj.getMonth() + 1;
+    const monthStart = `${decisionYear}-${String(decisionMonth).padStart(2, '0')}-01`;
+    const nextMonth = decisionMonth === 12
+      ? `${decisionYear + 1}-01-01`
+      : `${decisionYear}-${String(decisionMonth + 1).padStart(2, '0')}-01`;
+
+    // 同じ営業担当が同月に他決になった全案件を取得
+    const OTHER_DECISION_STATUSES = ['他決→追客', '他決→追客不要', '他決→専任', '他決→一般', '一般→他決', '専任→他社専任'];
+
+    const { data: sameMonthRaw } = await supabase
+      .from('sellers')
+      .select(`
+        id,
+        seller_number,
+        property_address,
+        address,
+        status,
+        contract_year_month,
+        competitor_name,
+        competitor_name_and_reason,
+        exclusive_other_decision_factor,
+        visit_assignee
+      `)
+      .eq('visit_assignee', assignee)
+      .in('status', OTHER_DECISION_STATUSES)
+      .gte('contract_year_month', monthStart)
+      .lt('contract_year_month', nextMonth)
+      .is('deleted_at', null)
+      .order('contract_year_month', { ascending: true });
+
+    const sameMonthCases = (sameMonthRaw || []).map((s: any) => ({
+      id: s.id,
+      sellerNumber: s.seller_number,
+      propertyAddress: s.property_address || s.address,
+      status: s.status,
+      decisionDate: s.contract_year_month,
+      competitors: (s.competitor_name || '').split(',').map((x: string) => x.trim()).filter(Boolean),
+      factors: (s.exclusive_other_decision_factor || '').split(',').map((x: string) => x.trim()).filter(Boolean),
+      reason: s.competitor_name_and_reason || '',
+      visitAssignee: s.visit_assignee,
+      isCurrentSeller: s.id === id,
+    }));
+
+    // 担当者の統計（全期間の他決件数）
+    const { count: totalOtherDecisionCount } = await supabase
+      .from('sellers')
+      .select('id', { count: 'exact', head: true })
+      .eq('visit_assignee', assignee)
+      .in('status', OTHER_DECISION_STATUSES)
+      .is('deleted_at', null);
+
+    const assigneeStats = {
+      name: assignee,
+      monthLabel: `${decisionYear}年${decisionMonth}月`,
+      monthCount: sameMonthCases.length,
+      totalCount: totalOtherDecisionCount || 0,
+    };
+
+    // AIによる他決要因分析（Anthropic Claude）
+    let aiAnalysis = '';
+    try {
+      const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+      if (anthropicApiKey && sameMonthCases.length > 0) {
+        const { default: Anthropic } = await import('@anthropic-ai/sdk');
+        const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+
+        const caseSummaries = sameMonthCases.map((c: any) => ({
+          案件番号: c.sellerNumber,
+          物件住所: c.propertyAddress || '不明',
+          他決ステータス: c.status,
+          他決決定日: c.decisionDate || '不明',
+          競合: c.competitors.length > 0 ? c.competitors.join('・') : 'なし',
+          他決要因: c.factors.length > 0 ? c.factors.join('・') : '不明',
+          理由詳細: c.reason || '記載なし',
+        }));
+
+        const prompt = `あなたは不動産会社の営業分析の専門家です。
+以下は営業担当「${assignee}」が${assigneeStats.monthLabel}に他決（他社に取られた）になった案件の一覧です。
+
+【他決案件一覧（${sameMonthCases.length}件）】
+${JSON.stringify(caseSummaries, null, 2)}
+
+この担当者の他決案件を分析して、以下の観点で他のスタッフに向けてわかりやすく説明してください（500文字以内）：
+
+1. **他決になった共通要因** - 複数の案件に共通している敗因パターン
+2. **競合他社の強み** - 競合に負けた理由の傾向
+3. **改善ポイント** - 今後の追客・対応で活かせる具体的なアドバイス
+
+なお、Markdownの見出し（##）は使わず、番号付きの段落形式で書いてください。`;
+
+        const message = await anthropic.messages.create({
+          model: 'claude-opus-4-5',
+          max_tokens: 700,
+          messages: [{ role: 'user', content: prompt }],
+        });
+
+        const content = message.content[0];
+        if (content.type === 'text') {
+          aiAnalysis = content.text;
+        }
+      }
+    } catch (aiErr) {
+      console.error('[other-decision-analysis] AI error:', aiErr);
+    }
+
+    return res.json({
+      seller: {
+        id: seller.id,
+        sellerNumber: seller.seller_number,
+        propertyAddress: seller.property_address || seller.address,
+        status: seller.status,
+        decisionDate: decisionDate,
+        visitAssignee: assignee,
+      },
+      assigneeStats,
+      sameMonthCases,
+      aiAnalysis,
+    });
+  } catch (error) {
+    console.error('[other-decision-analysis] Error:', error);
+    return res.status(500).json({
+      error: {
+        code: 'OTHER_DECISION_ANALYSIS_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to get other decision analysis',
+      },
+    });
+  }
+});
+
 export default router;
 

@@ -8169,6 +8169,25 @@ HP：https://ifoo-oita.com/
                       </Grid>
                     )}
 
+                    {/* 他決→追客 / 他決→追客不要の場合：他決分析ボタンを表示 */}
+                    {(editedStatus === '他決→追客' || editedStatus === '他決→追客不要') && id && (
+                      <Grid item xs={12}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => window.open(`/sellers/${id}/other-decision-analysis`, '_blank', 'noopener,noreferrer')}
+                          sx={{
+                            borderColor: '#e53935',
+                            color: '#e53935',
+                            fontWeight: 'bold',
+                            '&:hover': { borderColor: '#c62828', backgroundColor: '#fce4ec' },
+                          }}
+                        >
+                          📉 他決分析レポート（月別まとめ）
+                        </Button>
+                      </Grid>
+                    )}
+
                     {/* GoogleChat通知ボタン - 必須項目が全て入力されている場合のみ表示 */}
                     {isRequiredFieldsComplete() && (
                       <Grid item xs={12}>

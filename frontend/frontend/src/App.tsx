@@ -50,6 +50,7 @@ import KenchikuGaiyoshoPage from './pages/KenchikuGaiyoshoPage';
 import KoteiKazeiComparePage from './pages/KoteiKazeiComparePage';
 import SalesHistoryPage from './pages/SalesHistoryPage';
 import SellerExclusiveAnalysisPage from './pages/SellerExclusiveAnalysisPage';
+import SellerOtherDecisionAnalysisPage from './pages/SellerOtherDecisionAnalysisPage';
 import PropertyPreviewPage from './pages/PropertyPreviewPage';
 import TateuriPage from './pages/TateuriPage';
 import TateuriManagePage from './pages/TateuriManagePage';
@@ -408,6 +409,14 @@ function App() {
         element={
           <ProtectedRoute>
             <SellerExclusiveAnalysisPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sellers/:id/other-decision-analysis"
+        element={
+          <ProtectedRoute>
+            <SellerOtherDecisionAnalysisPage />
           </ProtectedRoute>
         }
       />
