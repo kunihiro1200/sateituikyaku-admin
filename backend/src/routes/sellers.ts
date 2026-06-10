@@ -3831,24 +3831,45 @@ router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Re
     };
 
     // AIによる担当者強み分析（Anthropic Claude）
+    // キャッシュ確認：exclusive_analysis_qaテーブルのai_analysisカラムに保存済みなら再利用
     let aiAnalysis = '';
     try {
-      const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-      if (anthropicApiKey && sameMonthCases.length > 0) {
-        const { default: Anthropic } = await import('@anthropic-ai/sdk');
-        const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+      const supabaseForCache = createClient(
+        process.env.SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_KEY!
+      );
+      const decisionDateObj2 = new Date(exclusiveDecisionDate);
+      const cacheMonth = `${decisionDateObj2.getFullYear()}-${String(decisionDateObj2.getMonth() + 1).padStart(2, '0')}`;
 
-        // AI向けデータ整形
-        const caseSummaries = sameMonthCases.map((c: any, i: number) => ({
-          案件番号: c.sellerNumber,
-          物件住所: c.propertyAddress || '不明',
-          専任決定日: c.decisionDate || '不明',
-          競合: c.competitors.length > 0 ? c.competitors.join('・') : 'なし',
-          専任取得要因: c.factors.length > 0 ? c.factors.join('・') : '不明',
-          理由詳細: c.reason || '記載なし',
-        }));
+      // キャッシュ確認
+      const { data: cachedQa } = await supabaseForCache
+        .from('exclusive_analysis_qa')
+        .select('ai_analysis')
+        .eq('seller_id', id)
+        .eq('assignee', assignee)
+        .eq('target_month', cacheMonth)
+        .maybeSingle();
 
-        const prompt = `あなたは不動産会社の営業分析の専門家です。
+      if (cachedQa?.ai_analysis) {
+        // キャッシュヒット：AI呼び出しをスキップ
+        aiAnalysis = cachedQa.ai_analysis;
+      } else {
+        // キャッシュミス：AI呼び出し
+        const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+        if (anthropicApiKey && sameMonthCases.length > 0) {
+          const { default: Anthropic } = await import('@anthropic-ai/sdk');
+          const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+
+          const caseSummaries = sameMonthCases.map((c: any) => ({
+            案件番号: c.sellerNumber,
+            物件住所: c.propertyAddress || '不明',
+            専任決定日: c.decisionDate || '不明',
+            競合: c.competitors.length > 0 ? c.competitors.join('・') : 'なし',
+            専任取得要因: c.factors.length > 0 ? c.factors.join('・') : '不明',
+            理由詳細: c.reason || '記載なし',
+          }));
+
+          const prompt = `あなたは不動産会社の営業分析の専門家です。
 以下は営業担当「${assignee}」が${assigneeStats.monthLabel}に専任媒介を取得した案件の一覧です。
 
 【案件一覧（${sameMonthCases.length}件）】
@@ -3862,15 +3883,31 @@ ${JSON.stringify(caseSummaries, null, 2)}
 
 なお、Markdownの見出し（##）は使わず、番号付きの段落形式で書いてください。`;
 
-        const message = await anthropic.messages.create({
-          model: 'claude-opus-4-5',
-          max_tokens: 700,
-          messages: [{ role: 'user', content: prompt }],
-        });
+          const message = await anthropic.messages.create({
+            model: 'claude-opus-4-5',
+            max_tokens: 700,
+            messages: [{ role: 'user', content: prompt }],
+          });
 
-        const content = message.content[0];
-        if (content.type === 'text') {
-          aiAnalysis = content.text;
+          const content = message.content[0];
+          if (content.type === 'text') {
+            aiAnalysis = content.text;
+          }
+
+          // 結果をDBにキャッシュ保存（upsert）
+          if (aiAnalysis) {
+            await supabaseForCache
+              .from('exclusive_analysis_qa')
+              .upsert({
+                seller_id: id,
+                assignee,
+                target_month: cacheMonth,
+                ai_analysis: aiAnalysis,
+                ai_questions: [],
+                answers: [],
+                updated_at: new Date().toISOString(),
+              }, { onConflict: 'seller_id,assignee,target_month' });
+          }
         }
       }
     } catch (aiErr) {
