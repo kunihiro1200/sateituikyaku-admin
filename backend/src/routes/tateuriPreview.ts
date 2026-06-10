@@ -369,9 +369,30 @@ async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
     // タグを除去してテキストを取得するヘルパー
     const stripTags = (s: string) => s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
-    // --- タイトル ---
+    // --- エラーページ検出 ---
+    // SUUMOがbot検知やアクセス制限でエラーページを返す場合はスクレイピング失敗として扱う
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-    let title = titleMatch ? titleMatch[1].trim() : null;
+    const rawTitle = titleMatch ? titleMatch[1].trim() : '';
+    const isErrorPage =
+      rawTitle.includes('エラー') ||
+      rawTitle.startsWith('403') ||
+      rawTitle.startsWith('404') ||
+      rawTitle.startsWith('503') ||
+      rawTitle.toLowerCase().includes('access denied') ||
+      rawTitle.toLowerCase().includes('forbidden') ||
+      // 物件情報ページなら「間取り」「万円」などの内容が必ずHTMLに存在するはず
+      (!html.includes('万円') && !html.includes('所在地') && !html.includes('間取り'));
+
+    if (isErrorPage) {
+      console.error(`[suumo/scrape] SUUMOがエラーページを返しました: title="${rawTitle}"`);
+      return res.status(422).json({
+        success: false,
+        error: `SUUMOのページを取得できませんでした（${rawTitle || 'エラーページ'}）。しばらく時間をおいてから再試行してください。`,
+      });
+    }
+
+    // --- タイトル ---
+    let title: string | null = rawTitle;
     if (title) {
       title = title
         .replace(/【[^】]+】/g, '')
@@ -578,13 +599,11 @@ async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
       // カンマ以降を削除（例: &w=500,現地土地写真 → &w=500）
       imgUrl = imgUrl.split(',')[0];
       
-      // 小さいサイズパラメータをより大きいサイズに変更（高解像度化）
-      // 96x72 → 800x600, 220x165 → 800x600, 452x339 → 800x600
-      imgUrl = imgUrl.replace(/&w=96&h=72/g, '&w=800&h=600');
-      imgUrl = imgUrl.replace(/&w=220&h=165/g, '&w=800&h=600');
-      imgUrl = imgUrl.replace(/&w=452&h=339/g, '&w=800&h=600');
-      imgUrl = imgUrl.replace(/&w=296&h=222/g, '&w=800&h=600');
-      imgUrl = imgUrl.replace(/&w=500/g, '&w=800&h=600');
+      // サイズパラメータを高解像度に統一（&w=任意の数字&h=任意の数字 → &w=800&h=600）
+      // 例: &w=96&h=72, &w=220&h=165, &w=452&h=339, &w=296&h=222 など全パターンに対応
+      imgUrl = imgUrl.replace(/&w=\d+&h=\d+/g, '&w=800&h=600');
+      // &w=数字 のみ（hなし）も変換
+      imgUrl = imgUrl.replace(/&w=\d+(?!&h=)/g, '&w=800&h=600');
       
       // 会社ロゴを除外（gazo/kaisha/）
       if (!imgUrl.includes('kaisha') && !images.includes(imgUrl)) {
