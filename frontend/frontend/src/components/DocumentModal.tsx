@@ -118,31 +118,112 @@ const DocumentModal = ({ open, onClose, sellerNumber, onFolderUrlReady, onSalesC
     }
   }, [open, sellerNumber, loadFolder]);
 
-  // 複数ファイルをpendingFilesに追加（重複除外）
-  const addPendingFiles = (newFiles: File[]) => {
+  // pending から1件削除
+  const removePendingFile = (id: string) => {
+    setPendingFiles((prev) => prev.filter((f) => f.id !== id));
+  };
+
+  // ファイルを受け取ったら即アップロード（ファイル選択・ドロップ共通）
+  const uploadFilesDirectly = async (newFiles: File[]) => {
     const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     const valid = newFiles.filter((f) => allowed.includes(f.type));
-    if (valid.length < newFiles.length) {
-      setError(`PDF・JPEG・PNG・GIF・WebP以外のファイルは無視されました`);
+    if (valid.length === 0) {
+      setError('PDF・JPEG・PNG・GIF・WebP以外のファイルは無視されました');
+      return;
     }
-    setPendingFiles((prev) => {
-      const existingNames = new Set(prev.map((p) => p.file.name));
-      const toAdd = valid
-        .filter((f) => !existingNames.has(f.name))
-        .map((f) => ({
-          id: `${Date.now()}-${f.name}`,
-          file: f,
-          status: 'pending' as const,
-        }));
-      return [...prev, ...toAdd];
-    });
+    if (valid.length < newFiles.length) {
+      setError('PDF・JPEG・PNG・GIF・WebP以外のファイルは無視されました');
+    }
+
+    // pendingFilesに追加してアップロード開始
+    const toUpload: PendingFile[] = valid.map((f) => ({
+      id: `${Date.now()}-${f.name}`,
+      file: f,
+      status: 'uploading' as const,
+    }));
+
+    setPendingFiles((prev) => [...prev, ...toUpload]);
+    setUploading(true);
+    setUploadProgress(0);
+    setUploadedCount(0);
+    setError(null);
+    setUploadResult(null);
+
+    try {
+      const formData = new FormData();
+      const fileNames: string[] = [];
+
+      toUpload.forEach((pf) => {
+        formData.append('files', pf.file, pf.file.name);
+        fileNames.push(pf.file.name);
+      });
+      formData.append('fileNames', JSON.stringify(fileNames));
+
+      const response = await api.post(
+        `/api/drive/folders/${sellerNumber}/files/batch`,
+        formData,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (progressEvent) => {
+            const progress = progressEvent.total
+              ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+              : 0;
+            setUploadProgress(progress);
+            setUploadedCount(Math.round((progress / 100) * toUpload.length));
+          },
+        }
+      );
+
+      const { uploaded, errors } = response.data;
+
+      const errorMap = new Map<string, string>(
+        (errors || []).map((e: { fileName: string; reason: string }) => [e.fileName, e.reason])
+      );
+
+      const uploadedIds = new Set(toUpload.map((f) => f.id));
+      setPendingFiles((prev) =>
+        prev.map((f) => {
+          if (!uploadedIds.has(f.id)) return f;
+          const errReason = errorMap.get(f.file.name);
+          return {
+            ...f,
+            status: errReason ? ('error' as const) : ('done' as const),
+            errorMessage: errReason,
+          };
+        })
+      );
+
+      setUploadResult({ uploaded, failed: errors || [] });
+
+      await loadFolder();
+
+      // 完了したファイルを1秒後に除去
+      setTimeout(() => {
+        setPendingFiles((prev) => prev.filter((f) => f.status !== 'done'));
+      }, 1000);
+    } catch (err: any) {
+      console.error('Error batch uploading:', err);
+      setError(err.response?.data?.error || 'アップロードに失敗しました');
+      const uploadedIds = new Set(toUpload.map((f) => f.id));
+      setPendingFiles((prev) =>
+        prev.map((f) =>
+          uploadedIds.has(f.id) && f.status === 'uploading'
+            ? { ...f, status: 'error' as const, errorMessage: 'アップロードに失敗しました' }
+            : f
+        )
+      );
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+      setUploadedCount(0);
+    }
   };
 
   // input[type=file] の change ハンドラー（複数対応）
   const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selected = event.target.files;
     if (selected && selected.length > 0) {
-      addPendingFiles(Array.from(selected));
+      uploadFilesDirectly(Array.from(selected));
     }
     // 同じファイルを再選択できるようにリセット
     event.target.value = '';
@@ -164,100 +245,7 @@ const DocumentModal = ({ open, onClose, sellerNumber, onFolderUrlReady, onSalesC
     e.stopPropagation();
     setDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      addPendingFiles(Array.from(e.dataTransfer.files));
-    }
-  };
-
-  // pending から1件削除
-  const removePendingFile = (id: string) => {
-    setPendingFiles((prev) => prev.filter((f) => f.id !== id));
-  };
-
-  // 一括アップロード（並列）
-  const handleBatchUpload = async () => {
-    const toUpload = pendingFiles.filter((f) => f.status === 'pending');
-    if (toUpload.length === 0) return;
-
-    setUploading(true);
-    setUploadProgress(0);
-    setUploadedCount(0);
-    setError(null);
-    setUploadResult(null);
-
-    // バッチAPIを使って一括アップロード（フォルダ作成は1回のみ）
-    try {
-      const formData = new FormData();
-      const fileNames: string[] = [];
-
-      toUpload.forEach((pf) => {
-        formData.append('files', pf.file, pf.file.name);
-        fileNames.push(pf.file.name);
-      });
-      formData.append('fileNames', JSON.stringify(fileNames));
-
-      // アップロード中は pending → uploading に変更
-      setPendingFiles((prev) =>
-        prev.map((f) => (f.status === 'pending' ? { ...f, status: 'uploading' as const } : f))
-      );
-
-      const response = await api.post(
-        `/api/drive/folders/${sellerNumber}/files/batch`,
-        formData,
-        {
-          headers: { 'Content-Type': 'multipart/form-data' },
-          onUploadProgress: (progressEvent) => {
-            const progress = progressEvent.total
-              ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
-              : 0;
-            setUploadProgress(progress);
-            // ネットワーク転送に応じて擬似的にカウントを増やす
-            setUploadedCount(Math.round((progress / 100) * toUpload.length));
-          },
-        }
-      );
-
-      const { uploaded, failed, errors } = response.data;
-
-      // 成功・失敗を pending リストに反映
-      const errorMap = new Map<string, string>(
-        (errors || []).map((e: { fileName: string; reason: string }) => [e.fileName, e.reason])
-      );
-
-      setPendingFiles((prev) =>
-        prev.map((f) => {
-          if (f.status !== 'uploading') return f;
-          const errReason = errorMap.get(f.file.name);
-          return {
-            ...f,
-            status: errReason ? ('error' as const) : ('done' as const),
-            errorMessage: errReason,
-          };
-        })
-      );
-
-      setUploadResult({ uploaded, failed: errors || [] });
-
-      // ファイル一覧をリロード
-      await loadFolder();
-
-      // 成功したファイルはリストから除去（1秒後）
-      setTimeout(() => {
-        setPendingFiles((prev) => prev.filter((f) => f.status !== 'done'));
-      }, 1000);
-    } catch (err: any) {
-      console.error('Error batch uploading:', err);
-      setError(err.response?.data?.error || 'アップロードに失敗しました');
-      setPendingFiles((prev) =>
-        prev.map((f) =>
-          f.status === 'uploading'
-            ? { ...f, status: 'error' as const, errorMessage: 'アップロードに失敗しました' }
-            : f
-        )
-      );
-    } finally {
-      setUploading(false);
-      setUploadProgress(0);
-      setUploadedCount(0);
+      uploadFilesDirectly(Array.from(e.dataTransfer.files));
     }
   };
 
@@ -391,24 +379,15 @@ const DocumentModal = ({ open, onClose, sellerNumber, onFolderUrlReady, onSalesC
           />
         </Box>
 
-        {/* アップロード待ちファイル一覧 */}
+        {/* アップロード待ち/中/完了ファイル一覧 */}
         {pendingFiles.length > 0 && (
           <Box sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
               <Typography variant="subtitle2" color="text.secondary">
-                選択中のファイル（{pendingCount}件がアップロード待ち）
+                {uploading
+                  ? `アップロード中...（${pendingFiles.filter((f) => f.status === 'uploading').length}件）`
+                  : `処理済みファイル`}
               </Typography>
-              {pendingCount > 0 && !uploading && (
-                <Button
-                  variant="contained"
-                  size="small"
-                  startIcon={<CloudUpload />}
-                  onClick={handleBatchUpload}
-                  sx={{ minWidth: 160 }}
-                >
-                  {pendingCount}件をアップロード
-                </Button>
-              )}
             </Box>
 
             {/* アップロード進捗バー */}
