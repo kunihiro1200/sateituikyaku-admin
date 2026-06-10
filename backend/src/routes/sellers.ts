@@ -4304,5 +4304,197 @@ ${JSON.stringify(caseSummaries, null, 2)}
   }
 });
 
+/**
+ * GET /api/sellers/:id/other-decision-analysis/qa
+ * 他決分析QA取得
+ */
+router.get('/:id/other-decision-analysis/qa', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+
+    const { data: seller } = await supabase
+      .from('sellers').select('visit_assignee, contract_year_month').eq('id', id).single();
+    if (!seller?.visit_assignee || !seller?.contract_year_month) return res.json({ qa: null });
+
+    const d = new Date(seller.contract_year_month);
+    const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+    const { data: qa } = await supabase
+      .from('other_decision_analysis_qa')
+      .select('*')
+      .eq('seller_id', id)
+      .eq('assignee', seller.visit_assignee)
+      .eq('target_month', targetMonth)
+      .maybeSingle();
+
+    return res.json({ qa: qa || null, assignee: seller.visit_assignee, targetMonth });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to get QA' });
+  }
+});
+
+/**
+ * POST /api/sellers/:id/other-decision-analysis/qa/generate
+ * AIが他決要因に関する質問3つを生成して保存
+ * 過去に回答済みの質問と被らないよう履歴を参照
+ */
+router.post('/:id/other-decision-analysis/qa/generate', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { sameMonthCases, assigneeStats } = req.body;
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+
+    const { data: seller } = await supabase
+      .from('sellers').select('visit_assignee, contract_year_month').eq('id', id).single();
+    if (!seller?.visit_assignee || !seller?.contract_year_month)
+      return res.status(400).json({ error: '営業担当または決定日が未設定です' });
+
+    const d = new Date(seller.contract_year_month);
+    const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+    // 過去の回答履歴を取得（同担当者・全月）
+    const { data: pastQaRecords } = await supabase
+      .from('other_decision_analysis_qa')
+      .select('target_month, ai_questions, answers')
+      .eq('seller_id', id)
+      .eq('assignee', seller.visit_assignee)
+      .neq('target_month', targetMonth)
+      .order('target_month', { ascending: false })
+      .limit(12);
+
+    const answeredQuestions: string[] = [];
+    const unansweredQuestions: string[] = [];
+    for (const record of pastQaRecords || []) {
+      const questions: { id: string; question: string }[] = record.ai_questions || [];
+      const answers: { questionId: string; answer: string }[] = record.answers || [];
+      for (const q of questions) {
+        const answer = answers.find(a => a.questionId === q.id);
+        if (answer?.answer?.trim()) answeredQuestions.push(q.question);
+        else unansweredQuestions.push(q.question);
+      }
+    }
+
+    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicApiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY が未設定です' });
+
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+
+    const caseSummaries = (sameMonthCases || []).map((c: any) => ({
+      案件番号: c.sellerNumber,
+      他決ステータス: c.status,
+      競合: c.competitors?.join('・') || 'なし',
+      他決要因: c.factors?.join('・') || '不明',
+      理由詳細: c.reason || '記載なし',
+    }));
+
+    const monthLabel = assigneeStats?.monthLabel || targetMonth;
+    const caseCount = sameMonthCases?.length || 1;
+
+    const pastAnsweredContext = answeredQuestions.length > 0
+      ? `\n【過去に回答済みの質問（同じ内容・角度は絶対に避けること）】\n${answeredQuestions.map(q => `- ${q}`).join('\n')}\n`
+      : '';
+    const pastUnansweredContext = unansweredQuestions.length > 0
+      ? `\n【過去に質問したが未回答（別の角度から聞くこと）】\n${unansweredQuestions.map(q => `- ${q}`).join('\n')}\n`
+      : '';
+
+    const prompt = `あなたは不動産営業の研修コーチです。
+営業担当「${seller.visit_assignee}」が${monthLabel}に${caseCount}件の他決（競合他社に取られた案件）がありました。
+
+【他決案件データ】
+${JSON.stringify(caseSummaries, null, 2)}
+${pastAnsweredContext}${pastUnansweredContext}
+この他決案件から学べることを他スタッフに伝えるため、以下の条件で質問を**3つ**作成してください：
+
+条件：
+- 訪問時の対応・提案内容・競合との差別化に焦点を当てる
+- 「追客電話」「1番電話」「電話対応」に関する質問は含めない（事務スタッフ担当）
+- 「はい/いいえ」で終わらない、具体的エピソードを引き出す質問
+- 他決になった要因を深掘りし、次回への改善点を引き出す質問
+- 過去に回答済みの質問と同じ内容・角度の質問は絶対に出さない
+- 毎回新しい視点（競合の強み・売主の本音・自社の改善点など）から質問する
+
+JSON配列形式で返してください（他のテキストは不要）：
+[
+  {"id": "q1", "question": "質問文"},
+  {"id": "q2", "question": "質問文"},
+  {"id": "q3", "question": "質問文"}
+]`;
+
+    const message = await anthropic.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 600,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const content = message.content[0];
+    if (content.type !== 'text') return res.status(500).json({ error: 'AI応答が不正です' });
+
+    let aiQuestions: { id: string; question: string }[] = [];
+    try {
+      const jsonMatch = content.text.match(/\[[\s\S]*\]/);
+      if (jsonMatch) aiQuestions = JSON.parse(jsonMatch[0]);
+    } catch {
+      return res.status(500).json({ error: 'AI質問のパースに失敗しました' });
+    }
+
+    const { data: existing } = await supabase
+      .from('other_decision_analysis_qa')
+      .select('id, answers')
+      .eq('seller_id', id).eq('assignee', seller.visit_assignee).eq('target_month', targetMonth)
+      .maybeSingle();
+
+    const { data: qa, error: upsertError } = await supabase
+      .from('other_decision_analysis_qa')
+      .upsert({
+        seller_id: id,
+        assignee: seller.visit_assignee,
+        target_month: targetMonth,
+        ai_questions: aiQuestions,
+        answers: existing?.answers || [],
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'seller_id,assignee,target_month' })
+      .select().single();
+
+    if (upsertError) return res.status(500).json({ error: upsertError.message });
+    return res.json({ qa });
+  } catch (error) {
+    console.error('[other-decision-analysis/qa/generate] Error:', error);
+    return res.status(500).json({ error: 'Failed to generate QA' });
+  }
+});
+
+/**
+ * PUT /api/sellers/:id/other-decision-analysis/qa/answer
+ * 他決分析QA回答保存
+ */
+router.put('/:id/other-decision-analysis/qa/answer', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { answers, isPublished } = req.body;
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+
+    const { data: seller } = await supabase
+      .from('sellers').select('visit_assignee, contract_year_month').eq('id', id).single();
+    if (!seller?.visit_assignee || !seller?.contract_year_month)
+      return res.status(400).json({ error: '営業担当または決定日が未設定です' });
+
+    const d = new Date(seller.contract_year_month);
+    const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+    const { data: qa, error } = await supabase
+      .from('other_decision_analysis_qa')
+      .update({ answers, is_published: isPublished ?? false, updated_at: new Date().toISOString() })
+      .eq('seller_id', id).eq('assignee', seller.visit_assignee).eq('target_month', targetMonth)
+      .select().single();
+
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json({ qa });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to save answer' });
+  }
+});
+
 export default router;
 
