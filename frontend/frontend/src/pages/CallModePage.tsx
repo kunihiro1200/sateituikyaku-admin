@@ -983,6 +983,22 @@ const CallModePage = () => {
   const [isManualValuation, setIsManualValuation] = useState<boolean>(false);
   const [savingManualValuation, setSavingManualValuation] = useState(false);
 
+  // AI査定（売買事例）用の状態
+  interface SalesCaseRow {
+    id: string;
+    floor: string;       // 所在階（例: "3"）
+    exclusiveArea: string; // 専有面積（㎡）
+    price: string;       // 販売価格（万円）
+    yearMonth: string;   // 公開年月（例: "2024/06"）
+  }
+  const [salesCaseRows, setSalesCaseRows] = useState<SalesCaseRow[]>([
+    { id: '1', floor: '', exclusiveArea: '', price: '', yearMonth: '' },
+    { id: '2', floor: '', exclusiveArea: '', price: '', yearMonth: '' },
+    { id: '3', floor: '', exclusiveArea: '', price: '', yearMonth: '' },
+  ]);
+  const [aiValuation, setAiValuation] = useState<{ amount1: number; amount2: number; amount3: number } | null>(null);
+  const [aiValuationError, setAiValuationError] = useState<string | null>(null);
+
   // 査定方法用の状態
   const [editedValuationMethod, setEditedValuationMethod] = useState<string>('');
   const [savingValuationMethod, setSavingValuationMethod] = useState(false);
@@ -3167,6 +3183,109 @@ const CallModePage = () => {
       autoCalculateValuationsRef.current(roadPrice);
     }, 1000);
   }, []); // 依存配列を空にして、refを通じて最新版を参照
+
+  // AI査定計算ロジック（売買事例から査定額1/2/3を算出）
+  const calculateAiValuation = () => {
+    setAiValuationError(null);
+    setAiValuation(null);
+
+    // 入力済みの売買事例のみ対象
+    const validRows = salesCaseRows.filter(
+      (r) => r.floor.trim() && r.price.trim() && parseFloat(r.price) > 0
+    );
+
+    if (validRows.length === 0) {
+      setAiValuationError('少なくとも1件の売買事例（階数・価格）を入力してください。');
+      return;
+    }
+
+    // 対象物件の専有面積（buildingArea）
+    const targetArea = property?.buildingAreaVerified || property?.buildingArea || seller?.buildingArea || 0;
+    // 対象物件の階数（buildYear欄等から直接取得は難しいため、ユーザー入力の事例から推定）
+    // 対象物件の階は editedPropertyFloor があれば使うが、ない場合は事例の平均階に近い事例を優先
+
+    // 現在の年月（比較基準）
+    const now = new Date();
+    const nowYM = now.getFullYear() * 100 + (now.getMonth() + 1);
+
+    // 各事例に調整スコアを付ける
+    const scoredRows = validRows.map((r) => {
+      const floor = parseFloat(r.floor) || 1;
+      const area = parseFloat(r.exclusiveArea) || targetArea || 70;
+      const price = parseFloat(r.price);
+
+      // 販売年月のパース（"2024/06" or "2024-06" 形式）
+      let rowYM = 0;
+      if (r.yearMonth.trim()) {
+        const parts = r.yearMonth.trim().replace('-', '/').split('/');
+        if (parts.length === 2) {
+          rowYM = parseInt(parts[0]) * 100 + parseInt(parts[1]);
+        }
+      }
+
+      // 販売時期スコア（近いほど高い、最大1.0）
+      // 直近6ヶ月以内=1.0、1年以内=0.9、2年以内=0.8、それ以上=0.7
+      let timeScore = 0.7;
+      if (rowYM > 0) {
+        const diffMonths =
+          (nowYM - rowYM > 0 ? nowYM - rowYM : 0);
+        const yearDiff = Math.floor(diffMonths / 100);
+        const monthDiff = diffMonths % 100;
+        const totalMonths = yearDiff * 12 + monthDiff;
+        if (totalMonths <= 6) timeScore = 1.0;
+        else if (totalMonths <= 12) timeScore = 0.9;
+        else if (totalMonths <= 24) timeScore = 0.8;
+        else timeScore = 0.7;
+      }
+
+      // 階数補正（高い階ほど+、低い階ほど-）
+      // 1階ごとに約0.5%の価値差（業界標準的な概算）
+      const floorAdjustment = 1 + (floor - 3) * 0.005; // 3階基準
+
+      // 面積補正（対象物件と事例の面積差を補正）
+      // 面積が異なる場合、単価（万円/㎡）を基準に換算
+      let areaAdjustedPrice = price;
+      if (targetArea > 0 && area > 0 && Math.abs(area - targetArea) > 2) {
+        const unitPricePerSqm = price / area;
+        areaAdjustedPrice = unitPricePerSqm * targetArea;
+      }
+
+      // 調整済み価格
+      const adjustedPrice = areaAdjustedPrice * floorAdjustment;
+
+      return { ...r, adjustedPrice, timeScore, floor, area };
+    });
+
+    // 時期スコアで重み付けした加重平均を計算
+    const totalWeight = scoredRows.reduce((sum, r) => sum + r.timeScore, 0);
+    const weightedAvg =
+      scoredRows.reduce((sum, r) => sum + r.adjustedPrice * r.timeScore, 0) / totalWeight;
+
+    // 事例の最高額（調整済み）
+    const maxAdjusted = Math.max(...scoredRows.map((r) => r.adjustedPrice));
+
+    // 査定額ルール：
+    // - 査定額3（最高額）は事例の最高調整額より少し上（+0〜+50万程度）
+    // - 査定額1（最低額）= 査定額3 - 200〜300万
+    // - 査定額2（中間額）= 査定額1と3の中間付近
+
+    // 査定額3：最高事例の調整済み価格を基準（ただし売買事例に存在する価格より高く設定）
+    // 実際の事例最高価格（面積補正前の生の最高価格）
+    const rawMaxPrice = Math.max(...scoredRows.map((r) => parseFloat(r.price)));
+    const baseMax = Math.max(maxAdjusted, rawMaxPrice);
+
+    // 査定額3 = 最高事例価格をベースに若干上乗せ（最大+50万、10万単位丸め）
+    const amount3Raw = baseMax + 20;
+    const amount3 = Math.round(amount3Raw / 10) * 10;
+
+    // 幅は200〜250万（加重平均との差を参考に調整、200万未満にはしない）
+    const spread = Math.max(200, Math.min(300, Math.round((amount3 - weightedAvg) * 1.2 / 10) * 10));
+
+    const amount1 = Math.max(amount3 - spread, Math.round(weightedAvg * 0.9 / 10) * 10);
+    const amount2 = Math.round(((amount1 + amount3) / 2) / 10) * 10;
+
+    setAiValuation({ amount1, amount2, amount3 });
+  };
 
   // 手入力査定額を保存する関数
   const handleSaveManualValuation = async () => {
@@ -7034,6 +7153,165 @@ HP：https://ifoo-oita.com/
                           )}
                         </Box>
                       </Grid>
+
+                      {/* AI査定（売買事例）セクション - マンションのみ表示 */}
+                      {(propInfo.propertyType === 'apartment' || editedPropertyType === 'apartment' || editedPropertyType === 'マンション' || editedPropertyType === 'マ') && (
+                        <Grid item xs={12}>
+                          <Divider sx={{ my: 2 }} />
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                            <Typography variant="h6">
+                              🤖 AI査定（売買事例から）
+                            </Typography>
+                            <Chip label="マンション専用" color="secondary" size="small" />
+                          </Box>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            アットホーム等の売買事例PDFから事例を入力してください。階数・専有面積・販売価格・公開年月をもとにAIが査定額1〜3を提案します。
+                          </Typography>
+
+                          {/* 売買事例入力テーブル */}
+                          <Box sx={{ overflowX: 'auto', mb: 2 }}>
+                            <Box sx={{ display: 'grid', gridTemplateColumns: '60px 100px 100px 110px 1fr', gap: 1, mb: 1 }}>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold', pl: 1 }}>所在階</Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>専有面積(㎡)</Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>販売価格(万円)</Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>公開年月</Typography>
+                              <Box />
+                            </Box>
+                            {salesCaseRows.map((row, idx) => (
+                              <Box key={row.id} sx={{ display: 'grid', gridTemplateColumns: '60px 100px 100px 110px 40px', gap: 1, mb: 1, alignItems: 'center' }}>
+                                <TextField
+                                  size="small"
+                                  type="number"
+                                  placeholder="3"
+                                  value={row.floor}
+                                  onChange={(e) => {
+                                    const updated = [...salesCaseRows];
+                                    updated[idx] = { ...updated[idx], floor: e.target.value };
+                                    setSalesCaseRows(updated);
+                                    setAiValuation(null);
+                                  }}
+                                  inputProps={{ min: 1, max: 50 }}
+                                />
+                                <TextField
+                                  size="small"
+                                  type="number"
+                                  placeholder="70.78"
+                                  value={row.exclusiveArea}
+                                  onChange={(e) => {
+                                    const updated = [...salesCaseRows];
+                                    updated[idx] = { ...updated[idx], exclusiveArea: e.target.value };
+                                    setSalesCaseRows(updated);
+                                    setAiValuation(null);
+                                  }}
+                                />
+                                <TextField
+                                  size="small"
+                                  type="number"
+                                  placeholder="1290"
+                                  value={row.price}
+                                  onChange={(e) => {
+                                    const updated = [...salesCaseRows];
+                                    updated[idx] = { ...updated[idx], price: e.target.value };
+                                    setSalesCaseRows(updated);
+                                    setAiValuation(null);
+                                  }}
+                                />
+                                <TextField
+                                  size="small"
+                                  placeholder="2024/06"
+                                  value={row.yearMonth}
+                                  onChange={(e) => {
+                                    const updated = [...salesCaseRows];
+                                    updated[idx] = { ...updated[idx], yearMonth: e.target.value };
+                                    setSalesCaseRows(updated);
+                                    setAiValuation(null);
+                                  }}
+                                />
+                                <Button
+                                  size="small"
+                                  color="error"
+                                  onClick={() => {
+                                    if (salesCaseRows.length > 1) {
+                                      setSalesCaseRows(salesCaseRows.filter((_, i) => i !== idx));
+                                      setAiValuation(null);
+                                    }
+                                  }}
+                                  disabled={salesCaseRows.length <= 1}
+                                  sx={{ minWidth: 0, px: 1 }}
+                                >
+                                  ✕
+                                </Button>
+                              </Box>
+                            ))}
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() => {
+                                setSalesCaseRows([...salesCaseRows, { id: String(Date.now()), floor: '', exclusiveArea: '', price: '', yearMonth: '' }]);
+                              }}
+                              sx={{ mt: 1 }}
+                            >
+                              ＋ 事例を追加
+                            </Button>
+                          </Box>
+
+                          <Button
+                            variant="contained"
+                            color="secondary"
+                            onClick={calculateAiValuation}
+                            sx={{ mb: 2 }}
+                          >
+                            🤖 AI査定を計算する
+                          </Button>
+
+                          {aiValuationError && (
+                            <Alert severity="warning" sx={{ mb: 2 }}>{aiValuationError}</Alert>
+                          )}
+
+                          {aiValuation && (
+                            <Paper sx={{ p: 2, bgcolor: '#f3e5f5', border: '2px solid #9c27b0', mb: 2 }}>
+                              <Typography variant="subtitle1" fontWeight="bold" color="secondary" gutterBottom>
+                                🤖 AI査定結果
+                              </Typography>
+                              <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', mb: 2 }}>
+                                <Box sx={{ textAlign: 'center' }}>
+                                  <Typography variant="caption" color="text.secondary">査定額1（最低）</Typography>
+                                  <Typography variant="h6" color="secondary" fontWeight="bold">
+                                    {aiValuation.amount1.toLocaleString()}万円
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ textAlign: 'center' }}>
+                                  <Typography variant="caption" color="text.secondary">査定額2（中間）</Typography>
+                                  <Typography variant="h6" color="secondary" fontWeight="bold">
+                                    {aiValuation.amount2.toLocaleString()}万円
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ textAlign: 'center' }}>
+                                  <Typography variant="caption" color="text.secondary">査定額3（最高）</Typography>
+                                  <Typography variant="h6" color="secondary" fontWeight="bold">
+                                    {aiValuation.amount3.toLocaleString()}万円
+                                  </Typography>
+                                </Box>
+                              </Box>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+                                ※ 階数補正・専有面積換算・販売時期の重み付けを適用した提案値です。上の手入力フォームに反映してご確認ください。
+                              </Typography>
+                              <Button
+                                variant="contained"
+                                color="secondary"
+                                size="small"
+                                onClick={() => {
+                                  setEditedManualValuationAmount1(String(aiValuation.amount1));
+                                  setEditedManualValuationAmount2(String(aiValuation.amount2));
+                                  setEditedManualValuationAmount3(String(aiValuation.amount3));
+                                }}
+                              >
+                                この査定額を手入力フォームに反映する
+                              </Button>
+                            </Paper>
+                          )}
+                        </Grid>
+                      )}
 
                       {/* 計算根拠セクション */}
                       {editedValuationAmount1 &&
