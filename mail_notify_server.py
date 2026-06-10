@@ -79,6 +79,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CREDENTIALS_FILE = os.environ.get("GMAIL_CREDENTIALS_FILE", os.path.join(SCRIPT_DIR, "credentials.json"))
 TOKEN_FILE = os.environ.get("GMAIL_TOKEN_FILE", os.path.join(SCRIPT_DIR, "token.pickle"))
 NOTIFIED_IDS_FILE = os.path.join(SCRIPT_DIR, "notified_ids_server.json")
+HOME4U_PROCESSED_THREADS_FILE = os.path.join(SCRIPT_DIR, "home4u_processed_threads.json")
 LOG_FILE = os.path.join(SCRIPT_DIR, "mail_notify_server.log")
 
 # ログ設定
@@ -192,6 +193,21 @@ def save_notified_ids(ids):
     """通知済みメールIDを保存する（最新1000件のみ保持）"""
     ids_list = list(ids)[-1000:]
     with open(NOTIFIED_IDS_FILE, "w", encoding="utf-8") as f:
+        json.dump(ids_list, f)
+
+
+def load_home4u_processed_threads():
+    """HOME4U処理済みスレッドIDを読み込む（同一スレッドの重複転記防止）"""
+    if os.path.exists(HOME4U_PROCESSED_THREADS_FILE):
+        with open(HOME4U_PROCESSED_THREADS_FILE, "r", encoding="utf-8") as f:
+            return set(json.load(f))
+    return set()
+
+
+def save_home4u_processed_threads(thread_ids):
+    """HOME4U処理済みスレッドIDを保存する（最新200件のみ保持）"""
+    ids_list = list(thread_ids)[-200:]
+    with open(HOME4U_PROCESSED_THREADS_FILE, "w", encoding="utf-8") as f:
         json.dump(ids_list, f)
 
 
@@ -403,8 +419,10 @@ def trigger_ieul_transfer(body: str):
     threading.Thread(target=_call, daemon=True).start()
 
 
-def check_new_emails(service, notified_ids, start_timestamp_ms=None):
+def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_processed_threads=None):
     """新着メールをチェックしてイエウールならDB転記する"""
+    if home4u_processed_threads is None:
+        home4u_processed_threads = set()
     try:
         results = service.users().messages().list(
             userId="me",
@@ -475,15 +493,22 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None):
                     # HOME4Uは本文に「HOME4Uログアウト」が含まれる場合のみ転記
                     # （バックエンド側でも同じチェックをしているが、ここでも事前フィルタ）
                     if 'HOME4Uログアウト' in body:
-                        logging.info("  [DB転記] HOME4U検知 → home4u-transfer を非同期実行します")
-                        # コメント部分デバッグ：HOME4Uログアウト周辺を出力
-                        body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
-                        for idx, line in enumerate(body_lines):
-                            if 'HOME4Uログアウト' in line:
-                                surrounding = body_lines[max(0, idx-1):idx+6]
-                                logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
-                                break
-                        trigger_home4u_transfer(body)
+                        # 同一スレッドの重複転記防止（HOME4Uは同一案件を複数社に同時配信するため複数メールが届く）
+                        thread_id = msg_detail.get("threadId", msg_id)
+                        if thread_id in home4u_processed_threads:
+                            logging.info(f"  [重複スキップ] HOME4U同一スレッド (threadId={thread_id}) は処理済みのためスキップ")
+                        else:
+                            home4u_processed_threads.add(thread_id)
+                            save_home4u_processed_threads(home4u_processed_threads)
+                            logging.info("  [DB転記] HOME4U検知 → home4u-transfer を非同期実行します")
+                            # コメント部分デバッグ：HOME4Uログアウト周辺を出力
+                            body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+                            for idx, line in enumerate(body_lines):
+                                if 'HOME4Uログアウト' in line:
+                                    surrounding = body_lines[max(0, idx-1):idx+6]
+                                    logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
+                                    break
+                            trigger_home4u_transfer(body)
                     else:
                         logging.info(f"  [スキップ] HOME4Uだが本文に「HOME4Uログアウト」なし: {subject[:50]}")
                 elif ATHOME_BUYER_SUBJECT_PREFIX in subject:
@@ -507,14 +532,21 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None):
                     body = decode_body(msg_detail["payload"])
                     if body and 'HOME4Uログアウト' in body:
                         logging.info(f"\n[{datetime.now().strftime('%H:%M:%S')}] 🔔 HOME4U本文検知（Re:スキップ回避）: {subject}")
-                        # コメント部分デバッグ：HOME4Uログアウト周辺を出力
-                        body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
-                        for idx, line in enumerate(body_lines):
-                            if 'HOME4Uログアウト' in line:
-                                surrounding = body_lines[max(0, idx-1):idx+6]
-                                logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
-                                break
-                        trigger_home4u_transfer(body)
+                        # 同一スレッドの重複転記防止
+                        thread_id = msg_detail.get("threadId", msg_id)
+                        if thread_id in home4u_processed_threads:
+                            logging.info(f"  [重複スキップ] HOME4U同一スレッド (threadId={thread_id}) は処理済みのためスキップ")
+                        else:
+                            home4u_processed_threads.add(thread_id)
+                            save_home4u_processed_threads(home4u_processed_threads)
+                            # コメント部分デバッグ：HOME4Uログアウト周辺を出力
+                            body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+                            for idx, line in enumerate(body_lines):
+                                if 'HOME4Uログアウト' in line:
+                                    surrounding = body_lines[max(0, idx-1):idx+6]
+                                    logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
+                                    break
+                            trigger_home4u_transfer(body)
                     else:
                         logging.info(f"  [未処理] HOME4U件名だが本文にHOME4Uログアウトなし: {subject[:80]}")
                 # HOME4U以外のmatched=Falseはスキップ（本文にHOME4Uログアウトが含まれていても無視）
@@ -549,11 +581,15 @@ def main():
     notified_ids = load_notified_ids()
     logging.info(f"通知済みID読み込み: {len(notified_ids)}件")
 
+    # HOME4U処理済みスレッドIDを読み込む（同一案件の重複転記防止）
+    home4u_processed_threads = load_home4u_processed_threads()
+    logging.info(f"HOME4U処理済みスレッド読み込み: {len(home4u_processed_threads)}件")
+
     logging.info("新着メールの監視を開始します...\n")
 
     while True:
         try:
-            notified_ids = check_new_emails(service, notified_ids, start_timestamp_ms)
+            notified_ids = check_new_emails(service, notified_ids, start_timestamp_ms, home4u_processed_threads)
             time.sleep(CHECK_INTERVAL)
         except KeyboardInterrupt:
             logging.info("\n停止しました。")
