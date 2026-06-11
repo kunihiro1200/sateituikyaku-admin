@@ -3,6 +3,7 @@
 
 import { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 import { SpreadsheetSyncService } from '../services/SpreadsheetSyncService';
 import { GoogleSheetsClient } from '../services/GoogleSheetsClient';
 
@@ -269,7 +270,8 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
 
     const extractData2 = (text: string, keyword: string): string => {
       // [^\n\r]* で0文字以上にマッチ（空欄の場合も正しく空文字を返す）
-      const regex = new RegExp(keyword + '\\s*[：:]\\s*([^\\n\\r]*)');
+      // 全角スペース「　」も考慮して [\s　]* でマッチ
+      const regex = new RegExp(keyword + '[\\s　]*[：:]\\s*([^\\n\\r]*)');
       const m = text.match(regex);
       return m ? m[1].trim() : '';
     };
@@ -578,7 +580,9 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
       name: encrypt(name),
       address: address ? encrypt(address) : null,
       phone_number: encrypt(tel),
+      phone_number_hash: tel ? crypto.createHash('sha256').update(tel).digest('hex') : null,
       email: email ? encrypt(email) : null,
+      email_hash: email ? crypto.createHash('sha256').update(email).digest('hex') : null,
       property_address: propertyAddress,
       property_type: displayPropertyType,
       inquiry_site: 'H',
