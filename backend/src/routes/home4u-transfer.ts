@@ -297,11 +297,13 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
     //   査定依頼 株式会社威風...
     //   → "林5/26　不通・留守×" を返す
     const extractMemo = (text: string): string => {
-      // 行頭の引用符（> ）を除去
-      const cleaned = text.replace(/^[>\s]*/gm, '');
-      // 「HOME4Uログアウト」以降を取得
-      const afterLogout = cleaned.split('HOME4Uログアウト')[1];
-      if (!afterLogout) return '';
+      // 「HOME4Uログアウト」以降を取得（cleanedBodyは既に行頭の「> 」を除去済み）
+      const afterLogout = text.split('HOME4Uログアウト')[1];
+      if (!afterLogout) {
+        console.log('[home4u-transfer] extractMemo: HOME4Uログアウトが見つからない');
+        return '';
+      }
+      console.log(`[home4u-transfer] extractMemo afterLogout先頭100文字: "${afterLogout.substring(0, 100).replace(/\n/g, '\\n')}"`);
       // 「査定依頼」が現れる手前までを取得
       const beforeSateiIrai = afterLogout.split(/査定依頼/)[0];
       // 空白・改行を整理して返す
@@ -424,7 +426,10 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
                 // memo = HOME4Uログアウトと査定依頼の間のスタッフメモ
                 // ============================================================
                 const memoForUpdate = (() => {
-                  const cleaned = mailBody.replace(/^[>\s]*/gm, '').replace(/\r\n|\r/g, '\n');
+                  // cleanedBodyと同じ前処理を適用してからメモを抽出
+                  const cleaned = preprocessedBody
+                    .replace(/\r\n|\n\r|\n|\r/g, '\n')
+                    .replace(/^>\s*/gm, '');
                   const afterLogout = cleaned.split('HOME4Uログアウト')[1];
                   if (!afterLogout) return '';
                   return afterLogout.split(/査定依頼/)[0].trim();
