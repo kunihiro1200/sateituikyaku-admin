@@ -3202,17 +3202,37 @@ const CallModePage = () => {
       return;
     }
 
-    // 対象物件の階数：物件所在地から部屋番号を抽出して推測
-    // 例: "福岡市○○ 1108号" → 4桁なら上2桁=11階、3桁なら上1桁=4階
+    // 対象物件の階数：複数のパターンで住所から推測
     const address = property?.address || seller?.propertyAddress || '';
+    let targetFloor = 0;
+
+    // パターン1: "1108号" → 4桁なら上2桁=11階、3桁なら上1桁=4階
     const roomMatch = address.match(/(\d{3,4})号/);
-    let targetFloor = 1;
     if (roomMatch) {
       const roomNum = roomMatch[1];
-      targetFloor = roomNum.length === 4
+      const floor = roomNum.length === 4
         ? parseInt(roomNum.substring(0, 2))  // 1108 → 11階
         : parseInt(roomNum.substring(0, 1)); // 403 → 4階
+      if (floor >= 1) targetFloor = floor;
     }
+
+    // パターン2: "11F" / "11階" / "11f" のような表記（パターン1で取れなかった場合）
+    if (targetFloor === 0) {
+      const floorMatch = address.match(/(\d{1,2})[Ff階]/);
+      if (floorMatch) {
+        const floor = parseInt(floorMatch[1]);
+        if (floor >= 1) targetFloor = floor;
+      }
+    }
+
+    // パターン3: 売買事例の最大階数からフォールバック（住所に情報がない場合）
+    if (targetFloor === 0 && validRows.length > 0) {
+      const maxCaseFloor = Math.max(...validRows.map(r => parseFloat(r.floor) || 0));
+      targetFloor = maxCaseFloor > 0 ? maxCaseFloor : 1;
+    }
+
+    // 最終フォールバック
+    if (targetFloor === 0) targetFloor = 1;
 
     // 対象物件の専有面積：当社調べ優先 → 建物面積
     const targetArea = parseFloat(editedBuildingAreaVerified) || parseFloat(editedBuildingArea) ||
@@ -7324,6 +7344,16 @@ HP：https://ifoo-oita.com/
                                     });
                                     setIsManualValuation(true);
                                     setValuationAssignee(assignedBy);
+                                    // 円単位で editedValuationAmount1 を更新 → 完了状態+査定メール送信ボタンが自動表示される
+                                    setEditedValuationAmount1(String(a1 * 10000));
+                                    setEditedValuationAmount2(String(a2 * 10000));
+                                    setEditedValuationAmount3(String(a3 * 10000));
+                                    // 手入力フォームにも万円単位で反映
+                                    setEditedManualValuationAmount1(String(a1));
+                                    setEditedManualValuationAmount2(String(a2));
+                                    setEditedManualValuationAmount3(String(a3));
+                                    // 編集モードをオフにすることで「完了」マーク+査定メール送信ボタンを表示
+                                    setEditingValuation(false);
                                     setSeller(prev => prev ? {
                                       ...prev,
                                       valuationAmount1: a1 * 10000,
