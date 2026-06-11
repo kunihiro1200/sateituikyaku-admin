@@ -2,6 +2,8 @@
 inclusion: auto
 ---
 
+
+
 # メールHTML画像表示ルール（絶対に守ること）
 
 ## ⚠️ 最重要：sendBuyerEmail は絶対に書き直さない

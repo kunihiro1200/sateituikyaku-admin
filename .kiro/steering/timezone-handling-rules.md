@@ -1,6 +1,6 @@
 ---
 inclusion: fileMatch
-fileMatchPattern: "**/*{date,time,Date,Time}*.{ts,tsx,js}"
+fileMatchPattern: '**/*{date,time,Date,Time}*.{ts,tsx,js}'
 ---
 
 # タイムゾーン処理ルール（絶対に間違えないルール）

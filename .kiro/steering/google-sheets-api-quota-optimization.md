@@ -2,6 +2,8 @@
 inclusion: manual
 ---
 
+
+
 # Google Sheets APIクオータ最適化記録
 
 ## 修正日

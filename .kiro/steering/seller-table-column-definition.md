@@ -1,6 +1,6 @@
 ---
 inclusion: fileMatch
-fileMatchPattern: "**/seller*.{ts,tsx,js,md}"
+fileMatchPattern: '**/seller*.{ts,tsx,js,md}'
 ---
 
 # 売主テーブルのカラム定義（絶対に間違えないルール）

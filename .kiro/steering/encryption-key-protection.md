@@ -1,3 +1,7 @@
+---
+inclusion: auto
+---
+
 # ENCRYPTION_KEY 保護ルール（絶対に守るべきルール）
 
 ## ⚠️ 最重要：ENCRYPTION_KEYは絶対に変更しない

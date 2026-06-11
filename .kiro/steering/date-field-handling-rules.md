@@ -1,7 +1,9 @@
 ---
 inclusion: fileMatch
-fileMatchPattern: "**/*{date,Date,time,Time}*.{ts,tsx,js}"
+fileMatchPattern: '**/*{date,Date,time,Time}*.{ts,tsx,js}'
 ---
+
+
 
 # 日付フィールドの扱い方（重要ルール）
 

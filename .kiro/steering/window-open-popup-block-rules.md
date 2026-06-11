@@ -2,6 +2,8 @@
 inclusion: manual
 ---
 
+
+
 # window.open ポップアップブロック防止ルール
 
 ## ⚠️ 絶対に守るべきルール

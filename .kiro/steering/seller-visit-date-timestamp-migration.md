@@ -2,6 +2,8 @@
 inclusion: manual
 ---
 
+
+
 # 売主訪問日時のTIMESTAMP型移行（完了済み）
 
 ## ⚠️ 重要：visit_dateはTIMESTAMP型

@@ -2,6 +2,8 @@
 inclusion: manual
 ---
 
+
+
 # Specファイルサイズガイドライン
 
 ## 問題

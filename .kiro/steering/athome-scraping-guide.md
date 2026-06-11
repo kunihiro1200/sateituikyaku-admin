@@ -2,6 +2,8 @@
 inclusion: manual
 ---
 
+
+
 # Athomeスクレイピングガイド
 
 ## 概要

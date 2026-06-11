@@ -1,7 +1,9 @@
 ---
 inclusion: fileMatch
-fileMatchPattern: "**/buyer*.{ts,tsx,js,md}"
+fileMatchPattern: '**/buyer*.{ts,tsx,js,md}'
 ---
+
+
 
 # 買主スプレッドシートのカラムマッピング（完全版）
 

@@ -1,9 +1,5 @@
 ---
-tags: [general, git, encoding, file-management, troubleshooting, critical]
-priority: high
-context: all
-inclusion: always
-last-verified: 2026-01-25
+inclusion: auto
 ---
 
 # ファイルエンコーディング保護ルール

@@ -1,9 +1,5 @@
 ---
-tags: [general, troubleshooting, git, best-practices, critical]
-priority: high
-context: all
-inclusion: always
-last-verified: 2026-01-25
+inclusion: auto
 ---
 
 # Git履歴優先アプローチ

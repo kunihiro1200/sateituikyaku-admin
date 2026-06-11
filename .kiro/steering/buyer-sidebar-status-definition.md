@@ -1,6 +1,9 @@
 ---
-inclusion: manual
+inclusion: fileMatch
+fileMatchPattern: '**/buyer*.{ts,tsx,js,md}'
 ---
+
+
 
 # 買主リストサイドバーステータス定義（絶対に間違えないルール）
 
