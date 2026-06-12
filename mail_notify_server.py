@@ -493,23 +493,19 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                     # HOME4Uは本文に「HOME4Uログアウト」が含まれる場合のみ転記
                     # （バックエンド側でも同じチェックをしているが、ここでも事前フィルタ）
                     if 'HOME4Uログアウト' in body:
-                        # 同一スレッドの重複転記防止（HOME4Uは同一案件を複数社に同時配信するため複数メールが届く）
-                        # コメントあり本文が後から届いた場合はバックエンド側でcomments欄をUPDATEする
-                        thread_id = msg_detail.get("threadId", msg_id)
-                        if thread_id in home4u_processed_threads:
-                            logging.info(f"  [重複スキップ] HOME4U同一スレッド (threadId={thread_id}) は処理済みのためスキップ")
-                        else:
-                            home4u_processed_threads.add(thread_id)
-                            save_home4u_processed_threads(home4u_processed_threads)
-                            logging.info("  [DB転記] HOME4U検知 → home4u-transfer を非同期実行します")
-                            # コメント部分デバッグ：HOME4Uログアウト周辺を出力
-                            body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
-                            for idx, line in enumerate(body_lines):
-                                if 'HOME4Uログアウト' in line:
-                                    surrounding = body_lines[max(0, idx-1):idx+6]
-                                    logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
-                                    break
-                            trigger_home4u_transfer(body)
+                        # 【重要】スレッドスキップを廃止：全通バックエンドに送る
+                        # 理由: 同一スレッドでも1通目コメントなし・2通目コメントありのケースがある
+                        #       バックエンド側に「同一電話番号+同一反響日時」の重複チェックがあり、
+                        #       重複スキップ時にコメントがあれば既存レコードを更新する仕組みがある
+                        logging.info("  [DB転記] HOME4U検知 → home4u-transfer を非同期実行します")
+                        # コメント部分デバッグ：HOME4Uログアウト周辺を出力
+                        body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+                        for idx, line in enumerate(body_lines):
+                            if 'HOME4Uログアウト' in line:
+                                surrounding = body_lines[max(0, idx-1):idx+6]
+                                logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
+                                break
+                        trigger_home4u_transfer(body)
                     else:
                         logging.info(f"  [スキップ] HOME4Uだが本文に「HOME4Uログアウト」なし: {subject[:50]}")
                 elif ATHOME_BUYER_SUBJECT_PREFIX in subject:
@@ -533,22 +529,16 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                     body = decode_body(msg_detail["payload"])
                     if body and 'HOME4Uログアウト' in body:
                         logging.info(f"\n[{datetime.now().strftime('%H:%M:%S')}] 🔔 HOME4U本文検知（Re:スキップ回避）: {subject}")
-                        # 同一スレッドの重複転記防止
-                        # コメントあり本文が後から届いた場合はバックエンド側でcomments欄をUPDATEする
-                        thread_id = msg_detail.get("threadId", msg_id)
-                        if thread_id in home4u_processed_threads:
-                            logging.info(f"  [重複スキップ] HOME4U同一スレッド (threadId={thread_id}) は処理済みのためスキップ")
-                        else:
-                            home4u_processed_threads.add(thread_id)
-                            save_home4u_processed_threads(home4u_processed_threads)
-                            # コメント部分デバッグ：HOME4Uログアウト周辺を出力
-                            body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
-                            for idx, line in enumerate(body_lines):
-                                if 'HOME4Uログアウト' in line:
-                                    surrounding = body_lines[max(0, idx-1):idx+6]
-                                    logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
-                                    break
-                            trigger_home4u_transfer(body)
+                        # 【重要】スレッドスキップを廃止：全通バックエンドに送る
+                        # バックエンド側の重複チェック（同一電話番号+同一反響日時）に委ねる
+                        # コメント部分デバッグ：HOME4Uログアウト周辺を出力
+                        body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+                        for idx, line in enumerate(body_lines):
+                            if 'HOME4Uログアウト' in line:
+                                surrounding = body_lines[max(0, idx-1):idx+6]
+                                logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
+                                break
+                        trigger_home4u_transfer(body)
                     else:
                         logging.info(f"  [未処理] HOME4U件名だが本文にHOME4Uログアウトなし: {subject[:80]}")
                 # HOME4U以外のmatched=Falseはスキップ（本文にHOME4Uログアウトが含まれていても無視）
