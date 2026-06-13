@@ -602,8 +602,10 @@ async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
       // サイズパラメータを高解像度に統一（&w=任意の数字&h=任意の数字 → &w=800&h=600）
       // 例: &w=96&h=72, &w=220&h=165, &w=452&h=339, &w=296&h=222 など全パターンに対応
       imgUrl = imgUrl.replace(/&w=\d+&h=\d+/g, '&w=800&h=600');
-      // &w=数字 のみ（hなし）も変換
-      imgUrl = imgUrl.replace(/&w=\d+(?!&h=)/g, '&w=800&h=600');
+      // &w=数字 のみ（hなし）も変換 ※置換済みURLは再マッチしない
+      if (!imgUrl.includes('&w=800&h=600')) {
+        imgUrl = imgUrl.replace(/&w=\d+/g, '&w=800&h=600');
+      }
       
       // 会社ロゴを除外（gazo/kaisha/）
       if (!imgUrl.includes('kaisha') && !images.includes(imgUrl)) {

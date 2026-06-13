@@ -1865,9 +1865,12 @@ router.post('/scrape-property-suumo', authenticate, async (req: Request, res: Re
       imgUrl = imgUrl.replace(/&amp;/g, '&');
       imgUrl = imgUrl.split(',')[0];
       // サイズパラメータを高解像度に統一（全パターンに対応）
+      // まず &w=数字&h=数字 の形式を置換
       imgUrl = imgUrl.replace(/&w=\d+&h=\d+/g, '&w=800&h=600');
-      // &w=数字 のみ（hなし）も変換
-      imgUrl = imgUrl.replace(/&w=\d+(?!&h=)/g, '&w=800&h=600');
+      // &w=数字 のみ（hパラメータなし）も置換 ※上で置換済みの &w=800&h=600 は再マッチしないよう末尾確認
+      if (!imgUrl.includes('&w=800&h=600')) {
+        imgUrl = imgUrl.replace(/&w=\d+/g, '&w=800&h=600');
+      }
       if (!imgUrl.includes('kaisha') && !images.includes(imgUrl)) {
         images.push(imgUrl);
       }
