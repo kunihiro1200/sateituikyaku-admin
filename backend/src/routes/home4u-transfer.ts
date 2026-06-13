@@ -112,7 +112,8 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
       const lines = normalized.split('\n');
       const convertedLines: string[] = [];
 
-      for (const rawLine of lines) {
+      for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+        const rawLine = lines[lineIdx];
         const line = rawLine.trim();
         if (!line) { convertedLines.push(''); continue; }
 
@@ -148,8 +149,7 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
           const bldg = (line.match(/物件建物名\s+(\S+)/) || [])[1] || '';
           const roomNo = (line.match(/物件号室\s+(\S+)/) || [])[1] || '';
           // 同一行に含まれない場合は後続行を先読みして結合
-          const curIdx = lines.indexOf(rawLine);
-          for (let ni = curIdx + 1; ni < Math.min(curIdx + 6, lines.length); ni++) {
+          for (let ni = lineIdx + 1; ni < Math.min(lineIdx + 6, lines.length); ni++) {
             const nl = lines[ni].trim();
             if (!city && nl.match(/^物件市区町村\s+/)) { city = (nl.match(/^物件市区町村\s+(\S+)/) || [])[1] || ''; continue; }
             if (!town && nl.match(/^物件町字\s+/)) { town = ((nl.match(/^物件町字\s+(.+)/) || [])[1] || '').replace(/（[^）]*）/g, '').trim(); continue; }
@@ -196,13 +196,12 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
             convertedLines.push('■お名前　　　　　　　: ' + m_sei[1] + '　' + m_mei_inline[1]);
           } else {
             // 後続行から「名 X」を探す（最大5行先まで）
-            const curIdx = lines.indexOf(rawLine);
             let mei = '';
-            for (let ni = curIdx + 1; ni < Math.min(curIdx + 6, lines.length); ni++) {
+            for (let ni = lineIdx + 1; ni < Math.min(lineIdx + 6, lines.length); ni++) {
               const nm = lines[ni].trim().match(/^名\s+(\S+)/);
               if (nm) { mei = nm[1]; break; }
             }
-            convertedLines.push('■お名前　　　　　　　: ' + m_sei[1] + '　' + (mei || '__MEI_PLACEHOLDER__'));
+            convertedLines.push('■お名前　　　　　　　: ' + m_sei[1] + '　' + (mei || ''));
           }
           continue;
         }
