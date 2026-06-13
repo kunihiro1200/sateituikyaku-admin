@@ -106,7 +106,7 @@ const FLOOR_OPTIONS = ['高層階', '低層階', 'どちらでも'] as const;
 const getSignatureEmail = (address?: string): string => {
   const isFukuoka = address ? address.includes('福岡') : false;
   if (isFukuoka) {
-    return `\n\n××××××××××××××××××××××××××××\n株式会社くじら不動産\n福岡市中央区舞靀3－1－10\nTEL：092-401-5331\nMAIL: tenant@ifoo-oita.com\n××××××××××××××××××××××××××××`;
+    return `\n\n××××××××××××××××××××××××××××\n株式会社くじら不動産\n福岡市中央区舞鶴3-1-10\n092-401-5331\n××××××××××××××××××××××××××××`;
   }
   // デフォルト：大分店署名
   return `\n\n××××××××××××××××××××××××××××\n株式会社いふう\n大分市舞鶴町1-3-30\nSTビル１F\n097-533-2022\ntenant@ifoo-oita.com\n定休日：水曜\n営業時間：10時～18時\n××××××××××××××××××××××××××××`;

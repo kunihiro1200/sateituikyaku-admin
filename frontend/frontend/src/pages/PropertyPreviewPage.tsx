@@ -298,9 +298,10 @@ export default function PropertyPreviewPage() {
   const currentDomain = typeof window !== 'undefined' ? window.location.origin : 'https://oita-tateuri.com';
   const canonicalUrl = `${currentDomain}/property-preview/${slug}`;
 
-  // 福岡判定：DBのregionフィールド、またはfukuoka-tateuri.comドメイン
+  // 福岡判定：DBのregionフィールド、fukuoka-tateuri.comドメイン、または所在地に「福岡」を含む場合
   const isFukuokaDomain = data.region === 'fukuoka' ||
-    (typeof window !== 'undefined' && window.location.hostname.includes('fukuoka-tateuri.com'));
+    (typeof window !== 'undefined' && window.location.hostname.includes('fukuoka-tateuri.com')) ||
+    (data.address ? data.address.includes('福岡') : false);
 
   // ドメインに応じた会社情報
   const companyInfo = isFukuokaDomain

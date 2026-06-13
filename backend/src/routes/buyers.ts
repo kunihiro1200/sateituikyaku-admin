@@ -1864,11 +1864,10 @@ router.post('/scrape-property-suumo', authenticate, async (req: Request, res: Re
       let imgUrl = match[0];
       imgUrl = imgUrl.replace(/&amp;/g, '&');
       imgUrl = imgUrl.split(',')[0];
-      imgUrl = imgUrl.replace(/&w=96&h=72/g, '&w=800&h=600');
-      imgUrl = imgUrl.replace(/&w=220&h=165/g, '&w=800&h=600');
-      imgUrl = imgUrl.replace(/&w=452&h=339/g, '&w=800&h=600');
-      imgUrl = imgUrl.replace(/&w=296&h=222/g, '&w=800&h=600');
-      imgUrl = imgUrl.replace(/&w=500/g, '&w=800&h=600');
+      // サイズパラメータを高解像度に統一（全パターンに対応）
+      imgUrl = imgUrl.replace(/&w=\d+&h=\d+/g, '&w=800&h=600');
+      // &w=数字 のみ（hなし）も変換
+      imgUrl = imgUrl.replace(/&w=\d+(?!&h=)/g, '&w=800&h=600');
       if (!imgUrl.includes('kaisha') && !images.includes(imgUrl)) {
         images.push(imgUrl);
       }
