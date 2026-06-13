@@ -501,6 +501,33 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                     if not is_reply:
                         logging.info(f"  [スキップ] HOME4U自動通知（Re:なし）: {subject[:50]}")
                     elif 'HOME4Uログアウト' in body:
+                        # 同一スレッドの最新メールのみ転記する
+                        # （スレッドに複数のRe:メールが蓄積されている場合、最新1通だけ処理）
+                        thread_id = msg_detail.get("threadId", msg_id)
+                        msg_ts = int(msg_detail.get("internalDate", 0))
+                        # 同一スレッドの他のメールを確認して、これが最新かチェック
+                        try:
+                            thread_detail = service.users().threads().get(
+                                userId="me", id=thread_id, format="metadata",
+                                metadataHeaders=["Subject"]
+                            ).execute()
+                            thread_messages = thread_detail.get("messages", [])
+                            # Re:付きHOME4Uメールの中で最新のinternalDateを取得
+                            latest_ts = max(
+                                int(m.get("internalDate", 0))
+                                for m in thread_messages
+                                if any(
+                                    h["name"] == "Subject" and HOME4U_SUBJECT_PREFIX in h["value"]
+                                    for h in m.get("payload", {}).get("headers", [])
+                                )
+                            ) if thread_messages else msg_ts
+                            if msg_ts < latest_ts:
+                                logging.info(f"  [スキップ] HOME4U Re:あり だが同スレッドに新しいメールあり（このメールは古い）")
+                                notified_ids.add(msg_id)
+                                save_notified_ids(notified_ids)
+                                continue
+                        except Exception as e:
+                            logging.info(f"  [警告] スレッド確認失敗（処理継続）: {e}")
                         logging.info("  [DB転記] HOME4U(Re:あり)検知 → home4u-transfer を非同期実行します")
                         body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
                         for idx, line in enumerate(body_lines):
