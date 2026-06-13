@@ -170,7 +170,7 @@ export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
     .description { font-size: 10pt; margin-bottom: 16px; color: #333; }
     table { width: 100%; border-collapse: collapse; }
     .section-title { font-weight: bold; font-size: 11pt; margin: 20px 0 10px 0; }
-    .footer { margin-top: 40px; text-align: center; font-size: 9pt; color: #333; }
+    .footer { position: fixed; bottom: 15mm; right: 15mm; text-align: right; font-size: 9pt; color: #333; }
   </style>
 </head>
 <body>
