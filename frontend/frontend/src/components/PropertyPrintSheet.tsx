@@ -80,49 +80,65 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
     ? `https://maps.googleapis.com/maps/api/staticmap?center=${enhancedData.lat},${enhancedData.lng}&zoom=15&size=500x300&markers=color:red%7C${enhancedData.lat},${enhancedData.lng}&key=${mapsApiKey}`
     : null;
 
+  // 印刷専用ウィンドウを開いてHTMLを流し込む
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank', 'width=1200,height=850');
+    if (!printWindow) return;
+
+    const sheetEl = document.getElementById('print-sheet-content');
+    if (!sheetEl) return;
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>物件情報</title>
+  <style>
+    @page { size: A4 landscape; margin: 6mm; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
+    body { margin: 0; padding: 0; font-family: "Hiragino Kaku Gothic ProN", Meiryo, sans-serif; font-size: 9pt; }
+    img { display: block; }
+  </style>
+</head>
+<body>
+${sheetEl.innerHTML}
+</body>
+</html>`);
+    printWindow.document.close();
+    // 画像読み込み完了後に印刷
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    };
+  };
+
   return (
     <>
       <style>{`
-        @media print {
-          @page { size: A4 landscape; margin: 6mm; }
-          body > *:not(#print-root) { display: none !important; }
-          #print-root { display: block !important; }
-          .no-print { display: none !important; }
-          * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          .print-sheet {
-            width: 285mm !important;
-            box-shadow: none !important;
-            margin: 0 !important;
-          }
+        #print-root {
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background: #555;
+          z-index: 9998;
+          overflow-y: auto;
+          padding: 20px 20px 40px;
         }
-        @media screen {
-          #print-root {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: #555;
-            z-index: 9998;
-            overflow-y: auto;
-            padding: 20px 20px 40px;
-          }
-          .print-sheet {
-            width: 285mm;
-            margin: 0 auto;
-            background: #fff;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.4);
-          }
+        .print-sheet {
+          width: 285mm;
+          margin: 0 auto;
+          background: #fff;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.4);
         }
       `}</style>
 
       <div id="print-root">
-        {/* 操作ボタン（印刷時非表示） */}
-        <div className="no-print" style={{
+        {/* 操作ボタン */}
+        <div style={{
           position: 'fixed', top: 16, right: 16, zIndex: 9999,
           display: 'flex', gap: 8
         }}>
-          <button onClick={() => window.print()} style={{
+          <button onClick={handlePrint} style={{
             padding: '10px 20px', background: '#1976d2', color: '#fff',
             border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 14
           }}>印刷</button>
@@ -133,7 +149,7 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
         </div>
 
         {/* A4横向きシート */}
-        <div className="print-sheet" style={{
+        <div id="print-sheet-content" className="print-sheet" style={{
           fontFamily: '"Hiragino Kaku Gothic ProN", Meiryo, sans-serif',
           fontSize: 9,
           color: '#222',
