@@ -143,7 +143,7 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
           // 同一行に市区町村等がある場合と、別行に分かれている場合の両方に対応
           // まず同一行から取得を試みる
           let city = (line.match(/物件市区町村\s+(\S+)/) || [])[1] || '';
-          let town = ((line.match(/物件町字\s+(\S+)/) || [])[1] || '').replace(/（[^）]*）/g, '');
+          let town = ((line.match(/物件町字\s+(.+?)(?:\s+物件|$)/) || [])[1] || '').replace(/（[^）]*）/g, '').trim();
           let block = (line.match(/物件丁目番地号\s+(\S+)/) || [])[1] || '';
           const bldg = (line.match(/物件建物名\s+(\S+)/) || [])[1] || '';
           const roomNo = (line.match(/物件号室\s+(\S+)/) || [])[1] || '';
@@ -152,7 +152,7 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
           for (let ni = curIdx + 1; ni < Math.min(curIdx + 6, lines.length); ni++) {
             const nl = lines[ni].trim();
             if (!city && nl.match(/^物件市区町村\s+/)) { city = (nl.match(/^物件市区町村\s+(\S+)/) || [])[1] || ''; continue; }
-            if (!town && nl.match(/^物件町字\s+/)) { town = ((nl.match(/^物件町字\s+(\S+)/) || [])[1] || '').replace(/（[^）]*）/g, ''); continue; }
+            if (!town && nl.match(/^物件町字\s+/)) { town = ((nl.match(/^物件町字\s+(.+)/) || [])[1] || '').replace(/（[^）]*）/g, '').trim(); continue; }
             if (!block && nl.match(/^物件丁目番地号\s+/)) { block = (nl.match(/^物件丁目番地号\s+(\S+)/) || [])[1] || ''; continue; }
             // 他のキーワード行に来たら終了
             if (nl.match(/^(物件種別|物件建物名|物件号室|専有延べ床面積|土地面積|間取り|築年|現況|姓|査定ナンバー)\s/)) break;
@@ -396,10 +396,38 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
     const requests = extractData(cleanedBody, '■要望・質問（自由記入）:', '-----------------------------------------------------------------').trim();
 
     // 住所（■ご住所の後の行）
-    const addrSection = extractData(cleanedBody, '■ご住所', '■電話番号').trim();
-    const addrLines = addrSection.split('\n').map(l => l.replace(/^>\s*/gm, '').replace(/^[：:]\s*/, '').trim()).filter(l => l);
-    const address = addrLines.join(' ').trim();
-    console.log(`[home4u-transfer] addrSection: "${addrSection.substring(0, 100).replace(/\n/g, '\\n')}", address: "${address.substring(0, 100)}"`);
+    // extractDataは終端マッチが不安定なため、■ご住所の次の「：」行から1行だけ取得する
+    const address = (() => {
+      const lines2 = cleanedBody.split('\n');
+      const idx = lines2.findIndex(l => l.trimStart().startsWith('■ご住所'));
+      if (idx === -1) return '';
+      // ■ご住所の行自体に値がある場合（旧フォーマット）
+      const sameLineMatch = lines2[idx].match(/■ご住所[^：:]*[：:]\s*(.+)/);
+      if (sameLineMatch && sameLineMatch[1].trim()) {
+        return sameLineMatch[1].trim();
+      }
+      // 次行以降の「：」で始まる行から住所を取得（新フォーマット）
+      for (let ni = idx + 1; ni < Math.min(idx + 5, lines2.length); ni++) {
+        const l = lines2[ni].replace(/^>\s*/g, '').trim();
+        if (!l) continue;
+        const m = l.match(/^[：:]\s*(.+)/);
+        if (m) {
+          // 「査定依頼者建物名号室」「>」「■」以降は除去
+          const val = m[1]
+            .split('査定依頼者建物名号室')[0]
+            .split(/>|■/)[0]
+            .trim();
+          return val;
+        }
+        // 「：」がない行でも■で始まらなければ住所として扱う
+        if (!l.startsWith('■')) {
+          return l.split('査定依頼者建物名号室')[0].split(/>|■/)[0].trim();
+        }
+        break;
+      }
+      return '';
+    })();
+    console.log(`[home4u-transfer] address抽出結果: "${address.substring(0, 100)}"`);
 
     if (!name || !tel) {
       return res.status(400).json({ success: false, error: `名前または電話番号が取得できませんでした name=${name} tel=${tel}` });
