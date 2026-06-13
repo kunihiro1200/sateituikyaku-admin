@@ -2345,7 +2345,7 @@ router.post('/:buyerNumber/sms-history', async (req: Request, res: Response) => 
 router.post('/:buyer_number/send-offer-chat', async (req: Request, res: Response) => {
   try {
     const { buyer_number } = req.params;
-    const { propertyNumber, offerComment, campaignHandedOver } = req.body;
+    const { propertyNumber, offerComment, campaignHandedOver, pdfUrl } = req.body;
 
     const buyer = await buyerService.getByBuyerNumber(buyer_number);
     if (!buyer) {
@@ -2371,6 +2371,7 @@ router.post('/:buyer_number/send-offer-chat', async (req: Request, res: Response
         `物件所在地: ${property?.address || property?.display_address || '未設定'}\n` +
         `★最新状況: ${latestStatus || '（空欄）'}\n` +
         `買付ハズレコメント: ${offerComment || '未記入'}\n` +
+        `${pdfUrl ? `📎 買付PDF: ${pdfUrl}\n` : ''}` +
         `${detailUrl}`;
     } else {
       message =
@@ -2382,6 +2383,7 @@ router.post('/:buyer_number/send-offer-chat', async (req: Request, res: Response
         `★最新状況: ${latestStatus}\n` +
         `買付コメント: ${offerComment || '未記入'}\n` +
         `10万円キャンペーン: ${campaignHandedOver ? 'お渡し済み ✅' : '未渡し'}\n` +
+        `${pdfUrl ? `📎 買付PDF: ${pdfUrl}\n` : ''}` +
         `${detailUrl}`;
     }
 

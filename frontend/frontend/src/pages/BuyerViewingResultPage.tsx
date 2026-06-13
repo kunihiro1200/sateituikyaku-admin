@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import api, { buyerApi, employeeApi } from '../services/api';
+import { supabase } from '../config/supabase';
 import { InlineEditableField } from '../components/InlineEditableField';
 import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../components/RichTextCommentEditor';
 import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
@@ -229,6 +230,7 @@ export default function BuyerViewingResultPage() {
   const [isOfferFailedFlag, setIsOfferFailedFlag] = useState(false); // 買付外れましたフラグ
   const [offerFailedChatSentPopupOpen, setOfferFailedChatSentPopupOpen] = useState(false);
   const [campaignHandedOver, setCampaignHandedOver] = useState(false); // 10万円キャンペーンお渡し済みチェック
+  const [offerPdfFile, setOfferPdfFile] = useState<File | null>(null); // 買付PDF添付
   const [normalInitials, setNormalInitials] = useState<string[]>([]);
   const [calendarOpened, setCalendarOpened] = useState(false); // カレンダーを開いたかどうか
   const [leaveWarningDialog, setLeaveWarningDialog] = useState<{ open: boolean; targetUrl: string }>({ open: false, targetUrl: '' });
@@ -1027,14 +1029,34 @@ export default function BuyerViewingResultPage() {
     }
 
     try {
+      // PDFが添付されている場合、Supabase Storageにアップロード
+      let pdfUrl: string | null = null;
+      if (offerPdfFile) {
+        const timestamp = Date.now();
+        const filePath = `offer-pdf/${buyer.buyer_number}_${timestamp}.pdf`;
+        const { error: uploadError } = await supabase.storage
+          .from('shared-items')
+          .upload(filePath, offerPdfFile, {
+            contentType: 'application/pdf',
+            upsert: false,
+          });
+        if (uploadError) {
+          throw new Error(`PDFアップロード失敗: ${uploadError.message}`);
+        }
+        const { data } = supabase.storage.from('shared-items').getPublicUrl(filePath);
+        pdfUrl = data.publicUrl;
+      }
+
       // バックエンドAPIを呼び出し
       const response = await api.post(`/api/buyers/${buyer.buyer_number}/send-offer-chat`, {
         propertyNumber: linkedProperties[0].property_number,
         offerComment: buyer.offer_comment || '',
         campaignHandedOver: campaignHandedOver,
+        pdfUrl: pdfUrl,
       });
 
       if (response.data.success) {
+        setOfferPdfFile(null); // PDF添付をクリア
         if (isOfferFailed()) {
           setOfferFailedChatSentPopupOpen(true);
         } else {
@@ -2238,6 +2260,47 @@ export default function BuyerViewingResultPage() {
                 </label>
               </Box>
             )}
+
+            {/* PDF添付 */}
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                PDF添付（買付申込書など）
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  component="label"
+                  sx={{ fontSize: '0.85rem' }}
+                >
+                  ファイルを選択
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    hidden
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setOfferPdfFile(file);
+                    }}
+                  />
+                </Button>
+                {offerPdfFile && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                      {offerPdfFile.name}
+                    </Typography>
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => setOfferPdfFile(null)}
+                      sx={{ minWidth: 'auto', fontSize: '0.75rem', p: 0.5 }}
+                    >
+                      ✕
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            </Box>
 
             {/* 買付チャット送信ボタン or 買付ハズレチャット送信ボタン */}
             <Box>
