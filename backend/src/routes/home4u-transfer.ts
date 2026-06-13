@@ -143,7 +143,7 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
           // 同一行に市区町村等がある場合と、別行に分かれている場合の両方に対応
           // まず同一行から取得を試みる
           let city = (line.match(/物件市区町村\s+(\S+)/) || [])[1] || '';
-          let town = (line.match(/物件町字\s+(\S+)/) || [])[1] || '';
+          let town = ((line.match(/物件町字\s+(\S+)/) || [])[1] || '').replace(/（[^）]*）/g, '');
           let block = (line.match(/物件丁目番地号\s+(\S+)/) || [])[1] || '';
           const bldg = (line.match(/物件建物名\s+(\S+)/) || [])[1] || '';
           const roomNo = (line.match(/物件号室\s+(\S+)/) || [])[1] || '';
@@ -152,7 +152,7 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
           for (let ni = curIdx + 1; ni < Math.min(curIdx + 6, lines.length); ni++) {
             const nl = lines[ni].trim();
             if (!city && nl.match(/^物件市区町村\s+/)) { city = (nl.match(/^物件市区町村\s+(\S+)/) || [])[1] || ''; continue; }
-            if (!town && nl.match(/^物件町字\s+/)) { town = (nl.match(/^物件町字\s+(\S+)/) || [])[1] || ''; continue; }
+            if (!town && nl.match(/^物件町字\s+/)) { town = ((nl.match(/^物件町字\s+(\S+)/) || [])[1] || '').replace(/（[^）]*）/g, ''); continue; }
             if (!block && nl.match(/^物件丁目番地号\s+/)) { block = (nl.match(/^物件丁目番地号\s+(\S+)/) || [])[1] || ''; continue; }
             // 他のキーワード行に来たら終了
             if (nl.match(/^(物件種別|物件建物名|物件号室|専有延べ床面積|土地面積|間取り|築年|現況|姓|査定ナンバー)\s/)) break;
@@ -191,12 +191,18 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
         const m_sei = line.match(/^姓\s+(\S+)/);
         if (m_sei) {
           // 同一行に「名 X」がある場合（スペースで並んでいる場合）
-          const m_mei_inline = line.match(/名\s+(\S+)/);
+          const m_mei_inline = line.match(/(?:^|\s)名\s+(\S+)/);
           if (m_mei_inline) {
             convertedLines.push('■お名前　　　　　　　: ' + m_sei[1] + '　' + m_mei_inline[1]);
           } else {
-            // 次行で「名 X」を探す（行分割済み想定）
-            convertedLines.push('■お名前　　　　　　　: ' + m_sei[1] + '　__MEI_PLACEHOLDER__');
+            // 後続行から「名 X」を探す（最大5行先まで）
+            const curIdx = lines.indexOf(rawLine);
+            let mei = '';
+            for (let ni = curIdx + 1; ni < Math.min(curIdx + 6, lines.length); ni++) {
+              const nm = lines[ni].trim().match(/^名\s+(\S+)/);
+              if (nm) { mei = nm[1]; break; }
+            }
+            convertedLines.push('■お名前　　　　　　　: ' + m_sei[1] + '　' + (mei || '__MEI_PLACEHOLDER__'));
           }
           continue;
         }
@@ -391,7 +397,7 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
 
     // 住所（■ご住所の後の行）
     const addrSection = extractData(cleanedBody, '■ご住所', '■電話番号').trim();
-    const addrLines = addrSection.split('\n').map(l => l.replace(/^[：:]\s*/, '').trim()).filter(l => l);
+    const addrLines = addrSection.split('\n').map(l => l.replace(/^>\s*/gm, '').replace(/^[：:]\s*/, '').trim()).filter(l => l);
     const address = addrLines.join(' ').trim();
     console.log(`[home4u-transfer] addrSection: "${addrSection.substring(0, 100).replace(/\n/g, '\\n')}", address: "${address.substring(0, 100)}"`);
 
