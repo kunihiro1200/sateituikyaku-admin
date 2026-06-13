@@ -396,8 +396,34 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
               />
             </ListItem>
           )}
-          {/* 評価ポイント！（システムから取得して表示） */}
-          {propertyNumber && (propertyNumber.startsWith('FI') || propertyNumber.startsWith('AA')) && (
+          {/* 評価ポイント！（システムから取得して物件ごとに表示） */}
+          {linkedProperties && linkedProperties.length > 0 && linkedProperties
+            .filter(lp => lp.property_number && (lp.property_number.startsWith('FI') || lp.property_number.startsWith('AA')))
+            .map((lp, idx) => (
+            <ListItem
+              key={`eval-${lp.property_number}-${idx}`}
+              component="li"
+              sx={{ display: 'list-item', py: 0.5 }}
+            >
+              <ListItemText
+                primary={
+                  <Box>
+                    <Typography component="span" sx={{ fontWeight: 'bold' }}>
+                      評価ポイント！{linkedProperties.filter(p => p.property_number?.startsWith('FI') || p.property_number?.startsWith('AA')).length > 1 ? `（${lp.property_number}）` : ''}：
+                    </Typography>
+                    <Box sx={{ mt: 0.5 }}>
+                      <EvaluationPointsDisplay
+                        sellerNumber={lp.property_number}
+                        propertyAddress={lp.display_address || lp.address}
+                      />
+                    </Box>
+                  </Box>
+                }
+              />
+            </ListItem>
+          ))}
+          {/* propertyNumber単体のフォールバック（linkedPropertiesがない場合） */}
+          {(!linkedProperties || linkedProperties.length === 0) && propertyNumber && (propertyNumber.startsWith('FI') || propertyNumber.startsWith('AA')) && (
             <ListItem
               component="li"
               sx={{ display: 'list-item', py: 0.5 }}
