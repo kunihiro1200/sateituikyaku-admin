@@ -7,7 +7,6 @@ import {
   CircularProgress,
   Alert,
   Divider,
-  Paper,
   IconButton,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
@@ -467,42 +466,11 @@ export const EvaluationPointsDisplay: React.FC<{
   }
 
   return (
-    <Paper variant="outlined" sx={{ p: 1.5, bgcolor: '#FFFDE7' }}>
-      {propertyAddress && (
-        <Typography sx={{ fontWeight: 'bold', fontSize: '0.8rem', mb: 0.5 }}>
-          物件：{propertyAddress}
-        </Typography>
-      )}
-      {points.length > 0 && (
-        <Box sx={{ mb: cautions.length > 0 ? 1 : 0 }}>
-          <Typography sx={{ fontWeight: 'bold', fontSize: '0.8rem', mb: 0.3 }}>
-            おすすめポイント
-          </Typography>
-          {points.map((p, i) => (
-            <Typography key={i} sx={{ fontSize: '0.78rem', pl: 1 }}>
-              {i + 1}. {p}
-            </Typography>
-          ))}
-        </Box>
-      )}
-      {cautions.length > 0 && (
-        <Box>
-          <Typography sx={{ fontWeight: 'bold', fontSize: '0.8rem', mb: 0.3, color: 'error.main' }}>
-            注意点
-          </Typography>
-          {cautions.map((c, i) => (
-            <Typography key={i} sx={{ fontSize: '0.78rem', pl: 1, color: 'error.main' }}>
-              {i + 1}. {c}
-            </Typography>
-          ))}
-        </Box>
-      )}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-        <Button size="small" startIcon={<PrintIcon />} onClick={handlePrint}>
-          印刷
-        </Button>
-      </Box>
-    </Paper>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Button size="small" variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
+        印刷
+      </Button>
+    </Box>
   );
 };
 
