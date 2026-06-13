@@ -8,13 +8,23 @@ import {
   Alert,
   Divider,
   Paper,
+  IconButton,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 
-interface EvaluationPointsData {
+interface EvaluationPointsEditorProps {
+  sellerId: string;
+  propertyAddress?: string;
+  sellerNumber?: string;
+  readOnly?: boolean;
+}
+
+interface SaveData {
   point_1: string | null;
   point_2: string | null;
   point_3: string | null;
@@ -29,31 +39,9 @@ interface EvaluationPointsData {
   caution_2: string | null;
   caution_3: string | null;
   caution_4: string | null;
+  extra_points: string[];
+  extra_cautions: string[];
 }
-
-interface EvaluationPointsEditorProps {
-  sellerId: string;
-  propertyAddress?: string;
-  sellerNumber?: string;
-  readOnly?: boolean;
-}
-
-const EMPTY_DATA: EvaluationPointsData = {
-  point_1: null,
-  point_2: null,
-  point_3: null,
-  point_4: null,
-  point_5: null,
-  point_6: null,
-  point_7: null,
-  point_8: null,
-  point_9: null,
-  point_10: null,
-  caution_1: null,
-  caution_2: null,
-  caution_3: null,
-  caution_4: null,
-};
 
 export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
   sellerId,
@@ -61,7 +49,10 @@ export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
   sellerNumber,
   readOnly = false,
 }) => {
-  const [data, setData] = useState<EvaluationPointsData>(EMPTY_DATA);
+  // おすすめポイントを配列で管理（初期10行）
+  const [points, setPoints] = useState<string[]>(Array(10).fill(''));
+  // 注意点を配列で管理（初期4行）
+  const [cautions, setCautions] = useState<string[]>(Array(4).fill(''));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,22 +65,20 @@ export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
       setLoading(true);
       setError(null);
       const res = await api.get(`/api/sellers/${sellerId}/evaluation-points`);
-      setData({
-        point_1: res.data.point_1 || null,
-        point_2: res.data.point_2 || null,
-        point_3: res.data.point_3 || null,
-        point_4: res.data.point_4 || null,
-        point_5: res.data.point_5 || null,
-        point_6: res.data.point_6 || null,
-        point_7: res.data.point_7 || null,
-        point_8: res.data.point_8 || null,
-        point_9: res.data.point_9 || null,
-        point_10: res.data.point_10 || null,
-        caution_1: res.data.caution_1 || null,
-        caution_2: res.data.caution_2 || null,
-        caution_3: res.data.caution_3 || null,
-        caution_4: res.data.caution_4 || null,
-      });
+      const d = res.data;
+
+      // 固定10ポイント + 追加分
+      const basePoints = [
+        d.point_1 || '', d.point_2 || '', d.point_3 || '', d.point_4 || '', d.point_5 || '',
+        d.point_6 || '', d.point_7 || '', d.point_8 || '', d.point_9 || '', d.point_10 || '',
+      ];
+      const extraPoints: string[] = d.extra_points || [];
+      setPoints([...basePoints, ...extraPoints]);
+
+      // 固定4注意点 + 追加分
+      const baseCautions = [d.caution_1 || '', d.caution_2 || '', d.caution_3 || '', d.caution_4 || ''];
+      const extraCautions: string[] = d.extra_cautions || [];
+      setCautions([...baseCautions, ...extraCautions]);
     } catch (err: any) {
       console.error('Failed to fetch evaluation points:', err);
       setError('評価ポイントの取得に失敗しました');
@@ -99,23 +88,70 @@ export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
   }, [sellerId]);
 
   useEffect(() => {
-    if (sellerId) {
-      fetchData();
-    }
+    if (sellerId) fetchData();
   }, [sellerId, fetchData]);
 
-  const handleChange = (field: keyof EvaluationPointsData, value: string) => {
-    setData(prev => ({ ...prev, [field]: value || null }));
+  const handlePointChange = (index: number, value: string) => {
+    setPoints(prev => { const next = [...prev]; next[index] = value; return next; });
     setIsDirty(true);
     setSuccess(false);
+  };
+
+  const handleCautionChange = (index: number, value: string) => {
+    setCautions(prev => { const next = [...prev]; next[index] = value; return next; });
+    setIsDirty(true);
+    setSuccess(false);
+  };
+
+  const addPoint = () => {
+    setPoints(prev => [...prev, '']);
+    setIsDirty(true);
+  };
+
+  const removePoint = (index: number) => {
+    if (points.length <= 1) return;
+    setPoints(prev => prev.filter((_, i) => i !== index));
+    setIsDirty(true);
+  };
+
+  const addCaution = () => {
+    setCautions(prev => [...prev, '']);
+    setIsDirty(true);
+  };
+
+  const removeCaution = (index: number) => {
+    if (cautions.length <= 1) return;
+    setCautions(prev => prev.filter((_, i) => i !== index));
+    setIsDirty(true);
   };
 
   const handleSave = async () => {
     try {
       setSaving(true);
       setError(null);
+
+      // 固定10 + 追加分に分ける
+      const saveData: SaveData = {
+        point_1: points[0] || null,
+        point_2: points[1] || null,
+        point_3: points[2] || null,
+        point_4: points[3] || null,
+        point_5: points[4] || null,
+        point_6: points[5] || null,
+        point_7: points[6] || null,
+        point_8: points[7] || null,
+        point_9: points[8] || null,
+        point_10: points[9] || null,
+        caution_1: cautions[0] || null,
+        caution_2: cautions[1] || null,
+        caution_3: cautions[2] || null,
+        caution_4: cautions[3] || null,
+        extra_points: points.slice(10).filter(p => p.trim() !== ''),
+        extra_cautions: cautions.slice(4).filter(c => c.trim() !== ''),
+      };
+
       await api.put(`/api/sellers/${sellerId}/evaluation-points`, {
-        ...data,
+        ...saveData,
         updated_by: user?.name || user?.email || null,
       });
       setSuccess(true);
@@ -131,27 +167,25 @@ export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
 
   /** 印刷用ウィンドウを開く */
   const handlePrint = () => {
-    const points = [data.point_1, data.point_2, data.point_3, data.point_4, data.point_5,
-      data.point_6, data.point_7, data.point_8, data.point_9, data.point_10];
-    const cautions = [data.caution_1, data.caution_2, data.caution_3, data.caution_4];
+    const allPoints = points.filter(p => p.trim() !== '');
+    const allCautions = cautions.filter(c => c.trim() !== '');
 
-    const pointRows = points.map((p, i) => `
+    const pointRows = allPoints.map((p, i) => `
       <tr>
         <td style="width:30px;font-weight:bold;text-align:center;padding:6px 4px;">${i + 1}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #333;background:#FFF8E1;">${p || ''}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #333;background:#FFF8E1;">${p}</td>
       </tr>
       <tr><td colspan="2" style="height:4px;"></td></tr>
     `).join('');
 
-    const cautionRows = cautions.map((c, i) => `
+    const cautionRows = allCautions.map((c, i) => `
       <tr>
         <td style="width:30px;font-weight:bold;text-align:center;padding:6px 4px;">${i + 1}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #333;background:#FFECB3;">${c || ''}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #333;background:#FFECB3;">${c}</td>
       </tr>
       <tr><td colspan="2" style="height:4px;"></td></tr>
     `).join('');
 
-    // 売主番号に応じて会社情報を切り替え
     const isFukuoka = sellerNumber?.startsWith('FI');
     const companyInfo = isFukuoka
       ? '株式会社くじら不動産<br>〒810-0073 福岡市中央区舞鶴3-1-10<br>TEL:092-401-5331 mail:tenant@ifoo-oita.com'
@@ -203,11 +237,11 @@ export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
   return (
     <Box sx={{ py: 1 }}>
       {/* ヘッダー */}
-      <Box sx={{ 
-        bgcolor: '#FFFF00', 
-        px: 2, 
-        py: 1, 
-        mb: 2, 
+      <Box sx={{
+        bgcolor: '#FFFF00',
+        px: 2,
+        py: 1,
+        mb: 2,
         borderRadius: 1,
         display: 'inline-block',
       }}>
@@ -227,31 +261,43 @@ export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
         ＊下記内容を中心に物件の特長や魅力についてお伝えいたします！
       </Typography>
 
-      {/* おすすめポイント（1〜10） */}
-      <Box sx={{ mb: 3 }}>
-        {([1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const).map((num) => {
-          const field = `point_${num}` as keyof EvaluationPointsData;
-          return (
-            <Box key={field} sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1 }}>
-              <Typography sx={{ minWidth: 28, fontWeight: 'bold', fontSize: '0.9rem' }}>
-                {num}
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                value={data[field] || ''}
-                onChange={(e) => handleChange(field, e.target.value)}
-                disabled={readOnly}
-                placeholder={`おすすめポイント${num}`}
-                sx={{ 
-                  '& .MuiOutlinedInput-root': { 
-                    bgcolor: '#FFF8E1',
-                  } 
-                }}
-              />
-            </Box>
-          );
-        })}
+      {/* おすすめポイント */}
+      <Box sx={{ mb: 2 }}>
+        {points.map((value, index) => (
+          <Box key={`point-${index}`} sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 0.5 }}>
+            <Typography sx={{ minWidth: 28, fontWeight: 'bold', fontSize: '0.9rem' }}>
+              {index + 1}
+            </Typography>
+            <TextField
+              fullWidth
+              size="small"
+              value={value}
+              onChange={(e) => handlePointChange(index, e.target.value)}
+              disabled={readOnly}
+              placeholder={`おすすめポイント${index + 1}`}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: '#FFF8E1',
+                }
+              }}
+            />
+            {!readOnly && points.length > 1 && (
+              <IconButton size="small" onClick={() => removePoint(index)} sx={{ color: 'text.secondary' }}>
+                <RemoveCircleOutlineIcon fontSize="small" />
+              </IconButton>
+            )}
+          </Box>
+        ))}
+        {!readOnly && (
+          <Button
+            size="small"
+            startIcon={<AddCircleOutlineIcon />}
+            onClick={addPoint}
+            sx={{ ml: 4 }}
+          >
+            行を追加
+          </Button>
+        )}
       </Box>
 
       {/* 注意点セクション */}
@@ -261,51 +307,51 @@ export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
       </Typography>
 
       <Box sx={{ mb: 2 }}>
-        {([1, 2, 3, 4] as const).map((num) => {
-          const field = `caution_${num}` as keyof EvaluationPointsData;
-          return (
-            <Box key={field} sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1 }}>
-              <Typography sx={{ minWidth: 28, fontWeight: 'bold', fontSize: '0.9rem' }}>
-                {num}
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                value={data[field] || ''}
-                onChange={(e) => handleChange(field, e.target.value)}
-                disabled={readOnly}
-                placeholder={`注意点${num}`}
-                sx={{ 
-                  '& .MuiOutlinedInput-root': { 
-                    bgcolor: '#FFECB3',
-                  } 
-                }}
-              />
-            </Box>
-          );
-        })}
+        {cautions.map((value, index) => (
+          <Box key={`caution-${index}`} sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 0.5 }}>
+            <Typography sx={{ minWidth: 28, fontWeight: 'bold', fontSize: '0.9rem' }}>
+              {index + 1}
+            </Typography>
+            <TextField
+              fullWidth
+              size="small"
+              value={value}
+              onChange={(e) => handleCautionChange(index, e.target.value)}
+              disabled={readOnly}
+              placeholder={`注意点${index + 1}`}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: '#FFECB3',
+                }
+              }}
+            />
+            {!readOnly && cautions.length > 1 && (
+              <IconButton size="small" onClick={() => removeCaution(index)} sx={{ color: 'text.secondary' }}>
+                <RemoveCircleOutlineIcon fontSize="small" />
+              </IconButton>
+            )}
+          </Box>
+        ))}
+        {!readOnly && (
+          <Button
+            size="small"
+            startIcon={<AddCircleOutlineIcon />}
+            onClick={addCaution}
+            sx={{ ml: 4 }}
+          >
+            行を追加
+          </Button>
+        )}
       </Box>
 
       {/* エラー・成功メッセージ */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 1 }}>
-          {error}
-        </Alert>
-      )}
-      {success && (
-        <Alert severity="success" sx={{ mb: 1 }}>
-          保存しました
-        </Alert>
-      )}
+      {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
+      {success && <Alert severity="success" sx={{ mb: 1 }}>保存しました</Alert>}
 
       {/* 保存・印刷ボタン */}
       {!readOnly && (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          <Button
-            variant="outlined"
-            startIcon={<PrintIcon />}
-            onClick={handlePrint}
-          >
+          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
             印刷
           </Button>
           <Button
@@ -328,32 +374,37 @@ export const EvaluationPointsDisplay: React.FC<{
   sellerNumber: string;
   propertyAddress?: string;
 }> = ({ sellerNumber, propertyAddress }) => {
-  const [data, setData] = useState<EvaluationPointsData | null>(null);
+  const [points, setPoints] = useState<string[]>([]);
+  const [cautions, setCautions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchEval = async () => {
       try {
         const res = await api.get(`/api/evaluation-points/by-seller-number/${sellerNumber}`);
-        setData(res.data);
+        if (res.data) {
+          const d = res.data;
+          const basePoints = [
+            d.point_1, d.point_2, d.point_3, d.point_4, d.point_5,
+            d.point_6, d.point_7, d.point_8, d.point_9, d.point_10,
+          ].filter(Boolean) as string[];
+          const extraPts: string[] = d.extra_points || [];
+          setPoints([...basePoints, ...extraPts]);
+
+          const baseCautions = [d.caution_1, d.caution_2, d.caution_3, d.caution_4].filter(Boolean) as string[];
+          const extraCau: string[] = d.extra_cautions || [];
+          setCautions([...baseCautions, ...extraCau]);
+        }
       } catch (err) {
         console.error('Failed to fetch evaluation points for buyer page:', err);
       } finally {
         setLoading(false);
       }
     };
-    if (sellerNumber) fetch();
+    if (sellerNumber) fetchEval();
   }, [sellerNumber]);
 
   if (loading) return <CircularProgress size={16} />;
-  if (!data) return <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>評価ポイント未入力</Typography>;
-
-  const points = [
-    data.point_1, data.point_2, data.point_3, data.point_4, data.point_5,
-    data.point_6, data.point_7, data.point_8, data.point_9, data.point_10,
-  ].filter(Boolean);
-  const cautions = [data.caution_1, data.caution_2, data.caution_3, data.caution_4].filter(Boolean);
-
   if (points.length === 0 && cautions.length === 0) {
     return <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>評価ポイント未入力</Typography>;
   }

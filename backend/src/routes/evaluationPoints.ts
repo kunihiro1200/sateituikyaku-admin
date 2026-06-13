@@ -24,6 +24,8 @@ export interface EvaluationPointsData {
   caution_2?: string | null;
   caution_3?: string | null;
   caution_4?: string | null;
+  extra_points?: string[];
+  extra_cautions?: string[];
 }
 
 // 売主の評価ポイントを取得
@@ -60,6 +62,8 @@ router.get('/sellers/:sellerId/evaluation-points', async (req: Request, res: Res
         caution_2: null,
         caution_3: null,
         caution_4: null,
+        extra_points: [],
+        extra_cautions: [],
       });
     }
 
@@ -92,6 +96,8 @@ router.put('/sellers/:sellerId/evaluation-points', async (req: Request, res: Res
       caution_2: body.caution_2 || null,
       caution_3: body.caution_3 || null,
       caution_4: body.caution_4 || null,
+      extra_points: body.extra_points || [],
+      extra_cautions: body.extra_cautions || [],
       updated_at: new Date().toISOString(),
       updated_by: body.updated_by || null,
     };
