@@ -80,23 +80,33 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
     ? `https://maps.googleapis.com/maps/api/staticmap?center=${enhancedData.lat},${enhancedData.lng}&zoom=15&size=500x300&markers=color:red%7C${enhancedData.lat},${enhancedData.lng}&key=${mapsApiKey}`
     : null;
 
-  // 印刷専用ウィンドウを開いてHTMLを流し込む
+  // iframeを使った印刷（ポップアップブロック回避）
   const handlePrint = () => {
-    const printWindow = window.open('', '_blank', 'width=1200,height=850');
-    if (!printWindow) return;
-
     const sheetEl = document.getElementById('print-sheet-content');
     if (!sheetEl) return;
 
-    printWindow.document.write(`<!DOCTYPE html>
+    // 既存のiframeがあれば削除
+    const existingIframe = document.getElementById('print-iframe');
+    if (existingIframe) existingIframe.remove();
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'print-iframe';
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) return;
+
+    doc.open();
+    doc.write(`<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
   <title>物件情報</title>
   <style>
     @page { size: A4 landscape; margin: 6mm; }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
-    body { margin: 0; padding: 0; font-family: "Hiragino Kaku Gothic ProN", Meiryo, sans-serif; font-size: 9pt; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Hiragino Kaku Gothic ProN", Meiryo, sans-serif; font-size: 9pt; background: #fff; }
     img { display: block; }
   </style>
 </head>
@@ -104,13 +114,25 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
 ${sheetEl.innerHTML}
 </body>
 </html>`);
-    printWindow.document.close();
-    // 画像読み込み完了後に印刷
-    printWindow.onload = () => {
-      printWindow.focus();
-      printWindow.print();
-      printWindow.close();
-    };
+    doc.close();
+
+    // 画像の読み込みを待ってから印刷
+    const imgs = Array.from(doc.querySelectorAll('img'));
+    const loadPromises = imgs.map(img =>
+      new Promise<void>(resolve => {
+        if (img.complete) { resolve(); return; }
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
+      })
+    );
+
+    Promise.all(loadPromises).then(() => {
+      setTimeout(() => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => iframe.remove(), 1000);
+      }, 300);
+    });
   };
 
   return (
