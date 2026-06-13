@@ -413,6 +413,64 @@ export function generatePage4Html(propertyAddress: string, propertyPrice: number
 }
 
 // ============================================================
+// ページ4（自己資金版）: 資金計画書 - 住宅ローン欄なし・銀行関連費用なし
+// ============================================================
+export function generatePage4CashHtml(propertyAddress: string, propertyPrice: number | null, propertyType: string | undefined, today: string): string {
+  const price = propertyPrice || 0;
+  const inshi = price<=1000000?500:price<=5000000?1000:price<=10000000?5000:price<=50000000?10000:30000;
+  const shoyuken = price>=10000000?300000:200000;
+  const chukai = price<=8000000?330000:Math.round((price*0.03+60000)*1.1);
+  const kasai = (propertyType&&propertyType.includes('マンション'))?200000:300000;
+  // 自己資金版: 銀行金消契約印紙代・銀行融資事務手数料を除外
+  const shokeihi = inshi+shoyuken+chukai+kasai;
+  const total = price+shokeihi;
+  const f = (n:number)=>n.toLocaleString('ja-JP');
+  const thG = 'background:#d9d9d9;font-weight:bold;';
+  const thF = 'background:#f2f2f2;font-weight:bold;';
+  const td = 'border:1px solid #000;padding:4px 8px;font-size:9pt;';
+  const detailRow = (label:string,amount:string,note:string)=>`<tr>
+    <td style="${td}">${label}</td>
+    <td style="${td};text-align:right;">${amount}</td>
+    <td style="${td};font-size:7.5pt;white-space:pre-wrap;">${note}</td>
+  </tr>`;
+  return `<div style="width:100%;height:100%;padding:10mm 15mm;background:#fff;font-family:${FONT};font-size:9pt;color:#000;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="border:2px solid #000;text-align:center;padding:8px;margin-bottom:4px;">
+      <span style="font-size:14pt;font-weight:bold;">資金計画書《概算》（自己資金）</span>
+    </div>
+    <div style="text-align:right;font-size:9pt;margin-bottom:2px;">作成日：　${today}</div>
+    <div style="font-size:10pt;border-bottom:1px solid #000;padding-bottom:4px;margin-bottom:12px;">${propertyAddress}</div>
+    <table style="width:100%;border-collapse:collapse;border:2px solid #000;margin-bottom:16px;">
+      <tr><td colspan="2" style="${td};${thG};text-align:center;font-size:11pt;">購入費用（概算）</td></tr>
+      <tr><td style="${td};${thF};width:40%;">物件価格</td><td style="${td};text-align:right;font-size:11pt;font-weight:bold;">${f(price)} 円</td></tr>
+      <tr><td style="${td};${thF};">諸経費</td><td style="${td};text-align:right;font-size:11pt;font-weight:bold;">${f(shokeihi)} 円</td></tr>
+      <tr><td style="${td};${thF};">総額</td><td style="${td};text-align:right;font-size:11pt;font-weight:bold;">${f(total)} 円</td></tr>
+    </table>
+    <table style="width:100%;border-collapse:collapse;flex:1;">
+      <tr>
+        <th style="${td};${thG};text-align:center;flex:2;">内訳</th>
+        <th style="${td};${thG};text-align:center;width:120px;">金額（概算）</th>
+        <th style="${td};${thG};text-align:center;width:160px;">備考</th>
+      </tr>
+      ${detailRow('印紙代（売買契約書貼付）',f(inshi),'')}
+      ${detailRow('所有権移転、抵当権設定費用等',f(shoyuken),'評価額によって異なります')}
+      ${detailRow('仲介手数料',f(chukai),'●801万円以上（3%+6万×消費税）\n●800万円以下（33万円）')}
+      ${detailRow('固定資産税・都市計画税の清算金','実費','引渡日で按分します')}
+      ${detailRow('火災保険料・地震保険料',f(kasai),'プランによって異なります')}
+      <tr><td style="${td}"></td><td style="${td}"></td><td style="${td}"></td></tr>
+      <tr>
+        <td style="${td};font-weight:bold;font-size:10pt;">諸経費合計（概算）</td>
+        <td style="${td};text-align:right;font-weight:bold;font-size:10pt;">${f(shokeihi)}</td>
+        <td style="${td};font-size:7.5pt;">*物件価格以外にかかる費用です</td>
+      </tr>
+    </table>
+    <div style="margin-top:8px;padding-top:4px;border-top:1px solid #000;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:8pt;">㈱いふう　大分市舞鶴町1-3-30　TEL:097-533-2022　MAIL: tenant@ifoo-oita.com</span>
+      <span style="font-size:7pt;color:#666;">info→3</span>
+    </div>
+  </div>`;
+}
+
+// ============================================================
 // ページ5: リフォーム概算表
 // ============================================================
 export function generatePage5Html(): string {
@@ -592,6 +650,44 @@ export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDeta
     pages.push(generatePage2Html(addr, price));
     pages.push(generatePage3Html(addr));
     pages.push(generatePage4Html(addr, price, ptype, today));
+    pages.push(generatePage5Html());
+    // 物件価格1500万円以上の場合のみキャンペーンシートを追加
+    if (price != null && price >= 15000000) {
+      pages.push(generatePage6CampaignHtml(buyerNumber, viewingDateStr));
+    }
+  }
+  const pagesHtml = pages.map((p)=>`<div class="page">${p}</div>`).join('');
+  return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page{size:A4 portrait;margin:0;}
+  *{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  html,body{margin:0;padding:0;font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif;}
+  .page{width:210mm;height:297mm;background:white;overflow:hidden;display:block;page-break-after:always;break-after:page;}
+  .page:last-child{page-break-after:auto;break-after:auto;}
+</style>
+</head>
+<body>${pagesHtml}</body>
+</html>`;
+}
+
+// ============================================================
+// 全ページ結合（自己資金版）- 住宅ローン欄なし・銀行関連費用なし
+// ============================================================
+export function generateAllPagesCashHtml(buyer: Record<string,unknown>, propertyDetails: Record<string,unknown>[], today: string): string {
+  const pages: string[] = [];
+  const buyerNumber = (buyer.buyer_number || '') as string;
+  const viewingDateStr = (buyer.viewing_date || today) as string;
+  for (const property of propertyDetails) {
+    const addr = (property.display_address || property.address || '') as string;
+    const price = (property.price || property.listing_price || null) as number | null;
+    const ptype = property.property_type as string | undefined;
+    pages.push(generatePage1Html(buyer, property, today));
+    pages.push(generatePage2Html(addr, price));
+    pages.push(generatePage3Html(addr));
+    pages.push(generatePage4CashHtml(addr, price, ptype, today));
     pages.push(generatePage5Html());
     // 物件価格1500万円以上の場合のみキャンペーンシートを追加
     if (price != null && price >= 15000000) {

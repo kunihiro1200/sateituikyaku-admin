@@ -117,6 +117,7 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
   const [nearbyMapModalOpen, setNearbyMapModalOpen] = useState(false);
   const [printing1, setPrinting1] = useState(false);
   const [printing2, setPrinting2] = useState(false);
+  const [printingCash, setPrintingCash] = useState(false);
 
   function getTodayStr(): string {
     const d = new Date();
@@ -148,6 +149,33 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
         });
       }).catch(() => { setPrinting1(false); });
     }).catch(() => { setPrinting1(false); });
+  };
+
+  // 内覧準備資料（自己資金）印刷
+  const handlePrintCash = () => {
+    if (!buyer || !linkedProperties || linkedProperties.length === 0) return;
+    setPrintingCash(true);
+    import('../services/api').then(({ default: api }) => {
+      Promise.all(
+        linkedProperties.map((lp: Record<string, any>) =>
+          api.get(`/api/property-listings/${lp.property_number}`).then((r: any) => r.data)
+        )
+      ).then((propertyDetails) => {
+        import('../utils/printHtmlGenerators').then(({ generateAllPagesCashHtml }) => {
+          const html = generateAllPagesCashHtml(buyer, propertyDetails, getTodayStr());
+          const iframe = document.createElement('iframe');
+          iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+          document.body.appendChild(iframe);
+          const doc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (!doc) { setPrintingCash(false); document.body.removeChild(iframe); return; }
+          doc.open(); doc.write(html); doc.close();
+          const cleanup = () => { setTimeout(() => { try { document.body.removeChild(iframe); } catch (_) {} setPrintingCash(false); }, 1000); };
+          const doPrint = () => { try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch (_) {} cleanup(); };
+          if (iframe.contentDocument?.readyState === 'complete') { setTimeout(doPrint, 800); }
+          else { iframe.onload = () => setTimeout(doPrint, 800); setTimeout(doPrint, 2000); }
+        });
+      }).catch(() => { setPrintingCash(false); });
+    }).catch(() => { setPrintingCash(false); });
   };
 
   // 内覧準備資料２（カラー）印刷
@@ -218,7 +246,7 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
             <ListItemText
               primary={
                 hasPropertyNumber && linkedProperties && linkedProperties.length > 0 ? (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                     <Typography component="span">内覧準備資料（白黒）：</Typography>
                     <Button
                       variant="outlined"
@@ -234,6 +262,21 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
                       }}
                     >
                       {printing1 ? '印刷中...' : '印刷'}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={printingCash ? <CircularProgress size={14} color="inherit" /> : <PrintIcon />}
+                      onClick={handlePrintCash}
+                      disabled={printingCash || !buyer || !linkedProperties || linkedProperties.length === 0}
+                      sx={{
+                        borderColor: '#1976d2',
+                        color: '#1565c0',
+                        fontSize: '0.75rem',
+                        '&:hover': { borderColor: '#1565c0', bgcolor: '#e3f2fd' },
+                      }}
+                    >
+                      {printingCash ? '印刷中...' : '自己資金'}
                     </Button>
                   </Box>
                 ) : (
