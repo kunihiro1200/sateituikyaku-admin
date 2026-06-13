@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { GoogleMap } from '@react-google-maps/api';
 import PropertyPrintSheet from '../components/PropertyPrintSheet';
@@ -174,6 +174,8 @@ function PreviewInquiryForm({ title, address, slug, sourceUrl, companyPhone, com
 // ── メインページ ──────────────────────────────────────
 export default function PropertyPreviewPage() {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
+  const isPrintMode = searchParams.get('print') === '1';
   const [data, setData] = useState<PreviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -214,6 +216,17 @@ export default function PropertyPreviewPage() {
 
     fetchWithRetry().finally(() => setLoading(false));
   }, [slug]);
+
+  // 印刷モード（?print=1）: データ取得後に自動で印刷シートを開いて印刷
+  useEffect(() => {
+    if (!isPrintMode || !data) return;
+    setShowPrintSheet(true);
+    // 少し待って画像が読み込まれてから印刷
+    const timer = setTimeout(() => {
+      window.print();
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [isPrintMode, data]);
 
   const { isLoaded: mapsLoaded } = useGoogleMaps();
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
@@ -648,9 +661,10 @@ export default function PropertyPreviewPage() {
       {/* 印刷シート（モーダル表示） */}
       {showPrintSheet && data && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
-          <PropertyPrintSheet 
-            data={data} 
-            onClose={() => setShowPrintSheet(false)} 
+          <PropertyPrintSheet
+            data={data}
+            slug={slug}
+            onClose={() => setShowPrintSheet(false)}
           />
         </div>
       )}
@@ -658,16 +672,31 @@ export default function PropertyPreviewPage() {
       {/* 印刷用スタイル */}
       <style>{`
         @media print {
-          /* 印刷時に不要な要素を非表示 */
+          /* 通常モード：不要な要素を非表示 */
           button, .no-print { display: none !important; }
-          /* 背景色を印刷 */
-          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           body { background: white !important; }
-          /* ページ余白 */
           @page { margin: 15mm; }
-          /* 改ページ制御 */
           iframe { height: 300px !important; }
         }
+        ${isPrintMode ? `
+        /* 印刷モード(?print=1): 通常コンテンツを非表示、印刷シートのみ表示 */
+        @media print {
+          @page { size: A4 landscape; margin: 6mm; }
+          body > #root > * { display: none !important; }
+          #print-root-overlay {
+            display: block !important;
+            position: fixed !important;
+            top: 0 !important; left: 0 !important;
+            width: 285mm !important;
+            padding: 0 !important;
+            background: white !important;
+            box-shadow: none !important;
+            overflow: hidden !important;
+          }
+          #print-root-overlay > div:first-child { display: none !important; }
+        }
+        ` : ''}
       `}</style>
     </div>
   );
