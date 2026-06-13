@@ -82,25 +82,53 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
 
   // body にクラスを付けて window.print() で印刷
   const handlePrint = () => {
-    document.body.classList.add('print-mode');
-    window.print();
-    // 印刷ダイアログを閉じた後にクラスを除去
+    // #root を非表示にして #print-root を前面固定表示
+    const root = document.getElementById('root');
+    const printRoot = document.getElementById('print-root');
+    if (root) root.style.visibility = 'hidden';
+    if (printRoot) {
+      printRoot.style.position = 'fixed';
+      printRoot.style.top = '0';
+      printRoot.style.left = '0';
+      printRoot.style.zIndex = '99999';
+      printRoot.style.background = '#fff';
+      printRoot.style.width = '100%';
+      printRoot.style.height = '100%';
+      printRoot.style.overflow = 'hidden';
+    }
+    // 操作ボタンを一時的に非表示
+    const btns = document.getElementById('print-buttons');
+    if (btns) btns.style.display = 'none';
+
     setTimeout(() => {
-      document.body.classList.remove('print-mode');
-    }, 1000);
+      window.print();
+      // 印刷後に元に戻す
+      setTimeout(() => {
+        if (root) root.style.visibility = '';
+        if (printRoot) {
+          printRoot.style.position = '';
+          printRoot.style.top = '';
+          printRoot.style.left = '';
+          printRoot.style.zIndex = '';
+          printRoot.style.background = '';
+          printRoot.style.width = '';
+          printRoot.style.height = '';
+          printRoot.style.overflow = '';
+        }
+        if (btns) btns.style.display = '';
+      }, 1000);
+    }, 100);
   };
 
   return (
     <>
       <style>{`
-        /* 印刷モード：シート以外を全て非表示 */
+        /* 印刷時：print-rootだけ表示 */
         @media print {
           @page { size: A4 landscape; margin: 6mm; }
-          body.print-mode > * { display: none !important; }
-          body.print-mode #print-root { display: block !important; }
-          body.print-mode #print-root .no-print { display: none !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          .print-sheet { box-shadow: none !important; width: 285mm !important; height: 198mm !important; overflow: hidden !important; }
+          #print-buttons { display: none !important; }
+          .print-sheet { box-shadow: none !important; }
         }
         #print-root {
           position: fixed;
@@ -123,7 +151,7 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
 
       <div id="print-root">
         {/* 操作ボタン（印刷時非表示） */}
-        <div className="no-print" style={{
+        <div id="print-buttons" className="no-print" style={{
           position: 'fixed', top: 16, right: 16, zIndex: 9999,
           display: 'flex', gap: 8
         }}>
@@ -140,7 +168,7 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
         {/* A4横向きシート */}
         <div id="print-sheet-content" className="print-sheet" style={{
           fontFamily: '"Hiragino Kaku Gothic ProN", Meiryo, sans-serif',
-          fontSize: 9,
+          fontSize: 11,
           color: '#222',
           boxSizing: 'border-box',
           width: '285mm',
@@ -214,7 +242,7 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
                 <div style={{ fontSize: 9, fontWeight: 'bold', color: '#d32f2f', marginBottom: 3 }}>
                   物件情報
                 </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 8 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
                   <tbody>
                     {fields.map((f, i) => (
                       <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
@@ -230,16 +258,16 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
                 </table>
               </div>
 
-              {/* 地図：残り高さをすべて使う */}
+              {/* 地図：残り高さをすべて使う（最大130px） */}
               {mapUrl && (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                  <div style={{ fontSize: 9, fontWeight: 'bold', color: '#d32f2f', marginBottom: 3, flexShrink: 0 }}>
+                <div style={{ flex: '0 0 auto' }}>
+                  <div style={{ fontSize: 10, fontWeight: 'bold', color: '#d32f2f', marginBottom: 3 }}>
                     地図
                   </div>
                   <img
                     src={mapUrl}
                     alt="地図"
-                    style={{ flex: 1, width: '100%', objectFit: 'cover', display: 'block', border: '1px solid #ddd', minHeight: 0 }}
+                    style={{ width: '100%', height: 130, objectFit: 'cover', display: 'block', border: '1px solid #ddd' }}
                   />
                 </div>
               )}
