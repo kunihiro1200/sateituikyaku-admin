@@ -253,11 +253,19 @@ def decode_body(payload):
     extract_text_plain(payload, collected)
 
     if collected:
-        # 全パートのtext/plainを結合（返信メールで本文と引用が別パートに分かれる場合に対応）
+        # Re:メールはスレッド内の全パートが収集されるため、
+        # HOME4Uログアウトを含む最初のパートだけを使用する
+        # （複数パートを結合すると同じ内容が重複して「コメントが段々増える」問題が発生）
+        
+        # HOME4Uログアウトを含むパートを優先して返す
+        for part_text in collected:
+            if 'HOME4Uログアウト' in part_text:
+                return part_text
+        
+        # HOME4Uログアウトが含まれない場合は全パートを結合
         plain_text = "\n".join(collected)
 
         # text/plainが空白・改行のみの場合はtext/htmlにフォールバック
-        # （Gmailスレッドメールでtext/plainに\r\nだけ入っているケースに対応）
         if not plain_text.strip():
             logging.info("  [本文取得] text/plainが空白のみ→text/htmlにフォールバック")
             html_collected = []
@@ -266,19 +274,6 @@ def decode_body(payload):
                 return "\n".join(html_collected)
             return ""
 
-        # text/htmlも取得して、コメント部分（HOME4Uログアウト行の前）がtext/htmlにのみある場合に備える
-        # text/plainにHOME4Uログアウトが含まれていればそのまま使用
-        if 'HOME4Uログアウト' in plain_text:
-            return plain_text
-        # text/plainにHOME4Uログアウトが含まれない場合はtext/htmlと結合
-        html_collected = []
-        extract_text_html(payload, html_collected)
-        if html_collected:
-            html_text = "\n".join(html_collected)
-            if 'HOME4Uログアウト' in html_text:
-                logging.info("  [本文取得] text/plainにHOME4Uログアウトなし→text/htmlと結合")
-                # コメント（text/plain先頭）+ HOME4U本文（text/html）の形で結合
-                return plain_text + "\n" + html_text
         return plain_text
 
     # text/plainが空の場合はtext/htmlからフォールバック取得
