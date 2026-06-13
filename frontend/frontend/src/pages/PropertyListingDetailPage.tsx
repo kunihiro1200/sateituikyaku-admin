@@ -875,6 +875,24 @@ export default function PropertyListingDetailPage() {
         severity: 'success',
       });
       setIsOfferEditMode(false);
+
+      // チャット通知が飛んだ場合は確認を「未」にリセット
+      if (hasNotifiableChange) {
+        setConfirmation('未');
+        try {
+          await api.put(`/api/property-listings/${propertyNumber}/confirmation`, { confirmation: '未' });
+        } catch (error) {
+          console.error('[handleSaveOffer] 確認フィールドの更新に失敗しました:', error);
+        }
+        // キャッシュをクリア
+        pageDataCache.invalidate(CACHE_KEYS.PROPERTY_LISTINGS);
+        sessionStorage.setItem('propertyListingsNeedsRefresh', 'true');
+        // サイドバーに即座に通知
+        window.dispatchEvent(new CustomEvent('propertyConfirmationUpdated', {
+          detail: { propertyNumber, confirmation: '未' }
+        }));
+      }
+
       // 保存成功後にデータを再取得（offer_status が null になれば PurchaseStatusBadge が自動的に非表示になる）
       await fetchPropertyData(true);
       setEditedData({});
