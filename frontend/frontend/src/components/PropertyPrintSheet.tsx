@@ -80,84 +80,50 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
     ? `https://maps.googleapis.com/maps/api/staticmap?center=${enhancedData.lat},${enhancedData.lng}&zoom=15&size=500x300&markers=color:red%7C${enhancedData.lat},${enhancedData.lng}&key=${mapsApiKey}`
     : null;
 
-  // iframeを使った印刷（ポップアップブロック回避）
+  // body にクラスを付けて window.print() で印刷
   const handlePrint = () => {
-    const sheetEl = document.getElementById('print-sheet-content');
-    if (!sheetEl) return;
-
-    // 既存のiframeがあれば削除
-    const existingIframe = document.getElementById('print-iframe');
-    if (existingIframe) existingIframe.remove();
-
-    const iframe = document.createElement('iframe');
-    iframe.id = 'print-iframe';
-    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
-    document.body.appendChild(iframe);
-
-    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!doc) return;
-
-    doc.open();
-    doc.write(`<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8" />
-  <title>物件情報</title>
-  <style>
-    @page { size: A4 landscape; margin: 6mm; }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: "Hiragino Kaku Gothic ProN", Meiryo, sans-serif; font-size: 9pt; background: #fff; overflow: hidden; }
-    .print-sheet { width: 285mm; height: 198mm; overflow: hidden; }
-    img { display: block; }
-  </style>
-</head>
-<body>
-${sheetEl.innerHTML}
-</body>
-</html>`);
-    doc.close();
-
-    // 画像の読み込みを待ってから印刷
-    const imgs = Array.from(doc.querySelectorAll('img'));
-    const loadPromises = imgs.map(img =>
-      new Promise<void>(resolve => {
-        if (img.complete) { resolve(); return; }
-        img.onload = () => resolve();
-        img.onerror = () => resolve();
-      })
-    );
-
-    Promise.all(loadPromises).then(() => {
-      setTimeout(() => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-        setTimeout(() => iframe.remove(), 1000);
-      }, 300);
-    });
+    document.body.classList.add('print-mode');
+    window.print();
+    // 印刷ダイアログを閉じた後にクラスを除去
+    setTimeout(() => {
+      document.body.classList.remove('print-mode');
+    }, 1000);
   };
 
   return (
     <>
       <style>{`
+        /* 印刷モード：シート以外を全て非表示 */
+        @media print {
+          @page { size: A4 landscape; margin: 6mm; }
+          body.print-mode > * { display: none !important; }
+          body.print-mode #print-root { display: block !important; }
+          body.print-mode #print-root .no-print { display: none !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .print-sheet { box-shadow: none !important; width: 285mm !important; height: 198mm !important; overflow: hidden !important; }
+        }
         #print-root {
           position: fixed;
           top: 0; left: 0; right: 0; bottom: 0;
           background: #555;
           z-index: 9998;
           overflow-y: auto;
-          padding: 20px 20px 40px;
+          display: flex;
+          align-items: flex-start;
+          justify-content: center;
+          padding: 40px 20px;
         }
         .print-sheet {
           width: 285mm;
-          margin: 0 auto;
+          flex-shrink: 0;
           background: #fff;
           box-shadow: 0 4px 24px rgba(0,0,0,0.4);
         }
       `}</style>
 
       <div id="print-root">
-        {/* 操作ボタン */}
-        <div style={{
+        {/* 操作ボタン（印刷時非表示） */}
+        <div className="no-print" style={{
           position: 'fixed', top: 16, right: 16, zIndex: 9999,
           display: 'flex', gap: 8
         }}>
