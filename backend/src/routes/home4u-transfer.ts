@@ -221,10 +221,14 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
         if (m_email) { convertedLines.push('■E-mail　　　　　　　　: ' + m_email[1]); continue; }
 
         // 「査定依頼者住所 福岡県...」→「■ご住所　　　　　　　　: / 　　　　　　　　　　　　: 福岡県...」形式に変換
+        // 同一行に「査定依頼者建物名号室」が続く場合はその手前で切る
         const m_addr = line.match(/^査定依頼者住所\s+(.+)/);
         if (m_addr) {
+          const addrRaw = m_addr[1];
+          // 「査定依頼者建物名号室」以降を除去（同一行に続く場合の対策）
+          const addrOnly = addrRaw.split('査定依頼者建物名号室')[0].trim();
           convertedLines.push('■ご住所　　　　　　　　:');
-          convertedLines.push('　　　　　　　　　　　　: ' + m_addr[1].trim());
+          convertedLines.push('　　　　　　　　　　　　: ' + addrOnly);
           continue;
         }
 
