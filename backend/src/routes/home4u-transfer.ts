@@ -352,6 +352,7 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
       ? inquiryDateTime.replace(/^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}:\d{2}:\d{2})$/, '$1-$2-$3T$4')
       : null;
     const inquiryDateObj = inquiryDateTime ? new Date(inquiryDateTime.replace(/\//g, '-')) : new Date();
+    console.log(`[home4u-transfer] inquiryDateTimeISO: "${inquiryDateTimeISO}"`);
 
     // 物件種別
     const propertyTypeRaw = extractData2(cleanedBody, '■物件種別');
@@ -462,10 +463,11 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
                 : !existingDatetime && !inquiryDateTimeISO;
 
               // 比較2: 同じ電話番号で直近10分以内に登録されたレコードがある場合もスキップ
-              // （HOME4Uは同じ案件を複数社に配信するため、短時間に同内容のメールが複数届く）
               const createdAt = existing.created_at ? new Date(existing.created_at) : null;
               const now = new Date();
-              const isRecentDuplicate = createdAt && (now.getTime() - createdAt.getTime()) < 10 * 60 * 1000; // 10分以内
+              const isRecentDuplicate = createdAt && (now.getTime() - createdAt.getTime()) < 10 * 60 * 1000;
+
+              console.log(`[home4u-transfer] 重複チェック: ${existing.seller_number} isSameDatetime=${isSameDatetime} isRecentDuplicate=${isRecentDuplicate} existingDatetime="${existingDatetime}" inquiryDateTimeISO="${inquiryDateTimeISO}" createdAt="${existing.created_at}"`);
 
               if (isSameDatetime || isRecentDuplicate) {
                 const reason = isSameDatetime ? '反響日時一致' : '直近10分以内に同一電話番号で登録済み';
