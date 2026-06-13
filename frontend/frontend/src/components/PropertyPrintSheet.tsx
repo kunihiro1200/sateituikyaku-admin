@@ -177,20 +177,20 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
           <div style={{ display: 'flex', gap: 4, padding: '4px', height: 'calc(198mm - 62px)', boxSizing: 'border-box' }}>
 
             {/* 左カラム：物件写真 13枚 4列×4行 */}
-            <div style={{ flex: '0 0 52%', overflow: 'hidden' }}>
-              <div style={{ fontSize: 9, fontWeight: 'bold', color: '#d32f2f', marginBottom: 3 }}>
+            <div style={{ flex: '0 0 52%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontSize: 9, fontWeight: 'bold', color: '#d32f2f', marginBottom: 3, flexShrink: 0 }}>
                 物件写真（{displayImages.length}枚）
               </div>
-              {/* 写真グリッド：1行4枚、高さ46pxで4行 = 合計~196px */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+              {/* 写真グリッド：4列×4行、縦横均等配置 */}
+              <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, alignContent: 'space-between' }}>
                 {displayImages.map((img, i) => (
-                  <div key={i} style={{ width: 'calc(25% - 2px)', position: 'relative' }}>
+                  <div key={i} style={{ position: 'relative', aspectRatio: '4/3' }}>
                     <img
                       src={img}
                       alt={`写真${i + 1}`}
                       style={{
                         width: '100%',
-                        height: 46,
+                        height: '100%',
                         objectFit: 'cover',
                         display: 'block',
                         border: '1px solid #ddd',
@@ -207,10 +207,10 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
             </div>
 
             {/* 右カラム：物件情報 + 地図 */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, overflow: 'hidden' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, overflow: 'hidden', minHeight: 0 }}>
 
               {/* 物件情報テーブル */}
-              <div>
+              <div style={{ flexShrink: 0 }}>
                 <div style={{ fontSize: 9, fontWeight: 'bold', color: '#d32f2f', marginBottom: 3 }}>
                   物件情報
                 </div>
@@ -230,16 +230,16 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
                 </table>
               </div>
 
-              {/* 地図 */}
+              {/* 地図：残り高さをすべて使う */}
               {mapUrl && (
-                <div style={{ flex: 1, minHeight: 0 }}>
-                  <div style={{ fontSize: 9, fontWeight: 'bold', color: '#d32f2f', marginBottom: 3 }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                  <div style={{ fontSize: 9, fontWeight: 'bold', color: '#d32f2f', marginBottom: 3, flexShrink: 0 }}>
                     地図
                   </div>
                   <img
                     src={mapUrl}
                     alt="地図"
-                    style={{ width: '100%', height: '100%', maxHeight: 220, objectFit: 'cover', display: 'block', border: '1px solid #ddd' }}
+                    style={{ flex: 1, width: '100%', objectFit: 'cover', display: 'block', border: '1px solid #ddd', minHeight: 0 }}
                   />
                 </div>
               )}
