@@ -459,10 +459,16 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                     subject = header["value"]
                     break
 
-            # 返信・転送はスキップ（HOME4Uはすべて「Re: [HOME4U] 査定依頼」の形式で届くため除外）
-            # LIFULL HOME'Sも「Re: 【LIFULL HOME'S】＜実名＞査定依頼がありました」で届く場合がある
             reply_prefix_pattern = re.compile(r'^(Re|Fwd?|FW|RE|転送)\s*:', re.IGNORECASE)
-            if reply_prefix_pattern.match(subject) and HOME4U_SUBJECT_PREFIX not in subject and LIFULL_SUBJECT_KEYWORD not in subject:
+
+            # HOME4Uの処理方針：
+            # - 「Re: [HOME4U] 査定依頼」= スタッフがコメントを書いた返信メール → 転記する
+            # - 「[HOME4U] 査定依頼」（Re:なし）= コメントなしの自動通知メール → スキップ
+            # Re:ありが1通だけ来るので、それだけ処理すれば重複も起きない
+            is_reply = bool(reply_prefix_pattern.match(subject))
+
+            # HOME4U以外のRe:/転送メールはスキップ
+            if is_reply and HOME4U_SUBJECT_PREFIX not in subject and LIFULL_SUBJECT_KEYWORD not in subject:
                 notified_ids.add(msg_id)
                 save_notified_ids(notified_ids)
                 continue
@@ -490,15 +496,12 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                     logging.info("  [DB転記] イエウール検知 → ieul-transfer を非同期実行します")
                     trigger_ieul_transfer(body)
                 elif HOME4U_SUBJECT_PREFIX in subject:
-                    # HOME4Uは本文に「HOME4Uログアウト」が含まれる場合のみ転記
-                    # （バックエンド側でも同じチェックをしているが、ここでも事前フィルタ）
-                    if 'HOME4Uログアウト' in body:
-                        # 【重要】スレッドスキップを廃止：全通バックエンドに送る
-                        # 理由: 同一スレッドでも1通目コメントなし・2通目コメントありのケースがある
-                        #       バックエンド側に「同一電話番号+同一反響日時」の重複チェックがあり、
-                        #       重複スキップ時にコメントがあれば既存レコードを更新する仕組みがある
-                        logging.info("  [DB転記] HOME4U検知 → home4u-transfer を非同期実行します")
-                        # コメント部分デバッグ：HOME4Uログアウト周辺を出力
+                    # HOME4Uは「Re:」付きのメール（スタッフコメントあり）だけ転記する
+                    # 「Re:」なし = コメントなしの自動通知メール → スキップ
+                    if not is_reply:
+                        logging.info(f"  [スキップ] HOME4U自動通知（Re:なし）: {subject[:50]}")
+                    elif 'HOME4Uログアウト' in body:
+                        logging.info("  [DB転記] HOME4U(Re:あり)検知 → home4u-transfer を非同期実行します")
                         body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
                         for idx, line in enumerate(body_lines):
                             if 'HOME4Uログアウト' in line:
@@ -521,27 +524,13 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                 notified_ids.add(msg_id)
                 save_notified_ids(notified_ids)
 
-            # matched=Falseの場合: 件名にHOME4U_SUBJECT_PREFIXが含まれる場合のみ転記を試みる
-            # ※ 本文に「HOME4Uログアウト」が含まれていても、件名がHOME4U関連でなければ絶対に転記しない
-            # （他のメールのHTML引用にHOME4Uログアウトが混入するケースを防ぐ）
+            # matched=Falseの場合: HOME4U以外は何もしない
+            # （HOME4UのRe:メールはsubject_matchesでmatched=Trueになるため、ここには来ない）
             else:
                 if HOME4U_SUBJECT_PREFIX in subject:
-                    body = decode_body(msg_detail["payload"])
-                    if body and 'HOME4Uログアウト' in body:
-                        logging.info(f"\n[{datetime.now().strftime('%H:%M:%S')}] 🔔 HOME4U本文検知（Re:スキップ回避）: {subject}")
-                        # 【重要】スレッドスキップを廃止：全通バックエンドに送る
-                        # バックエンド側の重複チェック（同一電話番号+同一反響日時）に委ねる
-                        # コメント部分デバッグ：HOME4Uログアウト周辺を出力
-                        body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
-                        for idx, line in enumerate(body_lines):
-                            if 'HOME4Uログアウト' in line:
-                                surrounding = body_lines[max(0, idx-1):idx+6]
-                                logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
-                                break
-                        trigger_home4u_transfer(body)
-                    else:
-                        logging.info(f"  [未処理] HOME4U件名だが本文にHOME4Uログアウトなし: {subject[:80]}")
-                # HOME4U以外のmatched=Falseはスキップ（本文にHOME4Uログアウトが含まれていても無視）
+                    # Re:なしHOME4Uがここに来るケースは通常ない（matched=Trueになるはず）
+                    # 念のためスキップログだけ記録
+                    logging.info(f"  [未処理] HOME4U件名だが件名マッチせず: {subject[:80]}")
 
                 notified_ids.add(msg_id)
                 save_notified_ids(notified_ids)
