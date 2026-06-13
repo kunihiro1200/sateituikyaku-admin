@@ -106,7 +106,8 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
   <style>
     @page { size: A4 landscape; margin: 6mm; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: "Hiragino Kaku Gothic ProN", Meiryo, sans-serif; font-size: 9pt; background: #fff; }
+    body { font-family: "Hiragino Kaku Gothic ProN", Meiryo, sans-serif; font-size: 9pt; background: #fff; overflow: hidden; }
+    .print-sheet { width: 285mm; height: 198mm; overflow: hidden; }
     img { display: block; }
   </style>
 </head>
@@ -176,6 +177,9 @@ ${sheetEl.innerHTML}
           fontSize: 9,
           color: '#222',
           boxSizing: 'border-box',
+          width: '285mm',
+          height: '198mm',
+          overflow: 'hidden',
         }}>
 
           {/* ヘッダー */}
@@ -204,10 +208,10 @@ ${sheetEl.innerHTML}
           </div>
 
           {/* メインコンテンツ（左右2カラム） */}
-          <div style={{ display: 'flex', gap: 4, padding: '4px 4px 4px 4px' }}>
+          <div style={{ display: 'flex', gap: 4, padding: '4px', height: 'calc(198mm - 62px)', boxSizing: 'border-box' }}>
 
             {/* 左カラム：物件写真 */}
-            <div style={{ flex: '0 0 52%' }}>
+            <div style={{ flex: '0 0 52%', overflow: 'hidden' }}>
               <div style={{ fontSize: 9, fontWeight: 'bold', color: '#d32f2f', marginBottom: 3 }}>
                 物件写真（{displayImages.length}枚）
               </div>
@@ -220,7 +224,7 @@ ${sheetEl.innerHTML}
                       alt={`写真${i + 1}`}
                       style={{
                         width: '100%',
-                        height: 72,
+                        height: 68,
                         objectFit: 'cover',
                         display: 'block',
                         border: '1px solid #ddd',
@@ -237,7 +241,7 @@ ${sheetEl.innerHTML}
             </div>
 
             {/* 右カラム：物件情報 + 地図 */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, overflow: 'hidden' }}>
 
               {/* 物件情報テーブル */}
               <div>
@@ -262,14 +266,14 @@ ${sheetEl.innerHTML}
 
               {/* 地図 */}
               {mapUrl && (
-                <div>
+                <div style={{ flex: 1, minHeight: 0 }}>
                   <div style={{ fontSize: 9, fontWeight: 'bold', color: '#d32f2f', marginBottom: 3 }}>
                     地図
                   </div>
                   <img
                     src={mapUrl}
                     alt="地図"
-                    style={{ width: '100%', display: 'block', border: '1px solid #ddd' }}
+                    style={{ width: '100%', height: '100%', maxHeight: 220, objectFit: 'cover', display: 'block', border: '1px solid #ddd' }}
                   />
                 </div>
               )}
