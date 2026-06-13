@@ -1965,6 +1965,20 @@ export default function BuyerViewingResultPage() {
                 </>
               );
             })()}
+
+            {/* 10万円キャンペーンお渡し済みチェック（ヒアリング項目の下） */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2 }}>
+              <input
+                type="checkbox"
+                id="campaign-handed-over-hearing"
+                checked={campaignHandedOver}
+                onChange={(e) => setCampaignHandedOver(e.target.checked)}
+                style={{ width: 18, height: 18, cursor: 'pointer' }}
+              />
+              <label htmlFor="campaign-handed-over-hearing" style={{ cursor: 'pointer', fontSize: '0.95rem', fontWeight: 'bold' }}>
+                10万円キャンペーン お渡し済み
+              </label>
+            </Box>
           </Box>
 
           {/* 気づきフィールド */}
