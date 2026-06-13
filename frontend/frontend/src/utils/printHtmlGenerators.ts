@@ -392,7 +392,7 @@ export function generatePage4Html(propertyAddress: string, propertyPrice: number
         <th style="${td};${thG};text-align:center;width:160px;">備考</th>
       </tr>
       ${detailRow('印紙代（売買契約書貼付）',f(inshi),'')}
-      ${detailRow('所有権移転、抵当権設定費用等',f(shoyuken),'評価額によって異なります')}
+      ${detailRow('所有権移転等',f(shoyuken),'評価額によって異なります')}
       ${detailRow('仲介手数料',f(chukai),'●801万円以上（3%+6万×消費税）\n●800万円以下（33万円）')}
       ${detailRow('固定資産税・都市計画税の清算金','実費','引渡日で按分します')}
       ${detailRow('火災保険料・地震保険料',f(kasai),'プランによって異なります')}
@@ -452,7 +452,7 @@ export function generatePage4CashHtml(propertyAddress: string, propertyPrice: nu
         <th style="${td};${thG};text-align:center;width:160px;">備考</th>
       </tr>
       ${detailRow('印紙代（売買契約書貼付）',f(inshi),'')}
-      ${detailRow('所有権移転、抵当権設定費用等',f(shoyuken),'評価額によって異なります')}
+      ${detailRow('所有権移転等',f(shoyuken),'評価額によって異なります')}
       ${detailRow('仲介手数料',f(chukai),'●801万円以上（3%+6万×消費税）\n●800万円以下（33万円）')}
       ${detailRow('固定資産税・都市計画税の清算金','実費','引渡日で按分します')}
       ${detailRow('火災保険料・地震保険料',f(kasai),'プランによって異なります')}

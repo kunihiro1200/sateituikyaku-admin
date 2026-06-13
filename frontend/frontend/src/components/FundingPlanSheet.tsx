@@ -238,7 +238,7 @@ const FundingPlanSheet = React.forwardRef<HTMLDivElement, FundingPlanSheetProps>
 
           {/* 所有権移転 */}
           <DetailRow
-            label="所有権移転、抵当権設定費用等"
+            label="所有権移転等"
             amount={fmt(shoyuken)}
             note="評価額によって異なります"
           />
