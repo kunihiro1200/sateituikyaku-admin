@@ -210,12 +210,12 @@ ${sheetEl.innerHTML}
           {/* メインコンテンツ（左右2カラム） */}
           <div style={{ display: 'flex', gap: 4, padding: '4px', height: 'calc(198mm - 62px)', boxSizing: 'border-box' }}>
 
-            {/* 左カラム：物件写真 */}
+            {/* 左カラム：物件写真 13枚 4列×4行 */}
             <div style={{ flex: '0 0 52%', overflow: 'hidden' }}>
               <div style={{ fontSize: 9, fontWeight: 'bold', color: '#d32f2f', marginBottom: 3 }}>
                 物件写真（{displayImages.length}枚）
               </div>
-              {/* 写真グリッド：1行4枚 */}
+              {/* 写真グリッド：1行4枚、高さ46pxで4行 = 合計~196px */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
                 {displayImages.map((img, i) => (
                   <div key={i} style={{ width: 'calc(25% - 2px)', position: 'relative' }}>
@@ -224,7 +224,7 @@ ${sheetEl.innerHTML}
                       alt={`写真${i + 1}`}
                       style={{
                         width: '100%',
-                        height: 68,
+                        height: 46,
                         objectFit: 'cover',
                         display: 'block',
                         border: '1px solid #ddd',
@@ -233,7 +233,7 @@ ${sheetEl.innerHTML}
                     <div style={{
                       position: 'absolute', bottom: 0, left: 0, right: 0,
                       background: 'rgba(0,0,0,0.55)', color: '#fff',
-                      fontSize: 7, textAlign: 'center', lineHeight: '13px'
+                      fontSize: 7, textAlign: 'center', lineHeight: '12px'
                     }}>{i + 1}</div>
                   </div>
                 ))}
