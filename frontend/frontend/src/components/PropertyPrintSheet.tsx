@@ -1,4 +1,3 @@
-import { Box, Typography, Grid } from '@mui/material';
 import { useEffect, useState } from 'react';
 
 interface PropertyPrintSheetProps {
@@ -8,41 +7,38 @@ interface PropertyPrintSheetProps {
 
 /**
  * 物件情報を横向きA4 1枚にまとめて印刷するコンポーネント
- * OpenAI/Claude AIで解析したデータを見やすくレイアウト
+ * 印刷時に画像が消えないようposition:absolute・overflow:hiddenを一切使わないシンプルな実装
  */
 export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheetProps) {
   const [enhancedData, setEnhancedData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // 福岡判定
+  const isFukuoka = (data?.address || '').includes('福岡');
+  const companyName = isFukuoka ? '株式会社くじら不動産' : '株式会社いふう';
+  const companyAddress = isFukuoka ? '福岡市中央区舞鶴3-1-10' : '大分市舞鶴町1-3-30 STビル1F';
+
   useEffect(() => {
-    // AI解析を実行
     enhanceDataWithAI();
   }, [data]);
 
   const enhanceDataWithAI = async () => {
     try {
       setLoading(true);
-      
-      // バックエンドのAI解析エンドポイントを呼び出し
       const backendUrl = import.meta.env.MODE === 'production'
         ? 'https://sateituikyaku-admin-backend.vercel.app'
         : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
-      
+
       const response = await fetch(`${backendUrl}/api/ai/enhance-property-data`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ propertyData: data }),
       });
 
-      if (!response.ok) {
-        throw new Error('AI解析に失敗しました');
-      }
-
+      if (!response.ok) throw new Error('AI解析失敗');
       const result = await response.json();
       setEnhancedData(result.enhanced);
-    } catch (error) {
-      console.error('AI解析エラー:', error);
-      // エラー時は元のデータを使用
+    } catch {
       setEnhancedData(data);
     } finally {
       setLoading(false);
@@ -51,367 +47,198 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
 
   if (loading || !enhancedData) {
     return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        backgroundColor: '#fff'
+      <div style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 9999, fontSize: 18
       }}>
-        <Typography>AI解析中...</Typography>
-      </Box>
+        AI解析中...
+      </div>
     );
   }
 
-  // 主要な画像を取得（間取り図、外観、内観）
-  const floorPlanImage = enhancedData.images?.find((img: string) => 
-    img.includes('間取') || enhancedData.image_categories?.['区画・間取り']?.includes(img)
-  ) || enhancedData.image_categories?.['区画・間取り']?.[0];
+  // 画像リスト（最大13枚）
+  const images: string[] = enhancedData.images || data.images || [];
+  const displayImages = images.slice(0, 13);
 
-  const exteriorImage = enhancedData.images?.find((img: string) => 
-    img.includes('外観')
-  ) || enhancedData.image_categories?.['外観・室内']?.[0];
+  // 物件情報フィールド
+  const fields = [
+    { label: '所在地', value: enhancedData.details?.['所在地'] || enhancedData.address },
+    { label: '価格',   value: enhancedData.details?.['価格']   || enhancedData.price },
+    { label: '間取り', value: enhancedData.details?.['間取り'] || enhancedData.layout },
+    { label: '専有面積', value: enhancedData.details?.['専有面積'] || enhancedData.area },
+    { label: '土地面積', value: enhancedData.details?.['土地面積'] || enhancedData.land_area },
+    { label: '階建/階', value: enhancedData.details?.['階建/階'] || enhancedData.details?.['階建 / 階'] },
+    { label: '築年月', value: enhancedData.details?.['築年月'] || enhancedData.built_year },
+    { label: '駐車場', value: enhancedData.details?.['駐車場'] || enhancedData.parking },
+    { label: '物件種目', value: enhancedData.details?.['物件種目'] },
+    { label: '引渡時期', value: enhancedData.details?.['引渡可能時期'] },
+  ].filter(f => f.value);
 
-  const interiorImages = enhancedData.image_categories?.['外観・室内']?.slice(1, 13) || 
-    enhancedData.images?.slice(0, 12) || [];
+  const mapsApiKey = (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY || '';
+  const mapUrl = enhancedData.lat && enhancedData.lng
+    ? `https://maps.googleapis.com/maps/api/staticmap?center=${enhancedData.lat},${enhancedData.lng}&zoom=15&size=500x300&markers=color:red%7C${enhancedData.lat},${enhancedData.lng}&key=${mapsApiKey}`
+    : null;
 
   return (
     <>
       <style>{`
         @media print {
-          @page {
-            size: A4 landscape;
-            margin: 5mm;
-          }
-          html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 297mm !important;
-            height: 210mm !important;
-            overflow: hidden !important;
-          }
-          .no-print, .original-content {
-            display: none !important;
-          }
+          @page { size: A4 landscape; margin: 6mm; }
+          body > *:not(#print-root) { display: none !important; }
+          #print-root { display: block !important; }
+          .no-print { display: none !important; }
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-            page-break-inside: avoid !important;
-            page-break-after: avoid !important;
-            page-break-before: avoid !important;
           }
           .print-sheet {
-            width: 287mm !important;
-            height: 200mm !important;
-            margin: 0 !important;
-            padding: 5mm !important;
+            width: 285mm !important;
             box-shadow: none !important;
-            overflow: hidden !important;
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-          }
-          img {
-            max-height: 100% !important;
-            page-break-inside: avoid !important;
+            margin: 0 !important;
           }
         }
         @media screen {
-          .print-sheet-overlay {
+          #print-root {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: #666;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #555;
             z-index: 9998;
-            overflow: auto;
-            padding: 20px;
+            overflow-y: auto;
+            padding: 20px 20px 40px;
           }
           .print-sheet {
-            width: 297mm;
-            height: 210mm;
+            width: 285mm;
             margin: 0 auto;
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            background: #fff;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4);
           }
         }
       `}</style>
 
-      {/* フルスクリーンオーバーレイ */}
-      <Box className="print-sheet-overlay">
-        {/* 閉じるボタン（画面表示時のみ） */}
-        <Box className="no-print" sx={{ 
-          position: 'fixed', 
-          top: 20, 
-          right: 20, 
-          zIndex: 9999,
-          display: 'flex',
-          gap: 2
+      <div id="print-root">
+        {/* 操作ボタン（印刷時非表示） */}
+        <div className="no-print" style={{
+          position: 'fixed', top: 16, right: 16, zIndex: 9999,
+          display: 'flex', gap: 8
         }}>
-          <button
-            onClick={() => window.print()}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#666',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            印刷
-          </button>
-          <button
-            onClick={onClose}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#999',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            閉じる
-          </button>
-        </Box>
+          <button onClick={() => window.print()} style={{
+            padding: '10px 20px', background: '#1976d2', color: '#fff',
+            border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 14
+          }}>印刷</button>
+          <button onClick={onClose} style={{
+            padding: '10px 20px', background: '#888', color: '#fff',
+            border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 14
+          }}>閉じる</button>
+        </div>
 
-        {/* A4横向き1枚のレイアウト */}
-        <Box className="print-sheet" sx={{ 
-        width: '297mm',
-        height: '210mm',
-        maxWidth: '297mm',
-        maxHeight: '210mm',
-        backgroundColor: '#fff',
-        padding: '5mm',
-        boxSizing: 'border-box',
-        fontFamily: '"Hiragino Kaku Gothic ProN", "Meiryo", sans-serif',
-        overflow: 'hidden',
-        position: 'relative',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        {/* ヘッダー（赤背景） */}
-        <Box sx={{ 
-          backgroundColor: '#d32f2f',
-          color: '#fff',
-          padding: '4px 10px',
-          marginBottom: '4px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          minHeight: '50px',
-          flexShrink: 0
+        {/* A4横向きシート */}
+        <div className="print-sheet" style={{
+          fontFamily: '"Hiragino Kaku Gothic ProN", Meiryo, sans-serif',
+          fontSize: 9,
+          color: '#222',
+          boxSizing: 'border-box',
         }}>
-          <Box>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', fontSize: '20px' }}>
-              {enhancedData.address || '住所情報なし'}
-            </Typography>
-            <Typography variant="body2" sx={{ fontSize: '14px' }}>
-              {enhancedData.access || ''}
-            </Typography>
-          </Box>
-          <Box sx={{ textAlign: 'right' }}>
-            <Typography variant="h4" sx={{ fontWeight: 'bold', fontSize: '28px' }}>
-              {enhancedData.price || '価格情報なし'}
-            </Typography>
-            <Typography variant="body2" sx={{ fontSize: '12px' }}>
-              株式会社いふう
-            </Typography>
-            <Typography variant="body2" sx={{ fontSize: '11px' }}>
-              大分県舞鶴町1-3-30 STビル1F
-            </Typography>
-          </Box>
-        </Box>
 
-        {/* メインコンテンツ */}
-        <Grid container spacing={0.5} sx={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
-          {/* 左側：物件写真（最大9枚に削減） */}
-          <Grid item xs={6} sx={{ height: '100%', overflow: 'hidden' }}>
-            <Box sx={{ 
-              border: '1px solid #ddd',
-              padding: '4px',
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-              boxSizing: 'border-box'
-            }}>
-              <Typography variant="subtitle2" sx={{ 
-                fontWeight: 'bold', 
-                marginBottom: '2px',
-                color: '#d32f2f',
-                fontSize: '10px',
-                flexShrink: 0
-              }}>
-                物件写真 ({interiorImages.length + 1}枚)
-              </Typography>
-              
-              {/* 間取り図（大きめ） */}
-              {floorPlanImage && (
-                <Box sx={{ marginBottom: '2px', flexShrink: 0 }}>
-                  <img 
-                    src={floorPlanImage} 
-                    alt="間取り図" 
-                    style={{ 
-                      width: '100%', 
-                      height: 'auto',
-                      maxHeight: '70px',
-                      objectFit: 'contain',
-                      border: '1px solid #eee',
-                      display: 'block'
-                    }} 
-                  />
-                </Box>
+          {/* ヘッダー */}
+          <div style={{
+            background: '#d32f2f', color: '#fff',
+            padding: '6px 10px',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 'bold', lineHeight: 1.3 }}>
+                {enhancedData.address || '住所情報なし'}
+              </div>
+              {enhancedData.access && (
+                <div style={{ fontSize: 11, marginTop: 2, opacity: 0.9 }}>
+                  {enhancedData.access}
+                </div>
               )}
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 24, fontWeight: 'bold' }}>
+                {enhancedData.price || '価格情報なし'}
+              </div>
+              <div style={{ fontSize: 11 }}>{companyName}</div>
+              <div style={{ fontSize: 10, opacity: 0.9 }}>{companyAddress}</div>
+            </div>
+          </div>
 
-              {/* その他の写真（グリッド表示・最大12枚） */}
-              <Grid container spacing={0.2} sx={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
-                {interiorImages.slice(0, 12).map((img: string, index: number) => (
-                  <Grid item xs={3} key={index}>
-                    <Box sx={{ 
-                      position: 'relative',
-                      paddingTop: '75%',
-                      overflow: 'hidden',
-                      border: '1px solid #eee'
-                    }}>
-                      <img 
-                        src={img} 
-                        alt={`物件画像${index + 2}`}
-                        style={{ 
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover'
-                        }} 
-                      />
-                      <Typography variant="caption" sx={{ 
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        backgroundColor: 'rgba(0,0,0,0.6)',
-                        color: '#fff',
-                        textAlign: 'center',
-                        fontSize: '8px',
-                        padding: '1px'
-                      }}>
-                        {index + 2}
-                      </Typography>
-                    </Box>
-                  </Grid>
+          {/* メインコンテンツ（左右2カラム） */}
+          <div style={{ display: 'flex', gap: 4, padding: '4px 4px 4px 4px' }}>
+
+            {/* 左カラム：物件写真 */}
+            <div style={{ flex: '0 0 52%' }}>
+              <div style={{ fontSize: 9, fontWeight: 'bold', color: '#d32f2f', marginBottom: 3 }}>
+                物件写真（{displayImages.length}枚）
+              </div>
+              {/* 写真グリッド：1行4枚 */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                {displayImages.map((img, i) => (
+                  <div key={i} style={{ width: 'calc(25% - 2px)', position: 'relative' }}>
+                    <img
+                      src={img}
+                      alt={`写真${i + 1}`}
+                      style={{
+                        width: '100%',
+                        height: 72,
+                        objectFit: 'cover',
+                        display: 'block',
+                        border: '1px solid #ddd',
+                      }}
+                    />
+                    <div style={{
+                      position: 'absolute', bottom: 0, left: 0, right: 0,
+                      background: 'rgba(0,0,0,0.55)', color: '#fff',
+                      fontSize: 7, textAlign: 'center', lineHeight: '13px'
+                    }}>{i + 1}</div>
+                  </div>
                 ))}
-              </Grid>
-            </Box>
-          </Grid>
+              </div>
+            </div>
 
-          {/* 右側：物件詳細情報 */}
-          <Grid item xs={6} sx={{ height: '100%', overflow: 'hidden' }}>
-            <Box sx={{ 
-              display: 'flex',
-              flexDirection: 'column',
-              height: '100%',
-              gap: 0.5,
-              overflow: 'hidden'
-            }}>
-              {/* 物件情報 */}
-              <Box sx={{ 
-                border: '1px solid #ddd',
-                padding: '4px',
-                flex: '0 0 auto',
-                maxHeight: '50%',
-                overflow: 'hidden'
-              }}>
-                <Typography variant="subtitle2" sx={{ 
-                  fontWeight: 'bold', 
-                  marginBottom: '2px',
-                  color: '#d32f2f',
-                  fontSize: '10px'
-                }}>
+            {/* 右カラム：物件情報 + 地図 */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+
+              {/* 物件情報テーブル */}
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 'bold', color: '#d32f2f', marginBottom: 3 }}>
                   物件情報
-                </Typography>
-                <Grid container spacing={0.2} sx={{ fontSize: '9px' }}>
-                  {[
-                    { label: '所在地', value: enhancedData.details?.['所在地'] || enhancedData.address },
-                    { label: '交通', value: enhancedData.details?.['交通'] || enhancedData.access },
-                    { label: '価格', value: enhancedData.details?.['価格'] || enhancedData.price },
-                    { label: '物件種目', value: enhancedData.details?.['物件種目'] },
-                    { label: '間取り', value: enhancedData.details?.['間取り'] || enhancedData.layout },
-                    { label: '専有面積', value: enhancedData.details?.['専有面積'] || enhancedData.area },
-                    { label: '階建/階', value: enhancedData.details?.['階建/階'] || enhancedData.details?.['階建 / 階'] || enhancedData.floor },
-                    { label: '築年月', value: enhancedData.details?.['築年月'] || enhancedData.built_year },
-                    { label: '駐車場', value: enhancedData.details?.['駐車場'] || enhancedData.parking },
-                    { label: '土地権利', value: enhancedData.details?.['土地権利'] },
-                    { label: '引渡可能時期', value: enhancedData.details?.['引渡可能時期'] },
-                  ].filter(item => item.value).map((item, index) => (
-                    <Grid item xs={12} key={index}>
-                      <Box sx={{ display: 'flex', borderBottom: '1px solid #f0f0f0', padding: '0.5px 0' }}>
-                        <Typography sx={{ 
-                          width: '70px', 
-                          fontWeight: 'bold',
-                          fontSize: '8px',
-                          color: '#666',
-                          flexShrink: 0
-                        }}>
-                          {item.label}
-                        </Typography>
-                        <Typography sx={{ 
-                          flex: 1,
-                          fontSize: '8px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {item.value}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Box>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 8 }}>
+                  <tbody>
+                    {fields.map((f, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{
+                          width: 60, padding: '2px 4px',
+                          fontWeight: 'bold', color: '#555',
+                          whiteSpace: 'nowrap', verticalAlign: 'top'
+                        }}>{f.label}</td>
+                        <td style={{ padding: '2px 4px', verticalAlign: 'top' }}>{f.value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
               {/* 地図 */}
-              {enhancedData.lat && enhancedData.lng && (
-                <Box sx={{ 
-                  border: '1px solid #ddd',
-                  flex: 1,
-                  overflow: 'hidden',
-                  position: 'relative',
-                  minHeight: 0,
-                  maxHeight: '50%'
-                }}>
-                  <img 
-                    src={`https://maps.googleapis.com/maps/api/staticmap?center=${enhancedData.lat},${enhancedData.lng}&zoom=15&size=600x400&markers=color:red%7C${enhancedData.lat},${enhancedData.lng}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`}
-                    alt="地図"
-                    style={{ 
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover'
-                    }}
-                  />
-                  <Typography variant="caption" sx={{ 
-                    position: 'absolute',
-                    top: 4,
-                    left: 4,
-                    backgroundColor: 'rgba(255,255,255,0.9)',
-                    padding: '2px 6px',
-                    borderRadius: '2px',
-                    fontSize: '10px',
-                    fontWeight: 'bold'
-                  }}>
+              {mapUrl && (
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 'bold', color: '#d32f2f', marginBottom: 3 }}>
                     地図
-                  </Typography>
-                </Box>
+                  </div>
+                  <img
+                    src={mapUrl}
+                    alt="地図"
+                    style={{ width: '100%', display: 'block', border: '1px solid #ddd' }}
+                  />
+                </div>
               )}
-            </Box>
-          </Grid>
-        </Grid>
-      </Box>
-      </Box>
+            </div>
+          </div>
+        </div>
+      </div>
     </>
   );
 }
