@@ -136,14 +136,27 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
 
         // 「物件都道府県 福岡県 物件市区町村 福岡市東区 物件町字 西戸崎 物件丁目番地号 2丁目4-17」
         // → 「■物件所在地　　　　　　: 福岡県福岡市東区西戸崎2丁目4-17」に結合
+        // ※ キーワード前改行挿入により物件市区町村・物件町字・物件丁目番地号が別行になる場合も対応
         const m_pref = line.match(/^物件都道府県\s+(\S+)/);
         if (m_pref) {
           const pref = m_pref[1];
-          const city = (line.match(/物件市区町村\s+(\S+)/) || [])[1] || '';
-          const town = (line.match(/物件町字\s+(\S+)/) || [])[1] || '';
-          const block = (line.match(/物件丁目番地号\s+(\S+)/) || [])[1] || '';
+          // 同一行に市区町村等がある場合と、別行に分かれている場合の両方に対応
+          // まず同一行から取得を試みる
+          let city = (line.match(/物件市区町村\s+(\S+)/) || [])[1] || '';
+          let town = (line.match(/物件町字\s+(\S+)/) || [])[1] || '';
+          let block = (line.match(/物件丁目番地号\s+(\S+)/) || [])[1] || '';
           const bldg = (line.match(/物件建物名\s+(\S+)/) || [])[1] || '';
           const roomNo = (line.match(/物件号室\s+(\S+)/) || [])[1] || '';
+          // 同一行に含まれない場合は後続行を先読みして結合
+          const curIdx = lines.indexOf(rawLine);
+          for (let ni = curIdx + 1; ni < Math.min(curIdx + 6, lines.length); ni++) {
+            const nl = lines[ni].trim();
+            if (!city && nl.match(/^物件市区町村\s+/)) { city = (nl.match(/^物件市区町村\s+(\S+)/) || [])[1] || ''; continue; }
+            if (!town && nl.match(/^物件町字\s+/)) { town = (nl.match(/^物件町字\s+(\S+)/) || [])[1] || ''; continue; }
+            if (!block && nl.match(/^物件丁目番地号\s+/)) { block = (nl.match(/^物件丁目番地号\s+(\S+)/) || [])[1] || ''; continue; }
+            // 他のキーワード行に来たら終了
+            if (nl.match(/^(物件種別|物件建物名|物件号室|専有延べ床面積|土地面積|間取り|築年|現況|姓|査定ナンバー)\s/)) break;
+          }
           const addr = [pref, city, town, block, bldg !== '物件建物名' ? bldg : '', roomNo !== '物件号室' ? roomNo : ''].join('').replace(/\s+/g, '');
           convertedLines.push('■物件所在地　　　　　　: ' + addr);
           continue;
@@ -380,6 +393,7 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
     const addrSection = extractData(cleanedBody, '■ご住所', '■電話番号').trim();
     const addrLines = addrSection.split('\n').map(l => l.replace(/^[：:]\s*/, '').trim()).filter(l => l);
     const address = addrLines.join(' ').trim();
+    console.log(`[home4u-transfer] addrSection: "${addrSection.substring(0, 100).replace(/\n/g, '\\n')}", address: "${address.substring(0, 100)}"`);
 
     if (!name || !tel) {
       return res.status(400).json({ success: false, error: `名前または電話番号が取得できませんでした name=${name} tel=${tel}` });
