@@ -15,6 +15,7 @@ import {
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import HouseMakerModal from './HouseMakerModal';
 import MansionModal, { MANSION_BRANDS } from './MansionModal';
+import { EvaluationPointsEditor } from './EvaluationPointsEditor';
 
 export interface VisitPreparationPopupProps {
   open: boolean;
@@ -209,6 +210,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
 }) => {
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
   const [mansionModalOpen, setMansionModalOpen] = useState(false);
+  const [evaluationPointsOpen, setEvaluationPointsOpen] = useState(false);
 
   // ハウスメーカー名がコメントに含まれるか判定
   const plainComment = commentHtml.replace(/<[^>]+>/g, '');
@@ -354,45 +356,26 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         <span>（リンクなし）</span>
       ),
     },
-    // 9. 評価ポイント！（物件住所をコピーしてスプレッドシートを開く）
+    // 9. 評価ポイント！（システム内で入力・保存）
     {
       label: '評価ポイント！',
-      content: (() => {
-        // FI始まり = 福岡店、AA始まり = 大分店
-        const isFukuoka = sellerNumber?.startsWith('FI');
-        const isOita = sellerNumber?.startsWith('AA');
-        if (!isFukuoka && !isOita) return <span>（対象外）</span>;
-        const url = isFukuoka
-          ? 'https://docs.google.com/spreadsheets/d/1319AyjQXSC8APWLvm4vRnuI0z6zezzWOKQQ4cxyZ-5o/edit?gid=26251715#gid=26251715'
-          : 'https://docs.google.com/spreadsheets/d/1319AyjQXSC8APWLvm4vRnuI0z6zezzWOKQQ4cxyZ-5o/edit?gid=25766722#gid=25766722';
-        const handleClick = async (ev: React.MouseEvent) => {
-          ev.preventDefault();
-          if (propertyAddress) {
-            try {
-              await navigator.clipboard.writeText(propertyAddress);
-            } catch {
-              // フォールバック
-              const el = document.createElement('textarea');
-              el.value = propertyAddress;
-              document.body.appendChild(el);
-              el.select();
-              document.execCommand('copy');
-              document.body.removeChild(el);
-            }
-          }
-          window.open(url, '_blank');
-        };
-        return (
-          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-            <a href={url} onClick={handleClick} style={{ cursor: 'pointer' }}>
-              評価ポイント！
-            </a>
-            <Typography component="span" sx={{ color: 'success.main', fontSize: '0.8rem' }}>
-              ※クリックで物件住所をコピー済み → B8セルにCtrl+V
-            </Typography>
-          </Box>
-        );
-      })(),
+      content: sellerId ? (
+        <Box
+          component="span"
+          sx={{
+            color: '#d32f2f',
+            fontWeight: 'bold',
+            textDecoration: 'underline',
+            cursor: 'pointer',
+            '&:hover': { opacity: 0.7 },
+          }}
+          onClick={() => setEvaluationPointsOpen(true)}
+        >
+          評価ポイント！
+        </Box>
+      ) : (
+        <span>（リンクなし）</span>
+      ),
     },
     // 10. ハウスメーカー（コメントにハウスメーカー名がある場合のみ）
     ...(hasHouseMaker ? [{
@@ -500,6 +483,29 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
       onClose={() => setMansionModalOpen(false)}
       address={addressForMansion}
     />
+
+    {/* 評価ポイント入力モーダル */}
+    <Dialog
+      open={evaluationPointsOpen}
+      onClose={() => setEvaluationPointsOpen(false)}
+      maxWidth="md"
+      fullWidth
+    >
+      <DialogTitle>評価ポイント入力</DialogTitle>
+      <DialogContent>
+        {sellerId && (
+          <EvaluationPointsEditor
+            sellerId={sellerId}
+            propertyAddress={propertyAddress}
+          />
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setEvaluationPointsOpen(false)} variant="outlined">
+          閉じる
+        </Button>
+      </DialogActions>
+    </Dialog>
   </>
   );
 };

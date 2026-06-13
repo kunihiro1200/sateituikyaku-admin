@@ -18,6 +18,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import PrintIcon from '@mui/icons-material/Print';
 import HouseMakerModal from './HouseMakerModal';
 import NearbyMapModal from './NearbyMapModal';
+import { EvaluationPointsDisplay } from './EvaluationPointsEditor';
 
 export interface ViewingPreparationPopupProps {
   open: boolean;
@@ -395,7 +396,7 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
               />
             </ListItem>
           )}
-          {/* 評価ポイント！（物件番号に応じてリンク先を変更） */}
+          {/* 評価ポイント！（システムから取得して表示） */}
           {propertyNumber && (propertyNumber.startsWith('FI') || propertyNumber.startsWith('AA')) && (
             <ListItem
               component="li"
@@ -403,20 +404,16 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
             >
               <ListItemText
                 primary={
-                  <Typography component="span">
-                    評価ポイント！：
-                    <a
-                      href={
-                        propertyNumber.startsWith('FI')
-                          ? 'https://docs.google.com/spreadsheets/d/1319AyjQXSC8APWLvm4vRnuI0z6zezzWOKQQ4cxyZ-5o/edit?gid=26251715#gid=26251715'
-                          : 'https://docs.google.com/spreadsheets/d/1319AyjQXSC8APWLvm4vRnuI0z6zezzWOKQQ4cxyZ-5o/edit?gid=25766722#gid=25766722'
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      評価ポイント！
-                    </a>
-                  </Typography>
+                  <Box>
+                    <Typography component="span" sx={{ fontWeight: 'bold' }}>
+                      評価ポイント！：
+                    </Typography>
+                    <Box sx={{ mt: 0.5 }}>
+                      <EvaluationPointsDisplay
+                        sellerNumber={propertyNumber}
+                      />
+                    </Box>
+                  </Box>
                 }
               />
             </ListItem>

@@ -78,6 +78,7 @@ import mansionJyuchoRoutes from './routes/mansionJyucho';
 import kenchikuGaiyoshoRoutes from './routes/kenchikuGaiyosho';
 import koteiKazeiCompareRoutes from './routes/koteiKazeiCompare';
 import tokiExtractRoutes from './routes/tokiExtract';
+import evaluationPointsRoutes from './routes/evaluationPoints';
 import propertyPreviewRoutes from './routes/propertyPreview';
 import tateuriPreviewRoutes from './routes/tateuriPreview';
 import scrapedUrlsRoutes from './routes/scraped-urls';
@@ -1014,6 +1015,7 @@ app.use('/api/mansion-jyucho', mansionJyuchoRoutes); // マンション重調解
 app.use('/api/kenchiku-gaiyosho', kenchikuGaiyoshoRoutes); // 建築概要書解析API（認証不要 - /api catchallより前に登録）
 app.use('/api/kotei-kazei-compare', koteiKazeiCompareRoutes); // 固定資産税公課証明比較API（認証不要 - /api catchallより前に登録）
 app.use('/api/toki-extract', tokiExtractRoutes); // 謄本読み取りAPI（認証不要 - /api catchallより前に登録）
+app.use('/api', evaluationPointsRoutes); // 評価ポイントAPI（売主ごと）
 app.use('/api/scraped-urls', scrapedUrlsRoutes); // スクレイピングURL重複チェック（認証不要 - /api catchallより前に登録）
 app.use('/api/hazard', hazardAnalyzeRoutes); // ハザードマップAI解析（認証不要 - /api catchallより前に登録）
 app.use('/api', inquiryHistoryRoutes);
