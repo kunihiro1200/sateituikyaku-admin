@@ -217,11 +217,10 @@ export default function PropertyPreviewPage() {
     fetchWithRetry().finally(() => setLoading(false));
   }, [slug]);
 
-  // 印刷モード（?print=1）: データ取得後に自動で印刷シートを開いて印刷
+  // 印刷モード（?print=1）: データ取得後に自動で window.print()
   useEffect(() => {
     if (!isPrintMode || !data) return;
-    setShowPrintSheet(true);
-    // 少し待って画像が読み込まれてから印刷
+    // showPrintSheetは使わない。印刷専用レイアウトを直接表示してからprint
     const timer = setTimeout(() => {
       window.print();
     }, 2500);
@@ -264,6 +263,116 @@ export default function PropertyPreviewPage() {
       <p style={{ color: '#c00' }}>{error || '物件情報が見つかりません'}</p>
     </div>
   );
+
+  // ── 印刷モード専用レイアウト（?print=1） ──────────────────
+  if (isPrintMode) {
+    const printImages = (data.images || []).slice(0, 13);
+    const isFukuoka = (data.address || '').includes('福岡');
+    const companyName = isFukuoka ? '株式会社くじら不動産' : '株式会社いふう';
+    const companyAddr = isFukuoka ? '福岡市中央区舞鶴3-1-10' : '大分市舞鶴町1-3-30 STビル1F';
+    const mapsKey = (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY || '';
+    const mapUrl = data.lat && data.lng
+      ? `https://maps.googleapis.com/maps/api/staticmap?center=${data.lat},${data.lng}&zoom=15&size=500x300&markers=color:red%7C${data.lat},${data.lng}&key=${mapsKey}`
+      : null;
+    const printFields = [
+      { label: '所在地', value: data.details?.['所在地'] || data.address },
+      { label: '価格',   value: data.price },
+      { label: '間取り', value: data.details?.['間取り'] || data.layout },
+      { label: '専有面積', value: data.details?.['専有面積'] || data.area },
+      { label: '土地面積', value: data.details?.['土地面積'] },
+      { label: '築年月', value: data.details?.['築年月'] || data.built_year },
+      { label: '駐車場', value: data.details?.['駐車場'] || data.parking },
+    ].filter(f => f.value);
+
+    return (
+      <>
+        <style>{`
+          @page { size: A4 landscape; margin: 6mm; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
+          body { margin: 0; padding: 0; background: white; }
+          @media screen {
+            body { background: #555; display: flex; justify-content: center; padding: 20px; }
+            .print-page { box-shadow: 0 4px 24px rgba(0,0,0,0.4); }
+          }
+          @media print {
+            body { background: white; padding: 0; display: block; }
+            .print-page { box-shadow: none !important; }
+          }
+        `}</style>
+        <div className="print-page" style={{
+          width: '285mm', background: '#fff',
+          fontFamily: '"Hiragino Kaku Gothic ProN", Meiryo, sans-serif',
+          fontSize: 11, color: '#222',
+        }}>
+          {/* ヘッダー */}
+          <div style={{
+            background: '#d32f2f', color: '#fff', padding: '6px 10px',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 'bold' }}>{data.address || '住所情報なし'}</div>
+              {data.access && <div style={{ fontSize: 11, opacity: 0.9, marginTop: 2 }}>{data.access}</div>}
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 24, fontWeight: 'bold' }}>{data.price || ''}</div>
+              <div style={{ fontSize: 11 }}>{companyName}</div>
+              <div style={{ fontSize: 10, opacity: 0.9 }}>{companyAddr}</div>
+            </div>
+          </div>
+          {/* コンテンツ */}
+          <div style={{ display: 'flex', gap: 6, padding: '6px' }}>
+            {/* 左：写真 */}
+            <div style={{ flex: '0 0 52%' }}>
+              <div style={{ fontSize: 10, fontWeight: 'bold', color: '#d32f2f', marginBottom: 4 }}>
+                物件写真（{printImages.length}枚）
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, alignContent: 'space-between' }}>
+                {printImages.map((img: string, i: number) => (
+                  <div key={i} style={{ position: 'relative' }}>
+                    <img src={img} alt={`写真${i + 1}`} style={{
+                      width: '100%', aspectRatio: '4/3', objectFit: 'cover',
+                      display: 'block', border: '1px solid #ddd',
+                    }} />
+                    <div style={{
+                      position: 'absolute', bottom: 0, left: 0, right: 0,
+                      background: 'rgba(0,0,0,0.55)', color: '#fff',
+                      fontSize: 7, textAlign: 'center', lineHeight: '13px',
+                    }}>{i + 1}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* 右：情報 + 地図 */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 'bold', color: '#d32f2f', marginBottom: 4 }}>物件情報</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
+                  <tbody>
+                    {printFields.map((f, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ width: 60, padding: '3px 4px', fontWeight: 'bold', color: '#555', whiteSpace: 'nowrap' }}>{f.label}</td>
+                        <td style={{ padding: '3px 4px' }}>{f.value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {mapUrl && (
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 'bold', color: '#d32f2f', marginBottom: 4 }}>地図</div>
+                  <img src={mapUrl} alt="地図" style={{
+                    width: '100%', height: 130, objectFit: 'cover',
+                    display: 'block', border: '1px solid #ddd',
+                  }} />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+  // ── 印刷モードここまで ──────────────────────────────────
 
   const images = data.images || [];
 
