@@ -497,6 +497,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
           <EvaluationPointsEditor
             sellerId={sellerId}
             propertyAddress={propertyAddress}
+            sellerNumber={sellerNumber}
           />
         )}
       </DialogContent>

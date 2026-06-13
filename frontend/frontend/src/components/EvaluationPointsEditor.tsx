@@ -10,6 +10,7 @@ import {
   Paper,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
+import PrintIcon from '@mui/icons-material/Print';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 
@@ -33,6 +34,7 @@ interface EvaluationPointsData {
 interface EvaluationPointsEditorProps {
   sellerId: string;
   propertyAddress?: string;
+  sellerNumber?: string;
   readOnly?: boolean;
 }
 
@@ -56,6 +58,7 @@ const EMPTY_DATA: EvaluationPointsData = {
 export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
   sellerId,
   propertyAddress,
+  sellerNumber,
   readOnly = false,
 }) => {
   const [data, setData] = useState<EvaluationPointsData>(EMPTY_DATA);
@@ -123,6 +126,69 @@ export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
       setError('保存に失敗しました');
     } finally {
       setSaving(false);
+    }
+  };
+
+  /** 印刷用ウィンドウを開く */
+  const handlePrint = () => {
+    const points = [data.point_1, data.point_2, data.point_3, data.point_4, data.point_5,
+      data.point_6, data.point_7, data.point_8, data.point_9, data.point_10];
+    const cautions = [data.caution_1, data.caution_2, data.caution_3, data.caution_4];
+
+    const pointRows = points.map((p, i) => `
+      <tr>
+        <td style="width:30px;font-weight:bold;text-align:center;padding:6px 4px;">${i + 1}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #333;background:#FFF8E1;">${p || ''}</td>
+      </tr>
+      <tr><td colspan="2" style="height:4px;"></td></tr>
+    `).join('');
+
+    const cautionRows = cautions.map((c, i) => `
+      <tr>
+        <td style="width:30px;font-weight:bold;text-align:center;padding:6px 4px;">${i + 1}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #333;background:#FFECB3;">${c || ''}</td>
+      </tr>
+      <tr><td colspan="2" style="height:4px;"></td></tr>
+    `).join('');
+
+    // 売主番号に応じて会社情報を切り替え
+    const isFukuoka = sellerNumber?.startsWith('FI');
+    const companyInfo = isFukuoka
+      ? '株式会社くじら不動産<br>〒810-0073 福岡市中央区舞鶴3-1-10<br>TEL:092-401-5331 mail:tenant@ifoo-oita.com'
+      : '株式会社いふう<br>〒870-0044 大分県大分市舞鶴町1-3-30<br>TEL:097-533-2022 mail:tenant@ifoo-oita.com';
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>評価ポイント - ${propertyAddress || ''}</title>
+  <style>
+    @page { margin: 15mm; size: A4; }
+    body { font-family: 'Hiragino Kaku Gothic Pro', 'MS Gothic', sans-serif; margin: 0; padding: 20px; }
+    .header { background: #FFFF00; display: inline-block; padding: 8px 16px; font-size: 18pt; font-weight: bold; margin-bottom: 16px; }
+    .property { font-weight: bold; font-size: 12pt; margin-bottom: 12px; }
+    .description { font-size: 10pt; margin-bottom: 16px; color: #333; }
+    table { width: 100%; border-collapse: collapse; }
+    .section-title { font-weight: bold; font-size: 11pt; margin: 20px 0 10px 0; }
+    .footer { margin-top: 40px; text-align: center; font-size: 9pt; color: #333; }
+  </style>
+</head>
+<body>
+  <div class="header">物件の評価ポイント！おすすめポイント！</div>
+  <div class="property">物件：${propertyAddress || ''}</div>
+  <div class="description">＊下記内容を中心に物件の特長や魅力についてお伝えいたします！</div>
+  <table>${pointRows}</table>
+  <div class="section-title">・注意点(告知事項等）</div>
+  <table>${cautionRows}</table>
+  <div class="footer">${companyInfo}</div>
+  <script>window.onload = function() { window.print(); }</script>
+</body>
+</html>`;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
     }
   };
 
@@ -232,9 +298,16 @@ export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
         </Alert>
       )}
 
-      {/* 保存ボタン */}
+      {/* 保存・印刷ボタン */}
       {!readOnly && (
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+          <Button
+            variant="outlined"
+            startIcon={<PrintIcon />}
+            onClick={handlePrint}
+          >
+            印刷
+          </Button>
           <Button
             variant="contained"
             startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
