@@ -404,6 +404,63 @@ export const EvaluationPointsDisplay: React.FC<{
     if (sellerNumber) fetchEval();
   }, [sellerNumber]);
 
+  const handlePrint = () => {
+    const pointRows = points.map((p, i) => `
+      <tr>
+        <td style="width:30px;font-weight:bold;text-align:center;padding:6px 4px;">${i + 1}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #333;background:#FFF8E1;">${p}</td>
+      </tr>
+      <tr><td colspan="2" style="height:4px;"></td></tr>
+    `).join('');
+
+    const cautionRows = cautions.map((c, i) => `
+      <tr>
+        <td style="width:30px;font-weight:bold;text-align:center;padding:6px 4px;">${i + 1}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #333;background:#FFECB3;">${c}</td>
+      </tr>
+      <tr><td colspan="2" style="height:4px;"></td></tr>
+    `).join('');
+
+    const isFukuoka = sellerNumber?.startsWith('FI');
+    const companyInfo = isFukuoka
+      ? '株式会社くじら不動産<br>〒810-0073 福岡市中央区舞鶴3-1-10<br>TEL:092-401-5331 mail:tenant@ifoo-oita.com'
+      : '株式会社いふう<br>〒870-0044 大分県大分市舞鶴町1-3-30<br>TEL:097-533-2022 mail:tenant@ifoo-oita.com';
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>評価ポイント - ${propertyAddress || ''}</title>
+  <style>
+    @page { margin: 15mm; size: A4; }
+    body { font-family: 'Hiragino Kaku Gothic Pro', 'MS Gothic', sans-serif; margin: 0; padding: 20px; }
+    .header { background: #FFFF00; display: inline-block; padding: 8px 16px; font-size: 18pt; font-weight: bold; margin-bottom: 16px; }
+    .property { font-weight: bold; font-size: 12pt; margin-bottom: 12px; }
+    .description { font-size: 10pt; margin-bottom: 16px; color: #333; }
+    table { width: 100%; border-collapse: collapse; }
+    .section-title { font-weight: bold; font-size: 11pt; margin: 20px 0 10px 0; }
+    .footer { position: fixed; bottom: 15mm; right: 15mm; text-align: right; font-size: 9pt; color: #333; }
+  </style>
+</head>
+<body>
+  <div class="header">物件の評価ポイント！おすすめポイント！</div>
+  <div class="property">物件：${propertyAddress || ''}</div>
+  <div class="description">＊下記内容を中心に物件の特長や魅力についてお伝えいたします！</div>
+  <table>${pointRows}</table>
+  <div class="section-title">・注意点(告知事項等）</div>
+  <table>${cautionRows}</table>
+  <div class="footer">${companyInfo}</div>
+  <script>window.onload = function() { window.print(); }</script>
+</body>
+</html>`;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+    }
+  };
+
   if (loading) return <CircularProgress size={16} />;
   if (points.length === 0 && cautions.length === 0) {
     return <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>評価ポイント未入力</Typography>;
@@ -440,6 +497,11 @@ export const EvaluationPointsDisplay: React.FC<{
           ))}
         </Box>
       )}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+        <Button size="small" startIcon={<PrintIcon />} onClick={handlePrint}>
+          印刷
+        </Button>
+      </Box>
     </Paper>
   );
 };
