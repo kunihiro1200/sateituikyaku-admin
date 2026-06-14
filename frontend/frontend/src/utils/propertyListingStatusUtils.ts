@@ -133,7 +133,10 @@ export const calculatePropertyStatus = (
 
   // 1. 報告日が設定されていて、かつ今日以前の場合のみ未報告
   // 報告日が空欄（null）または将来の日付の物件は未報告カテゴリに含めない
+  // ※ ATBB状況が「公開中」（専任・公開中 or 一般・公開中）の物件のみ未報告として扱う
   const reportDate = parseDate(listing.report_date);
+  const atbbStatus = listing.atbb_status || '';
+  const isPublished = atbbStatus === '専任・公開中' || atbbStatus === '一般・公開中';
   
   // デバッグログ: 未報告判定の詳細を出力
   if (listing.property_number && listing.report_date) {
@@ -142,11 +145,13 @@ export const calculatePropertyStatus = (
       report_date_parsed: reportDate,
       today: today,
       is_past_or_today: reportDate ? reportDate <= today : false,
-      will_be_unreported: reportDate && reportDate <= today,
+      atbb_status: atbbStatus,
+      is_published: isPublished,
+      will_be_unreported: reportDate && reportDate <= today && isPublished,
     });
   }
   
-  if (reportDate && reportDate <= today) {
+  if (reportDate && reportDate <= today && isPublished) {
     const assigneeInitial = getAssigneeInitial(listing.report_assignee);
     return {
       key: 'unreported',

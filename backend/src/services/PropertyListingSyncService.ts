@@ -1303,8 +1303,10 @@ export class PropertyListingSyncService {
     const atbbStatus = String(row['atbb成約済み/非公開'] || '');
 
     // ① 未報告（最優先）
+    // ※ ATBB状況が「公開中」（専任・公開中 or 一般・公開中）の物件のみ未報告として扱う
     const reportDate = row['報告日'];
-    if (reportDate && this.isDateBeforeOrToday(reportDate)) {
+    const isPublished = atbbStatus === '専任・公開中' || atbbStatus === '一般・公開中';
+    if (reportDate && this.isDateBeforeOrToday(reportDate) && isPublished) {
       const assignee = row['報告担当_override'] || row['報告担当'] || '';
       return assignee ? `未報告 ${assignee}` : '未報告';
     }
