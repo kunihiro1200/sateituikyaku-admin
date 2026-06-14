@@ -483,7 +483,7 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                 if keyword == "【反響】アットホーム":
                     return keyword in subject  # 部分一致
                 if keyword == "【LIFULL HOME'S】＜実名＞査定依頼がありました":
-                    return keyword in subject  # 部分一致（Re:付きで届く場合がある）
+                    return keyword in subject  # 部分一致（Re:付きで届く場合があるため）
                 return subject == keyword
 
             matched = any(subject_matches(subject, keyword) for keyword in SUBJECT_KEYWORDS)
@@ -544,8 +544,13 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                     logging.info("  [DB転記] アットホーム反響（買主）検知 → athome-buyer-transfer を非同期実行します")
                     trigger_athome_buyer_transfer(body)
                 elif LIFULL_SUBJECT_KEYWORD in subject:
-                    logging.info("  [DB転記] LIFULL HOME'S検知 → lifull-transfer を非同期実行します")
-                    trigger_lifull_transfer(body)
+                    # LIFULLは「Re:」付き かつ 送信者が自分（tenant@ifoo-oita.com）のメールだけ転記する
+                    # LIFULL自身が送る元メール（Re:なし）はダブり防止のためスキップ
+                    if not is_reply or not is_from_self:
+                        logging.info(f"  [スキップ] LIFULL: Re:なし または 自分以外からの送信 (sender={sender[:30]}): {subject[:50]}")
+                    else:
+                        logging.info("  [DB転記] LIFULL HOME'S(Re:あり)検知 → lifull-transfer を非同期実行します")
+                        trigger_lifull_transfer(body)
                 else:
                     logging.info(f"  [スキップ] イエウール・HOME4U・アットホーム反響・LIFULL以外のため転記なし: {subject[:50]}")
 
