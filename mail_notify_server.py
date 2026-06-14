@@ -457,10 +457,17 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
             reply_prefix_pattern = re.compile(r'^(Re|Fwd?|FW|RE|転送)\s*:', re.IGNORECASE)
 
             # HOME4Uの処理方針：
-            # - 「Re: [HOME4U] 査定依頼」= スタッフがコメントを書いた返信メール → 転記する
-            # - 「[HOME4U] 査定依頼」（Re:なし）= コメントなしの自動通知メール → スキップ
-            # Re:ありが1通だけ来るので、それだけ処理すれば重複も起きない
+            # - 「Re: [HOME4U] 査定依頼」かつ送信者が自分（tenant@ifoo-oita.com）= スタッフがコメントを書いた返信メール → 転記する
+            # - それ以外（HOME4U自身が送るRe:付きメール、Re:なし自動通知）→ スキップ
             is_reply = bool(reply_prefix_pattern.match(subject))
+            
+            # 送信者を取得
+            sender = ""
+            for header in headers:
+                if header["name"] == "From":
+                    sender = header["value"]
+                    break
+            is_from_self = "tenant@ifoo-oita.com" in sender
 
             # HOME4U以外のRe:/転送メールはスキップ
             if is_reply and HOME4U_SUBJECT_PREFIX not in subject and LIFULL_SUBJECT_KEYWORD not in subject:
@@ -491,10 +498,10 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                     logging.info("  [DB転記] イエウール検知 → ieul-transfer を非同期実行します")
                     trigger_ieul_transfer(body)
                 elif HOME4U_SUBJECT_PREFIX in subject:
-                    # HOME4Uは「Re:」付きのメール（スタッフコメントあり）だけ転記する
-                    # 「Re:」なし = コメントなしの自動通知メール → スキップ
-                    if not is_reply:
-                        logging.info(f"  [スキップ] HOME4U自動通知（Re:なし）: {subject[:50]}")
+                    # HOME4Uは「Re:」付き かつ 送信者が自分（tenant@ifoo-oita.com）のメールだけ転記する
+                    # HOME4U自身も「Re:」付きで送ってくる場合があるため、送信者で判別する
+                    if not is_reply or not is_from_self:
+                        logging.info(f"  [スキップ] HOME4U: Re:なし または 自分以外からの送信 (sender={sender[:30]}): {subject[:50]}")
                     elif 'HOME4Uログアウト' in body:
                         # 同一スレッドの最新メールのみ転記する
                         # （スレッドに複数のRe:メールが蓄積されている場合、最新1通だけ処理）
