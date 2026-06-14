@@ -203,7 +203,7 @@ export default function FukuokaTateuriPage() {
       {/* ヘッダー */}
       <header style={{ background: '#2196F3', color: '#fff', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <img src="/kujira-fudosan-logo.png" alt="くじら不動産ロゴ" style={{ height: 44, width: 'auto', objectFit: 'contain' }} />
+          <img src="https://fukuoka-tateuri.com/kujira-fudosan-logo.png" alt="くじら不動産ロゴ" style={{ height: 44, width: 'auto', objectFit: 'contain' }} />
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 'bold', margin: 0 }}>福岡の建売専門サイト</h1>
             <p style={{ fontSize: 12, margin: '2px 0 0', opacity: 0.85 }}>株式会社くじら不動産｜福岡市中央区舞鶴3－1－10　<a href="tel:0924015331" style={{ color: 'inherit', textDecoration: 'none' }}>092-401-5331</a></p>
