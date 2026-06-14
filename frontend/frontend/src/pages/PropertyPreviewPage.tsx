@@ -303,6 +303,8 @@ export default function PropertyPreviewPage() {
           width: '285mm', background: '#fff',
           fontFamily: '"Hiragino Kaku Gothic ProN", Meiryo, sans-serif',
           fontSize: 11, color: '#222',
+          display: 'flex', flexDirection: 'column',
+          height: '198mm',
         }}>
           {/* ヘッダー */}
           <div style={{
@@ -320,13 +322,13 @@ export default function PropertyPreviewPage() {
             </div>
           </div>
           {/* コンテンツ */}
-          <div style={{ display: 'flex', gap: 6, padding: '6px' }}>
+          <div style={{ display: 'flex', gap: 6, padding: '6px', flex: 1 }}>
             {/* 左：写真 */}
-            <div style={{ flex: '0 0 52%' }}>
-              <div style={{ fontSize: 10, fontWeight: 'bold', color: '#d32f2f', marginBottom: 4 }}>
+            <div style={{ flex: '0 0 52%', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontSize: 10, fontWeight: 'bold', color: '#d32f2f', marginBottom: 4, flexShrink: 0 }}>
                 物件写真（{printImages.length}枚）
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, alignContent: 'space-between' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, flex: 1, alignContent: 'start' }}>
                 {printImages.map((img: string, i: number) => (
                   <div key={i} style={{ position: 'relative' }}>
                     <img src={img} alt={`写真${i + 1}`} style={{
@@ -343,8 +345,8 @@ export default function PropertyPreviewPage() {
               </div>
             </div>
             {/* 右：情報 + 地図 */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
+              <div style={{ flexShrink: 0 }}>
                 <div style={{ fontSize: 10, fontWeight: 'bold', color: '#d32f2f', marginBottom: 4 }}>物件情報</div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
                   <tbody>
@@ -358,10 +360,10 @@ export default function PropertyPreviewPage() {
                 </table>
               </div>
               {mapUrl && (
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 'bold', color: '#d32f2f', marginBottom: 4 }}>地図</div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                  <div style={{ fontSize: 10, fontWeight: 'bold', color: '#d32f2f', marginBottom: 4, flexShrink: 0 }}>地図</div>
                   <img src={mapUrl} alt="地図" style={{
-                    width: '100%', height: 130, objectFit: 'cover',
+                    width: '100%', flex: 1, minHeight: 160, objectFit: 'cover',
                     display: 'block', border: '1px solid #ddd',
                   }} />
                 </div>
