@@ -296,6 +296,7 @@ const PROPERTY_TYPE_OPTIONS = [
   { label: 'マンション', value: 'apartment' },
   { label: '土地', value: 'land' },
   { label: '商業用', value: 'commercial' },
+  { label: '収益', value: 'income' },
 ];
 
 const STRUCTURE_OPTIONS = [
@@ -505,16 +506,20 @@ const CallModePage = () => {
       '戸': '戸建て',
       'マ': 'マンション',
       '土': '土地',
+      '収': '収益',
       // English forms (legacy)
       'detached_house': '戸建て',
       'apartment': 'マンション',
       'land': '土地',
       'commercial': '商業用',
+      'income': '収益',
       // Full Japanese forms
       '戸建': '戸建て',
       '戸建て': '戸建て',
       'マンション': 'マンション',
       '土地': '土地',
+      '収益': '収益',
+      '収益物件': '収益',
     };
     return labels[type] || type;
   };
@@ -542,6 +547,11 @@ const CallModePage = () => {
       // 商業用
       '商業用': 'commercial',
       'commercial': 'commercial',
+      // 収益
+      '収': 'income',
+      '収益': 'income',
+      '収益物件': 'income',
+      'income': 'income',
     };
     return map[type] ?? type;
   };
@@ -5278,6 +5288,7 @@ HP：https://ifoo-oita.com/
                             <MenuItem value="apartment">マンション</MenuItem>
                             <MenuItem value="land">土地</MenuItem>
                             <MenuItem value="commercial">商業用</MenuItem>
+                            <MenuItem value="income">収益</MenuItem>
                           </Select>
                         </FormControl>
                       </Grid>
