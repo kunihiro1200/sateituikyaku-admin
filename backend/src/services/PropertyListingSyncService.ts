@@ -1422,9 +1422,9 @@ export class PropertyListingSyncService {
   private getAssigneeStatus(assignee: string): string {
     const mapping: Record<string, string> = {
       '山本': 'Y専任公開中',
-      '麻生': '麻生公開中',
-      '久': '久・専任公開中',
-      '久米': '久・専任公開中',
+      '麻生': '麻専任公開中',
+      '久': '久専任公開中',
+      '久米': '久専任公開中',
       '裏': 'U専任公開中',
       '林': '林・専任公開中',
       '国広': 'K専任公開中',
