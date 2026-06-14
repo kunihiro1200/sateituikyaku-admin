@@ -530,14 +530,20 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                                 continue
                         except Exception as e:
                             logging.info(f"  [警告] スレッド確認失敗（処理継続）: {e}")
-                        logging.info("  [DB転記] HOME4U(Re:あり)検知 → home4u-transfer を非同期実行します")
-                        body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
-                        for idx, line in enumerate(body_lines):
-                            if 'HOME4Uログアウト' in line:
-                                surrounding = body_lines[max(0, idx-1):idx+6]
-                                logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
-                                break
-                        trigger_home4u_transfer(body)
+                        # 同一スレッドを2回転記しない（同じRe:メールが複数IDで返ってくる場合の対策）
+                        if thread_id in home4u_processed_threads:
+                            logging.info(f"  [スキップ] HOME4U: スレッド {thread_id[:16]}... は既に処理済み")
+                        else:
+                            home4u_processed_threads.add(thread_id)
+                            save_home4u_processed_threads(home4u_processed_threads)
+                            logging.info("  [DB転記] HOME4U(Re:あり)検知 → home4u-transfer を非同期実行します")
+                            body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+                            for idx, line in enumerate(body_lines):
+                                if 'HOME4Uログアウト' in line:
+                                    surrounding = body_lines[max(0, idx-1):idx+6]
+                                    logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
+                                    break
+                            trigger_home4u_transfer(body)
                     else:
                         logging.info(f"  [スキップ] HOME4Uだが本文に「HOME4Uログアウト」なし: {subject[:50]}")
                 elif ATHOME_BUYER_SUBJECT_PREFIX in subject:
