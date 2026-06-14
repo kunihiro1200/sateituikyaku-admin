@@ -56,7 +56,7 @@ const STATUS_PRIORITY: Record<string, number> = {
   // 優先度低グループ（末尾）
   '一般公開中物件': 20,
   'Y専任公開中': 21,
-  '生・専任公開中': 22,
+  '麻生公開中': 22,
   '久・専任公開中': 23,
   'U専任公開中': 24,
   '林・専任公開中': 25,
@@ -92,7 +92,7 @@ const HIGH_PRIORITY_BG_STATUSES = new Set([
 // sidebar_statusが古いデータ（'専任・公開中'）の場合にフロントで分解する
 const ASSIGNEE_TO_SENIN_STATUS: Record<string, string> = {
   '山本': 'Y専任公開中',
-  '生野': '生・専任公開中',
+  '麻生': '麻生公開中',
   '久': '久・専任公開中',
   '裏': 'U専任公開中',
   '林': '林・専任公開中',

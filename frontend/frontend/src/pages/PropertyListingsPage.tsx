@@ -363,10 +363,10 @@ export default function PropertyListingsPage() {
       } else if (sidebarStatus === 'レインズ登録＋SUUMO URL 要登録') {
         // 「レインズ登録＋SUUMO URL 要登録」は動的判定（DBのsidebar_statusに依存しない）
         listings = listings.filter(l => calculatePropertyStatus(l as any, workTaskMap).key === 'reins_suumo_required');
-      } else if (['Y専任公開中', '生・専任公開中', '久・専任公開中', 'U専任公開中', '林・専任公開中', '林専任公開中', 'K専任公開中', 'R専任公開中', 'I専任公開中'].includes(sidebarStatus)) {
+      } else if (['Y専任公開中', '麻生公開中', '久・専任公開中', 'U専任公開中', '林・専任公開中', '林専任公開中', 'K専任公開中', 'R専任公開中', 'I専任公開中'].includes(sidebarStatus)) {
         // 担当者別専任公開中：sidebar_statusが一致するか、古いデータ('専任・公開中')でsales_assigneeが一致するものを含む
         const assigneeMap: Record<string, string> = {
-          'Y専任公開中': '山本', '生・専任公開中': '生野', '久・専任公開中': '久',
+          'Y専任公開中': '山本', '麻生公開中': '麻生', '久・専任公開中': '久',
           'U専任公開中': '裏', '林・専任公開中': '林', 'K専任公開中': '国広',
           '林専任公開中': '林田', 'R専任公開中': '木村', 'I専任公開中': '角井',
         };
@@ -407,7 +407,7 @@ export default function PropertyListingsPage() {
     }
 
     // ソート: 非公開物件を後ろに配置し、同一ステータス内は公開日（distribution_date）降順
-    const isExclusivePublicStatus = ['Y専任公開中', '生・専任公開中', '久・専任公開中', 'U専任公開中', '林・専任公開中', '林専任公開中', 'K専任公開中', 'R専任公開中', 'I専任公開中'].includes(sidebarStatus || '');
+    const isExclusivePublicStatus = ['Y専任公開中', '麻生公開中', '久・専任公開中', 'U専任公開中', '林・専任公開中', '林専任公開中', 'K専任公開中', 'R専任公開中', 'I専任公開中'].includes(sidebarStatus || '');
     listings = listings.sort((a, b) => {
       const aIsPrivate = isPrivateStatus(a.atbb_status);
       const bIsPrivate = isPrivateStatus(b.atbb_status);

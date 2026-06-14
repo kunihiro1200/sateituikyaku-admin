@@ -59,12 +59,23 @@ const REINS_FIELDS: {
   { key: 'report_date_setting', label: '報告日設定', options: ['する', 'しない'] },
 ];
 
-/** 物件番号に FI が含まれるかどうかで会社情報を切り替える */
-function isFiProperty(pn: string | undefined): boolean {
-  return (pn ?? '').toUpperCase().includes('FI');
-}
-
-const COMPANY_INFO_IFOO = `***************************
+function buildEmailBody(sellerName: string, suumoUrl: string, reinsUrl: string, propertyNumber: string): string {
+  const suumoLine = suumoUrl ? `■SUUMO\n${suumoUrl}` : '■SUUMO';
+  const reinsLine = reinsUrl ? `■レインズ\n${reinsUrl}` : '■レインズ';
+  // seller_name に既に「様」が含まれている場合は重複しないようにする
+  const nameWithSama = sellerName.endsWith('様') ? sellerName : `${sellerName}様`;
+  const isFI = propertyNumber.startsWith('FI');
+  const companyName = isFI ? '株式会社くじら不動産' : '株式会社いふう';
+  const signature = isFI
+    ? `***************************
+株式会社くじら不動産
+住所：福岡市中央区舞鶴３丁目１－１０
+TEL：092-401-5331
+MAIL：tenant@ifoo-oita.com
+HP：https://kujira-fudosan.com/
+店休日：毎週水曜日　年末年始、GW、盆
+***************************`
+    : `***************************
 株式会社 いふう
 〒870-0044
 大分市舞鶴町1丁目3-30
@@ -73,18 +84,6 @@ HP：https://ifoo-oita.com/
 店休日：毎週水曜日　年末年始、GW、盆
 ***************************`;
 
-const COMPANY_INFO_KUJIRA = `〒810-0073福岡市中央区舞鶴3-1-10オフィスニューガイアセレス赤坂門No.19-201
-株式会社くじら不動産（株式会社いふう）
-TEL:092-401-5331
-Mail:tenant@ifoo-oita.com`;
-
-function buildEmailBody(sellerName: string, suumoUrl: string, propertyNumber?: string): string {
-  const suumoLine = suumoUrl ? `■SUUMO\n${suumoUrl}` : '■SUUMO';
-  // seller_name に既に「様」が含まれている場合は重複しないようにする
-  const nameWithSama = sellerName.endsWith('様') ? sellerName : `${sellerName}様`;
-  const isFI = isFiProperty(propertyNumber);
-  const companyName = isFI ? '株式会社くじら不動産（株式会社いふう）' : '株式会社いふう';
-  const companyInfo = isFI ? COMPANY_INFO_KUJIRA : COMPANY_INFO_IFOO;
   return `${nameWithSama}
 
 お世話になっております。
@@ -96,13 +95,14 @@ ${companyName}です。
 【各サイトのご案内】
 ■athome
 ${suumoLine}
+${reinsLine}
 
 今後、当社全員で、お客様の大切な物件の販売に努めてまいります。
 2週間に1度担当より、進捗状況をご報告させていただきます。
 
 よろしくお願い申し上げます。
 
-${companyInfo}`;
+${signature}`;
 }
 
 export default function ReinsRegistrationPage() {
@@ -120,7 +120,11 @@ export default function ReinsRegistrationPage() {
   const [gmailOpen, setGmailOpen] = useState(false);
   const [emailTo, setEmailTo] = useState('');
   const [emailCc, setEmailCc] = useState('');
-  const [emailSubject, setEmailSubject] = useState('');
+  const [emailSubject, setEmailSubject] = useState(
+    propertyNumber?.startsWith('FI')
+      ? 'サイト公開＆レインズ登録証明書のご案内（株式会社くじら不動産）'
+      : 'サイト公開＆レインズ登録証明書のご案内（株式会社いふう）'
+  );
   const [emailBody, setEmailBody] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
@@ -162,23 +166,21 @@ export default function ReinsRegistrationPage() {
 
       const employees: Employee[] = empRes.data?.employees || empRes.data || [];
       const assignee = d.sales_assignee ?? '';
-      const assigneeEmployee = employees.find(
-        (e) =>
-          e.initials === assignee ||
-          e.name === assignee ||
-          (assignee && e.name.includes(assignee)) ||
-          (assignee && assignee.includes(e.initials || ''))
-      );
+      // 担当者名で従業員を検索（完全一致を優先）
+      const assigneeEmployee = assignee
+        ? employees.find((e) => e.initials === assignee || e.name === assignee) ||
+          employees.find((e) => e.name.includes(assignee)) ||
+          employees.find((e) => e.initials && e.initials.length > 0 && assignee.includes(e.initials))
+        : undefined;
 
       setEmailTo(d.seller_email ?? '');
       setEmailCc(assigneeEmployee?.email ?? '');
-      const isFI = isFiProperty(propertyNumber);
       setEmailSubject(
-        isFI
-          ? 'サイト公開＆レインズ登録証明書のご案内（株式会社くじら不動産（株式会社いふう））'
+        propertyNumber?.startsWith('FI')
+          ? 'サイト公開＆レインズ登録証明書のご案内（株式会社くじら不動産）'
           : 'サイト公開＆レインズ登録証明書のご案内（株式会社いふう）'
       );
-      setEmailBody(buildEmailBody(d.seller_name ?? '売主', d.suumo_url ?? '', propertyNumber));
+      setEmailBody(buildEmailBody(d.seller_name ?? '売主', d.suumo_url ?? '', d.reins_url ?? '', propertyNumber ?? ''));
     } catch (error) {
       setSnackbar({ open: true, message: 'データの取得に失敗しました', severity: 'error' });
     } finally {
@@ -284,7 +286,7 @@ export default function ReinsRegistrationPage() {
       await api.put(`/api/property-listings/${propertyNumber}`, { suumo_url: suumoUrlInput });
       setSnackbar({ open: true, message: 'Suumo URLを保存しました', severity: 'success' });
       // メール本文を更新
-      setEmailBody(buildEmailBody(data.seller_name ?? '売主', suumoUrlInput));
+      setEmailBody(buildEmailBody(data.seller_name ?? '売主', suumoUrlInput, data.reins_url ?? '', propertyNumber ?? ''));
     } catch (error) {
       setData((prev) => prev ? { ...prev, suumo_url: prevValue } : prev);
       setSuumoUrlInput(prevValue ?? '');

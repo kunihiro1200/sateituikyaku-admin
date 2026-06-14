@@ -38,7 +38,7 @@ export const PROPERTY_STATUS_DEFINITIONS = [
   { key: 'private_email_only', label: '非公開（配信メールのみ）', color: '#795548' },
   { key: 'general_public', label: '一般公開中物件', color: '#8bc34a' },
   { key: 'exclusive_y', label: 'Y専任公開中', color: '#ff5722' },
-  { key: 'exclusive_ikuno', label: '生・専任公開中', color: '#ff5722' },
+  { key: 'exclusive_asou', label: '麻生公開中', color: '#ff5722' },
   { key: 'exclusive_hisa', label: '久・専任公開中', color: '#ff5722' },
   { key: 'exclusive_u', label: 'U専任公開中', color: '#ff5722' },
   { key: 'exclusive_hayashi', label: '林・専任公開中', color: '#ff5722' },
@@ -104,7 +104,7 @@ const getAssigneeInitial = (assignee: string | null | undefined): string => {
   if (!assignee) return '';
   const initialMap: Record<string, string> = {
     '山本': 'Y',
-    '生野': '生',
+    '麻生': '麻生',
     '久': '久',
     '裏': 'U',
     '林': '林',
@@ -175,7 +175,6 @@ export const calculatePropertyStatus = (
     return PROPERTY_STATUS_DEFINITIONS.find(s => s.key === 'general_listing_unconfirmed')!;
   }
 
-  const atbbStatus = listing.atbb_status || '';
   const isPrePublish = atbbStatus.includes('公開前');
   const isGeneralPublic = atbbStatus === '一般・公開中';
   const isExclusivePublic = atbbStatus === '専任・公開中';
@@ -233,7 +232,7 @@ export const calculatePropertyStatus = (
     const assigneeInitial = getAssigneeInitial(listing.sales_assignee);
     const assigneeMap: Record<string, string> = {
       'Y': 'exclusive_y',
-      '生': 'exclusive_ikuno',
+      '麻生': 'exclusive_asou',
       '久': 'exclusive_hisa',
       'U': 'exclusive_u',
       '林': 'exclusive_hayashi',
