@@ -365,18 +365,18 @@ export default function PropertyListingsPage() {
         listings = listings.filter(l => calculatePropertyStatus(l as any, workTaskMap).key === 'reins_suumo_required');
       } else if (['Y専任公開中', '麻生公開中', '久・専任公開中', 'U専任公開中', '林・専任公開中', '林専任公開中', 'K専任公開中', 'R専任公開中', 'I専任公開中'].includes(sidebarStatus)) {
         // 担当者別専任公開中：sidebar_statusが一致するか、古いデータ('専任・公開中')でsales_assigneeが一致するものを含む
-        const assigneeMap: Record<string, string> = {
-          'Y専任公開中': '山本', '麻生公開中': '麻生', '久・専任公開中': '久',
-          'U専任公開中': '裏', '林・専任公開中': '林', 'K専任公開中': '国広',
-          '林専任公開中': '林田', 'R専任公開中': '木村', 'I専任公開中': '角井',
+        const assigneeMap: Record<string, string[]> = {
+          'Y専任公開中': ['山本'], '麻生公開中': ['麻生'], '久・専任公開中': ['久', '久米'],
+          'U専任公開中': ['裏'], '林・専任公開中': ['林'], 'K専任公開中': ['国広'],
+          '林専任公開中': ['林田'], 'R専任公開中': ['木村'], 'I専任公開中': ['角井'],
         };
-        const targetAssignee = assigneeMap[sidebarStatus];
+        const targetAssignees = assigneeMap[sidebarStatus] || [];
         listings = listings.filter(l =>
           l.sidebar_status === sidebarStatus ||
-          (l.sidebar_status === '専任・公開中' && l.sales_assignee === targetAssignee) ||
+          (l.sidebar_status === '専任・公開中' && targetAssignees.includes(l.sales_assignee || '')) ||
           // sidebar_statusが「未報告 X」形式で担当者が一致する物件も含める
           ((l.sidebar_status || '').replace(/\s+/g, '').startsWith('未報告') &&
-            l.atbb_status === '専任・公開中' && l.sales_assignee === targetAssignee)
+            l.atbb_status === '専任・公開中' && targetAssignees.includes(l.sales_assignee || ''))
         );
       } else if (sidebarStatus === '非公開予定（確認後）') {
         // 「非公開予定（確認後）」: calculatePropertyStatus() の結果で判定（カウントとの一致を保証）
