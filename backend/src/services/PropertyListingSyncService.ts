@@ -917,6 +917,21 @@ export class PropertyListingSyncService {
         continue;
       }
 
+      // ⚠️ 重要: report_assignee, report_date, report_completedは報告画面から手動で設定されるため、
+      // スプレッドシートからの上書きを防止する。
+      // スプレッドシートの値が空欄や古い値の場合、報告画面で設定した正しい値が消えてしまうため。
+      if (dbField === 'report_assignee' || dbField === 'report_date' || dbField === 'report_completed') {
+        continue;
+      }
+
+      // ⚠️ 重要: sales_priceは管理画面のprice更新時に自動同期されるため、
+      // スプレッドシートの「売買価格」列からの上書きを防止する。
+      // 公開物件サイトがsales_priceを価格表示に使用しているため、
+      // スプレッドシート同期で古い値に戻されると公開サイトの価格がズレる。
+      if (dbField === 'sales_price') {
+        continue;
+      }
+
       const dbValue = dbProperty[dbField];
       const normalizedSpreadsheetValue = this.normalizeValue(spreadsheetValue);
       const normalizedDbValue = this.normalizeValue(dbValue);
@@ -1307,7 +1322,8 @@ export class PropertyListingSyncService {
     const reportDate = row['報告日'];
     const isPublished = atbbStatus === '専任・公開中' || atbbStatus === '一般・公開中';
     if (reportDate && this.isDateBeforeOrToday(reportDate) && isPublished) {
-      const assignee = row['報告担当_override'] || row['報告担当'] || '';
+      // 報告担当が未設定の場合は物件担当（sales_assignee）をデフォルトとして使用
+      const assignee = row['報告担当_override'] || row['報告担当'] || row['担当名（営業）'] || '';
       return assignee ? `未報告 ${assignee}` : '未報告';
     }
 
