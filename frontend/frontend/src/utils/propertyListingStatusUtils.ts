@@ -153,14 +153,19 @@ export const calculatePropertyStatus = (
   }
   
   if (reportDate && reportDate <= today && isPublished) {
-    // 報告担当が未設定の場合は物件担当（sales_assignee）をデフォルトとして使用
-    const effectiveAssignee = listing.report_assignee || listing.sales_assignee || null;
-    const assigneeInitial = getAssigneeInitial(effectiveAssignee);
-    return {
-      key: 'unreported',
-      label: `未報告${assigneeInitial}`,
-      color: '#f44336'
-    };
+    // 報告完了（report_completed=Y）の場合は未報告ではない
+    if (listing.report_completed === 'Y') {
+      // 報告済み → 未報告カテゴリに含めない、次の判定へ進む
+    } else {
+      // 報告担当が未設定の場合は物件担当（sales_assignee）をデフォルトとして使用
+      const effectiveAssignee = listing.report_assignee || listing.sales_assignee || null;
+      const assigneeInitial = getAssigneeInitial(effectiveAssignee);
+      return {
+        key: 'unreported',
+        label: `未報告${assigneeInitial}`,
+        color: '#f44336'
+      };
+    }
   }
 
   // 2. 確認が「未」
