@@ -503,6 +503,10 @@ export class PropertyListingSyncService {
       // Detect changes between spreadsheet and database
       const changes = this.detectChanges(row, dbProperty);
 
+      // sidebar_statusの再計算時にDBのreport_completedを優先する
+      // （report_completedはスプレッドシート同期から保護されているため、DBの値が正）
+      row['報告完了_override'] = dbProperty.report_completed || '';
+
       // sidebar_statusの再計算結果が現在のDB値と異なる場合も変更として検出
       const newSidebarStatus = this.calculateSidebarStatus(row, gyomuListData);
       const currentSidebarStatus = dbProperty.sidebar_status || '';
@@ -687,6 +691,13 @@ export class PropertyListingSyncService {
 
               // サイドバーステータスを計算して更新
               // gyomuListDataを渡して公開予定日を正しく取得する
+              // DBのreport_completedを優先（スプレッドシート同期から保護されているため）
+              const { data: dbRecord2 } = await this.supabase
+                .from('property_listings')
+                .select('report_completed')
+                .eq('property_number', update.property_number)
+                .single();
+              update.spreadsheet_data['報告完了_override'] = dbRecord2?.report_completed || '';
               const sidebarStatus = this.calculateSidebarStatus(update.spreadsheet_data, gyomuListData);
               changedFieldsOnly.sidebar_status = sidebarStatus;
 
@@ -914,6 +925,21 @@ export class PropertyListingSyncService {
       // ⚠️ 重要: storage_locationは手動更新ボタンで管理されるため、自動同期から除外
       if (dbField === 'storage_location') {
         console.log(`[PropertyListingSyncService] Skipping storage_location comparison (managed by manual refresh)`);
+        continue;
+      }
+
+      // ⚠️ 重要: report_assignee, report_date, report_completedは報告画面から手動で設定されるため、
+      // スプレッドシートからの上書きを防止する。
+      // スプレッドシートの値が空欄や古い値の場合、報告画面で設定した正しい値が消えてしまうため。
+      if (dbField === 'report_assignee' || dbField === 'report_date' || dbField === 'report_completed') {
+        continue;
+      }
+
+      // ⚠️ 重要: sales_priceは管理画面のprice更新時に自動同期されるため、
+      // スプレッドシートの「売買価格」列からの上書きを防止する。
+      // 公開物件サイトがsales_priceを価格表示に使用しているため、
+      // スプレッドシート同期で古い値に戻されると公開サイトの価格がズレる。
+      if (dbField === 'sales_price') {
         continue;
       }
 
@@ -1305,9 +1331,11 @@ export class PropertyListingSyncService {
     // ① 未報告（最優先）
     // ※ ATBB状況が「公開中」（専任・公開中 or 一般・公開中）の物件のみ未報告として扱う
     const reportDate = row['報告日'];
+    const reportCompleted = row['報告完了_override'] || row['報告完了'] || '';
     const isPublished = atbbStatus === '専任・公開中' || atbbStatus === '一般・公開中';
-    if (reportDate && this.isDateBeforeOrToday(reportDate) && isPublished) {
-      const assignee = row['報告担当_override'] || row['報告担当'] || '';
+    if (reportDate && this.isDateBeforeOrToday(reportDate) && isPublished && reportCompleted !== 'Y') {
+      // 報告担当が未設定の場合は物件担当（sales_assignee）をデフォルトとして使用
+      const assignee = row['報告担当_override'] || row['報告担当'] || row['担当名（営業）'] || '';
       return assignee ? `未報告 ${assignee}` : '未報告';
     }
 

@@ -232,6 +232,85 @@ router.get('/public', async (req: Request, res: Response) => {
   }
 });
 
+// report_completed=Y の物件で property_report_history にレコードがない場合に
+// report_dateを元に簡易的な送信履歴レコードを作成する復元エンドポイント
+router.post('/restore-report-history-from-gmail', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    // 1. report_completed=Y の全物件を取得
+    const { data: reportedProperties, error: fetchError } = await supabase
+      .from('property_listings')
+      .select('property_number, report_date, report_assignee, report_completed')
+      .eq('report_completed', 'Y')
+      .not('report_date', 'is', null);
+
+    if (fetchError) {
+      res.status(500).json({ error: fetchError.message });
+      return;
+    }
+
+    console.log(`[restore-report-history] 報告完了物件: ${reportedProperties?.length || 0}件`);
+
+    // 2. 既存の report_history を取得（重複防止）
+    const { data: existingHistory } = await supabase
+      .from('property_report_history')
+      .select('property_number');
+    
+    const existingSet = new Set((existingHistory || []).map((h: any) => h.property_number));
+    console.log(`[restore-report-history] 既存履歴の物件数: ${existingSet.size}件`);
+
+    // 3. 履歴がない物件に対してレコードを作成
+    const toInsert: any[] = [];
+    for (const prop of (reportedProperties || [])) {
+      if (existingSet.has(prop.property_number)) continue;
+
+      toInsert.push({
+        property_number: prop.property_number,
+        template_name: '報告書（復元）',
+        subject: null,
+        body: null,
+        report_date: prop.report_date,
+        report_assignee: prop.report_assignee || null,
+        report_completed: 'Y',
+        sent_at: prop.report_date ? new Date(prop.report_date + 'T00:00:00+09:00').toISOString() : new Date().toISOString(),
+      });
+    }
+
+    console.log(`[restore-report-history] 挿入予定: ${toInsert.length}件`);
+
+    // 4. バッチ挿入
+    let inserted = 0;
+    let insertErrors = 0;
+    const BATCH_SIZE = 50;
+
+    for (let i = 0; i < toInsert.length; i += BATCH_SIZE) {
+      const batch = toInsert.slice(i, i + BATCH_SIZE);
+      const { error } = await supabase.from('property_report_history').insert(batch);
+      if (error) {
+        console.error(`[restore-report-history] バッチ挿入エラー:`, error.message);
+        insertErrors += batch.length;
+      } else {
+        inserted += batch.length;
+      }
+    }
+
+    res.json({
+      success: true,
+      reportedProperties: reportedProperties?.length || 0,
+      alreadyHaveHistory: existingSet.size,
+      inserted,
+      insertErrors,
+    });
+  } catch (error: any) {
+    console.error('[restore-report-history] Error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 個別取得
 router.get('/:propertyNumber', async (req: Request, res: Response): Promise<void> => {
   try {
