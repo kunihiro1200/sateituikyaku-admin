@@ -232,6 +232,155 @@ router.get('/public', async (req: Request, res: Response) => {
   }
 });
 
+// Gmail送信済みメールから報告書送信履歴を復元するエンドポイント（一度だけ実行）
+router.post('/restore-report-history-from-gmail', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { google } = require('googleapis');
+    const { GoogleAuthService } = await import('../services/GoogleAuthService');
+    
+    const googleAuthService = new GoogleAuthService();
+    const authClient = await googleAuthService.getAuthenticatedClient();
+    const gmail = google.gmail({ version: 'v1', auth: authClient });
+
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    // 物件番号パターン
+    const PROPERTY_NUMBER_REGEX = /\b([A-Z]{2}\d{3,5}(?:-\d+)?)\b/;
+
+    // 既存履歴を取得（重複防止）
+    const { data: existingHistory } = await supabase
+      .from('property_report_history')
+      .select('property_number, sent_at');
+    
+    console.log(`[restore-report-history] 既存履歴: ${existingHistory?.length || 0}件`);
+
+    // Gmail検索: 報告書メールを全件取得
+    const queries = [
+      'from:tenant@ifoo-oita.com subject:報告書 before:2026/03/15',
+      'from:tenant@ifoo-oita.com subject:報告書 after:2026/03/14',
+    ];
+
+    let allMessages: any[] = [];
+
+    for (const query of queries) {
+      let nextPageToken: string | undefined;
+      do {
+        const listResult = await gmail.users.messages.list({
+          userId: 'me',
+          q: query,
+          maxResults: 100,
+          pageToken: nextPageToken,
+        });
+        const messages = listResult.data.messages || [];
+        allMessages = allMessages.concat(messages);
+        nextPageToken = listResult.data.nextPageToken || undefined;
+      } while (nextPageToken);
+    }
+
+    // 重複除去
+    const uniqueMessages = Array.from(new Map(allMessages.map((m: any) => [m.id, m])).values());
+    console.log(`[restore-report-history] Gmail対象メール: ${uniqueMessages.length}件`);
+
+    // 各メールを解析
+    const parsedEmails: any[] = [];
+    let skipped = 0;
+    let errors = 0;
+
+    for (const msg of uniqueMessages) {
+      try {
+        const detail = await gmail.users.messages.get({
+          userId: 'me',
+          id: (msg as any).id,
+          format: 'metadata',
+          metadataHeaders: ['Subject', 'Date', 'To', 'From'],
+        });
+
+        const headers = detail.data.payload?.headers || [];
+        const subject = headers.find((h: any) => h.name === 'Subject')?.value || '';
+        const dateStr = headers.find((h: any) => h.name === 'Date')?.value || '';
+
+        // 件名から物件番号を抽出
+        const match = subject.match(PROPERTY_NUMBER_REGEX);
+        if (!match) { skipped++; continue; }
+
+        const propertyNumber = match[1];
+        const sentAt = new Date(dateStr).toISOString();
+
+        // テンプレート名推定
+        let templateName = '';
+        const templateMatch = subject.match(/報告書[（(]([^）)]+)[）)]/);
+        if (templateMatch) {
+          templateName = `報告書（${templateMatch[1]}）`;
+        } else if (subject.includes('報告書_値下げ')) {
+          const valueMatch = subject.match(/報告書_値下げ[^\s]*/);
+          templateName = valueMatch ? valueMatch[0] : '報告書_値下げ';
+        } else {
+          templateName = '報告書';
+        }
+
+        // 重複チェック
+        const sentDate = new Date(sentAt);
+        const isDuplicate = (existingHistory || []).some((h: any) => {
+          if (h.property_number !== propertyNumber) return false;
+          const existingDate = new Date(h.sent_at);
+          return Math.abs(existingDate.getTime() - sentDate.getTime()) < 60000;
+        });
+
+        if (isDuplicate) { skipped++; continue; }
+
+        parsedEmails.push({
+          property_number: propertyNumber,
+          template_name: templateName || null,
+          subject,
+          body: null,
+          report_assignee: null,
+          sent_at: sentAt,
+        });
+      } catch (err: any) {
+        errors++;
+      }
+
+      // レート制限対策
+      if ((parsedEmails.length + skipped + errors) % 100 === 0) {
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+
+    console.log(`[restore-report-history] 挿入予定: ${parsedEmails.length}件, スキップ: ${skipped}件, エラー: ${errors}件`);
+
+    // DBに挿入（バッチ処理）
+    let inserted = 0;
+    let insertErrors = 0;
+    const BATCH_SIZE = 50;
+
+    for (let i = 0; i < parsedEmails.length; i += BATCH_SIZE) {
+      const batch = parsedEmails.slice(i, i + BATCH_SIZE);
+      const { error } = await supabase.from('property_report_history').insert(batch);
+      if (error) {
+        console.error(`[restore-report-history] バッチ挿入エラー:`, error.message);
+        insertErrors += batch.length;
+      } else {
+        inserted += batch.length;
+      }
+    }
+
+    res.json({
+      success: true,
+      gmailMessages: uniqueMessages.length,
+      inserted,
+      skipped,
+      errors,
+      insertErrors,
+    });
+  } catch (error: any) {
+    console.error('[restore-report-history] Error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 個別取得
 router.get('/:propertyNumber', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -2541,155 +2690,6 @@ router.get('/:propertyNumber/nearby-cases', authenticate, async (req: Request, r
   } catch (error: any) {
     console.error('[nearby-cases] Error:', error.message);
     res.status(500).json({ error: '周辺事例の取得に失敗しました: ' + (error.message || '') });
-  }
-});
-
-// Gmail送信済みメールから報告書送信履歴を復元するエンドポイント（一度だけ実行）
-router.post('/admin/restore-report-history-from-gmail', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { google } = require('googleapis');
-    const { GoogleAuthService } = await import('../services/GoogleAuthService');
-    
-    const googleAuthService = new GoogleAuthService();
-    const authClient = await googleAuthService.getAuthenticatedClient();
-    const gmail = google.gmail({ version: 'v1', auth: authClient });
-
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_KEY!
-    );
-
-    // 物件番号パターン
-    const PROPERTY_NUMBER_REGEX = /\b([A-Z]{2}\d{3,5}(?:-\d+)?)\b/;
-
-    // 既存履歴を取得（重複防止）
-    const { data: existingHistory } = await supabase
-      .from('property_report_history')
-      .select('property_number, sent_at');
-    
-    console.log(`[restore-report-history] 既存履歴: ${existingHistory?.length || 0}件`);
-
-    // Gmail検索: 報告書メールを全件取得
-    const queries = [
-      'from:tenant@ifoo-oita.com subject:報告書 before:2026/03/15',
-      'from:tenant@ifoo-oita.com subject:報告書 after:2026/03/14',
-    ];
-
-    let allMessages: any[] = [];
-
-    for (const query of queries) {
-      let nextPageToken: string | undefined;
-      do {
-        const listResult = await gmail.users.messages.list({
-          userId: 'me',
-          q: query,
-          maxResults: 100,
-          pageToken: nextPageToken,
-        });
-        const messages = listResult.data.messages || [];
-        allMessages = allMessages.concat(messages);
-        nextPageToken = listResult.data.nextPageToken || undefined;
-      } while (nextPageToken);
-    }
-
-    // 重複除去
-    const uniqueMessages = Array.from(new Map(allMessages.map((m: any) => [m.id, m])).values());
-    console.log(`[restore-report-history] Gmail対象メール: ${uniqueMessages.length}件`);
-
-    // 各メールを解析
-    const parsedEmails: any[] = [];
-    let skipped = 0;
-    let errors = 0;
-
-    for (const msg of uniqueMessages) {
-      try {
-        const detail = await gmail.users.messages.get({
-          userId: 'me',
-          id: (msg as any).id,
-          format: 'metadata',
-          metadataHeaders: ['Subject', 'Date', 'To', 'From'],
-        });
-
-        const headers = detail.data.payload?.headers || [];
-        const subject = headers.find((h: any) => h.name === 'Subject')?.value || '';
-        const dateStr = headers.find((h: any) => h.name === 'Date')?.value || '';
-
-        // 件名から物件番号を抽出
-        const match = subject.match(PROPERTY_NUMBER_REGEX);
-        if (!match) { skipped++; continue; }
-
-        const propertyNumber = match[1];
-        const sentAt = new Date(dateStr).toISOString();
-
-        // テンプレート名推定
-        let templateName = '';
-        const templateMatch = subject.match(/報告書[（(]([^）)]+)[）)]/);
-        if (templateMatch) {
-          templateName = `報告書（${templateMatch[1]}）`;
-        } else if (subject.includes('報告書_値下げ')) {
-          const valueMatch = subject.match(/報告書_値下げ[^\s]*/);
-          templateName = valueMatch ? valueMatch[0] : '報告書_値下げ';
-        } else {
-          templateName = '報告書';
-        }
-
-        // 重複チェック
-        const sentDate = new Date(sentAt);
-        const isDuplicate = (existingHistory || []).some((h: any) => {
-          if (h.property_number !== propertyNumber) return false;
-          const existingDate = new Date(h.sent_at);
-          return Math.abs(existingDate.getTime() - sentDate.getTime()) < 60000;
-        });
-
-        if (isDuplicate) { skipped++; continue; }
-
-        parsedEmails.push({
-          property_number: propertyNumber,
-          template_name: templateName || null,
-          subject,
-          body: null,
-          report_assignee: null,
-          sent_at: sentAt,
-        });
-      } catch (err: any) {
-        errors++;
-      }
-
-      // レート制限対策
-      if ((parsedEmails.length + skipped + errors) % 100 === 0) {
-        await new Promise(r => setTimeout(r, 200));
-      }
-    }
-
-    console.log(`[restore-report-history] 挿入予定: ${parsedEmails.length}件, スキップ: ${skipped}件, エラー: ${errors}件`);
-
-    // DBに挿入（バッチ処理）
-    let inserted = 0;
-    let insertErrors = 0;
-    const BATCH_SIZE = 50;
-
-    for (let i = 0; i < parsedEmails.length; i += BATCH_SIZE) {
-      const batch = parsedEmails.slice(i, i + BATCH_SIZE);
-      const { error } = await supabase.from('property_report_history').insert(batch);
-      if (error) {
-        console.error(`[restore-report-history] バッチ挿入エラー:`, error.message);
-        insertErrors += batch.length;
-      } else {
-        inserted += batch.length;
-      }
-    }
-
-    res.json({
-      success: true,
-      gmailMessages: uniqueMessages.length,
-      inserted,
-      skipped,
-      errors,
-      insertErrors,
-    });
-  } catch (error: any) {
-    console.error('[restore-report-history] Error:', error.message);
-    res.status(500).json({ error: error.message });
   }
 });
 
