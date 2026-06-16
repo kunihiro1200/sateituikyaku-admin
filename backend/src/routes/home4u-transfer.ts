@@ -462,16 +462,12 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
                 ? existingDatetime === inquiryDateTimeISO || existingDatetime.startsWith(inquiryDateTimeISO)
                 : !existingDatetime && !inquiryDateTimeISO;
 
-              // 比較2: 同じ電話番号で直近10分以内に登録されたレコードがある場合もスキップ
-              const createdAt = existing.created_at ? new Date(existing.created_at) : null;
-              const now = new Date();
-              const isRecentDuplicate = createdAt && (now.getTime() - createdAt.getTime()) < 10 * 60 * 1000;
+              // 比較2: 直近10分以内は削除（反響日時が異なれば別依頼として登録するため不要）
+              console.log(`[home4u-transfer] 重複チェック: ${existing.seller_number} isSameDatetime=${isSameDatetime} existingDatetime="${existingDatetime}" inquiryDateTimeISO="${inquiryDateTimeISO}"`);
 
-              console.log(`[home4u-transfer] 重複チェック: ${existing.seller_number} isSameDatetime=${isSameDatetime} isRecentDuplicate=${isRecentDuplicate} existingDatetime="${existingDatetime}" inquiryDateTimeISO="${inquiryDateTimeISO}" createdAt="${existing.created_at}"`);
-
-              if (isSameDatetime || isRecentDuplicate) {
-                const reason = isSameDatetime ? '反響日時一致' : '直近10分以内に同一電話番号で登録済み';
-                console.log(`[home4u-transfer] ⏭ 重複スキップ: ${reason} (既存: ${existing.seller_number})`);
+              if (isSameDatetime) {
+                // 同一電話番号 + 同一反響日時 = 完全に同じメールの二重処理 → スキップ
+                console.log(`[home4u-transfer] ⏭ 重複スキップ: 反響日時一致 (既存: ${existing.seller_number})`);
 
                 // ============================================================
                 // コメントがある場合は既存レコードのcomments欄をUPDATEする
@@ -514,11 +510,15 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
                 return res.json({
                   success: true,
                   skipped: true,
-                  message: `重複スキップ: ${reason} - 既存売主 ${existing.seller_number}`,
+                  message: `重複スキップ: 反響日時一致 - 既存売主 ${existing.seller_number}`,
                   duplicateSeller: existing.seller_number,
                 });
               } else {
-                console.log(`[home4u-transfer] ℹ️ 同一電話番号 ${existing.seller_number} だが反響日時が異なるため新規登録します`);
+                // 同一電話番号 + 反響日時が異なる = 別時期の依頼 → duplicate_confirmed: true でDB登録
+                console.log(`[home4u-transfer] ⚠️ 同一電話番号 ${existing.seller_number} だが反響日時が異なるため重複フラグ付きで登録します`);
+                (req as any)._isDuplicate = true;
+                (req as any)._duplicateSeller = existing.seller_number;
+                break;
               }
             }
           } catch {
@@ -658,7 +658,7 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
       pinrich_status: '配信中',
       valuation_reason: assessmentReason || null,
       is_unreachable: false,
-      duplicate_confirmed: false,
+      duplicate_confirmed: (req as any)._isDuplicate === true,
     };
 
     const { data: seller, error: insertError } = await supabase

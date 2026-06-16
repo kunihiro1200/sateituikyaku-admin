@@ -249,23 +249,22 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
                 ? existingDatetime === requestDate || existingDatetime.startsWith(requestDate.replace(' ', 'T'))
                 : !existingDatetime && !requestDate; // 両方nullの場合のみ重複とみなす
 
-              // 同じ電話番号で直近10分以内に登録されたレコードがある場合もスキップ
-              // （査定サイトは同じ案件を複数社に配信するため、短時間に同内容のメールが複数届く）
-              const createdAt = existing.created_at ? new Date(existing.created_at) : null;
-              const now = new Date();
-              const isRecentDuplicate = createdAt && (now.getTime() - createdAt.getTime()) < 10 * 60 * 1000; // 10分以内
-
-              if (isSameDatetime || isRecentDuplicate) {
-                const reason = isSameDatetime ? '反響日時一致' : '直近10分以内に同一電話番号で登録済み';
-                console.log(`[ieul-transfer] ⏭ 重複スキップ: ${reason} (既存: ${existing.seller_number})`);
+              if (isSameDatetime) {
+                // 同一電話番号 + 同一反響日時 = 完全に同じメールの二重処理 → スキップ
+                console.log(`[ieul-transfer] ⏭ 重複スキップ: 反響日時一致 (既存: ${existing.seller_number})`);
                 return res.json({
                   success: true,
                   skipped: true,
-                  message: `重複スキップ: ${reason} - 既存売主 ${existing.seller_number}`,
+                  message: `重複スキップ: 反響日時一致 - 既存売主 ${existing.seller_number}`,
                   duplicateSeller: existing.seller_number,
                 });
               } else {
-                console.log(`[ieul-transfer] ℹ️ 同一電話番号 ${existing.seller_number} だが反響日時が異なるため新規登録します (既存: ${existingDatetime}, 今回: ${requestDate})`);
+                // 同一電話番号 + 反響日時が異なる = 別時期の依頼 → duplicate_confirmed: true でDB登録
+                console.log(`[ieul-transfer] ⚠️ 同一電話番号 ${existing.seller_number} だが反響日時が異なるため重複フラグ付きで登録します (既存: ${existingDatetime}, 今回: ${requestDate})`);
+                // ループを抜けて登録処理へ（duplicate_confirmed = true をセットするフラグを立てる）
+                (req as any)._isDuplicate = true;
+                (req as any)._duplicateSeller = existing.seller_number;
+                break;
               }
             }
           } catch {
@@ -357,7 +356,7 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
       site_url: detailUrl || null,
       valuation_reason: reasonForEstimate || null,
       is_unreachable: false,
-      duplicate_confirmed: false,
+      duplicate_confirmed: (req as any)._isDuplicate === true,
     };
 
     const { data: seller, error: insertError } = await supabase
