@@ -409,7 +409,7 @@ class ScrapeHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_POST(self):
-        if self.path != '/scrape':
+        if self.path not in ('/scrape', '/scrape-preview'):
             self.send_response(404)
             self.end_headers()
             return
@@ -425,21 +425,32 @@ class ScrapeHandler(BaseHTTPRequestHandler):
             if not url:
                 raise ValueError('URLが指定されていません')
 
-            print(f'[scrape] リクエスト受信: {url} (is_tateuri={is_tateuri}, process_images={process_images})')
+            # /scrape-preview はDBに保存しない（他社物件配信用プレビュー専用）
+            is_preview_only = (self.path == '/scrape-preview')
+
+            print(f'[scrape] リクエスト受信: {url} (is_tateuri={is_tateuri}, process_images={process_images}, preview_only={is_preview_only})')
 
             # スクレイピング実行
             data = asyncio.run(scrape_athome(url))
 
-            # Supabaseに保存（画像処理を含む）
-            slug = save_to_supabase(data, is_tateuri=is_tateuri, process_images=process_images)
+            if is_preview_only:
+                # /scrape-preview: DBに保存せず、スクレイピング結果のみ返す
+                response = {
+                    'success': True,
+                    'data': data,
+                    'preview_url': url,
+                }
+            else:
+                # /scrape: Supabaseに保存（画像処理を含む）
+                slug = save_to_supabase(data, is_tateuri=is_tateuri, process_images=process_images)
 
-            # レスポンス
-            response = {
-                'success': True,
-                'slug': slug,
-                'data': data,
-                'preview_url': f'https://sateituikyaku-admin-frontend.vercel.app/property-preview/{slug}',
-            }
+                # レスポンス
+                response = {
+                    'success': True,
+                    'slug': slug,
+                    'data': data,
+                    'preview_url': f'https://sateituikyaku-admin-frontend.vercel.app/property-preview/{slug}',
+                }
 
             self.send_response(200)
             self._set_cors()
@@ -471,6 +482,7 @@ if __name__ == '__main__':
     print(f'   Supabase Key: {"SET ✓" if SUPABASE_SERVICE_KEY else "NOT SET ✗"}', flush=True)
     print(f'   ヘルスチェック: http://localhost:{PORT}/health', flush=True)
     print(f'   スクレイピング: POST http://localhost:{PORT}/scrape', flush=True)
+    print(f'   プレビュー: POST http://localhost:{PORT}/scrape-preview (DB保存なし)', flush=True)
     print('=' * 50, flush=True)
     sys.stdout.flush()
     
