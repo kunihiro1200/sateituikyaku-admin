@@ -3,6 +3,8 @@ import { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { body, query, validationResult } from 'express-validator';
 import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
 import { SellerService } from '../services/SellerService.supabase';
 import { EmailService } from '../services/EmailService';
 import { authenticate } from '../middleware/auth';
@@ -3115,6 +3117,31 @@ router.post('/:id/portal-merits', async (req: Request, res: Response) => {
 // 住所読み仮名取得エンドポイント（OpenAI APIで住所のひらがな読みを取得）
 // ============================================================
 
+// 動的辞書キャッシュファイルのパス
+const ADDRESS_CACHE_PATH = path.join(__dirname, '../config/address-reading-cache.json');
+
+/** キャッシュファイルを読み込む */
+function loadAddressCache(): { [key: string]: string } {
+  try {
+    const raw = fs.readFileSync(ADDRESS_CACHE_PATH, 'utf-8');
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+/** キャッシュファイルに地名と読みを追記保存する */
+function saveToAddressCache(placeName: string, reading: string): void {
+  try {
+    const cache = loadAddressCache();
+    cache[placeName] = reading;
+    fs.writeFileSync(ADDRESS_CACHE_PATH, JSON.stringify(cache, null, 2), 'utf-8');
+    console.log(`[address-cache] 辞書に追加: ${placeName} → ${reading}`);
+  } catch (e) {
+    console.error('[address-cache] 保存失敗:', e);
+  }
+}
+
 /**
  * GET /api/sellers/:id/address-reading
  * 売主の物件住所をOpenAI APIでひらがな読みに変換して返す
@@ -3206,6 +3233,7 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
       '六本松': 'ろっぽんまつ',
       '輝国': 'てるくに',
       '鳥飼': 'とりかい',
+      '草香江': 'くさがえ',
       '地行': 'じぎょう',
       '雑餉隈': 'ざっしょのくま',
       '対馬小路': 'つましょうじ',
@@ -3301,6 +3329,10 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
       'ちくし台': 'ちくしだい',
     };
 
+    // 動的キャッシュ（APIで取得済みの読みを追加）をマージ
+    const dynamicCache = loadAddressCache();
+    Object.assign(localReadingDict, dynamicCache);
+
     // 辞書マッチを試みる（「大字」を除去してから町名を抽出）
     const addressWithoutPrefix = address
       .replace(/^.*?[都道府県]/, '')  // 都道府県を除去
@@ -3361,33 +3393,41 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
     }
 
     const axiosLib = (await import('axios')).default;
+    // gpt-4o-search-preview: Web検索機能付きモデル（難読地名も正確に読める）
+    // ※ systemロール・temperature・max_tokensは非対応のため省略
     const response = await axiosLib.post(
       'https://api.openai.com/v1/chat/completions',
       {
-        model: 'gpt-4o',
+        model: 'gpt-4o-search-preview',
         messages: [
           {
-            role: 'system',
-            content: `日本の住所から区・町名部分の正確なひらがな読みだけを返すアシスタントです。都道府県・市は除外してください。「大字」という文字は除外してください（読みには含めない）。丁目・番地（数字・ハイフン）も除外してください。区と町名のひらがな読みのみを返してください。地名は地元で実際に使われている慣用的な正しい読み方を最優先で使用してください。漢字の一般的な読みではなく、その地域固有の読み方を返してください。${prefectureNote}余分な説明は不要です。`,
-          },
-          {
             role: 'user',
-            content: `次の住所の、区と町名のひらがな読みを返してください。都道府県・市・「大字」・丁目・番地（数字・ハイフン）は全て不要です。地名の読みは正確に。\n\n${examplesText}\n\n${address}`,
+            content: `次の日本の住所の、区と町名部分のひらがな読みだけを返してください。都道府県・市・「大字」・丁目・番地（数字・ハイフン）は不要です。ひらがなのみを返してください。余分な説明は不要です。${prefectureNote}\n\n${examplesText}\n\n${address}`,
           },
         ],
-        temperature: 0,
-        max_tokens: 200,
       },
       {
         headers: {
           'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
           'Content-Type': 'application/json',
         },
-        timeout: 15000,
+        timeout: 30000,
       }
     );
 
     const reading = response.data.choices[0]?.message?.content?.trim() || '';
+
+    // APIで取得できた読みを動的辞書キャッシュに保存（次回以降はAPIを呼ばない）
+    if (reading) {
+      // 住所から町名部分を抽出してキーとして保存
+      const townName = addressAfterKu
+        ? addressAfterKu.replace(/[０-９0-9]+.*$/, '').replace(/[丁目番号].*$/, '').trim()
+        : addressWithoutPrefix;
+      if (townName) {
+        saveToAddressCache(townName, reading);
+      }
+    }
+
     return res.json({ address, reading });
   } catch (error: any) {
     console.error('[address-reading] エラー:', error?.message || error);
