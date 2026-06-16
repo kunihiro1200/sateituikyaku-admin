@@ -10,6 +10,7 @@ import { authenticate } from '../middleware/auth';
 import { apiKeyAuth } from '../middleware/apiKeyAuth';
 import { BuyerLinkageCache } from '../services/BuyerLinkageCache';
 import { PropertyListingService } from '../services/PropertyListingService';
+import * as cheerio from 'cheerio';
 
 const router = Router();
 const buyerService = new BuyerService();
@@ -1649,8 +1650,7 @@ router.get('/other-company-distribution', authenticate, async (req: Request, res
   }
 });
 
-// 他社物件新着配信用スクレイピングプロキシ（CORS回避のためバックエンド経由）
-// /scrape-preview を使用（DBに保存しない・建売専門HPの /scrape とは完全に独立）
+// 他社物件新着配信用スクレイピング（バックエンド内で直接実行・DB保存なし）
 router.post('/scrape-property', authenticate, async (req: Request, res: Response) => {
   try {
     const { url } = req.body;
@@ -1658,27 +1658,156 @@ router.post('/scrape-property', authenticate, async (req: Request, res: Response
       return res.status(400).json({ error: 'url is required' });
     }
 
-    const scrapeApiUrl = process.env.SCRAPE_API_URL || 'https://sateituikyaku-scrape-server-production.up.railway.app';
+    console.log(`[buyers/scrape-property] 開始: ${url}`);
 
-    // /scrape-preview を使用（DBに保存しない・他社物件配信専用エンドポイント）
-    // ※ /scrape は建売専門HP専用（DBに保存する）なので絶対に使わない
-    const scrapeRes = await fetch(`${scrapeApiUrl}/scrape-preview`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
+    // athomeのHTMLを取得
+    const htmlRes = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept-Language': 'ja-JP,ja;q=0.9',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Referer': 'https://www.athome.co.jp/',
+      },
     });
 
-    if (!scrapeRes.ok) {
-      const errText = await scrapeRes.text();
-      console.error('[buyers/scrape-property] スクレイピングサーバーエラー:', scrapeRes.status, errText);
-      return res.status(scrapeRes.status).json({ error: `スクレイピングサーバーエラー: ${scrapeRes.status}` });
+    if (!htmlRes.ok) {
+      return res.status(500).json({ success: false, error: `HTML取得失敗: HTTP ${htmlRes.status}` });
     }
 
-    const result = await scrapeRes.json();
-    return res.json(result);
+    const html = await htmlRes.text();
+    const $ = cheerio.load(html);
+
+    // タグを除去してテキストを取得するヘルパー
+    const stripTags = (s: string) => s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // --- タイトル ---
+    let title = $('title').text().trim();
+    if (title) {
+      title = title.replace(/【[^】]+】/g, '').replace(/\s*[-|｜].*$/, '').trim();
+    }
+
+    // --- 画像取得 ---
+    const seen = new Set<string>();
+    const images: string[] = [];
+    
+    // スライダー画像
+    $("[class*='slide'] img").each((_, el) => {
+      let src = $(el).attr('src') || $(el).attr('data-src') || '';
+      if (src && (src.includes('image_files/path') || src.includes('data_images'))) {
+        if (src.endsWith('.svg')) return;
+        if (src.startsWith('/')) src = `https://www.athome.co.jp${src}`;
+        src = src.replace(/width=\d+/, 'width=800').replace(/height=\d+/, 'height=600');
+        if (!seen.has(src)) { seen.add(src); images.push(src); }
+      }
+    });
+    
+    // その他の物件画像
+    $('img').each((_, el) => {
+      let src = $(el).attr('src') || $(el).attr('data-src') || '';
+      if (src && (src.includes('image_files/path') || src.includes('data_images'))) {
+        if (src.endsWith('.svg')) return;
+        if (src.startsWith('/')) src = `https://www.athome.co.jp${src}`;
+        src = src.replace(/width=\d+/, 'width=800').replace(/height=\d+/, 'height=600');
+        if (!seen.has(src)) { seen.add(src); images.push(src); }
+      }
+    });
+
+    // --- 緯度経度 ---
+    let lat: number | null = null;
+    let lng: number | null = null;
+    const latLngMatch = html.match(/center=([0-9.]+),([0-9.]+)/);
+    if (latLngMatch) {
+      lat = parseFloat(latLngMatch[1]);
+      lng = parseFloat(latLngMatch[2]);
+    } else {
+      // フォールバック
+      const latMatch = html.match(/\b(3[0-9]|4[0-5])\.\d{6,}\b/);
+      const lngMatch = html.match(/\b(12[0-9]|13[0-9]|14[0-9])\.\d{6,}\b/);
+      if (latMatch) lat = parseFloat(latMatch[0]);
+      if (lngMatch) lng = parseFloat(lngMatch[0]);
+    }
+
+    // --- 詳細テーブル ---
+    const details: Record<string, string> = {};
+    
+    // テーブル形式
+    $('table tr').each((_, row) => {
+      const th = $(row).find('th').first().text().trim();
+      const td = $(row).find('td').first().text().trim();
+      if (th && td) details[th] = td;
+    });
+    
+    // dl/dt/dd形式
+    $('dl').each((_, dl) => {
+      const dts = $(dl).find('dt');
+      const dds = $(dl).find('dd');
+      dts.each((i, dt) => {
+        const k = $(dt).text().trim();
+        const v = $(dds.eq(i)).text().trim();
+        if (k && v) details[k] = v;
+      });
+    });
+
+    // --- ポイント ---
+    const points: string[] = [];
+    $('p[class*="point-text"]').each((_, el) => {
+      const text = $(el).text().trim();
+      if (text && text.length > 2 && !points.includes(text)) points.push(text);
+    });
+
+    // --- 主要フィールドをdetailsから抽出 ---
+    const fieldMap: Record<string, string[]> = {
+      price: ['価格'],
+      address: ['所在地'],
+      access: ['交通'],
+      layout: ['間取り'],
+      area: ['専有面積', '土地面積', '建物面積'],
+      floor: ['階建 / 階', '階建/階'],
+      built_year: ['築年月'],
+      parking: ['駐車場'],
+      features: ['設備・サービス', 'その他'],
+      remarks: ['備考'],
+    };
+
+    const result: Record<string, any> = {
+      source_url: url,
+      title,
+      price: null,
+      address: null,
+      access: null,
+      layout: null,
+      area: null,
+      floor: null,
+      built_year: null,
+      parking: null,
+      features: null,
+      remarks: null,
+      images,
+      lat,
+      lng,
+      details,
+      points,
+    };
+
+    for (const [field, keys] of Object.entries(fieldMap)) {
+      for (const k of keys) {
+        if (details[k] && details[k] !== '－') {
+          result[field] = details[k];
+          break;
+        }
+      }
+    }
+
+    console.log(`[buyers/scrape-property] 完了: 画像${images.length}枚, 詳細${Object.keys(details).length}項目`);
+
+    return res.json({
+      success: true,
+      data: result,
+      preview_url: url,
+    });
   } catch (err: any) {
     console.error('[buyers/scrape-property] エラー:', err.message);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 
