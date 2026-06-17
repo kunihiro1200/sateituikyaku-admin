@@ -6425,10 +6425,11 @@ HP：https://ifoo-oita.com/
                       // この処理は編集モードの終了とは独立して実行される
                       (async () => {
                         // 固定資産税路線価が変更されている場合、査定額を再計算
-                        if (editedFixedAssetTaxRoadPrice && parseFloat(editedFixedAssetTaxRoadPrice) >= 1000) {
+                        // 🚨 手入力査定額モードの場合は自動計算をスキップ
+                        if (!isManualValuation && editedFixedAssetTaxRoadPrice && parseFloat(editedFixedAssetTaxRoadPrice) >= 1000) {
                           console.log('🔄 固定資産税路線価が設定されているため、査定額を再計算します:', editedFixedAssetTaxRoadPrice);
                           
-                          // 🚨 重要：自動計算モードに切り替え
+                          // 自動計算モードに切り替え（手入力モードでない場合のみここに到達）
                           setIsManualValuation(false);
                           
                           try {

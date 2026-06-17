@@ -1938,7 +1938,11 @@ export default function PropertyListingDetailPage() {
           <GmailDistributionButton
             propertyNumber={data.property_number}
             propertyAddress={data.address || data.display_address}
-            publicUrl={`https://property-site-frontend-kappa.vercel.app/public/properties/${data.property_number}`}
+            publicUrl={
+              data.property_number?.toUpperCase().includes('FI')
+                ? `https://property-site-frontend-kappa.vercel.app/kujira/properties/${data.property_number}`
+                : `https://property-site-frontend-kappa.vercel.app/public/properties/${data.property_number}`
+            }
             distributionAreas={editedData.distribution_areas !== undefined ? editedData.distribution_areas : data.distribution_areas}
             salesPrice={editedData.price !== undefined ? editedData.price : data.price}
             previousSalesPrice={getPreviousPriceFromHistory(data.price_reduction_history)}

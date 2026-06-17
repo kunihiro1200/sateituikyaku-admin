@@ -71,6 +71,11 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
     setDrawerOpen(false);
   };
 
+  const handleKujiraSiteClick = () => {
+    window.open('https://property-site-frontend-kappa.vercel.app/kujira/properties', '_blank', 'noopener,noreferrer');
+    setDrawerOpen(false);
+  };
+
   const isActive = (path: string) =>
     path === '/'
       ? location.pathname === '/' || location.pathname.startsWith('/sellers')
@@ -142,7 +147,18 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
                 <ListItemIcon sx={{ minWidth: 36 }}>
                   <PublicIcon />
                 </ListItemIcon>
-                <ListItemText primary="公開物件サイト" />
+                <ListItemText primary="いふう_独自サイト" />
+              </ListItemButton>
+            </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton
+                onClick={handleKujiraSiteClick}
+                sx={{ minHeight: 44 }}
+              >
+                <ListItemIcon sx={{ minWidth: 36 }}>
+                  <PublicIcon />
+                </ListItemIcon>
+                <ListItemText primary="くじら_独自サイト" />
               </ListItemButton>
             </ListItem>
           </List>
@@ -207,7 +223,16 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
         onClick={handlePublicSiteClick}
         sx={{ minWidth: 150 }}
       >
-        公開物件サイト
+        いふう_独自サイト
+      </Button>
+      <Button
+        variant="outlined"
+        color="secondary"
+        startIcon={<PublicIcon />}
+        onClick={handleKujiraSiteClick}
+        sx={{ minWidth: 150 }}
+      >
+        くじら_独自サイト
       </Button>
     </Box>
   );
