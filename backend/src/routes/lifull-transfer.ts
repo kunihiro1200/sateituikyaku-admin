@@ -240,25 +240,30 @@ router.post('/lifull-transfer', async (req: Request, res: Response) => {
             const decryptedPhone = decryptForCheck(existing.phone_number);
             if (decryptedPhone === tel) {
               const existingDatetime = existing.inquiry_detailed_datetime;
-              const isSameDatetime = existingDatetime && receivedDate
-                ? existingDatetime === receivedDate || existingDatetime.startsWith(receivedDate.replace(/\//g, '-').replace(' ', 'T'))
-                : !existingDatetime && !receivedDate;
+              // receivedDateは「2026/06/16 14:26:33」形式 → 「2026-06-16 14:26:33」に統一して比較
+              const normalizedReceived = receivedDate ? receivedDate.replace(/\//g, '-') : '';
+              const normalizedExisting = existingDatetime
+                ? existingDatetime.replace('T', ' ').substring(0, 19)
+                : '';
+              const isSameDatetime = normalizedReceived && normalizedExisting
+                ? normalizedExisting === normalizedReceived || normalizedExisting.startsWith(normalizedReceived)
+                : !normalizedReceived && !normalizedExisting;
 
-              const createdAt = existing.created_at ? new Date(existing.created_at) : null;
-              const now = new Date();
-              const isRecentDuplicate = createdAt && (now.getTime() - createdAt.getTime()) < 10 * 60 * 1000;
-
-              if (isSameDatetime || isRecentDuplicate) {
-                const reason = isSameDatetime ? '反響日時一致' : '直近10分以内に同一電話番号で登録済み';
-                console.log(`[lifull-transfer] ⏭ 重複スキップ: ${reason} (既存: ${existing.seller_number})`);
+              if (isSameDatetime) {
+                // 同一電話番号 + 同一反響日時 = 完全に同じメールの二重処理 → スキップ
+                console.log(`[lifull-transfer] ⏭ 重複スキップ: 反響日時一致 (既存: ${existing.seller_number})`);
                 return res.json({
                   success: true,
                   skipped: true,
-                  message: `重複スキップ: ${reason} - 既存売主 ${existing.seller_number}`,
+                  message: `重複スキップ: 反響日時一致 - 既存売主 ${existing.seller_number}`,
                   duplicateSeller: existing.seller_number,
                 });
               } else {
-                console.log(`[lifull-transfer] ℹ️ 同一電話番号 ${existing.seller_number} だが反響日時が異なるため新規登録します`);
+                // 同一電話番号 + 反響日時が異なる = 別時期の依頼 → duplicate_confirmed: true でDB登録
+                console.log(`[lifull-transfer] ⚠️ 同一電話番号 ${existing.seller_number} だが反響日時が異なるため重複フラグ付きで登録します`);
+                (req as any)._isDuplicate = true;
+                (req as any)._duplicateSeller = existing.seller_number;
+                break;
               }
             }
           } catch {
@@ -347,7 +352,7 @@ router.post('/lifull-transfer', async (req: Request, res: Response) => {
       site_url: managerUrl || null,
       valuation_reason: reasonForEstimate || null,
       is_unreachable: false,
-      duplicate_confirmed: false,
+      duplicate_confirmed: (req as any)._isDuplicate === true,
     };
 
     const { data: seller, error: insertError } = await supabase

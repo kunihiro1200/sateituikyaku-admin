@@ -250,6 +250,35 @@ def trigger_home4u_transfer(body: str):
     threading.Thread(target=_call, daemon=True).start()
 
 
+def trigger_lifull_transfer(body: str):
+    """LIFULL HOME'Sメール本文をバックエンドに送ってDB即時転記"""
+    def _call():
+        try:
+            logging.info("  [DB転記] /api/sellers/lifull-transfer 呼び出し開始...")
+            payload = json.dumps({"body": body}).encode("utf-8")
+            req = urllib.request.Request(
+                "https://sateituikyaku-admin-backend.vercel.app/api/sellers/lifull-transfer",
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {CRON_SECRET}",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                result = json.loads(resp.read().decode("utf-8"))
+                if result.get("skipped"):
+                    logging.info(f"  [DB転記] ⏭ スキップ: {result.get('message', '重複')}")
+                elif result.get("success"):
+                    logging.info(f"  [DB転記] ✅ 完了: {result.get('message', 'OK')} ({result.get('sellerNumber', '')})")
+                else:
+                    logging.info(f"  [DB転記] ❌ 失敗: {result.get('error', '不明なエラー')}")
+        except Exception as e:
+            logging.info(f"  [DB転記] ❌ エラー: {e}")
+
+    threading.Thread(target=_call, daemon=True).start()
+
+
 def trigger_ieul_transfer(body: str):
     """イエウールメール本文をバックエンドに送ってDB即時転記 + スプシ同期"""
     def _call():
@@ -303,14 +332,25 @@ def check_new_emails(service, notified_ids):
 
             headers = msg_detail["payload"]["headers"]
             subject = ""
+            sender = ""
             for header in headers:
                 if header["name"] == "Subject":
                     subject = header["value"]
-                    break
+                if header["name"] == "From":
+                    sender = header["value"]
 
             # 返信・転送はスキップ（ただしHOME4Uは本文チェックで後処理）
             reply_prefix_pattern = re.compile(r'^(Re|Fwd?|FW|RE|転送)\s*:', re.IGNORECASE)
             is_reply = reply_prefix_pattern.match(subject)
+
+            # LIFULLのRe:メールで送信者が自分（社員メモ付き返信）の場合は転記対象にする
+            LIFULL_SUBJECT = "【LIFULL HOME'S】＜実名＞査定依頼がありました"
+            OWN_EMAIL = "tenant@ifoo-oita.com"
+            is_lifull_self_reply = (
+                is_reply
+                and LIFULL_SUBJECT in subject
+                and OWN_EMAIL in sender
+            )
 
             def subject_matches(subject, keyword):
                 if keyword == "【すまいステップ 反響通知メール】":
@@ -335,9 +375,22 @@ def check_new_emails(service, notified_ids):
                         trigger_home4u_transfer(body)
                     else:
                         logging.info(f"  [スキップ] HOME4Uだが本文に「HOME4Uログアウト」なし")
+                elif LIFULL_SUBJECT in subject:
+                    # LIFULLの元メール（Re:なし）はスキップ
+                    # → 社員がメモを書いてRe:返信したものだけ転記する
+                    logging.info(f"  [スキップ] LIFULL元メール（Re:なし）→ 社員のRe:返信を待ちます")
                 else:
-                    logging.info(f"  [スキップ] イエウール・HOME4U以外のため転記なし: {subject[:50]}")
+                    logging.info(f"  [スキップ] 転記対象外: {subject[:50]}")
 
+                notified_ids.add(msg_id)
+                save_notified_ids(notified_ids)
+
+            # LIFULLのRe:メールで送信者が自分（社員メモ付き返信）→ 転記する
+            elif is_lifull_self_reply:
+                body = decode_body(msg_detail["payload"])
+                logging.info(f"\n[{datetime.now().strftime('%H:%M:%S')}] 🔔 LIFULL社員メモ付きRe:検知: {subject}")
+                logging.info(f"  [本文先頭] {repr(body[:120])}")
+                trigger_lifull_transfer(body)
                 notified_ids.add(msg_id)
                 save_notified_ids(notified_ids)
 
