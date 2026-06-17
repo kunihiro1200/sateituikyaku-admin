@@ -294,7 +294,26 @@ const DocumentModal = ({ open, onClose, sellerNumber, onFolderUrlReady, onSalesC
   const pendingCount = pendingFiles.filter((f) => f.status === 'pending').length;
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      sx={{
+        '& .MuiDialog-container': {
+          alignItems: 'flex-end',
+          justifyContent: 'flex-end',
+        },
+      }}
+      PaperProps={{
+        sx: {
+          m: 2,
+          mb: 2,
+          mr: 2,
+          maxHeight: 'calc(100vh - 32px)',
+          width: { xs: 'calc(100vw - 32px)', md: '600px' },
+        },
+      }}
+    >
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
