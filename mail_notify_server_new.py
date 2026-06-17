@@ -15,7 +15,7 @@ import sys
 import logging
 import threading
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timezone
 
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -306,8 +306,12 @@ def trigger_ieul_transfer(body: str):
     threading.Thread(target=_call, daemon=True).start()
 
 
-def check_new_emails(service, notified_ids):
-    """新着メールをチェックして転記する"""
+def check_new_emails(service, notified_ids, start_timestamp_ms):
+    """新着メールをチェックして転記する
+
+    start_timestamp_ms: 起動時刻のUnixタイムスタンプ（ミリ秒）
+    これより古いメールは処理しない（再起動時の重複処理防止）
+    """
     try:
         results = service.users().messages().list(
             userId="me",
@@ -329,6 +333,14 @@ def check_new_emails(service, notified_ids):
                 id=msg_id,
                 format="full"
             ).execute()
+
+            # メールの受信タイムスタンプを確認
+            # 起動時刻より前のメールはスキップ（再起動時の重複処理防止）
+            msg_timestamp_ms = int(msg_detail.get("internalDate", 0))
+            if msg_timestamp_ms < start_timestamp_ms:
+                notified_ids.add(msg_id)
+                save_notified_ids(notified_ids)
+                continue
 
             headers = msg_detail["payload"]["headers"]
             subject = ""
@@ -428,6 +440,10 @@ def main():
         sys.exit(1)
     logging.info("接続成功！監視を開始します。\n")
 
+    # 起動時刻を記録（これより前のメールは処理しない）
+    start_timestamp_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    logging.info(f"起動時刻タイムスタンプ: {start_timestamp_ms}（これ以降に届くメールを処理します）")
+
     # 既存の処理済みIDを読み込む（再起動時の重複防止用）
     notified_ids = load_notified_ids()
     logging.info(f"処理済みID読み込み完了（{len(notified_ids)}件）")
@@ -436,7 +452,7 @@ def main():
 
     while True:
         try:
-            notified_ids = check_new_emails(service, notified_ids)
+            notified_ids = check_new_emails(service, notified_ids, start_timestamp_ms)
             time.sleep(CHECK_INTERVAL)
         except KeyboardInterrupt:
             logging.info("\n停止しました。")
