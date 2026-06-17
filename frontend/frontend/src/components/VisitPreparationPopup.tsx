@@ -413,6 +413,24 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         </Box>
       ),
     }] : []),
+    // 売却スケジュール（常時表示）
+    {
+      label: '【売却スケジュール】',
+      content: (
+        <Box component="span" sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <a
+            href="https://drive.google.com/drive/u/0/folders/1Q2Mo-AbbWPCaWAunyoSWxE-3CaqMfk66"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            売却スケジュール
+          </a>
+          <Typography component="span" sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
+            これは各営業担当が必要であれば取得してください。
+          </Typography>
+        </Box>
+      ),
+    },
   ];
 
   return (
