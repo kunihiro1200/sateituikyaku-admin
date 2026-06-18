@@ -245,12 +245,14 @@ export default function PropertySidebarStatus({
       }
 
       // sidebar_statusが存在する場合はそれを使用
-      // ただし「未報告」系・SUUMO系・「非公開予定（確認後）」は除外（動的判定済み）
+      // ただし「未報告」系・SUUMO系・「非公開予定（確認後）」・「本日公開予定」は除外（動的判定済み）
       // 「非公開予定（確認後）」はDBに保存されている場合でも calculatePropertyStatus() で判定する
+      // 「本日公開予定」はDBに保存されている場合でも calculatePropertyStatus() で判定する
       // スペースを除去してから判定（「未報告 林」も「未報告林」も除外）
       if (status && status !== '値下げ未完了' && !normalizedStatus.startsWith('未報告')
           && status !== 'SUUMO URL\u3000要登録' && status !== 'レインズ登録＋SUUMO URL 要登録'
-          && status !== '非公開予定（確認後）') {
+          && status !== '非公開予定（確認後）'
+          && status !== '本日公開予定') {
         counts[status] = (counts[status] || 0) + 1;
       }
     });
