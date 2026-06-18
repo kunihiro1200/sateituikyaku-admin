@@ -1612,7 +1612,7 @@ export class SellerService extends BaseRepository {
                 .from('activities')
                 .select('seller_id')
                 .in('seller_id', visitedIds)
-                .or('content.ilike.%訪問査定後御礼%,content.ilike.%訪問後御礼%');
+                .or('content.ilike.%訪問査定後御礼%,content.ilike.%訪問後御礼%,content.ilike.%初回訪問査定後のお礼%');
               (actData || []).forEach((a: any) => {
                 if (a.seller_id) thankYouSentIds.add(a.seller_id);
               });

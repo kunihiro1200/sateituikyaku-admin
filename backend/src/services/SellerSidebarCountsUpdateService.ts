@@ -280,7 +280,7 @@ export class SellerSidebarCountsUpdateService {
             .from('activities')
             .select('seller_id')
             .in('seller_id', chunk)
-            .or('content.ilike.%訪問査定後御礼%,content.ilike.%訪問後御礼%');
+            .or('content.ilike.%訪問査定後御礼%,content.ilike.%訪問後御礼%,content.ilike.%初回訪問査定後のお礼%');
           if (actData) {
             actData.forEach((a: any) => {
               if (a.seller_id) thankYouSentSellerIds.add(a.seller_id);
