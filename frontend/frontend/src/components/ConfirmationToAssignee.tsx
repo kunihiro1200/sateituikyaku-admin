@@ -31,11 +31,14 @@ export const ConfirmationToAssignee: React.FC<ConfirmationToAssigneeProps> = ({
   onSendSuccess,
 }) => {
   const [confirmationText, setConfirmationText] = useState(buyer.confirmation_to_assignee || '');
+  // 編集中の最新値を追跡するstate（フォーカスアウト前でもhandleSendで参照できるようにする）
+  const [pendingText, setPendingText] = useState(buyer.confirmation_to_assignee || '');
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const hasText = confirmationText.trim().length > 0;
+  // pendingText（編集中含む最新値）を表示・送信判定に使用
+  const hasText = pendingText.trim().length > 0;
 
   const handleSend = async () => {
     if (!hasText) {
@@ -49,11 +52,13 @@ export const ConfirmationToAssignee: React.FC<ConfirmationToAssigneeProps> = ({
 
     try {
       const currentUrl = window.location.href;
+      // pendingText（編集中の最新値）を送信に使用する
+      const textToSend = pendingText;
 
       const response = await api.post(
         `/api/buyers/${buyer.buyer_number}/send-confirmation`,
         {
-          confirmationText,
+          confirmationText: textToSend,
           buyerDetailUrl: currentUrl,
         }
       );
@@ -87,6 +92,7 @@ export const ConfirmationToAssignee: React.FC<ConfirmationToAssigneeProps> = ({
 
   const handleFieldSave = async (newValue: string) => {
     setConfirmationText(newValue);
+    setPendingText(newValue); // 保存確定時にpendingTextも同期
 
     try {
       await api.put(`/api/buyers/${buyer.buyer_number}`, {
@@ -106,6 +112,7 @@ export const ConfirmationToAssignee: React.FC<ConfirmationToAssigneeProps> = ({
         fieldName="confirmation_to_assignee"
         fieldType="textarea"
         onSave={handleFieldSave}
+        onChange={(_fieldName, newValue) => setPendingText(newValue)}
         readOnly={false}
         buyerId={buyer.buyer_number}
         enableConflictDetection={true}
