@@ -251,6 +251,14 @@ export default function PropertyListingsPage() {
         setAllListings(cached);
         setIsLoadingAll(false);
         setLoading(false);
+        // キャッシュヒット時も業務依頼データは取得する（workTaskMapが空にならないように）
+        try {
+          const workTasksRes = await api.get('/api/work-tasks', { params: { limit: 5000 } });
+          const workTasksData = Array.isArray(workTasksRes.data?.data) ? workTasksRes.data.data : [];
+          setWorkTasks(workTasksData);
+        } catch (e) {
+          console.error('業務依頼データ取得エラー（キャッシュ時）:', e);
+        }
         return;
       }
     }
@@ -297,7 +305,7 @@ export default function PropertyListingsPage() {
 
       // 業務依頼データを取得
       console.log('業務依頼データを取得中...');
-      const workTasksRes = await api.get('/api/work-tasks');
+      const workTasksRes = await api.get('/api/work-tasks', { params: { limit: 5000 } });
       const workTasksData = Array.isArray(workTasksRes.data?.data) ? workTasksRes.data.data : [];
       setWorkTasks(workTasksData);
       console.log('✅ 業務依頼データ取得成功:', { 件数: workTasksData.length });
@@ -355,8 +363,11 @@ export default function PropertyListingsPage() {
           return normalizedStatusLabel === normalizedSidebarStatus;
         });
       } else if (sidebarStatus === '本日公開予定') {
-        // 「本日公開予定」はDBのsidebar_statusに保存されないため、calculatePropertyStatusで判定
-        listings = listings.filter(l => calculatePropertyStatus(l as any, workTaskMap).key === 'today_publish');
+        // 「本日公開予定」: calculatePropertyStatusで判定 OR DBのsidebar_statusが'本日公開予定'
+        listings = listings.filter(l =>
+          calculatePropertyStatus(l as any, workTaskMap).key === 'today_publish' ||
+          l.sidebar_status === '本日公開予定'
+        );
       } else if (sidebarStatus === 'SUUMO URL　要登録') {
         // 「SUUMO URL 要登録」は動的判定（DBのsidebar_statusに依存しない）
         listings = listings.filter(l => calculatePropertyStatus(l as any, workTaskMap).key === 'suumo_required');
