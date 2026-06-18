@@ -1328,7 +1328,7 @@ router.get('/learning-library/other-decision', authenticate, async (req: Request
       aiMap.set(`${c.assignee}:${c.target_month}`, c.ai_analysis);
     }
 
-    const OTHER_DECISION_STATUSES = ['他決→追客', '他決→追客不要', '一般→他決'];
+    const OTHER_DECISION_STATUSES = ['他決→追客', '他決→追客不要', '一般→他決', '専任→他社専任'];
 
     const groupMap = new Map<string, any>();
     for (const qa of qaRecords || []) {
@@ -1620,7 +1620,7 @@ router.get('/other-decision-monthly-summary', async (req: Request, res: Response
       process.env.SUPABASE_SERVICE_KEY!
     );
 
-    const OTHER_DECISION_STATUSES = ['他決→追客', '他決→追客不要', '一般→他決'];
+    const OTHER_DECISION_STATUSES = ['他決→追客', '他決→追客不要', '一般→他決', '専任→他社専任'];
 
     const { data, error } = await supabase
       .from('sellers')
@@ -4538,7 +4538,7 @@ router.get('/:id/other-decision-analysis', authenticate, async (req: Request, re
       : `${decisionYear}-${String(decisionMonth + 1).padStart(2, '0')}-01`;
 
     // 同じ営業担当が同月に他決になった全案件を取得
-    const OTHER_DECISION_STATUSES = ['他決→追客', '他決→追客不要', '一般→他決'];
+    const OTHER_DECISION_STATUSES = ['他決→追客', '他決→追客不要', '一般→他決', '専任→他社専任'];
 
     const { data: sameMonthRaw } = await supabase
       .from('sellers')
