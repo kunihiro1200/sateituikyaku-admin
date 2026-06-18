@@ -373,6 +373,7 @@ export default function SellerExclusiveAnalysisPage() {
                   <TableCell sx={{ color: '#fff', fontWeight: 'bold', width: 80 }}>売主番号</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>物件住所</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 'bold', width: 100 }}>決定日</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 'bold', width: 120 }}>ステータス</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>競合</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>専任取得要因</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>競合名・理由詳細</TableCell>
@@ -393,6 +394,23 @@ export default function SellerExclusiveAnalysisPage() {
                     </TableCell>
                     <TableCell sx={{ fontSize: '0.8rem', maxWidth: 200 }}>{row.propertyAddress || '未登録'}</TableCell>
                     <TableCell sx={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{formatDate(row.decisionDate)}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={row.status}
+                        size="small"
+                        sx={{
+                          height: 20,
+                          fontSize: '0.7rem',
+                          bgcolor: row.status === '専任媒介' ? '#e8f5e9' :
+                                   row.status === '他決→専任' ? '#fff3e0' :
+                                   row.status === 'リースバック（専任）' ? '#e3f2fd' : '#f5f5f5',
+                          color: row.status === '専任媒介' ? '#2e7d32' :
+                                 row.status === '他決→専任' ? '#e65100' :
+                                 row.status === 'リースバック（専任）' ? '#1565c0' : '#333',
+                          fontWeight: 'bold',
+                        }}
+                      />
+                    </TableCell>
                     <TableCell>
                       {row.competitors.length > 0 ? (
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
