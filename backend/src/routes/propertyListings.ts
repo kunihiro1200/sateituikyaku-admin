@@ -58,6 +58,97 @@ async function notifyGoogleChatOfferSaved(
 
 const router = Router();
 
+/**
+ * 状況「専任解除」保存時に物件担当に Google Chat 通知を送るヘルパー関数
+ * 失敗しても保存結果には影響しない
+ */
+async function notifyExclusiveRelease(propertyNumber: string, propertyData: any): Promise<void> {
+  try {
+    const axios = require('axios');
+    const { StaffManagementService } = require('../services/StaffManagementService');
+    const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
+
+    const supabaseInner = createSupabaseClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    // 物件情報をDBから取得（保存後の最新データを使う）
+    const { data: property, error } = await supabaseInner
+      .from('property_listings')
+      .select('property_number, address, seller_name, sales_assignee')
+      .eq('property_number', propertyNumber)
+      .single();
+
+    if (error || !property) {
+      console.error('[notifyExclusiveRelease] 物件情報取得失敗:', error);
+      return;
+    }
+
+    // 売主番号 = 物件番号 として sellers テーブルから seller.id を取得
+    const { data: seller } = await supabaseInner
+      .from('sellers')
+      .select('id')
+      .eq('seller_number', propertyNumber)
+      .single();
+
+    const frontendBase = 'https://sateituikyaku-admin-frontend.vercel.app';
+
+    // つうわモードページURL（ステータス画面までスクロール位置を含む）
+    const callPageUrl = seller?.id
+      ? `${frontendBase}/sellers/${seller.id}/call#status-section`
+      : null;
+
+    const sellerName = property.seller_name || '（不明）';
+    const address = property.address || '（未設定）';
+
+    const messageLines = [
+      `🔔 *専任解除のお知らせ*`,
+      ``,
+      `物件番号: ${property.property_number}`,
+      `売主名: ${sellerName}`,
+      `物件住所: ${address}`,
+    ];
+
+    if (callPageUrl) {
+      messageLines.push(`つうわモード: ${callPageUrl}`);
+    }
+
+    messageLines.push(
+      ``,
+      `*【お願い】*`,
+      `同じ物件番号（売主番号）のつうわモード画面を開き、`,
+      `「ステータス」セクションにある *状況（当社）* を`,
+      `　*専任 → 他社専任* に変更してください。`,
+      `また、最下部のコメント欄に状況の変化を記入してください。`
+    );
+
+    const message = messageLines.join('\n');
+
+    // 担当者の webhook URL を取得
+    const DEFAULT_WEBHOOK_URL =
+      'https://chat.googleapis.com/v1/spaces/AAAAlknS4P0/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=t6SJmZ8af-yyB38DZzAqGOKYI-DnIl6wYtVo-Lyskuk';
+
+    let webhookUrl = DEFAULT_WEBHOOK_URL;
+    if (property.sales_assignee) {
+      const staffService = new StaffManagementService();
+      const result = await staffService.getWebhookUrl(property.sales_assignee);
+      if (result.success && result.webhookUrl) {
+        webhookUrl = result.webhookUrl;
+      } else {
+        console.warn(`[notifyExclusiveRelease] ${property.sales_assignee} の webhook 取得失敗。事務チャットへフォールバック`);
+      }
+    } else {
+      console.log(`[notifyExclusiveRelease] sales_assignee 未設定 → 事務チャットへ送信`);
+    }
+
+    await axios.post(webhookUrl, { text: message });
+    console.log(`[notifyExclusiveRelease] 専任解除通知を送信しました: ${propertyNumber} → ${property.sales_assignee || '事務'}`);
+  } catch (err: any) {
+    console.error('[notifyExclusiveRelease] 通知送信エラー:', err?.message || err);
+  }
+}
+
 // Supabaseクライアントを初期化
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -335,7 +426,7 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
     const { propertyNumber } = req.params;
     const updates = req.body;
 
-    const { notify_offer, ...updatesWithoutFlag } = updates;
+    const { notify_offer, notify_exclusive_release, ...updatesWithoutFlag } = updates;
     const safeUpdates = updatesWithoutFlag;
 
     // Validate distribution_areas if provided
@@ -382,6 +473,13 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
         display_address: data?.display_address,
         property_type: data?.property_type,
         sales_assignee: data?.sales_assignee,
+      });
+    }
+
+    // 状況が「専任解除」に変更された場合、物件担当にChat通知を送る
+    if (notify_exclusive_release === true) {
+      notifyExclusiveRelease(propertyNumber, data).catch((err) => {
+        console.error('[notifyExclusiveRelease] 通知送信エラー:', err);
       });
     }
 

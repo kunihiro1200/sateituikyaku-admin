@@ -868,7 +868,15 @@ export default function PropertyListingDetailPage() {
       // ATBB変更フローから来て status のみ変更された場合は通知しない
       const NOTIFY_FIELDS = ['offer_date', 'offer_status', 'offer_amount', 'offer_comment'];
       const hasNotifiableChange = NOTIFY_FIELDS.some(f => offerEditedData[f] !== undefined);
-      await api.put(`/api/property-listings/${propertyNumber}`, { ...allSaveData, notify_offer: hasNotifiableChange });
+
+      // 状況（status）が「専任解除」に変更された場合は担当者へChat通知を送る
+      const isExclusiveRelease = offerEditedData.status === '専任解除';
+
+      await api.put(`/api/property-listings/${propertyNumber}`, {
+        ...allSaveData,
+        notify_offer: hasNotifiableChange,
+        notify_exclusive_release: isExclusiveRelease,
+      });
       setSnackbar({
         open: true,
         message: '買付情報を保存しました',
