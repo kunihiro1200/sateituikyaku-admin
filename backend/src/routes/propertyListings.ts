@@ -103,7 +103,7 @@ async function notifyExclusiveRelease(propertyNumber: string, propertyData: any)
     const address = property.address || '（未設定）';
 
     const messageLines = [
-      `🔔 *専任解除のお知らせ*`,
+      `🚨 *【専任解除】本日中に下記をおわらせてください！*`,
       ``,
       `物件番号: ${property.property_number}`,
       `売主名: ${sellerName}`,
