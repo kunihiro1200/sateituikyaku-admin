@@ -848,7 +848,13 @@ export default function PropertyListingDetailPage() {
 
     const allSaveData = { ...headerData, ...offerEditedData };
 
-    if (Object.keys(allSaveData).length === 0) {
+    // 変更なしでも「専任解除」の場合はChat通知のためにAPIを呼ぶ
+    const currentStatusValue = offerEditedData.status !== undefined
+      ? offerEditedData.status
+      : (data?.status ?? '');
+    const isCurrentlyExclusiveRelease = currentStatusValue === '専任解除';
+
+    if (Object.keys(allSaveData).length === 0 && !isCurrentlyExclusiveRelease) {
       throw new Error('no_changes');
     }
 
@@ -869,8 +875,12 @@ export default function PropertyListingDetailPage() {
       const NOTIFY_FIELDS = ['offer_date', 'offer_status', 'offer_amount', 'offer_comment'];
       const hasNotifiableChange = NOTIFY_FIELDS.some(f => offerEditedData[f] !== undefined);
 
-      // 状況（status）が「専任解除」に変更された場合は担当者へChat通知を送る
-      const isExclusiveRelease = offerEditedData.status === '専任解除';
+      // 状況（status）が「専任解除」の場合は担当者へChat通知を送る
+      // editedDataで変更された場合も、もともと「専任解除」の場合も両方対応
+      const currentStatus = offerEditedData.status !== undefined
+        ? offerEditedData.status
+        : (data?.status ?? '');
+      const isExclusiveRelease = currentStatus === '専任解除';
 
       await api.put(`/api/property-listings/${propertyNumber}`, {
         ...allSaveData,
