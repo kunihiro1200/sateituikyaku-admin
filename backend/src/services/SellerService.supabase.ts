@@ -1849,8 +1849,10 @@ export class SellerService extends BaseRepository {
 
     // キャッシュに保存（インメモリ + Redis）
     // 日付依存カテゴリ（visitDayBefore等）はキャッシュしない（日付が変わると結果が変わるため）
+    // visitThankYouPending はメール送信直後に消えるべきなのでキャッシュしない
     const skipCache = statusCategory === 'visitDayBefore' || statusCategory === 'visitCompleted' || isLabelFilter ||
-      (typeof statusCategory === 'string' && statusCategory.startsWith('fi:'));
+      (typeof statusCategory === 'string' && statusCategory.startsWith('fi:')) ||
+      (typeof statusCategory === 'string' && statusCategory.startsWith('visitThankYouPending:'));
     
     // 復号失敗チェック：nameが暗号文のまま（Base64形式）の場合はキャッシュしない
     const hasEncryptedName = sellersWithCallDate.some((s: any) => {

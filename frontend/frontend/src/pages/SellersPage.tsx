@@ -610,8 +610,11 @@ export default function SellersPage() {
       // キャッシュキー（パラメータを含む）
       const cacheKey = `${CACHE_KEYS.SELLERS_LIST}:${JSON.stringify(params)}`;
 
+      // visitThankYouPending:xxx カテゴリはメール送信後に即座に消えるべきのためキャッシュを使わない
+      const isVisitThankYouCategory = typeof params.statusCategory === 'string' && params.statusCategory.startsWith('visitThankYouPending:');
+
       // キャッシュが有効な場合はローディングなしで即座に表示
-      const cached = pageDataCache.get<{ data: Seller[]; total: number }>(cacheKey);
+      const cached = !isVisitThankYouCategory ? pageDataCache.get<{ data: Seller[]; total: number }>(cacheKey) : null;
       if (cached) {
         setSellers(cached.data);
         setTotal(cached.total);
@@ -620,9 +623,10 @@ export default function SellersPage() {
         api.get('/api/sellers', { params }).then((response) => {
           setSellers(response.data.data);
           setTotal(response.data.total);
-          // fi:xxx カテゴリは日付依存のためキャッシュしない（毎回最新を取得）
+          // fi:xxx / visitThankYouPending:xxx カテゴリは都度最新を取得するためキャッシュしない
           const isFiCategory = typeof params.statusCategory === 'string' && params.statusCategory.startsWith('fi:');
-          if (!isFiCategory) {
+          const isVisitThankYouCategory = typeof params.statusCategory === 'string' && params.statusCategory.startsWith('visitThankYouPending:');
+          if (!isFiCategory && !isVisitThankYouCategory) {
             pageDataCache.set(cacheKey, { data: response.data.data, total: response.data.total }, 15 * 60 * 1000);
           }
         }).catch((err) => console.error('Background sellers refresh failed:', err));
@@ -634,10 +638,11 @@ export default function SellersPage() {
       const response = await api.get('/api/sellers', { params });
       setSellers(response.data.data);
       setTotal(response.data.total);
-      // fi:xxx カテゴリは日付依存のためキャッシュしない（毎回最新を取得）
+      // fi:xxx / visitThankYouPending:xxx カテゴリは都度最新を取得するためキャッシュしない
       // それ以外は15分間キャッシュ（コールドスタート対策）
       const isFiCategoryNoCache = typeof params.statusCategory === 'string' && params.statusCategory.startsWith('fi:');
-      if (!isFiCategoryNoCache) {
+      const isVisitThankYouCategoryNoCache = typeof params.statusCategory === 'string' && params.statusCategory.startsWith('visitThankYouPending:');
+      if (!isFiCategoryNoCache && !isVisitThankYouCategoryNoCache) {
         pageDataCache.set(cacheKey, { data: response.data.data, total: response.data.total }, 15 * 60 * 1000);
       }
     } catch (error) {
