@@ -205,10 +205,16 @@ def load_home4u_processed_threads():
 
 
 def save_home4u_processed_threads(thread_ids):
-    """HOME4U処理済みスレッドIDを保存する（最新200件のみ保持）"""
-    ids_list = list(thread_ids)[-200:]
-    with open(HOME4U_PROCESSED_THREADS_FILE, "w", encoding="utf-8") as f:
-        json.dump(ids_list, f)
+    """HOME4U処理済みスレッドIDを保存する（最新200件のみ保持）
+    Railway環境ではエフェメラルストレージのためリセットされる場合があるが、
+    バックエンド側のUNIQUE制約が最終防壁となるためベストエフォートで保存する。
+    """
+    try:
+        ids_list = list(thread_ids)[-200:]
+        with open(HOME4U_PROCESSED_THREADS_FILE, "w", encoding="utf-8") as f:
+            json.dump(ids_list, f)
+    except Exception as e:
+        logging.warning(f"[HOME4U] 処理済みスレッドIDの保存失敗（無視）: {e}")
 
 
 def decode_body(payload):
@@ -315,7 +321,7 @@ def trigger_home4u_transfer(body: str):
             with urllib.request.urlopen(req, timeout=120) as resp:
                 result = json.loads(resp.read().decode("utf-8"))
                 if result.get("skipped"):
-                    logging.info("  [DB転記] ⏭ スキップ（HOME4Uログアウトなし）")
+                    logging.info(f"  [DB転記] ⏭ スキップ（重複）: {result.get('message', 'HOME4Uログアウトなしまたは重複')}")
                 elif result.get("success"):
                     logging.info(f"  [DB転記] ✅ 完了: {result.get('message', 'OK')} ({result.get('sellerNumber', '')})")
                 else:

@@ -668,6 +668,18 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
       .single();
 
     if (insertError || !seller) {
+      // ============================================================
+      // UNIQUE制約違反（23505）= 並行リクエストによる重複INSERT → スキップ扱い
+      // idx_sellers_unique_phone_datetime により DB レベルでアトミックにブロックされる
+      // ============================================================
+      if (insertError?.code === '23505') {
+        console.log(`[home4u-transfer] ⏭ UNIQUE制約違反によりスキップ（並行リクエストの重複）: tel_hash=${insertData.phone_number_hash?.substring(0, 8)}... datetime=${inquiryDateTimeISO}`);
+        return res.json({
+          success: true,
+          skipped: true,
+          message: '重複スキップ（UNIQUE制約違反 - 並行リクエスト）',
+        });
+      }
       console.error('[home4u-transfer] DB INSERT エラー:', insertError);
       return res.status(500).json({ success: false, error: `DB INSERT失敗: ${insertError?.message}` });
     }
