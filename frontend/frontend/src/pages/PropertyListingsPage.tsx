@@ -363,10 +363,10 @@ export default function PropertyListingsPage() {
           return normalizedStatusLabel === normalizedSidebarStatus;
         });
       } else if (sidebarStatus === '本日公開予定') {
-        // 「本日公開予定」: calculatePropertyStatusで判定 OR DBのsidebar_statusが'本日公開予定'
+        // 「本日公開予定」: calculatePropertyStatusで判定のみ（動的判定を優先）
+        // DBのsidebar_statusが'本日公開予定'でもATBB状況が'公開中'に変わっていれば除外する
         listings = listings.filter(l =>
-          calculatePropertyStatus(l as any, workTaskMap).key === 'today_publish' ||
-          l.sidebar_status === '本日公開予定'
+          calculatePropertyStatus(l as any, workTaskMap).key === 'today_publish'
         );
       } else if (sidebarStatus === 'SUUMO URL　要登録') {
         // 「SUUMO URL 要登録」は動的判定（DBのsidebar_statusに依存しない）

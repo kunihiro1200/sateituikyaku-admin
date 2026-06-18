@@ -246,6 +246,8 @@ export class PropertyListingService {
         if (current) {
           const reportDate = updates.report_date !== undefined ? updates.report_date : current.report_date;
           const reportAssignee = updates.report_assignee !== undefined ? updates.report_assignee : current.report_assignee;
+          // 報告担当が未設定の場合は物件担当（sales_assignee）をデフォルトとして使用
+          const effectiveAssignee = reportAssignee || current.sales_assignee || null;
           if (reportDate) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -257,8 +259,8 @@ export class PropertyListingService {
                 '山本': 'Y', '生野': '生', '久': '久', '裏': 'U',
                 '林': '林', '林田': '林', '国広': 'K', '木村': 'R', '角井': 'I',
               };
-              const assigneeInitial = reportAssignee
-                ? (initialMap[reportAssignee] || reportAssignee)
+              const assigneeInitial = effectiveAssignee
+                ? (initialMap[effectiveAssignee] || effectiveAssignee)
                 : null;
               updates.sidebar_status = assigneeInitial ? `未報告${assigneeInitial}` : '未報告';
             }
@@ -336,6 +338,41 @@ export class PropertyListingService {
         }
       } catch (e) {
         console.warn(`[PropertyListingService] Failed to recalculate sidebar_status for suumo_registered update:`, e);
+      }
+    }
+
+    // atbb_status が更新される場合、sidebar_status を再計算
+    // （公開前→公開中に変わった場合、「本日公開予定」が残り続けるバグを防止）
+    if ('atbb_status' in updates && !('suumo_url' in updates) && !('suumo_registered' in updates)) {
+      try {
+        const current = await this.getByPropertyNumber(propertyNumber);
+        if (current) {
+          const syncService = new PropertyListingSyncService();
+          const gyomuListData = await syncService.fetchGyomuListDataFromWorkTasks();
+
+          const row: Record<string, any> = {
+            '物件番号': current.property_number ?? '',
+            // atbb_status は更新後の値を使用
+            'atbb成約済み/非公開': updates.atbb_status,
+            '報告日': current.report_date ?? null,
+            '報告完了_override': current.report_completed ?? '',
+            '報告担当_override': current.report_assignee ?? null,
+            '報告担当': current.report_assignee ?? null,
+            '確認': current.confirmation ?? null,
+            '一般媒介非公開（仮）': current.general_mediation_private ?? null,
+            '１社掲載': current.single_listing ?? null,
+            'Suumo URL': current.suumo_url ?? null,
+            'Suumo登録': current.suumo_registered ?? null,
+            '買付': current.offer_status ?? null,
+            '担当名（営業）': current.sales_assignee ?? null,
+          };
+
+          const newSidebarStatus = syncService.calculateSidebarStatus(row, gyomuListData);
+          updates.sidebar_status = newSidebarStatus;
+          console.log(`[PropertyListingService] Recalculated sidebar_status for ${propertyNumber} (atbb_status update): ${newSidebarStatus}`);
+        }
+      } catch (e) {
+        console.warn(`[PropertyListingService] Failed to recalculate sidebar_status for atbb_status update:`, e);
       }
     }
 
