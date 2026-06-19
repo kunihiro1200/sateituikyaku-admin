@@ -2439,7 +2439,7 @@ router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
     );
     const { data: sellerRaw } = await supabase
       .from('sellers')
-      .select('latitude, longitude')
+      .select('latitude, longitude, seller_number')
       .eq('id', id)
       .single();
     const preloadedCoords = (sellerRaw?.latitude && sellerRaw?.longitude)
@@ -2448,7 +2448,29 @@ router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
 
     const result = await calculator.calculateDistributionAreas(googleMapUrl, city, seller.propertyAddress, preloadedCoords);
 
+    // 売主番号プレフィックスからエリアコードを導出（例: FI132 → "FI" → 買主テーブルの "F数字" 系エリアとマッチング用）
+    // DBから直接取得した seller_number を優先使用（キャッシュ経由だとundefinedになる場合がある）
+    const sellerNumberStr = sellerRaw?.seller_number || (seller as any).sellerNumber || '';
+    const sellerPrefixMatch = sellerNumberStr.match(/^([A-Za-z]+)/);
+    const sellerPrefix = sellerPrefixMatch ? sellerPrefixMatch[1].toUpperCase() : '';
+    // プレフィックスの先頭1〜2文字を地域コードとして使用（FI → F, AA → AA など）
+    // F系（福岡）: FI → F
+    const regionCode = sellerPrefix.startsWith('F') && sellerPrefix !== 'FI' ? sellerPrefix
+      : sellerPrefix === 'FI' ? 'F'
+      : sellerPrefix;
+    console.log(`🏷️ sellerNumber: ${sellerNumberStr} → prefix: ${sellerPrefix} → regionCode: ${regionCode}`);
+
+    let effectiveAreas = result.areas;
+
     if (!result.areas || result.areas.length === 0) {
+      // エリア算出失敗時、売主番号プレフィックスからエリアコードを生成して検索を試みる
+      if (regionCode) {
+        console.log(`📍 Area calculation returned 0 results for seller ${sellerNumberStr}. Trying prefix-based area code: ${regionCode}`);
+        effectiveAreas = [`${regionCode}_ALL`]; // 例: "F_ALL" → matchesAreaCriteria でプレフィックスマッチ
+      }
+    }
+
+    if (!effectiveAreas || effectiveAreas.length === 0) {
       // propertyDetailsオブジェクトを構築
       const propertyDetails = seller.property ? {
         address: seller.property.address || null,
@@ -2472,7 +2494,7 @@ router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
     }
 
     const buyerService = new BuyerService();
-    const buyers = await buyerService.getBuyersByAreas(result.areas, propertyType, salesPrice);
+    const buyers = await buyerService.getBuyersByAreas(effectiveAreas, propertyType, salesPrice);
 
     console.log(`✅ Found ${buyers.length} nearby buyers for seller ${id}`);
 
@@ -2489,7 +2511,7 @@ router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
 
     res.json({
       buyers,
-      matchedAreas: result.areas,
+      matchedAreas: effectiveAreas,
       propertyAddress: seller.propertyAddress,
       propertyType,
       salesPrice,
