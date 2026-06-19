@@ -1981,6 +1981,14 @@ export class BuyerService {
     const normalizedPropertyType = this.normalizePropertyType(japanesePropertyType);
     const normalizedDesiredTypes = desiredType.split(/[,、\s]+/).map((t: string) => this.normalizePropertyType(t));
 
+    // 戸建て物件の場合、土地希望の買主もマッチとする
+    // （戸建ては土地+建物なので土地希望買主にも送信可能）
+    const isDetachedHouseProperty = normalizedPropertyType === '戸建' || normalizedPropertyType.includes('戸建')
+      || normalizedPropertyType === '戸' || propertyType === '戸';
+    if (isDetachedHouseProperty) {
+      if (normalizedDesiredTypes.some((dt: string) => dt === '土地' || dt.includes('土地'))) return true;
+    }
+
     return normalizedDesiredTypes.some((dt: string) =>
       dt === normalizedPropertyType ||
       normalizedPropertyType.includes(dt) ||
