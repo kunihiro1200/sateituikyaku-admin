@@ -1728,11 +1728,10 @@ export class BuyerService {
       return [];
     }
 
-    // DBレベルで distribution_type = '要' に絞り込み（最大のボトルネック解消）
+    // DBレベルで distribution_type = '要' または broker_inquiry = '業者（両手）' に絞り込み
     // latest_status が成約・Dを含むものも除外
-    const { data: allBuyers, error } = await this.supabase
-      .from('buyers')
-      .select(`
+    // 1000件上限を回避するためページネーションで全件取得
+    const SELECT_COLUMNS = `
         buyer_id,
         buyer_number,
         name,
@@ -1757,14 +1756,26 @@ export class BuyerService {
         inquiry_hearing,
         viewing_result_follow_up,
         corporate_name
-      `)
-      .eq('distribution_type', '要')
-      .is('deleted_at', null)
-      .or('latest_status.is.null,latest_status.not.ilike.*成約*')
-      .or('latest_status.is.null,latest_status.not.ilike.*D*');
-
-    if (error) {
-      throw new Error(`Failed to fetch buyers by areas: ${error.message}`);
+      `;
+    const PAGE_SIZE = 1000;
+    let allBuyers: any[] = [];
+    let page = 0;
+    while (true) {
+      const { data, error } = await this.supabase
+        .from('buyers')
+        .select(SELECT_COLUMNS)
+        .or('distribution_type.eq.要,broker_inquiry.eq.業者（両手）')
+        .is('deleted_at', null)
+        .or('latest_status.is.null,latest_status.not.ilike.*成約*')
+        .or('latest_status.is.null,latest_status.not.ilike.*D*')
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+      if (error) {
+        throw new Error(`Failed to fetch buyers by areas: ${error.message}`);
+      }
+      if (!data || data.length === 0) break;
+      allBuyers = allBuyers.concat(data);
+      if (data.length < PAGE_SIZE) break;
+      page++;
     }
 
     const filteredBuyers = this.filterBuyerCandidates(allBuyers || [], areaNumbers, propertyType, salesPrice);
@@ -1840,10 +1851,13 @@ export class BuyerService {
 
   private shouldExcludeBuyer(buyer: any): boolean {
     if (this.isBusinessInquiry(buyer)) return true;
-    if (!this.hasDistributionRequired(buyer)) return true;
-    // 業者（両手）の買主はdesired_area/desired_property_typeが空でも表示する
     const brokerInquiry = (buyer.broker_inquiry || '').trim();
-    if (brokerInquiry !== '業者（両手）' && !this.hasMinimumCriteria(buyer)) return true;
+    const isDistributionRequired = this.hasDistributionRequired(buyer);
+    // 業者（両手）でも distribution_type='要' でもない買主は除外
+    if (brokerInquiry !== '業者（両手）' && !isDistributionRequired) return true;
+    // distribution_type='要' でない買主（業者（両手）のみ）は
+    // desired_area/desired_property_type が両方空でも表示する
+    // → 追加除外条件なし（業者（両手）は常に表示）
     return false;
   }
 
@@ -1904,8 +1918,52 @@ export class BuyerService {
       if (isBeppuProperty) return true;
     }
 
-    // 通常のエリアマッチング
-    return propertyAreaNumbers.some(area => buyerAreaNumbers.includes(area));
+    // 通常のエリアマッチング（囲み数字）
+    if (propertyAreaNumbers.some(area => buyerAreaNumbers.includes(area))) return true;
+
+    // 英字プレフィックス形式のエリアマッチング（例: F7, F11, F11-全域）
+    // 物件エリアに "F" などのプレフィックスが含まれる場合、買主の desired_area と照合する
+    const buyerAlphaAreas = this.extractAlphaAreaCodes(desiredArea);
+    if (buyerAlphaAreas.length > 0) {
+      const propertyAlphaAreas = propertyAreaNumbers.flatMap(a => this.extractAlphaAreaCodes(a));
+      // "_ALL" サフィックスつきのプレフィックス全域コード（例: "F_ALL"）も処理する
+      const propertyPrefixAllCodes = propertyAreaNumbers
+        .filter(a => a.endsWith('_ALL'))
+        .map(a => a.replace('_ALL', '').toUpperCase());
+
+      if (propertyAlphaAreas.length > 0 || propertyPrefixAllCodes.length > 0) {
+        // 完全一致 または 買主が「全部」エリア（例: F11）で物件が同プレフィックスなら一致
+        return buyerAlphaAreas.some(buyerCode => {
+          const buyerPrefix = buyerCode.match(/^([A-Za-z]+)/)?.[1]?.toUpperCase() || '';
+          const isAllArea = desiredArea.includes('全部') || desiredArea.includes('全域');
+
+          // 物件側が "_ALL" 全域コードの場合: 買主エリアが同プレフィックスならマッチ
+          if (propertyPrefixAllCodes.includes(buyerPrefix)) return true;
+
+          // 買主が「全部」エリアの場合: 同じプレフィックスを持つ物件エリアがあればマッチ
+          if (isAllArea && buyerPrefix) {
+            return propertyAlphaAreas.some(propCode => {
+              const propPrefix = propCode.match(/^([A-Za-z]+)/)?.[1]?.toUpperCase() || '';
+              return propPrefix === buyerPrefix;
+            });
+          }
+          return propertyAlphaAreas.includes(buyerCode);
+        });
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * 英字プレフィックス形式のエリアコードを抽出する
+   * 例: "F7 福岡市早良区" → ["F7"]
+   * 例: "F2 福岡市博多区|F1 福岡市東区" → ["F2", "F1"]
+   * 例: "F11 福岡市全部" → ["F11"]
+   */
+  private extractAlphaAreaCodes(areaString: string): string[] {
+    const codes = areaString.match(/[A-Za-z]+\d+/g) || [];
+    return codes.map(c => c.toUpperCase());
   }
 
   private matchesPropertyTypeCriteria(buyer: any, propertyType: string | null): boolean {
