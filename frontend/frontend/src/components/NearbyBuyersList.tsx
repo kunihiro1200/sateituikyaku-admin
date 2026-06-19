@@ -238,12 +238,25 @@ function buildEmailTemplate(params: {
   landArea: number | null;
   buildingArea: number | null;
   propertyType: string | null | undefined;
+  isFukuoka?: boolean;
 }): string {
   const name = params.buyerName ?? '{氏名}';
   const address = params.address ?? '';
   const landArea = params.landArea != null ? String(params.landArea) : '';
   const buildingArea = params.buildingArea != null ? String(params.buildingArea) : '';
   const isMansion = params.propertyType === 'マ' || params.propertyType === 'マンション';
+
+  const signature = params.isFukuoka
+    ? `×××××××××××××××
+福岡市中央区舞鶴3－1－10
+株式会社くじら不動産
+TEL:092-401-5331
+×××××××××××××××`
+    : `×××××××××××××××
+大分市舞鶴町1-3-30
+株式会社いふう
+TEL:097-533-2022
+×××××××××××××××`;
 
   if (isMansion) {
     return `${name}様
@@ -259,11 +272,7 @@ function buildEmailTemplate(params: {
 
 よろしくお願いいたします。
 
-×××××××××××××××
-大分市舞鶴町1-3-30
-株式会社いふう
-TEL:097-533-2022
-×××××××××××××××`;
+${signature}`;
   }
 
   return `${name}様
@@ -281,11 +290,7 @@ TEL:097-533-2022
 
 よろしくお願いいたします。
 
-×××××××××××××××
-大分市舞鶴町1-3-30
-株式会社いふう
-TEL:097-533-2022
-×××××××××××××××`;
+${signature}`;
 }
 
 interface PropertyDetails {
@@ -576,6 +581,8 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
       : `${address}に興味のあるかた！もうすぐ売り出します！事前に内覧可能です！`;
     const landArea = resolveArea(propertyDetails?.landAreaVerified, propertyDetails?.landArea);
     const buildingArea = resolveArea(propertyDetails?.buildingAreaVerified, propertyDetails?.buildingArea);
+    const effectivePropNum = propertyNumber || propertyNumberState;
+    const isFukuoka = effectivePropNum ? effectivePropNum.includes('FI') : false;
     let bodyTemplate: string;
     if (candidatesWithEmail.length === 1) {
       const buyerName = candidatesWithEmail[0].name || null;
@@ -585,6 +592,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
         landArea,
         buildingArea,
         propertyType: effectivePropertyType,
+        isFukuoka,
       });
     } else {
       bodyTemplate = buildEmailTemplate({
@@ -593,6 +601,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
         landArea,
         buildingArea,
         propertyType: effectivePropertyType,
+        isFukuoka,
       });
     }
     setEmailSubject(subject);
