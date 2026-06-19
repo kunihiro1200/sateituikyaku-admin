@@ -1900,7 +1900,16 @@ export class BuyerService {
 
   private matchesAreaCriteria(buyer: any, propertyAreaNumbers: string[]): boolean {
     const desiredArea = (buyer.desired_area || '').trim();
-    if (!desiredArea) return true;
+    if (!desiredArea) {
+      // desired_area が空の場合：
+      // 物件エリアが英字プレフィックス形式（F_ALL 等）の場合は除外
+      // （大分・別府の買主が福岡等の物件に表示されないようにする）
+      const hasAlphaPrefixArea = propertyAreaNumbers.some(a =>
+        a.endsWith('_ALL') || /^[A-Za-z]+\d+/.test(a)
+      );
+      if (hasAlphaPrefixArea) return false;
+      return true; // 囲み数字エリアの物件はエリア不問の買主を表示
+    }
     if (propertyAreaNumbers.length === 0) return false;
     const buyerAreaNumbers = this.extractAreaNumbers(desiredArea);
 
