@@ -1968,8 +1968,8 @@ export class BuyerService {
 
   private matchesPropertyTypeCriteria(buyer: any, propertyType: string | null): boolean {
     const desiredType = (buyer.desired_property_type || '').trim();
-    if (desiredType === '指定なし' || desiredType === '条件次第') return true;
-    if (!desiredType) return false;
+    // 希望種別が未設定・指定なし・条件次第は全物件種別にマッチ
+    if (!desiredType || desiredType === '指定なし' || desiredType === '条件次第') return true;
     if (!propertyType) return false;
 
     const propertyTypeMap: Record<string, string> = {
