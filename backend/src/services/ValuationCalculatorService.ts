@@ -34,8 +34,9 @@ export class ValuationCalculatorService extends BaseRepository {
       });
 
       // 築年数の計算（2025年基準）
+      // 築年未入力の場合はデフォルト33年（木造の耐用年数・残存価値10%）
       const currentYear = 2025;
-      const buildingAge = buildYear > 0 ? currentYear - buildYear : 0;
+      const buildingAge = buildYear > 0 ? currentYear - buildYear : 33;
 
       // 建築単価の取得
       const constructionUnitPrice = await this.getConstructionUnitPrice(buildYear, structure);
