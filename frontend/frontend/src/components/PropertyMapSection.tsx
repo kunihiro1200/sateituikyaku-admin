@@ -107,19 +107,20 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
 
   // 面積計測モードをONにする
   const handleMeasureModeOn = () => {
-    if (!mapRef.current) return;
+    if (!mapRef.current) {
+      console.error('🗺️ [Measure] mapRef.current is null');
+      return;
+    }
 
     // 編集モード中は計測モードに入れない
     if (isEditMode) return;
 
-    setIsMeasureMode(true);
-    setMeasuredArea(null);
+    console.log('🗺️ [Measure] Starting measure mode, map:', mapRef.current);
 
-    // DrawingManagerを作成してポリゴン描画を有効化
-    // ※ gestureHandling/draggableは変更しない（DrawingManagerが描画中は自動でクリックを横取りする）
+    // DrawingManagerを先に作成（setIsMeasureModeによる再レンダリング前）
     const drawingManager = new google.maps.drawing.DrawingManager({
       drawingMode: google.maps.drawing.OverlayType.POLYGON,
-      drawingControl: false, // カスタムボタンを使うので非表示
+      drawingControl: false,
       polygonOptions: {
         fillColor: '#2196F3',
         fillOpacity: 0.25,
@@ -130,8 +131,15 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
       },
     });
 
+    // mapに先にアタッチ
     drawingManager.setMap(mapRef.current);
     drawingManagerRef.current = drawingManager;
+
+    console.log('🗺️ [Measure] DrawingManager attached, drawingMode:', drawingManager.getDrawingMode());
+
+    // stateの更新は後（再レンダリングがあってもDrawingManagerは既にアタッチ済み）
+    setIsMeasureMode(true);
+    setMeasuredArea(null);
 
     // ポリゴン描画完了時に面積を計算
     google.maps.event.addListener(drawingManager, 'polygoncomplete', (polygon: google.maps.Polygon) => {
