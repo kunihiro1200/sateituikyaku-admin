@@ -150,10 +150,25 @@ const SITE_REGISTRATION_OK_BODY_YAMAZAKI =
   '㈱いふう<br>TEL:097-533-2022<br>MAIL: tenant@ifoo-oita.com' +
   '</body></html>';
 
-/** 間取図格納済み連絡メールの本文テンプレート（HTML形式） */
+/** 間取図格納済み連絡メールの本文テンプレート（HTML形式）- 浅沼様宛 */
 const FLOOR_PLAN_STORED_BODY =
   '<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Arial, Helvetica, \'Noto Sans JP\', sans-serif;font-size:14px;line-height:1.4;">' +
   '浅沼様<br>お世話になっております。<br>間取図格納済みです。<br>' +
+  '{格納先URL}<br>' +
+  '物件番号：{物件番号}<br>' +
+  '物件所在地：{物件所在}<br>' +
+  '当社依頼日：{サイト登録依頼日} {サイト登録依頼者}<br>' +
+  '当社の希望納期：{サイト登録納期予定日}<br>' +
+  '{パノラマ行}' +
+  '詳細：<a href="{スプシURL}">スプレッドシート</a><br>' +
+  'ご不明点等がございましたら、こちらに返信していただければと思います。<br><br>' +
+  '㈱いふう<br>TEL:097-533-2022<br>MAIL: tenant@ifoo-oita.com' +
+  '</body></html>';
+
+/** 間取図格納済み連絡メールの本文テンプレート（HTML形式）- 山崎様宛 */
+const FLOOR_PLAN_STORED_BODY_YAMAZAKI =
+  '<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Arial, Helvetica, \'Noto Sans JP\', sans-serif;font-size:14px;line-height:1.4;">' +
+  '山崎様<br>お世話になっております。<br>間取図格納済みです。<br>' +
   '{格納先URL}<br>' +
   '物件番号：{物件番号}<br>' +
   '物件所在地：{物件所在}<br>' +
@@ -215,13 +230,13 @@ export const EMAIL_RULES: EmailRule[] = [
     bodyTemplate: '__dynamic_site_registration_ok__',
     isHtml: true,
   },
-  // ルール6: 間取図格納済み連絡メール
+  // ルール6: 間取図格納済み連絡メール - cw_personフィールドで宛先を動的決定
   {
     triggerField: 'floor_plan_stored_email',
-    to: 'shiraishi8biz@gmail.com',
+    to: '__dynamic_cw_person__',
     cc: 'tenant@ifoo-oita.com',
     subjectTemplate: '間取図格納済みです！{物件番号}{物件所在}（㈱いふう）',
-    bodyTemplate: FLOOR_PLAN_STORED_BODY,
+    bodyTemplate: '__dynamic_floor_plan_stored__',
     isHtml: true,
   },
   // ルール7: 山本マネージャーへの契約書確認完了メール
@@ -402,6 +417,8 @@ export class WorkTaskEmailNotificationService {
               bodyTemplate = SITE_REGISTRATION_REQUEST_BODY_YAMAZAKI;
             } else if (rule.bodyTemplate === '__dynamic_site_registration_ok__') {
               bodyTemplate = SITE_REGISTRATION_OK_BODY_YAMAZAKI;
+            } else if (rule.bodyTemplate === '__dynamic_floor_plan_stored__') {
+              bodyTemplate = FLOOR_PLAN_STORED_BODY_YAMAZAKI;
             }
           } else {
             // デフォルト: 浅沼様
@@ -410,6 +427,8 @@ export class WorkTaskEmailNotificationService {
               bodyTemplate = SITE_REGISTRATION_REQUEST_BODY;
             } else if (rule.bodyTemplate === '__dynamic_site_registration_ok__') {
               bodyTemplate = SITE_REGISTRATION_OK_BODY;
+            } else if (rule.bodyTemplate === '__dynamic_floor_plan_stored__') {
+              bodyTemplate = FLOOR_PLAN_STORED_BODY;
             }
           }
         }
