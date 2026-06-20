@@ -1143,7 +1143,11 @@ ${bodyHtml}
       try {
         // 各受信者の名前で本文を差し替え（{buyerName}プレースホルダー）
         const buyerName = recipient.name || 'お客様';
-        const personalizedBody = params.body.replace(/\{buyerName\}/g, buyerName);
+        const replacedBody = params.body.replace(/\{buyerName\}/g, buyerName);
+        // プレーンテキストの改行を<br>に変換（HTML未変換の場合のみ）
+        const personalizedBody = replacedBody.includes('<br') || replacedBody.includes('<div') || replacedBody.includes('<p')
+          ? replacedBody
+          : replacedBody.replace(/\n/g, '<br>\n');
         const personalizedSubject = params.subject.replace(/\{buyerName\}/g, buyerName);
         const encodedPersonalizedSubject = this.encodeSubject(personalizedSubject);
         let encodedMessage: string;
