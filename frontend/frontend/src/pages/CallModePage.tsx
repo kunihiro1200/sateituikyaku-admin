@@ -4300,6 +4300,7 @@ HP：https://ifoo-oita.com/
   };
 
   // 専任、他決、一般媒介、他社買取が含まれているかチェック
+  // 他社買取も他決と同様のUIフローを適用する
   const requiresDecisionDate = (status: string): boolean => {
     if (!status) return false;
     const label = getStatusLabel(status);
