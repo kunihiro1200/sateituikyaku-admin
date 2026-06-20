@@ -1245,6 +1245,7 @@ router.patch('/:id/coordinates', async (req: Request, res: Response) => {
 router.post('/by-number/:sellerNumber/geocode', async (req: Request, res: Response) => {
   try {
     const { sellerNumber } = req.params;
+    const { address: overrideAddress } = req.body; // フロントから住所を渡せるようにする
     const supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_KEY!
@@ -1261,8 +1262,11 @@ router.post('/by-number/:sellerNumber/geocode', async (req: Request, res: Respon
       return res.status(404).json({ error: 'Seller not found' });
     }
 
+    // フロントから住所が渡された場合はそちらを優先、なければDBの住所を使用
+    const addressToGeocode = overrideAddress?.trim() || data.property_address;
+
     // property_address が空の場合はエラー
-    if (!data.property_address) {
+    if (!addressToGeocode) {
       return res.status(400).json({ error: '物件住所が入力されていません' });
     }
 
@@ -1274,20 +1278,25 @@ router.post('/by-number/:sellerNumber/geocode', async (req: Request, res: Respon
     const { GeocodingService } = await import('../services/GeocodingService');
     const geocodingService = new GeocodingService();
     const sellerPrefix = sellerNumber ? sellerNumber.substring(0, 2).toUpperCase() : undefined;
-    const coords = await geocodingService.geocodeAddress(data.property_address, sellerPrefix);
+    const coords = await geocodingService.geocodeAddress(addressToGeocode, sellerPrefix);
 
     if (!coords) {
-      return res.status(422).json({ error: `住所「${data.property_address}」の座標を取得できませんでした` });
+      return res.status(422).json({ error: `住所「${addressToGeocode}」の座標を取得できませんでした` });
     }
 
-    // 座標を更新
+    // 座標を更新（overrideAddressが渡された場合はproperty_addressも更新）
+    const updatePayload: any = {
+      latitude: coords.lat,
+      longitude: coords.lng,
+      updated_at: new Date().toISOString(),
+    };
+    if (overrideAddress?.trim()) {
+      updatePayload.property_address = overrideAddress.trim();
+    }
+
     const { error: updateError } = await supabase
       .from('sellers')
-      .update({
-        latitude: coords.lat,
-        longitude: coords.lng,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('seller_number', sellerNumber);
 
     if (updateError) {
@@ -1295,12 +1304,12 @@ router.post('/by-number/:sellerNumber/geocode', async (req: Request, res: Respon
       return res.status(500).json({ error: 'Failed to update coordinates' });
     }
 
-    console.log(`[geocode by-number] ${sellerNumber}: "${data.property_address}" -> lat=${coords.lat}, lng=${coords.lng}`);
+    console.log(`[geocode by-number] ${sellerNumber}: "${addressToGeocode}" -> lat=${coords.lat}, lng=${coords.lng}`);
 
     res.json({
       success: true,
       sellerNumber,
-      propertyAddress: data.property_address,
+      propertyAddress: addressToGeocode,
       latitude: coords.lat,
       longitude: coords.lng,
     });

@@ -5630,7 +5630,7 @@ HP：https://ifoo-oita.com/
             {/* 地図表示（売主番号が設定されている場合のみ表示） */}
             {(() => {
               if (seller?.sellerNumber) {
-                return <PropertyMapSection sellerNumber={seller.sellerNumber} propertyAddress={property?.address || seller?.propertyAddress} />;
+                return <PropertyMapSection sellerNumber={seller.sellerNumber} propertyAddress={property?.address || seller?.propertyAddress} currentAddress={editedPropertyAddress || property?.address || seller?.propertyAddress} />;
               }
               return null;
             })()}

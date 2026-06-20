@@ -14,7 +14,8 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 
 interface PropertyMapSectionProps {
   sellerNumber: string;
-  propertyAddress: string | undefined;
+  propertyAddress: string | undefined;  // 保存済み住所（地図URLなどに使用）
+  currentAddress?: string;              // 編集中の住所（「地図を更新」で使用）
 }
 
 const mapContainerStyle = {
@@ -24,7 +25,7 @@ const mapContainerStyle = {
 
 const DEFAULT_ZOOM = 15;
 
-const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, propertyAddress }) => {
+const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, propertyAddress, currentAddress }) => {
   const { isLoaded: isMapLoaded } = useGoogleMaps();
   const [mapCoordinates, setMapCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [originalCoordinates, setOriginalCoordinates] = useState<{ lat: number; lng: number } | null>(null);
@@ -262,13 +263,20 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
 
   // 住所から地図を再ジオコーディングして更新
   const handleRegeocode = async () => {
-    if (!sellerNumber || !propertyAddress) return;
+    if (!sellerNumber) return;
+
+    // 編集中の住所を優先、なければ保存済み住所
+    const addressToUse = currentAddress?.trim() || propertyAddress;
+    if (!addressToUse) return;
 
     setIsRegeocoding(true);
     setSaveMessage(null);
 
     try {
-      const response = await api.post(`/api/sellers/by-number/${sellerNumber}/geocode`);
+      // 編集中の住所をbodyで渡す（バックエンドがDBの住所より優先して使用する）
+      const response = await api.post(`/api/sellers/by-number/${sellerNumber}/geocode`, {
+        address: addressToUse,
+      });
       const { latitude, longitude, propertyAddress: geocodedAddress } = response.data;
 
       const newCoords = { lat: latitude, lng: longitude };
@@ -297,7 +305,7 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
   };
 
   // 座標もなく、住所もなく、ローディング中でもない場合は非表示
-  if (!sellerNumber || !isMapLoaded || (!isLoadingCoordinates && !mapCoordinates && !propertyAddress)) {
+  if (!sellerNumber || !isMapLoaded || (!isLoadingCoordinates && !mapCoordinates && !propertyAddress && !currentAddress)) {
     return null;
   }
 
@@ -336,7 +344,7 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {!isEditMode && !isMeasureMode && (
               <>
-                {propertyAddress && (
+                {(propertyAddress || currentAddress) && (
                   <Button
                     variant="outlined"
                     size="small"
@@ -344,7 +352,7 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
                     startIcon={isRegeocoding ? <CircularProgress size={16} color="inherit" /> : <RefreshIcon />}
                     onClick={handleRegeocode}
                     disabled={isRegeocoding}
-                    title={`「${propertyAddress}」の住所から地図を更新`}
+                    title={`「${currentAddress || propertyAddress}」の住所から地図を更新`}
                   >
                     {isRegeocoding ? '更新中...' : '地図を更新'}
                   </Button>
@@ -437,10 +445,10 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
       )}
 
       {/* 座標未設定かつ住所あり → 地図を更新ボタンで取得を促す */}
-      {!isLoadingCoordinates && !mapCoordinates && propertyAddress && (
+      {!isLoadingCoordinates && !mapCoordinates && (propertyAddress || currentAddress) && (
         <Alert severity="info" sx={{ mb: 2 }}>
           <Typography variant="body2">
-            「<strong>{propertyAddress}</strong>」の座標がまだ登録されていません。「地図を更新」ボタンを押すと住所から地図上の位置を取得します。
+            「<strong>{currentAddress || propertyAddress}</strong>」の座標がまだ登録されていません。「地図を更新」ボタンを押すと住所から地図上の位置を取得します。
           </Typography>
         </Alert>
       )}
