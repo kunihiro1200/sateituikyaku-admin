@@ -115,10 +115,8 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
     setIsMeasureMode(true);
     setMeasuredArea(null);
 
-    // 描画中はマップのパン（ドラッグ）を無効化してクリックを確実に受け取る
-    mapRef.current.setOptions({ draggable: false, gestureHandling: 'none' });
-
     // DrawingManagerを作成してポリゴン描画を有効化
+    // ※ gestureHandling/draggableは変更しない（DrawingManagerが描画中は自動でクリックを横取りする）
     const drawingManager = new google.maps.drawing.DrawingManager({
       drawingMode: google.maps.drawing.OverlayType.POLYGON,
       drawingControl: false, // カスタムボタンを使うので非表示
@@ -145,11 +143,6 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
 
       // 描画モードを終了（追加描画を防ぐ）
       drawingManager.setDrawingMode(null);
-
-      // ポリゴン確定後はマップのパン操作を再度有効化
-      if (mapRef.current) {
-        mapRef.current.setOptions({ draggable: true, gestureHandling: 'auto' });
-      }
 
       // 面積を計算（㎡）
       const area = google.maps.geometry.spherical.computeArea(polygon.getPath());
@@ -181,10 +174,6 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
       measurePolygonRef.current.setMap(null);
       measurePolygonRef.current = null;
     }
-    // マップの操作を元に戻す
-    if (mapRef.current) {
-      mapRef.current.setOptions({ draggable: true, gestureHandling: 'auto' });
-    }
     setIsMeasureMode(false);
     setMeasuredArea(null);
   };
@@ -200,10 +189,6 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
     // DrawingManagerを再度描画モードに戻す
     if (drawingManagerRef.current) {
       drawingManagerRef.current.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
-    }
-    // 再描画のためマップのパンを再度無効化
-    if (mapRef.current) {
-      mapRef.current.setOptions({ draggable: false, gestureHandling: 'none' });
     }
   };
 
@@ -317,8 +302,8 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
     <Paper sx={{ p: 2, mb: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
         <Box
-          sx={{ display: 'flex', alignItems: 'center', cursor: googleMapsUrl && !isEditMode ? 'pointer' : 'default' }}
-          onClick={() => !isEditMode && googleMapsUrl && window.open(googleMapsUrl, '_blank', 'noopener,noreferrer')}
+          sx={{ display: 'flex', alignItems: 'center', cursor: googleMapsUrl && !isEditMode && !isMeasureMode ? 'pointer' : 'default' }}
+          onClick={() => !isEditMode && !isMeasureMode && googleMapsUrl && window.open(googleMapsUrl, '_blank', 'noopener,noreferrer')}
         >
           <Typography variant="h6">
             🗺️ 物件位置
@@ -486,7 +471,11 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
       {!isLoadingCoordinates && mapCoordinates && (
         <Box sx={{ borderRadius: '8px', overflow: 'hidden', position: 'relative' }}>
           <GoogleMap
-            mapContainerStyle={mapContainerStyle}
+            mapContainerStyle={{
+              ...mapContainerStyle,
+              // 計測モード中はカーソルをcrosshairに変えてクリック可能と示す
+              cursor: isMeasureMode ? 'crosshair' : undefined,
+            }}
             center={mapCoordinates}
             zoom={DEFAULT_ZOOM}
             options={{
@@ -529,6 +518,7 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
                 py: 1,
                 borderRadius: 1,
                 boxShadow: 2,
+                pointerEvents: 'none', // 地図のクリックを妨げない
               }}
             >
               <Typography variant="caption" color="text.secondary">
@@ -551,6 +541,7 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
                 boxShadow: 2,
                 textAlign: 'center',
                 whiteSpace: 'nowrap',
+                pointerEvents: 'none', // 地図のクリックを妨げない
               }}
             >
               <Typography variant="body2" fontWeight="bold" color="success.main">
