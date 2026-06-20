@@ -526,14 +526,23 @@ export default function BuyerDesiredConditionsPage() {
                           })}
                         </Box>
                       )}
-                      MenuProps={{ PaperProps: { style: { maxHeight: 400 } } }}
+                      MenuProps={{ PaperProps: { style: { maxHeight: 600 } } }}
                     >
-                      {(field.options || []).map((opt) => (
-                        <MenuItem key={opt.value} value={opt.value} dense>
-                          <Checkbox size="small" checked={selectedAreas.includes(opt.value)} sx={{ p: 0, mr: 1 }} />
-                          <Typography variant="body2">{opt.label}</Typography>
-                        </MenuItem>
-                      ))}
+                      {(field.options || []).map((opt, index, arr) => {
+                        // 大分エリアと福岡エリアの境目にセパレーターを挿入
+                        const isBoundary = index > 0 && opt.value.startsWith('F') && !arr[index - 1].value.startsWith('F');
+                        return [
+                          isBoundary ? (
+                            <MenuItem key="__separator__" disabled dense sx={{ borderTop: '2px solid #1976d2', mt: 0.5, mb: 0.5 }}>
+                              <Typography variant="caption" color="primary" fontWeight="bold">── 福岡エリア ──</Typography>
+                            </MenuItem>
+                          ) : null,
+                          <MenuItem key={opt.value} value={opt.value} dense>
+                            <Checkbox size="small" checked={selectedAreas.includes(opt.value)} sx={{ p: 0, mr: 1 }} />
+                            <Typography variant="body2">{opt.label}</Typography>
+                          </MenuItem>
+                        ];
+                      })}
                     </Select>
                   </FormControl>
                 ) : field.inlineEditable ? (

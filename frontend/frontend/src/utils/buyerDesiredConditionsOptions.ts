@@ -40,15 +40,18 @@ export const FUKUOKA_AREA_OPTIONS = [
   { value: 'F11 福岡市全部', label: 'F11 福岡市全部' },
 ];
 
+// 大分・別府エリアと福岡エリアを両方含むオプション
+export const ALL_AREA_OPTIONS = [...AREA_OPTIONS, ...FUKUOKA_AREA_OPTIONS];
+
 /**
  * 買主番号がFKで始まるかどうかで使用するエリア選択肢を返す
- * FK○○ → 福岡エリア、それ以外 → 大分エリア
+ * FK○○ → 福岡エリアのみ、それ以外 → 大分エリア＋福岡エリア両方
  */
 export const getAreaOptions = (buyerNumber?: string | null) => {
   if (buyerNumber && /^FK/i.test(buyerNumber)) {
     return FUKUOKA_AREA_OPTIONS;
   }
-  return AREA_OPTIONS;
+  return ALL_AREA_OPTIONS;
 };
 
 // 希望種別

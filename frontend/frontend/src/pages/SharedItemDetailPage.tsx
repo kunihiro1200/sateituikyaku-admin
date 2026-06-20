@@ -340,15 +340,25 @@ export default function SharedItemDetailPage() {
           {/* 共有日（編集可能） */}
           <Grid item xs={6}>
             <Typography variant="caption" color="text.secondary">共有日</Typography>
-            <TextField
-              fullWidth
-              type="date"
-              value={sharingDate}
-              onChange={(e) => setSharingDate(e.target.value)}
-              size="small"
-              InputLabelProps={{ shrink: true }}
-              sx={{ mt: 1 }}
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+              <TextField
+                fullWidth
+                type="date"
+                value={sharingDate}
+                onChange={(e) => setSharingDate(e.target.value)}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+              />
+              <Button
+                variant="contained"
+                onClick={handleSave}
+                disabled={saving || !hasChanges}
+                sx={{ bgcolor: color.main, '&:hover': { bgcolor: color.dark }, whiteSpace: 'nowrap', flexShrink: 0 }}
+                startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
+              >
+                {saving ? '保存中...' : '保存'}
+              </Button>
+            </Box>
           </Grid>
 
           {/* PDF */}

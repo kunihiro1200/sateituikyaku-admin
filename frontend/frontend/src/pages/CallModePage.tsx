@@ -826,6 +826,13 @@ const CallModePage = () => {
   const [appointmentSuccessMessage, setAppointmentSuccessMessage] = useState<string | null>(null);
   const [sendingChatNotification, setSendingChatNotification] = useState(false);
 
+  // 競合名・理由バリデーションポップアップ用
+  const [competitorReasonValidationDialog, setCompetitorReasonValidationDialog] = useState<{
+    open: boolean;
+    message: string;
+    subMessage?: string;
+  }>({ open: false, message: '' });
+
   // テンプレート送信中の状態
   const [sendingTemplate, setSendingTemplate] = useState(false);
 
@@ -2707,18 +2714,18 @@ const CallModePage = () => {
       return;
     }
 
-    // バリデーション：状況（当社）に他決/一般/専任/他社買取を含む + 確度がD/ダブりを含む場合は警告
-    const statusHasOtherDecision = editedStatus?.includes('他決') || editedStatus?.includes('一般') || editedStatus?.includes('専任') || editedStatus === '他社買取';
+    // バリデーション：状況（当社）に他決/一般/専任を含む + 確度がD/ダブりを含む場合は警告
+    const statusHasOtherDecision = editedStatus?.includes('他決') || editedStatus?.includes('一般') || editedStatus?.includes('専任');
     const confidenceIsDOrDouble = editedConfidence?.includes('D') || editedConfidence?.includes('ダブり');
     if (statusHasOtherDecision && confidenceIsDOrDouble) {
       setStatusConfidenceWarningOpen(true);
       return;
     }
 
-    // バリデーション：専任または他決または他社買取が含まれる場合は決定日、競合、専任・他決要因が必須
+    // バリデーション：専任または他決が含まれる場合は決定日、競合、専任・他決要因が必須
     if (requiresDecisionDate(editedStatus)) {
       if (!editedExclusiveDecisionDate) {
-        setError(editedStatus === '他社買取' ? '契約年月日を入力してください' : '専任（他決）決定日を入力してください');
+        setError('専任（他決）決定日を入力してください');
         return;
       }
       if (editedCompetitors.length === 0) {
@@ -2913,6 +2920,7 @@ const CallModePage = () => {
             (seller?.sellerNumber ? `売主番号: ${seller.sellerNumber}\n` : '') +
             `売主名: ${seller?.name || ''}\n` +
             `電話: ${seller?.phoneNumber || ''}\n` +
+            (editedAppointmentNotes ? `\nメモ: ${editedAppointmentNotes}\n` : '') +
             `\n通話モードページ:\n${window.location.href}`;
 
           const empList = employees && employees.length > 0 ? employees : (() => {
@@ -4304,7 +4312,7 @@ HP：https://ifoo-oita.com/
   const requiresDecisionDate = (status: string): boolean => {
     if (!status) return false;
     const label = getStatusLabel(status);
-    return label.includes('専任') || label.includes('他決') || label === '他社買取';
+    return label.includes('専任') || label.includes('他決');
   };
 
   // 必須項目が全て入力されているかチェック
@@ -4315,7 +4323,8 @@ HP：https://ifoo-oita.com/
     return (
       editedExclusiveDecisionDate !== '' &&
       editedCompetitors.length > 0 &&
-      editedExclusiveOtherDecisionFactors.length > 0
+      editedExclusiveOtherDecisionFactors.length > 0 &&
+      editedCompetitorNameAndReason.trim() !== ''
     );
   };
 
@@ -4328,11 +4337,22 @@ HP：https://ifoo-oita.com/
       setError(null);
 
       const statusLabel = getStatusLabel(editedStatus);
-      
-      // バリデーション：専任または他決または他社買取が含まれる場合は決定日、競合、専任・他決要因が必須
+
+      // デバッグ：実際の値をコンソールに出力
+      console.log('[DEBUG] editedStatus:', editedStatus);
+      console.log('[DEBUG] savedStatus:', savedStatus);
+      console.log('[DEBUG] getStatusLabel(editedStatus):', statusLabel);
+      console.log('[DEBUG] getStatusLabel(savedStatus):', getStatusLabel(savedStatus));
+      console.log('[DEBUG] editedCompetitorNameAndReason:', JSON.stringify(editedCompetitorNameAndReason));
+      console.log('[DEBUG] savedCompetitorNameAndReason:', JSON.stringify(savedCompetitorNameAndReason));
+      console.log('[DEBUG] editedExclusiveDecisionDate:', editedExclusiveDecisionDate);
+      console.log('[DEBUG] savedExclusiveDecisionDate:', savedExclusiveDecisionDate);
+      console.log('[DEBUG] requiresDecisionDate(editedStatus):', requiresDecisionDate(editedStatus));
+
+      // バリデーション：専任または他決が含まれる場合は決定日、競合、専任・他決要因、競合名・理由が必須
       if (requiresDecisionDate(editedStatus)) {
         if (!editedExclusiveDecisionDate) {
-          setError(editedStatus === '他社買取' ? '契約年月日を入力してください' : '専任（他決）決定日を入力してください');
+          setError('専任（他決）決定日を入力してください');
           setSendingChatNotification(false);
           return;
         }
@@ -4345,6 +4365,54 @@ HP：https://ifoo-oita.com/
           setError('専任・他決要因を選択してください');
           setSendingChatNotification(false);
           return;
+        }
+
+        // 「競合名、理由（他決、専任）」の必須チェック（常に確認）
+        if (!editedCompetitorNameAndReason.trim()) {
+          setSendingChatNotification(false);
+          setCompetitorReasonValidationDialog({
+            open: true,
+            message: '「競合名、理由（他決、専任）」が入力されていません',
+            subMessage: '通知を送る前に競合名や専任・他決になった理由を記入してください。',
+          });
+          return;
+        }
+
+        // 他決→専任への変更時のバリデーション
+        // editedStatus が「他決→専任」（other_decision_exclusive）の場合は毎回チェック
+        // savedStatus との比較で判定すると、前回送信後に savedStatus が更新されてしまい
+        // 2回目以降のバリデーションがスキップされるバグがあったため、editedStatus 自体で判定する
+        const savedStatusLabel = getStatusLabel(savedStatus);
+        const isOtherDecisionToExclusive = statusLabel.includes('他決') && statusLabel.includes('専任');
+
+        console.log('[DEBUG] savedStatusLabel:', savedStatusLabel);
+        console.log('[DEBUG] statusLabel:', statusLabel);
+        console.log('[DEBUG] isOtherDecisionToExclusive:', isOtherDecisionToExclusive);
+        console.log('[DEBUG] savedExclusiveDecisionDate:', savedExclusiveDecisionDate);
+        console.log('[DEBUG] editedExclusiveDecisionDate:', editedExclusiveDecisionDate);
+
+        if (isOtherDecisionToExclusive) {
+          // 決定日が変わっていない場合は警告（保存済み日付が空でも警告する）
+          if (editedExclusiveDecisionDate === savedExclusiveDecisionDate) {
+            setSendingChatNotification(false);
+            setCompetitorReasonValidationDialog({
+              open: true,
+              message: '「専任（他決）決定日」が変更されていません',
+              subMessage: `ステータスが「${savedStatusLabel}」→「${statusLabel}」に変更されています。\n専任媒介の決定日に更新してから送信してください。`,
+            });
+            return;
+          }
+
+          // コメントが追記されていない場合は警告（保存済みコメントと同じ内容は不可）
+          if (editedCompetitorNameAndReason.trim() === savedCompetitorNameAndReason.trim()) {
+            setSendingChatNotification(false);
+            setCompetitorReasonValidationDialog({
+              open: true,
+              message: `「競合名、理由」に新しいコメントが追記されていません`,
+              subMessage: `ステータスが「${savedStatusLabel}」→「${statusLabel}」に変更されています。\n以前のコメントのままです。${statusLabel}になった理由を追記してから送信してください。`,
+            });
+            return;
+          }
         }
       }
       
@@ -4382,12 +4450,6 @@ HP：https://ifoo-oita.com/
         endpoint = `/api/chat-notifications/post-visit-other-decision/${seller.id}`;
       } else if (statusLabel.includes('未訪問他決')) {
         endpoint = `/api/chat-notifications/pre-visit-other-decision/${seller.id}`;
-      } else if (statusLabel === '他社買取') {
-        // 他社買取は他決と同じルーティング（訪問済みかどうかで分岐）
-        const isVisited = seller.visitAssignee && seller.visitAssignee !== '' && seller.visitAssignee !== '外す';
-        endpoint = isVisited
-          ? `/api/chat-notifications/post-visit-other-decision/${seller.id}`
-          : `/api/chat-notifications/pre-visit-other-decision/${seller.id}`;
       } else if (statusLabel.includes('他決')) {
         // visit_assigneeが設定されている（訪問済み）場合は訪問後他決、それ以外は未訪問他決
         const isVisited = seller.visitAssignee && seller.visitAssignee !== '' && seller.visitAssignee !== '外す';
@@ -4401,6 +4463,9 @@ HP：https://ifoo-oita.com/
       await api.post(endpoint, {
         assignee: seller.visitAssignee || seller.assignedTo || employee?.name,
         notes: `決定日: ${editedExclusiveDecisionDate}\n競合: ${editedCompetitors.join(', ')}\n要因: ${editedExclusiveOtherDecisionFactors.join(', ')}${editedCompetitorNameAndReason ? `\n総合名・理由: ${editedCompetitorNameAndReason}` : ''}`,
+        // 他決→専任ステータス（他決→専任）の場合、または他決系ステータスから専任系に変更した場合はフラグを立てる
+        fromOtherDecision: statusLabel.includes('他決') && statusLabel.includes('専任')
+          || (savedStatus && getStatusLabel(savedStatus).includes('他決') && statusLabel.includes('専任')),
       });
 
       setSuccessMessage(`${statusLabel}の通知を送信しました（4つのフィールドも保存しました）`);
@@ -8309,34 +8374,6 @@ HP：https://ifoo-oita.com/
                   </Grid>
                 )}
 
-                {/* 他社買取の場合：契約年月日を編集可能な日付フィールドで表示 */}
-                {editedStatus === '他社買取' && (
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="契約年月日"
-                      type="date"
-                      required
-                      value={editedExclusiveDecisionDate}
-                      onChange={(e) => { setEditedExclusiveDecisionDate(e.target.value); setStatusChanged(true); statusChangedRef.current = true; }}
-                      InputLabelProps={{ shrink: true }}
-                      error={!editedExclusiveDecisionDate}
-                      helperText={!editedExclusiveDecisionDate ? '必須項目です' : ''}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          backgroundColor: '#E3F2FD',
-                          '& fieldset': { borderColor: '#1565C0' },
-                          '&:hover fieldset': { borderColor: '#0D47A1' },
-                          '&.Mui-focused fieldset': { borderColor: '#0D47A1' },
-                        },
-                        '& .MuiInputLabel-root': { color: '#1565C0' },
-                        '& .MuiInputLabel-root.Mui-focused': { color: '#1565C0' },
-                      }}
-                    />
-                  </Grid>
-                )}
-
                 {/* 一般媒介通知ボタン */}
                 {editedStatus === '一般媒介' && (
                   <Grid item xs={12}>
@@ -8359,11 +8396,9 @@ HP：https://ifoo-oita.com/
                   </Grid>
                 )}
 
-                {/* 専任または他決または他社買取が含まれる場合のみ表示 */}
+                {/* 専任または他決が含まれる場合のみ表示 */}
                 {requiresDecisionDate(editedStatus) && (
                   <>
-                    {/* 他社買取の場合は上で契約年月日として表示済みのためスキップ */}
-                    {editedStatus !== '他社買取' && (
                     <Grid item xs={12}>
                       <TextField
                         fullWidth
@@ -8378,7 +8413,6 @@ HP：https://ifoo-oita.com/
                         helperText={!editedExclusiveDecisionDate ? '必須項目です' : ''}
                       />
                     </Grid>
-                    )}
                     <Grid item xs={12}>
                       <FormControl fullWidth size="small" required error={editedCompetitors.length === 0}>
                         <InputLabel>競合（複数選択可）</InputLabel>
@@ -8536,9 +8570,12 @@ HP：https://ifoo-oita.com/
                         rows={4}
                         size="small"
                         label="競合名、理由（他決、専任）"
+                        required
                         value={editedCompetitorNameAndReason}
                         onChange={(e) => { setEditedCompetitorNameAndReason(e.target.value); setStatusChanged(true); statusChangedRef.current = true; }}
                         placeholder="競合他社の名前や、専任・他決になった理由の詳細を記入してください"
+                        error={!editedCompetitorNameAndReason.trim()}
+                        helperText={!editedCompetitorNameAndReason.trim() ? '必須項目です' : ''}
                       />
                     </Grid>
                     
@@ -8561,8 +8598,8 @@ HP：https://ifoo-oita.com/
                       </Grid>
                     )}
 
-                    {/* 他決→追客 / 他決→追客不要 / 他社買取の場合：他決分析ボタンを表示 */}
-                    {(editedStatus === '他決→追客' || editedStatus === '他決→追客不要' || editedStatus === '他社買取') && id && (
+                    {/* 他決→追客 / 他決→追客不要の場合：他決分析ボタンを表示 */}
+                    {(editedStatus === '他決→追客' || editedStatus === '他決→追客不要') && id && (
                       <Grid item xs={12}>
                         <Button
                           variant="outlined"
@@ -8580,36 +8617,34 @@ HP：https://ifoo-oita.com/
                       </Grid>
                     )}
 
-                    {/* GoogleChat通知ボタン - 必須項目が全て入力されている場合のみ表示 */}
-                    {isRequiredFieldsComplete() && (
-                      <Grid item xs={12}>
-                        <Button
-                          fullWidth
-                          variant={statusChanged ? 'contained' : 'contained'}
-                          color={statusChanged ? undefined : 'success'}
-                          onClick={handleSendChatNotification}
-                          disabled={sendingChatNotification}
-                          startIcon={sendingChatNotification ? <CircularProgress size={20} /> : null}
-                          sx={{
-                            ...(statusChanged ? {
-                              backgroundColor: '#ff6d00',
-                              color: '#fff',
-                              fontWeight: 'bold',
-                              boxShadow: '0 0 0 3px rgba(255,109,0,0.4)',
-                              animation: 'pulse-orange 1.5s infinite',
-                              '@keyframes pulse-orange': {
-                                '0%': { boxShadow: '0 0 0 0 rgba(255,109,0,0.5)' },
-                                '70%': { boxShadow: '0 0 0 8px rgba(255,109,0,0)' },
-                                '100%': { boxShadow: '0 0 0 0 rgba(255,109,0,0)' },
-                              },
-                              '&:hover': { backgroundColor: '#e65100' },
-                            } : {}),
-                          }}
-                        >
-                          {sendingChatNotification ? '送信中...' : `${getStatusLabel(editedStatus)}通知`}
-                        </Button>
-                      </Grid>
-                    )}
+                    {/* GoogleChat通知ボタン - 専任/他決/一般のとき常に表示、必須項目未入力はクリック時にポップアップ */}
+                    <Grid item xs={12}>
+                      <Button
+                        fullWidth
+                        variant={statusChanged ? 'contained' : 'contained'}
+                        color={statusChanged ? undefined : 'success'}
+                        onClick={handleSendChatNotification}
+                        disabled={sendingChatNotification}
+                        startIcon={sendingChatNotification ? <CircularProgress size={20} /> : null}
+                        sx={{
+                          ...(statusChanged ? {
+                            backgroundColor: '#ff6d00',
+                            color: '#fff',
+                            fontWeight: 'bold',
+                            boxShadow: '0 0 0 3px rgba(255,109,0,0.4)',
+                            animation: 'pulse-orange 1.5s infinite',
+                            '@keyframes pulse-orange': {
+                              '0%': { boxShadow: '0 0 0 0 rgba(255,109,0,0.5)' },
+                              '70%': { boxShadow: '0 0 0 8px rgba(255,109,0,0)' },
+                              '100%': { boxShadow: '0 0 0 0 rgba(255,109,0,0)' },
+                            },
+                            '&:hover': { backgroundColor: '#e65100' },
+                          } : {}),
+                        }}
+                      >
+                        {sendingChatNotification ? '送信中...' : `${getStatusLabel(editedStatus)}通知`}
+                      </Button>
+                    </Grid>
                   </>
                 )}
 
@@ -9465,6 +9500,32 @@ HP：https://ifoo-oita.com/
             variant="contained"
           >
             通電OK
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 競合名・理由バリデーションダイアログ */}
+      <Dialog
+        open={competitorReasonValidationDialog.open}
+        onClose={() => setCompetitorReasonValidationDialog({ open: false, message: '' })}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ color: 'error.main', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+          ⚠️ {competitorReasonValidationDialog.message}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+            {competitorReasonValidationDialog.subMessage}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setCompetitorReasonValidationDialog({ open: false, message: '' })}
+            variant="contained"
+            color="primary"
+          >
+            記入する
           </Button>
         </DialogActions>
       </Dialog>

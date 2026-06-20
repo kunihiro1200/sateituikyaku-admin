@@ -1239,6 +1239,78 @@ router.patch('/:id/coordinates', async (req: Request, res: Response) => {
 });
 
 /**
+ * 売主番号で住所から座標を再ジオコーディング（住所変更後のマップ更新用）
+ * POST /api/sellers/by-number/:sellerNumber/geocode
+ */
+router.post('/by-number/:sellerNumber/geocode', async (req: Request, res: Response) => {
+  try {
+    const { sellerNumber } = req.params;
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    // 売主を取得
+    const { data, error } = await supabase
+      .from('sellers')
+      .select('id, seller_number, property_address')
+      .eq('seller_number', sellerNumber)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+
+    // property_address が空の場合はエラー
+    if (!data.property_address) {
+      return res.status(400).json({ error: '物件住所が入力されていません' });
+    }
+
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'Google Maps API key is not configured' });
+    }
+
+    const { GeocodingService } = await import('../services/GeocodingService');
+    const geocodingService = new GeocodingService();
+    const sellerPrefix = sellerNumber ? sellerNumber.substring(0, 2).toUpperCase() : undefined;
+    const coords = await geocodingService.geocodeAddress(data.property_address, sellerPrefix);
+
+    if (!coords) {
+      return res.status(422).json({ error: `住所「${data.property_address}」の座標を取得できませんでした` });
+    }
+
+    // 座標を更新
+    const { error: updateError } = await supabase
+      .from('sellers')
+      .update({
+        latitude: coords.lat,
+        longitude: coords.lng,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('seller_number', sellerNumber);
+
+    if (updateError) {
+      console.error('[geocode by-number] Update error:', updateError);
+      return res.status(500).json({ error: 'Failed to update coordinates' });
+    }
+
+    console.log(`[geocode by-number] ${sellerNumber}: "${data.property_address}" -> lat=${coords.lat}, lng=${coords.lng}`);
+
+    res.json({
+      success: true,
+      sellerNumber,
+      propertyAddress: data.property_address,
+      latitude: coords.lat,
+      longitude: coords.lng,
+    });
+  } catch (error) {
+    console.error('[geocode by-number] Error:', error);
+    res.status(500).json({ error: 'Failed to geocode address' });
+  }
+});
+
+/**
  * GET /api/sellers/learning-library/exclusive
  * 専任媒介Q&A学習ライブラリ：回答済みエントリーを返す
  */

@@ -17,6 +17,7 @@ export interface ChatNotificationData {
   notes?: string;
   assignee?: string;
   callPageUrl?: string;
+  fromOtherDecision?: boolean;
 }
 
 /**
@@ -261,8 +262,10 @@ ${data.callPageUrl ? `\n🔗 ${data.callPageUrl}` : ''}
    * Format exclusive contract message
    */
   private formatExclusiveContractMessage(data: ChatNotificationData): string {
+    const title = data.fromOtherDecision ? '他決から専任媒介契約取得' : '専任媒介契約取得';
+    const body = data.fromOtherDecision ? '他決から専任媒介契約を取得しました！' : '専任媒介契約を取得しました！';
     return `
-🎉 *専任媒介契約取得*
+🎉 *${title}*
 
 売主番号: ${data.sellerNumber}
 売主名: ${data.sellerName}
@@ -270,7 +273,7 @@ ${data.callPageUrl ? `\n🔗 ${data.callPageUrl}` : ''}
 査定額: ${data.valuationAmount ? `¥${data.valuationAmount.toLocaleString()}` : '未設定'}
 担当者: ${data.assignee || '未設定'}
 
-専任媒介契約を取得しました！
+${body}
 ${data.notes ? `\n備考: ${data.notes}` : ''}
 ${data.callPageUrl ? `\n🔗 ${data.callPageUrl}` : ''}
     `.trim();

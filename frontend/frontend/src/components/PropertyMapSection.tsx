@@ -10,6 +10,7 @@ import SquareFootIcon from '@mui/icons-material/SquareFoot';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import SatelliteAltIcon from '@mui/icons-material/SatelliteAlt';
 import MapIcon from '@mui/icons-material/Map';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 interface PropertyMapSectionProps {
   sellerNumber: string;
@@ -31,6 +32,7 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isRegeocoding, setIsRegeocoding] = useState(false);
   // 面積計測用のstate
   const [isMeasureMode, setIsMeasureMode] = useState(false);
   const [measuredArea, setMeasuredArea] = useState<number | null>(null);
@@ -112,6 +114,9 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
     setIsMeasureMode(true);
     setMeasuredArea(null);
 
+    // 描画中はマップのパン（ドラッグ）を無効化してクリックを確実に受け取る
+    mapRef.current.setOptions({ draggable: false, gestureHandling: 'none' });
+
     // DrawingManagerを作成してポリゴン描画を有効化
     const drawingManager = new google.maps.drawing.DrawingManager({
       drawingMode: google.maps.drawing.OverlayType.POLYGON,
@@ -139,6 +144,11 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
 
       // 描画モードを終了（追加描画を防ぐ）
       drawingManager.setDrawingMode(null);
+
+      // ポリゴン確定後はマップのパン操作を再度有効化
+      if (mapRef.current) {
+        mapRef.current.setOptions({ draggable: true, gestureHandling: 'auto' });
+      }
 
       // 面積を計算（㎡）
       const area = google.maps.geometry.spherical.computeArea(polygon.getPath());
@@ -170,6 +180,10 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
       measurePolygonRef.current.setMap(null);
       measurePolygonRef.current = null;
     }
+    // マップの操作を元に戻す
+    if (mapRef.current) {
+      mapRef.current.setOptions({ draggable: true, gestureHandling: 'auto' });
+    }
     setIsMeasureMode(false);
     setMeasuredArea(null);
   };
@@ -185,6 +199,10 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
     // DrawingManagerを再度描画モードに戻す
     if (drawingManagerRef.current) {
       drawingManagerRef.current.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+    }
+    // 再描画のためマップのパンを再度無効化
+    if (mapRef.current) {
+      mapRef.current.setOptions({ draggable: false, gestureHandling: 'none' });
     }
   };
 
@@ -242,7 +260,44 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
     }
   };
 
-  if (!sellerNumber || !isMapLoaded || (!isLoadingCoordinates && !mapCoordinates)) {
+  // 住所から地図を再ジオコーディングして更新
+  const handleRegeocode = async () => {
+    if (!sellerNumber || !propertyAddress) return;
+
+    setIsRegeocoding(true);
+    setSaveMessage(null);
+
+    try {
+      const response = await api.post(`/api/sellers/by-number/${sellerNumber}/geocode`);
+      const { latitude, longitude, propertyAddress: geocodedAddress } = response.data;
+
+      const newCoords = { lat: latitude, lng: longitude };
+      setMapCoordinates(newCoords);
+      setOriginalCoordinates(newCoords);
+
+      // マーカーを新しい位置に移動
+      if (markerRef.current) {
+        markerRef.current.setPosition(newCoords);
+        markerRef.current.setTitle(geocodedAddress);
+      }
+      // マップの中心を新しい座標に移動
+      if (mapRef.current) {
+        mapRef.current.setCenter(newCoords);
+      }
+
+      setSaveMessage({ type: 'success', text: `「${geocodedAddress}」の位置に地図を更新しました` });
+      setTimeout(() => setSaveMessage(null), 5000);
+    } catch (error: any) {
+      const msg = error?.response?.data?.error || '住所からの座標取得に失敗しました';
+      setSaveMessage({ type: 'error', text: msg });
+      console.error('🗺️ [PropertyMapSection] Regeocode error:', error);
+    } finally {
+      setIsRegeocoding(false);
+    }
+  };
+
+  // 座標もなく、住所もなく、ローディング中でもない場合は非表示
+  if (!sellerNumber || !isMapLoaded || (!isLoadingCoordinates && !mapCoordinates && !propertyAddress)) {
     return null;
   }
 
@@ -277,36 +332,53 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
           )}
         </Box>
 
-        {mapCoordinates && (
+        {(mapCoordinates || propertyAddress) && (
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {!isEditMode && !isMeasureMode && (
               <>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<EditLocationIcon />}
-                  onClick={handleEditModeToggle}
-                >
-                  位置を修正
-                </Button>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  color="success"
-                  startIcon={<SquareFootIcon />}
-                  onClick={handleMeasureModeOn}
-                >
-                  面積を計る
-                </Button>
-                <Button
-                  variant={isSatellite ? 'contained' : 'outlined'}
-                  size="small"
-                  color="primary"
-                  startIcon={isSatellite ? <MapIcon /> : <SatelliteAltIcon />}
-                  onClick={handleToggleSatellite}
-                >
-                  {isSatellite ? '通常地図' : '航空写真'}
-                </Button>
+                {propertyAddress && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    color="warning"
+                    startIcon={isRegeocoding ? <CircularProgress size={16} color="inherit" /> : <RefreshIcon />}
+                    onClick={handleRegeocode}
+                    disabled={isRegeocoding}
+                    title={`「${propertyAddress}」の住所から地図を更新`}
+                  >
+                    {isRegeocoding ? '更新中...' : '地図を更新'}
+                  </Button>
+                )}
+                {mapCoordinates && (
+                  <>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<EditLocationIcon />}
+                      onClick={handleEditModeToggle}
+                    >
+                      位置を修正
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="success"
+                      startIcon={<SquareFootIcon />}
+                      onClick={handleMeasureModeOn}
+                    >
+                      面積を計る
+                    </Button>
+                    <Button
+                      variant={isSatellite ? 'contained' : 'outlined'}
+                      size="small"
+                      color="primary"
+                      startIcon={isSatellite ? <MapIcon /> : <SatelliteAltIcon />}
+                      onClick={handleToggleSatellite}
+                    >
+                      {isSatellite ? '通常地図' : '航空写真'}
+                    </Button>
+                  </>
+                )}
               </>
             )}
             {isEditMode && (
@@ -361,6 +433,15 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
       {saveMessage && (
         <Alert severity={saveMessage.type} sx={{ mb: 2 }}>
           {saveMessage.text}
+        </Alert>
+      )}
+
+      {/* 座標未設定かつ住所あり → 地図を更新ボタンで取得を促す */}
+      {!isLoadingCoordinates && !mapCoordinates && propertyAddress && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="body2">
+            「<strong>{propertyAddress}</strong>」の座標がまだ登録されていません。「地図を更新」ボタンを押すと住所から地図上の位置を取得します。
+          </Typography>
         </Alert>
       )}
 

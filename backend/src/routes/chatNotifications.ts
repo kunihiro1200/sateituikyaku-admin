@@ -63,6 +63,7 @@ router.post(
     param('sellerId').isUUID().withMessage('Invalid seller ID'),
     body('assignee').optional().isString(),
     body('notes').optional().isString(),
+    body('fromOtherDecision').optional().isBoolean(),
   ],
   async (req: Request, res: Response) => {
     try {

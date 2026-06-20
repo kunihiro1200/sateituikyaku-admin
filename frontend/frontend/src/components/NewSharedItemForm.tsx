@@ -440,15 +440,25 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
         {/* 共有日 */}
         <Grid item xs={6}>
           <Typography variant="caption" color="text.secondary">共有日</Typography>
-          <TextField
-            fullWidth
-            type="date"
-            value={sharingDate}
-            onChange={(e) => setSharingDate(e.target.value)}
-            size="small"
-            InputLabelProps={{ shrink: true }}
-            sx={{ mt: 0.5 }}
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+            <TextField
+              fullWidth
+              type="date"
+              value={sharingDate}
+              onChange={(e) => setSharingDate(e.target.value)}
+              size="small"
+              InputLabelProps={{ shrink: true }}
+            />
+            <Button
+              variant="contained"
+              onClick={handleSave}
+              disabled={saving}
+              sx={{ bgcolor: color.main, '&:hover': { bgcolor: color.dark }, whiteSpace: 'nowrap', flexShrink: 0 }}
+              startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
+            >
+              {saving ? '保存中...' : '保存'}
+            </Button>
+          </Box>
         </Grid>
 
         {/* 打ち合わせ内容 */}

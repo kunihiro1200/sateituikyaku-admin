@@ -198,7 +198,7 @@ export class CalendarService extends BaseRepository {
 
       if (updates.summary) updatedEvent.summary = updates.summary;
       if (updates.location) updatedEvent.location = updates.location;
-      if (updates.description) updatedEvent.description = updates.description;
+      if (updates.description !== undefined) updatedEvent.description = updates.description;
       if (updates.startTime) {
         updatedEvent.start = {
           dateTime: updates.startTime.toISOString(),
@@ -559,12 +559,12 @@ export class CalendarService extends BaseRepository {
             if (updates.notes !== undefined) {
               // 売主情報を取得
               const { data: seller } = await this.table('sellers')
-                .select('name, phone_number')
+                .select('name, phone_number, seller_number')
                 .eq('id', appointment.seller_id)
                 .single();
               
               const { data: property } = await this.table('properties')
-                .select('address')
+                .select('property_address, address')
                 .eq('seller_id', appointment.seller_id)
                 .single();
               
@@ -572,8 +572,9 @@ export class CalendarService extends BaseRepository {
                 eventUpdates.description = this.formatEventDescription(
                   seller.name,
                   seller.phone_number,
-                  property.address,
-                  updates.notes
+                  property.property_address || property.address,
+                  updates.notes,
+                  seller.seller_number
                 );
               }
             }

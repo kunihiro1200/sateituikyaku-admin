@@ -37,6 +37,7 @@ import {
 } from '../utils/buyerFieldOptions';
 import {
   getAreaOptions,
+  ALL_AREA_OPTIONS,
   DESIRED_PROPERTY_TYPE_OPTIONS,
   PARKING_SPACES_OPTIONS,
   PRICE_RANGE_DETACHED_OPTIONS,
@@ -141,6 +142,12 @@ export default function NewBuyerPage() {
   const [otherCompanyProperty, setOtherCompanyProperty] = useState('');
   const [buildingNamePrice, setBuildingNamePrice] = useState('');
 
+  // 福岡エリア判定（物件番号の住所 or 他社物件住所に「福岡」が含まれる場合）
+  // null = 未確定（物件番号なし・他社物件に「福岡」なし）→ 両方表示
+  // true = 福岡エリアのみ表示
+  // false = 大分エリアのみ表示（物件番号ありで「福岡」なし）
+  const [isFukuoka, setIsFukuoka] = useState<boolean | null>(null);
+
   useEffect(() => {
     // 次の買主番号を取得
     api.get('/api/buyers/next-buyer-number')
@@ -151,6 +158,28 @@ export default function NewBuyerPage() {
       .then(res => setNormalInitials(res.data.initials || []))
       .catch(err => console.error('Failed to fetch normal initials:', err));
   }, []);
+
+  // 物件番号から住所を取得して福岡判定を更新
+  const checkFukuokaFromProperty = async (propNum: string) => {
+    if (!propNum) {
+      // 物件番号なし → 他社物件住所に「福岡」があれば true、なければ null（両方表示）
+      setIsFukuoka(otherCompanyProperty.includes('福岡') ? true : null);
+      return;
+    }
+    try {
+      const res = await api.get(`/api/property-listings/${propNum}`);
+      const address = res.data?.address || '';
+      if (address.includes('福岡') || otherCompanyProperty.includes('福岡')) {
+        setIsFukuoka(true);
+      } else {
+        // 物件番号あり・福岡でない → 大分エリアのみ
+        setIsFukuoka(false);
+      }
+    } catch {
+      // 取得失敗時は他社物件住所で判断、不明なら null
+      setIsFukuoka(otherCompanyProperty.includes('福岡') ? true : null);
+    }
+  };
 
 
   // 売主コピー検索ハンドラ
@@ -449,7 +478,11 @@ export default function NewBuyerPage() {
               fullWidth
               label="物件番号"
               value={propertyNumberField}
-              onChange={(e) => setPropertyNumberField(e.target.value)}
+              onChange={(e) => {
+                const newVal = e.target.value;
+                setPropertyNumberField(newVal);
+                checkFukuokaFromProperty(newVal);
+              }}
               sx={{ mb: 2 }}
             />
             
@@ -495,7 +528,18 @@ export default function NewBuyerPage() {
                   multiline
                   rows={3}
                   value={otherCompanyProperty}
-                  onChange={(e) => setOtherCompanyProperty(e.target.value)}
+                  onChange={(e) => {
+                    const newVal = e.target.value;
+                    setOtherCompanyProperty(newVal);
+                    // 他社物件住所に「福岡」が含まれる場合は福岡エリアに確定、なければ物件番号で再判定
+                    if (newVal.includes('福岡')) {
+                      setIsFukuoka(true);
+                    } else if (!propertyNumberField) {
+                      // 物件番号もなければ null（両方表示）
+                      setIsFukuoka(null);
+                    }
+                    // 物件番号がある場合は checkFukuokaFromProperty の判定を維持
+                  }}
                   helperText="こちらは詳細な住所のみにしてください。お客様に物件情報として表示されます。他社名や価格は「建物名/価格」欄に書いてください。"
                   InputLabelProps={{ shrink: true }}
                   sx={{ bgcolor: 'white' }}
@@ -1016,7 +1060,7 @@ export default function NewBuyerPage() {
                 {/* エリア（複数選択） */}
                 <Grid item xs={12}>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                    ★エリア（複数選択可）
+                    ★エリア（複数選択可）{isFukuoka === true && <span style={{ color: '#1976d2', fontWeight: 'bold', marginLeft: 8 }}>🔵 福岡エリア</span>}{isFukuoka === null && <span style={{ color: '#666', marginLeft: 8 }}>（大分・福岡 両方表示）</span>}
                   </Typography>
                   <FormControl fullWidth size="small">
                     <Select
@@ -1027,7 +1071,8 @@ export default function NewBuyerPage() {
                       renderValue={(selected) => (
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                           {(selected as string[]).map((val) => {
-                            const opt = getAreaOptions(nextBuyerNumber).find((o) => o.value === val);
+                            const opts = isFukuoka === true ? getAreaOptions('FK') : isFukuoka === false ? getAreaOptions('') : ALL_AREA_OPTIONS;
+                            const opt = opts.find((o) => o.value === val);
                             return (
                               <Chip
                                 key={val}
@@ -1043,14 +1088,23 @@ export default function NewBuyerPage() {
                           })}
                         </Box>
                       )}
-                      MenuProps={{ PaperProps: { style: { maxHeight: 400 } } }}
+                      MenuProps={{ PaperProps: { style: { maxHeight: 600 } } }}
                     >
-                      {getAreaOptions(nextBuyerNumber).map((opt) => (
-                        <MenuItem key={opt.value} value={opt.value} dense>
-                          <Checkbox size="small" checked={desiredArea.includes(opt.value)} sx={{ p: 0, mr: 1 }} />
-                          <Typography variant="body2">{opt.label}</Typography>
-                        </MenuItem>
-                      ))}
+                      {(isFukuoka === true ? getAreaOptions('FK') : isFukuoka === false ? getAreaOptions('') : ALL_AREA_OPTIONS).map((opt, index, arr) => {
+                        // 大分エリアと福岡エリアの境目にセパレーターを挿入（nullの場合のみ）
+                        const isBoundary = isFukuoka === null && index > 0 && opt.value.startsWith('F') && !arr[index - 1].value.startsWith('F');
+                        return [
+                          isBoundary ? (
+                            <MenuItem key="__separator__" disabled dense sx={{ borderTop: '2px solid #1976d2', mt: 0.5, mb: 0.5 }}>
+                              <Typography variant="caption" color="primary" fontWeight="bold">── 福岡エリア ──</Typography>
+                            </MenuItem>
+                          ) : null,
+                          <MenuItem key={opt.value} value={opt.value} dense>
+                            <Checkbox size="small" checked={desiredArea.includes(opt.value)} sx={{ p: 0, mr: 1 }} />
+                            <Typography variant="body2">{opt.label}</Typography>
+                          </MenuItem>
+                        ];
+                      })}
                     </Select>
                   </FormControl>
                 </Grid>
