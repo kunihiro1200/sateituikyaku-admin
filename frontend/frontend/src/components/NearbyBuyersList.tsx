@@ -425,7 +425,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
         } else {
           try {
             const sellerResponse = await api.get(`/api/sellers/${sellerId}`);
-            const propertyNum = sellerResponse.data.propertyNumber;
+            const propertyNum = sellerResponse.data.propertyNumber || sellerResponse.data.sellerNumber || sellerResponse.data.seller_number;
             if (propertyNum) setPropertyNumberState(propertyNum);
           } catch (err) {
             console.warn('[NearbyBuyersList] Failed to fetch seller property number:', err);
