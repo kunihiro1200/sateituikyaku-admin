@@ -13,6 +13,7 @@ import ActivityLogsPage from './pages/ActivityLogsPage';
 import SettingsPage from './pages/SettingsPage';
 import { PhoneSettingsPage } from './pages/PhoneSettingsPage';
 import { CallHistoryPage } from './pages/CallHistoryPage';
+import SalesSchedulePage from './pages/SalesSchedulePage';
 import { CallStatisticsPage } from './pages/CallStatisticsPage';
 import EmployeeCalendarStatusPage from './pages/EmployeeCalendarStatusPage';
 import WorkTasksPage from './pages/WorkTasksPage';
@@ -151,6 +152,14 @@ function App() {
         element={
           <ProtectedRoute>
             <CallTranscriptionPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sellers/:id/sales-schedule"
+        element={
+          <ProtectedRoute>
+            <SalesSchedulePage />
           </ProtectedRoute>
         }
       />

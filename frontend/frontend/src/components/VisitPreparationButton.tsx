@@ -6,6 +6,7 @@ export interface VisitPreparationButtonProps {
   sellerId: string | undefined;
   inquiryUrl: string | null | undefined;
   sellerNumber: string | undefined;
+  sellerName?: string | undefined;
   propertyAddress: string | undefined;
   commentHtml?: string;
 }
@@ -18,6 +19,7 @@ export const VisitPreparationButton: React.FC<VisitPreparationButtonProps> = ({
   sellerId,
   inquiryUrl,
   sellerNumber,
+  sellerName,
   propertyAddress,
   commentHtml,
 }) => {
@@ -42,6 +44,7 @@ export const VisitPreparationButton: React.FC<VisitPreparationButtonProps> = ({
         sellerId={sellerId}
         inquiryUrl={inquiryUrl}
         sellerNumber={sellerNumber}
+        sellerName={sellerName}
         propertyAddress={propertyAddress}
         commentHtml={commentHtml}
       />

@@ -4865,6 +4865,7 @@ HP：https://ifoo-oita.com/
               sellerId={seller?.id}
               inquiryUrl={inquiryUrl}
               sellerNumber={seller?.sellerNumber}
+              sellerName={seller?.name}
               propertyAddress={propInfo.address || seller?.propertyAddress}
               commentHtml={savedComments}
             />
