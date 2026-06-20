@@ -255,7 +255,7 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     return `売買契約 依頼未 締日${formatDateMD(task.sales_contract_deadline)} ${task.sales_contract_assignee || ''}`;
   }
 
-  // 9. サイト依頼済み納品待ち
+  // 9. サイト依頼済み納品待ち（cw_personで山崎様/浅沼様を区別）
   if (
     isBlank(task.site_registration_confirm_request_date) &&
     isBlank(task.sales_contract_deadline) &&
@@ -266,9 +266,10 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     const dueDate = formatDateMD(task.site_registration_due_date);
     const deadline = formatDateMD(task.site_registration_deadline);
     const displayDate = dueDate || deadline;
-    return displayDate
-      ? `サイト依頼済み納品待ち ${displayDate}`
-      : 'サイト依頼済み納品待ち';
+    const cwPerson: string = task.cw_person ?? '';
+    const cwLabel = cwPerson.includes('山崎') ? '山崎様' : '浅沼様';
+    const datePart = displayDate ? ` ${displayDate}` : '';
+    return `サイト依頼済み納品待ち${datePart} ${cwLabel}`;
   }
 
   // 10. サイト登録要確認
