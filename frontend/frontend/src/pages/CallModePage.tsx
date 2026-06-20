@@ -8302,6 +8302,31 @@ HP：https://ifoo-oita.com/
                   </Grid>
                 )}
 
+                {/* 他社買取の場合：契約年月日を編集可能な日付フィールドで表示 */}
+                {editedStatus === '他社買取' && (
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="契約年月日"
+                      type="date"
+                      value={editedExclusiveDecisionDate}
+                      onChange={(e) => { setEditedExclusiveDecisionDate(e.target.value); setStatusChanged(true); statusChangedRef.current = true; }}
+                      InputLabelProps={{ shrink: true }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: '#E3F2FD',
+                          '& fieldset': { borderColor: '#1565C0' },
+                          '&:hover fieldset': { borderColor: '#0D47A1' },
+                          '&.Mui-focused fieldset': { borderColor: '#0D47A1' },
+                        },
+                        '& .MuiInputLabel-root': { color: '#1565C0' },
+                        '& .MuiInputLabel-root.Mui-focused': { color: '#1565C0' },
+                      }}
+                    />
+                  </Grid>
+                )}
+
                 {/* 一般媒介通知ボタン */}
                 {editedStatus === '一般媒介' && (
                   <Grid item xs={12}>
