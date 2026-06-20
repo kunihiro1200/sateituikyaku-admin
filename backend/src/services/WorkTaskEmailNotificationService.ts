@@ -120,6 +120,36 @@ const SITE_REGISTRATION_OK_BODY =
   '㈱いふう<br>TEL:097-533-2022<br>MAIL: tenant@ifoo-oita.com' +
   '</body></html>';
 
+/** サイト登録依頼メールの本文テンプレート（HTML形式）- 山崎様宛 */
+const SITE_REGISTRATION_REQUEST_BODY_YAMAZAKI =
+  '<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Arial, Helvetica, \'Noto Sans JP\', sans-serif;font-size:14px;line-height:1.4;">' +
+  '山崎様<br>お世話になっております。<br>サイト登録関係お願いします。<br>' +
+  '物件番号：{物件番号}<br>' +
+  'コメント：{コメント（サイト登録）}<br>' +
+  '{メール配信コメント}' +
+  '物件所在地：{物件所在}<br>' +
+  '当社依頼日：{サイト登録依頼日} {サイト登録依頼者}<br>' +
+  '当社の希望納期：{サイト登録納期予定日}<br>' +
+  '{パノラマ行}' +
+  '間取図格納時期：{間取図完了予定}<br>' +
+  '詳細：<a href="{スプシURL}">スプレッドシート</a><br>' +
+  '格納先：<a href="{格納先URL}">格納先フォルダ</a><br>' +
+  'ご不明点等がございましたら、こちらに返信していただければと思います。<br><br>' +
+  '㈱いふう<br>TEL:097-533-2022<br>MAIL: tenant@ifoo-oita.com' +
+  '</body></html>';
+
+/** サイト登録確認OKメールの本文テンプレート（HTML形式）- 山崎様宛 */
+const SITE_REGISTRATION_OK_BODY_YAMAZAKI =
+  '<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Arial, Helvetica, \'Noto Sans JP\', sans-serif;font-size:14px;line-height:1.4;">' +
+  '山崎様<br>お世話になっております。<br>サイト登録ありがとうございました。OKでした。<br>' +
+  '{サイト登録確認OKコメント}<br>' +
+  '物件番号：{物件番号}<br>' +
+  '物件所在地：{物件所在}<br>' +
+  '詳細：<a href="{スプシURL}">スプレッドシート</a><br>' +
+  'ご不明点等がございましたら、こちらに返信していただければと思います。<br><br>' +
+  '㈱いふう<br>TEL:097-533-2022<br>MAIL: tenant@ifoo-oita.com' +
+  '</body></html>';
+
 /** 間取図格納済み連絡メールの本文テンプレート（HTML形式） */
 const FLOOR_PLAN_STORED_BODY =
   '<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Arial, Helvetica, \'Noto Sans JP\', sans-serif;font-size:14px;line-height:1.4;">' +
@@ -167,22 +197,22 @@ export const EMAIL_RULES: EmailRule[] = [
     bodyTemplate: FLOOR_PLAN_OK_BODY,
     isHtml: false,
   },
-  // ルール4: CWの方へ依頼メール（サイト登録）
+  // ルール4: CWの方へ依頼メール（サイト登録）- cw_personフィールドで宛先を動的決定
   {
     triggerField: 'cw_request_email_site',
-    to: 'shiraishi8biz@gmail.com',
+    to: '__dynamic_cw_person__',
     cc: 'tenant@ifoo-oita.com',
     subjectTemplate: 'サイト登録関係お願いいたします！{物件番号}{物件所在}（㈱いふう）',
-    bodyTemplate: SITE_REGISTRATION_REQUEST_BODY,
+    bodyTemplate: '__dynamic_site_registration_request__',
     isHtml: true,
   },
-  // ルール5: サイト登録確認OK送信
+  // ルール5: サイト登録確認OK送信 - cw_personフィールドで宛先を動的決定
   {
     triggerField: 'site_registration_ok_sent',
-    to: 'shiraishi8biz@gmail.com',
+    to: '__dynamic_cw_person__',
     cc: 'tenant@ifoo-oita.com',
     subjectTemplate: 'サイト登録ありがとうございます！{物件番号}{物件所在}（㈱いふう）',
-    bodyTemplate: SITE_REGISTRATION_OK_BODY,
+    bodyTemplate: '__dynamic_site_registration_ok__',
     isHtml: true,
   },
   // ルール6: 間取図格納済み連絡メール
@@ -360,14 +390,38 @@ export class WorkTaskEmailNotificationService {
       }
 
       try {
+        // 宛先を動的に決定（cw_personフィールドに基づく）
+        let toAddress = rule.to;
+        let bodyTemplate = rule.bodyTemplate;
+
+        if (rule.to === '__dynamic_cw_person__') {
+          const cwPerson: string = afterData['cw_person'] ?? '';
+          if (cwPerson.includes('山崎')) {
+            toAddress = 'mgmv00vmgm@gmail.com';
+            if (rule.bodyTemplate === '__dynamic_site_registration_request__') {
+              bodyTemplate = SITE_REGISTRATION_REQUEST_BODY_YAMAZAKI;
+            } else if (rule.bodyTemplate === '__dynamic_site_registration_ok__') {
+              bodyTemplate = SITE_REGISTRATION_OK_BODY_YAMAZAKI;
+            }
+          } else {
+            // デフォルト: 浅沼様
+            toAddress = 'shiraishi8biz@gmail.com';
+            if (rule.bodyTemplate === '__dynamic_site_registration_request__') {
+              bodyTemplate = SITE_REGISTRATION_REQUEST_BODY;
+            } else if (rule.bodyTemplate === '__dynamic_site_registration_ok__') {
+              bodyTemplate = SITE_REGISTRATION_OK_BODY;
+            }
+          }
+        }
+
         const subject = this.resolveTemplate(rule.subjectTemplate, afterData);
-        const body = this.resolveTemplate(rule.bodyTemplate, afterData);
+        const body = this.resolveTemplate(bodyTemplate, afterData);
 
         // テキスト形式の場合は改行を <br> に変換して HTML として送信
         const htmlBody = rule.isHtml ? body : body.replace(/\n/g, '<br>');
 
         await this.emailService.sendEmailWithCcAndAttachments({
-          to: rule.to,
+          to: toAddress,
           cc: rule.cc,
           subject,
           body: htmlBody,
@@ -377,7 +431,7 @@ export class WorkTaskEmailNotificationService {
 
         console.log('[WorkTaskEmail] メール送信成功:', {
           propertyNumber,
-          to: rule.to,
+          to: toAddress,
           triggerField: rule.triggerField,
         });
       } catch (error: any) {
