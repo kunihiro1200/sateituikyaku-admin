@@ -2707,18 +2707,18 @@ const CallModePage = () => {
       return;
     }
 
-    // バリデーション：状況（当社）に他決/一般/専任を含む + 確度がD/ダブりを含む場合は警告
-    const statusHasOtherDecision = editedStatus?.includes('他決') || editedStatus?.includes('一般') || editedStatus?.includes('専任');
+    // バリデーション：状況（当社）に他決/一般/専任/他社買取を含む + 確度がD/ダブりを含む場合は警告
+    const statusHasOtherDecision = editedStatus?.includes('他決') || editedStatus?.includes('一般') || editedStatus?.includes('専任') || editedStatus === '他社買取';
     const confidenceIsDOrDouble = editedConfidence?.includes('D') || editedConfidence?.includes('ダブり');
     if (statusHasOtherDecision && confidenceIsDOrDouble) {
       setStatusConfidenceWarningOpen(true);
       return;
     }
 
-    // バリデーション：専任または他決が含まれる場合は決定日、競合、専任・他決要因が必須
+    // バリデーション：専任または他決または他社買取が含まれる場合は決定日、競合、専任・他決要因が必須
     if (requiresDecisionDate(editedStatus)) {
       if (!editedExclusiveDecisionDate) {
-        setError('専任（他決）決定日を入力してください');
+        setError(editedStatus === '他社買取' ? '契約年月日を入力してください' : '専任（他決）決定日を入力してください');
         return;
       }
       if (editedCompetitors.length === 0) {
@@ -4299,11 +4299,11 @@ HP：https://ifoo-oita.com/
     return statusLabels[status] || status;
   };
 
-  // 専任、他決、一般媒介が含まれているかチェック
+  // 専任、他決、一般媒介、他社買取が含まれているかチェック
   const requiresDecisionDate = (status: string): boolean => {
     if (!status) return false;
     const label = getStatusLabel(status);
-    return label.includes('専任') || label.includes('他決');
+    return label.includes('専任') || label.includes('他決') || label === '他社買取';
   };
 
   // 必須項目が全て入力されているかチェック
@@ -4328,10 +4328,10 @@ HP：https://ifoo-oita.com/
 
       const statusLabel = getStatusLabel(editedStatus);
       
-      // バリデーション：専任または他決が含まれる場合は決定日、競合、専任・他決要因が必須
+      // バリデーション：専任または他決または他社買取が含まれる場合は決定日、競合、専任・他決要因が必須
       if (requiresDecisionDate(editedStatus)) {
         if (!editedExclusiveDecisionDate) {
-          setError('専任（他決）決定日を入力してください');
+          setError(editedStatus === '他社買取' ? '契約年月日を入力してください' : '専任（他決）決定日を入力してください');
           setSendingChatNotification(false);
           return;
         }
@@ -4381,6 +4381,12 @@ HP：https://ifoo-oita.com/
         endpoint = `/api/chat-notifications/post-visit-other-decision/${seller.id}`;
       } else if (statusLabel.includes('未訪問他決')) {
         endpoint = `/api/chat-notifications/pre-visit-other-decision/${seller.id}`;
+      } else if (statusLabel === '他社買取') {
+        // 他社買取は他決と同じルーティング（訪問済みかどうかで分岐）
+        const isVisited = seller.visitAssignee && seller.visitAssignee !== '' && seller.visitAssignee !== '外す';
+        endpoint = isVisited
+          ? `/api/chat-notifications/post-visit-other-decision/${seller.id}`
+          : `/api/chat-notifications/pre-visit-other-decision/${seller.id}`;
       } else if (statusLabel.includes('他決')) {
         // visit_assigneeが設定されている（訪問済み）場合は訪問後他決、それ以外は未訪問他決
         const isVisited = seller.visitAssignee && seller.visitAssignee !== '' && seller.visitAssignee !== '外す';
@@ -8310,9 +8316,12 @@ HP：https://ifoo-oita.com/
                       size="small"
                       label="契約年月日"
                       type="date"
+                      required
                       value={editedExclusiveDecisionDate}
                       onChange={(e) => { setEditedExclusiveDecisionDate(e.target.value); setStatusChanged(true); statusChangedRef.current = true; }}
                       InputLabelProps={{ shrink: true }}
+                      error={!editedExclusiveDecisionDate}
+                      helperText={!editedExclusiveDecisionDate ? '必須項目です' : ''}
                       sx={{
                         '& .MuiOutlinedInput-root': {
                           backgroundColor: '#E3F2FD',
@@ -8349,9 +8358,11 @@ HP：https://ifoo-oita.com/
                   </Grid>
                 )}
 
-                {/* 専任または他決が含まれる場合のみ表示 */}
+                {/* 専任または他決または他社買取が含まれる場合のみ表示 */}
                 {requiresDecisionDate(editedStatus) && (
                   <>
+                    {/* 他社買取の場合は上で契約年月日として表示済みのためスキップ */}
+                    {editedStatus !== '他社買取' && (
                     <Grid item xs={12}>
                       <TextField
                         fullWidth
@@ -8366,6 +8377,7 @@ HP：https://ifoo-oita.com/
                         helperText={!editedExclusiveDecisionDate ? '必須項目です' : ''}
                       />
                     </Grid>
+                    )}
                     <Grid item xs={12}>
                       <FormControl fullWidth size="small" required error={editedCompetitors.length === 0}>
                         <InputLabel>競合（複数選択可）</InputLabel>
@@ -8548,8 +8560,8 @@ HP：https://ifoo-oita.com/
                       </Grid>
                     )}
 
-                    {/* 他決→追客 / 他決→追客不要の場合：他決分析ボタンを表示 */}
-                    {(editedStatus === '他決→追客' || editedStatus === '他決→追客不要') && id && (
+                    {/* 他決→追客 / 他決→追客不要 / 他社買取の場合：他決分析ボタンを表示 */}
+                    {(editedStatus === '他決→追客' || editedStatus === '他決→追客不要' || editedStatus === '他社買取') && id && (
                       <Grid item xs={12}>
                         <Button
                           variant="outlined"
