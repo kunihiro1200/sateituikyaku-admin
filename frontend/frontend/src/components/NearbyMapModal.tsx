@@ -44,7 +44,16 @@ async function extractCoords(url: string, apiBase: string): Promise<{ lat: numbe
       const r = await fetch(`${apiBase}/api/url-redirect/resolve?url=${encodeURIComponent(s)}`);
       if (r.ok) { const d = await r.json(); s = d.redirectedUrl || s; }
     }
-    for (const p of [/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/, /\/search\/(-?\d+\.?\d*),\+?(-?\d+\.?\d*)/, /\/place\/(-?\d+\.?\d*),(-?\d+\.?\d*)/, /\/@(-?\d+\.?\d*),(-?\d+\.?\d*),/]) {
+    // 各種Google Maps URLパターンから座標を抽出
+    for (const p of [
+      /[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
+      /\/search\/(-?\d+\.?\d*),\+?(-?\d+\.?\d*)/,
+      /\/place\/[^/]*\/(-?\d+\.?\d*),(-?\d+\.?\d*)/,
+      /\/place\/(-?\d+\.?\d*),(-?\d+\.?\d*)/,
+      /\/@(-?\d+\.?\d*),(-?\d+\.?\d*),/,
+      /!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/,
+      /ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
+    ]) {
       const m = s.match(p); if (m) return { lat: +m[1], lng: +m[2] };
     }
     return null;
