@@ -2882,7 +2882,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       const spreadsheetUrl = getValue('spreadsheet_url') || '';
       const storageUrl = getValue('storage_url') || '';
 
-      let text = `浅沼様\nお世話になっております。\nサイト登録関係お願いします。\n物件番号：${propertyNumber}\n物件所在地：${propertyAddress}\n当社依頼日：${requestDate}（${requester}）\n当社の希望納期：${dueDate}`;
+      let cwName = '浅沼様';
+      const cwPerson = getValue('cw_person') || '';
+      if (cwPerson.includes('山崎')) cwName = '山崎様';
+
+      let text = `${cwName}\nお世話になっております。\nサイト登録関係お願いします。\n物件番号：${propertyNumber}\n物件所在地：${propertyAddress}\n当社依頼日：${requestDate}（${requester}）\n当社の希望納期：${dueDate}`;
       if (panorama) text += `\nパノラマ：${panorama}`;
       if (floorPlanDue) text += `\n間取図格納時期：${floorPlanDue}`;
       text += `\nコメント：${comment}\n詳細：${spreadsheetUrl}\n格納先：${storageUrl}\nご不明点等がございましたら、こちらに返信していただければと思います。`;
