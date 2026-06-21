@@ -430,41 +430,6 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
           <Typography component="span" sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
             これは各営業担当が必要であれば取得してください。
           </Typography>
-          {/* 価格入力済みのスケジュール表作成ボタン */}
-          {sellerId && (
-            <Box
-              component="button"
-              onClick={() => {
-                const params = new URLSearchParams();
-                if (sellerName) params.set('name', sellerName);
-                else if (sellerNumber) params.set('name', sellerNumber);
-                if (propertyAddress) params.set('address', propertyAddress);
-                window.open(
-                  `/sellers/${sellerId}/sales-schedule?${params.toString()}`,
-                  '_blank'
-                );
-              }}
-              sx={{
-                mt: 0.5,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 0.5,
-                px: 1.5,
-                py: 0.6,
-                bgcolor: '#1a3c6e',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '0.78rem',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                width: 'fit-content',
-                '&:hover': { bgcolor: '#0d2244' },
-              }}
-            >
-              📋 価格入力済みのもの（スケジュール表作成）
-            </Box>
-          )}
         </Box>
       ),
     },
