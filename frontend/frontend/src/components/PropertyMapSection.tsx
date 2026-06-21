@@ -108,6 +108,9 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
     setIsMeasureMode(true);
     setMeasuredArea(null);
 
+    // 計測中はパンを無効化してカーソルを十字に
+    mapRef.current.setOptions({ draggable: false, draggableCursor: 'crosshair' });
+
     // ポリゴン描画用のポリライン（描画中の線）
     const polyline = new google.maps.Polyline({
       strokeColor: '#1565C0',
@@ -207,6 +210,11 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
     measurePolygonRef.current = polygon;
     measurePointsRef.current = [];
 
+    // ポリゴン確定後はパン操作を復元
+    if (mapRef.current) {
+      mapRef.current.setOptions({ draggable: true, draggableCursor: '' });
+    }
+
     // 面積を計算
     const area = google.maps.geometry.spherical.computeArea(polygon.getPath());
     setMeasuredArea(area);
@@ -228,6 +236,10 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
       measurePolygonRef.current.setMap(null);
       measurePolygonRef.current = null;
     }
+    // パン操作を復元
+    if (mapRef.current) {
+      mapRef.current.setOptions({ draggable: true, draggableCursor: '' });
+    }
     setIsMeasureMode(false);
     setMeasuredArea(null);
   };
@@ -240,6 +252,11 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
       measurePolygonRef.current = null;
     }
     setMeasuredArea(null);
+
+    // 再描画のためパン無効・crosshairを維持
+    if (mapRef.current) {
+      mapRef.current.setOptions({ draggable: false, draggableCursor: 'crosshair' });
+    }
 
     // 再度クリックリスナーを設定
     if (!mapRef.current) return;
