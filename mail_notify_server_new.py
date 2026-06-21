@@ -82,6 +82,9 @@ logging.basicConfig(
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 # ================
 
+# LIFULL処理済みスレッドID（メモリ内、同一スレッドの重複転記防止）
+_lifull_processed_threads: set = set()
+
 
 def send_alert_email(subject: str, body: str):
     """認証エラーなどの緊急アラートをバックエンドAPI経由でメール送信する"""
@@ -371,6 +374,7 @@ def trigger_ieul_transfer(body: str):
 
 def check_new_emails(service, notified_ids):
     """新着メールをチェックして転記する"""
+    global _lifull_processed_threads
     try:
         results = service.users().messages().list(
             userId="me",
@@ -448,9 +452,15 @@ def check_new_emails(service, notified_ids):
 
             elif is_lifull_self_reply:
                 body = decode_body(msg_detail["payload"])
-                logging.info(f"\n[{datetime.now().strftime('%H:%M:%S')}] 🔔 LIFULL社員メモ付きRe:検知: {subject}")
-                logging.info(f"  [本文先頭] {repr(body[:120])}")
-                trigger_lifull_transfer(body)
+                # 同一スレッドを2回転記しない（同じ案件への重複返信による二重登録を防止）
+                thread_id = msg_detail.get("threadId", msg_id)
+                if thread_id in _lifull_processed_threads:
+                    logging.info(f"  [スキップ] LIFULL: スレッド {thread_id[:16]}... は既に処理済み")
+                else:
+                    _lifull_processed_threads.add(thread_id)
+                    logging.info(f"\n[{datetime.now().strftime('%H:%M:%S')}] 🔔 LIFULL社員メモ付きRe:検知: {subject}")
+                    logging.info(f"  [本文先頭] {repr(body[:120])}")
+                    trigger_lifull_transfer(body)
                 notified_ids.add(msg_id)
                 add_notified_id(msg_id)
 

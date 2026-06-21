@@ -80,6 +80,7 @@ CREDENTIALS_FILE = os.environ.get("GMAIL_CREDENTIALS_FILE", os.path.join(SCRIPT_
 TOKEN_FILE = os.environ.get("GMAIL_TOKEN_FILE", os.path.join(SCRIPT_DIR, "token.pickle"))
 NOTIFIED_IDS_FILE = os.path.join(SCRIPT_DIR, "notified_ids_server.json")
 HOME4U_PROCESSED_THREADS_FILE = os.path.join(SCRIPT_DIR, "home4u_processed_threads.json")
+LIFULL_PROCESSED_THREADS_FILE = os.path.join(SCRIPT_DIR, "lifull_processed_threads.json")
 LOG_FILE = os.path.join(SCRIPT_DIR, "mail_notify_server.log")
 
 # ログ設定
@@ -215,6 +216,24 @@ def save_home4u_processed_threads(thread_ids):
             json.dump(ids_list, f)
     except Exception as e:
         logging.warning(f"[HOME4U] 処理済みスレッドIDの保存失敗（無視）: {e}")
+
+
+def load_lifull_processed_threads():
+    """LIFULL処理済みスレッドIDを読み込む（同一スレッドの重複転記防止）"""
+    if os.path.exists(LIFULL_PROCESSED_THREADS_FILE):
+        with open(LIFULL_PROCESSED_THREADS_FILE, "r", encoding="utf-8") as f:
+            return set(json.load(f))
+    return set()
+
+
+def save_lifull_processed_threads(thread_ids):
+    """LIFULL処理済みスレッドIDを保存する（最新200件のみ保持）"""
+    try:
+        ids_list = list(thread_ids)[-200:]
+        with open(LIFULL_PROCESSED_THREADS_FILE, "w", encoding="utf-8") as f:
+            json.dump(ids_list, f)
+    except Exception as e:
+        logging.warning(f"[LIFULL] 処理済みスレッドIDの保存失敗（無視）: {e}")
 
 
 def decode_body(payload):
@@ -420,10 +439,12 @@ def trigger_ieul_transfer(body: str):
     threading.Thread(target=_call, daemon=True).start()
 
 
-def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_processed_threads=None):
+def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_processed_threads=None, lifull_processed_threads=None):
     """新着メールをチェックしてイエウールならDB転記する"""
     if home4u_processed_threads is None:
         home4u_processed_threads = set()
+    if lifull_processed_threads is None:
+        lifull_processed_threads = set()
     try:
         results = service.users().messages().list(
             userId="me",
@@ -561,8 +582,15 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                     if not is_reply or not is_from_self:
                         logging.info(f"  [スキップ] LIFULL: Re:なし または 自分以外からの送信 (sender={sender[:30]}): {subject[:50]}")
                     else:
-                        logging.info("  [DB転記] LIFULL HOME'S(Re:あり)検知 → lifull-transfer を非同期実行します")
-                        trigger_lifull_transfer(body)
+                        # 同一スレッドを2回転記しない（HOME4Uと同じ方式）
+                        thread_id = msg_detail.get("threadId", msg_id)
+                        if thread_id in lifull_processed_threads:
+                            logging.info(f"  [スキップ] LIFULL: スレッド {thread_id[:16]}... は既に処理済み")
+                        else:
+                            lifull_processed_threads.add(thread_id)
+                            save_lifull_processed_threads(lifull_processed_threads)
+                            logging.info("  [DB転記] LIFULL HOME'S(Re:あり)検知 → lifull-transfer を非同期実行します")
+                            trigger_lifull_transfer(body)
                 else:
                     logging.info(f"  [スキップ] イエウール・HOME4U・アットホーム反響・LIFULL以外のため転記なし: {subject[:50]}")
 
@@ -612,11 +640,15 @@ def main():
     home4u_processed_threads = load_home4u_processed_threads()
     logging.info(f"HOME4U処理済みスレッド読み込み: {len(home4u_processed_threads)}件")
 
+    # LIFULL処理済みスレッドIDを読み込む（同一案件の重複転記防止）
+    lifull_processed_threads = load_lifull_processed_threads()
+    logging.info(f"LIFULL処理済みスレッド読み込み: {len(lifull_processed_threads)}件")
+
     logging.info("新着メールの監視を開始します...\n")
 
     while True:
         try:
-            notified_ids = check_new_emails(service, notified_ids, start_timestamp_ms, home4u_processed_threads)
+            notified_ids = check_new_emails(service, notified_ids, start_timestamp_ms, home4u_processed_threads, lifull_processed_threads)
             time.sleep(CHECK_INTERVAL)
         except KeyboardInterrupt:
             logging.info("\n停止しました。")
