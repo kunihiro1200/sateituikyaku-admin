@@ -9,6 +9,36 @@ import { GoogleSheetsClient } from '../services/GoogleSheetsClient';
 
 const router = Router();
 
+// ============================================================
+// インメモリ重複防止ロック
+// HOME4Uは同じ案件を複数社に配信するため、短時間に同一内容のメールが複数届く。
+// mail_notify_server.pyを同期実行に変更済みだが、万が一の並行リクエスト対策として
+// 電話番号のハッシュをキーに5分間ロックを保持する。
+// ============================================================
+const processingLock = new Map<string, number>(); // key: hash, value: timestamp(ms)
+const LOCK_TTL_MS = 5 * 60 * 1000; // 5分
+
+function acquireLock(tel: string, inquiryDateTimeISO: string | null): boolean {
+  // 古いロックをクリーンアップ
+  const now = Date.now();
+  for (const [key, ts] of processingLock.entries()) {
+    if (now - ts > LOCK_TTL_MS) {
+      processingLock.delete(key);
+    }
+  }
+
+  // 電話番号+反響日時でハッシュを作成
+  const hashInput = `${tel}|${inquiryDateTimeISO || 'none'}`;
+  const hash = crypto.createHash('md5').update(hashInput).digest('hex');
+
+  if (processingLock.has(hash)) {
+    return false; // 既にロック中（重複リクエスト）
+  }
+
+  processingLock.set(hash, now);
+  return true; // ロック取得成功
+}
+
 /**
  * SpreadsheetSyncServiceを初期化して返す（Vercelサーバーレス対応）
  */
@@ -431,6 +461,20 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
 
     if (!name || !tel) {
       return res.status(400).json({ success: false, error: `名前または電話番号が取得できませんでした name=${name} tel=${tel}` });
+    }
+
+    // ============================================================
+    // インメモリロックによる重複防止（最速チェック）
+    // 同一電話番号+同一反響日時のリクエストが短時間に複数来た場合、
+    // 最初の1件のみ処理し、残りは即座にスキップする。
+    // ============================================================
+    if (!acquireLock(tel, inquiryDateTimeISO)) {
+      console.log(`[home4u-transfer] ⏭ インメモリロックにより重複スキップ: tel=${tel}, datetime=${inquiryDateTimeISO}`);
+      return res.json({
+        success: true,
+        skipped: true,
+        message: `重複スキップ（インメモリロック）: 同一電話番号+反響日時が処理中`,
+      });
     }
 
     // ============================================================

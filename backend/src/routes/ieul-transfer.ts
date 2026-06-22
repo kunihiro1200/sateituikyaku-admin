@@ -3,6 +3,7 @@
 
 import { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 import { SpreadsheetSyncService } from '../services/SpreadsheetSyncService';
 import { GoogleSheetsClient } from '../services/GoogleSheetsClient';
 
@@ -337,7 +338,9 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
       name: encrypt(name),
       address: address ? encrypt(address) : null,
       phone_number: encrypt(tel),
+      phone_number_hash: tel ? crypto.createHash('sha256').update(tel).digest('hex') : null,
       email: email ? encrypt(email) : null,
+      email_hash: email ? crypto.createHash('sha256').update(email).digest('hex') : null,
       property_address: fullPropertyAddress + mansionName + roomNumber,
       property_type: displayPropertyType,
       inquiry_site: 'ウ',
@@ -366,6 +369,15 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
       .single();
 
     if (insertError || !seller) {
+      // UNIQUE制約違反（23505）= 並行リクエストによる重複INSERT → スキップ扱い
+      if (insertError?.code === '23505') {
+        console.log(`[ieul-transfer] ⏭ UNIQUE制約違反によりスキップ（並行リクエストの重複）: tel_hash=${insertData.phone_number_hash?.substring(0, 8)}... datetime=${requestDate}`);
+        return res.json({
+          success: true,
+          skipped: true,
+          message: '重複スキップ（UNIQUE制約違反 - 並行リクエスト）',
+        });
+      }
       console.error('[ieul-transfer] DB INSERT エラー:', insertError);
       return res.status(500).json({ success: false, error: `DB INSERT失敗: ${insertError?.message}` });
     }

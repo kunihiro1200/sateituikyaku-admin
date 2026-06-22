@@ -3296,6 +3296,7 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
       '古国府': 'ふるごう',
       '上人': 'しょうにん',
       '勢家町': 'せいけまち',
+      '勢家': 'せいけまち',
       '庄境': 'しょうざかい',
       '荏隈': 'えのくま',
       '丹川': 'あかがわ',
@@ -4995,6 +4996,75 @@ router.put('/:id/other-decision-analysis/qa/answer', authenticate, async (req: R
     return res.json({ qa });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to save answer' });
+  }
+});
+
+// ============================================================
+// 重複売主レコード削除（同一phone_number_hash + inquiry_detailed_datetime）
+// 最も古いseller_numberを残して他を論理削除する
+// ============================================================
+router.post('/cleanup-duplicates', authenticate, async (req: Request, res: Response) => {
+  try {
+    const supabaseUrl = process.env.SUPABASE_URL!;
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // phone_number_hash + inquiry_detailed_datetime が同じレコードをグループ化
+    const { data: allSellers, error: fetchError } = await supabase
+      .from('sellers')
+      .select('id, seller_number, phone_number_hash, inquiry_detailed_datetime, created_at')
+      .is('deleted_at', null)
+      .not('phone_number_hash', 'is', null)
+      .not('inquiry_detailed_datetime', 'is', null)
+      .order('created_at', { ascending: true });
+
+    if (fetchError) {
+      return res.status(500).json({ error: fetchError.message });
+    }
+
+    // グループ化
+    const groups = new Map<string, typeof allSellers>();
+    for (const seller of allSellers || []) {
+      const key = `${seller.phone_number_hash}|${seller.inquiry_detailed_datetime}`;
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key)!.push(seller);
+    }
+
+    // 重複グループを処理（2件以上あるグループ）
+    const deletedSellers: string[] = [];
+    const keptSellers: string[] = [];
+
+    for (const [_key, sellers] of groups) {
+      if (sellers.length <= 1) continue;
+
+      // 最も小さいseller_numberを残す（連番が若い方）
+      sellers.sort((a, b) => a.seller_number.localeCompare(b.seller_number));
+      const keep = sellers[0];
+      keptSellers.push(keep.seller_number);
+
+      // 残り全てを論理削除
+      for (let i = 1; i < sellers.length; i++) {
+        const toDelete = sellers[i];
+        await supabase
+          .from('sellers')
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', toDelete.id);
+        deletedSellers.push(toDelete.seller_number);
+      }
+    }
+
+    console.log(`[cleanup-duplicates] 削除: ${deletedSellers.length}件, 残し: ${keptSellers.length}件`);
+    return res.json({
+      success: true,
+      deletedCount: deletedSellers.length,
+      deletedSellers,
+      keptSellers,
+    });
+  } catch (error: any) {
+    console.error('[cleanup-duplicates] エラー:', error);
+    return res.status(500).json({ error: error.message });
   }
 });
 
