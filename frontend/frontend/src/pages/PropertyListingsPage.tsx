@@ -106,7 +106,7 @@ export default function PropertyListingsPage() {
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
   // ソート用state
-  type PropertySortKey = 'property_number' | 'sales_assignee' | 'property_type' | 'address' | 'display_address' | 'seller_name' | 'atbb_status' | 'buyer_name' | 'contract_date' | 'settlement_date' | 'price';
+  type PropertySortKey = 'property_number' | 'sales_assignee' | 'property_type' | 'address' | 'display_address' | 'seller_name' | 'atbb_status' | 'buyer_name' | 'contract_date' | 'settlement_date' | 'price' | 'report_date';
   const [sortBy, setSortBy] = useState<PropertySortKey | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
@@ -907,16 +907,26 @@ export default function PropertyListingsPage() {
                       売買価格
                     </TableSortLabel>
                   </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortBy === 'report_date'}
+                      direction={sortBy === 'report_date' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('report_date')}
+                      sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
+                    >
+                      報告日
+                    </TableSortLabel>
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={11} align="center">読み込み中...</TableCell>
+                    <TableCell colSpan={12} align="center">読み込み中...</TableCell>
                   </TableRow>
                 ) : paginatedListings.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} align="center">
+                    <TableCell colSpan={12} align="center">
                       {isLoadingAll && searchQuery.trim() ? '検索中...' : '物件データが見つかりませんでした'}
                     </TableCell>
                   </TableRow>
@@ -993,6 +1003,7 @@ export default function PropertyListingsPage() {
                         <TableCell>{formatDate(listing.contract_date)}</TableCell>
                         <TableCell>{formatDate(listing.settlement_date)}</TableCell>
                         <TableCell>{formatPrice(listing.price)}</TableCell>
+                        <TableCell>{formatDate(listing.report_date)}</TableCell>
                       </TableRow>
                     );
                   })
