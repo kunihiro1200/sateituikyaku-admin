@@ -1015,7 +1015,9 @@ export default function BuyerViewingResultPage() {
 
   // 買付チャット送信ハンドラー
   const handleOfferChatSend = async () => {
-    if (!buyer || !linkedProperties || linkedProperties.length === 0) {
+    // 「買（他社　片手）」の場合はDB上の物件紐づけ不要（他社物件情報のみで可）
+    const isOtherCompanyOffer = buyer?.latest_status?.includes('他社');
+    if (!buyer || (!isOtherCompanyOffer && (!linkedProperties || linkedProperties.length === 0))) {
       setSnackbar({
         open: true,
         message: '買主または物件情報が不足しています',
@@ -1045,7 +1047,7 @@ export default function BuyerViewingResultPage() {
 
       // バックエンドAPIを呼び出し
       const response = await api.post(`/api/buyers/${buyer.buyer_number}/send-offer-chat`, {
-        propertyNumber: linkedProperties[0].property_number,
+        propertyNumber: linkedProperties && linkedProperties.length > 0 ? linkedProperties[0].property_number : '',
         offerComment: buyer.offer_comment || '',
         campaignHandedOver: campaignHandedOver,
         pdfUrl: pdfUrl,
