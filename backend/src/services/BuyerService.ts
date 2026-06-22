@@ -344,7 +344,7 @@ export class BuyerService {
         ...b,
         calculated_status: statusResult.status,
         status_priority: statusResult.priority,
-        property_address: propertyMap[b.property_number]?.address ?? null,
+        property_address: propertyMap[b.property_number]?.address ?? b.other_company_property ?? null,
         property_sales_assignee: propertyMap[b.property_number]?.sales_assignee ?? null,
         property_type: propertyMap[b.property_number]?.property_type ?? null,
         atbb_status: propertyMap[b.property_number]?.atbb_status ?? null,
@@ -2151,13 +2151,18 @@ export class BuyerService {
 
     // 各買主に紐づく物件の情報を付与（複数物件の場合は最初の物件を使用）
     return allBuyers.map(buyer => {
-      if (!buyer.property_number) return buyer;
+      if (!buyer.property_number) {
+        return {
+          ...buyer,
+          property_address: buyer.other_company_property ?? null,
+        };
+      }
       const firstPropertyNumber = buyer.property_number.split(',')[0].trim();
       const prop = propertyMap[firstPropertyNumber];
       return {
         ...buyer,
         atbb_status: prop?.atbb_status || '',
-        property_address: prop?.property_address ?? null,
+        property_address: prop?.property_address ?? buyer.other_company_property ?? null,
         property_sales_assignee: prop?.sales_assignee ?? null,
         property_type: prop?.property_type ?? null,
         inquiry_property_price: prop?.price ?? null,
