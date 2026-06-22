@@ -98,7 +98,14 @@ export function filterTemplatesByConditions(
     const name = template.name;
 
     if (isBrokerInquiry) {
-      return name === '業者（内覧確定）' || name === '民泊問い合わせ' || name === '空' || name === '内覧後御礼メール';
+      return (
+        name === '業者（内覧確定）' ||
+        name === '民泊問い合わせ' ||
+        name === '空' ||
+        name === '内覧後御礼メール' ||
+        name === '問合せメール返信（戸、マ）●内覧案内なし' ||
+        name === '買付有り物件への返信（業者への対応）'
+      );
     }
 
     if (name === '業者（内覧確定）') return false;

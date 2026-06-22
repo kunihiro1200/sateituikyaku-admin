@@ -183,11 +183,23 @@ ${extraPagesHtml}
 
 // ============================================================
 // ページ2: 買付申込書
-export function generatePage2Html(propertyAddress: string, propertyPrice: number | null): string {
+export function generatePage2Html(propertyAddress: string, propertyPrice: number | null, propertyNumber: string = ''): string {
   const numPrice = propertyPrice ? Number(propertyPrice) : null;
   const priceStr = numPrice ? numPrice.toLocaleString('ja-JP') : '';
   const tdStyle = 'border:1px solid #000;padding:4px 8px;font-size:9pt;';
   const thStyle = 'border:1px solid #000;padding:4px 8px;font-size:9pt;width:140px;';
+  const isFI = propertyNumber.toUpperCase().includes('FI');
+  const brokerHtml = isFI
+    ? `<div style="font-size:8.5pt;margin-bottom:8px;">
+      仲介業者：株式会社くじら不動産<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;福岡市中央区舞鶴3－1－10<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TEL：092-401-5331
+    </div>`
+    : `<div style="font-size:8.5pt;margin-bottom:8px;">
+      仲介業者：株式会社いふう<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;大分市舞鶴町1-3-30<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TEL：097-533-2022
+    </div>`;
   return `<div style="width:100%;height:100%;padding:8mm 14mm;background:#fff;font-family:${FONT};font-size:9pt;color:#000;box-sizing:border-box;overflow:hidden;">
     <div style="font-size:16pt;font-weight:bold;text-align:center;text-decoration:underline;margin-bottom:10px;">買付申込書</div>
     <div style="text-align:right;margin-bottom:12px;font-size:9pt;">　　　　年　　　月　　　日${numPrice && numPrice > 15000000 ? '　<span style="font-size:18pt;vertical-align:middle;line-height:1;">☐</span>' : ''}</div>
@@ -205,11 +217,7 @@ export function generatePage2Html(propertyAddress: string, propertyPrice: number
         <td style="border:1px solid #000;padding:4px 8px;font-size:9pt;width:120px;"></td>
       </tr>
     </table>
-    <div style="font-size:8.5pt;margin-bottom:8px;">
-      仲介業者：株式会社いふう<br>
-      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;大分市舞鶴町1-3-30<br>
-      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TEL：097-533-2022
-    </div>
+    ${brokerHtml}
     <div style="margin-bottom:8px;font-size:9pt;">私は、下記不動産を、下記の条件にて購入したく、買い付けることを証明致します。</div>
     <div style="text-align:center;margin-bottom:8px;">記</div>
     <div style="display:flex;align-items:baseline;margin-bottom:8px;padding-left:4px;">
@@ -261,8 +269,72 @@ export function generatePage2Html(propertyAddress: string, propertyPrice: number
 // ============================================================
 // ページ3: 内覧証明書
 // ============================================================
-export function generatePage3Html(propertyAddress: string): string {
+export function generatePage3Html(propertyAddress: string, viewingDate: string = '', propertyNumber: string = ''): string {
   const lineStyle = 'border:none;border-bottom:1px solid #000;display:block;width:100%;height:28px;';
+  const isFI = propertyNumber.toUpperCase().includes('FI');
+
+  // 内覧日の表示（「～で内覧しました。」の後に挿入）
+  let viewingDateDisplay = '';
+  if (viewingDate) {
+    // YYYY/MM/DD または YYYY-MM-DD 形式を整形
+    try {
+      const d = new Date(viewingDate.replace(/\//g, '-'));
+      if (!isNaN(d.getTime())) {
+        viewingDateDisplay = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+      } else {
+        viewingDateDisplay = viewingDate;
+      }
+    } catch {
+      viewingDateDisplay = viewingDate;
+    }
+  }
+  const viewingDateLine = viewingDateDisplay
+    ? `<div style="text-align:center;margin:8px 0 16px;font-size:10pt;">内覧日：${esc(viewingDateDisplay)}</div>`
+    : `<div style="margin-bottom:16px;"></div>`;
+
+  // FI物件の場合の会社情報
+  const companyNameLine = isFI
+    ? `を株式会社くじら不動産で内覧しました。`
+    : `を株式会社いふうで内覧しました。`;
+
+  const otherPartySection = isFI
+    ? `
+      <div style="font-size:10pt;font-weight:bold;margin-bottom:12px;">【乙・宅地建物取引業者】</div>
+      <div style="display:flex;align-items:flex-end;margin-bottom:12px;">
+        <span style="font-size:10pt;min-width:120px;margin-right:16px;">商号（名称）</span>
+        <div style="flex:1;border-bottom:1px solid #000;padding-bottom:4px;font-size:10pt;">株式会社くじら不動産</div>
+      </div>
+      <div style="display:flex;align-items:flex-end;margin-bottom:12px;">
+        <span style="font-size:10pt;min-width:120px;margin-right:16px;">代表者</span>
+        <div style="flex:1;border-bottom:1px solid #000;padding-bottom:4px;font-size:10pt;">國廣智子</div>
+      </div>
+      <div style="display:flex;align-items:flex-end;margin-bottom:12px;">
+        <span style="font-size:10pt;min-width:120px;margin-right:16px;">主たる事務所の所在地</span>
+        <div style="flex:1;border-bottom:1px solid #000;padding-bottom:4px;font-size:10pt;">福岡市中央区舞鶴3－1－10</div>
+      </div>
+      <div style="display:flex;align-items:flex-end;margin-bottom:12px;">
+        <span style="font-size:10pt;min-width:120px;margin-right:16px;">電話番号</span>
+        <div style="flex:1;border-bottom:1px solid #000;padding-bottom:4px;font-size:10pt;">TEL:092-401-5331</div>
+      </div>`
+    : `
+      <div style="font-size:10pt;font-weight:bold;margin-bottom:12px;">【乙・宅地建物取引業者】</div>
+      <div style="display:flex;align-items:flex-end;margin-bottom:12px;">
+        <span style="font-size:10pt;min-width:120px;margin-right:16px;">商号（名称）</span>
+        <div style="flex:1;border-bottom:1px solid #000;padding-bottom:4px;font-size:10pt;">株式会社　威風</div>
+      </div>
+      <div style="display:flex;align-items:flex-end;margin-bottom:12px;">
+        <span style="font-size:10pt;min-width:120px;margin-right:16px;">代表者</span>
+        <div style="flex:1;border-bottom:1px solid #000;padding-bottom:4px;font-size:10pt;">國廣智子</div>
+      </div>
+      <div style="display:flex;align-items:flex-end;margin-bottom:12px;">
+        <span style="font-size:10pt;min-width:120px;margin-right:16px;">主たる事務所の所在地</span>
+        <div style="flex:1;border-bottom:1px solid #000;padding-bottom:4px;font-size:10pt;">大分市舞鶴町1-3-30</div>
+      </div>
+      <div style="display:flex;align-items:flex-end;margin-bottom:12px;">
+        <span style="font-size:10pt;min-width:120px;margin-right:16px;">免許証番号</span>
+        <div style="flex:1;border-bottom:1px solid #000;padding-bottom:4px;font-size:10pt;">大分県知事（３）第3183号</div>
+      </div>`;
+
   return `<div style="width:100%;height:100%;padding:12mm 18mm;background:#fff;font-family:${FONT};font-size:9pt;color:#000;box-sizing:border-box;overflow:hidden;">
     <div style="font-size:8pt;text-align:center;margin-bottom:4px;">この媒介契約は、国土交通省が定めた標準媒介契約約款に基づく契約です。</div>
     <div style="font-size:16pt;font-weight:bold;text-align:center;letter-spacing:0.3em;margin-bottom:4px;">内　覧　証　明　書</div>
@@ -285,9 +357,10 @@ export function generatePage3Html(propertyAddress: string): string {
       <span style="font-size:10pt;min-width:80px;">目的物件：</span>
       <div style="flex:1;border-bottom:2px solid #000;padding-bottom:4px;text-align:center;font-size:13pt;font-weight:bold;">${propertyAddress}</div>
     </div>
-    <div style="text-align:center;margin:16px 0;">
-      <span style="font-size:12pt;font-weight:bold;border-bottom:1px solid #000;padding-bottom:4px;">を株式会社いふうで内覧しました。</span>
+    <div style="text-align:center;margin:16px 0 4px;">
+      <span style="font-size:12pt;font-weight:bold;border-bottom:1px solid #000;padding-bottom:4px;">${esc(companyNameLine)}</span>
     </div>
+    ${viewingDateLine}
     <div style="margin-bottom:24px;">
       <div style="font-size:10pt;font-weight:bold;margin-bottom:12px;">【甲・依頼者】</div>
       <div style="display:flex;align-items:flex-end;margin-bottom:16px;">
@@ -300,23 +373,7 @@ export function generatePage3Html(propertyAddress: string): string {
       </div>
     </div>
     <div>
-      <div style="font-size:10pt;font-weight:bold;margin-bottom:12px;">【乙・宅地建物取引業者】</div>
-      <div style="display:flex;align-items:flex-end;margin-bottom:12px;">
-        <span style="font-size:10pt;min-width:120px;margin-right:16px;">商号（名称）</span>
-        <div style="flex:1;border-bottom:1px solid #000;padding-bottom:4px;font-size:10pt;">株式会社　威風</div>
-      </div>
-      <div style="display:flex;align-items:flex-end;margin-bottom:12px;">
-        <span style="font-size:10pt;min-width:120px;margin-right:16px;">代表者</span>
-        <div style="flex:1;border-bottom:1px solid #000;padding-bottom:4px;font-size:10pt;">國廣智子</div>
-      </div>
-      <div style="display:flex;align-items:flex-end;margin-bottom:12px;">
-        <span style="font-size:10pt;min-width:120px;margin-right:16px;">主たる事務所の所在地</span>
-        <div style="flex:1;border-bottom:1px solid #000;padding-bottom:4px;font-size:10pt;">大分市舞鶴町1-3-30</div>
-      </div>
-      <div style="display:flex;align-items:flex-end;margin-bottom:12px;">
-        <span style="font-size:10pt;min-width:120px;margin-right:16px;">免許証番号</span>
-        <div style="flex:1;border-bottom:1px solid #000;padding-bottom:4px;font-size:10pt;">大分県知事（３）第3183号</div>
-      </div>
+      ${otherPartySection}
     </div>
   </div>`;
 }
@@ -324,7 +381,11 @@ export function generatePage3Html(propertyAddress: string): string {
 // ============================================================
 // ページ4: 資金計画書
 // ============================================================
-export function generatePage4Html(propertyAddress: string, propertyPrice: number | null, propertyType: string | undefined, today: string): string {
+export function generatePage4Html(propertyAddress: string, propertyPrice: number | null, propertyType: string | undefined, today: string, propertyNumber: string = ''): string {
+  const isFI = propertyNumber.toUpperCase().includes('FI');
+  const footerText = isFI
+    ? '株式会社くじら不動産　福岡市中央区舞鶴3－1－10　TEL:092-401-5331'
+    : '㈱いふう　大分市舞鶴町1-3-30　TEL:097-533-2022　MAIL: tenant@ifoo-oita.com';
   const price = propertyPrice || 0;
   const inshi = price<=1000000?500:price<=5000000?1000:price<=10000000?5000:price<=50000000?10000:30000;
   const shoyuken = price>=10000000?300000:200000;
@@ -406,7 +467,7 @@ export function generatePage4Html(propertyAddress: string, propertyPrice: number
       </tr>
     </table>
     <div style="margin-top:8px;padding-top:4px;border-top:1px solid #000;display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:8pt;">㈱いふう　大分市舞鶴町1-3-30　TEL:097-533-2022　MAIL: tenant@ifoo-oita.com</span>
+      <span style="font-size:8pt;">${esc(footerText)}</span>
       <span style="font-size:7pt;color:#666;">info→3</span>
     </div>
   </div>`;
@@ -415,7 +476,11 @@ export function generatePage4Html(propertyAddress: string, propertyPrice: number
 // ============================================================
 // ページ4（自己資金版）: 資金計画書 - 住宅ローン欄なし・銀行関連費用なし
 // ============================================================
-export function generatePage4CashHtml(propertyAddress: string, propertyPrice: number | null, propertyType: string | undefined, today: string): string {
+export function generatePage4CashHtml(propertyAddress: string, propertyPrice: number | null, propertyType: string | undefined, today: string, propertyNumber: string = ''): string {
+  const isFI = propertyNumber.toUpperCase().includes('FI');
+  const footerText = isFI
+    ? '株式会社くじら不動産　福岡市中央区舞鶴3－1－10　TEL:092-401-5331'
+    : '㈱いふう　大分市舞鶴町1-3-30　TEL:097-533-2022　MAIL: tenant@ifoo-oita.com';
   const price = propertyPrice || 0;
   const inshi = price<=1000000?500:price<=5000000?1000:price<=10000000?5000:price<=50000000?10000:30000;
   const shoyuken = price>=10000000?300000:200000;
@@ -464,7 +529,7 @@ export function generatePage4CashHtml(propertyAddress: string, propertyPrice: nu
       </tr>
     </table>
     <div style="margin-top:8px;padding-top:4px;border-top:1px solid #000;display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:8pt;">㈱いふう　大分市舞鶴町1-3-30　TEL:097-533-2022　MAIL: tenant@ifoo-oita.com</span>
+      <span style="font-size:8pt;">${esc(footerText)}</span>
       <span style="font-size:7pt;color:#666;">info→3</span>
     </div>
   </div>`;
@@ -646,10 +711,11 @@ export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDeta
     const addr = (property.display_address || property.address || '') as string;
     const price = (property.price || property.listing_price || null) as number | null;
     const ptype = property.property_type as string | undefined;
+    const propNum = (property.property_number || '') as string;
     pages.push(generatePage1Html(buyer, property, today));
-    pages.push(generatePage2Html(addr, price));
-    pages.push(generatePage3Html(addr));
-    pages.push(generatePage4Html(addr, price, ptype, today));
+    pages.push(generatePage2Html(addr, price, propNum));
+    pages.push(generatePage3Html(addr, viewingDateStr, propNum));
+    pages.push(generatePage4Html(addr, price, ptype, today, propNum));
     pages.push(generatePage5Html());
     // 物件価格1500万円以上の場合のみキャンペーンシートを追加
     if (price != null && price >= 15000000) {
@@ -684,10 +750,11 @@ export function generateAllPagesCashHtml(buyer: Record<string,unknown>, property
     const addr = (property.display_address || property.address || '') as string;
     const price = (property.price || property.listing_price || null) as number | null;
     const ptype = property.property_type as string | undefined;
+    const propNum = (property.property_number || '') as string;
     pages.push(generatePage1Html(buyer, property, today));
-    pages.push(generatePage2Html(addr, price));
-    pages.push(generatePage3Html(addr));
-    pages.push(generatePage4CashHtml(addr, price, ptype, today));
+    pages.push(generatePage2Html(addr, price, propNum));
+    pages.push(generatePage3Html(addr, viewingDateStr, propNum));
+    pages.push(generatePage4CashHtml(addr, price, ptype, today, propNum));
     pages.push(generatePage5Html());
     // 物件価格1500万円以上の場合のみキャンペーンシートを追加
     if (price != null && price >= 15000000) {

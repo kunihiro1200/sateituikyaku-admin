@@ -8,6 +8,7 @@ import { Box, Typography } from '@mui/material';
 interface PurchaseApplicationPrintSheetProps {
   propertyAddress?: string;
   propertyPrice?: number | null;
+  propertyNumber?: string;
 }
 
 // ============================================================
@@ -25,8 +26,9 @@ function formatPriceWithComma(price?: number | null): string {
 // ============================================================
 
 const PurchaseApplicationPrintSheet = React.forwardRef<HTMLDivElement, PurchaseApplicationPrintSheetProps>(
-  ({ propertyAddress, propertyPrice }, ref) => {
+  ({ propertyAddress, propertyPrice, propertyNumber }, ref) => {
     const priceDisplay = formatPriceWithComma(propertyPrice);
+    const isFI = (propertyNumber || '').toUpperCase().includes('FI');
 
     return (
       <Box
@@ -82,15 +84,31 @@ const PurchaseApplicationPrintSheet = React.forwardRef<HTMLDivElement, PurchaseA
 
         {/* 仲介業者情報 */}
         <Box sx={{ mb: 2 }}>
-          <Typography sx={{ fontSize: '9pt' }}>
-            仲介業者：株式会社いふう
-          </Typography>
-          <Typography sx={{ fontSize: '9pt', pl: 6 }}>
-            大分市舞鶴町1-3-30
-          </Typography>
-          <Typography sx={{ fontSize: '9pt', pl: 6 }}>
-            TEL：097-533-2022
-          </Typography>
+          {isFI ? (
+            <>
+              <Typography sx={{ fontSize: '9pt' }}>
+                仲介業者：株式会社くじら不動産
+              </Typography>
+              <Typography sx={{ fontSize: '9pt', pl: 6 }}>
+                福岡市中央区舞鶴3－1－10
+              </Typography>
+              <Typography sx={{ fontSize: '9pt', pl: 6 }}>
+                TEL：092-401-5331
+              </Typography>
+            </>
+          ) : (
+            <>
+              <Typography sx={{ fontSize: '9pt' }}>
+                仲介業者：株式会社いふう
+              </Typography>
+              <Typography sx={{ fontSize: '9pt', pl: 6 }}>
+                大分市舞鶴町1-3-30
+              </Typography>
+              <Typography sx={{ fontSize: '9pt', pl: 6 }}>
+                TEL：097-533-2022
+              </Typography>
+            </>
+          )}
         </Box>
 
         {/* 宣言文 */}

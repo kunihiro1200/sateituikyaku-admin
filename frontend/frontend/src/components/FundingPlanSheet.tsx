@@ -10,6 +10,7 @@ interface FundingPlanSheetProps {
   propertyPrice?: number | null;
   propertyType?: string; // 種別（マンション判定に使用）
   printDate?: string;
+  propertyNumber?: string;
 }
 
 // ============================================================
@@ -86,9 +87,13 @@ const cellSx = {
 // ============================================================
 
 const FundingPlanSheet = React.forwardRef<HTMLDivElement, FundingPlanSheetProps>(
-  ({ propertyAddress, propertyPrice, propertyType, printDate }, ref) => {
+  ({ propertyAddress, propertyPrice, propertyType, printDate, propertyNumber }, ref) => {
     const price = propertyPrice || 0;
     const today = printDate || todayStr();
+    const isFI = (propertyNumber || '').toUpperCase().includes('FI');
+    const footerText = isFI
+      ? '株式会社くじら不動産　福岡市中央区舞鶴3－1－10　TEL:092-401-5331'
+      : '㈱いふう　大分市舞鶴町1-3-30　TEL:097-533-2022　MAIL: tenant@ifoo-oita.com';
 
     // 諸経費内訳
     const inshi = calcInshiDai(price);
@@ -308,7 +313,7 @@ const FundingPlanSheet = React.forwardRef<HTMLDivElement, FundingPlanSheetProps>
         {/* フッター */}
         <Box sx={{ mt: 1, pt: 0.5, borderTop: '1px solid #000', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography sx={{ fontSize: '8pt', fontFamily: FONT }}>
-            ㈱いふう　大分市舞鶴町1-3-30　TEL:097-533-2022　MAIL: tenant@ifoo-oita.com
+            {footerText}
           </Typography>
           <Typography sx={{ fontSize: '7pt', color: '#666', fontFamily: FONT }}>
             info→3

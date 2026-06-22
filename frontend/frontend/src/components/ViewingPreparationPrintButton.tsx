@@ -212,6 +212,7 @@ export function ViewingPreparationPrintButton({
           <PurchaseApplicationPrintSheet
             propertyAddress={property.display_address || property.address}
             propertyPrice={property.price || property.listing_price}
+            propertyNumber={property.property_number || ''}
           />
         ),
       },
@@ -221,6 +222,8 @@ export function ViewingPreparationPrintButton({
         node: (
           <ExclusiveMediationContractSheet
             propertyAddress={property.display_address || property.address}
+            viewingDate={buyer?.viewing_date || today}
+            propertyNumber={property.property_number || ''}
           />
         ),
       },
@@ -233,6 +236,7 @@ export function ViewingPreparationPrintButton({
             propertyPrice={property.price || property.listing_price}
             propertyType={property.property_type}
             printDate={today}
+            propertyNumber={property.property_number || ''}
           />
         ),
       },

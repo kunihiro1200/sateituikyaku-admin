@@ -7,6 +7,8 @@ import { Box, Typography } from '@mui/material';
 
 interface ExclusiveMediationContractSheetProps {
   propertyAddress?: string;
+  viewingDate?: string;
+  propertyNumber?: string;
 }
 
 // ============================================================
@@ -14,7 +16,24 @@ interface ExclusiveMediationContractSheetProps {
 // ============================================================
 
 const ExclusiveMediationContractSheet = React.forwardRef<HTMLDivElement, ExclusiveMediationContractSheetProps>(
-  ({ propertyAddress }, ref) => {
+  ({ propertyAddress, viewingDate, propertyNumber }, ref) => {
+    const isFI = (propertyNumber || '').toUpperCase().includes('FI');
+
+    // 内覧日の表示文字列を生成
+    let viewingDateDisplay = '';
+    if (viewingDate) {
+      try {
+        const d = new Date(viewingDate.replace(/\//g, '-'));
+        if (!isNaN(d.getTime())) {
+          viewingDateDisplay = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+        } else {
+          viewingDateDisplay = viewingDate;
+        }
+      } catch {
+        viewingDateDisplay = viewingDate;
+      }
+    }
+
     return (
       <Box
         ref={ref}
@@ -117,10 +136,21 @@ const ExclusiveMediationContractSheet = React.forwardRef<HTMLDivElement, Exclusi
         <Box sx={{ textAlign: 'center', my: 2 }}>
           <Box sx={{ borderBottom: '1px solid #000', display: 'inline-block', pb: 0.5 }}>
             <Typography sx={{ fontSize: '12pt', fontWeight: 'bold' }}>
-              を株式会社いふうで内覧しました。
+              {isFI ? 'を株式会社くじら不動産で内覧しました。' : 'を株式会社いふうで内覧しました。'}
             </Typography>
           </Box>
         </Box>
+
+        {/* 内覧日 */}
+        {viewingDateDisplay ? (
+          <Box sx={{ textAlign: 'center', mb: 2 }}>
+            <Typography sx={{ fontSize: '10pt' }}>
+              内覧日：{viewingDateDisplay}
+            </Typography>
+          </Box>
+        ) : (
+          <Box sx={{ mb: 2 }} />
+        )}
 
         {/* 甲・依頼者 */}
         <Box sx={{ mb: 3 }}>
@@ -157,7 +187,9 @@ const ExclusiveMediationContractSheet = React.forwardRef<HTMLDivElement, Exclusi
               商号（名称）
             </Typography>
             <Box sx={{ flex: 1, borderBottom: '1px solid #000', pb: 0.5 }}>
-              <Typography sx={{ fontSize: '10pt' }}>株式会社　威風</Typography>
+              <Typography sx={{ fontSize: '10pt' }}>
+                {isFI ? '株式会社くじら不動産' : '株式会社　威風'}
+              </Typography>
             </Box>
           </Box>
 
@@ -177,19 +209,35 @@ const ExclusiveMediationContractSheet = React.forwardRef<HTMLDivElement, Exclusi
               主たる事務所の所在地
             </Typography>
             <Box sx={{ flex: 1, borderBottom: '1px solid #000', pb: 0.5 }}>
-              <Typography sx={{ fontSize: '10pt' }}>大分市舞鶴町1-3-30</Typography>
+              <Typography sx={{ fontSize: '10pt' }}>
+                {isFI ? '福岡市中央区舞鶴3－1－10' : '大分市舞鶴町1-3-30'}
+              </Typography>
             </Box>
           </Box>
 
-          {/* 免許証番号 */}
-          <Box sx={{ display: 'flex', alignItems: 'flex-end', mb: 1.5 }}>
-            <Typography sx={{ fontSize: '10pt', minWidth: '120px', mr: 2 }}>
-              免許証番号
-            </Typography>
-            <Box sx={{ flex: 1, borderBottom: '1px solid #000', pb: 0.5 }}>
-              <Typography sx={{ fontSize: '10pt' }}>大分県知事（３）第3183号</Typography>
+          {/* 免許証番号（FI物件は表示しない） */}
+          {!isFI && (
+            <Box sx={{ display: 'flex', alignItems: 'flex-end', mb: 1.5 }}>
+              <Typography sx={{ fontSize: '10pt', minWidth: '120px', mr: 2 }}>
+                免許証番号
+              </Typography>
+              <Box sx={{ flex: 1, borderBottom: '1px solid #000', pb: 0.5 }}>
+                <Typography sx={{ fontSize: '10pt' }}>大分県知事（３）第3183号</Typography>
+              </Box>
             </Box>
-          </Box>
+          )}
+
+          {/* TEL（FI物件のみ表示） */}
+          {isFI && (
+            <Box sx={{ display: 'flex', alignItems: 'flex-end', mb: 1.5 }}>
+              <Typography sx={{ fontSize: '10pt', minWidth: '120px', mr: 2 }}>
+                電話番号
+              </Typography>
+              <Box sx={{ flex: 1, borderBottom: '1px solid #000', pb: 0.5 }}>
+                <Typography sx={{ fontSize: '10pt' }}>TEL:092-401-5331</Typography>
+              </Box>
+            </Box>
+          )}
         </Box>
       </Box>
     );
