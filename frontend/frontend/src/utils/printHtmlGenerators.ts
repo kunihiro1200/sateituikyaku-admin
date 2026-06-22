@@ -131,7 +131,7 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
   const footerTel = isFI ? 'TEL：092-401-5331' : 'TEL：097-533-2022';
   // 追加5ページのHTML
   const extraPages = [
-    generateExtraPage1Html(base),
+    generateExtraPage1Html(base, isFI),
     generateExtraPage2Html(),
     generateExtraPage3Html(),
     generateExtraPage4Html(),
@@ -798,9 +798,9 @@ export function generateAllPagesCashHtml(buyer: Record<string,unknown>, property
 // ============================================================
 
 // ページA: 住まい購入の流れ
-export function generateExtraPage1Html(base: string): string {
+export function generateExtraPage1Html(base: string, isFI: boolean = false): string {
   const imgFamily = `${base}/ifoo-assets/flow-main.png`;
-  const imgIcon   = `${base}/ifoo-assets/ifoo-logo-yellow.png`;
+  const imgIcon   = isFI ? `${base}/kujira-fudosan-logo.png` : `${base}/ifoo-assets/ifoo-logo-yellow.png`;
   const imgOitaQr = `${base}/ifoo-assets/oita-qr-box.png`;
   const F = '"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif';
   const yellow = '#f5c518';
@@ -812,7 +812,7 @@ export function generateExtraPage1Html(base: string): string {
 <div style="width:100%;height:100%;padding:28px 28px 16px 28px;font-family:${F};font-size:9pt;color:#000;background:#fff;box-sizing:border-box;">
   <!-- ヘッダー -->
   <div style="display:flex;align-items:center;margin-bottom:12px;">
-    <img src="${imgIcon}" height="48" style="margin-right:12px;"/>
+    <img src="${imgIcon}" height="${isFI ? 80 : 48}" style="margin-right:12px;"/>
     <div style="font-size:18pt;font-weight:bold;">住まい購入の流れ</div>
     <img src="${imgFamily}" height="90" style="margin-left:auto;"/>
   </div>
@@ -868,7 +868,7 @@ export function generateExtraPage1Html(base: string): string {
         ●先進的窓リノベ2024事業<br>
         ●給湯省エネ2024事業<br>
         ●長期優良住宅化リフォーム推進事業　ほか<br><br>
-        <img src="${imgOitaQr}" style="width:100%;display:block;margin-top:6px;"/>
+        <img src="${imgOitaQr}" style="width:100%;display:${isFI ? 'none' : 'block'};margin-top:6px;"/>
       </div>
     </div>
   </div>
