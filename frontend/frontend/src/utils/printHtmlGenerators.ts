@@ -117,14 +117,13 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
   const isFI = propNum.includes('FI');
 
   const imgLogo       = isFI ? `${base}/kujira-fudosan-logo.png` : `${base}/ifoo-assets/logo.png`;
-  const imgCharaLeft  = `${base}/ifoo-assets/chara-left.png`;
+  const imgCharaLeft  = isFI ? `${base}/KUJIRA_ANSIN.png` : `${base}/ifoo-assets/chara-left.png`;
   const imgHouseHeart = `${base}/ifoo-assets/house-heart.png`;
   const imgCharaRight = `${base}/ifoo-assets/chara-right.png`;
   const imgWaHouses   = `${base}/ifoo-assets/wa-houses.png`;
 
-  const charaLeftText = isFI ? 'くじらなら<br>安心です！' : 'いふうなら<br>安心です！';
   const companyIntroLine = isFI
-    ? '福岡市の不動産購入は<br>くじら不動産におまかせください！'
+    ? '福岡の不動産購入は<br>くじら不動産におまかせください！'
     : '大分市・別府市の不動産購入は<br>いふうにおまかせください！';
   const footerLabel = isFI ? '不動産のことなら「くじら不動産」へ' : '不動産のことなら「いふう」へ';
   const footerCompany = isFI ? '株式会社くじら不動産' : '株式会社いふう';
@@ -156,7 +155,7 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
 <div class="page" style="padding:16px;">
 <div style="border:2px solid #f5c518;width:100%;height:100%;padding:24px 36px 20px 36px;display:flex;flex-direction:column;">
   <div>
-    <div style="margin-bottom:18px;"><img src="${imgLogo}" height="52" style="display:block;"/></div>
+    <div style="margin-bottom:18px;"><img src="${imgLogo}" height="${isFI ? 104 : 52}" style="display:block;"/></div>
     <div style="text-align:center;margin-bottom:12px;"><span style="font-size:24pt;font-weight:bold;letter-spacing:0.05em;">${esc(nameWithSama)}</span></div>
     <div style="border-bottom:1.5px solid #000;"></div>
   </div>
@@ -168,7 +167,6 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
     <div style="display:flex;align-items:center;margin-bottom:16px;">
       <div style="width:160px;flex-shrink:0;position:relative;">
         <img src="${imgCharaLeft}" width="160" style="display:block;"/>
-        ${isFI ? `<div style="position:absolute;top:6px;left:4px;background:#f5c518;border-radius:50%;width:66px;height:66px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:7.5pt;font-weight:bold;line-height:1.3;color:#000;">くじらなら<br>安心です！</div>` : ''}
       </div>
       <div style="flex:1;padding:0 8px;text-align:center;font-size:10.5pt;line-height:2.0;">
         <div style="margin-bottom:6px;">${companyIntroLine}</div>
