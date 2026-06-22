@@ -2210,6 +2210,7 @@ TEL：097-533-2022`;
               {buyer && (
                 <ViewingPreparation2PrintButton
                   buyer={buyer}
+                  linkedProperties={linkedProperties}
                 />
               )}
             </Box>

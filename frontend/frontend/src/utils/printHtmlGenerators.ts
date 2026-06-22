@@ -105,17 +105,31 @@ export function generatePage1Html(buyer: Record<string,unknown>, property: Recor
 // ============================================================
 // 内覧準備資料２: 挨拶状（いふうスタイル・publicフォルダ画像版）
 // ============================================================
-export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: string): string {
+export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: string, propertyNumber?: string): string {
   const rawName = (buyer.name as string) || '';
   const nameWithSama = rawName
     ? (rawName.endsWith('様') ? rawName : rawName + '様')
     : '';
   const base = window.location.origin;
-  const imgLogo       = `${base}/ifoo-assets/logo.png`;
+
+  // FI物件判定：引数のpropertyNumber優先、なければbuyerの物件番号を参照
+  const propNum = (propertyNumber || (buyer.property_number as string) || '').toUpperCase();
+  const isFI = propNum.includes('FI');
+
+  const imgLogo       = isFI ? `${base}/kujira-fudosan-logo.png` : `${base}/ifoo-assets/logo.png`;
   const imgCharaLeft  = `${base}/ifoo-assets/chara-left.png`;
   const imgHouseHeart = `${base}/ifoo-assets/house-heart.png`;
   const imgCharaRight = `${base}/ifoo-assets/chara-right.png`;
   const imgWaHouses   = `${base}/ifoo-assets/wa-houses.png`;
+
+  const charaLeftText = isFI ? 'くじらなら<br>安心です！' : 'いふうなら<br>安心です！';
+  const companyIntroLine = isFI
+    ? '福岡市の不動産購入は<br>くじら不動産におまかせください！'
+    : '大分市・別府市の不動産購入は<br>いふうにおまかせください！';
+  const footerLabel = isFI ? '不動産のことなら「くじら不動産」へ' : '不動産のことなら「いふう」へ';
+  const footerCompany = isFI ? '株式会社くじら不動産' : '株式会社いふう';
+  const footerAddress = isFI ? '福岡市中央区舞鶴3－1－10' : '大分市舞鶴町1-3-30';
+  const footerTel = isFI ? 'TEL：092-401-5331' : 'TEL：097-533-2022';
   // 追加5ページのHTML
   const extraPages = [
     generateExtraPage1Html(base),
@@ -152,9 +166,12 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
       <div style="font-size:12pt;font-weight:bold;line-height:1.9;">誠にありがとうございます</div>
     </div>
     <div style="display:flex;align-items:center;margin-bottom:16px;">
-      <div style="width:160px;flex-shrink:0;"><img src="${imgCharaLeft}" width="160" style="display:block;"/></div>
+      <div style="width:160px;flex-shrink:0;position:relative;">
+        <img src="${imgCharaLeft}" width="160" style="display:block;"/>
+        ${isFI ? `<div style="position:absolute;top:6px;left:4px;background:#f5c518;border-radius:50%;width:66px;height:66px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:7.5pt;font-weight:bold;line-height:1.3;color:#000;">くじらなら<br>安心です！</div>` : ''}
+      </div>
       <div style="flex:1;padding:0 8px;text-align:center;font-size:10.5pt;line-height:2.0;">
-        <div style="margin-bottom:6px;">大分市・別府市の不動産購入は<br>いふうにおまかせください！</div>
+        <div style="margin-bottom:6px;">${companyIntroLine}</div>
         <div>「資金計画」や「現地見学」「売買契約」など、<br>お住まい購入時の流れやポイントを<br>丁寧にご説明いたします<br>お気軽にご相談ください！</div>
       </div>
       <div style="width:140px;flex-shrink:0;"><img src="${imgHouseHeart}" width="140" style="display:block;"/></div>
@@ -168,9 +185,9 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <img src="${imgWaHouses}" width="200" style="display:block;"/>
       <div style="text-align:left;">
-        <div style="font-size:8.5pt;margin-bottom:4px;">不動産のことなら「いふう」へ</div>
-        <div style="background:#f5c518;padding:4px 18px;font-size:10.5pt;font-weight:bold;text-align:center;margin-bottom:6px;">株式会社いふう</div>
-        <div style="font-size:9pt;line-height:1.9;">大分市舞鶴町1-3-30<br>TEL：097-533-2022</div>
+        <div style="font-size:8.5pt;margin-bottom:4px;">${esc(footerLabel)}</div>
+        <div style="background:#f5c518;padding:4px 18px;font-size:10.5pt;font-weight:bold;text-align:center;margin-bottom:6px;">${esc(footerCompany)}</div>
+        <div style="font-size:9pt;line-height:1.9;">${esc(footerAddress)}<br>${esc(footerTel)}</div>
       </div>
     </div>
   </div>

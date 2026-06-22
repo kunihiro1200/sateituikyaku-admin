@@ -44,16 +44,22 @@ function getTodayStr(): string {
 // ============================================================
 export function ViewingPreparation2PrintButton({
   buyer,
+  linkedProperties,
 }: {
   buyer: BuyerDetails;
+  linkedProperties?: PropertyListing[];
 }) {
   const [printing, setPrinting] = useState(false);
   const today = getTodayStr();
 
   const handlePrint = () => {
     setPrinting(true);
+    // 物件番号をlinkedPropertiesまたはbuyerから取得
+    const propertyNumber = (linkedProperties && linkedProperties.length > 0)
+      ? linkedProperties[0].property_number
+      : (buyer?.property_number || '');
     import('../utils/printHtmlGenerators').then(({ generateViewingPrep2Html }) => {
-      const html = generateViewingPrep2Html(buyer, today);
+      const html = generateViewingPrep2Html(buyer, today, propertyNumber);
       // iframe方式: @page margin:0 が確実に効く（window.openでは無視されることがある）
       const iframe = document.createElement('iframe');
       iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';

@@ -183,8 +183,11 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
   const handlePrint2 = () => {
     if (!buyer) return;
     setPrinting2(true);
+    const propertyNumber = (linkedProperties && linkedProperties.length > 0)
+      ? (linkedProperties[0].property_number || '')
+      : '';
     import('../utils/printHtmlGenerators').then(({ generateViewingPrep2Html }) => {
-      const html = generateViewingPrep2Html(buyer, getTodayStr());
+      const html = generateViewingPrep2Html(buyer, getTodayStr(), propertyNumber);
       const iframe = document.createElement('iframe');
       iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
       document.body.appendChild(iframe);
