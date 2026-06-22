@@ -165,12 +165,14 @@ interface CwCountData {
   floorPlan300: string | null;
   floorPlan500: string | null;
   siteRegistration: string | null;
+  siteRegistrationAsanuma: string | null;
+  siteRegistrationYamazaki: string | null;
 }
 
 // CWカウント取得フック
 // GASが定期同期するcw_countsテーブルから「現在計」を取得
 function useCwCounts(): CwCountData {
-  const [data, setData] = useState<CwCountData>({ floorPlan300: null, floorPlan500: null, siteRegistration: null });
+  const [data, setData] = useState<CwCountData>({ floorPlan300: null, floorPlan500: null, siteRegistration: null, siteRegistrationAsanuma: null, siteRegistrationYamazaki: null });
 
   useEffect(() => {
     const fetchCwCounts = async () => {
@@ -178,15 +180,16 @@ function useCwCounts(): CwCountData {
         const { data: rows, error } = await supabase
           .from('cw_counts')
           .select('item_name, current_total')
-          .in('item_name', ['間取図（300円）', '間取図（500円）', 'サイト登録']);
+          .in('item_name', ['間取図（300円）', '間取図（500円）', 'サイト登録', 'サイト登録（山崎様）']);
 
         if (error || !rows) return;
 
-        const result: CwCountData = { floorPlan300: null, floorPlan500: null, siteRegistration: null };
+        const result: CwCountData = { floorPlan300: null, floorPlan500: null, siteRegistration: null, siteRegistrationAsanuma: null, siteRegistrationYamazaki: null };
         rows.forEach(row => {
           if (row.item_name === '間取図（300円）') result.floorPlan300 = row.current_total;
           if (row.item_name === '間取図（500円）') result.floorPlan500 = row.current_total;
-          if (row.item_name === 'サイト登録') result.siteRegistration = row.current_total;
+          if (row.item_name === 'サイト登録') { result.siteRegistration = row.current_total; result.siteRegistrationAsanuma = row.current_total; }
+          if (row.item_name === 'サイト登録（山崎様）') result.siteRegistrationYamazaki = row.current_total;
         });
         setData(result);
       } catch {
@@ -3107,11 +3110,27 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         )}
         <EditableField label="メール配信v" field="email_distribution" />
         <EditableField label="サイト登録確認OKコメント" field="site_registration_ok_comment" type="text" />
-        <EditableYesNo
-          label={getValue('site_registration_confirmed') === '完了' && !getValue('site_registration_ok_sent') ? 'サイト登録確認OK送信*（必須）' : 'サイト登録確認OK送信'}
-          field="site_registration_ok_sent"
-          labelColor={getValue('site_registration_confirmed') === '完了' && !getValue('site_registration_ok_sent') ? 'error' : undefined}
-        />
+        <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+          <Grid item xs={4}>
+            <Typography variant="body2" color={getValue('site_registration_confirmed') === '完了' && !getValue('site_registration_ok_sent') ? 'error' : 'text.secondary'} sx={{ fontWeight: getValue('site_registration_confirmed') === '完了' && !getValue('site_registration_ok_sent') ? 700 : 500 }}>
+              {getValue('site_registration_confirmed') === '完了' && !getValue('site_registration_ok_sent') ? 'サイト登録確認OK送信*（必須）' : 'サイト登録確認OK送信'}
+            </Typography>
+          </Grid>
+          <Grid item xs={8}>
+            <ButtonGroup size="small" variant="outlined">
+              <Button
+                variant={getValue('site_registration_ok_sent') === '浅' ? 'contained' : 'outlined'}
+                color={getValue('site_registration_ok_sent') === '浅' ? 'primary' : 'inherit'}
+                onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('site_registration_ok_sent', getValue('site_registration_ok_sent') === '浅' ? null : '浅'); }}
+              >浅</Button>
+              <Button
+                variant={getValue('site_registration_ok_sent') === '山' ? 'contained' : 'outlined'}
+                color={getValue('site_registration_ok_sent') === '山' ? 'primary' : 'inherit'}
+                onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('site_registration_ok_sent', getValue('site_registration_ok_sent') === '山' ? null : '山'); }}
+              >山</Button>
+            </ButtonGroup>
+          </Grid>
+        </Grid>
         {/* サイト登録確認OK送信に値がある場合、サイト登録修正フィールドを表示 */}
         {getValue('site_registration_ok_sent') && (
           <>
@@ -3146,7 +3165,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         )}
         <ReadOnlyDisplayField
           label=""
-          value={cwCounts.siteRegistration ? `サイト登録（CW)計⇒ ${cwCounts.siteRegistration}` : '-'}
+          value={
+            cwCounts.siteRegistrationAsanuma || cwCounts.siteRegistrationYamazaki
+              ? `サイト登録（CW) 浅沼様 現在計⇒ ${cwCounts.siteRegistrationAsanuma || '-'} / 山崎様 現在計⇒ ${cwCounts.siteRegistrationYamazaki || '-'}`
+              : cwCounts.siteRegistration ? `サイト登録（CW)計⇒ ${cwCounts.siteRegistration}` : '-'
+          }
         />
         </Box>
 
