@@ -2489,6 +2489,9 @@ router.post('/:buyer_number/send-offer-chat', async (req: Request, res: Response
     const latestStatus = buyer.latest_status || '';
     const isOfferFailed = !latestStatus.includes('買') || latestStatus === '買付外れました';
 
+    // 物件所在地: 紐づき物件がなければ他社物件情報を使用
+    const propertyAddress = property?.address || property?.display_address || buyer.other_company_property || '未設定';
+
     const frontendBaseUrl = 'https://sateituikyaku-admin-frontend.vercel.app';
     const detailUrl = `${frontendBaseUrl}/buyers/${buyer_number}/viewing-result`;
 
@@ -2499,7 +2502,7 @@ router.post('/:buyer_number/send-offer-chat', async (req: Request, res: Response
         `買主番号: ${buyer.buyer_number}\n` +
         `買主名: ${buyer.name || '未設定'}\n` +
         `物件番号: ${propertyNumber || property?.property_number || '未設定'}\n` +
-        `物件所在地: ${property?.address || property?.display_address || '未設定'}\n` +
+        `物件所在地: ${propertyAddress}\n` +
         `★最新状況: ${latestStatus || '（空欄）'}\n` +
         `買付ハズレコメント: ${offerComment || '未記入'}\n` +
         `${pdfUrl ? `📎 買付PDF: ${pdfUrl}\n` : ''}` +
@@ -2510,7 +2513,7 @@ router.post('/:buyer_number/send-offer-chat', async (req: Request, res: Response
         `買主番号: ${buyer.buyer_number}\n` +
         `買主名: ${buyer.name || '未設定'}\n` +
         `物件番号: ${propertyNumber || property?.property_number || '未設定'}\n` +
-        `物件所在地: ${property?.address || property?.display_address || '未設定'}\n` +
+        `物件所在地: ${propertyAddress}\n` +
         `★最新状況: ${latestStatus}\n` +
         `買付コメント: ${offerComment || '未記入'}\n` +
         `10万円キャンペーン: ${campaignHandedOver ? 'お渡し済み ✅' : '未渡し'}\n` +
