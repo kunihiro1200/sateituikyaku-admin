@@ -26,6 +26,7 @@ export const LATEST_STATUS_OPTIONS: LatestStatusOption[] = [
   { value: '買（専任 片手）', label: '買（専任 片手）' },
   { value: '買（一般 両手）', label: '買（一般 両手）' },
   { value: '買（一般 片手）', label: '買（一般 片手）' },
+  { value: '買（他社　片手）', label: '買（他社　片手）' },
   { value: '他決', label: '他決' },
   { value: '2番手', label: '2番手' },
   { value: '3番手', label: '3番手' },

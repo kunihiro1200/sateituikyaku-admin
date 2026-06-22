@@ -952,8 +952,17 @@ export default function BuyerViewingResultPage() {
     // 空欄選択肢を先頭に追加
     const emptyOption = { value: '', label: '（空欄）' };
     
+    // 他社物件情報が入力されているかどうか
+    const hasOtherCompanyProperty = !!(buyer?.other_company_property && buyer.other_company_property.trim()) || 
+                                     !!(buyer?.building_name_price && buyer.building_name_price.trim());
+
     // 紐づいた物件がない場合は全ての選択肢を表示
     if (!linkedProperties || linkedProperties.length === 0) {
+      // 他社物件情報がない場合は「買（他社　片手）」を除外
+      if (!hasOtherCompanyProperty) {
+        const filtered = LATEST_STATUS_OPTIONS.filter(option => option.value !== '買（他社　片手）');
+        return [emptyOption, ...filtered];
+      }
       return [emptyOption, ...LATEST_STATUS_OPTIONS];
     }
 
@@ -963,6 +972,10 @@ export default function BuyerViewingResultPage() {
     // 専任媒介の場合
     if (atbbStatus.includes('専任')) {
       const filtered = LATEST_STATUS_OPTIONS.filter(option => {
+        // 「買（他社　片手）」は他社物件情報がある場合のみ表示
+        if (option.value === '買（他社　片手）') {
+          return hasOtherCompanyProperty;
+        }
         // 「買（専任 両手）」「買（専任 片手）」のみ表示
         // その他の「買（）」は非表示
         if (option.value.startsWith('買（')) {
@@ -977,6 +990,10 @@ export default function BuyerViewingResultPage() {
     // 一般媒介の場合
     if (atbbStatus.includes('一般')) {
       const filtered = LATEST_STATUS_OPTIONS.filter(option => {
+        // 「買（他社　片手）」は他社物件情報がある場合のみ表示
+        if (option.value === '買（他社　片手）') {
+          return hasOtherCompanyProperty;
+        }
         // 「買（一般 両手）」「買（一般 片手）」のみ表示
         // その他の「買（）」は非表示
         if (option.value.startsWith('買（')) {
@@ -988,7 +1005,11 @@ export default function BuyerViewingResultPage() {
       return [emptyOption, ...filtered];
     }
 
-    // 専任も一般も含まれない場合は全ての選択肢を表示
+    // 専任も一般も含まれない場合は全ての選択肢を表示（他社物件情報がない場合は「買（他社　片手）」を除外）
+    if (!hasOtherCompanyProperty) {
+      const filtered = LATEST_STATUS_OPTIONS.filter(option => option.value !== '買（他社　片手）');
+      return [emptyOption, ...filtered];
+    }
     return [emptyOption, ...LATEST_STATUS_OPTIONS];
   };
 
