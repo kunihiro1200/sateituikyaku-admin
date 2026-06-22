@@ -215,6 +215,7 @@ export class WorkTaskSyncService {
             'cw_request_email_2f_above',
             'site_registration_confirmed',
             'site_registration_confirm_request_date',
+            'site_registration_ok_sent',
           ];
           const emptyPreserveFields = fieldsToPreserve.filter(f => !workTaskData[f]);
           if (emptyPreserveFields.length > 0) {
@@ -334,6 +335,7 @@ export class WorkTaskSyncService {
         'cw_request_email_2f_above',
         'site_registration_confirmed',
         'site_registration_confirm_request_date',
+        'site_registration_ok_sent',
       ];
       const emptyPreserveFields = fieldsToPreserve.filter(f => !workTaskData[f]);
       if (emptyPreserveFields.length > 0) {

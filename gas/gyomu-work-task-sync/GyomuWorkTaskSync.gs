@@ -326,7 +326,8 @@ function mapRowToRecord(headers, row) {
     'cw_request_email_floor_plan',
     'cw_request_email_2f_above',
     'site_registration_confirmed',
-    'site_registration_confirm_request_date'
+    'site_registration_confirm_request_date',
+    'site_registration_ok_sent'
   ];
   for (var p = 0; p < PRESERVE_IF_EMPTY.length; p++) {
     var field = PRESERVE_IF_EMPTY[p];
@@ -873,7 +874,8 @@ function syncCwCounts() {
     var targets = [
       '間取図（300円）',
       '間取図（500円）',
-      'サイト登録'
+      'サイト登録',
+      'サイト登録（山崎様）'
     ];
 
     var records = [];
