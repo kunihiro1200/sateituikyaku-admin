@@ -349,7 +349,6 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
     //   査定依頼 株式会社威風...
     //   → "林5/26　不通・留守×" を返す
     const extractMemo = (text: string): string => {
-      // 「HOME4Uログアウト」以降を取得（cleanedBodyは既に行頭の「> 」を除去済み）
       const afterLogout = text.split('HOME4Uログアウト')[1];
       if (!afterLogout) {
         console.log('[home4u-transfer] extractMemo: HOME4Uログアウトが見つからない');
@@ -358,7 +357,6 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
       console.log(`[home4u-transfer] extractMemo afterLogout先頭100文字: "${afterLogout.substring(0, 100).replace(/\n/g, '\\n')}"`);
       // 「査定依頼」が現れる手前までを取得
       const beforeSateiIrai = afterLogout.split(/査定依頼/)[0];
-      // 空白・改行を整理して返す
       return beforeSateiIrai.trim();
     };
     const memo = extractMemo(cleanedBody);
@@ -528,7 +526,7 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
                   return afterLogout.split(/査定依頼/)[0].trim();
                 })();
                 if (memoForUpdate) {
-                  // 既存のcommentsを取得してメモ部分だけ更新する
+                  // 既存レコードのcommentsの先頭にmemoを追加（自動転記情報は保持）
                   const supabaseUpdate = (await import('../config/supabase')).default;
                   const { data: existingSeller } = await supabaseUpdate
                     .from('sellers')
@@ -537,17 +535,15 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
                     .single();
                   if (existingSeller) {
                     const existingComments = existingSeller.comments || '';
-                    // 既存commentsが「\n【以下自動転記（HOME4U）】」で始まっている場合、先頭にメモを追加
-                    const updatedComments = existingComments.startsWith('\n【以下自動転記')
-                      ? memoForUpdate + existingComments
-                      : existingComments; // 既にメモがある場合は上書きしない
-                    if (updatedComments !== existingComments) {
-                      await supabaseUpdate
-                        .from('sellers')
-                        .update({ comments: updatedComments })
-                        .eq('id', existingSeller.id);
-                      console.log(`[home4u-transfer] ✅ コメント更新: ${existing.seller_number} → "${memoForUpdate}"`);
-                    }
+                    // 既にmemoが含まれていなければ先頭に追加
+                    const updatedComments = existingComments.includes(memoForUpdate)
+                      ? existingComments
+                      : memoForUpdate + '\n' + existingComments;
+                    await supabaseUpdate
+                      .from('sellers')
+                      .update({ comments: updatedComments })
+                      .eq('id', existingSeller.id);
+                    console.log(`[home4u-transfer] ✅ コメント更新: ${existing.seller_number} → "${memoForUpdate}"`);
                   }
                 }
 
@@ -645,6 +641,25 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
                 : !existingDatetime && !inquiryDateTimeISO;
               if (isSameDatetime) {
                 console.log(`[home4u-transfer] ⏭ INSERT直前再チェックで重複スキップ: ${existing.seller_number}`);
+                // コメント補完（memoがあれば既存レコードの先頭に追加）
+                if (memo) {
+                  const { data: existingSeller } = await supabaseFinal
+                    .from('sellers')
+                    .select('id, comments')
+                    .eq('id', existing.id)
+                    .single();
+                  if (existingSeller) {
+                    const existingComments = existingSeller.comments || '';
+                    const updatedComments = existingComments.includes(memo)
+                      ? existingComments
+                      : memo + '\n' + existingComments;
+                    await supabaseFinal
+                      .from('sellers')
+                      .update({ comments: updatedComments })
+                      .eq('id', existingSeller.id);
+                    console.log(`[home4u-transfer] ✅ INSERT直前スキップ後のコメント補完: ${existing.seller_number} → "${memo}"`);
+                  }
+                }
                 return res.json({
                   success: true,
                   skipped: true,
@@ -718,6 +733,58 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
       // ============================================================
       if (insertError?.code === '23505') {
         console.log(`[home4u-transfer] ⏭ UNIQUE制約違反によりスキップ（並行リクエストの重複）: tel_hash=${insertData.phone_number_hash?.substring(0, 8)}... datetime=${inquiryDateTimeISO}`);
+
+        // ============================================================
+        // コメント補完: UNIQUE制約違反でスキップされた場合も、
+        // コメントがあれば既存レコードに書き込む
+        // （1通目がコメントなしで先に登録され、2通目がここでブロックされるケース対策）
+        // ============================================================
+        if (memo) {
+          const { decrypt: decryptForUnique } = await import('../utils/encryption');
+          const supabaseUnique = (await import('../config/supabase')).default;
+          // 電話番号 + 反響日時で既存レコードを特定
+          const { data: allSellersUnique } = await supabaseUnique
+            .from('sellers')
+            .select('id, seller_number, phone_number, inquiry_detailed_datetime, comments')
+            .is('deleted_at', null);
+          if (allSellersUnique) {
+            for (const existing of allSellersUnique) {
+              if (!existing.phone_number) continue;
+              try {
+                const decryptedPhone = decryptForUnique(existing.phone_number);
+                if (decryptedPhone === tel) {
+                  const existingDatetime = existing.inquiry_detailed_datetime;
+                  const isSameDatetime = existingDatetime && inquiryDateTimeISO
+                    ? existingDatetime === inquiryDateTimeISO || existingDatetime.startsWith(inquiryDateTimeISO)
+                    : !existingDatetime && !inquiryDateTimeISO;
+                  if (isSameDatetime) {
+                    const supabaseUnique2 = (await import('../config/supabase')).default;
+                    const { data: existingSeller } = await supabaseUnique2
+                      .from('sellers')
+                      .select('id, comments')
+                      .eq('id', existing.id)
+                      .single();
+                    if (existingSeller) {
+                      const existingComments = existingSeller.comments || '';
+                      const updatedComments = existingComments.includes(memo)
+                        ? existingComments
+                        : memo + '\n' + existingComments;
+                      await supabaseUnique2
+                        .from('sellers')
+                        .update({ comments: updatedComments })
+                        .eq('id', existingSeller.id);
+                      console.log(`[home4u-transfer] ✅ UNIQUE制約違反スキップ後のコメント補完: ${existing.seller_number} → "${memo}"`);
+                    }
+                    break;
+                  }
+                }
+              } catch {
+                // 復号失敗はスキップ
+              }
+            }
+          }
+        }
+
         return res.json({
           success: true,
           skipped: true,
