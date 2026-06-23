@@ -560,15 +560,32 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                         if thread_id in home4u_processed_threads:
                             logging.info(f"  [スキップ] HOME4U: スレッド {thread_id[:16]}... は既に処理済み")
                         else:
+                            # コメント（HOME4Uログアウトと査定依頼の間）を事前確認する
+                            # コメントが取れていない場合はスレッドを処理済みにせず次回チェックに委ねる
+                            body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+                            # HOME4Uログアウトの最後の出現箇所を探す
+                            logout_indices = [i for i, l in enumerate(body_lines) if 'HOME4Uログアウト' in l]
+                            memo_found = False
+                            if logout_indices:
+                                last_logout_idx = logout_indices[-1]
+                                surrounding = body_lines[max(0, last_logout_idx-1):last_logout_idx+6]
+                                logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
+                                # HOME4Uログアウトの次の行から査定依頼までの間にコメントがあるか確認
+                                for line in body_lines[last_logout_idx+1:]:
+                                    stripped = line.strip().lstrip('>')  .strip()
+                                    if '査定依頼' in stripped:
+                                        break
+                                    if stripped:
+                                        memo_found = True
+                                        break
+                            if not memo_found:
+                                logging.info(f"  [待機] HOME4U: コメントが取れていないため処理済みにせず次回チェックに委ねます (thread={thread_id[:16]}...)")
+                                # notified_ids にも追加しない → 次回チェックで再処理される
+                                notified_ids.discard(msg_id)
+                                continue
                             home4u_processed_threads.add(thread_id)
                             save_home4u_processed_threads(home4u_processed_threads)
                             logging.info("  [DB転記] HOME4U(Re:あり)検知 → home4u-transfer を非同期実行します")
-                            body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
-                            for idx, line in enumerate(body_lines):
-                                if 'HOME4Uログアウト' in line:
-                                    surrounding = body_lines[max(0, idx-1):idx+6]
-                                    logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
-                                    break
                             trigger_home4u_transfer(body)
                     else:
                         logging.info(f"  [スキップ] HOME4Uだが本文に「HOME4Uログアウト」なし: {subject[:50]}")
