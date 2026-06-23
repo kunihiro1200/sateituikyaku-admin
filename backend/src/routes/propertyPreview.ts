@@ -58,10 +58,13 @@ router.get('/html/:slug', async (req: Request, res: Response) => {
     const cleanTitle = (data.title || '').replace(/\[\d+\].+$/, '').trim();
     const cleanPrice = (data.price || '').replace(/支払額シミュレーション.*$/, '').trim();
 
-    // ドメイン判定（region で切り替え）
-    const domain = data.region === 'fukuoka'
-      ? 'https://fukuoka-tateuri.com'
-      : 'https://oita-tateuri.com';
+    // ドメイン・会社情報判定（region で切り替え）
+    const isFukuoka = data.region === 'fukuoka';
+    const domain = isFukuoka ? 'https://fukuoka-tateuri.com' : 'https://oita-tateuri.com';
+    const listingPath = isFukuoka ? '/fukuoka-tateuri' : '/tateuri';
+    const companyInfo = isFukuoka
+      ? { name: '株式会社くじら不動産', phone: '092-401-5331', address: '舞鶴3－1－10', city: '福岡市中央区', pref: '福岡県' }
+      : { name: '株式会社いふう', phone: '097-533-2022', address: '舞鶴町1-3-30 STビル１F', city: '大分市', pref: '大分県' };
 
     const canonicalUrl = `${domain}/property-preview/${slug}`;
     const ogImage = (data.images && data.images[0]) ? data.images[0] : '';
@@ -72,8 +75,8 @@ router.get('/html/:slug', async (req: Request, res: Response) => {
     if (cleanPrice) titleParts.push(cleanPrice);
     if (data.address) titleParts.push(data.address);
     const pageTitle = titleParts.length > 0
-      ? `${titleParts.join(' | ')} | 株式会社いふう`
-      : '物件情報 | 株式会社いふう';
+      ? `${titleParts.join(' | ')} | ${companyInfo.name}`
+      : `物件情報 | ${companyInfo.name}`;
 
     // descriptionタグ用
     const descParts: string[] = [];
@@ -84,8 +87,8 @@ router.get('/html/:slug', async (req: Request, res: Response) => {
     if (data.layout) descParts.push(`間取り：${data.layout}`);
     if (data.area) descParts.push(`面積：${data.area}`);
     const description = descParts.length > 0
-      ? `${descParts.join('　')}。株式会社いふう（097-533-2022）にお問い合わせください。`
-      : '株式会社いふうの物件情報です。お気軽にお問い合わせください。';
+      ? `${descParts.join('　')}。${companyInfo.name}（${companyInfo.phone}）にお問い合わせください。`
+      : `${companyInfo.name}の物件情報です。お気軽にお問い合わせください。`;
 
     // JSON-LD構造化データ
     const structuredData: Record<string, any> = {
@@ -96,13 +99,13 @@ router.get('/html/:slug', async (req: Request, res: Response) => {
       url: canonicalUrl,
       seller: {
         '@type': 'RealEstateAgent',
-        name: '株式会社いふう',
-        telephone: '097-533-2022',
+        name: companyInfo.name,
+        telephone: companyInfo.phone,
         address: {
           '@type': 'PostalAddress',
-          streetAddress: '舞鶴町1-3-30 STビル１F',
-          addressLocality: '大分市',
-          addressRegion: '大分県',
+          streetAddress: companyInfo.address,
+          addressLocality: companyInfo.city,
+          addressRegion: companyInfo.pref,
           addressCountry: 'JP',
         },
       },
@@ -145,6 +148,9 @@ router.get('/html/:slug', async (req: Request, res: Response) => {
       html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/></head><body><div id="root"></div></body></html>`;
     }
 
+    // サイト名
+    const siteName = isFukuoka ? `福岡の建売専門サイト｜${companyInfo.name}` : `大分の建売専門サイト｜${companyInfo.name}`;
+
     // <head>内のデフォルトメタタグを物件専用に差し込む
     const metaTags = `
     <title>${escapeHtml(pageTitle)}</title>
@@ -156,7 +162,7 @@ router.get('/html/:slug', async (req: Request, res: Response) => {
     <meta property="og:type" content="website" />
     <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
     ${ogImage ? `<meta property="og:image" content="${escapeHtml(ogImage)}" />` : ''}
-    <meta property="og:site_name" content="福岡の建売専門サイト｜株式会社いふう" />
+    <meta property="og:site_name" content="${escapeHtml(siteName)}" />
     <meta property="og:locale" content="ja_JP" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${escapeHtml(pageTitle)}" />
@@ -164,10 +170,36 @@ router.get('/html/:slug', async (req: Request, res: Response) => {
     ${ogImage ? `<meta name="twitter:image" content="${escapeHtml(ogImage)}" />` : ''}
     <script type="application/ld+json">${JSON.stringify(structuredData)}</script>`;
 
+    // Googlebot向け内部リンクブロック（クロールバジェット最適化・ページ間リンク確立）
+    const internalLinksBlock = `
+    <nav aria-label="サイトナビゲーション" style="font-family:sans-serif;padding:12px 16px;background:#1565c0;color:#fff;">
+      <a href="${escapeHtml(domain + listingPath)}" style="color:#fff;text-decoration:none;font-weight:bold;">
+        ← ${escapeHtml(isFukuoka ? '福岡の新築建売物件一覧に戻る' : '大分の新築建売物件一覧に戻る')}
+      </a>
+    </nav>
+    <article style="font-family:sans-serif;max-width:900px;margin:0 auto;padding:20px 16px;">
+      <h1 style="font-size:1.4em;color:#1a237e;">${escapeHtml(cleanTitle || '物件情報')}</h1>
+      ${cleanPrice ? `<p><strong>価格：</strong>${escapeHtml(cleanPrice)}</p>` : ''}
+      ${data.address ? `<p><strong>所在地：</strong>${escapeHtml(data.address)}</p>` : ''}
+      ${data.access ? `<p><strong>交通：</strong>${escapeHtml(data.access)}</p>` : ''}
+      ${data.layout ? `<p><strong>間取り：</strong>${escapeHtml(data.layout)}</p>` : ''}
+      ${data.area ? `<p><strong>面積：</strong>${escapeHtml(data.area)}</p>` : ''}
+      ${ogImage ? `<img src="${escapeHtml(ogImage)}" alt="${escapeHtml(cleanTitle || '物件外観')}" style="max-width:100%;height:auto;border-radius:4px;" loading="lazy" />` : ''}
+      <p style="margin-top:16px;">
+        <strong>${escapeHtml(companyInfo.name)}</strong>
+        ／ TEL: <a href="tel:${escapeHtml(companyInfo.phone.replace(/-/g,''))}" style="color:#1565c0;">${escapeHtml(companyInfo.phone)}</a>
+      </p>
+      <p style="margin-top:8px;">
+        <a href="${escapeHtml(domain + listingPath)}" style="color:#1565c0;">物件一覧ページへ</a>
+      </p>
+    </article>`;
+
     // 既存の<title>タグを置換し、メタタグを<head>の先頭に挿入
+    // さらにbody先頭に内部リンクブロックを追加（クロールバジェット最適化）
     html = html
       .replace(/<title>.*?<\/title>/s, '')
-      .replace(/<head>/, `<head>${metaTags}`);
+      .replace(/<head>/, `<head>${metaTags}`)
+      .replace(/<body([^>]*)>/, `<body$1>${internalLinksBlock}`);
 
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
