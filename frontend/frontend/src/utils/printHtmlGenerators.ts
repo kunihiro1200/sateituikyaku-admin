@@ -117,7 +117,7 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
   const isFI = propNum.includes('FI');
 
   const imgLogo       = isFI ? `${base}/ifoo-assets/kujira-fudosan-logo.png` : `${base}/ifoo-assets/logo.png`;
-  const imgCharaLeft  = isFI ? `${base}/ifoo-assets/KUJIRA_ANSIN.png` : `${base}/ifoo-assets/chara-left.png`;
+  const imgCharaLeft  = isFI ? `${base}/ifoo-assets/KUJIRA_ANSHIN_TOMEI.png` : `${base}/ifoo-assets/chara-left.png`;
   const imgHouseHeart = `${base}/ifoo-assets/house-heart.png`;
   const imgCharaRight = `${base}/ifoo-assets/chara-right.png`;
   const imgWaHouses   = `${base}/ifoo-assets/wa-houses.png`;
