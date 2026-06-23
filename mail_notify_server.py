@@ -279,13 +279,12 @@ def decode_body(payload):
 
     if collected:
         # Re:メールはスレッド内の全パートが収集されるため、
-        # HOME4Uログアウトを含む最初のパートだけを使用する
-        # （複数パートを結合すると同じ内容が重複して「コメントが段々増える」問題が発生）
-        
-        # HOME4Uログアウトを含むパートを優先して返す
-        for part_text in collected:
-            if 'HOME4Uログアウト' in part_text:
-                return part_text
+        # HOME4Uログアウトを含む最後のパートを使用する
+        # （元メールにもHOME4Uログアウトリンクが含まれるため、
+        #   最初のパートではなく最後のパート＝自分の返信を優先する）
+        home4u_parts = [p for p in collected if 'HOME4Uログアウト' in p]
+        if home4u_parts:
+            return home4u_parts[-1]  # 最後（最新の返信）を返す
         
         # HOME4Uログアウトが含まれない場合は全パートを結合
         plain_text = "\n".join(collected)
