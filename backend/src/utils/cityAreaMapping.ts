@@ -1,7 +1,46 @@
 /**
  * 市区町村の町名→配信エリア番号マッピング
- * 大分市・別府市の住所から配信エリア番号を判定するユーティリティ
+ * 大分市・別府市・福岡市の住所から配信エリア番号を判定するユーティリティ
  */
+
+// 福岡市の区名→エリアコードマッピング
+// 買主の desired_area に使われる "F3 福岡市中央区" 形式と対応
+export const FUKUOKA_WARD_AREA_MAP: Record<string, string> = {
+  '東区':   'F1',
+  '博多区': 'F2',
+  '中央区': 'F3',
+  '南区':   'F4',
+  '西区':   'F5',
+  '城南区': 'F6',
+  '早良区': 'F7',
+  '港区':   'F8',
+};
+// 注: 春日市(F9)・大野城市(F10) は市名レベルのため、getFukuokaAreaCode() は市名でも判定する
+export const FUKUOKA_CITY_AREA_MAP: Record<string, string> = {
+  '春日市':   'F9',
+  '大野城市': 'F10',
+};
+
+/**
+ * 住所から福岡エリアのエリアコードを判定する
+ * @param address 住所文字列（例: "福岡県福岡市中央区今泉1丁目7-13"）
+ * @returns エリアコード（例: "F3"）。マッチしない場合は null
+ */
+export function getFukuokaAreaCode(address: string): string | null {
+  // 福岡市の区から判定（区名を含む住所）
+  for (const [ward, code] of Object.entries(FUKUOKA_WARD_AREA_MAP)) {
+    if (address.includes(ward)) {
+      return code;
+    }
+  }
+  // 福岡市周辺の市（春日市・大野城市）から判定
+  for (const [city, code] of Object.entries(FUKUOKA_CITY_AREA_MAP)) {
+    if (address.includes(city)) {
+      return code;
+    }
+  }
+  return null;
+}
 
 // 大分市の町名→エリア番号マッピング
 export const OITA_CITY_AREA_MAP: Record<string, string[]> = {

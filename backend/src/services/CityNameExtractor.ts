@@ -30,6 +30,14 @@ export class CityNameExtractor {
       '豊後大野市',
       '由布市',
       '国東市',
+      // 福岡エリア
+      '福岡市',
+      '春日市',
+      '大野城市',
+      '太宰府市',
+      '筑紫野市',
+      '古賀市',
+      '糸島市',
     ];
 
     for (const city of knownCities) {

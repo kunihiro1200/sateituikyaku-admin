@@ -3,6 +3,29 @@ import { EnhancedGeolocationService } from './EnhancedGeolocationService';
 import { AreaMapConfigService } from './AreaMapConfigService';
 import { BeppuAreaMappingService } from './BeppuAreaMappingService';
 
+// 福岡市の区名→エリアコードマッピング（インライン定義）
+const FUKUOKA_WARD_AREA_MAP: Record<string, string> = {
+  '東区':   'F1',
+  '博多区': 'F2',
+  '中央区': 'F3',
+  '南区':   'F4',
+  '西区':   'F5',
+  '城南区': 'F6',
+  '早良区': 'F7',
+  '港区':   'F8',
+  '春日市':   'F9',
+  '大野城市': 'F10',
+};
+
+function getFukuokaAreaCode(address: string): string | null {
+  for (const [ward, code] of Object.entries(FUKUOKA_WARD_AREA_MAP)) {
+    if (address.includes(ward)) {
+      return code;
+    }
+  }
+  return null;
+}
+
 export interface Coordinates {
   lat: number;
   lng: number;
@@ -107,6 +130,19 @@ export class PropertyDistributionAreaCalculator {
           cityWideAreas.push('㊶');
         }
       }
+      // 福岡市（または周辺市）の場合は住所の区名からエリアコード（F1〜F10）を取得
+      if (normalizedCity.includes('福岡') || normalizedCity.includes('春日') || normalizedCity.includes('大野城')) {
+        const fullAddress = address || city || '';
+        const fukuokaCode = getFukuokaAreaCode(fullAddress);
+        if (fukuokaCode) {
+          console.log(`[DistributionArea] Fukuoka area code: ${fukuokaCode} from address: ${fullAddress}`);
+          cityWideAreas.push(fukuokaCode);
+        } else {
+          // 区名が特定できない場合は福岡市全部（F11相当）として扱う
+          console.log(`[DistributionArea] Fukuoka city but no ward matched for: ${fullAddress}, using F11`);
+          cityWideAreas.push('F11');
+        }
+      }
     }
 
     // 2. URLから座標を抽出
@@ -205,22 +241,32 @@ export class PropertyDistributionAreaCalculator {
   /**
    * エリア番号をソート
    * @param areas エリア番号の配列
-   * @returns ソートされた配列
+   * @returns ソートされた配列（丸数字→F系の順）
    */
   private sortAreaNumbers(areas: string[]): string[] {
-    // Define sort order
-    const order = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', 
-                   '⑪', '⑫', '⑬', '⑭', '⑮', '⑯', '㊵', '㊶'];
+    // 丸数字の順序
+    const circledOrder = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', 
+                          '⑪', '⑫', '⑬', '⑭', '⑮', '⑯', '㊵', '㊶'];
     
     return areas.sort((a, b) => {
-      const indexA = order.indexOf(a);
-      const indexB = order.indexOf(b);
+      const indexA = circledOrder.indexOf(a);
+      const indexB = circledOrder.indexOf(b);
       
-      // If not found, put at end
-      if (indexA === -1) return 1;
-      if (indexB === -1) return -1;
-      
-      return indexA - indexB;
+      const isCircledA = indexA !== -1;
+      const isCircledB = indexB !== -1;
+
+      // 丸数字どうし
+      if (isCircledA && isCircledB) return indexA - indexB;
+      // 丸数字を英字コードより前に
+      if (isCircledA) return -1;
+      if (isCircledB) return 1;
+
+      // F系コードどうし（F1 < F2 < ... < F11）
+      const numA = parseInt(a.replace(/^[A-Za-z]+/, ''), 10);
+      const numB = parseInt(b.replace(/^[A-Za-z]+/, ''), 10);
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+
+      return a.localeCompare(b);
     });
   }
 
@@ -286,6 +332,18 @@ export class PropertyDistributionAreaCalculator {
         } else {
           cityWideAreas.push('㊶');
           debugInfo.cityWideMatches.push('㊶ (別府市全体)');
+        }
+      }
+      // 福岡市（または周辺市）の場合は住所の区名からエリアコード（F1〜F10）を取得
+      if (normalizedCity.includes('福岡') || normalizedCity.includes('春日') || normalizedCity.includes('大野城')) {
+        const fullAddress = address || city || '';
+        const fukuokaCode = getFukuokaAreaCode(fullAddress);
+        if (fukuokaCode) {
+          cityWideAreas.push(fukuokaCode);
+          debugInfo.cityWideMatches.push(`${fukuokaCode} (福岡市エリアコード)`);
+        } else {
+          cityWideAreas.push('F11');
+          debugInfo.cityWideMatches.push('F11 (福岡市全部 - 区名不明)');
         }
       }
     }

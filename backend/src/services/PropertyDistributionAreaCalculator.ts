@@ -1,7 +1,7 @@
 // 物件配信エリア計算サービス
 import { EnhancedGeolocationService } from './EnhancedGeolocationService';
 import { AreaMapConfigService } from './AreaMapConfigService';
-import { getOitaCityAreas, getBeppuCityAreas } from '../utils/cityAreaMapping';
+import { getOitaCityAreas, getBeppuCityAreas, getFukuokaAreaCode } from '../utils/cityAreaMapping';
 
 export interface Coordinates {
   lat: number;
@@ -111,6 +111,19 @@ export class PropertyDistributionAreaCalculator {
           }
         }
       }
+      // 福岡市（または周辺市）の場合は住所の区名からエリアコード（F1〜F10）を取得
+      if (normalizedCity.includes('福岡') || normalizedCity.includes('春日') || normalizedCity.includes('大野城')) {
+        const fullAddress = address || city || '';
+        const fukuokaCode = getFukuokaAreaCode(fullAddress);
+        if (fukuokaCode) {
+          console.log(`[DistributionArea] Fukuoka area code: ${fukuokaCode} from address: ${fullAddress}`);
+          cityWideAreas.push(fukuokaCode);
+        } else {
+          // 区名が特定できない場合は F_ALL ではなく福岡市全部（F11相当）として扱う
+          console.log(`[DistributionArea] Fukuoka city but no ward matched for: ${fullAddress}, using F11`);
+          cityWideAreas.push('F11');
+        }
+      }
     }
 
     // 2. 座標を取得（DBの座標を優先、なければURLから抽出）
@@ -213,22 +226,32 @@ export class PropertyDistributionAreaCalculator {
   /**
    * エリア番号をソート
    * @param areas エリア番号の配列
-   * @returns ソートされた配列
+   * @returns ソートされた配列（丸数字→F系の順）
    */
   private sortAreaNumbers(areas: string[]): string[] {
-    // Define sort order
-    const order = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', 
-                   '⑪', '⑫', '⑬', '⑭', '⑮', '⑯', '㊵', '㊶'];
+    // 丸数字の順序
+    const circledOrder = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', 
+                          '⑪', '⑫', '⑬', '⑭', '⑮', '⑯', '㊵', '㊶'];
     
     return areas.sort((a, b) => {
-      const indexA = order.indexOf(a);
-      const indexB = order.indexOf(b);
+      const indexA = circledOrder.indexOf(a);
+      const indexB = circledOrder.indexOf(b);
       
-      // If not found, put at end
-      if (indexA === -1) return 1;
-      if (indexB === -1) return -1;
-      
-      return indexA - indexB;
+      const isCircledA = indexA !== -1;
+      const isCircledB = indexB !== -1;
+
+      // 丸数字どうし
+      if (isCircledA && isCircledB) return indexA - indexB;
+      // 丸数字を英字コードより前に
+      if (isCircledA) return -1;
+      if (isCircledB) return 1;
+
+      // F系コードどうし（F1 < F2 < ... < F11）
+      const numA = parseInt(a.replace(/^[A-Za-z]+/, ''), 10);
+      const numB = parseInt(b.replace(/^[A-Za-z]+/, ''), 10);
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+
+      return a.localeCompare(b);
     });
   }
 
