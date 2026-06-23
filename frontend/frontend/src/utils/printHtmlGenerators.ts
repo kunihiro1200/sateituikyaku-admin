@@ -129,13 +129,12 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
   const footerCompany = isFI ? '株式会社くじら不動産' : '株式会社いふう';
   const footerAddress = isFI ? '福岡市中央区舞鶴3－1－10' : '大分市舞鶴町1-3-30';
   const footerTel = isFI ? 'TEL：092-401-5331' : 'TEL：097-533-2022';
-  // 追加5ページのHTML
+  // 追加5ページのHTML（FI物件は5・6枚目を除外）
   const extraPages = [
     generateExtraPage1Html(base, isFI),
     generateExtraPage2Html(),
     generateExtraPage3Html(base, isFI),
-    generateExtraPage4Html(),
-    generateExtraPage5Html(),
+    ...(isFI ? [] : [generateExtraPage4Html(), generateExtraPage5Html()]),
   ];
   const extraPagesHtml = extraPages.map(p => `<div class="page">${p}</div>`).join('');
 
