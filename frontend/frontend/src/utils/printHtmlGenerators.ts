@@ -116,8 +116,8 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
   const propNum = (propertyNumber || (buyer.property_number as string) || '').toUpperCase();
   const isFI = propNum.includes('FI');
 
-  const imgLogo       = isFI ? `${base}/kujira-fudosan-logo.png` : `${base}/ifoo-assets/logo.png`;
-  const imgCharaLeft  = isFI ? `${base}/KUJIRA_ANSIN.png` : `${base}/ifoo-assets/chara-left.png`;
+  const imgLogo       = isFI ? `${base}/ifoo-assets/kujira-fudosan-logo.png` : `${base}/ifoo-assets/logo.png`;
+  const imgCharaLeft  = isFI ? `${base}/ifoo-assets/KUJIRA_ANSIN.png` : `${base}/ifoo-assets/chara-left.png`;
   const imgHouseHeart = `${base}/ifoo-assets/house-heart.png`;
   const imgCharaRight = `${base}/ifoo-assets/chara-right.png`;
   const imgWaHouses   = `${base}/ifoo-assets/wa-houses.png`;
@@ -800,7 +800,7 @@ export function generateAllPagesCashHtml(buyer: Record<string,unknown>, property
 // ページA: 住まい購入の流れ
 export function generateExtraPage1Html(base: string, isFI: boolean = false): string {
   const imgFamily = `${base}/ifoo-assets/flow-main.png`;
-  const imgIcon   = isFI ? `${base}/kujira-fudosan-logo.png` : `${base}/ifoo-assets/ifoo-logo-yellow.png`;
+  const imgIcon   = isFI ? `${base}/ifoo-assets/kujira-fudosan-logo.png` : `${base}/ifoo-assets/ifoo-logo-yellow.png`;
   const imgOitaQr = `${base}/ifoo-assets/oita-qr-box.png`;
   const F = '"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif';
   const yellow = '#f5c518';
@@ -966,28 +966,28 @@ export function generateExtraPage3Html(base: string = '', isFI: boolean = false)
       </tr>
       <tr>
         <td style="${tdS};font-weight:bold;text-align:center;">福岡銀行</td>
-        <td style="${tdS};text-align:center;"><img src="${base}/HUKUGIN_SHUMIRATION.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
-        <td style="${tdS};text-align:center;"><img src="${base}/FUKUGIN_KARISHINSA.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/HUKUGIN_SHUMIRATION.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/FUKUGIN_KARISHINSA.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
       </tr>
       <tr>
         <td style="${tdS};font-weight:bold;text-align:center;">西日本シティ銀行</td>
-        <td style="${tdS};text-align:center;"><img src="${base}/NISHINIHONCITY_SHUMI.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
-        <td style="${tdS};text-align:center;"><img src="${base}/NISHINIHONCITY_SHUMI.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/NISHINIHONCITY_SHUMI.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/NISHINIHONCITY_SHUMI.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
       </tr>
       <tr>
         <td style="${tdS};font-weight:bold;text-align:center;">北九州銀行</td>
-        <td style="${tdS};text-align:center;"><img src="${base}/KITAKYUSHU_SHUMI.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
-        <td style="${tdS};text-align:center;"><img src="${base}/KITAKYUSHU_KARISHINSA.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/KITAKYUSHU_SHUMI.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/KITAKYUSHU_KARISHINSA.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
       </tr>
       <tr>
         <td style="${tdS};font-weight:bold;text-align:center;">福岡中央銀行</td>
-        <td style="${tdS};text-align:center;"><img src="${base}/FUKUOKA_CHUUOU_YOYAKU.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/><div style="font-size:7pt;color:#666;margin-top:2px;">（予約のQR）</div></td>
-        <td style="${tdS};text-align:center;"><img src="${base}/FUKUOKA_CHUOUOU_LOAN.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/FUKUOKA_CHUUOU_YOYAKU.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/><div style="font-size:7pt;color:#666;margin-top:2px;">（予約のQR）</div></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/FUKUOKA_CHUOUOU_LOAN.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
       </tr>
       <tr>
         <td style="${tdS};font-weight:bold;text-align:center;">JA福岡市</td>
-        <td style="${tdS};text-align:center;"><img src="${base}/JA_LOAN_SHUMI.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
-        <td style="${tdS};text-align:center;"><img src="${base}/JA_LOAN_KARISHINSA.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/JA_LOAN_SHUMI.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/JA_LOAN_KARISHINSA.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
       </tr>
     </table>
   ` : `
