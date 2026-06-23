@@ -133,7 +133,7 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
   const extraPages = [
     generateExtraPage1Html(base, isFI),
     generateExtraPage2Html(),
-    generateExtraPage3Html(),
+    generateExtraPage3Html(base, isFI),
     generateExtraPage4Html(),
     generateExtraPage5Html(),
   ];
@@ -949,24 +949,49 @@ export function generateExtraPage2Html(): string {
 }
 
 // ページC: よくあるご質問 2/2
-export function generateExtraPage3Html(): string {
+export function generateExtraPage3Html(base: string = '', isFI: boolean = false): string {
   const F = '"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif';
   const yellow = '#f5c518';
   const thS = `border:1px solid #ccc;padding:5px 8px;background:#f5c518;font-weight:bold;font-size:8.5pt;`;
   const tdS = `border:1px solid #ccc;padding:5px 8px;font-size:8pt;`;
-  return `
-<div style="width:100%;height:100%;padding:0;font-family:${F};font-size:9pt;color:#000;background:#fff;box-sizing:border-box;">
-  <div style="background:${yellow};text-align:center;padding:18px 0 14px;margin-top:40px;margin-bottom:20px;">
-    <span style="font-size:20pt;font-weight:bold;">よくあるご質問♪2/2</span>
-  </div>
-  <div style="padding:0 28px;">
-    <!-- Q3 -->
-    <div style="border:2px solid ${yellow};border-radius:4px;padding:8px 14px;margin-bottom:8px;">
-      <div style="font-weight:bold;font-size:10pt;color:#333;">Q3. 予算が合わないのですが…</div>
-    </div>
-    <div style="margin-bottom:6px;">→ 仮審査は<span style="font-weight:bold;">無料</span>です。審査をしたからといって購入する必要はございません！<br>月々の支払額が具体化され、実現可能な選択肢を確認できます。</div>
-    <div style="font-weight:bold;margin-bottom:8px;font-size:8.5pt;">＊ 事前にご予約が必要です！</div>
-    <!-- 金融機関表 -->
+
+  // FI物件用：福岡の銀行QRコードリスト
+  const fiBankSection = isFI ? `
+    <!-- 福岡銀行QRリスト -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
+      <tr>
+        <th style="${thS}">金融機関</th>
+        <th style="${thS}">シュミレーション</th>
+        <th style="${thS}">ネットで仮審査</th>
+      </tr>
+      <tr>
+        <td style="${tdS};font-weight:bold;text-align:center;">福岡銀行</td>
+        <td style="${tdS};text-align:center;"><img src="${base}/HUKUGIN_SHUMIRATION.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/FUKUGIN_KARISHINSA.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+      </tr>
+      <tr>
+        <td style="${tdS};font-weight:bold;text-align:center;">西日本シティ銀行</td>
+        <td style="${tdS};text-align:center;"><img src="${base}/NISHINIHONCITY_SHUMI.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/NISHINIHONCITY_SHUMI.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+      </tr>
+      <tr>
+        <td style="${tdS};font-weight:bold;text-align:center;">北九州銀行</td>
+        <td style="${tdS};text-align:center;"><img src="${base}/KITAKYUSHU_SHUMI.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/KITAKYUSHU_KARISHINSA.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+      </tr>
+      <tr>
+        <td style="${tdS};font-weight:bold;text-align:center;">福岡中央銀行</td>
+        <td style="${tdS};text-align:center;"><img src="${base}/FUKUOKA_CHUUOU_YOYAKU.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/><div style="font-size:7pt;color:#666;margin-top:2px;">（予約のQR）</div></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/FUKUOKA_CHUOUOU_LOAN.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+      </tr>
+      <tr>
+        <td style="${tdS};font-weight:bold;text-align:center;">JA福岡市</td>
+        <td style="${tdS};text-align:center;"><img src="${base}/JA_LOAN_SHUMI.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/JA_LOAN_KARISHINSA.png" style="max-width:120px;max-height:100px;display:block;margin:0 auto;"/></td>
+      </tr>
+    </table>
+  ` : `
+    <!-- 大分の銀行テキストリスト -->
     <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
       <tr>
         <th style="${thS}">金融機関</th>
@@ -982,6 +1007,22 @@ export function generateExtraPage3Html(): string {
       <tr><td style="${tdS}">鶴崎支店</td><td style="${tdS}">大分市中鶴崎2-3-18</td><td style="${tdS}">097-521-8101</td><td style="${tdS}">土、日、祝</td></tr>
       <tr><td style="${tdS}">伊予銀行</td><td style="${tdS}">大分支店</td><td style="${tdS}">大分市府内町3-1-9</td><td style="${tdS}">097-532-6171</td><td style="${tdS}">土、日、祝</td></tr>
     </table>
+    <div style="margin-bottom:10px;font-size:8.5pt;font-weight:bold;">大分銀行の無料シミュレーションはこちら（30秒）→<br><span style="font-weight:normal;">※現在、9割のお客様が変動金利を選択されております（ご参考まで）</span></div>
+  `;
+
+  return `
+<div style="width:100%;height:100%;padding:0;font-family:${F};font-size:9pt;color:#000;background:#fff;box-sizing:border-box;">
+  <div style="background:${yellow};text-align:center;padding:18px 0 14px;margin-top:40px;margin-bottom:20px;">
+    <span style="font-size:20pt;font-weight:bold;">よくあるご質問♪2/2</span>
+  </div>
+  <div style="padding:0 28px;">
+    <!-- Q3 -->
+    <div style="border:2px solid ${yellow};border-radius:4px;padding:8px 14px;margin-bottom:8px;">
+      <div style="font-weight:bold;font-size:10pt;color:#333;">Q3. 予算が合わないのですが…</div>
+    </div>
+    <div style="margin-bottom:6px;">→ 仮審査は<span style="font-weight:bold;">無料</span>です。審査をしたからといって購入する必要はございません！<br>月々の支払額が具体化され、実現可能な選択肢を確認できます。</div>
+    <div style="font-weight:bold;margin-bottom:8px;font-size:8.5pt;">＊ 事前にご予約が必要です！</div>
+    ${fiBankSection}
     <!-- 銀行相談前 -->
     <div style="border:1.5px dashed #aaa;border-radius:4px;padding:8px 12px;margin-bottom:10px;font-size:8.5pt;">
       <div style="font-weight:bold;margin-bottom:4px;">【銀行へご相談に行く前に・・・】</div>
@@ -989,7 +1030,6 @@ export function generateExtraPage3Html(): string {
       <div style="font-weight:bold;margin-bottom:4px;">▼ 基本的な準備書類（※ 金融機関によって異なります。必ず事前にご確認ください）</div>
       <div>① 身分証明書（運転免許証等）<br>② 健康保険証（勤務先名の記載があるもの）<br>③ 源泉徴収票（直近のもの）</div>
     </div>
-    <div style="margin-bottom:10px;font-size:8.5pt;font-weight:bold;">大分銀行の無料シミュレーションはこちら（30秒）→<br><span style="font-weight:normal;">※現在、9割のお客様が変動金利を選択されております（ご参考まで）</span></div>
     <!-- Q4 -->
     <div style="border:2px solid ${yellow};border-radius:4px;padding:8px 14px;margin-bottom:8px;">
       <div style="font-weight:bold;font-size:10pt;color:#e53935;">Q4. リフォーム費用が心配です</div>
