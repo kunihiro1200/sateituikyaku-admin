@@ -493,7 +493,28 @@ export default function BuyerDesiredConditionsPage() {
                       multiple
                       value={selectedAreas}
                       onChange={(e) => {
-                        const selected = e.target.value as string[];
+                        let selected = e.target.value as string[];
+
+                        // 相互排他ロジック
+                        const justAdded = selected.find(v => !selectedAreasRef.current.includes(v));
+
+                        if (justAdded) {
+                          // F11（福岡市全部）を選択 → F1〜F10 を除外
+                          if (justAdded === 'F11 福岡市全部') {
+                            selected = selected.filter(v => !['F1 福岡市東区','F2 福岡市博多区','F3 福岡市中央区','F4 福岡市南区','F5 福岡市西区','F6 福岡市城南区','F7 福岡市早良区','F8 福岡市港区','F9 春日市','F10 大野城市'].includes(v));
+                          }
+                          // ㊵（大分）を選択 → ①〜⑧ を除外
+                          if (justAdded === '㊵大分') {
+                            const oitaItems = ['①中学校（王子、碩田学園、大分西）','②中学校（滝尾、城東、原川）','③中学校（明野、大東）','④中学校（東陽、鶴崎）','⑤中学校（大在、坂ノ市、鶴崎、佐賀関）','⑥中学校（南大分、城南、賀来）','⑦中学校（植田、野津原）','⑧中学校（判田、戸次、吉野、竹中）'];
+                            selected = selected.filter(v => !oitaItems.includes(v));
+                          }
+                          // ㊶（別府）を選択 → ⑨〜⑮・㊷・㊸ を除外
+                          if (justAdded === '㊶別府') {
+                            const beppuItems = ['⑨青山中学校（南立石、堀田、扇山、荘園、鶴見７組、９組ルミエール除く）','⑩中部中学校（東荘園、石垣東、北浜、京町、新港町）','⑪北部中学校（亀川四の湯、亀川浜田町、大観山、上人本町、上人ケ浜）','⑫朝日中学校（明礬、新別府、火売、北中、竹の内、大畑、朝日ケ丘）','⑬東山中学校（東山、山の口）','⑭鶴見台中学校（南須賀、石垣東、石垣西、中須賀元町）','⑮別府西中学校（光町、中島町、青山町、立田町、浜脇、山家）','㊷別府駅周辺（中央町、駅前本町、上田の湯町、野口中町、西野口町、駅前町）','㊸鉄輪線より下（南立石２区、東荘園、ルミールの丘、石垣東、亀川中央町）'];
+                            selected = selected.filter(v => !beppuItems.includes(v));
+                          }
+                        }
+
                         // UIを即時更新し、ref にも最新値を保持
                         setSelectedAreas(selected);
                         selectedAreasRef.current = selected;
