@@ -349,11 +349,13 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
     //   査定依頼 株式会社威風...
     //   → "林5/26　不通・留守×" を返す
     const extractMemo = (text: string): string => {
-      const afterLogout = text.split('HOME4Uログアウト')[1];
-      if (!afterLogout) {
+      // HOME4Uログアウトは本文中に複数回出現する場合があるので最後の出現を使う
+      const parts = text.split('HOME4Uログアウト');
+      if (parts.length < 2) {
         console.log('[home4u-transfer] extractMemo: HOME4Uログアウトが見つからない');
         return '';
       }
+      const afterLogout = parts[parts.length - 1];
       console.log(`[home4u-transfer] extractMemo afterLogout先頭100文字: "${afterLogout.substring(0, 100).replace(/\n/g, '\\n')}"`);
       // 「査定依頼」が現れる手前までを取得
       const beforeSateiIrai = afterLogout.split(/査定依頼/)[0];
@@ -521,8 +523,9 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
                   const cleaned = preprocessedBody
                     .replace(/\r\n|\n\r|\n|\r/g, '\n')
                     .replace(/^>\s*/gm, '');
-                  const afterLogout = cleaned.split('HOME4Uログアウト')[1];
-                  if (!afterLogout) return '';
+                  const parts = cleaned.split('HOME4Uログアウト');
+                  if (parts.length < 2) return '';
+                  const afterLogout = parts[parts.length - 1];
                   return afterLogout.split(/査定依頼/)[0].trim();
                 })();
                 if (memoForUpdate) {
