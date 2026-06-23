@@ -165,7 +165,7 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
     </div>
     <div style="display:flex;align-items:center;margin-bottom:16px;">
       <div style="width:160px;flex-shrink:0;position:relative;">
-        <img src="${imgCharaLeft}" width="160" style="display:block;mix-blend-mode:multiply;"/>
+        <img src="${imgCharaLeft}" width="160" style="display:block;"/>
       </div>
       <div style="flex:1;padding:0 8px;text-align:center;font-size:10.5pt;line-height:2.0;">
         <div style="margin-bottom:6px;">${companyIntroLine}</div>
