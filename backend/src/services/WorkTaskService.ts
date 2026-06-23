@@ -207,7 +207,7 @@ export class WorkTaskService {
   async getSiteRegistrationRevisions(excludePropertyNumber?: string): Promise<WorkTaskData[]> {
     let query = this.supabase
       .from('work_tasks')
-      .select('property_number, site_registration_ok_sent, site_registration_confirmer, site_registration_requester, site_registration_revision_content, site_registration_revision_countermeasure')
+      .select('property_number, sales_assignee, site_registration_ok_sent, site_registration_confirmer, site_registration_requester, site_registration_revision_content, site_registration_revision_countermeasure')
       .eq('site_registration_revision', 'あり')
       .not('site_registration_revision_content', 'is', null)
       .neq('site_registration_revision_content', '')
@@ -230,7 +230,7 @@ export class WorkTaskService {
   async getFloorPlanRevisionCorrections(excludePropertyNumber?: string): Promise<WorkTaskData[]> {
     let query = this.supabase
       .from('work_tasks')
-      .select('property_number, floor_plan_ok_sent, floor_plan_confirmer, site_registration_requester, floor_plan_revision_correction_content, floor_plan_revision_countermeasure')
+      .select('property_number, sales_assignee, floor_plan_ok_sent, floor_plan_confirmer, site_registration_requester, floor_plan_revision_correction_content, floor_plan_revision_countermeasure')
       .eq('floor_plan_revision_correction', 'あり')
       .not('floor_plan_revision_correction_content', 'is', null)
       .neq('floor_plan_revision_correction_content', '')

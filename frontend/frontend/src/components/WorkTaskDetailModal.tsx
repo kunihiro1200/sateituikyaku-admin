@@ -2275,6 +2275,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   // サイト登録修正履歴（全案件）
   const [siteRegistrationRevisionHistory, setSiteRegistrationRevisionHistory] = useState<Array<{
     property_number: string;
+    sales_assignee: string | null;
     site_registration_confirmer: string | null;
     site_registration_requester: string | null;
     site_registration_revision_content: string;
@@ -2284,6 +2285,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   // 間取図修正（当社ミス）履歴（全案件）
   const [floorPlanRevisionCorrectionHistory, setFloorPlanRevisionCorrectionHistory] = useState<Array<{
     property_number: string;
+    sales_assignee: string | null;
     floor_plan_confirmer: string | null;
     site_registration_requester: string | null;
     floor_plan_revision_correction_content: string;
@@ -3184,6 +3186,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 <thead>
                   <tr style={{ backgroundColor: '#f8bbd0' }}>
                     <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
+                    <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>営業担当</th>
                     <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>サイト登録確認者</th>
                     <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>サイト登録依頼者</th>
                     <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', width: '35%' }}>修正内容</th>
@@ -3198,6 +3201,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                           ? <span onClick={() => onNavigate?.(item.property_number, 1)} style={{ color: '#1565c0', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>{item.property_number}</span>
                           : '-'}
                       </td>
+                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.sales_assignee || '-'}</td>
                       <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_confirmer || '-'}</td>
                       <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
                       <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: 'inherit', fontWeight: 'normal' }}><span dangerouslySetInnerHTML={{ __html: item.site_registration_revision_content }} /></td>
@@ -3296,6 +3300,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 <thead>
                   <tr style={{ backgroundColor: '#c8e6c9' }}>
                     <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
+                    <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>営業担当</th>
                     <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>間取図確認者</th>
                     <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>サイト登録依頼者</th>
                     <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', width: '35%' }}>修正内容</th>
@@ -3310,6 +3315,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                           ? <span onClick={() => onNavigate?.(item.property_number, 1)} style={{ color: '#1565c0', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>{item.property_number}</span>
                           : '-'}
                       </td>
+                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.sales_assignee || '-'}</td>
                       <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.floor_plan_confirmer || '-'}</td>
                       <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
                       <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: 'inherit', fontWeight: 'normal' }}><span dangerouslySetInnerHTML={{ __html: item.floor_plan_revision_correction_content }} /></td>
