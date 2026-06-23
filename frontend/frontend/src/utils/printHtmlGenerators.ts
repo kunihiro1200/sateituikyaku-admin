@@ -166,7 +166,7 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
     </div>
     <div style="display:flex;align-items:center;margin-bottom:16px;">
       <div style="width:160px;flex-shrink:0;position:relative;">
-        <img src="${imgCharaLeft}" width="160" style="display:block;"/>
+        <img src="${imgCharaLeft}" width="160" style="display:block;mix-blend-mode:multiply;"/>
       </div>
       <div style="flex:1;padding:0 8px;text-align:center;font-size:10.5pt;line-height:2.0;">
         <div style="margin-bottom:6px;">${companyIntroLine}</div>
@@ -1021,15 +1021,17 @@ export function generateExtraPage3Html(base: string = '', isFI: boolean = false)
       <div style="font-weight:bold;font-size:10pt;color:#333;">Q3. 予算が合わないのですが…</div>
     </div>
     <div style="margin-bottom:6px;">→ 仮審査は<span style="font-weight:bold;">無料</span>です。審査をしたからといって購入する必要はございません！<br>月々の支払額が具体化され、実現可能な選択肢を確認できます。</div>
-    <div style="font-weight:bold;margin-bottom:8px;font-size:8.5pt;">＊ 事前にご予約が必要です！</div>
+    ${isFI ? '' : `<div style="font-weight:bold;margin-bottom:8px;font-size:8.5pt;">＊ 事前にご予約が必要です！</div>`}
     ${fiBankSection}
     <!-- 銀行相談前 -->
+    ${isFI ? '' : `
     <div style="border:1.5px dashed #aaa;border-radius:4px;padding:8px 12px;margin-bottom:10px;font-size:8.5pt;">
       <div style="font-weight:bold;margin-bottom:4px;">【銀行へご相談に行く前に・・・】</div>
       <div style="margin-bottom:4px;">事前に連絡して、予約をされることをお勧めいたします。</div>
       <div style="font-weight:bold;margin-bottom:4px;">▼ 基本的な準備書類（※ 金融機関によって異なります。必ず事前にご確認ください）</div>
       <div>① 身分証明書（運転免許証等）<br>② 健康保険証（勤務先名の記載があるもの）<br>③ 源泉徴収票（直近のもの）</div>
     </div>
+    `}
     <!-- Q4 -->
     <div style="border:2px solid ${yellow};border-radius:4px;padding:8px 14px;margin-bottom:8px;">
       <div style="font-weight:bold;font-size:10pt;color:#e53935;">Q4. リフォーム費用が心配です</div>
