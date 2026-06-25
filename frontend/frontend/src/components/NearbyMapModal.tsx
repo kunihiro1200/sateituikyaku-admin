@@ -36,43 +36,67 @@ const COLORS: Record<string, string> = {
 };
 
 // ---- URL から座標抽出 ----
+const COORD_PATTERNS = [
+  /[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
+  /\/search\/(-?\d+\.?\d*),\+?(-?\d+\.?\d*)/,
+  /\/place\/[^/]*\/@(-?\d+\.?\d*),(-?\d+\.?\d*)/,
+  /\/place\/(-?\d+\.?\d*),(-?\d+\.?\d*)/,
+  /\/@(-?\d+\.?\d*),(-?\d+\.?\d*),/,
+  /!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/,
+  /ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
+];
+
+function tryExtractFromUrl(url: string): { lat: number; lng: number } | null {
+  const targets = [url];
+  try { targets.push(decodeURIComponent(url)); } catch {}
+  for (const target of targets) {
+    for (const p of COORD_PATTERNS) {
+      const m = target.match(p);
+      if (m) return { lat: +m[1], lng: +m[2] };
+    }
+  }
+  return null;
+}
+
 async function extractCoords(url: string, apiBase: string): Promise<{ lat: number; lng: number } | null> {
   if (!url) return null;
   try {
-    let s = url;
-    if (s.includes('goo.gl') || s.includes('maps.app.goo.gl')) {
+    // まず元URLから直接座標抽出を試みる（通常のGoogle Maps URLの場合）
+    const direct = tryExtractFromUrl(url);
+    if (direct) return direct;
+
+    // 短縮URLの場合、バックエンドで展開
+    if (url.includes('goo.gl') || url.includes('maps.app.goo.gl')) {
       try {
-        const r = await fetch(`${apiBase}/api/url-redirect/resolve?url=${encodeURIComponent(s)}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+        const r = await fetch(
+          `${apiBase}/api/url-redirect/resolve?url=${encodeURIComponent(url)}`,
+          { signal: controller.signal }
+        );
+        clearTimeout(timeoutId);
         if (r.ok) {
           const d = await r.json();
-          s = d.redirectedUrl || s;
-          console.log('[NearbyMap] Resolved URL:', s.substring(0, 150));
+          const resolved = d.redirectedUrl;
+          console.log('[NearbyMap] Resolved URL:', resolved?.substring(0, 150));
+          if (resolved) {
+            const coords = tryExtractFromUrl(resolved);
+            if (coords) return coords;
+          }
         } else {
-          console.warn('[NearbyMap] URL resolve failed:', r.status);
+          console.warn('[NearbyMap] URL resolve failed:', r.status, await r.text().catch(() => ''));
         }
-      } catch (fetchErr) {
-        console.warn('[NearbyMap] URL resolve fetch error:', fetchErr);
+      } catch (fetchErr: any) {
+        console.warn('[NearbyMap] URL resolve error:', fetchErr.name, fetchErr.message);
       }
     }
-    // URLデコードして座標抽出を試みる
-    const decoded = decodeURIComponent(s);
-    // 各種Google Maps URLパターンから座標を抽出（デコード済みとオリジナル両方試す）
-    for (const target of [s, decoded]) {
-      for (const p of [
-        /[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
-        /\/search\/(-?\d+\.?\d*),\+?(-?\d+\.?\d*)/,
-        /\/place\/[^/]*\/@(-?\d+\.?\d*),(-?\d+\.?\d*)/,
-        /\/place\/(-?\d+\.?\d*),(-?\d+\.?\d*)/,
-        /\/@(-?\d+\.?\d*),(-?\d+\.?\d*),/,
-        /!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/,
-        /ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
-      ]) {
-        const m = target.match(p); if (m) return { lat: +m[1], lng: +m[2] };
-      }
-    }
-    console.warn('[NearbyMap] Could not extract coords from:', s.substring(0, 200));
+
+    console.warn('[NearbyMap] Could not extract coords from:', url.substring(0, 200));
     return null;
-  } catch { return null; }
+  } catch (e) {
+    console.error('[NearbyMap] extractCoords exception:', e);
+    return null;
+  }
 }
 
 // ---- カテゴリ略称（テキストラベル先頭に付ける） ----
@@ -440,7 +464,10 @@ function FacilityList({ data, label, color }: { data: NearbyData | null; label: 
 // ---- メインコンポーネント ----
 const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMapUrl, address }) => {
   const { isLoaded } = useGoogleMaps();
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  // api.tsと同じロジックで本番URLを確定する
+  const apiBase = import.meta.env.MODE === 'production'
+    ? 'https://sateituikyaku-admin-backend.vercel.app'
+    : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
 
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [data1, setData1] = useState<NearbyData | null>(null);
