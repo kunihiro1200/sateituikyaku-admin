@@ -1353,12 +1353,30 @@ export class PropertyListingService {
     console.log(`[PropertyListingService] Updating confirmation for ${propertyNumber} to ${confirmation}`);
 
     // DBを更新
+    const updateData: Record<string, any> = { 
+      confirmation,
+      updated_at: new Date().toISOString(),
+    };
+
+    // confirmation が「済」になった場合、sidebar_status が「未完了」ならクリア
+    if (confirmation === '済') {
+      const { data: current } = await this.supabase
+        .from('property_listings')
+        .select('sidebar_status')
+        .eq('property_number', propertyNumber)
+        .single();
+      if (current?.sidebar_status === '未完了') {
+        updateData.sidebar_status = null;
+      }
+    }
+    // confirmation が「未」になった場合、sidebar_status を「未完了」に設定
+    if (confirmation === '未') {
+      updateData.sidebar_status = '未完了';
+    }
+
     const { error } = await this.supabase
       .from('property_listings')
-      .update({ 
-        confirmation,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('property_number', propertyNumber);
 
     if (error) {
