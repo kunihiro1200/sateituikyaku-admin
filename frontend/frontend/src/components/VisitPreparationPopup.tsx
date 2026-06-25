@@ -26,6 +26,7 @@ export interface VisitPreparationPopupProps {
   sellerName?: string | undefined;
   propertyAddress: string | undefined;
   commentHtml?: string;
+  propertyType?: string | undefined;
 }
 
 // ゼンリンのログイン情報
@@ -209,6 +210,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
   sellerName,
   propertyAddress,
   commentHtml = '',
+  propertyType,
 }) => {
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
   const [mansionModalOpen, setMansionModalOpen] = useState(false);
@@ -222,6 +224,14 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
   const addressForMansion = propertyAddress || '';
   const detectedMansionBrand = MANSION_BRANDS.find((m) => addressForMansion.includes(m));
   const hasMansion = !!detectedMansionBrand;
+
+  // 種別がマンション（マ / マンション / apartment）かどうか判定
+  const isMansionType = propertyType === 'apartment' || propertyType === 'マ' || propertyType === 'マンション';
+
+  // マンションサーチのログイン情報
+  const MANSION_SEARCH_URL = 'https://www.mansion-s.com/login/menu.php';
+  const MANSION_SEARCH_ID = 'FJmJa763';
+  const MANSION_SEARCH_PW = 'c37YuwB2';
   // 表示順序：添付資料 → ぜんりん（+ログイン情報） → 謄本 → 査定書 → 成約事例 → 近隣買主
   const items: Array<{ label: string; content: React.ReactNode }> = [
     // 1. 添付資料
@@ -265,6 +275,23 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         </Box>
       ),
     },
+    // 3.5. マンションサーチ（種別がマンション / マ の場合のみ）
+    ...(isMansionType ? [{
+      label: 'マンションサーチ',
+      content: (
+        <Box component="span" sx={{ display: 'inline-block', verticalAlign: 'top' }}>
+          <a href={MANSION_SEARCH_URL} target="_blank" rel="noopener noreferrer">
+            マンションサーチ
+          </a>
+          <Box sx={{ mt: 0.5, ml: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+              <CopyChip label="ID" text={MANSION_SEARCH_ID} />
+              <CopyChip label="PW" text={MANSION_SEARCH_PW} />
+            </Box>
+          </Box>
+        </Box>
+      ),
+    }] : []),
     // 4. 査定書（動的）
     {
       label: '査定書',

@@ -4868,6 +4868,7 @@ HP：https://ifoo-oita.com/
               sellerName={seller?.name}
               propertyAddress={propInfo.address || seller?.propertyAddress}
               commentHtml={savedComments}
+              propertyType={propInfo.propertyType}
             />
             {/* 画像ボタン */}
             <Badge
