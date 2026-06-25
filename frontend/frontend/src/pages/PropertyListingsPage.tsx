@@ -337,7 +337,13 @@ export default function PropertyListingsPage() {
 
   // フィルタリング（全件読み込み完了前は検索を適用しない）
   const filteredListings = useMemo(() => {
+    // データ読み込み中は空配列を返さない（サイドバーフィルター適用時）
+    // 検索クエリがある場合のみ、全件読み込み完了まで空を返す
     if (isLoadingAll && searchQuery.trim()) return [];
+    
+    // データがまだない場合は空配列を返す
+    if (!allListings || allListings.length === 0) return [];
+    
     let listings = allListings;
 
     // サイドバーと検索は排他的（後から操作した方がもう一方をクリアするため、両方独立適用でOK）
@@ -440,7 +446,19 @@ export default function PropertyListingsPage() {
     });
 
     return listings;
-  }, [allListings, sidebarStatus, searchQuery, workTaskMap]);
+  }, [allListings, sidebarStatus, searchQuery, workTaskMap, isLoadingAll]);
+
+  // キャッシュの整合性チェック: サイドバーのカウントと実際のフィルタ結果が不一致の場合、データを再取得
+  useEffect(() => {
+    if (!sidebarStatus || sidebarStatus === 'all' || isLoadingAll || loading) return;
+    if (sidebarStatus === '未完了') {
+      const sidebarCount = allListings.filter(l => l.confirmation === '未').length;
+      if (sidebarCount > 0 && filteredListings.length === 0) {
+        console.warn('[PropertyListingsPage] キャッシュ不整合検出: サイドバー未完了=', sidebarCount, 'フィルタ結果=0 → 再取得');
+        fetchAllData(true);
+      }
+    }
+  }, [filteredListings, sidebarStatus, isLoadingAll, loading]);
 
   // ユーザーソートを適用したリスト
   const sortedListings = useMemo(() => {
@@ -927,7 +945,7 @@ export default function PropertyListingsPage() {
                 ) : paginatedListings.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={12} align="center">
-                      {isLoadingAll && searchQuery.trim() ? '検索中...' : '物件データが見つかりませんでした'}
+                      {isLoadingAll && (searchQuery.trim() || sidebarStatus) ? '読み込み中...' : '物件データが見つかりませんでした'}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -1030,7 +1048,7 @@ export default function PropertyListingsPage() {
                 <Typography align="center" sx={{ py: 4, fontSize: '14px' }}>読み込み中...</Typography>
               ) : paginatedListings.length === 0 ? (
                 <Typography align="center" sx={{ py: 4, fontSize: '14px' }}>
-                  {isLoadingAll && searchQuery.trim() ? '検索中...' : '物件データが見つかりませんでした'}
+                  {isLoadingAll && (searchQuery.trim() || sidebarStatus) ? '読み込み中...' : '物件データが見つかりませんでした'}
                 </Typography>
               ) : (
                 paginatedListings.map((listing) => {
