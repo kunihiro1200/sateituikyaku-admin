@@ -1576,7 +1576,9 @@ export class SellerService extends BaseRepository {
           } else if (dynamicCategory.startsWith('todayCallWithInfo:')) {
             // 当日TEL（内容）ラベル別（追客中 AND 次電日が今日以前 AND 営担なし AND コミュニケーション情報あり）
             // ラベルによる絞り込みはJS側で行う（DBクエリでは当日TEL（内容）全件を取得）
+            // FI売主は福岡専用カテゴリー（fi:todayCallWithInfo:xxx）に表示するため除外
             query = query
+              .not('seller_number', 'ilike', 'FI%')
               .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
               .lte('next_call_date', todayJST)
               .or('status.ilike.%追客中%,status.ilike.%除外後追客中%,status.ilike.%他決→追客%')
