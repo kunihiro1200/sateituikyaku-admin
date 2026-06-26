@@ -1721,13 +1721,17 @@ router.post('/scrape-property', authenticate, async (req: Request, res: Response
     let lat: number | null = null;
     let lng: number | null = null;
     // --- 座標抽出（精度優先順）---
-    // 優先1: athome HTMLの "ido"/"keido" キー（物件本体の正確な座標）
-    const idoMatch = html.match(/"ido"\s*:\s*"?([0-9]{2}\.[0-9]{4,})"?/);
-    const keidoMatch = html.match(/"keido"\s*:\s*"?([0-9]{3}\.[0-9]{4,})"?/);
-    if (idoMatch && keidoMatch) {
-      lat = parseFloat(idoMatch[1]);
-      lng = parseFloat(keidoMatch[1]);
-      console.log(`[buyers/scrape-property] 座標(ido/keido): lat=${lat}, lng=${lng}`);
+    // 優先1: JSON-LDの GeoCoordinates（物件本体の正確な座標）
+    const geoCoordMatch = html.match(/"GeoCoordinates"[^}]*"latitude"\s*:\s*"?([0-9]{2}\.[0-9]+)"?[^}]*"longitude"\s*:\s*"?([0-9]{3}\.[0-9]+)"?/);
+    const geoCoordMatchRev = !geoCoordMatch && html.match(/"GeoCoordinates"[^}]*"longitude"\s*:\s*"?([0-9]{3}\.[0-9]+)"?[^}]*"latitude"\s*:\s*"?([0-9]{2}\.[0-9]+)"?/);
+    if (geoCoordMatch) {
+      lat = parseFloat(geoCoordMatch[1]);
+      lng = parseFloat(geoCoordMatch[2]);
+      console.log(`[buyers/scrape-property] 座標(GeoCoordinates): lat=${lat}, lng=${lng}`);
+    } else if (geoCoordMatchRev) {
+      lng = parseFloat(geoCoordMatchRev[1]);
+      lat = parseFloat(geoCoordMatchRev[2]);
+      console.log(`[buyers/scrape-property] 座標(GeoCoordinates rev): lat=${lat}, lng=${lng}`);
     } else {
       // 優先2: center=lat,lng パターン
       const latLngMatch = html.match(/center=([0-9.]+),([0-9.]+)/);
@@ -1817,39 +1821,6 @@ router.post('/scrape-property', authenticate, async (req: Request, res: Response
     }
 
     console.log(`[buyers/scrape-property] 完了: 画像${images.length}枚, 詳細${Object.keys(details).length}項目`);
-
-    // 住所からジオコーディングで正確な座標を取得（スクレイピング座標を上書き）
-    if (result.address) {
-      try {
-        const { GeocodingService } = require('../services/GeocodingService');
-        const geocodingService = new GeocodingService();
-        // 住所を正規化: 郵便番号・マンション名・部屋番号を除去してジオコーディング精度を上げる
-        // 例: "〒818-0072　福岡県筑紫野市二日市中央６丁目１－２　ファミール春日２　１０３" → "福岡県筑紫野市二日市中央６丁目１－２"
-        let normalizedAddress = result.address
-          .replace(/〒[\d\-]+\s*/g, '')  // 〒番号を除去
-          .trim();
-        // 都道府県〜番地（丁目・番・号）までを抽出（マンション名・部屋番号は除外）
-        const addrMatch = normalizedAddress.match(
-          /([都道府県].+?(?:[0-9０-９]+番地?[0-9０-９]*号?|[0-9０-９]+丁目[0-9０-９\-－]+))/
-        );
-        if (addrMatch) {
-          // 都道府県名も含めてフルに取る
-          const prefMatch = normalizedAddress.match(
-            /((?:北海道|東京都|大阪府|京都府|[^\s]{2,3}県).+?(?:[0-9０-９]+番地?[0-9０-９]*号?|[0-9０-９]+丁目[0-9０-９\-－]+))/
-          );
-          if (prefMatch) normalizedAddress = prefMatch[1].trim();
-        }
-        // sellerPrefix='OTHER' を渡して大分県自動付与を回避
-        const coords = await geocodingService.geocodeAddress(normalizedAddress, 'OTHER');
-        if (coords) {
-          result.lat = coords.lat;
-          result.lng = coords.lng;
-          console.log(`[buyers/scrape-property] ジオコーディング成功: "${normalizedAddress}" -> lat=${result.lat}, lng=${result.lng}`);
-        }
-      } catch (geoErr: any) {
-        console.warn(`[buyers/scrape-property] ジオコーディング失敗（スクレイピング座標を使用）: ${geoErr.message}`);
-      }
-    }
 
     // DBに保存してプレビューURLを生成（SUUMO版と同様）
     const { createClient: createSbClient } = require('@supabase/supabase-js');
