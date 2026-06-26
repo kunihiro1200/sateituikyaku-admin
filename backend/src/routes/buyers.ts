@@ -1818,6 +1818,23 @@ router.post('/scrape-property', authenticate, async (req: Request, res: Response
 
     console.log(`[buyers/scrape-property] 完了: 画像${images.length}枚, 詳細${Object.keys(details).length}項目`);
 
+    // 住所からジオコーディングで正確な座標を取得（スクレイピング座標を上書き）
+    if (result.address) {
+      try {
+        const { GeocodingService } = require('../services/GeocodingService');
+        const geocodingService = new GeocodingService();
+        // sellerPrefix='OTHER' を渡して大分県自動付与を回避
+        const coords = await geocodingService.geocodeAddress(result.address, 'OTHER');
+        if (coords) {
+          result.lat = coords.lat;
+          result.lng = coords.lng;
+          console.log(`[buyers/scrape-property] ジオコーディング成功: lat=${result.lat}, lng=${result.lng}`);
+        }
+      } catch (geoErr: any) {
+        console.warn(`[buyers/scrape-property] ジオコーディング失敗（スクレイピング座標を使用）: ${geoErr.message}`);
+      }
+    }
+
     // DBに保存してプレビューURLを生成（SUUMO版と同様）
     const { createClient: createSbClient } = require('@supabase/supabase-js');
     const { randomBytes } = require('crypto');
