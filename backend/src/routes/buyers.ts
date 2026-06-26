@@ -1823,12 +1823,28 @@ router.post('/scrape-property', authenticate, async (req: Request, res: Response
       try {
         const { GeocodingService } = require('../services/GeocodingService');
         const geocodingService = new GeocodingService();
+        // 住所を正規化: 郵便番号・マンション名・部屋番号を除去してジオコーディング精度を上げる
+        // 例: "〒818-0072　福岡県筑紫野市二日市中央６丁目１－２　ファミール春日２　１０３" → "福岡県筑紫野市二日市中央６丁目１－２"
+        let normalizedAddress = result.address
+          .replace(/〒[\d\-]+\s*/g, '')  // 〒番号を除去
+          .trim();
+        // 都道府県〜番地（丁目・番・号）までを抽出（マンション名・部屋番号は除外）
+        const addrMatch = normalizedAddress.match(
+          /([都道府県].+?(?:[0-9０-９]+番地?[0-9０-９]*号?|[0-9０-９]+丁目[0-9０-９\-－]+))/
+        );
+        if (addrMatch) {
+          // 都道府県名も含めてフルに取る
+          const prefMatch = normalizedAddress.match(
+            /((?:北海道|東京都|大阪府|京都府|[^\s]{2,3}県).+?(?:[0-9０-９]+番地?[0-9０-９]*号?|[0-9０-９]+丁目[0-9０-９\-－]+))/
+          );
+          if (prefMatch) normalizedAddress = prefMatch[1].trim();
+        }
         // sellerPrefix='OTHER' を渡して大分県自動付与を回避
-        const coords = await geocodingService.geocodeAddress(result.address, 'OTHER');
+        const coords = await geocodingService.geocodeAddress(normalizedAddress, 'OTHER');
         if (coords) {
           result.lat = coords.lat;
           result.lng = coords.lng;
-          console.log(`[buyers/scrape-property] ジオコーディング成功: lat=${result.lat}, lng=${result.lng}`);
+          console.log(`[buyers/scrape-property] ジオコーディング成功: "${normalizedAddress}" -> lat=${result.lat}, lng=${result.lng}`);
         }
       } catch (geoErr: any) {
         console.warn(`[buyers/scrape-property] ジオコーディング失敗（スクレイピング座標を使用）: ${geoErr.message}`);
