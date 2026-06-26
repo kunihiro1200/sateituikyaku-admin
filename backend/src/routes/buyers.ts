@@ -1683,7 +1683,12 @@ router.post('/scrape-property', authenticate, async (req: Request, res: Response
     // --- タイトル ---
     let title = $('title').text().trim();
     if (title) {
-      title = title.replace(/【[^】]+】/g, '').replace(/\s*[-|｜].*$/, '').trim();
+      title = title
+        .replace(/【[^】]+】/g, '')           // 【...】を除去
+        .replace(/（提供元[^）]*）/g, '')      // （提供元：...）を除去
+        .replace(/\(提供元[^)]*\)/g, '')       // (提供元：...)半角括弧版も除去
+        .replace(/\s*[-|｜].*$/, '')           // -以降を除去
+        .trim();
     }
 
     // --- 画像取得 ---
@@ -1715,16 +1720,29 @@ router.post('/scrape-property', authenticate, async (req: Request, res: Response
     // --- 緯度経度 ---
     let lat: number | null = null;
     let lng: number | null = null;
-    const latLngMatch = html.match(/center=([0-9.]+),([0-9.]+)/);
-    if (latLngMatch) {
-      lat = parseFloat(latLngMatch[1]);
-      lng = parseFloat(latLngMatch[2]);
+    // --- 座標抽出（精度優先順）---
+    // 優先1: athome HTMLの "ido"/"keido" キー（物件本体の正確な座標）
+    const idoMatch = html.match(/"ido"\s*:\s*"?([0-9]{2}\.[0-9]{4,})"?/);
+    const keidoMatch = html.match(/"keido"\s*:\s*"?([0-9]{3}\.[0-9]{4,})"?/);
+    if (idoMatch && keidoMatch) {
+      lat = parseFloat(idoMatch[1]);
+      lng = parseFloat(keidoMatch[1]);
+      console.log(`[buyers/scrape-property] 座標(ido/keido): lat=${lat}, lng=${lng}`);
     } else {
-      // フォールバック
-      const latMatch = html.match(/\b(3[0-9]|4[0-5])\.\d{6,}\b/);
-      const lngMatch = html.match(/\b(12[0-9]|13[0-9]|14[0-9])\.\d{6,}\b/);
-      if (latMatch) lat = parseFloat(latMatch[0]);
-      if (lngMatch) lng = parseFloat(lngMatch[0]);
+      // 優先2: center=lat,lng パターン
+      const latLngMatch = html.match(/center=([0-9.]+),([0-9.]+)/);
+      if (latLngMatch) {
+        lat = parseFloat(latLngMatch[1]);
+        lng = parseFloat(latLngMatch[2]);
+        console.log(`[buyers/scrape-property] 座標(center): lat=${lat}, lng=${lng}`);
+      } else {
+        // 優先3: 汎用フォールバック
+        const latMatch = html.match(/\b(3[0-9]|4[0-5])\.\d{6,}\b/);
+        const lngMatch = html.match(/\b(12[0-9]|13[0-9]|14[0-9])\.\d{6,}\b/);
+        if (latMatch) lat = parseFloat(latMatch[0]);
+        if (lngMatch) lng = parseFloat(lngMatch[0]);
+        console.log(`[buyers/scrape-property] 座標(fallback): lat=${lat}, lng=${lng}`);
+      }
     }
 
     // --- 詳細テーブル ---
