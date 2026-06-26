@@ -1800,10 +1800,55 @@ router.post('/scrape-property', authenticate, async (req: Request, res: Response
 
     console.log(`[buyers/scrape-property] 完了: 画像${images.length}枚, 詳細${Object.keys(details).length}項目`);
 
+    // DBに保存してプレビューURLを生成（SUUMO版と同様）
+    const { createClient: createSbClient } = require('@supabase/supabase-js');
+    const { randomBytes } = require('crypto');
+    const supabase = createSbClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const slug = randomBytes(6).toString('hex');
+
+    const dbPayload = {
+      slug,
+      source_url: url,
+      title: result.title,
+      price: result.price,
+      address: result.address,
+      access: result.access,
+      layout: result.layout,
+      area: result.area,
+      floor: result.floor,
+      built_year: result.built_year,
+      parking: result.parking,
+      features: result.features,
+      remarks: result.remarks,
+      images: result.images,
+      lat: result.lat,
+      lng: result.lng,
+      details: result.details,
+      points: result.points,
+      is_tateuri: false,
+      is_active: true,
+      region: 'distribution', // 他社物件配信用
+    };
+
+    const { error: insertError } = await supabase
+      .from('property_previews')
+      .insert(dbPayload);
+
+    if (insertError) {
+      console.error('[buyers/scrape-property] DB保存エラー:', insertError);
+    }
+
+    const preview_url = insertError
+      ? url // DB保存失敗時は元URLを返す
+      : `https://sateituikyaku-admin-frontend.vercel.app/property-preview/${slug}`;
+
     return res.json({
       success: true,
       data: result,
-      preview_url: url,
+      preview_url,
     });
   } catch (err: any) {
     console.error('[buyers/scrape-property] エラー:', err.message);
