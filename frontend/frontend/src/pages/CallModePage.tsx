@@ -1785,6 +1785,7 @@ const CallModePage = () => {
           if (freshData && freshData.id) {
             pageDataCache.set(sellerDetailCacheKey(id!), freshData, 30 * 1000);
             setSeller(freshData);
+            setProperty(freshData.property || null);
             // 保存処理中でない場合のみ編集値・saved* を更新（保存直後のバックグラウンド取得でボタン色が狂わないようにする）
             if (!savingLockRef.current) {
               setUnreachableStatus(freshData.unreachableStatus || null);
@@ -2833,6 +2834,10 @@ const CallModePage = () => {
       setEditingProperty(false);
       setPageEdited(true); // 物件情報保存時に編集フラグを設定
       
+      // キャッシュを無効化してから再読み込み（古いキャッシュデータを使わないようにする）
+      if (id) {
+        pageDataCache.invalidate(sellerDetailCacheKey(id));
+      }
       // データを再読み込み（showLoading=false で画面を白くしない）
       await loadAllData(false);
     } catch (err: any) {
