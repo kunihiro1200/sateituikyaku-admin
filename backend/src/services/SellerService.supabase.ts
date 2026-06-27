@@ -588,6 +588,32 @@ export class SellerService extends BaseRepository {
       updates.building_area_verified = (data as any).buildingAreaVerified;
     }
 
+    // 物件関連フィールド（sellersテーブルに直接保存）
+    if ((data as any).propertyAddress !== undefined) {
+      updates.property_address = (data as any).propertyAddress;
+    }
+    if ((data as any).propertyType !== undefined) {
+      updates.property_type = (data as any).propertyType;
+    }
+    if ((data as any).landArea !== undefined) {
+      updates.land_area = (data as any).landArea;
+    }
+    if ((data as any).buildingArea !== undefined) {
+      updates.building_area = (data as any).buildingArea;
+    }
+    if ((data as any).buildYear !== undefined) {
+      updates.build_year = (data as any).buildYear;
+    }
+    if ((data as any).floorPlan !== undefined) {
+      updates.floor_plan = (data as any).floorPlan;
+    }
+    if ((data as any).structure !== undefined) {
+      updates.structure = (data as any).structure;
+    }
+    if ((data as any).currentStatus !== undefined) {
+      updates.current_status = (data as any).currentStatus;
+    }
+
     // 競合情報フィールド
     if ((data as any).competitorName !== undefined) {
       updates.competitor_name = (data as any).competitorName;
