@@ -2781,7 +2781,19 @@ const CallModePage = () => {
   };
 
   const handleSaveProperty = async () => {
-    if (!seller) return;
+    if (!seller) {
+      console.error('❌ handleSaveProperty: seller is null, aborting');
+      return;
+    }
+    
+    console.log('🔧 handleSaveProperty called', { 
+      sellerId: seller.id,
+      hasProperty: !!property,
+      propertyId: property?.id,
+      editedPropertyAddress,
+      editedPropertyType,
+      editedLandArea,
+    });
     
     try {
       setSavingProperty(true);
@@ -2789,8 +2801,9 @@ const CallModePage = () => {
       setSuccessMessage(null);
 
       if (property) {
+        console.log('🔧 Updating properties table:', `/properties/${property.id}`);
         // propertiesテーブルを更新
-        await api.put(`/properties/${property.id}`, {
+        const response = await api.put(`/properties/${property.id}`, {
           address: editedPropertyAddress,
           propertyType: normalizePropertyType(editedPropertyType) || null,
           landArea: editedLandArea ? parseFloat(editedLandArea) : null,
@@ -2802,9 +2815,11 @@ const CallModePage = () => {
           structure: editedStructure || null,
           sellerSituation: editedSellerSituation || null,
         });
+        console.log('✅ Property update response:', response.status, response.data);
       } else {
+        console.log('🔧 Updating sellers table (no property):', `/api/sellers/${id}`);
         // propertyがない場合はsellersテーブルを直接更新
-        await api.put(`/api/sellers/${id}`, {
+        const response = await api.put(`/api/sellers/${id}`, {
           propertyAddress: editedPropertyAddress || null,
           propertyType: normalizePropertyType(editedPropertyType) || null,
           landArea: editedLandArea ? parseFloat(editedLandArea) : null,
@@ -2816,6 +2831,7 @@ const CallModePage = () => {
           structure: editedStructure || null,
           currentStatus: editedSellerSituation || null,
         });
+        console.log('✅ Seller update response:', response.status, response.data);
         // ローカル状態も更新
         setSeller(prev => prev ? {
           ...prev,
@@ -2833,6 +2849,7 @@ const CallModePage = () => {
       }
 
       setSuccessMessage('物件情報を更新しました');
+      console.log('✅ handleSaveProperty: success');
       setEditingProperty(false);
       setPageEdited(true); // 物件情報保存時に編集フラグを設定
       
@@ -2843,6 +2860,7 @@ const CallModePage = () => {
       // データを再読み込み（showLoading=false で画面を白くしない）
       await loadAllData(false);
     } catch (err: any) {
+      console.error('❌ handleSaveProperty error:', err, err?.response?.data);
       setError(err.response?.data?.error?.message || '物件情報の更新に失敗しました');
     } finally {
       setSavingProperty(false);
