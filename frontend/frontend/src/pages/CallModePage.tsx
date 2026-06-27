@@ -552,6 +552,8 @@ const CallModePage = () => {
       '収益': 'income',
       '収益物件': 'income',
       'income': 'income',
+      // 他
+      '他': '他',
     };
     return map[type] ?? type;
   };

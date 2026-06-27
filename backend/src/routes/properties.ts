@@ -187,7 +187,13 @@ router.put(
     param('id').isUUID().withMessage('Invalid property ID'),
     body('propertyType').optional({ nullable: true }).custom((value) => {
       if (value === null || value === undefined || value === '') return true;
-      return Object.values(PropertyType).includes(value);
+      // 英語値・日本語値・略語すべてを許可（PropertyService.normalizePropertyTypeToJapaneseで正規化される）
+      const allowedValues = [
+        ...Object.values(PropertyType),
+        '土地', '戸建て', '戸建', 'マンション', '商業用', '収益', 'income',
+        '土', '戸', 'マ', '収', '他',
+      ];
+      return allowedValues.includes(value);
     }).withMessage('Invalid property type'),
     body('landArea').optional({ nullable: true }).custom((value) => {
       if (value === null || value === undefined) return true;
