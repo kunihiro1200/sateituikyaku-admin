@@ -68,11 +68,16 @@ interface ReportData {
   property_type?: string; // 種別（土地・中古一戸建て・マンション等）
 }
 
-// 今日からN週間後の日付文字列（YYYY-MM-DD）を返す
+// 今日からN週間後の日付文字列（YYYY-MM-DD）を返す（JST基準）
 const getDateWeeksLater = (weeks: number): string => {
+  // toISOString() はUTC基準のため、JST午前9時より前だと日付がズレる
+  // ローカル日時のYYYY-MM-DDを直接取得する
   const d = new Date();
   d.setDate(d.getDate() + weeks * 7);
-  return d.toISOString().split('T')[0];
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 // 円単位の価格を万円単位のカンマ区切り文字列に変換する
@@ -147,6 +152,7 @@ export default function PropertyReportPage() {
   const [pendingSendHistory, setPendingSendHistory] = useState<{ templateName: string; subject: string; body: string; gmailUrl: string } | null>(null);
   // 編集中のメール内容
   const [editTo, setEditTo] = useState('');
+  const [editCc, setEditCc] = useState('');
   const [editSubject, setEditSubject] = useState('');
   const [editBody, setEditBody] = useState('');
   // 返信先（Reply-To）選択状態（タスク5.2）
@@ -378,6 +384,7 @@ export default function PropertyReportPage() {
       // Gmailを開かずにプレビューダイアログを表示
       setPendingSendHistory({ templateName: template.name, subject: cached.subject, body: cached.body, gmailUrl });
       setEditTo(cached.sellerEmail || toEmail);
+      setEditCc('');
       setEditSubject(cached.subject);
       setEditBody(cached.body);
       setSendConfirmDialogOpen(true);
@@ -401,6 +408,7 @@ export default function PropertyReportPage() {
       // Gmailを開かずにプレビューダイアログを表示
       setPendingSendHistory({ templateName: template.name, subject: mergedSubject || template.subject, body: mergedBody || template.body, gmailUrl });
       setEditTo(resolvedEmail);
+      setEditCc('');
       setEditSubject(mergedSubject || template.subject);
       setEditBody(mergedBody || template.body);
       setSendConfirmDialogOpen(true);
@@ -412,6 +420,7 @@ export default function PropertyReportPage() {
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
       setPendingSendHistory({ templateName: template.name, subject: template.subject, body: template.body, gmailUrl });
       setEditTo(toEmail);
+      setEditCc('');
       setEditSubject(template.subject);
       setEditBody(template.body);
       setSendConfirmDialogOpen(true);
@@ -499,6 +508,9 @@ export default function PropertyReportPage() {
         // multipart/form-data で送信
         const formData = new FormData();
         formData.append('to', editTo);
+        if (editCc) {
+          formData.append('cc', editCc);
+        }
         formData.append('subject', editSubject);
         formData.append('body', editBody);
         formData.append('template_name', pendingSendHistory.templateName);
@@ -535,6 +547,7 @@ export default function PropertyReportPage() {
         // 従来通り application/json で送信
         await api.post(`/api/property-listings/${propertyNumber}/send-report-email`, {
           to: editTo,
+          ...(editCc ? { cc: editCc } : {}),
           subject: editSubject,
           body: editBody,
           template_name: pendingSendHistory.templateName,
@@ -551,8 +564,27 @@ export default function PropertyReportPage() {
       setSelectedImages([]);
       // 返信先もリセット（タスク5.2）
       setEditReplyTo('');
+      setEditCc('');
       fetchReportHistory();
       setEmailJustSent(true);
+
+      // メール送信後に報告情報（報告日・報告完了・報告担当）を自動保存する
+      // ※ N/Yボタンや報告日を変更した状態でメール送信して離脱すると、
+      //   保存ボタンを押し忘れてDBが更新されないバグを防ぐため
+      try {
+        await api.put(`/api/property-listings/${propertyNumber}`, {
+          report_date: reportData.report_date || null,
+          report_completed: reportData.report_completed || 'N',
+          report_assignee: reportData.report_assignee || null,
+          suumo_url: reportData.suumo_url || null,
+          report_memo: reportData.report_memo || null,
+        });
+        setSavedData({ ...reportData });
+      } catch {
+        // 自動保存失敗は警告のみ（メール送信は成功しているため）
+        console.warn('メール送信後の自動保存に失敗しました');
+      }
+
       setSnackbar({ open: true, message: 'メールを送信しました', severity: 'success' });
     } catch (error: any) {
       const errMsg = error.response?.data?.error || 'メール送信に失敗しました';
@@ -571,6 +603,7 @@ export default function PropertyReportPage() {
     setImageError(null);
     // 返信先もリセット（タスク5.2）
     setEditReplyTo('');
+    setEditCc('');
   };
 
   const recordSendHistory = async (templateName: string, subject: string, body?: string) => {
@@ -1126,6 +1159,15 @@ export default function PropertyReportPage() {
               fullWidth
               value={editTo}
               onChange={(e) => setEditTo(e.target.value)}
+              helperText="複数の場合はカンマ区切りで入力（例: a@example.com, b@example.com）"
+            />
+            <TextField
+              label="CC"
+              size="small"
+              fullWidth
+              value={editCc}
+              onChange={(e) => setEditCc(e.target.value)}
+              helperText="複数の場合はカンマ区切りで入力"
             />
             {/* 返信先（Reply-To）選択フィールド（タスク5.2） */}
             <FormControl size="small" fullWidth>
