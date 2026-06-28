@@ -498,7 +498,7 @@ export function generatePage4RepeaterHtml(propertyAddress: string, propertyPrice
   const price = propertyPrice || 0;
   const inshi = price<=1000000?500:price<=5000000?1000:price<=10000000?5000:price<=50000000?10000:30000;
   const shoyuken = price>=10000000?300000:200000;
-  const chukai = price<=8000000?330000:Math.round((price*0.02+60000)*1.1);
+  const chukai = price<=8000000?330000:Math.round(price*0.02*1.1);
   const kasai = (propertyType&&propertyType.includes('マンション'))?200000:300000;
   const GINKO_INSHI = 22000;
   const GINKO_JIMU = 220000;
@@ -563,7 +563,7 @@ export function generatePage4RepeaterHtml(propertyAddress: string, propertyPrice
       </tr>
       ${detailRow('印紙代（売買契約書貼付）',f(inshi),'')}
       ${detailRow('所有権移転等',f(shoyuken),'評価額によって異なります')}
-      ${detailRow('仲介手数料',f(chukai),'●リピーターのお客様（2%+6万×消費税）\n●800万円以下（33万円）')}
+      ${detailRow('仲介手数料',f(chukai),'●リピーターのお客様（2%×消費税）\n●800万円以下（33万円）')}
       ${detailRow('固定資産税・都市計画税の清算金','実費','引渡日で按分します')}
       ${detailRow('火災保険料・地震保険料',f(kasai),'プランによって異なります')}
       ${detailRow('銀行金消契約印紙代',f(GINKO_INSHI),'住宅ローンの契約書に貼る印紙です')}
@@ -593,7 +593,7 @@ export function generatePage4CashRepeaterHtml(propertyAddress: string, propertyP
   const price = propertyPrice || 0;
   const inshi = price<=1000000?500:price<=5000000?1000:price<=10000000?5000:price<=50000000?10000:30000;
   const shoyuken = price>=10000000?300000:200000;
-  const chukai = price<=8000000?330000:Math.round((price*0.02+60000)*1.1);
+  const chukai = price<=8000000?330000:Math.round(price*0.02*1.1);
   const kasai = (propertyType&&propertyType.includes('マンション'))?200000:300000;
   const shokeihi = inshi+shoyuken+chukai+kasai;
   const total = price+shokeihi;
@@ -626,7 +626,7 @@ export function generatePage4CashRepeaterHtml(propertyAddress: string, propertyP
       </tr>
       ${detailRow('印紙代（売買契約書貼付）',f(inshi),'')}
       ${detailRow('所有権移転等',f(shoyuken),'評価額によって異なります')}
-      ${detailRow('仲介手数料',f(chukai),'●リピーターのお客様（2%+6万×消費税）\n●800万円以下（33万円）')}
+      ${detailRow('仲介手数料',f(chukai),'●リピーターのお客様（2%×消費税）\n●800万円以下（33万円）')}
       ${detailRow('固定資産税・都市計画税の清算金','実費','引渡日で按分します')}
       ${detailRow('火災保険料・地震保険料',f(kasai),'プランによって異なります')}
       <tr><td style="${td}"></td><td style="${td}"></td><td style="${td}"></td></tr>
