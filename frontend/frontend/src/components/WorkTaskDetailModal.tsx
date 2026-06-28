@@ -3103,6 +3103,127 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           >{saving ? '保存中...' : '保存'}</Button>
         </Box>
 
+        <Box sx={{ bgcolor: '#fff3e0', borderRadius: 1, p: 1, mb: 1 }}>
+        <SectionHeader label="【★図面確認】" />
+        <EditableButtonSelect label="間取図確認者*" field="floor_plan_confirmer" options={normalInitials} />
+        <EditableField label="間取図確認OK/修正コメント" field="floor_plan_ok_comment" />
+        <EditableYesNo
+          label={getValue('floor_plan_confirmer') && !getValue('floor_plan_ok_sent') ? '間取図確認OK送信*（必須）' : '間取図確認OK送信*'}
+          field="floor_plan_ok_sent"
+          labelColor={getValue('floor_plan_confirmer') && !getValue('floor_plan_ok_sent') ? 'error' : undefined}
+        />
+        {/* 間取図確認OK送信に値がある場合、間取図修正（当社ミス）フィールドを表示 */}
+        {getValue('floor_plan_ok_sent') && (
+          <>
+            <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+              <Grid item xs={4}>
+                <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>間取図修正（当社ミス）*（必須）</Typography>
+              </Grid>
+              <Grid item xs={8}>
+                <ButtonGroup size="small" variant="outlined">
+                  {['あり', 'なし'].map((opt) => (
+                    <Button
+                      key={opt}
+                      variant={getValue('floor_plan_revision_correction') === opt ? 'contained' : 'outlined'}
+                      color={getValue('floor_plan_revision_correction') === opt ? (opt === 'あり' ? 'error' : 'primary') : 'inherit'}
+                      onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('floor_plan_revision_correction', getValue('floor_plan_revision_correction') === opt ? null : opt); }}
+                    >
+                      {opt}
+                    </Button>
+                  ))}
+                </ButtonGroup>
+              </Grid>
+            </Grid>
+            {/* 間取図修正（当社ミス）が「あり」の場合のみ修正内容を表示 */}
+            {getValue('floor_plan_revision_correction') === 'あり' && (
+              <FloorPlanRevisionContentField
+                value={getValue('floor_plan_revision_correction_content') || ''}
+                hasError={!getValue('floor_plan_revision_correction_content')}
+                onCommit={(v) => handleFieldChange('floor_plan_revision_correction_content', v)}
+              />
+            )}
+          </>
+        )}
+        <EditableButtonSelect label="間取図修正回数" field="floor_plan_revision_count" options={['1', '2', '3', '4']} />
+        <Typography variant="caption" sx={{ color: 'error.main', display: 'block', mb: 1, ml: '33.33%' }}>
+          ここでの修正とは、当社のミスによる修正のことです。CWの方のミスによる修正はカウントNGです！！
+        </Typography>
+        <ReadOnlyDisplayField
+          label=""
+          value={
+            getValue('cw_request_email_2f_above')
+              ? (cwCounts.floorPlan500 ? `間取図500円（CW)計⇒ ${cwCounts.floorPlan500}` : '-')
+              : (cwCounts.floorPlan300 ? `間取図300円（CW)計⇒ ${cwCounts.floorPlan300}` : '-')
+          }
+        />
+        <EditableField
+          label={getValue('floor_plan_confirmer') && !getValue('floor_plan_completed_date') ? '間取図完了日*（必須）' : '間取図完了日*'}
+          field="floor_plan_completed_date"
+          type="date"
+          labelColor={getValue('floor_plan_confirmer') && !getValue('floor_plan_completed_date') ? 'error' : undefined}
+        />
+        <EditableYesNo
+          label={getValue('floor_plan_confirmer') && !getValue('floor_plan_stored_email') ? '間取図格納済み連絡メール*（必須）' : '間取図格納済み連絡メール'}
+          field="floor_plan_stored_email"
+          labelColor={getValue('floor_plan_confirmer') && !getValue('floor_plan_stored_email') ? 'error' : undefined}
+        />
+        </Box>
+
+        {/* 間取図修正内容まとめ（【★図面確認】の下に表示） */}
+        {floorPlanRevisionCorrectionHistory.length > 0 && (
+          <Accordion
+            defaultExpanded={false}
+            sx={{ mt: 1, mb: 1, bgcolor: '#e8f5e9', border: '2px solid #4caf50', borderRadius: '4px !important', '&:before': { display: 'none' } }}
+          >
+            <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: '#1b5e20' }} />} sx={{ minHeight: 36, '& .MuiAccordionSummary-content': { margin: '4px 0' } }}>
+              <Typography variant="body2" sx={{ fontWeight: 700, color: '#1b5e20' }}>
+                ⚠️ 間取図修正内容まとめ（当社ミス）
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ p: 1.5, pt: 0 }}>
+              <Box sx={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#c8e6c9' }}>
+                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
+                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>営業担当</th>
+                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>間取図確認者</th>
+                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>サイト登録依頼者</th>
+                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', width: '35%' }}>修正内容</th>
+                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', width: '25%' }}>対策案</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {floorPlanRevisionCorrectionHistory.map((item, idx) => (
+                      <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#f1f8e9' : '#e8f5e9' }}>
+                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>
+                          {item.property_number
+                            ? <span onClick={() => onNavigate?.(item.property_number, 1)} style={{ color: '#1565c0', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>{item.property_number}</span>
+                            : '-'}
+                        </td>
+                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.sales_assignee || '-'}</td>
+                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.floor_plan_confirmer || '-'}</td>
+                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
+                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: 'inherit', fontWeight: 'normal' }}><span dangerouslySetInnerHTML={{ __html: item.floor_plan_revision_correction_content }} /></td>
+                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', width: '25%', color: 'inherit', fontWeight: 'normal' }}>
+                          <CountermeasureCell
+                            propertyNumber={item.property_number}
+                            field="floor_plan_revision_countermeasure"
+                            value={item.floor_plan_revision_countermeasure || ''}
+                            onSaved={(val) => {
+                              setFloorPlanRevisionCorrectionHistory(prev => prev.map((r, i) => i === idx ? { ...r, floor_plan_revision_countermeasure: val } : r));
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Box>
+            </AccordionDetails>
+          </Accordion>
+        )}
+
         <Box sx={{ bgcolor: '#f3e5f5', borderRadius: 1, p: 1, mb: 1 }}>
         <SectionHeader label="【★サイト登録確認】" />
         <EditableButtonSelect label="サイト登録確認" field="site_registration_confirmed" options={['確認中', '完了', '他']} />
@@ -3223,127 +3344,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                             value={item.site_registration_revision_countermeasure || ''}
                             onSaved={(val) => {
                               setSiteRegistrationRevisionHistory(prev => prev.map((r, i) => i === idx ? { ...r, site_registration_revision_countermeasure: val } : r));
-                            }}
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </Box>
-            </AccordionDetails>
-          </Accordion>
-        )}
-
-        <Box sx={{ bgcolor: '#fff3e0', borderRadius: 1, p: 1, mb: 1 }}>
-        <SectionHeader label="【★図面確認】" />
-        <EditableButtonSelect label="間取図確認者*" field="floor_plan_confirmer" options={normalInitials} />
-        <EditableField label="間取図確認OK/修正コメント" field="floor_plan_ok_comment" />
-        <EditableYesNo
-          label={getValue('floor_plan_confirmer') && !getValue('floor_plan_ok_sent') ? '間取図確認OK送信*（必須）' : '間取図確認OK送信*'}
-          field="floor_plan_ok_sent"
-          labelColor={getValue('floor_plan_confirmer') && !getValue('floor_plan_ok_sent') ? 'error' : undefined}
-        />
-        {/* 間取図確認OK送信に値がある場合、間取図修正（当社ミス）フィールドを表示 */}
-        {getValue('floor_plan_ok_sent') && (
-          <>
-            <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
-              <Grid item xs={4}>
-                <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>間取図修正（当社ミス）*（必須）</Typography>
-              </Grid>
-              <Grid item xs={8}>
-                <ButtonGroup size="small" variant="outlined">
-                  {['あり', 'なし'].map((opt) => (
-                    <Button
-                      key={opt}
-                      variant={getValue('floor_plan_revision_correction') === opt ? 'contained' : 'outlined'}
-                      color={getValue('floor_plan_revision_correction') === opt ? (opt === 'あり' ? 'error' : 'primary') : 'inherit'}
-                      onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('floor_plan_revision_correction', getValue('floor_plan_revision_correction') === opt ? null : opt); }}
-                    >
-                      {opt}
-                    </Button>
-                  ))}
-                </ButtonGroup>
-              </Grid>
-            </Grid>
-            {/* 間取図修正（当社ミス）が「あり」の場合のみ修正内容を表示 */}
-            {getValue('floor_plan_revision_correction') === 'あり' && (
-              <FloorPlanRevisionContentField
-                value={getValue('floor_plan_revision_correction_content') || ''}
-                hasError={!getValue('floor_plan_revision_correction_content')}
-                onCommit={(v) => handleFieldChange('floor_plan_revision_correction_content', v)}
-              />
-            )}
-          </>
-        )}
-        <EditableButtonSelect label="間取図修正回数" field="floor_plan_revision_count" options={['1', '2', '3', '4']} />
-        <Typography variant="caption" sx={{ color: 'error.main', display: 'block', mb: 1, ml: '33.33%' }}>
-          ここでの修正とは、当社のミスによる修正のことです。CWの方のミスによる修正はカウントNGです！！
-        </Typography>
-        <ReadOnlyDisplayField
-          label=""
-          value={
-            getValue('cw_request_email_2f_above')
-              ? (cwCounts.floorPlan500 ? `間取図500円（CW)計⇒ ${cwCounts.floorPlan500}` : '-')
-              : (cwCounts.floorPlan300 ? `間取図300円（CW)計⇒ ${cwCounts.floorPlan300}` : '-')
-          }
-        />
-        <EditableField
-          label={getValue('floor_plan_confirmer') && !getValue('floor_plan_completed_date') ? '間取図完了日*（必須）' : '間取図完了日*'}
-          field="floor_plan_completed_date"
-          type="date"
-          labelColor={getValue('floor_plan_confirmer') && !getValue('floor_plan_completed_date') ? 'error' : undefined}
-        />
-        <EditableYesNo
-          label={getValue('floor_plan_confirmer') && !getValue('floor_plan_stored_email') ? '間取図格納済み連絡メール*（必須）' : '間取図格納済み連絡メール'}
-          field="floor_plan_stored_email"
-          labelColor={getValue('floor_plan_confirmer') && !getValue('floor_plan_stored_email') ? 'error' : undefined}
-        />
-        </Box>
-
-        {/* 間取図修正内容まとめ（【★図面確認】の下に表示） */}
-        {floorPlanRevisionCorrectionHistory.length > 0 && (
-          <Accordion
-            defaultExpanded={false}
-            sx={{ mt: 1, mb: 1, bgcolor: '#e8f5e9', border: '2px solid #4caf50', borderRadius: '4px !important', '&:before': { display: 'none' } }}
-          >
-            <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: '#1b5e20' }} />} sx={{ minHeight: 36, '& .MuiAccordionSummary-content': { margin: '4px 0' } }}>
-              <Typography variant="body2" sx={{ fontWeight: 700, color: '#1b5e20' }}>
-                ⚠️ 間取図修正内容まとめ（当社ミス）
-              </Typography>
-            </AccordionSummary>
-            <AccordionDetails sx={{ p: 1.5, pt: 0 }}>
-              <Box sx={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#c8e6c9' }}>
-                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
-                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>営業担当</th>
-                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>間取図確認者</th>
-                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>サイト登録依頼者</th>
-                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', width: '35%' }}>修正内容</th>
-                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', width: '25%' }}>対策案</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {floorPlanRevisionCorrectionHistory.map((item, idx) => (
-                      <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#f1f8e9' : '#e8f5e9' }}>
-                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>
-                          {item.property_number
-                            ? <span onClick={() => onNavigate?.(item.property_number, 1)} style={{ color: '#1565c0', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>{item.property_number}</span>
-                            : '-'}
-                        </td>
-                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.sales_assignee || '-'}</td>
-                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.floor_plan_confirmer || '-'}</td>
-                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
-                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: 'inherit', fontWeight: 'normal' }}><span dangerouslySetInnerHTML={{ __html: item.floor_plan_revision_correction_content }} /></td>
-                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', width: '25%', color: 'inherit', fontWeight: 'normal' }}>
-                          <CountermeasureCell
-                            propertyNumber={item.property_number}
-                            field="floor_plan_revision_countermeasure"
-                            value={item.floor_plan_revision_countermeasure || ''}
-                            onSaved={(val) => {
-                              setFloorPlanRevisionCorrectionHistory(prev => prev.map((r, i) => i === idx ? { ...r, floor_plan_revision_countermeasure: val } : r));
                             }}
                           />
                         </td>
