@@ -119,6 +119,8 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
   const [printing1, setPrinting1] = useState(false);
   const [printing2, setPrinting2] = useState(false);
   const [printingCash, setPrintingCash] = useState(false);
+  const [printingRepeater, setPrintingRepeater] = useState(false);
+  const [printingCashRepeater, setPrintingCashRepeater] = useState(false);
 
   function getTodayStr(): string {
     const d = new Date();
@@ -177,6 +179,60 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
         });
       }).catch(() => { setPrintingCash(false); });
     }).catch(() => { setPrintingCash(false); });
+  };
+
+  // 内覧準備資料（リピーター）印刷
+  const handlePrintRepeater = () => {
+    if (!buyer || !linkedProperties || linkedProperties.length === 0) return;
+    setPrintingRepeater(true);
+    import('../services/api').then(({ default: api }) => {
+      Promise.all(
+        linkedProperties.map((lp: Record<string, any>) =>
+          api.get(`/api/property-listings/${lp.property_number}`).then((r: any) => r.data)
+        )
+      ).then((propertyDetails) => {
+        import('../utils/printHtmlGenerators').then(({ generateAllPagesRepeaterHtml }) => {
+          const html = generateAllPagesRepeaterHtml(buyer, propertyDetails, getTodayStr());
+          const iframe = document.createElement('iframe');
+          iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+          document.body.appendChild(iframe);
+          const doc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (!doc) { setPrintingRepeater(false); document.body.removeChild(iframe); return; }
+          doc.open(); doc.write(html); doc.close();
+          const cleanup = () => { setTimeout(() => { try { document.body.removeChild(iframe); } catch (_) {} setPrintingRepeater(false); }, 1000); };
+          const doPrint = () => { try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch (_) {} cleanup(); };
+          if (iframe.contentDocument?.readyState === 'complete') { setTimeout(doPrint, 800); }
+          else { iframe.onload = () => setTimeout(doPrint, 800); setTimeout(doPrint, 2000); }
+        });
+      }).catch(() => { setPrintingRepeater(false); });
+    }).catch(() => { setPrintingRepeater(false); });
+  };
+
+  // 内覧準備資料（自己資金・リピーター）印刷
+  const handlePrintCashRepeater = () => {
+    if (!buyer || !linkedProperties || linkedProperties.length === 0) return;
+    setPrintingCashRepeater(true);
+    import('../services/api').then(({ default: api }) => {
+      Promise.all(
+        linkedProperties.map((lp: Record<string, any>) =>
+          api.get(`/api/property-listings/${lp.property_number}`).then((r: any) => r.data)
+        )
+      ).then((propertyDetails) => {
+        import('../utils/printHtmlGenerators').then(({ generateAllPagesCashRepeaterHtml }) => {
+          const html = generateAllPagesCashRepeaterHtml(buyer, propertyDetails, getTodayStr());
+          const iframe = document.createElement('iframe');
+          iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+          document.body.appendChild(iframe);
+          const doc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (!doc) { setPrintingCashRepeater(false); document.body.removeChild(iframe); return; }
+          doc.open(); doc.write(html); doc.close();
+          const cleanup = () => { setTimeout(() => { try { document.body.removeChild(iframe); } catch (_) {} setPrintingCashRepeater(false); }, 1000); };
+          const doPrint = () => { try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch (_) {} cleanup(); };
+          if (iframe.contentDocument?.readyState === 'complete') { setTimeout(doPrint, 800); }
+          else { iframe.onload = () => setTimeout(doPrint, 800); setTimeout(doPrint, 2000); }
+        });
+      }).catch(() => { setPrintingCashRepeater(false); });
+    }).catch(() => { setPrintingCashRepeater(false); });
   };
 
   // 内覧準備資料２（カラー）印刷
@@ -281,6 +337,36 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
                       }}
                     >
                       {printingCash ? '印刷中...' : '自己資金'}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={printingRepeater ? <CircularProgress size={14} color="inherit" /> : <PrintIcon />}
+                      onClick={handlePrintRepeater}
+                      disabled={printingRepeater || !buyer || !linkedProperties || linkedProperties.length === 0}
+                      sx={{
+                        borderColor: '#ff9800',
+                        color: '#e65100',
+                        fontSize: '0.75rem',
+                        '&:hover': { borderColor: '#e65100', bgcolor: '#fff3e0' },
+                      }}
+                    >
+                      {printingRepeater ? '印刷中...' : 'リピーター'}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={printingCashRepeater ? <CircularProgress size={14} color="inherit" /> : <PrintIcon />}
+                      onClick={handlePrintCashRepeater}
+                      disabled={printingCashRepeater || !buyer || !linkedProperties || linkedProperties.length === 0}
+                      sx={{
+                        borderColor: '#9c27b0',
+                        color: '#6a1b9a',
+                        fontSize: '0.75rem',
+                        '&:hover': { borderColor: '#6a1b9a', bgcolor: '#f3e5f5' },
+                      }}
+                    >
+                      {printingCashRepeater ? '印刷中...' : '自己資金(リピーター)'}
                     </Button>
                   </Box>
                 ) : (
