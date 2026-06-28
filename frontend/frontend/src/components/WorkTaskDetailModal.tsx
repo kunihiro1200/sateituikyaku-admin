@@ -25,9 +25,13 @@ import {
   Select,
   MenuItem,
   Paper,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon, Check as CheckIcon, WarningAmber as WarningAmberIcon, Email as EmailIcon, Image as ImageIcon, EditNote as EditNoteIcon, OpenInNew } from '@mui/icons-material';
 import Popover from '@mui/material/Popover';
 import Tooltip from '@mui/material/Tooltip';
@@ -1376,17 +1380,18 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       return;
     }
 
-    // サイト登録確認OK送信に値がある場合、配信日・公開予定日を必須チェック
+    // サイト登録確認OK送信に値がある場合、確認後処理の全項目を必須チェック
     if (!isEmpty(getValue('site_registration_ok_sent'))) {
-      const distributionDate = getValue('distribution_date');
-      const publishScheduledDate2 = getValue('publish_scheduled_date');
       const missingFields: string[] = [];
-      if (isEmpty(distributionDate)) missingFields.push('配信日');
-      if (isEmpty(publishScheduledDate2)) missingFields.push('公開予定日');
+      if (isEmpty(getValue('distribution_date'))) missingFields.push('配信日');
+      if (isEmpty(getValue('property_file'))) missingFields.push('物件ファイル');
+      if (isEmpty(getValue('publish_scheduled_date'))) missingFields.push('公開予定日');
+      if (isEmpty(getValue('pre_distribution_check'))) missingFields.push('メール配信');
+      if (isEmpty(getValue('site_registration_deadline'))) missingFields.push('サイト登録締め日');
       if (missingFields.length > 0) {
         setValidationWarningDialog({
           open: true,
-          title: '「サイト登録確認OK送信」に値が入っているため、以下の項目は必須です',
+          title: '「サイト登録確認OK送信」に値が入っているため、確認後処理の全項目は必須です',
           emptyFields: missingFields,
           onConfirmAction: 'distribution_date_required',
         });
@@ -3340,19 +3345,19 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <Box sx={{ bgcolor: '#fafafa', borderRadius: 1, p: 1, mb: 1 }}>
         <SectionHeader label="【確認後処理】" />
         <Box ref={distributionDateRef}>
-          <EditableField label="配信日" field="distribution_date" type="date" />
+          <EditableField label={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('distribution_date')) ? '配信日*（必須）' : '配信日'} field="distribution_date" type="date" labelColor={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('distribution_date')) ? 'error' : undefined} />
         </Box>
         <Box ref={propertyFileRef}>
-          <EditableButtonSelect label="物件ファイル" field="property_file" options={['担当に渡し済み', '未']} />
+          <EditableButtonSelect label={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('property_file')) ? '物件ファイル*（必須）' : '物件ファイル'} field="property_file" options={['担当に渡し済み', '未']} labelColor={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('property_file')) ? 'error' : undefined} />
         </Box>
-        <EditableField label="公開予定日" field="publish_scheduled_date" type="date" />
+        <EditableField label={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('publish_scheduled_date')) ? '公開予定日*（必須）' : '公開予定日'} field="publish_scheduled_date" type="date" labelColor={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('publish_scheduled_date')) ? 'error' : undefined} />
         <ReadOnlyDisplayField
           label="メール配信"
           value={getValue('email_distribution') || null}
           labelColor="error"
         />
-        <EditableField label="メール配信" field="pre_distribution_check" />
-        <EditableField label="サイト登録締め日v" field="site_registration_deadline" type="date" />
+        <EditableField label={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('pre_distribution_check')) ? 'メール配信*（必須）' : 'メール配信'} field="pre_distribution_check" labelColor={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('pre_distribution_check')) ? 'error' : undefined} />
+        <EditableField label={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('site_registration_deadline')) ? 'サイト登録締め日v*（必須）' : 'サイト登録締め日v'} field="site_registration_deadline" type="date" labelColor={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('site_registration_deadline')) ? 'error' : undefined} />
         </Box>
       </Box>
     </Box>
