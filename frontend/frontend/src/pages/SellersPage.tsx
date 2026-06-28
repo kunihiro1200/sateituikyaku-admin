@@ -1382,7 +1382,7 @@ export default function SellersPage() {
                     <TableCell>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
                         <Typography variant="body2">{seller.name}</Typography>
-                        {formatExclusionAction(seller.exclusionAction) && (
+                        {formatExclusionAction(seller.exclusionAction) && !(seller.status || '').includes('除外後追客中') && (
                           <Chip
                             label={formatExclusionAction(seller.exclusionAction)}
                             size="small"
