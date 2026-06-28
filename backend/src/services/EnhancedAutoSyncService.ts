@@ -8,7 +8,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { GoogleSheetsClient } from './GoogleSheetsClient';
 import { ColumnMapper } from './ColumnMapper';
 import { PropertySyncHandler } from './PropertySyncHandler';
-import { encrypt } from '../utils/encryption';
+import { encrypt, decrypt } from '../utils/encryption';
 import { ExclusionDateCalculator } from './ExclusionDateCalculator';
 import * as crypto from 'crypto';
 import {
@@ -1309,8 +1309,8 @@ export class EnhancedAutoSyncService {
     if (propertyType) {
       const typeStr = String(propertyType).trim();
       const typeMapping: Record<string, string> = {
-        '土': '土地', '戸': '戸建て', 'マ': 'マンション', '事': '事業用',
-        '土地': '土地', '戸建': '戸建て', '戸建て': '戸建て', 'マンション': 'マンション', '事業用': '事業用',
+        '土': '土地', '戸': '戸建て', 'マ': 'マンション', '事': '事業用', '収': '収益',
+        '土地': '土地', '戸建': '戸建て', '戸建て': '戸建て', 'マンション': 'マンション', '事業用': '事業用', '収益': '収益',
       };
       propertyType = typeMapping[typeStr] || 'その他';
     }
@@ -1614,8 +1614,8 @@ export class EnhancedAutoSyncService {
       if (propertyType) {
         const typeStr = String(propertyType).trim();
         const typeMapping: Record<string, string> = {
-          '土': '土地', '戸': '戸建て', 'マ': 'マンション', '事': '事業用',
-          '土地': '土地', '戸建': '戸建て', '戸建て': '戸建て', 'マンション': 'マンション', '事業用': '事業用',
+          '土': '土地', '戸': '戸建て', 'マ': 'マンション', '事': '事業用', '収': '収益',
+          '土地': '土地', '戸建': '戸建て', '戸建て': '戸建て', 'マンション': 'マンション', '事業用': '事業用', '収益': '収益',
         };
         propertyType = typeMapping[typeStr] || 'その他';
       }
@@ -1663,8 +1663,8 @@ export class EnhancedAutoSyncService {
     if (propertyType) {
       const typeStr = String(propertyType).trim();
       const typeMapping: Record<string, string> = {
-        '土': '土地', '戸': '戸建て', 'マ': 'マンション', '事': '事業用',
-        '土地': '土地', '戸建': '戸建て', '戸建て': '戸建て', 'マンション': 'マンション', '事業用': '事業用',
+        '土': '土地', '戸': '戸建て', 'マ': 'マンション', '事': '事業用', '収': '収益',
+        '土地': '土地', '戸建': '戸建て', '戸建て': '戸建て', 'マンション': 'マンション', '事業用': '事業用', '収益': '収益',
       };
       propertyType = typeMapping[typeStr] || 'その他';
     }
@@ -1959,6 +1959,35 @@ export class EnhancedAutoSyncService {
       }
     }
 
+    // 🛡️ 重複防止チェック2: 電話番号が空の場合、名前＋反響日付で重複チェック
+    // （メール転記時に電話番号なしで同じ人が複数行入力されるケースに対応）
+    if (!phoneHashForDupCheck && mappedData.name && inquiryDateForDupCheck) {
+      const { data: nameDuplicates } = await this.supabase
+        .from('sellers')
+        .select('seller_number, inquiry_date, name')
+        .is('deleted_at', null)
+        .is('phone_number_hash', null)
+        .eq('inquiry_date', inquiryDateForDupCheck)
+        .neq('seller_number', sellerNumber)
+        .limit(20);
+
+      if (nameDuplicates && nameDuplicates.length > 0) {
+        // 既存レコードの名前を復号して、今回の名前と一致するかチェック
+        for (const dup of nameDuplicates) {
+          if (!dup.name) continue;
+          try {
+            const existingName = decrypt(dup.name);
+            if (existingName === mappedData.name) {
+              console.log(`⚠️ ${sellerNumber}: 重複スキップ（同一名前+反響日付が ${dup.seller_number} に既存, name: "${mappedData.name}", inquiry_date: ${inquiryDateForDupCheck}）`);
+              return;
+            }
+          } catch (e) {
+            // 復号失敗はスキップ
+          }
+        }
+      }
+    }
+
     // UPSERT: 既存データがあれば更新、なければ挿入
     const { data: newSeller, error: upsertError } = await this.supabase
       .from('sellers')
@@ -2010,6 +2039,7 @@ export class EnhancedAutoSyncService {
         '戸': '戸建て',
         'マ': 'マンション',
         '事': '事業用',
+        '収': '収益',
       };
       propertyType = typeMapping[typeStr] || 'その他';
     } else {
