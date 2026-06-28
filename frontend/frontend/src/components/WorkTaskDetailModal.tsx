@@ -3182,50 +3182,57 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
         {/* サイト登録修正内容まとめ（【★サイト登録確認】の下に表示） */}
         {siteRegistrationRevisionHistory.length > 0 && (
-          <Box sx={{ mt: 1, mb: 1, p: 1.5, bgcolor: '#fce4ec', border: '2px solid #e91e63', borderRadius: 1 }}>
-            <Typography variant="body2" sx={{ fontWeight: 700, color: '#880e4f', mb: 1 }}>
-              ⚠️ サイト登録修正内容まとめ
-            </Typography>
-            <Box sx={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f8bbd0' }}>
-                    <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
-                    <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>営業担当</th>
-                    <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>サイト登録確認者</th>
-                    <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>サイト登録依頼者</th>
-                    <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', width: '35%' }}>修正内容</th>
-                    <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', width: '25%' }}>対策案</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {siteRegistrationRevisionHistory.map((item, idx) => (
-                    <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fce4ec' : '#fce4ec' }}>
-                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>
-                        {item.property_number
-                          ? <span onClick={() => onNavigate?.(item.property_number, 1)} style={{ color: '#1565c0', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>{item.property_number}</span>
-                          : '-'}
-                      </td>
-                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.sales_assignee || '-'}</td>
-                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_confirmer || '-'}</td>
-                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
-                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: 'inherit', fontWeight: 'normal' }}><span dangerouslySetInnerHTML={{ __html: item.site_registration_revision_content }} /></td>
-                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', width: '25%', color: 'inherit', fontWeight: 'normal' }}>
-                        <CountermeasureCell
-                          propertyNumber={item.property_number}
-                          field="site_registration_revision_countermeasure"
-                          value={item.site_registration_revision_countermeasure || ''}
-                          onSaved={(val) => {
-                            setSiteRegistrationRevisionHistory(prev => prev.map((r, i) => i === idx ? { ...r, site_registration_revision_countermeasure: val } : r));
-                          }}
-                        />
-                      </td>
+          <Accordion
+            defaultExpanded={false}
+            sx={{ mt: 1, mb: 1, bgcolor: '#fce4ec', border: '2px solid #e91e63', borderRadius: '4px !important', '&:before': { display: 'none' } }}
+          >
+            <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: '#880e4f' }} />} sx={{ minHeight: 36, '& .MuiAccordionSummary-content': { margin: '4px 0' } }}>
+              <Typography variant="body2" sx={{ fontWeight: 700, color: '#880e4f' }}>
+                ⚠️ サイト登録修正内容まとめ
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ p: 1.5, pt: 0 }}>
+              <Box sx={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f8bbd0' }}>
+                      <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
+                      <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>営業担当</th>
+                      <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>サイト登録確認者</th>
+                      <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>サイト登録依頼者</th>
+                      <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', width: '35%' }}>修正内容</th>
+                      <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', width: '25%' }}>対策案</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Box>
-          </Box>
+                  </thead>
+                  <tbody>
+                    {siteRegistrationRevisionHistory.map((item, idx) => (
+                      <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fce4ec' : '#fce4ec' }}>
+                        <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>
+                          {item.property_number
+                            ? <span onClick={() => onNavigate?.(item.property_number, 1)} style={{ color: '#1565c0', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>{item.property_number}</span>
+                            : '-'}
+                        </td>
+                        <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.sales_assignee || '-'}</td>
+                        <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_confirmer || '-'}</td>
+                        <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
+                        <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: 'inherit', fontWeight: 'normal' }}><span dangerouslySetInnerHTML={{ __html: item.site_registration_revision_content }} /></td>
+                        <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', width: '25%', color: 'inherit', fontWeight: 'normal' }}>
+                          <CountermeasureCell
+                            propertyNumber={item.property_number}
+                            field="site_registration_revision_countermeasure"
+                            value={item.site_registration_revision_countermeasure || ''}
+                            onSaved={(val) => {
+                              setSiteRegistrationRevisionHistory(prev => prev.map((r, i) => i === idx ? { ...r, site_registration_revision_countermeasure: val } : r));
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Box>
+            </AccordionDetails>
+          </Accordion>
         )}
 
         <Box sx={{ bgcolor: '#fff3e0', borderRadius: 1, p: 1, mb: 1 }}>
@@ -3296,50 +3303,57 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
         {/* 間取図修正内容まとめ（【★図面確認】の下に表示） */}
         {floorPlanRevisionCorrectionHistory.length > 0 && (
-          <Box sx={{ mt: 1, mb: 1, p: 1.5, bgcolor: '#e8f5e9', border: '2px solid #4caf50', borderRadius: 1 }}>
-            <Typography variant="body2" sx={{ fontWeight: 700, color: '#1b5e20', mb: 1 }}>
-              ⚠️ 間取図修正内容まとめ（当社ミス）
-            </Typography>
-            <Box sx={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#c8e6c9' }}>
-                    <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
-                    <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>営業担当</th>
-                    <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>間取図確認者</th>
-                    <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>サイト登録依頼者</th>
-                    <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', width: '35%' }}>修正内容</th>
-                    <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', width: '25%' }}>対策案</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {floorPlanRevisionCorrectionHistory.map((item, idx) => (
-                    <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#f1f8e9' : '#e8f5e9' }}>
-                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>
-                        {item.property_number
-                          ? <span onClick={() => onNavigate?.(item.property_number, 1)} style={{ color: '#1565c0', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>{item.property_number}</span>
-                          : '-'}
-                      </td>
-                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.sales_assignee || '-'}</td>
-                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.floor_plan_confirmer || '-'}</td>
-                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
-                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: 'inherit', fontWeight: 'normal' }}><span dangerouslySetInnerHTML={{ __html: item.floor_plan_revision_correction_content }} /></td>
-                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', width: '25%', color: 'inherit', fontWeight: 'normal' }}>
-                        <CountermeasureCell
-                          propertyNumber={item.property_number}
-                          field="floor_plan_revision_countermeasure"
-                          value={item.floor_plan_revision_countermeasure || ''}
-                          onSaved={(val) => {
-                            setFloorPlanRevisionCorrectionHistory(prev => prev.map((r, i) => i === idx ? { ...r, floor_plan_revision_countermeasure: val } : r));
-                          }}
-                        />
-                      </td>
+          <Accordion
+            defaultExpanded={false}
+            sx={{ mt: 1, mb: 1, bgcolor: '#e8f5e9', border: '2px solid #4caf50', borderRadius: '4px !important', '&:before': { display: 'none' } }}
+          >
+            <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: '#1b5e20' }} />} sx={{ minHeight: 36, '& .MuiAccordionSummary-content': { margin: '4px 0' } }}>
+              <Typography variant="body2" sx={{ fontWeight: 700, color: '#1b5e20' }}>
+                ⚠️ 間取図修正内容まとめ（当社ミス）
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ p: 1.5, pt: 0 }}>
+              <Box sx={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#c8e6c9' }}>
+                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
+                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>営業担当</th>
+                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>間取図確認者</th>
+                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>サイト登録依頼者</th>
+                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', width: '35%' }}>修正内容</th>
+                      <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', width: '25%' }}>対策案</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Box>
-          </Box>
+                  </thead>
+                  <tbody>
+                    {floorPlanRevisionCorrectionHistory.map((item, idx) => (
+                      <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#f1f8e9' : '#e8f5e9' }}>
+                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>
+                          {item.property_number
+                            ? <span onClick={() => onNavigate?.(item.property_number, 1)} style={{ color: '#1565c0', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>{item.property_number}</span>
+                            : '-'}
+                        </td>
+                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.sales_assignee || '-'}</td>
+                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.floor_plan_confirmer || '-'}</td>
+                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
+                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: 'inherit', fontWeight: 'normal' }}><span dangerouslySetInnerHTML={{ __html: item.floor_plan_revision_correction_content }} /></td>
+                        <td style={{ border: '1px solid #81c784', padding: '4px 8px', width: '25%', color: 'inherit', fontWeight: 'normal' }}>
+                          <CountermeasureCell
+                            propertyNumber={item.property_number}
+                            field="floor_plan_revision_countermeasure"
+                            value={item.floor_plan_revision_countermeasure || ''}
+                            onSaved={(val) => {
+                              setFloorPlanRevisionCorrectionHistory(prev => prev.map((r, i) => i === idx ? { ...r, floor_plan_revision_countermeasure: val } : r));
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Box>
+            </AccordionDetails>
+          </Accordion>
         )}
 
         <Box sx={{ bgcolor: '#fafafa', borderRadius: 1, p: 1, mb: 1 }}>
