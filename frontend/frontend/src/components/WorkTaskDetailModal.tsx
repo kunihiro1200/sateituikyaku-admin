@@ -2925,6 +2925,114 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     const isSiteDueDateRequired = !!(getValue('cw_request_email_site'));
     const siteDueDateLabel = `サイト登録納期予定日${isSiteDueDateRequired ? '*（必須）' : '*'}`;
 
+    // 浅沼様の日付別依頼件数制限チェック
+    const [siteDueDateCounts, setSiteDueDateCounts] = useState<Record<string, number>>({});
+    const [dueDateLimitWarning, setDueDateLimitWarning] = useState<string>('');
+
+    useEffect(() => {
+      const fetchDueDateCounts = async () => {
+        try {
+          const currentPropertyNumber = getValue('property_number') || '';
+          const res = await api.get(`/api/work-tasks/site-due-date-counts?exclude=${currentPropertyNumber}`);
+          if (res.data?.dateCounts) {
+            setSiteDueDateCounts(res.data.dateCounts);
+          }
+        } catch {
+          // エラー時は空のまま（制限チェックなし）
+        }
+      };
+      fetchDueDateCounts();
+    }, []);
+
+    // 日本の祝日判定（簡易版: 内閣府の祝日法に基づく固定祝日 + 振替休日）
+    const isJapaneseHoliday = (date: Date): boolean => {
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+
+      // 固定祝日
+      const fixedHolidays: [number, number][] = [
+        [1, 1],   // 元日
+        [2, 11],  // 建国記念の日
+        [2, 23],  // 天皇誕生日
+        [4, 29],  // 昭和の日
+        [5, 3],   // 憲法記念日
+        [5, 4],   // みどりの日
+        [5, 5],   // こどもの日
+        [8, 11],  // 山の日
+        [11, 3],  // 文化の日
+        [11, 23], // 勤労感謝の日
+      ];
+      if (fixedHolidays.some(([m, d]) => month === m && day === d)) return true;
+
+      // ハッピーマンデー
+      const getMonday = (y: number, m: number, n: number): number => {
+        const first = new Date(y, m - 1, 1);
+        const firstMonday = first.getDay() <= 1 ? (1 + (1 - first.getDay() + 7) % 7) : (1 + (8 - first.getDay()));
+        return firstMonday + (n - 1) * 7;
+      };
+      if (month === 1 && day === getMonday(year, 1, 2)) return true;  // 成人の日
+      if (month === 7 && day === getMonday(year, 7, 3)) return true;  // 海の日
+      if (month === 9 && day === getMonday(year, 9, 3)) return true;  // 敬老の日
+      if (month === 10 && day === getMonday(year, 10, 2)) return true; // スポーツの日
+
+      // 春分の日・秋分の日（概算）
+      if (month === 3) {
+        const vernal = Math.floor(20.8431 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+        if (day === vernal) return true;
+      }
+      if (month === 9) {
+        const autumnal = Math.floor(23.2488 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+        if (day === autumnal) return true;
+      }
+
+      return false;
+    };
+
+    // 土日祝日かどうかの判定
+    const isWeekendOrHoliday = (date: Date): boolean => {
+      const dow = date.getDay();
+      if (dow === 0 || dow === 6) return true; // 土日
+      return isJapaneseHoliday(date);
+    };
+
+    // 日付変更時の上限チェック
+    const checkDueDateLimit = (dateStr: string | null): string => {
+      if (!dateStr) return '';
+      const cwPerson = getValue('cw_person') || '';
+      // 浅沼様の場合のみチェック（山崎を含まない場合＝浅沼様）
+      if (cwPerson.includes('山崎')) return '';
+
+      const dateOnly = dateStr.split('T')[0];
+      const currentCount = siteDueDateCounts[dateOnly] || 0;
+      const targetDate = new Date(dateOnly + 'T00:00:00');
+      const isHolidayOrWeekend = isWeekendOrHoliday(targetDate);
+      const limit = isHolidayOrWeekend ? 3 : 2;
+
+      if (currentCount >= limit) {
+        const dayType = isHolidayOrWeekend ? '土日祝' : '平日';
+        return `⚠️ この日（${dateOnly}）は浅沼様の依頼が既に${currentCount}件あります。${dayType}の上限は${limit}件です。別の日を選択してください。`;
+      }
+      return '';
+    };
+
+    // サイト登録納期予定日の変更ハンドラ（上限チェック付き）
+    const handleDueDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const localValue = e.target.value || null;
+      const warning = checkDueDateLimit(localValue);
+      setDueDateLimitWarning(warning);
+      if (!warning) {
+        handleFieldChange('site_registration_due_date', convertDatetimeLocalToUTC(localValue));
+      }
+    };
+
+    // CWの方が変更された時にも現在の日付で再チェック
+    useEffect(() => {
+      const currentDueDate = formatDateTimeForInput(getValue('site_registration_due_date')) || getDefaultDueDatetime();
+      const warning = checkDueDateLimit(currentDueDate);
+      setDueDateLimitWarning(warning);
+    }, [getValue('cw_person'), siteDueDateCounts]);
+
     return (
     <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 0, flex: isMobile ? 'none' : 1, minHeight: 0, overflow: isMobile ? 'visible' : 'hidden' }}>
       {/* 左側：登録関係 */}
@@ -3008,10 +3116,16 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               size="small"
               type="datetime-local"
               value={formatDateTimeForInput(getValue('site_registration_due_date')) || getDefaultDueDatetime()}
-              onChange={(e) => handleFieldChange('site_registration_due_date', convertDatetimeLocalToUTC(e.target.value || null))}
+              onChange={handleDueDateChange}
               fullWidth
               InputLabelProps={{ shrink: true }}
+              error={!!dueDateLimitWarning}
             />
+            {dueDateLimitWarning && (
+              <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block', fontWeight: 700 }}>
+                {dueDateLimitWarning}
+              </Typography>
+            )}
           </Grid>
         </Grid>
 

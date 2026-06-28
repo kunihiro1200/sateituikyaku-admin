@@ -98,6 +98,59 @@ router.get('/floor-plan-revision-corrections', async (req: Request, res: Respons
 });
 
 /**
+ * GET /api/work-tasks/site-due-date-counts
+ * 浅沼様のサイト登録納期予定日の日付別件数を取得
+ * CWの方が浅沼様の依頼で、サイト登録確認が「完了」でないものの日付別カウント
+ */
+router.get('/site-due-date-counts', async (req: Request, res: Response) => {
+  try {
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    const exclude = req.query.exclude as string | undefined;
+
+    // 浅沼様が担当で、サイト登録が完了していない（未納品）タスクの納期予定日を取得
+    let query = supabase
+      .from('work_tasks')
+      .select('property_number, site_registration_due_date, cw_person')
+      .not('site_registration_due_date', 'is', null)
+      .neq('site_registration_confirmed', '完了')
+      .not('cw_person', 'is', null);
+
+    const { data: rows, error } = await query;
+
+    if (error) {
+      console.error('サイト納期カウント取得エラー:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    // 浅沼様のみフィルタリング（山崎を含まないもの = 浅沼様）
+    const asanumaRows = (rows || []).filter((row: any) => {
+      if (!row.cw_person) return false;
+      if (row.cw_person.includes('山崎')) return false;
+      // exclude指定がある場合はその物件番号を除外
+      if (exclude && row.property_number === exclude) return false;
+      return true;
+    });
+
+    // 日付別にカウント（YYYY-MM-DD形式でグループ化）
+    const dateCounts: Record<string, number> = {};
+    asanumaRows.forEach((row: any) => {
+      if (!row.site_registration_due_date) return;
+      const dateStr = row.site_registration_due_date.split('T')[0];
+      dateCounts[dateStr] = (dateCounts[dateStr] || 0) + 1;
+    });
+
+    return res.json({ dateCounts });
+  } catch (error: any) {
+    console.error('サイト納期カウント取得エラー:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/work-tasks/:propertyNumber
  * 物件番号で業務依頼データを取得
  */
