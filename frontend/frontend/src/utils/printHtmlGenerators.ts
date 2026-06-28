@@ -416,8 +416,8 @@ export function generatePage4Html(propertyAddress: string, propertyPrice: number
     if(r===0)return Math.round(principal/n);
     return Math.round(principal*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1));
   }
-  const m_hendo = monthly(borrowing,0.95,35);
-  const m_flat = monthly(borrowing,1.30,35);
+  const m_hendo = monthly(borrowing,1.30,35);
+  const m_flat = monthly(borrowing,3.21,35);
   const f = (n:number)=>n.toLocaleString('ja-JP');
   const thG = 'background:#d9d9d9;font-weight:bold;';
   const thF = 'background:#f2f2f2;font-weight:bold;';
@@ -451,14 +451,14 @@ export function generatePage4Html(propertyAddress: string, propertyPrice: number
       <tr style="${thF}">
         ${['借入先','借入期間（年）','借入金額','金利','月額返済額','ボーナス返済（2回）'].map(h=>`<th style="${td};text-align:center;font-size:8pt;">${h}</th>`).join('')}
       </tr>
-      ${loanRow('大分銀行',0.95,m_hendo)}
+      ${loanRow('大分銀行',1.30,m_hendo)}
     </table>
     <div style="font-size:9pt;font-weight:bold;margin-bottom:4px;">【住宅ローン】★フラット35（固定金利）</div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
       <tr style="${thF}">
         ${['借入先','借入期間（年）','借入金額','金利','月額返済額','ボーナス返済（2回）'].map(h=>`<th style="${td};text-align:center;font-size:8pt;">${h}</th>`).join('')}
       </tr>
-      ${loanRow('ARUHI',1.30,m_flat)}
+      ${loanRow('ARUHI',3.21,m_flat)}
     </table>
     <table style="width:100%;border-collapse:collapse;flex:1;">
       <tr>
@@ -511,8 +511,8 @@ export function generatePage4RepeaterHtml(propertyAddress: string, propertyPrice
     if(r===0)return Math.round(principal/n);
     return Math.round(principal*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1));
   }
-  const m_hendo = monthly(borrowing,0.95,35);
-  const m_flat = monthly(borrowing,1.30,35);
+  const m_hendo = monthly(borrowing,1.30,35);
+  const m_flat = monthly(borrowing,3.21,35);
   const f = (n:number)=>n.toLocaleString('ja-JP');
   const thG = 'background:#d9d9d9;font-weight:bold;';
   const thF = 'background:#f2f2f2;font-weight:bold;';
@@ -546,14 +546,14 @@ export function generatePage4RepeaterHtml(propertyAddress: string, propertyPrice
       <tr style="${thF}">
         ${['借入先','借入期間（年）','借入金額','金利','月額返済額','ボーナス返済（2回）'].map(h=>`<th style="${td};text-align:center;font-size:8pt;">${h}</th>`).join('')}
       </tr>
-      ${loanRow('大分銀行',0.95,m_hendo)}
+      ${loanRow('大分銀行',1.30,m_hendo)}
     </table>
     <div style="font-size:9pt;font-weight:bold;margin-bottom:4px;">【住宅ローン】★フラット35（固定金利）</div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
       <tr style="${thF}">
         ${['借入先','借入期間（年）','借入金額','金利','月額返済額','ボーナス返済（2回）'].map(h=>`<th style="${td};text-align:center;font-size:8pt;">${h}</th>`).join('')}
       </tr>
-      ${loanRow('ARUHI',1.30,m_flat)}
+      ${loanRow('ARUHI',3.21,m_flat)}
     </table>
     <table style="width:100%;border-collapse:collapse;flex:1;">
       <tr>
