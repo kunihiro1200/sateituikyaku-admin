@@ -133,8 +133,16 @@ const ImageSelectorModal = ({
   const [sizeError, setSizeError] = useState<string | null>(null);
   // モーダルが開いたときにGoogle Driveのルートフォルダを読み込む
   useEffect(() => {
-    if (open && activeTab === 'drive') {
-      loadDriveFolder(DEFAULT_ROOT_FOLDER_ID);
+    if (open) {
+      if (activeTab === 'drive') {
+        loadDriveFolder(DEFAULT_ROOT_FOLDER_ID);
+      }
+      // モーダルを開くたびに選択画像・エラー・URL入力をリセット
+      // initialSelected が渡された場合はその値を初期値とする
+      setSelectedImages(initialSelected ? [...initialSelected] : []);
+      setSizeError(null);
+      setUrlInput('');
+      setUrlError(null);
     }
     // タブ切り替え時に検索クエリをリセット
     setSearchQuery('');
