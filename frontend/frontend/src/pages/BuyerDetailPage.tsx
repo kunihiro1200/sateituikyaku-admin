@@ -53,7 +53,7 @@ import RelatedBuyerNotificationBadge from '../components/RelatedBuyerNotificatio
 import { ConfirmationToAssignee } from '../components/ConfirmationToAssignee';
 import BuyerGmailSendButton from '../components/BuyerGmailSendButton';
 import { ViewingPreparationButton } from '../components/ViewingPreparationButton';
-import { ViewingPreparationPrintButton, ViewingPreparation2PrintButton } from '../components/ViewingPreparationPrintButton';
+
 import { SmsDropdownButton } from '../components/SmsDropdownButton';
 import PageNavigation from '../components/PageNavigation';
 import { InlineEditableField } from '../components/InlineEditableField';
@@ -2199,20 +2199,7 @@ TEL：097-533-2022`;
                   <LaunchIcon sx={{ fontSize: 12 }} />
                 </Link>
               ))}
-              {/* 内覧準備資料印刷ボタン */}
-              {linkedProperties.length > 0 && buyer && (
-                <ViewingPreparationPrintButton
-                  buyer={buyer}
-                  linkedProperties={linkedProperties}
-                />
-              )}
-              {/* 内覧準備資料２印刷ボタン */}
-              {buyer && (
-                <ViewingPreparation2PrintButton
-                  buyer={buyer}
-                  linkedProperties={linkedProperties}
-                />
-              )}
+
             </Box>
             {linkedProperties.length > 0 ? (
               linkedProperties.map((property) => (
