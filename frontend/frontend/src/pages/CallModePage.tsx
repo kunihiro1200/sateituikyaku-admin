@@ -3775,6 +3775,27 @@ HP：https://ifoo-oita.com/
     
     // 競合名
     result = result.replace(/<<競合名>>/g, seller.competitorName || '');
+
+    // 種別
+    const _rawPropertyType = String(property?.propertyType || seller.propertyType || '');
+    const _propertyTypeLabel = _rawPropertyType ? getPropertyTypeLabel(_rawPropertyType) : '';
+    result = result.replace(/<<種別>>/g, _propertyTypeLabel);
+
+    // 築年
+    const _buildYear = property?.buildYear || seller.buildYear;
+    const _buildYearStr = _buildYear && _buildYear > 0 ? String(_buildYear) : '';
+    result = result.replace(/<<築年>>/g, _buildYearStr);
+
+    // 電話番号
+    result = result.replace(/<<電話番号>>/g, seller.phoneNumber || '');
+
+    // メールアドレス
+    result = result.replace(/<<メールアドレス>>/g, seller.email || '');
+
+    // 状況（売主）
+    const _currentStatus = property?.currentStatus || seller.currentStatus || '';
+    const _currentStatusLabel = _currentStatus ? formatCurrentStatusDetailed(_currentStatus) : '';
+    result = result.replace(/<<状況（売主）>>/g, _currentStatusLabel);
     
     // お客様紹介文言（条件付きロジック）
     let customerIntroText = '';
@@ -3817,7 +3838,21 @@ HP：https://ifoo-oita.com/
       const replacedContent = replaceEmailPlaceholders(sheetTemplate.body, currentEmployees);
       const htmlContent = replacedContent.replace(/\n/g, '<br>');
 
-      setEditableEmailRecipient(seller?.email || '');
+      // 相続登記テンプレートの送信先判定
+      // 売主番号に「FI」が含まれる場合 → 大内田司法書士（s.takagi@ninus.ocn.ne.jp）
+      // それ以外 → 売主のメールアドレス
+      const isInheritanceRegistrationTemplate = sheetTemplate.name.includes('相続登記');
+      const hasFI = (seller?.sellerNumber || '').toUpperCase().includes('FI');
+      let recipientEmail = seller?.email || '';
+      if (isInheritanceRegistrationTemplate) {
+        if (hasFI) {
+          recipientEmail = 's.takagi@ninus.ocn.ne.jp';
+        } else {
+          recipientEmail = 'naruse@riseacross.com';
+        }
+      }
+
+      setEditableEmailRecipient(recipientEmail);
       setEditableEmailSubject(replacedSubject);
       setEditableEmailBody(htmlContent);
       // テンプレート選択時に選択画像をリセット（前回の添付が残らないようにする）
