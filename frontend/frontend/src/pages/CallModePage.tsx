@@ -3838,17 +3838,20 @@ HP：https://ifoo-oita.com/
       const replacedContent = replaceEmailPlaceholders(sheetTemplate.body, currentEmployees);
       const htmlContent = replacedContent.replace(/\n/g, '<br>');
 
-      // 相続登記テンプレートの送信先判定
+      // 相続登記テンプレートの送信先・ラベル判定
       // 売主番号に「FI」が含まれる場合 → 大内田司法書士（s.takagi@ninus.ocn.ne.jp）
-      // それ以外 → 売主のメールアドレス
+      // それ以外 → ライズアクロス（naruse@riseacross.com）
       const isInheritanceRegistrationTemplate = sheetTemplate.name.includes('相続登記');
       const hasFI = (seller?.sellerNumber || '').toUpperCase().includes('FI');
       let recipientEmail = seller?.email || '';
+      let templateLabel = sheetTemplate.name;
       if (isInheritanceRegistrationTemplate) {
         if (hasFI) {
           recipientEmail = 's.takagi@ninus.ocn.ne.jp';
+          templateLabel = '相続登記（大内田司法書士様へご案内）';
         } else {
           recipientEmail = 'naruse@riseacross.com';
+          templateLabel = '相続登記（ライズアクロス様へご案内）';
         }
       }
 
@@ -3863,7 +3866,7 @@ HP：https://ifoo-oita.com/
         type: 'email',
         template: {
           id: sheetTemplate.id,
-          label: sheetTemplate.name,
+          label: templateLabel,
           subject: replacedSubject,
           content: replacedContent,
         },
