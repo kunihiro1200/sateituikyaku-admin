@@ -1304,6 +1304,7 @@ export default function SellersPage() {
                 <TableCell sx={{ width: 200 }}>物件所在地</TableCell>
                 <TableCell sx={{ width: 60 }}>種別</TableCell>
                 <TableCell sx={{ width: 90 }}>査定額</TableCell>
+                <TableCell sx={{ width: 40 }}>サイト</TableCell>
                 <TableCell sx={{ width: 60 }}>営担</TableCell>
                 <TableCell sx={{ width: 90, cursor: 'pointer' }}>
                   <TableSortLabel
@@ -1329,13 +1330,13 @@ export default function SellersPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={13} align="center">
+                  <TableCell colSpan={14} align="center">
                     読み込み中...
                   </TableCell>
                 </TableRow>
               ) : filteredSellers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={13} align="center">
+                  <TableCell colSpan={14} align="center">
                     売主が見つかりませんでした
                   </TableCell>
                 </TableRow>
@@ -1520,6 +1521,7 @@ export default function SellersPage() {
                         ? `${Math.round(seller.valuationAmount1 / 10000).toLocaleString()}万円`
                         : '-'}
                     </TableCell>
+                    <TableCell>{seller.site || seller.inquirySite || '-'}</TableCell>
                     <TableCell>{seller.visitAssigneeInitials || seller.visitAssignee || '-'}</TableCell>
                     <TableCell>
                       {seller.visitDate
