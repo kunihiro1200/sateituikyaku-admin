@@ -3329,12 +3329,17 @@ const CallModePage = () => {
 
     // 査定額3 = 補正済み最高価格 + 20万（10万丸め）
     const amount3 = Math.round((baseMax + 20) / 10) * 10;
-    // 査定額2 = 査定額3 - 200〜300万
+    // 査定額2 = 査定額3 - 200〜300万（最低10万を保証）
     const spread23 = Math.round(Math.max(200, Math.min(300, amount3 - weightedAvg)) / 10) * 10;
-    const amount2 = amount3 - spread23;
-    // 査定額1 = 査定額2 - 200〜300万
+    const amount2 = Math.max(10, amount3 - spread23);
+    // 査定額1 = 査定額2 - 200〜300万（最低10万を保証）
     const spread12 = Math.round(Math.max(200, Math.min(300, amount2 - weightedAvg * 0.92)) / 10) * 10;
-    const amount1 = amount2 - spread12;
+    const amount1 = Math.max(10, amount2 - spread12);
+
+    if (amount1 <= 0 || amount2 <= 0 || amount3 <= 0) {
+      setAiValuationError('売買事例の価格が低すぎるため、査定額を自動計算できません。手入力で査定額を設定してください。');
+      return;
+    }
 
     setAiValuation({ amount1, amount2, amount3, targetFloor, targetArea });
   };
