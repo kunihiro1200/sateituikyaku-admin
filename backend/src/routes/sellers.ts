@@ -1967,40 +1967,50 @@ router.put('/:id', async (req: Request, res: Response) => {
     // Validate valuation amounts if provided
     if (req.body.valuationAmount1 !== undefined && req.body.valuationAmount1 !== null) {
       const amount1 = Number(req.body.valuationAmount1);
-      if (isNaN(amount1) || amount1 <= 0) {
+      if (isNaN(amount1) || amount1 < 0) {
         return res.status(400).json({
           error: {
             code: 'INVALID_VALUATION_AMOUNT',
-            message: 'Valuation amount 1 must be a positive number',
+            message: 'Valuation amount 1 must be a non-negative number',
             retryable: false,
           },
         });
+      }
+      // 0の場合はnullとして扱う（物件情報不足で計算できなかったケース）
+      if (amount1 === 0) {
+        req.body.valuationAmount1 = null;
       }
     }
     
     if (req.body.valuationAmount2 !== undefined && req.body.valuationAmount2 !== null) {
       const amount2 = Number(req.body.valuationAmount2);
-      if (isNaN(amount2) || amount2 <= 0) {
+      if (isNaN(amount2) || amount2 < 0) {
         return res.status(400).json({
           error: {
             code: 'INVALID_VALUATION_AMOUNT',
-            message: 'Valuation amount 2 must be a positive number',
+            message: 'Valuation amount 2 must be a non-negative number',
             retryable: false,
           },
         });
+      }
+      if (amount2 === 0) {
+        req.body.valuationAmount2 = null;
       }
     }
     
     if (req.body.valuationAmount3 !== undefined && req.body.valuationAmount3 !== null) {
       const amount3 = Number(req.body.valuationAmount3);
-      if (isNaN(amount3) || amount3 <= 0) {
+      if (isNaN(amount3) || amount3 < 0) {
         return res.status(400).json({
           error: {
             code: 'INVALID_VALUATION_AMOUNT',
-            message: 'Valuation amount 3 must be a positive number',
+            message: 'Valuation amount 3 must be a non-negative number',
             retryable: false,
           },
         });
+      }
+      if (amount3 === 0) {
+        req.body.valuationAmount3 = null;
       }
     }
     

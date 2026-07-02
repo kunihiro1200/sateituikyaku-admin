@@ -68,11 +68,6 @@ export class ValuationCalculatorService extends BaseRepository {
       const roundedPrice = Math.floor(finalPriceInYen / 100000) * 100000;
       console.log('💰 Final price after rounding to 100,000 yen:', roundedPrice);
 
-      // 計算結果が0以下の場合はエラー（物件情報不足）
-      if (roundedPrice <= 0) {
-        throw new Error('土地面積または建物面積が未入力のため、査定額を自動計算できません。物件情報を入力するか、手入力で査定額を設定してください。');
-      }
-
       return roundedPrice;
     } catch (error) {
       console.error('Valuation calculation error:', error);
