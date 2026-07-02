@@ -3148,10 +3148,13 @@ const CallModePage = () => {
           fixedAssetTaxRoadPrice: parseFloat(roadPrice),
         });
         amount1 = response1.data.valuationAmount1;
+        if (!amount1 || amount1 <= 0) {
+          throw new Error('物件情報（土地面積・建物面積）が不足しているため査定額を計算できません。手入力で査定額を設定してください。');
+        }
         setEditedValuationAmount1(amount1.toString());
       } catch (err: any) {
         console.error('Failed to calculate valuation amount 1:', err);
-        throw new Error('査定額1の計算に失敗しました');
+        throw new Error(err.message || '査定額1の計算に失敗しました');
       }
       
       // 査定額2を計算（査定額1が失敗しても続行）
@@ -3201,7 +3204,7 @@ const CallModePage = () => {
       
     } catch (err: any) {
       console.error('Auto calculation failed:', err);
-      setError('査定額の計算に失敗しました: ' + (err.response?.data?.error?.message || err.message));
+      setAiValuationError('査定額の計算に失敗しました: ' + (err.response?.data?.error?.message || err.message));
     } finally {
       setAutoCalculating(false);
     }
@@ -6596,10 +6599,13 @@ HP：https://ifoo-oita.com/
                                 fixedAssetTaxRoadPrice: roadPriceValue,
                               });
                               amount1 = response1.data.valuationAmount1;
+                              if (!amount1 || amount1 <= 0) {
+                                throw new Error('物件情報（土地面積・建物面積）が不足しているため査定額を計算できません。手入力で査定額を設定してください。');
+                              }
                               setEditedValuationAmount1(amount1.toString());
                             } catch (err: any) {
                               console.error('Failed to calculate valuation amount 1:', err);
-                              throw new Error('査定額1の計算に失敗しました');
+                              throw new Error(err.message || '査定額1の計算に失敗しました');
                             }
                             
                             // 査定額2を計算
@@ -6650,7 +6656,7 @@ HP：https://ifoo-oita.com/
                             
                           } catch (err: any) {
                             console.error('Auto calculation failed:', err);
-                            setError('査定額の計算に失敗しました: ' + (err.response?.data?.error?.message || err.message));
+                            setAiValuationError('査定額の計算に失敗しました: ' + (err.response?.data?.error?.message || err.message));
                             // エラー時は編集モードに戻す
                             setEditingValuation(true);
                           } finally {
