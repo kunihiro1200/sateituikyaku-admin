@@ -10,10 +10,13 @@ const IMPORTANT_LABELS = ['名義', 'ローン', '表札確認', '売却理由']
 // モジュールレベルのメモリキャッシュ（ページ遷移をまたいで保持）
 const highlightsCache = new Map<string, { highlights: string[]; other_summary: string[] }>();
 
-// キャッシュキー：コメントの先頭200文字をハッシュ代わりに使用
+// キャッシュバージョン：プロンプト変更時にインクリメントしてキャッシュを無効化
+const CACHE_VERSION = 'v2';
+
+// キャッシュキー：コメントの先頭200文字 + バージョン
 function makeCacheKey(html: string): string {
   const plain = html.replace(/<[^>]+>/g, '').trim();
-  return plain.slice(0, 200);
+  return `${CACHE_VERSION}:${plain.slice(0, 200)}`;
 }
 
 interface QuickButtonDef {
@@ -27,6 +30,7 @@ interface CommentHighlightsPanelProps {
   quickButtonIds?: QuickButtonDef[];
   getButtonState?: (id: string) => ButtonState | null;
   onQuickButtonClick?: (id: string, insertText: string) => void;
+  onHighlightsUpdate?: (highlights: string[], otherSummary: string[]) => void;
 }
 
 /**
@@ -38,6 +42,7 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
   quickButtonIds = [],
   getButtonState,
   onQuickButtonClick,
+  onHighlightsUpdate,
 }) => {
   const [highlights, setHighlights] = useState<string[]>([]);
   const [otherSummary, setOtherSummary] = useState<string[]>([]);
@@ -59,6 +64,7 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
       const cached = highlightsCache.get(cacheKey)!;
       setHighlights(cached.highlights);
       setOtherSummary(cached.other_summary);
+      onHighlightsUpdate?.(cached.highlights, cached.other_summary);
       return;
     }
 
@@ -70,6 +76,7 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
       const newOtherSummary = res.data.other_summary || [];
       setHighlights(newHighlights);
       setOtherSummary(newOtherSummary);
+      onHighlightsUpdate?.(newHighlights, newOtherSummary);
       // キャッシュに保存
       highlightsCache.set(cacheKey, { highlights: newHighlights, other_summary: newOtherSummary });
     } catch (e: any) {
