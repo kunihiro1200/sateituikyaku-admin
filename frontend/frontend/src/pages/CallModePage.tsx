@@ -770,6 +770,9 @@ const CallModePage = () => {
   const savedCommentsRef = useRef<string>(''); // loadAllData クロージャ内でdirty判定に使用
   const editableCommentsRef = useRef<string>(''); // loadAllData クロージャ内でdirty判定に使用
   const [savingComments, setSavingComments] = useState(false);
+  // AIコメントまとめの結果（査定計算セクションで価格情報を表示するために使用）
+  const [aiCommentHighlights, setAiCommentHighlights] = useState<string[]>([]);
+  const [aiCommentOtherSummary, setAiCommentOtherSummary] = useState<string[]>([]);
   
   // 保存処理のロック（同時実行を防ぐ）
   const savingLockRef = useRef<boolean>(false);
@@ -6720,6 +6723,34 @@ HP：https://ifoo-oita.com/
               </Box>
               <Paper sx={{ p: 2, bgcolor: '#fff8f0' }}>
 
+                {/* コメントに記載された予想価格・売却希望価格の表示（AIまとめから抽出） */}
+                {(() => {
+                  const allItems = [...aiCommentHighlights, ...aiCommentOtherSummary];
+                  const expectedItem = allItems.find(item => item.includes('希望価格'));
+                  if (!expectedItem) return null;
+                  return (
+                    <Box sx={{
+                      mb: 2,
+                      p: 1.5,
+                      bgcolor: '#fff3e0',
+                      border: '2px solid #ff6f00',
+                      borderRadius: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 0.5,
+                    }}>
+                      <Typography variant="subtitle2" sx={{ color: '#bf360c', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        💬 お客様がコメントで言及した価格
+                      </Typography>
+                      {expectedItem && (
+                        <Typography variant="body2" sx={{ color: '#e65100', fontWeight: 'bold', fontSize: '1rem' }}>
+                          📌 {expectedItem}
+                        </Typography>
+                      )}
+                    </Box>
+                  );
+                })()}
+
                 {/* つながるオンライン査定書（反響URL） */}
                 {inquiryUrl && (
                   <Box sx={{ mb: 2 }}>
@@ -8127,6 +8158,7 @@ HP：https://ifoo-oita.com/
             })()}
             <CommentHighlightsPanel
               commentHtml={savedComments}
+              onHighlightsUpdate={(h, o) => { setAiCommentHighlights(h); setAiCommentOtherSummary(o); }}
               quickButtonIds={[
                 { id: 'call-memo-b-prime', label: '確度', insertText: '確度：' },
                 { id: 'call-memo-wood-2f', label: '構造', insertText: '構造：' },

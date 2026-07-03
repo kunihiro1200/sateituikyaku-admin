@@ -11,7 +11,7 @@ const IMPORTANT_LABELS = ['名義', 'ローン', '表札確認', '売却理由']
 const highlightsCache = new Map<string, { highlights: string[]; other_summary: string[] }>();
 
 // キャッシュバージョン：プロンプト変更時にインクリメントしてキャッシュを無効化
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 
 // キャッシュキー：コメントの先頭200文字 + バージョン
 function makeCacheKey(html: string): string {
