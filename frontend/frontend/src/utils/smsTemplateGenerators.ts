@@ -11,7 +11,7 @@ export const generateInitialCancellationGuidance = (
 ): string => {
   const site = seller.site || seller.inquirySite || '';
   const name = seller.name || '';
-  const propertyAddress = property?.address || seller.address || '';
+  const propertyAddress = property?.address || seller.propertyAddress || '';
   
   let message = '';
   
@@ -48,7 +48,7 @@ export const generateCancellationGuidance = (
 ): string => {
   const site = seller.site || seller.inquirySite || '';
   const name = seller.name || '';
-  const propertyAddress = property?.address || seller.address || '';
+  const propertyAddress = property?.address || seller.propertyAddress || '';
   
   let message = '';
   
@@ -81,7 +81,7 @@ export const generateValuationSMS = (
   property: PropertyInfo | null
 ): string => {
   const name = seller.name || '';
-  const propertyAddress = property?.address || seller.address || '';
+  const propertyAddress = property?.address || seller.propertyAddress || '';
   
   // 査定額を万円単位に変換
   const amount1 = seller.valuationAmount1 
@@ -200,7 +200,7 @@ export const generateLongTermCustomerSMS = (
   property: PropertyInfo | null
 ): string => {
   const name = seller.name || '';
-  const propertyAddress = property?.address || seller.address || '';
+  const propertyAddress = property?.address || seller.propertyAddress || '';
   
   let message = `${name}様[改行][改行]お世話になっております。大分市舞鶴町にございます不動産会社のいふうです。[改行][改行]${propertyAddress}の売却について、その後ご検討状況はいかがでしょうか。[改行][改行]当社のお客様で${propertyAddress}周辺の物件を探されている方がいらっしゃいます。[改行][改行]もしご売却をお考えでしたら、訪問査定のご予約を承っております。[改行]下記リンクよりご都合の良い日時をお選びください。[改行]http://bit.ly/44U9pjl[改行][改行]今後のご連絡が不要な場合は、お手数ですがその旨お知らせください。[改行][改行]㈱いふう[改行]<<当社住所>>[改行]実績: bit.ly/3J61wzG[改行]TEL: 097-533-2022`;
   
