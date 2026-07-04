@@ -213,17 +213,21 @@ export const generateLongTermCustomerSMS = (
 /**
  * 7. 当社が電話したというリマインドメール
  * 電話後のフォローアップメッセージ
+ * @param staffLastName 送信者の名字（例: 「国広」）。省略時は会社名のみ表示
  */
 export const generateCallReminderSMS = (
   seller: Seller,
-  property: PropertyInfo | null
+  property: PropertyInfo | null,
+  staffLastName?: string
 ): string => {
   const name = seller.name || '';
   
-  let message = `${name}様[改行][改行]お世話になっております。先ほどお電話でお話させていただきましてありがとうございました。大分市舞鶴町にございます不動産会社のいふうです。[改行]なるべく${name}様のご要望に沿った形で計画的ご提案できればと考えておりますので、宜しくお願い申し上げます。[改行]ご不明点等がございましたら、こちらのメールに返信いただければと思います。宜しくお願い申し上げます。[改行][改行]<<当社住所>>[改行]株式会社いふう[改行]売買実績はこちら：bit.ly/3J61wzG[改行]097-533-2022`;
+  // <<担当者名字>> プレースホルダーを使用してテンプレートを生成
+  // replacePlaceholders内でFI判定に基づき「くじら不動産の〇〇です」or「株式会社いふうの〇〇です」に置換される
+  let message = `${name}様[改行][改行]お世話になっております。先ほどお電話でお話させていただきましてありがとうございました。<<担当者名字あいさつ>>[改行]なるべく${name}様のご要望に沿った形で計画的ご提案できればと考えておりますので、宜しくお願い申し上げます。[改行]ご不明点等がございましたら、こちらのメールに返信いただければと思います。宜しくお願い申し上げます。[改行][改行]<<当社住所>>[改行]株式会社いふう[改行]売買実績はこちら：bit.ly/3J61wzG[改行]097-533-2022`;
   
-  // プレースホルダー置換
-  message = replacePlaceholders(message, seller);
+  // プレースホルダー置換（staffLastNameを追加で渡す）
+  message = replacePlaceholders(message, seller, staffLastName);
   
   return message;
 };
@@ -261,7 +265,8 @@ export const generateCallReminderSMS = (
  */
 export const replacePlaceholders = (
   message: string,
-  seller: Seller
+  seller: Seller,
+  staffLastName?: string
 ): string => {
   try {
     // 売主オブジェクトのnullチェック
@@ -284,6 +289,21 @@ export const replacePlaceholders = (
     
     // プレースホルダー置換
     let result = message;
+
+    // <<担当者名字あいさつ>>の置換
+    // FI: 「くじら不動産の〇〇です」 / 非FI: 「株式会社いふうの〇〇です」
+    // staffLastNameが空の場合は従来の表現にフォールバック
+    if (hasFI) {
+      const greeting = staffLastName
+        ? `くじら不動産の${staffLastName}です`
+        : '大分市舞鶴町にございます不動産会社のいふうです';
+      result = result.replace(/<<担当者名字あいさつ>>/g, greeting);
+    } else {
+      const greeting = staffLastName
+        ? `株式会社いふうの${staffLastName}です`
+        : '大分市舞鶴町にございます不動産会社のいふうです';
+      result = result.replace(/<<担当者名字あいさつ>>/g, greeting);
+    }
     
     // <<当社住所>>の置換
     if (hasFI) {

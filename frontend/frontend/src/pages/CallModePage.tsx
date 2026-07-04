@@ -287,7 +287,7 @@ function calcInquiryDatePlusDays(
 interface SMSTemplate {
   id: string;
   label: string;
-  generator: (seller: Seller, property: PropertyInfo | null, employees?: any[]) => string;
+  generator: (seller: Seller, property: PropertyInfo | null, thirdArg?: any) => string;
 }
 
 // ドロップダウンフィールドの選択肢定数
@@ -1055,6 +1055,7 @@ const CallModePage = () => {
   const [mobileCallLogOpen, setMobileCallLogOpen] = useState(false); // 追客ログ
   const [normalInitials, setNormalInitials] = useState<string[]>([]); // スプシ「通常=TRUE」のイニシャル一覧
   const [myInitials, setMyInitials] = useState<string>(''); // ログインユーザーのイニシャル（スプシから取得）
+  const [myLastName, setMyLastName] = useState<string>(''); // ログインユーザーの名字（スプシから取得）
 
   // 遷移警告ダイアログ用の状態
   const [navigationWarningDialog, setNavigationWarningDialog] = useState<{
@@ -2068,6 +2069,12 @@ const CallModePage = () => {
         api.get('/api/employees/initials-by-email').then((res) => {
           if (res.data?.initials) setMyInitials(res.data.initials);
         }).catch(() => { /* ignore */ }),
+        // ログインユーザーの名字を取得（リマインドSMS/メールの差出人名に使用）
+        employee?.email
+          ? api.get(`/api/employees/name-by-email?email=${encodeURIComponent(employee.email)}`).then((res) => {
+              if (res.data?.name) setMyLastName(res.data.name);
+            }).catch(() => { /* ignore */ })
+          : Promise.resolve(),
         // ダミー（元のcatch節を維持するため）
         Promise.resolve().then(() => {
         }),
@@ -3846,7 +3853,9 @@ HP：https://ifoo-oita.com/
     const sheetTemplate = sellerEmailTemplates.find(t => t.id === templateId);
     if (sheetTemplate) {
       const replacedSubject = replaceEmailPlaceholders(sheetTemplate.subject, currentEmployees);
-      const replacedContent = replaceEmailPlaceholders(sheetTemplate.body, currentEmployees);
+      let replacedContent = replaceEmailPlaceholders(sheetTemplate.body, currentEmployees);
+      // <<担当者名字あいさつ>> を担当者名字とFI判定で置換
+      replacedContent = resolveStaffGreeting(replacedContent, seller?.sellerNumber || '', myLastName);
       const htmlContent = replacedContent.replace(/\n/g, '<br>');
 
       // 相続登記テンプレートの送信先・ラベル判定
@@ -3891,7 +3900,9 @@ HP：https://ifoo-oita.com/
 
     // プレースホルダーを置換
     const replacedSubject = replaceEmailPlaceholders(template.subject, currentEmployees);
-    const replacedContent = replaceEmailPlaceholders(template.content, currentEmployees);
+    let replacedContent = replaceEmailPlaceholders(template.content, currentEmployees);
+    // <<担当者名字あいさつ>> を担当者名字とFI判定で置換
+    replacedContent = resolveStaffGreeting(replacedContent, seller?.sellerNumber || '', myLastName);
 
     // 改行を<br>タグに変換してHTMLとして設定
     const htmlContent = replacedContent.replace(/\n/g, '<br>');
@@ -3915,6 +3926,20 @@ HP：https://ifoo-oita.com/
     });
   };
 
+  /**
+   * <<担当者名字あいさつ>> プレースホルダーを解決する
+   * FI売主番号 → 「くじら不動産の〇〇です」
+   * 非FI         → 「株式会社いふうの〇〇です」
+   * 名字が空の場合は従来の文言「株式会社いふうです」にフォールバック
+   */
+  const resolveStaffGreeting = (text: string, sellerNumber: string, lastName: string): string => {
+    const hasFI = sellerNumber.toUpperCase().includes('FI');
+    const greeting = hasFI
+      ? (lastName ? `くじら不動産の${lastName}です` : '株式会社くじら不動産です')
+      : (lastName ? `株式会社いふうの${lastName}です` : '株式会社いふうです');
+    return text.replace(/<<担当者名字あいさつ>>/g, greeting);
+  };
+
   const handleSmsTemplateSelect = async (templateId: string) => {
     if (!templateId) return;
 
@@ -3930,9 +3955,12 @@ HP：https://ifoo-oita.com/
 
       // generator関数を使用してメッセージ内容を生成
       // 訪問後御礼メールの場合は従業員データを渡す
+      // call_reminder の場合は担当者名字を渡す（リマインドSMS差出人名表示用）
       const generatedContent = template.id === 'post_visit_thank_you'
         ? template.generator(seller!, property, employees)
-        : template.generator(seller!, property);
+        : template.id === 'call_reminder'
+          ? template.generator(seller!, property, myLastName)
+          : template.generator(seller!, property);
       
       // エラーチェック2: メッセージ長の検証（日本語SMS制限: 670文字）
       const messageLength = convertLineBreaks(generatedContent).length;
