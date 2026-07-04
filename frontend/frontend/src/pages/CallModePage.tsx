@@ -7176,13 +7176,18 @@ HP：https://ifoo-oita.com/
                               if (value && parseFloat(value) >= 1000) {
                                 console.log('✅ debouncedAutoCalculateを呼び出します');
                                 // 土地面積の警告チェック（確認済みの場合は表示しない）
+                                // 「当社調べ」がある場合はそちらを優先（査定計算と同じ優先順位）
                                 if (!landAreaWarningConfirmed) {
-                                  const land = propInfo.landArea || property?.landArea || seller?.landArea || 0;
-                                  const building = propInfo.buildingArea || property?.buildingArea || seller?.buildingArea || 0;
+                                  const landVerified = propInfo.landAreaVerified || property?.landAreaVerified || seller?.landAreaVerified;
+                                  const land = landVerified
+                                    || propInfo.landArea || property?.landArea || seller?.landArea || 0;
+                                  const building = propInfo.buildingAreaVerified || property?.buildingAreaVerified || seller?.buildingAreaVerified
+                                    || propInfo.buildingArea || property?.buildingArea || seller?.buildingArea || 0;
                                   const landNum = parseFloat(String(land)) || 0;
                                   const buildingNum = parseFloat(String(building)) || 0;
                                   if (landNum > 0 && (landNum <= 99 || (buildingNum > 0 && landNum < buildingNum))) {
-                                    setLandAreaWarning(`土地面積が${landNum}㎡（約${Math.round(landNum / 3.306)}坪）ですが確認大丈夫ですか？`);
+                                    const landLabel = landVerified ? '土地面積（当社調べ）' : '土地面積';
+                                    setLandAreaWarning(`${landLabel}が${landNum}㎡（約${Math.round(landNum / 3.306)}坪）ですが確認大丈夫ですか？`);
                                   }
                                 }
                                 debouncedAutoCalculate(value);
