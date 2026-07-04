@@ -2055,6 +2055,11 @@ const CallModePage = () => {
         getActiveEmployees().then((employeesData) => {
           setEmployees(employeesData as any);
           setActiveEmployees(employeesData);
+          // ログインユーザー名をemployeesリストから設定（リマインドSMS/メール差出人名用）
+          if (employee?.email) {
+            const me = (employeesData as any[]).find((e: any) => e.email?.toLowerCase() === employee.email?.toLowerCase());
+            if (me?.name) setMyLastName(me.name);
+          }
         }).catch((err) => {
           console.error('Failed to load employees:', err);
         }),
@@ -2069,12 +2074,6 @@ const CallModePage = () => {
         api.get('/api/employees/initials-by-email').then((res) => {
           if (res.data?.initials) setMyInitials(res.data.initials);
         }).catch(() => { /* ignore */ }),
-        // ログインユーザーの名字を取得（リマインドSMS/メールの差出人名に使用）
-        employee?.email
-          ? api.get(`/api/employees/name-by-email?email=${encodeURIComponent(employee.email)}`).then((res) => {
-              if (res.data?.name) setMyLastName(res.data.name);
-            }).catch(() => { /* ignore */ })
-          : Promise.resolve(),
         // ダミー（元のcatch節を維持するため）
         Promise.resolve().then(() => {
         }),

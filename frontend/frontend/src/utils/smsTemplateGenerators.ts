@@ -303,8 +303,7 @@ export const replacePlaceholders = (
         ? `株式会社いふうの${staffLastName}です`
         : '株式会社いふうです';
       result = result.replace(/<<担当者名字あいさつ>>/g, greeting);
-    }
-    
+    }    
     // <<当社住所>>の置換
     if (hasFI) {
       result = result.replace(/<<当社住所>>/g, '福岡市中央区舞鶴３丁目１－１０');
