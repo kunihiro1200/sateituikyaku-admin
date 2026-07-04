@@ -292,16 +292,16 @@ export const replacePlaceholders = (
 
     // <<担当者名字あいさつ>>の置換
     // FI: 「くじら不動産の〇〇です」 / 非FI: 「株式会社いふうの〇〇です」
-    // staffLastNameが空の場合は従来の表現にフォールバック
+    // staffLastNameが空の場合はシンプルな会社名表記にフォールバック
     if (hasFI) {
       const greeting = staffLastName
         ? `くじら不動産の${staffLastName}です`
-        : '大分市舞鶴町にございます不動産会社のいふうです';
+        : 'くじら不動産です';
       result = result.replace(/<<担当者名字あいさつ>>/g, greeting);
     } else {
       const greeting = staffLastName
         ? `株式会社いふうの${staffLastName}です`
-        : '大分市舞鶴町にございます不動産会社のいふうです';
+        : '株式会社いふうです';
       result = result.replace(/<<担当者名字あいさつ>>/g, greeting);
     }
     
