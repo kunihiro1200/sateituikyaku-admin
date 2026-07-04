@@ -4726,8 +4726,10 @@ router.get('/:id/other-decision-analysis', authenticate, async (req: Request, re
       let cacheValid = false;
       if (cached?.ai_analysis) {
         if (!isCurrentMonth) {
-          cacheValid = true; // 過去月は永続
+          // 過去月：件数が変わっていなければキャッシュ有効（追加・修正があれば再分析）
+          cacheValid = cached.case_count === sameMonthCases.length;
         } else {
+          // 当月：24時間以内 かつ 件数が変わっていなければキャッシュ有効
           const ageHours = (Date.now() - new Date(cached.updated_at).getTime()) / (1000 * 60 * 60);
           cacheValid = ageHours < 24 && cached.case_count === sameMonthCases.length;
         }
