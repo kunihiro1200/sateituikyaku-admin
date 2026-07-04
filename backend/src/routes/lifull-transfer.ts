@@ -53,33 +53,55 @@ router.post('/lifull-transfer', async (req: Request, res: Response) => {
 
     // ============================================================
     // 1. メール本文解析
-    // LIFULL HOME'Sのフォーマット:
-    // ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-    //   査定ID（問合せ番号）：XXXXXXXX
-    //   物件種別：一戸建て
-    //   所在地：大分県大分市...
-    //   間取り：4K/DK
-    //   建物面積：40m2
-    //   土地面積：90m2
-    //   築年：西暦XXXX年(昭和XX年) 築XX年
-    //   現況：...
-    //   名義：...
-    //   売却理由：...
-    //   売却希望時期：...
-    //   ご要望：...
-    //   お名前：...
-    //   フリガナ：...
-    //   ご住所：...
-    //   電話番号：...
-    //   メールアドレス：...
-    //   希望の連絡時間：...
-    //   希望の連絡方法：...
-    //   同時送信社数：...
-    // ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+    // Re: メールのため本文は以下の構造になっている:
+    //   [スタッフメモ行]          ← 「らいふる K話中」等
+    //   ***...*
+    //   株式会社 いふう ...       ← 自社署名
+    //   ***...*
+    //
+    //   2026年7月4日... <support@homes.co.jp>:
+    //   > 株式会社威風様...
+    //   > ┏━━━...
+    //   >   査定ID：XXXXXXXX
+    //   >   物件種別：一戸建て
+    //   >   所在地：大分県大分市...
+    //   >   間取り：4K/DK (土地の場合は存在しない)
+    //   >   ...
+    //   > ┗━━━...
+    //
     // ============================================================
 
-    // 本文から罫線ブロック内のデータを抽出
-    const cleanedBody = mailBody.replace(/\r?\n|\r/g, ' ');
+    // ---- スタッフメモ抽出 ----
+    // HOME4Uの「HOME4Uログアウト」と同じ方式:
+    // 「らいふる」行の次の行から「***」（自社署名区切り）が現れる手前までをメモとして取得
+    // 例:
+    //   らいふる
+    //   K話中        ← ここがメモ（「らいふる」自体は含めない）
+    //   ***...*
+    //   株式会社 いふう ...
+    const rawLines = mailBody.replace(/\r\n|\n\r|\r/g, '\n').split('\n');
+    const lifullTriggerIdx = rawLines.findIndex(l => l.trim() === 'らいふる' || l.trim().startsWith('らいふる'));
+    const starBorderIdx = rawLines.findIndex(l => /^\*{5,}/.test(l.trim()));
+    let staffMemo = '';
+    if (lifullTriggerIdx !== -1) {
+      // 「らいふる」の次の行から「***」の手前まで
+      const memoStart = lifullTriggerIdx + 1;
+      const memoEnd = starBorderIdx !== -1 && starBorderIdx > memoStart ? starBorderIdx : rawLines.length;
+      staffMemo = rawLines
+        .slice(memoStart, memoEnd)
+        .map(l => l.trim())
+        .filter(l => l.length > 0)
+        .join('\n')
+        .trim();
+    }
+    console.log(`[lifull-transfer] staffMemo抽出: "${staffMemo}"`);
+
+    // ---- 本文正規化 ----
+    // 行頭の引用符（> ）を除去し、改行をスペースに統一してフィールド抽出用に準備
+    const normalizedBody = mailBody
+      .replace(/\r\n|\n\r|\r/g, '\n')
+      .replace(/^>\s*/gm, '');  // 行頭の > を除去（multiline）
+    const cleanedBody = normalizedBody.replace(/\n/g, ' ');
 
     // LIFULL用フィールド抽出関数（全角スペース・半角スペース対応）
     const extractField = (text: string, label: string): string => {
@@ -128,8 +150,8 @@ router.post('/lifull-transfer', async (req: Request, res: Response) => {
     else if (propertyTypeRaw.includes('マンション')) displayPropertyType = 'マ';
     else if (propertyTypeRaw.includes('土地')) displayPropertyType = '土';
 
-    // 所在地
-    const addressMatch = cleanedBody.match(/所在地[：:][\s　]*([^\s　](?:.*?)?)(?=\s{2,}[\S]|\s*間取り)/);
+    // 所在地（間取りがない場合（土地等）も考慮して、次に来るあらゆるフィールドで止める）
+    const addressMatch = cleanedBody.match(/所在地[：:][\s　]*([^\s　](?:.*?)?)(?=\s{2,}[\S]|\s*(?:間取り|土地面積|建物面積|築年|現況|名義|売却理由))/);
     const fullPropertyAddress = addressMatch ? addressMatch[1].replace(/^大分県/, '').trim() : '';
     console.log(`[lifull-transfer] 物件所在地抽出: "${fullPropertyAddress}"`);
 
@@ -216,7 +238,9 @@ router.post('/lifull-transfer', async (req: Request, res: Response) => {
     if (requestToCompany) commentParts.push(`ご要望: ${requestToCompany}`);
     if (estimateCount) commentParts.push(`同時送信社数: ${estimateCount}`);
     if (reasonForEstimate) commentParts.push(`売却理由: ${reasonForEstimate}`);
-    const comments = `【以下自動転記（LIFULL HOME'S）】\n${commentParts.join('\n')}`;
+    // HOME4Uと同じ方式: スタッフメモを先頭に、自動転記情報をその後に付加
+    const comments = `${staffMemo ? staffMemo + '\n' : ''}【以下自動転記（LIFULL HOME'S）】\n${commentParts.join('\n')}`;
+    console.log(`[lifull-transfer] comments作成完了: "${comments.substring(0, 100)}"`);
 
     if (!name || !tel) {
       return res.status(400).json({ success: false, error: `名前または電話番号が取得できませんでした name=${name} tel=${tel}` });
