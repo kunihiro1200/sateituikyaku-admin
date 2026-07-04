@@ -4486,8 +4486,10 @@ router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Re
       let cacheValid = false;
       if (cachedAnalysis?.ai_analysis) {
         if (!isCurrentMonth) {
-          cacheValid = true;
+          // 過去月：件数が変わっていなければキャッシュ有効（追加・修正があれば再分析）
+          cacheValid = cachedAnalysis.case_count === sameMonthCases.length;
         } else {
+          // 当月：24時間以内 かつ 件数が変わっていなければキャッシュ有効
           const updatedAt = new Date(cachedAnalysis.updated_at);
           const ageHours = (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60);
           const caseCountUnchanged = cachedAnalysis.case_count === sameMonthCases.length;
