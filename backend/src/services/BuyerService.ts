@@ -2387,8 +2387,8 @@ export class BuyerService {
       const receptionDate = buyer.reception_date ? String(buyer.reception_date).trim() : '';
       if (receptionDate) {
         const month = receptionDate.substring(0, 7).replace('-', '/');
-        // 2020年以前の不正データは除外
-        if (month >= '2020') {
+        // 2025年以前の不正データは除外
+        if (month >= '2025') {
         if (!result.homeHearingMonthlyStats[month]) {
           result.homeHearingMonthlyStats[month] = {
             initialResponseCounts: {},
@@ -2769,8 +2769,8 @@ export class BuyerService {
         const receptionDate = buyer.reception_date ? String(buyer.reception_date).trim() : '';
         if (!receptionDate) return;
         const month = receptionDate.substring(0, 7).replace('-', '/'); // 2026-04 → 2026/04
-        // 2020年以前の不正データは除外
-        if (month < '2020') return;
+        // 2025年以前の不正データは除外
+        if (month < '2025') return;
         
         if (!homeHearingMonthlyStats[month]) {
           homeHearingMonthlyStats[month] = {
