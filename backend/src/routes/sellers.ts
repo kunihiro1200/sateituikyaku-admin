@@ -5227,7 +5227,7 @@ router.get('/:id/exclusive-analysis/summary', authenticate, async (req: Request,
     const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     const monthLabel = `${d.getFullYear()}年${d.getMonth() + 1}月`;
 
-    // AI分析キャッシュ取得
+    // 担当者名をイニシャルに正規化してバリアントを構築
     const normalizeMap = await buildNormalizeInitialMap(supabase);
     const normalized = normalizeMap(seller.visit_assignee);
     const { data: empRows } = await supabase.from('employees').select('initials, name').not('initials', 'is', null);
@@ -5239,12 +5239,27 @@ router.get('/:id/exclusive-analysis/summary', authenticate, async (req: Request,
       }
     }
 
+    // AI分析キャッシュ取得（イニシャル正規化済みのキーで検索）
     const { data: aiCache } = await supabase
       .from('exclusive_ai_analysis_cache')
       .select('ai_analysis')
-      .in('assignee', variants)
+      .eq('assignee', normalized)
       .eq('target_month', targetMonth)
       .maybeSingle();
+
+    // キャッシュがない場合はバリアント全体でも検索
+    let aiAnalysis = aiCache?.ai_analysis || '';
+    if (!aiAnalysis) {
+      const { data: aiCacheFallback } = await supabase
+        .from('exclusive_ai_analysis_cache')
+        .select('ai_analysis')
+        .in('assignee', variants)
+        .eq('target_month', targetMonth)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      aiAnalysis = aiCacheFallback?.ai_analysis || '';
+    }
 
     // QA取得
     const { data: qaRecord } = await supabase
@@ -5266,7 +5281,7 @@ router.get('/:id/exclusive-analysis/summary', authenticate, async (req: Request,
       assignee: seller.visit_assignee,
       monthLabel,
       type: 'exclusive',
-      aiAnalysis: aiCache?.ai_analysis || '',
+      aiAnalysis,
       qaPairs,
     });
   } catch (error) {
@@ -5296,6 +5311,7 @@ router.get('/:id/other-decision-analysis/summary', authenticate, async (req: Req
     const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     const monthLabel = `${d.getFullYear()}年${d.getMonth() + 1}月`;
 
+    // 担当者名をイニシャルに正規化してバリアントを構築
     const normalizeMap = await buildNormalizeInitialMap(supabase);
     const normalized = normalizeMap(seller.visit_assignee);
     const { data: empRows } = await supabase.from('employees').select('initials, name').not('initials', 'is', null);
@@ -5307,12 +5323,26 @@ router.get('/:id/other-decision-analysis/summary', authenticate, async (req: Req
       }
     }
 
+    // AI分析キャッシュ取得（イニシャル正規化済みのキーで検索）
     const { data: aiCache } = await supabase
       .from('other_decision_ai_analysis_cache')
       .select('ai_analysis')
-      .in('assignee', variants)
+      .eq('assignee', normalized)
       .eq('target_month', targetMonth)
       .maybeSingle();
+
+    let aiAnalysis = aiCache?.ai_analysis || '';
+    if (!aiAnalysis) {
+      const { data: aiCacheFallback } = await supabase
+        .from('other_decision_ai_analysis_cache')
+        .select('ai_analysis')
+        .in('assignee', variants)
+        .eq('target_month', targetMonth)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      aiAnalysis = aiCacheFallback?.ai_analysis || '';
+    }
 
     const { data: qaRecord } = await supabase
       .from('other_decision_analysis_qa')
@@ -5333,7 +5363,7 @@ router.get('/:id/other-decision-analysis/summary', authenticate, async (req: Req
       assignee: seller.visit_assignee,
       monthLabel,
       type: 'other',
-      aiAnalysis: aiCache?.ai_analysis || '',
+      aiAnalysis,
       qaPairs,
     });
   } catch (error) {

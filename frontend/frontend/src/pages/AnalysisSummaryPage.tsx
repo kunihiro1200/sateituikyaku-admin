@@ -1,14 +1,12 @@
 /**
  * 📄 分析サマリーページ
- * 専任分析・他決分析の「AI分析」と「Q&A回答」を1枚にまとめた共有・印刷向けページ
- * /sellers/:id/exclusive-analysis/summary
- * /sellers/:id/other-decision-analysis/summary
+ * 専任分析・他決分析の「AI分析」と「Q&A回答」を1枚に統合した共有・印刷向けページ
+ * AI分析の内容と担当者の回答を交互に並べ、後輩が読み通せるようにまとめる
  */
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Box, Typography, Paper, Chip, CircularProgress, Alert, Button,
-  Divider, Card, CardContent,
+  Box, Typography, Paper, Chip, CircularProgress, Alert, Button, Divider,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -31,7 +29,6 @@ export default function AnalysisSummaryPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // パスから専任か他決かを判定
   const isExclusive = location.pathname.includes('exclusive-analysis');
 
   const [loading, setLoading] = useState(true);
@@ -55,14 +52,14 @@ export default function AnalysisSummaryPage() {
   }, [id, summaryApiUrl]);
 
   // テーマカラー
-  const theme = isExclusive
-    ? { primary: '#ff6d00', light: '#fff3e0', border: '#ffb74d', dark: '#e65100', chipBg: '#ff6d00' }
-    : { primary: '#e53935', light: '#fce4ec', border: '#ef9a9a', dark: '#c62828', chipBg: '#e53935' };
+  const th = isExclusive
+    ? { primary: '#ff6d00', light: '#fff3e0', border: '#ffb74d', dark: '#e65100', headerBg: '#fff8f0' }
+    : { primary: '#e53935', light: '#fce4ec', border: '#ef9a9a', dark: '#c62828', headerBg: '#fff5f5' };
 
   if (loading) {
     return (
       <Box sx={{ maxWidth: 800, mx: 'auto', p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, mt: 8 }}>
-        <CircularProgress sx={{ color: theme.primary }} />
+        <CircularProgress sx={{ color: th.primary }} />
         <Typography color="text.secondary">サマリーを読み込み中...</Typography>
       </Box>
     );
@@ -85,16 +82,13 @@ export default function AnalysisSummaryPage() {
     <Box sx={{ maxWidth: 800, mx: 'auto', p: { xs: 2, sm: 3 } }}>
 
       {/* ツールバー（印刷時非表示） */}
-      <Box
-        sx={{ display: 'flex', gap: 1.5, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}
-        className="no-print"
-      >
+      <Box className="no-print" sx={{ display: 'flex', gap: 1.5, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => navigate(backPath)}
           variant="outlined"
           size="small"
-          sx={{ borderColor: theme.primary, color: theme.primary }}
+          sx={{ borderColor: th.primary, color: th.primary }}
         >
           分析ページに戻る
         </Button>
@@ -103,34 +97,27 @@ export default function AnalysisSummaryPage() {
           onClick={() => window.print()}
           variant="contained"
           size="small"
-          sx={{ bgcolor: theme.primary, '&:hover': { bgcolor: theme.dark }, ml: 'auto' }}
+          sx={{ bgcolor: th.primary, '&:hover': { bgcolor: th.dark }, ml: 'auto' }}
         >
           印刷 / PDF保存
         </Button>
       </Box>
 
-      {/* ヘッダー */}
-      <Paper
-        sx={{
-          p: 2.5, mb: 3,
-          bgcolor: theme.light,
-          borderLeft: `5px solid ${theme.primary}`,
-          '@media print': { borderLeft: `5px solid ${theme.primary}` },
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+      {/* ページヘッダー */}
+      <Paper sx={{ p: 2.5, mb: 3, bgcolor: th.headerBg, borderLeft: `5px solid ${th.primary}` }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
           {isExclusive
-            ? <EmojiEventsIcon sx={{ color: theme.primary, fontSize: 28 }} />
-            : <TrendingDownIcon sx={{ color: theme.primary, fontSize: 28 }} />
+            ? <EmojiEventsIcon sx={{ color: th.primary, fontSize: 28 }} />
+            : <TrendingDownIcon sx={{ color: th.primary, fontSize: 28 }} />
           }
-          <Typography variant="h5" sx={{ fontWeight: 'bold', color: theme.dark }}>
-            {isExclusive ? '専任取得分析' : '他決分析'}　サマリー
+          <Typography variant="h5" sx={{ fontWeight: 'bold', color: th.dark }}>
+            {isExclusive ? '専任取得分析' : '他決分析'}　まとめ
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
           <Box>
             <Typography variant="caption" color="text.secondary">担当者</Typography>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: theme.primary, lineHeight: 1.2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 'bold', color: th.primary, lineHeight: 1.2 }}>
               {data?.assignee ?? '－'}
             </Typography>
           </Box>
@@ -145,61 +132,81 @@ export default function AnalysisSummaryPage() {
 
       {!hasContent ? (
         <Alert severity="info">
-          AI分析・Q&A回答のデータがまだありません。分析ページで回答を入力・保存してから、このページを開いてください。
+          AI分析・Q&A回答のデータがまだありません。分析ページで回答を保存してからもう一度開いてください。
         </Alert>
       ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
-          {/* AI分析セクション */}
+          {/* ① AI分析セクション */}
           {data?.aiAnalysis && (
-            <Card sx={{ border: `1px solid ${theme.border}`, bgcolor: theme.light, boxShadow: 2 }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                  <AutoAwesomeIcon sx={{ color: theme.dark }} />
-                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: theme.dark }}>
-                    {isExclusive
-                      ? `AI分析：${data.assignee}の強みと専任取得の秘訣`
-                      : `AI分析：${data.assignee}の他決パターンと改善ポイント`
-                    }
-                  </Typography>
-                  <Chip
-                    label={isExclusive ? '秘訣' : '改善ポイント'}
-                    size="small"
-                    sx={{ bgcolor: theme.chipBg, color: '#fff', fontWeight: 'bold', ml: 'auto' }}
-                  />
-                </Box>
-                <Divider sx={{ mb: 2 }} />
+            <Paper
+              elevation={0}
+              sx={{
+                border: `1.5px solid ${th.border}`,
+                borderRadius: '12px 12px 0 0',
+                borderBottom: 'none',
+                overflow: 'hidden',
+              }}
+            >
+              {/* セクションタイトルバー */}
+              <Box sx={{ px: 2.5, py: 1.5, bgcolor: th.primary, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <AutoAwesomeIcon sx={{ color: '#fff', fontSize: 20 }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#fff', flex: 1 }}>
+                  {isExclusive
+                    ? `AI分析：${data.assignee}の強みと専任取得の秘訣`
+                    : `AI分析：${data.assignee}の他決パターンと改善ポイント`
+                  }
+                </Typography>
+                <Chip
+                  label="他スタッフへ共有"
+                  size="small"
+                  sx={{ bgcolor: 'rgba(255,255,255,0.25)', color: '#fff', fontWeight: 'bold', fontSize: '0.7rem' }}
+                />
+              </Box>
+              {/* AI分析本文 */}
+              <Box sx={{ px: 3, py: 2.5, bgcolor: th.light }}>
                 <Typography
                   variant="body2"
-                  sx={{ whiteSpace: 'pre-wrap', lineHeight: 2, color: '#333' }}
+                  sx={{ whiteSpace: 'pre-wrap', lineHeight: 2, color: '#333', fontSize: '0.9rem' }}
                 >
                   {data.aiAnalysis}
                 </Typography>
-              </CardContent>
-            </Card>
+              </Box>
+            </Paper>
           )}
 
-          {/* Q&A回答セクション */}
+          {/* ② Q&Aセクション */}
           {data && data.qaPairs.length > 0 && (
-            <Card sx={{ border: '1px solid #c8e6c9', bgcolor: '#f1f8e9', boxShadow: 2 }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                  <QuizIcon sx={{ color: '#2e7d32' }} />
-                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>
-                    {data.assignee}への質問と回答
-                  </Typography>
-                  <Chip
-                    label={`${data.qaPairs.length}問`}
-                    size="small"
-                    sx={{ bgcolor: '#2e7d32', color: '#fff', fontWeight: 'bold', ml: 'auto' }}
-                  />
-                </Box>
-                <Divider sx={{ mb: 2 }} />
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  {data.qaPairs.map((pair, idx) => (
-                    <Box key={idx}>
+            <Paper
+              elevation={0}
+              sx={{
+                border: `1.5px solid ${th.border}`,
+                borderTop: data?.aiAnalysis ? `1.5px solid ${th.border}` : `1.5px solid ${th.border}`,
+                borderRadius: data?.aiAnalysis ? '0 0 12px 12px' : '12px',
+                overflow: 'hidden',
+              }}
+            >
+              {/* セクションタイトルバー */}
+              <Box sx={{ px: 2.5, py: 1.5, bgcolor: '#2e7d32', display: 'flex', alignItems: 'center', gap: 1 }}>
+                <QuizIcon sx={{ color: '#fff', fontSize: 20 }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#fff', flex: 1 }}>
+                  {data.assignee}への質問と回答
+                </Typography>
+                <Chip
+                  label={`${data.qaPairs.length}問`}
+                  size="small"
+                  sx={{ bgcolor: 'rgba(255,255,255,0.25)', color: '#fff', fontWeight: 'bold', fontSize: '0.7rem' }}
+                />
+              </Box>
+
+              {/* Q&A本文 */}
+              <Box sx={{ bgcolor: '#f9fbe7' }}>
+                {data.qaPairs.map((pair, idx) => (
+                  <Box key={idx}>
+                    {idx > 0 && <Divider sx={{ borderColor: '#c8e6c9' }} />}
+                    <Box sx={{ px: 3, py: 2.5 }}>
                       {/* 質問 */}
-                      <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'flex-start' }}>
+                      <Box sx={{ display: 'flex', gap: 1.5, mb: 1.5, alignItems: 'flex-start' }}>
                         <Chip
                           label={`Q${idx + 1}`}
                           size="small"
@@ -210,35 +217,36 @@ export default function AnalysisSummaryPage() {
                         />
                         <Typography
                           variant="body2"
-                          sx={{ fontWeight: 'bold', color: '#1b5e20', lineHeight: 1.6 }}
+                          sx={{ fontWeight: 'bold', color: '#1b5e20', lineHeight: 1.7, fontSize: '0.9rem' }}
                         >
                           {pair.question}
                         </Typography>
                       </Box>
                       {/* 回答 */}
-                      <Paper
-                        variant="outlined"
+                      <Box
                         sx={{
-                          p: 2, ml: 0.5,
-                          bgcolor: '#fff',
-                          borderColor: '#a5d6a7',
+                          ml: 0.5, pl: 2.5,
+                          borderLeft: '3px solid #66bb6a',
                         }}
                       >
-                        <Typography variant="caption" sx={{ color: '#2e7d32', fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                        <Typography
+                          variant="caption"
+                          sx={{ color: '#2e7d32', fontWeight: 'bold', display: 'block', mb: 0.5 }}
+                        >
                           💬 {data.assignee}の回答
                         </Typography>
                         <Typography
                           variant="body2"
-                          sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.9, color: '#333' }}
+                          sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.9, color: '#333', fontSize: '0.88rem' }}
                         >
                           {pair.answer}
                         </Typography>
-                      </Paper>
+                      </Box>
                     </Box>
-                  ))}
-                </Box>
-              </CardContent>
-            </Card>
+                  </Box>
+                ))}
+              </Box>
+            </Paper>
           )}
 
         </Box>
