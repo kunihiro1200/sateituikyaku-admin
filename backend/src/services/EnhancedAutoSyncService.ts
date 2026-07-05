@@ -930,8 +930,18 @@ export class EnhancedAutoSyncService {
           }
 
           // commentsの比較
-          const dbComments = dbSeller.comments || '';
-          const sheetComments = sheetRow['コメント'] || '';
+          // DBはHTMLで保存されるがスプシはプレーンテキストのため、
+          // HTML→プレーンテキストに変換してから比較する（書式差分による不要な更新を防止）
+          const dbComments = (dbSeller.comments || '')
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<[^>]*>/g, '')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .trim();
+          const sheetComments = (sheetRow['コメント'] || '').trim();
           if (sheetComments !== dbComments) {
             needsUpdate = true;
           }
@@ -1347,9 +1357,17 @@ export class EnhancedAutoSyncService {
       pinrich_status: mappedData.pinrich_status || null,
       is_unreachable: this.convertIsUnreachable(row['不通']),
       unreachable_status: row['不通'] ? String(row['不通']) : null,
-      comments: row['コメント'] ? String(row['コメント']) : null,
       updated_at: new Date().toISOString(),
     };
+
+    // comments: スプシに値がある場合のみ更新（空欄の場合はDBの値を保持）
+    // 理由: 通話モードページでコメントを更新した後、スプシへの書き戻しが
+    // 完了する前に自動同期が走ると、スプシの古い値でDBが上書きされてしまうため
+    // また、DBはHTMLで保存されるがスプシはプレーンテキストのため、
+    // 常に差分が検出されDB側のHTML書式が消えてしまう問題を防止
+    if (row['コメント']) {
+      updateData.comments = String(row['コメント']);
+    }
 
     // next_call_date: スプシに値がある場合のみ更新（空欄の場合はDBの値を保持）
     // 理由: 通話モードページで次電日を更新した後、スプシへの書き戻しが
