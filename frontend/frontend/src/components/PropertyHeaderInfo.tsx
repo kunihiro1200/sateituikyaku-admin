@@ -30,10 +30,10 @@ export default function PropertyHeaderInfo({
 }: PropertyHeaderInfoProps) {
   const [copied, setCopied] = useState(false);
 
-  // 物件番号をクリップボードにコピー
+  // 物件所在地をクリップボードにコピー
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(propertyNumber);
+      await navigator.clipboard.writeText(address || '');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
@@ -87,12 +87,12 @@ export default function PropertyHeaderInfo({
             >
               {propertyNumber}
             </Typography>
-            <Tooltip title={copied ? 'コピーしました' : '物件番号をコピー'}>
+            <Tooltip title={copied ? 'コピーしました' : '物件所在地をコピー'}>
               <IconButton
                 size="medium"
                 onClick={handleCopy}
                 onKeyDown={handleKeyDown}
-                aria-label="物件番号をコピー"
+                aria-label="物件所在地をコピー"
                 sx={{ 
                   color: copied ? 'success.main' : 'primary.main',
                   '&:hover': { bgcolor: 'action.hover' }
@@ -175,7 +175,7 @@ export default function PropertyHeaderInfo({
             overflow: 'hidden',
           }}
         >
-          {copied && '物件番号をコピーしました'}
+          {copied && '物件所在地をコピーしました'}
         </Box>
       </Paper>
     </>
