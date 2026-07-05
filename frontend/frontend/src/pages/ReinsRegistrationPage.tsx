@@ -418,7 +418,7 @@ export default function ReinsRegistrationPage() {
             address={data?.address ?? null}
             salesPrice={data?.sales_price ?? null}
             salesAssignee={data?.sales_assignee ?? null}
-            propertyNumber={data?.property_number ?? ''}
+            propertyNumber={propertyNumber ?? ''}
           />
 
           {/* レインズ証明書メール済み + レインズURL（横並び） */}
