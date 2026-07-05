@@ -153,63 +153,79 @@ router.get('/site-due-date-counts', async (req: Request, res: Response) => {
 /**
  * GET /api/work-tasks/review-campaign-stats
  * 口コミ・キャンペーン集計データを取得
- * 2025/10/1以降の決済完了分を担当者別に集計
+ * 業務依頼スプレッドシートの「口コミ、キャンペーン」シートから直接読み取り
  */
 router.get('/review-campaign-stats', async (req: Request, res: Response) => {
   try {
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_KEY!
-    );
+    const { google } = await import('googleapis');
 
-    // 2025/10/1以降に作成されたレコードを取得（業務依頼に登録された物件）
-    const { data, error } = await supabase
-      .from('work_tasks')
-      .select('sales_assignee, campaign, review_count')
-      .gte('created_at', '2025-10-01');
-
-    if (error) {
-      throw new Error(`DB取得エラー: ${error.message}`);
+    // Google Sheets API認証
+    let auth;
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+      auth = new google.auth.GoogleAuth({
+        credentials,
+        scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+      });
+    } else {
+      auth = new google.auth.GoogleAuth({
+        keyFile: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+        scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+      });
     }
 
-    // 対象担当者
-    const targetAssignees = ['Y', 'U', 'I', 'K', '林', '麻'];
+    const sheets = google.sheets({ version: 'v4', auth });
 
-    // 担当者別集計
+    // 業務依頼スプレッドシートの「口コミ、キャンペーン」シートからA35:H39を読み取り
+    const spreadsheetId = '1MO2vs0mDUFCgM-rjXXPRIy3pKKdfIFvUDwacM-2174g';
+    const range = "'口コミ、キャンペーン'!A35:H39";
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range,
+    });
+
+    const rows = response.data.values || [];
+
+    // データ構造: A35:H39
+    // 行0: ヘッダー (取得件数 2025/10/1〜集計, Y, U, I, K, 林, 麻, 計)
+    // 行1: 新紹介者キャンペーン
+    // 行2: 口コミ登録合計
+    // 行3: 口コミ目標
+    // 行4: 口コミ達成率
+
+    const assignees = ['Y', 'U', 'I', 'K', '林', '麻'];
+
+    // 各行のデータを解析
+    const campaignRow = rows[1] || [];   // 新紹介者キャンペーン
+    const reviewRow = rows[2] || [];     // 口コミ登録合計
+    const goalRow = rows[3] || [];       // 口コミ目標
+    const achievementRow = rows[4] || []; // 口コミ達成率
+
     const stats: Record<string, { campaign_count: number; review_points: number }> = {};
-    for (const assignee of targetAssignees) {
-      stats[assignee] = { campaign_count: 0, review_points: 0 };
+    for (let i = 0; i < assignees.length; i++) {
+      stats[assignees[i]] = {
+        campaign_count: Number(campaignRow[i + 1]) || 0,
+        review_points: Number(reviewRow[i + 1]) || 0,
+      };
     }
 
-    for (const row of (data || [])) {
-      const assignee = (row.sales_assignee || '').trim();
-      if (!targetAssignees.includes(assignee)) continue;
+    // 目標値（行3から取得）
+    const goalPerPerson = Number(goalRow[1]) || 72;
+    const totalGoal = Number(goalRow[7]) || goalPerPerson * assignees.length;
 
-      // キャンペーン（値が「あり」の件数 = 新紹介者キャンペーン 3000万以上10万円）
-      if (row.campaign && String(row.campaign).trim() === 'あり') {
-        stats[assignee].campaign_count += 1;
-      }
-
-      // 口コミ取得数（口コミ=2pt、アンケート=1pt でカウントされた合計値）
-      const reviewCount = Number(row.review_count) || 0;
-      stats[assignee].review_points += reviewCount;
-    }
-
-    // 目標: 各人72pt
-    const goalPerPerson = 72;
     // 月間目標: 6pt
     const monthlyGoal = 6;
 
-    // 経過月数を計算（2025/10/1を起点、現在の月までの月数）
-    const startDate = new Date(2025, 9, 1); // 2025年10月1日
+    // 経過月数を計算（2025/10/1を起点）
+    const startDate = new Date(2025, 9, 1);
     const now = new Date();
     const elapsedMonths = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
     const currentMonthTarget = monthlyGoal * elapsedMonths;
 
-    // レスポンス構築
     const result = {
       period_start: '2025-10-01',
-      assignees: targetAssignees,
+      assignees,
       goal_per_person: goalPerPerson,
       monthly_goal: monthlyGoal,
       elapsed_months: elapsedMonths,
