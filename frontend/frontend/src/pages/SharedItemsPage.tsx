@@ -23,7 +23,6 @@ import { Search as SearchIcon, Clear as ClearIcon, Add as AddIcon } from '@mui/i
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
-import ReviewCampaignStats from '../components/ReviewCampaignStats';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 import { SECTION_COLORS } from '../theme/sectionColors';
 
@@ -215,11 +214,6 @@ export default function SharedItemsPage() {
       {/* ページナビゲーション */}
       <PageNavigation />
 
-      {/* 口コミ・キャンペーン集計（常に表示） */}
-      <Box sx={{ mt: 2 }}>
-        <ReviewCampaignStats />
-      </Box>
-
       {/* サイドバー＋メインコンテンツ */}
       <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
         {/* サイドバー */}
@@ -325,6 +319,28 @@ export default function SharedItemsPage() {
               />
             </ListItemButton>
           ))}
+          {/* 口コミ集計リンク */}
+          <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
+            <Typography variant="caption" color="text.secondary" fontWeight="bold">
+              集計
+            </Typography>
+          </Box>
+          <ListItemButton
+            onClick={() => navigate('/shared-items/review-stats')}
+            sx={{
+              py: 1,
+              borderLeft: '4px solid #4caf50',
+              '&:hover': {
+                backgroundColor: '#4caf5010',
+              },
+            }}
+          >
+            <ListItemText
+              primary="口コミ集計"
+              primaryTypographyProps={{ variant: 'body2' }}
+              sx={{ flex: 1, minWidth: 0 }}
+            />
+          </ListItemButton>
         </Paper>
 
         {/* メインコンテンツ */}

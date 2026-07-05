@@ -40,6 +40,7 @@ import BuyerCandidateListPage from './pages/BuyerCandidateListPage';
 import SharedItemsPage from './pages/SharedItemsPage';
 import SharedItemDetailPage from './pages/SharedItemDetailPage';
 import NewSharedItemPage from './pages/NewSharedItemPage';
+import ReviewCampaignStatsPage from './pages/ReviewCampaignStatsPage';
 import BuyerNearbyPropertiesPage from './pages/BuyerNearbyPropertiesPage';
 import NearbyBuyersPage from './pages/NearbyBuyersPage';
 import OtherCompanyDistributionPage from './pages/OtherCompanyDistributionPage';
@@ -376,6 +377,14 @@ function App() {
         element={
           <ProtectedRoute>
             <NewSharedItemPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shared-items/review-stats"
+        element={
+          <ProtectedRoute>
+            <ReviewCampaignStatsPage />
           </ProtectedRoute>
         }
       />
