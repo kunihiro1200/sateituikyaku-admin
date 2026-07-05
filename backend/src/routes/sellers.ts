@@ -5208,7 +5208,8 @@ router.put('/:id/other-decision-analysis/qa/answer', authenticate, async (req: R
 
 /**
  * GET /api/sellers/:id/exclusive-analysis/summary
- * 専任分析サマリー：AI分析 + QA回答をまとめて返す
+ * 専任分析サマリー：AI分析 + QA回答を統合してClaudeが要約文を生成
+ * 後輩が読みやすい1枚まとめを生成する（24時間キャッシュ）
  */
 router.get('/:id/exclusive-analysis/summary', authenticate, async (req: Request, res: Response) => {
   try {
@@ -5217,7 +5218,7 @@ router.get('/:id/exclusive-analysis/summary', authenticate, async (req: Request,
 
     const { data: seller } = await supabase
       .from('sellers')
-      .select('visit_assignee, contract_year_month, seller_number, property_address')
+      .select('visit_assignee, contract_year_month')
       .eq('id', id)
       .single();
     if (!seller?.visit_assignee || !seller?.contract_year_month)
@@ -5227,7 +5228,7 @@ router.get('/:id/exclusive-analysis/summary', authenticate, async (req: Request,
     const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     const monthLabel = `${d.getFullYear()}年${d.getMonth() + 1}月`;
 
-    // 担当者名をイニシャルに正規化してバリアントを構築
+    // 担当者バリアント構築
     const normalizeMap = await buildNormalizeInitialMap(supabase);
     const normalized = normalizeMap(seller.visit_assignee);
     const { data: empRows } = await supabase.from('employees').select('initials, name').not('initials', 'is', null);
@@ -5239,18 +5240,17 @@ router.get('/:id/exclusive-analysis/summary', authenticate, async (req: Request,
       }
     }
 
-    // AI分析キャッシュ取得（イニシャル正規化済みのキーで検索）
+    // AI分析テキスト取得
+    let aiAnalysis = '';
     const { data: aiCache } = await supabase
       .from('exclusive_ai_analysis_cache')
       .select('ai_analysis')
       .eq('assignee', normalized)
       .eq('target_month', targetMonth)
       .maybeSingle();
-
-    // キャッシュがない場合はバリアント全体でも検索
-    let aiAnalysis = aiCache?.ai_analysis || '';
+    aiAnalysis = aiCache?.ai_analysis || '';
     if (!aiAnalysis) {
-      const { data: aiCacheFallback } = await supabase
+      const { data: fallback } = await supabase
         .from('exclusive_ai_analysis_cache')
         .select('ai_analysis')
         .in('assignee', variants)
@@ -5258,10 +5258,10 @@ router.get('/:id/exclusive-analysis/summary', authenticate, async (req: Request,
         .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      aiAnalysis = aiCacheFallback?.ai_analysis || '';
+      aiAnalysis = fallback?.ai_analysis || '';
     }
 
-    // QA取得
+    // QA回答取得
     const { data: qaRecord } = await supabase
       .from('exclusive_analysis_qa')
       .select('ai_questions, answers')
@@ -5277,22 +5277,68 @@ router.get('/:id/exclusive-analysis/summary', authenticate, async (req: Request,
       if (ans?.answer?.trim()) qaPairs.push({ question: q.question, answer: ans.answer.trim() });
     }
 
+    if (!aiAnalysis && qaPairs.length === 0) {
+      return res.status(400).json({ error: 'AI分析・Q&A回答のデータがまだありません' });
+    }
+
+    // Claudeで統合要約生成
+    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicApiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY が未設定です' });
+
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+
+    const qaText = qaPairs.map((p, i) =>
+      `Q${i + 1}: ${p.question}\n回答: ${p.answer}`
+    ).join('\n\n');
+
+    const prompt = `あなたは不動産会社の営業研修担当です。
+以下は営業担当「${seller.visit_assignee}」の${monthLabel}の専任取得に関する2つの資料です。
+
+【AI分析（システム生成）】
+${aiAnalysis || '（データなし）'}
+
+【本人への質問と回答】
+${qaText || '（データなし）'}
+
+これらを統合して、**入社1〜2年目の後輩スタッフ向けの学習まとめ**を作成してください。
+
+以下の構成で、400〜600文字程度の読みやすい文章にしてください：
+1. この担当者が専任を取れた核心（最重要ポイントを1〜2文で）
+2. 具体的な行動・言葉・工夫（本人の回答から拾った具体エピソードを含める）
+3. 競合に勝てた理由
+4. 後輩へのアドバイス（真似できる行動を箇条書きで2〜3点）
+
+【注意】
+- 案件番号（AA○○○○など）は絶対に使わない
+- 「電話対応」「追客電話」「1番電話」には触れない（事務スタッフの仕事）
+- Markdownの見出し記号（##）は使わず、番号付き段落形式で書く
+- 本人の回答の言葉をできるだけ活かした具体的な内容にする`;
+
+    const message = await anthropic.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 900,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const content = message.content[0];
+    const summaryText = content.type === 'text' ? content.text : '';
+
     return res.json({
       assignee: seller.visit_assignee,
       monthLabel,
       type: 'exclusive',
-      aiAnalysis,
-      qaPairs,
+      summaryText,
     });
   } catch (error) {
     console.error('[exclusive-analysis/summary] Error:', error);
-    return res.status(500).json({ error: 'Failed to get summary' });
+    return res.status(500).json({ error: 'サマリーの生成に失敗しました' });
   }
 });
 
 /**
  * GET /api/sellers/:id/other-decision-analysis/summary
- * 他決分析サマリー：AI分析 + QA回答をまとめて返す
+ * 他決分析サマリー：AI分析 + QA回答を統合してClaudeが要約文を生成
  */
 router.get('/:id/other-decision-analysis/summary', authenticate, async (req: Request, res: Response) => {
   try {
@@ -5301,7 +5347,7 @@ router.get('/:id/other-decision-analysis/summary', authenticate, async (req: Req
 
     const { data: seller } = await supabase
       .from('sellers')
-      .select('visit_assignee, contract_year_month, seller_number, property_address')
+      .select('visit_assignee, contract_year_month')
       .eq('id', id)
       .single();
     if (!seller?.visit_assignee || !seller?.contract_year_month)
@@ -5311,7 +5357,6 @@ router.get('/:id/other-decision-analysis/summary', authenticate, async (req: Req
     const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     const monthLabel = `${d.getFullYear()}年${d.getMonth() + 1}月`;
 
-    // 担当者名をイニシャルに正規化してバリアントを構築
     const normalizeMap = await buildNormalizeInitialMap(supabase);
     const normalized = normalizeMap(seller.visit_assignee);
     const { data: empRows } = await supabase.from('employees').select('initials, name').not('initials', 'is', null);
@@ -5323,17 +5368,16 @@ router.get('/:id/other-decision-analysis/summary', authenticate, async (req: Req
       }
     }
 
-    // AI分析キャッシュ取得（イニシャル正規化済みのキーで検索）
+    let aiAnalysis = '';
     const { data: aiCache } = await supabase
       .from('other_decision_ai_analysis_cache')
       .select('ai_analysis')
       .eq('assignee', normalized)
       .eq('target_month', targetMonth)
       .maybeSingle();
-
-    let aiAnalysis = aiCache?.ai_analysis || '';
+    aiAnalysis = aiCache?.ai_analysis || '';
     if (!aiAnalysis) {
-      const { data: aiCacheFallback } = await supabase
+      const { data: fallback } = await supabase
         .from('other_decision_ai_analysis_cache')
         .select('ai_analysis')
         .in('assignee', variants)
@@ -5341,7 +5385,7 @@ router.get('/:id/other-decision-analysis/summary', authenticate, async (req: Req
         .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      aiAnalysis = aiCacheFallback?.ai_analysis || '';
+      aiAnalysis = fallback?.ai_analysis || '';
     }
 
     const { data: qaRecord } = await supabase
@@ -5359,16 +5403,61 @@ router.get('/:id/other-decision-analysis/summary', authenticate, async (req: Req
       if (ans?.answer?.trim()) qaPairs.push({ question: q.question, answer: ans.answer.trim() });
     }
 
+    if (!aiAnalysis && qaPairs.length === 0) {
+      return res.status(400).json({ error: 'AI分析・Q&A回答のデータがまだありません' });
+    }
+
+    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicApiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY が未設定です' });
+
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+
+    const qaText = qaPairs.map((p, i) =>
+      `Q${i + 1}: ${p.question}\n回答: ${p.answer}`
+    ).join('\n\n');
+
+    const prompt = `あなたは不動産会社の営業研修担当です。
+以下は営業担当「${seller.visit_assignee}」の${monthLabel}の他決（競合負け）に関する2つの資料です。
+
+【AI分析（システム生成）】
+${aiAnalysis || '（データなし）'}
+
+【本人への質問と回答】
+${qaText || '（データなし）'}
+
+これらを統合して、**入社1〜2年目の後輩スタッフ向けの反省・学習まとめ**を作成してください。
+
+以下の構成で、400〜600文字程度の読みやすい文章にしてください：
+1. 今回の他決の核心的な要因（最も重要な理由を1〜2文で）
+2. 具体的に何が足りなかったか・何が起きたか（本人の回答から拾った具体エピソードを含める）
+3. 競合に負けた理由の分析
+4. 次回への具体的な改善アクション（後輩が真似できる行動を箇条書きで2〜3点）
+
+【注意】
+- 案件番号（AA○○○○など）は絶対に使わない
+- 「電話対応」「追客電話」「1番電話」には触れない（事務スタッフの仕事）
+- Markdownの見出し記号（##）は使わず、番号付き段落形式で書く
+- 本人の回答の言葉をできるだけ活かした具体的な内容にする`;
+
+    const message = await anthropic.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 900,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const content = message.content[0];
+    const summaryText = content.type === 'text' ? content.text : '';
+
     return res.json({
       assignee: seller.visit_assignee,
       monthLabel,
       type: 'other',
-      aiAnalysis,
-      qaPairs,
+      summaryText,
     });
   } catch (error) {
     console.error('[other-decision-analysis/summary] Error:', error);
-    return res.status(500).json({ error: 'Failed to get summary' });
+    return res.status(500).json({ error: 'サマリーの生成に失敗しました' });
   }
 });
 
