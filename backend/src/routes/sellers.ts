@@ -5206,6 +5206,142 @@ router.put('/:id/other-decision-analysis/qa/answer', authenticate, async (req: R
   }
 });
 
+/**
+ * GET /api/sellers/:id/exclusive-analysis/summary
+ * 専任分析サマリー：AI分析 + QA回答をまとめて返す
+ */
+router.get('/:id/exclusive-analysis/summary', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+
+    const { data: seller } = await supabase
+      .from('sellers')
+      .select('visit_assignee, contract_year_month, seller_number, property_address')
+      .eq('id', id)
+      .single();
+    if (!seller?.visit_assignee || !seller?.contract_year_month)
+      return res.status(400).json({ error: '営業担当または決定日が未設定です' });
+
+    const d = new Date(seller.contract_year_month);
+    const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const monthLabel = `${d.getFullYear()}年${d.getMonth() + 1}月`;
+
+    // AI分析キャッシュ取得
+    const normalizeMap = await buildNormalizeInitialMap(supabase);
+    const normalized = normalizeMap(seller.visit_assignee);
+    const { data: empRows } = await supabase.from('employees').select('initials, name').not('initials', 'is', null);
+    const variants: string[] = [normalized, seller.visit_assignee];
+    for (const emp of (empRows || [])) {
+      if (emp.initials && normalizeMap(emp.initials) === normalized) {
+        if (emp.name && !variants.includes(emp.name)) variants.push(emp.name);
+        if (!variants.includes(emp.initials)) variants.push(emp.initials);
+      }
+    }
+
+    const { data: aiCache } = await supabase
+      .from('exclusive_ai_analysis_cache')
+      .select('ai_analysis')
+      .in('assignee', variants)
+      .eq('target_month', targetMonth)
+      .maybeSingle();
+
+    // QA取得
+    const { data: qaRecord } = await supabase
+      .from('exclusive_analysis_qa')
+      .select('ai_questions, answers')
+      .in('assignee', variants)
+      .eq('target_month', targetMonth)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const qaPairs: { question: string; answer: string }[] = [];
+    for (const q of (qaRecord?.ai_questions || [])) {
+      const ans = (qaRecord?.answers || []).find((a: any) => a.questionId === q.id);
+      if (ans?.answer?.trim()) qaPairs.push({ question: q.question, answer: ans.answer.trim() });
+    }
+
+    return res.json({
+      assignee: seller.visit_assignee,
+      monthLabel,
+      type: 'exclusive',
+      aiAnalysis: aiCache?.ai_analysis || '',
+      qaPairs,
+    });
+  } catch (error) {
+    console.error('[exclusive-analysis/summary] Error:', error);
+    return res.status(500).json({ error: 'Failed to get summary' });
+  }
+});
+
+/**
+ * GET /api/sellers/:id/other-decision-analysis/summary
+ * 他決分析サマリー：AI分析 + QA回答をまとめて返す
+ */
+router.get('/:id/other-decision-analysis/summary', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+
+    const { data: seller } = await supabase
+      .from('sellers')
+      .select('visit_assignee, contract_year_month, seller_number, property_address')
+      .eq('id', id)
+      .single();
+    if (!seller?.visit_assignee || !seller?.contract_year_month)
+      return res.status(400).json({ error: '営業担当または決定日が未設定です' });
+
+    const d = new Date(seller.contract_year_month);
+    const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const monthLabel = `${d.getFullYear()}年${d.getMonth() + 1}月`;
+
+    const normalizeMap = await buildNormalizeInitialMap(supabase);
+    const normalized = normalizeMap(seller.visit_assignee);
+    const { data: empRows } = await supabase.from('employees').select('initials, name').not('initials', 'is', null);
+    const variants: string[] = [normalized, seller.visit_assignee];
+    for (const emp of (empRows || [])) {
+      if (emp.initials && normalizeMap(emp.initials) === normalized) {
+        if (emp.name && !variants.includes(emp.name)) variants.push(emp.name);
+        if (!variants.includes(emp.initials)) variants.push(emp.initials);
+      }
+    }
+
+    const { data: aiCache } = await supabase
+      .from('other_decision_ai_analysis_cache')
+      .select('ai_analysis')
+      .in('assignee', variants)
+      .eq('target_month', targetMonth)
+      .maybeSingle();
+
+    const { data: qaRecord } = await supabase
+      .from('other_decision_analysis_qa')
+      .select('ai_questions, answers')
+      .in('assignee', variants)
+      .eq('target_month', targetMonth)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const qaPairs: { question: string; answer: string }[] = [];
+    for (const q of (qaRecord?.ai_questions || [])) {
+      const ans = (qaRecord?.answers || []).find((a: any) => a.questionId === q.id);
+      if (ans?.answer?.trim()) qaPairs.push({ question: q.question, answer: ans.answer.trim() });
+    }
+
+    return res.json({
+      assignee: seller.visit_assignee,
+      monthLabel,
+      type: 'other',
+      aiAnalysis: aiCache?.ai_analysis || '',
+      qaPairs,
+    });
+  } catch (error) {
+    console.error('[other-decision-analysis/summary] Error:', error);
+    return res.status(500).json({ error: 'Failed to get summary' });
+  }
+});
+
 // ============================================================
 // 重複売主レコード削除（同一phone_number_hash + inquiry_detailed_datetime）
 // 最も古いseller_numberを残して他を論理削除する

@@ -341,6 +341,16 @@ export default function SellerExclusiveAnalysisPage() {
                   <Button variant="outlined" size="small" startIcon={qaGenerating ? <CircularProgress size={14} /> : <RefreshIcon />} onClick={handleGenerateQuestions} disabled={qaGenerating} sx={{ borderColor: '#2e7d32', color: '#2e7d32' }}>
                     質問を再生成
                   </Button>
+                  {qa.answers?.some((a: QaAnswer) => a.answer) && (
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={() => navigate(`/sellers/${id}/exclusive-analysis/summary`)}
+                      sx={{ bgcolor: '#9c27b0', '&:hover': { bgcolor: '#6a1b9a' }, ml: 'auto' }}
+                    >
+                      ✨ 要約ページを見る
+                    </Button>
+                  )}
                 </Box>
                 {qa.answers?.some((a: QaAnswer) => a.answer) && (
                   <Alert severity="success" sx={{ mt: 2 }} icon={false}>

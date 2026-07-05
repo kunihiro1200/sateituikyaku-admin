@@ -237,6 +237,16 @@ export default function SellerOtherDecisionAnalysisPage() {
                     onClick={handleGenerateQuestions} disabled={qaGenerating} sx={{ borderColor: '#c62828', color: '#c62828' }}>
                     質問を再生成
                   </Button>
+                  {qa.answers?.some((a: QaAnswer) => a.answer) && (
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={() => navigate(`/sellers/${id}/other-decision-analysis/summary`)}
+                      sx={{ bgcolor: '#9c27b0', '&:hover': { bgcolor: '#6a1b9a' }, ml: 'auto' }}
+                    >
+                      ✨ 要約ページを見る
+                    </Button>
+                  )}
                 </Box>
                 {qa.answers?.some((a: QaAnswer) => a.answer) && (
                   <Alert severity="info" sx={{ mt: 2 }} icon={false}>
