@@ -373,9 +373,7 @@ export default function SellerExclusiveAnalysisPage() {
                   <TableCell sx={{ color: '#fff', fontWeight: 'bold', width: 80 }}>売主番号</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>物件住所</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 'bold', width: 100 }}>決定日</TableCell>
-                  <TableCell sx={{ color: '#fff', fontWeight: 'bold', width: 120 }}>ステータス</TableCell>
-                  <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>競合</TableCell>
-                  <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>専任取得要因</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 'bold', width: 160 }}>ステータス／競合／専任取得要因</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>競合名・理由詳細</TableCell>
                 </TableRow>
               </TableHead>
@@ -394,7 +392,8 @@ export default function SellerExclusiveAnalysisPage() {
                     </TableCell>
                     <TableCell sx={{ fontSize: '0.8rem', maxWidth: 200 }}>{row.propertyAddress || '未登録'}</TableCell>
                     <TableCell sx={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{formatDate(row.decisionDate)}</TableCell>
-                    <TableCell>
+                    <TableCell sx={{ verticalAlign: 'top' }}>
+                      {/* ステータス */}
                       <Chip
                         label={row.status}
                         size="small"
@@ -410,22 +409,20 @@ export default function SellerExclusiveAnalysisPage() {
                           fontWeight: 'bold',
                         }}
                       />
+                      {/* 競合 */}
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                        {row.competitors.length > 0
+                          ? row.competitors.map(c => <Chip key={c} label={c} size="small" sx={{ height: 20, fontSize: '0.7rem', bgcolor: '#e3f2fd' }} />)
+                          : <Typography variant="caption" color="text.secondary">競合：－</Typography>}
+                      </Box>
+                      {/* 専任取得要因 */}
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                        {row.factors.length > 0
+                          ? row.factors.map(f => <Chip key={f} label={f} size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#f3e5f5' }} />)
+                          : <Typography variant="caption" color="text.secondary">要因：－</Typography>}
+                      </Box>
                     </TableCell>
-                    <TableCell>
-                      {row.competitors.length > 0 ? (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {row.competitors.map(c => <Chip key={c} label={c} size="small" sx={{ height: 20, fontSize: '0.7rem', bgcolor: '#e3f2fd' }} />)}
-                        </Box>
-                      ) : <Typography variant="caption" color="text.secondary">－</Typography>}
-                    </TableCell>
-                    <TableCell>
-                      {row.factors.length > 0 ? (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {row.factors.map(f => <Chip key={f} label={f} size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#f3e5f5' }} />)}
-                        </Box>
-                      ) : <Typography variant="caption" color="text.secondary">－</Typography>}
-                    </TableCell>
-                    <TableCell sx={{ fontSize: '0.75rem', maxWidth: 220 }}>
+                    <TableCell sx={{ fontSize: '0.8rem', verticalAlign: 'top' }}>
                       {row.reason || <Typography variant="caption" color="text.secondary">－</Typography>}
                     </TableCell>
                   </TableRow>
