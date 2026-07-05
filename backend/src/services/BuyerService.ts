@@ -2346,6 +2346,9 @@ export class BuyerService {
       }>,
     };
 
+    // 持ち家ヒアリング統計：同一顧客の重複排除用セット
+    const homeHearingSeenBuyers = new Set<string>();
+
     for (const buyer of cachedBuyers) {
       const status = buyer.calculated_status || '';
       if (status === '内覧日前日') result.viewingDayBefore++;
@@ -2387,45 +2390,53 @@ export class BuyerService {
       const receptionDate = buyer.reception_date ? String(buyer.reception_date).trim() : '';
       if (receptionDate) {
         const month = receptionDate.substring(0, 7).replace('-', '/');
-        // 2025年以前の不正データは除外
+        // 2025年以前のデータは除外
         if (month >= '2025') {
-        if (!result.homeHearingMonthlyStats[month]) {
-          result.homeHearingMonthlyStats[month] = {
-            initialResponseCounts: {},
-            homeHearingCounts: {},
-            homeHearingOwnedCounts: {},
-            valuationRequiredCounts: {},
-            homeHearingNotDone: 0,
-            homeHearingNotNeeded: 0,
-          };
-        }
-        const monthData = result.homeHearingMonthlyStats[month];
-        
-        const initialAssignee = buyer.initial_assignee ? String(buyer.initial_assignee).trim() : '';
-        const vendorSurvey = buyer.vendor_survey ? String(buyer.vendor_survey).trim() : '';
-        if (initialAssignee && vendorSurvey !== '確認済み') {
-          monthData.initialResponseCounts[initialAssignee] = (monthData.initialResponseCounts[initialAssignee] || 0) + 1;
-        }
-        
-        const hearingAssignee = buyer.owned_home_hearing_inquiry ? String(buyer.owned_home_hearing_inquiry).trim() : '';
-        if (hearingAssignee === '未') {
-          monthData.homeHearingNotDone = (monthData.homeHearingNotDone || 0) + 1;
-        } else if (hearingAssignee === '不要') {
-          monthData.homeHearingNotNeeded = (monthData.homeHearingNotNeeded || 0) + 1;
-        } else if (hearingAssignee) {
-          monthData.homeHearingCounts[hearingAssignee] = (monthData.homeHearingCounts[hearingAssignee] || 0) + 1;
-          
-          const hearingResult = buyer.owned_home_hearing_result ? String(buyer.owned_home_hearing_result).trim() : '';
-          if (hearingResult === '持家（マンション）' || hearingResult === '持家（戸建）') {
-            monthData.homeHearingOwnedCounts[hearingAssignee] = (monthData.homeHearingOwnedCounts[hearingAssignee] || 0) + 1;
+          // 同一顧客の重複排除（電話番号 > メアド > 名前 で判定）
+          const phone = buyer.phone_number ? String(buyer.phone_number).trim() : '';
+          const emailVal = buyer.email ? String(buyer.email).trim() : '';
+          const nameVal = buyer.name ? String(buyer.name).trim() : '';
+          const dedupKey = phone || emailVal || nameVal || buyer.buyer_number;
+          if (!homeHearingSeenBuyers.has(dedupKey)) {
+            homeHearingSeenBuyers.add(dedupKey);
+            if (!result.homeHearingMonthlyStats[month]) {
+              result.homeHearingMonthlyStats[month] = {
+                initialResponseCounts: {},
+                homeHearingCounts: {},
+                homeHearingOwnedCounts: {},
+                valuationRequiredCounts: {},
+                homeHearingNotDone: 0,
+                homeHearingNotNeeded: 0,
+              };
+            }
+            const monthData = result.homeHearingMonthlyStats[month];
+            
+            const initialAssignee = buyer.initial_assignee ? String(buyer.initial_assignee).trim() : '';
+            const vendorSurvey = buyer.vendor_survey ? String(buyer.vendor_survey).trim() : '';
+            if (initialAssignee && vendorSurvey !== '確認済み') {
+              monthData.initialResponseCounts[initialAssignee] = (monthData.initialResponseCounts[initialAssignee] || 0) + 1;
+            }
+            
+            const hearingAssignee = buyer.owned_home_hearing_inquiry ? String(buyer.owned_home_hearing_inquiry).trim() : '';
+            if (hearingAssignee === '未') {
+              monthData.homeHearingNotDone = (monthData.homeHearingNotDone || 0) + 1;
+            } else if (hearingAssignee === '不要') {
+              monthData.homeHearingNotNeeded = (monthData.homeHearingNotNeeded || 0) + 1;
+            } else if (hearingAssignee) {
+              monthData.homeHearingCounts[hearingAssignee] = (monthData.homeHearingCounts[hearingAssignee] || 0) + 1;
+              
+              const hearingResult = buyer.owned_home_hearing_result ? String(buyer.owned_home_hearing_result).trim() : '';
+              if (hearingResult === '持家（マンション）' || hearingResult === '持家（戸建）') {
+                monthData.homeHearingOwnedCounts[hearingAssignee] = (monthData.homeHearingOwnedCounts[hearingAssignee] || 0) + 1;
+              }
+              
+              const valuationRequired = buyer.valuation_required ? String(buyer.valuation_required).trim() : '';
+              if (valuationRequired === '要') {
+                monthData.valuationRequiredCounts[hearingAssignee] = (monthData.valuationRequiredCounts[hearingAssignee] || 0) + 1;
+              }
+            }
           }
-          
-          const valuationRequired = buyer.valuation_required ? String(buyer.valuation_required).trim() : '';
-          if (valuationRequired === '要') {
-            monthData.valuationRequiredCounts[hearingAssignee] = (monthData.valuationRequiredCounts[hearingAssignee] || 0) + 1;
-          }
         }
-      }
       }
     }
 
@@ -2443,6 +2454,8 @@ export class BuyerService {
     const SIDEBAR_COLUMNS = [
       'buyer_number',
       'reception_date',
+      'name',
+      'phone_number',
       'latest_viewing_date',
       'viewing_date',
       'next_call_date',
@@ -2764,13 +2777,24 @@ export class BuyerService {
         valuationRequiredCounts: Record<string, number>;
       }> = {};
       
+      // 同一顧客の重複排除用セット
+      const homeHearingSeenBuyersFallback = new Set<string>();
+      
       allBuyers.forEach((buyer: any) => {
         // 受付日から月を取得 (YYYY/MM形式)
         const receptionDate = buyer.reception_date ? String(buyer.reception_date).trim() : '';
         if (!receptionDate) return;
         const month = receptionDate.substring(0, 7).replace('-', '/'); // 2026-04 → 2026/04
-        // 2025年以前の不正データは除外
+        // 2025年以前のデータは除外
         if (month < '2025') return;
+        
+        // 同一顧客の重複排除（電話番号 > メアド > 名前 で判定）
+        const phone = buyer.phone_number ? String(buyer.phone_number).trim() : '';
+        const emailVal = buyer.email ? String(buyer.email).trim() : '';
+        const nameVal = buyer.name ? String(buyer.name).trim() : '';
+        const dedupKey = phone || emailVal || nameVal || buyer.buyer_number;
+        if (homeHearingSeenBuyersFallback.has(dedupKey)) return;
+        homeHearingSeenBuyersFallback.add(dedupKey);
         
         if (!homeHearingMonthlyStats[month]) {
           homeHearingMonthlyStats[month] = {
