@@ -1327,11 +1327,10 @@ router.get('/learning-library/exclusive', authenticate, async (req: Request, res
   try {
     const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
-    // QAレコード（回答が1つ以上あるもの）を取得
+    // QAレコード（全期間）を取得
     const { data: qaRecords } = await supabase
       .from('exclusive_analysis_qa')
       .select('id, seller_id, assignee, target_month, ai_questions, answers')
-      .gte('target_month', '2026-05')
       .order('target_month', { ascending: false });
 
     // AI分析キャッシュを取得
@@ -1397,7 +1396,6 @@ router.get('/learning-library/other-decision', authenticate, async (req: Request
     const { data: qaRecords } = await supabase
       .from('other_decision_analysis_qa')
       .select('id, seller_id, assignee, target_month, ai_questions, answers')
-      .gte('target_month', '2026-05')
       .order('target_month', { ascending: false });
 
     const { data: aiCaches } = await supabase

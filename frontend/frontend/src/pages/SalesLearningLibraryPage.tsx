@@ -1,314 +1,432 @@
 /**
- * 📚 営業学習ライブラリ（教科書モード）
- * AIが全Q&A回答を統合して生成する営業マニュアル
- * 回答が増えるたびに自動更新される
+ * 📚 営業学習ライブラリ
+ * 専任取得・他決それぞれの担当者インタビューをグループ別に表示
+ * AIによるリアルタイム生成は行わず、登録済み回答をそのまま表示
  */
 import { useEffect, useState } from 'react';
 import {
   Box, Typography, Paper, Chip, CircularProgress, Alert, Button,
-  Divider, Card, CardContent, Collapse, IconButton, LinearProgress,
-  Skeleton,
+  Divider, Card, Collapse, IconButton, Tab, Tabs, Avatar,
+  Skeleton, Badge,
 } from '@mui/material';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import BlockIcon from '@mui/icons-material/Block';
+import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
 import api from '../services/api';
 
-interface Scenario {
+// ── 型定義 ────────────────────────────────────────────
+interface QAEntry {
   id: string;
-  situation: string;
+  assignee: string;
+  targetMonth: string;
+  aiAnalysis: string;
+  questions: { id: string; question: string }[];
+  answers: { questionId: string; answer: string }[];
+  caseCount: number;
+}
+
+// 回答済みQ&Aペアに変換した型
+interface QAPair {
   question: string;
   answer: string;
-  tips: string[];
 }
 
-interface Chapter {
-  id: string;
-  title: string;
-  icon: string;
-  summary: string;
-  scenarios: Scenario[];
+// 担当者ごとにまとめた型
+interface AssigneeGroup {
+  assignee: string;
+  entries: (QAEntry & { qaPairs: QAPair[] })[];
+  totalAnswers: number;
 }
 
-interface Textbook {
-  lastUpdated: string;
-  answerCount: number;
-  chapters: Chapter[];
+// ── ユーティリティ ─────────────────────────────────────
+function formatMonth(ym: string) {
+  if (!ym) return '';
+  const [y, m] = ym.split('-');
+  return `${y}年${parseInt(m)}月`;
 }
 
-export default function SalesLearningLibraryPage() {
+function getInitialColor(name: string): string {
+  const colors = [
+    '#1976d2', '#388e3c', '#d32f2f', '#7b1fa2',
+    '#f57c00', '#0288d1', '#c2185b', '#455a64',
+  ];
+  let hash = 0;
+  for (const c of name) hash = (hash * 31 + c.charCodeAt(0)) & 0xffffffff;
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function buildAssigneeGroups(entries: QAEntry[]): AssigneeGroup[] {
+  const map = new Map<string, AssigneeGroup>();
+
+  for (const entry of entries) {
+    const qaPairs: QAPair[] = (entry.questions || []).flatMap(q => {
+      const ans = (entry.answers || []).find(a => a.questionId === q.id);
+      if (!ans?.answer?.trim()) return [];
+      return [{ question: q.question, answer: ans.answer.trim() }];
+    });
+
+    const enriched = { ...entry, qaPairs };
+
+    if (!map.has(entry.assignee)) {
+      map.set(entry.assignee, { assignee: entry.assignee, entries: [], totalAnswers: 0 });
+    }
+    const group = map.get(entry.assignee)!;
+    group.entries.push(enriched);
+    group.totalAnswers += qaPairs.length;
+  }
+
+  return Array.from(map.values()).sort((a, b) => b.totalAnswers - a.totalAnswers);
+}
+
+// ── サブコンポーネント ─────────────────────────────────
+
+function QACard({ pair, idx, color }: { pair: QAPair; idx: number; color: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        overflow: 'hidden',
+        borderColor: open ? color : '#e0e0e0',
+        transition: 'border-color 0.2s',
+      }}
+    >
+      {/* 質問行 */}
+      <Box
+        onClick={() => setOpen(v => !v)}
+        sx={{
+          px: 2, py: 1.5, cursor: 'pointer',
+          bgcolor: open ? `${color}10` : '#fafafa',
+          display: 'flex', alignItems: 'flex-start', gap: 1.5,
+          '&:hover': { bgcolor: `${color}10` },
+        }}
+      >
+        <Chip
+          label={`Q${idx + 1}`}
+          size="small"
+          sx={{ bgcolor: color, color: '#fff', fontWeight: 'bold', height: 20, fontSize: '0.65rem', flexShrink: 0, mt: 0.2 }}
+        />
+        <Typography variant="body2" sx={{ flex: 1, fontWeight: open ? 'bold' : 'normal', color: '#333', lineHeight: 1.6 }}>
+          {pair.question}
+        </Typography>
+        <IconButton size="small" sx={{ flexShrink: 0, mt: -0.3, color }}>
+          {open ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+        </IconButton>
+      </Box>
+
+      {/* 回答（展開時） */}
+      <Collapse in={open}>
+        <Divider />
+        <Box sx={{ px: 2.5, py: 2, bgcolor: '#fff' }}>
+          <Typography
+            variant="body2"
+            sx={{ lineHeight: 1.9, color: '#333', whiteSpace: 'pre-wrap' }}
+          >
+            {pair.answer}
+          </Typography>
+        </Box>
+      </Collapse>
+    </Paper>
+  );
+}
+
+function EntrySection({
+  entry,
+  color,
+  defaultOpen,
+}: {
+  entry: QAEntry & { qaPairs: QAPair[] };
+  color: string;
+  defaultOpen: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  if (entry.qaPairs.length === 0) return null;
+
+  return (
+    <Box sx={{ mb: 1.5 }}>
+      {/* 月ヘッダー */}
+      <Box
+        onClick={() => setOpen(v => !v)}
+        sx={{
+          display: 'flex', alignItems: 'center', gap: 1, py: 0.8, px: 1,
+          cursor: 'pointer', borderRadius: 1,
+          '&:hover': { bgcolor: '#f5f5f5' },
+        }}
+      >
+        <Chip
+          label={formatMonth(entry.targetMonth)}
+          size="small"
+          variant="outlined"
+          sx={{ borderColor: color, color, fontWeight: 'bold', fontSize: '0.72rem' }}
+        />
+        <Chip
+          label={`${entry.qaPairs.length}件の回答`}
+          size="small"
+          sx={{ bgcolor: '#f5f5f5', color: '#666', fontSize: '0.68rem' }}
+        />
+        {entry.caseCount > 0 && (
+          <Chip
+            label={`${entry.caseCount}案件`}
+            size="small"
+            sx={{ bgcolor: `${color}20`, color, fontSize: '0.68rem' }}
+          />
+        )}
+        <Box sx={{ flex: 1 }} />
+        <IconButton size="small" sx={{ color: '#999' }}>
+          {open ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+        </IconButton>
+      </Box>
+
+      <Collapse in={open}>
+        <Box sx={{ pl: 1, display: 'flex', flexDirection: 'column', gap: 0.8, mt: 0.5 }}>
+          {entry.qaPairs.map((pair, i) => (
+            <QACard key={i} pair={pair} idx={i} color={color} />
+          ))}
+        </Box>
+      </Collapse>
+    </Box>
+  );
+}
+
+function AssigneeCard({
+  group,
+  color,
+  defaultOpen,
+}: {
+  group: AssigneeGroup;
+  color: string;
+  defaultOpen: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const avatarColor = getInitialColor(group.assignee);
+
+  return (
+    <Card sx={{ border: `2px solid ${open ? color : '#e0e0e0'}`, boxShadow: open ? 3 : 1, transition: 'all 0.2s' }}>
+      {/* 担当者ヘッダー */}
+      <Box
+        onClick={() => setOpen(v => !v)}
+        sx={{
+          px: 2, py: 1.8, cursor: 'pointer',
+          bgcolor: open ? `${color}08` : '#fff',
+          display: 'flex', alignItems: 'center', gap: 1.5,
+          '&:hover': { bgcolor: `${color}08` },
+        }}
+      >
+        <Avatar
+          sx={{
+            bgcolor: avatarColor,
+            width: 36, height: 36,
+            fontSize: '0.85rem', fontWeight: 'bold', flexShrink: 0,
+          }}
+        >
+          {group.assignee.slice(0, 1)}
+        </Avatar>
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.2 }}>
+            {group.assignee}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {group.entries.length}ヶ月分・{group.totalAnswers}件の回答
+          </Typography>
+        </Box>
+        <Chip
+          label={`${group.totalAnswers}件`}
+          size="small"
+          sx={{ bgcolor: color, color: '#fff', fontWeight: 'bold', fontSize: '0.72rem' }}
+        />
+        <IconButton size="small" sx={{ color }}>
+          {open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        </IconButton>
+      </Box>
+
+      {/* 月別エントリー */}
+      <Collapse in={open}>
+        <Divider />
+        <Box sx={{ p: 2 }}>
+          {group.entries.map((entry, i) => (
+            <EntrySection
+              key={entry.id}
+              entry={entry}
+              color={color}
+              defaultOpen={i === 0}
+            />
+          ))}
+        </Box>
+      </Collapse>
+    </Card>
+  );
+}
+
+function LibraryTab({
+  type,
+  color,
+  icon,
+}: {
+  type: 'exclusive' | 'other';
+  color: string;
+  icon: React.ReactNode;
+}) {
+  const [groups, setGroups] = useState<AssigneeGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [textbook, setTextbook] = useState<Textbook | null>(null);
-  const [answerCount, setAnswerCount] = useState(0);
-  const [cached, setCached] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expandedScenarios, setExpandedScenarios] = useState<Set<string>>(new Set());
-  const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set(['ch1']));
-  const [regenerating, setRegenerating] = useState(false);
 
-  useEffect(() => {
-    fetchTextbook();
-  }, []);
-
-  const fetchTextbook = async (forceRegenerate = false) => {
+  const load = async () => {
     try {
       setLoading(true);
       setError(null);
-      const url = forceRegenerate
-        ? '/api/sellers/learning-library/textbook?force=true'
-        : '/api/sellers/learning-library/textbook';
+      const url =
+        type === 'exclusive'
+          ? '/api/sellers/learning-library/exclusive'
+          : '/api/sellers/learning-library/other-decision';
       const res = await api.get(url);
-      setTextbook(res.data.textbook);
-      setAnswerCount(res.data.answerCount || 0);
-      setCached(res.data.cached || false);
+      const entries: QAEntry[] = res.data.entries || [];
+      setGroups(buildAssigneeGroups(entries));
     } catch (err: any) {
-      setError(err?.response?.data?.error || '教科書の生成に失敗しました');
+      setError(err?.response?.data?.error || 'データの取得に失敗しました');
     } finally {
       setLoading(false);
-      setRegenerating(false);
     }
   };
 
-  const handleRegenerate = async () => {
-    setRegenerating(true);
-    await fetchTextbook(true);
-  };
+  useEffect(() => { load(); }, [type]);
 
-  const toggleScenario = (id: string) => {
-    setExpandedScenarios(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
+  const totalAnswers = groups.reduce((s, g) => s + g.totalAnswers, 0);
 
-  const toggleChapter = (id: string) => {
-    setExpandedChapters(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
+  if (loading) {
+    return (
+      <Box>
+        {[1, 2, 3].map(i => (
+          <Skeleton key={i} variant="rounded" height={72} sx={{ mb: 1.5, borderRadius: 2 }} />
+        ))}
+      </Box>
+    );
+  }
 
-  const formatDate = (iso: string) => {
-    if (!iso) return '';
-    const d = new Date(iso);
-    return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-  };
+  if (error) {
+    return (
+      <Alert severity="error" action={<Button size="small" onClick={load}>再試行</Button>}>
+        {error}
+      </Alert>
+    );
+  }
 
-  // チャプターごとの配色
-  const chapterColors: Record<string, { bg: string; border: string; text: string; chip: string }> = {
-    ch1: { bg: '#fff3e0', border: '#ff6d00', text: '#e65100', chip: '#ff6d00' },
-    ch2: { bg: '#fce4ec', border: '#e53935', text: '#c62828', chip: '#e53935' },
-    ch3: { bg: '#e8f5e9', border: '#43a047', text: '#2e7d32', chip: '#43a047' },
-    ch4: { bg: '#e3f2fd', border: '#1e88e5', text: '#1565c0', chip: '#1e88e5' },
-    ch5: { bg: '#f3e5f5', border: '#8e24aa', text: '#6a1b9a', chip: '#8e24aa' },
-  };
+  if (groups.length === 0) {
+    return (
+      <Box sx={{ textAlign: 'center', py: 6 }}>
+        <QuestionAnswerIcon sx={{ fontSize: 48, color: '#ccc', mb: 1 }} />
+        <Typography color="text.secondary">
+          まだ回答データがありません。
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          分析ページで担当者が質問に回答すると、ここに表示されます。
+        </Typography>
+      </Box>
+    );
+  }
 
-  const getChapterColor = (idx: number) => {
-    const keys = Object.keys(chapterColors);
-    return chapterColors[keys[idx % keys.length]];
-  };
+  return (
+    <Box>
+      {/* サマリー */}
+      <Box sx={{ display: 'flex', gap: 1, mb: 2.5, flexWrap: 'wrap', alignItems: 'center' }}>
+        <Chip
+          label={`${groups.length}名の担当者`}
+          sx={{ bgcolor: `${color}20`, color, fontWeight: 'bold' }}
+        />
+        <Chip
+          label={`計${totalAnswers}件の回答`}
+          sx={{ bgcolor: `${color}20`, color, fontWeight: 'bold' }}
+        />
+        <Button
+          size="small"
+          startIcon={<RefreshIcon />}
+          onClick={load}
+          sx={{ color, borderColor: color, ml: 'auto' }}
+          variant="outlined"
+        >
+          更新
+        </Button>
+      </Box>
+
+      {/* 担当者別カード */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        {groups.map((group, i) => (
+          <AssigneeCard
+            key={group.assignee}
+            group={group}
+            color={color}
+            defaultOpen={i === 0}
+          />
+        ))}
+      </Box>
+    </Box>
+  );
+}
+
+// ── メインページ ──────────────────────────────────────────
+
+export default function SalesLearningLibraryPage() {
+  const [tab, setTab] = useState<0 | 1>(0);
 
   return (
     <Box sx={{ maxWidth: 900, mx: 'auto', p: { xs: 2, sm: 3 } }}>
       {/* ヘッダー */}
       <Paper sx={{ p: 2.5, mb: 3, bgcolor: '#f3e5f5', borderLeft: '4px solid #9c27b0' }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-          <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-              <AutoAwesomeIcon sx={{ color: '#9c27b0', fontSize: 28 }} />
-              <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#6a1b9a' }}>
-                📚 営業学習ライブラリ
-              </Typography>
-            </Box>
-            <Typography variant="body2" color="text.secondary">
-              担当者のインタビュー回答をAIが統合した営業マニュアルです。
-              回答が増えるたびに内容が自動更新されます。
-            </Typography>
-            {textbook && (
-              <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-                <Chip
-                  label={`${answerCount}件の回答を統合`}
-                  size="small"
-                  sx={{ bgcolor: '#9c27b0', color: '#fff', fontWeight: 'bold' }}
-                />
-                <Chip
-                  label={cached ? `キャッシュ（${formatDate(textbook.lastUpdated)}）` : '最新版'}
-                  size="small"
-                  variant="outlined"
-                  sx={{ borderColor: '#9c27b0', color: '#6a1b9a' }}
-                />
-              </Box>
-            )}
-          </Box>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={regenerating ? <CircularProgress size={14} /> : <RefreshIcon />}
-            onClick={handleRegenerate}
-            disabled={loading || regenerating}
-            sx={{ borderColor: '#9c27b0', color: '#9c27b0', whiteSpace: 'nowrap' }}
-          >
-            {regenerating ? '生成中...' : '最新に更新'}
-          </Button>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#6a1b9a' }}>
+            📚 営業学習ライブラリ
+          </Typography>
         </Box>
+        <Typography variant="body2" color="text.secondary">
+          専任取得・他決それぞれの場面で、各担当者が実際にどう乗り切ったかをまとめています。
+          後輩は先輩の言葉をそのまま読んで学べます。
+        </Typography>
       </Paper>
 
-      {/* ローディング */}
-      {loading && (
-        <Box>
-          <LinearProgress sx={{ mb: 2, borderRadius: 1 }} color="secondary" />
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: 'center' }}>
-            AIが全データを統合して教科書を生成中です...（初回は20〜30秒かかります）
-          </Typography>
-          {[1, 2, 3].map(i => (
-            <Box key={i} sx={{ mb: 2 }}>
-              <Skeleton variant="rounded" height={80} sx={{ mb: 1 }} />
-            </Box>
-          ))}
-        </Box>
+      {/* タブ */}
+      <Paper sx={{ mb: 3, borderRadius: 2, overflow: 'hidden' }}>
+        <Tabs
+          value={tab}
+          onChange={(_, v) => setTab(v)}
+          variant="fullWidth"
+          sx={{
+            '& .MuiTab-root': { fontWeight: 'bold', fontSize: '0.95rem', py: 1.5 },
+            '& .Mui-selected': { color: tab === 0 ? '#f57c00' : '#d32f2f' },
+            '& .MuiTabs-indicator': { bgcolor: tab === 0 ? '#f57c00' : '#d32f2f', height: 3 },
+          }}
+        >
+          <Tab
+            icon={<EmojiEventsIcon />}
+            iconPosition="start"
+            label="専任取得"
+          />
+          <Tab
+            icon={<BlockIcon />}
+            iconPosition="start"
+            label="他決（競合負け）"
+          />
+        </Tabs>
+      </Paper>
+
+      {/* タブコンテンツ */}
+      {tab === 0 && (
+        <LibraryTab
+          key="exclusive"
+          type="exclusive"
+          color="#f57c00"
+          icon={<EmojiEventsIcon />}
+        />
       )}
-
-      {/* エラー */}
-      {error && !loading && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-          <Button size="small" onClick={() => fetchTextbook()} sx={{ ml: 2 }}>再試行</Button>
-        </Alert>
-      )}
-
-      {/* データ不足の案内 */}
-      {!loading && textbook && answerCount < 5 && (
-        <Alert severity="info" sx={{ mb: 2 }} icon={<AutoAwesomeIcon />}>
-          <Typography variant="body2">
-            <strong>現在{answerCount}件の回答データがあります。</strong>
-            担当者が分析ページで質問に回答すると、教科書の内容が充実します。
-            目安として10件以上の回答があると実践的な内容になります。
-          </Typography>
-        </Alert>
-      )}
-
-      {/* 教科書本体 */}
-      {!loading && textbook && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {(textbook.chapters || []).map((chapter, chIdx) => {
-            const colors = getChapterColor(chIdx);
-            const isExpanded = expandedChapters.has(chapter.id);
-
-            return (
-              <Card key={chapter.id} sx={{ border: `2px solid ${colors.border}`, boxShadow: 2 }}>
-                {/* チャプターヘッダー */}
-                <Box
-                  sx={{
-                    p: 2, bgcolor: colors.bg, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  }}
-                  onClick={() => toggleChapter(chapter.id)}
-                >
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: colors.text }}>
-                      {chapter.icon} {chapter.title}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                      {chapter.summary}
-                    </Typography>
-                    <Chip
-                      label={`${(chapter.scenarios || []).length}シナリオ`}
-                      size="small"
-                      sx={{ mt: 0.5, bgcolor: colors.chip, color: '#fff', height: 20, fontSize: '0.7rem' }}
-                    />
-                  </Box>
-                  <IconButton size="small">
-                    {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                  </IconButton>
-                </Box>
-
-                {/* シナリオ一覧 */}
-                <Collapse in={isExpanded}>
-                  <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                    {(chapter.scenarios || []).map((scenario, sIdx) => {
-                      const scenarioKey = `${chapter.id}-${scenario.id}`;
-                      const isScenarioExpanded = expandedScenarios.has(scenarioKey);
-
-                      return (
-                        <Paper key={scenario.id} variant="outlined" sx={{ overflow: 'hidden' }}>
-                          {/* 状況 */}
-                          <Box
-                            sx={{
-                              px: 2, py: 1.5,
-                              bgcolor: isScenarioExpanded ? colors.bg : '#fafafa',
-                              cursor: 'pointer',
-                              display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1,
-                              '&:hover': { bgcolor: colors.bg },
-                            }}
-                            onClick={() => toggleScenario(scenarioKey)}
-                          >
-                            <Box sx={{ flex: 1 }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                <Chip
-                                  label={`場面 ${sIdx + 1}`}
-                                  size="small"
-                                  sx={{ bgcolor: colors.chip, color: '#fff', height: 18, fontSize: '0.65rem', minWidth: 52 }}
-                                />
-                                <Typography variant="body2" sx={{ fontWeight: 'bold', color: colors.text }}>
-                                  {scenario.situation}
-                                </Typography>
-                              </Box>
-                              <Typography variant="body2" color="text.secondary" sx={{ pl: 0.5 }}>
-                                ❓ {scenario.question}
-                              </Typography>
-                            </Box>
-                            <IconButton size="small" sx={{ flexShrink: 0, mt: -0.5 }}>
-                              {isScenarioExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                            </IconButton>
-                          </Box>
-
-                          {/* 回答（展開時） */}
-                          <Collapse in={isScenarioExpanded}>
-                            <Divider />
-                            <Box sx={{ p: 2, bgcolor: '#fff' }}>
-                              <Typography variant="caption" sx={{ color: colors.text, fontWeight: 'bold', display: 'block', mb: 1 }}>
-                                💡 先輩担当者たちの実践から
-                              </Typography>
-                              <Typography variant="body2" sx={{ lineHeight: 1.8, color: '#333', mb: 1.5 }}>
-                                {scenario.answer}
-                              </Typography>
-
-                              {scenario.tips && scenario.tips.length > 0 && (
-                                <Box sx={{ bgcolor: colors.bg, borderRadius: 1, p: 1.5 }}>
-                                  <Typography variant="caption" sx={{ fontWeight: 'bold', color: colors.text, display: 'block', mb: 0.5 }}>
-                                    ✅ ポイント
-                                  </Typography>
-                                  {scenario.tips.map((tip, tIdx) => (
-                                    <Typography key={tIdx} variant="body2" sx={{ color: '#333', lineHeight: 1.7 }}>
-                                      • {tip}
-                                    </Typography>
-                                  ))}
-                                </Box>
-                              )}
-                            </Box>
-                          </Collapse>
-                        </Paper>
-                      );
-                    })}
-                  </Box>
-                </Collapse>
-              </Card>
-            );
-          })}
-        </Box>
-      )}
-
-      {/* フッター */}
-      {!loading && textbook && (
-        <Box sx={{ mt: 3, textAlign: 'center' }}>
-          <Typography variant="caption" color="text.secondary">
-            このマニュアルは担当者の実際の回答をAIが統合して生成しています。
-            回答が増えるほど内容が充実します。
-          </Typography>
-        </Box>
+      {tab === 1 && (
+        <LibraryTab
+          key="other"
+          type="other"
+          color="#d32f2f"
+          icon={<BlockIcon />}
+        />
       )}
     </Box>
   );
