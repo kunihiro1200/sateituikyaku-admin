@@ -886,8 +886,8 @@ function SellerStatusSidebarComponent({
       {/* 既存の固定カテゴリー */}
       {renderCategoryButton('visitDayBefore', '①訪問日前日', '#2e7d32')}
       {renderCategoryButton('todayCallNotStarted', '当日TEL_未着手', '#ff9800')}
-      {renderCategoryButton('unvaluated', '未査定', '#ed6c02')}
       {renderCategoryButton('todayCall', '当日TEL分', '#d32f2f')}
+      {renderCategoryButton('unvaluated', '未査定', '#ed6c02')}
       {(() => {
         // todayCallWithInfo のラベルはAPIから取得した全件対象のラベル一覧を優先使用
         // フォールバック: validSellers（表示中の売主のみ）から生成
