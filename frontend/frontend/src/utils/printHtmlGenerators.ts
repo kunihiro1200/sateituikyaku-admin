@@ -410,14 +410,19 @@ export function generatePage4Html(propertyAddress: string, propertyPrice: number
   const shokeihi = inshi+shoyuken+chukai+kasai+GINKO_INSHI+GINKO_JIMU;
   const total = price+shokeihi;
   const borrowing = total; // 総額（物件価格＋諸経費）をローン借入金額とする
+  const BONUS_PER_TIME = 50000; // ボーナス返済1回あたり
+  const BONUS_TIMES = 2; // 年2回
+  const LOAN_YEARS = 35;
+  const bonusTotal = BONUS_PER_TIME * BONUS_TIMES * LOAN_YEARS; // ボーナス返済総額
+  const monthlyPrincipal = borrowing - bonusTotal; // 月額返済の元本
   function monthly(principal:number,rate:number,years:number):number{
     if(principal<=0)return 0;
     const r=rate/12/100,n=years*12;
     if(r===0)return Math.round(principal/n);
     return Math.round(principal*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1));
   }
-  const m_hendo = monthly(borrowing,1.30,35);
-  const m_flat = monthly(borrowing,3.21,35);
+  const m_hendo = monthly(monthlyPrincipal,1.30,LOAN_YEARS);
+  const m_flat = monthly(monthlyPrincipal,3.21,LOAN_YEARS);
   const f = (n:number)=>n.toLocaleString('ja-JP');
   const thG = 'background:#d9d9d9;font-weight:bold;';
   const thF = 'background:#f2f2f2;font-weight:bold;';
@@ -505,14 +510,19 @@ export function generatePage4RepeaterHtml(propertyAddress: string, propertyPrice
   const shokeihi = inshi+shoyuken+chukai+kasai+GINKO_INSHI+GINKO_JIMU;
   const total = price+shokeihi;
   const borrowing = total;
+  const BONUS_PER_TIME = 50000; // ボーナス返済1回あたり
+  const BONUS_TIMES = 2; // 年2回
+  const LOAN_YEARS = 35;
+  const bonusTotal = BONUS_PER_TIME * BONUS_TIMES * LOAN_YEARS; // ボーナス返済総額
+  const monthlyPrincipal = borrowing - bonusTotal; // 月額返済の元本
   function monthly(principal:number,rate:number,years:number):number{
     if(principal<=0)return 0;
     const r=rate/12/100,n=years*12;
     if(r===0)return Math.round(principal/n);
     return Math.round(principal*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1));
   }
-  const m_hendo = monthly(borrowing,1.30,35);
-  const m_flat = monthly(borrowing,3.21,35);
+  const m_hendo = monthly(monthlyPrincipal,1.30,LOAN_YEARS);
+  const m_flat = monthly(monthlyPrincipal,3.21,LOAN_YEARS);
   const f = (n:number)=>n.toLocaleString('ja-JP');
   const thG = 'background:#d9d9d9;font-weight:bold;';
   const thF = 'background:#f2f2f2;font-weight:bold;';
