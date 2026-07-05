@@ -153,65 +153,64 @@ router.get('/site-due-date-counts', async (req: Request, res: Response) => {
 /**
  * GET /api/work-tasks/review-campaign-stats
  * 口コミ・キャンペーン集計データを取得
- * work_tasksテーブルから直接集計:
- * - 口コミ: review_seller(DK列) + review_buyer(DL列) で「Google口コミ」=2pt、「アンケート用紙」=1pt
- * - キャンペーン: referral_flyer_given(紹介チラシ渡し) = "あり" の件数
+ * 業務依頼スプレッドシートの「口コミ、キャンペーン」シートから直接読み取り
  */
 router.get('/review-campaign-stats', async (req: Request, res: Response) => {
   try {
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_KEY!
-    );
+    const { google } = await import('googleapis');
 
-    // 全件取得（期間フィルターなし）
-    const { data, error } = await supabase
-      .from('work_tasks')
-      .select('sales_assignee, referral_flyer_given, review_seller, review_buyer');
-
-    if (error) {
-      throw new Error(`DB取得エラー: ${error.message}`);
+    // Google Sheets API認証
+    let auth;
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+      auth = new google.auth.GoogleAuth({
+        credentials,
+        scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+      });
+    } else {
+      auth = new google.auth.GoogleAuth({
+        keyFile: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+        scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+      });
     }
 
-    // 対象担当者
-    const targetAssignees = ['Y', 'U', 'I', 'K', '林', '麻'];
+    const sheets = google.sheets({ version: 'v4', auth });
 
-    // 担当者別集計
+    // 業務依頼スプレッドシートの「口コミ、キャンペーン」シートからA35:H39を読み取り
+    const spreadsheetId = '1MO2vs0mDUFCgM-rjXXPRIy3pKKdfIFvUDwacM-2174g';
+    const range = "'口コミ、キャンペーン'!A35:H39";
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range,
+    });
+
+    const rows = response.data.values || [];
+
+    // データ構造: A35:H39
+    // 行0: ヘッダー (取得件数 2025/10/1〜集計, Y, U, I, K, 林, 麻, 計)
+    // 行1: 新紹介者キャンペーン
+    // 行2: 口コミ登録合計
+    // 行3: 口コミ目標
+    // 行4: 口コミ達成率
+
+    const assignees = ['Y', 'U', 'I', 'K', '林', '麻'];
+
+    const campaignRow = rows[1] || [];
+    const reviewRow = rows[2] || [];
+    const goalRow = rows[3] || [];
+
     const stats: Record<string, { campaign_count: number; review_points: number }> = {};
-    for (const assignee of targetAssignees) {
-      stats[assignee] = { campaign_count: 0, review_points: 0 };
+    for (let i = 0; i < assignees.length; i++) {
+      stats[assignees[i]] = {
+        campaign_count: Number(campaignRow[i + 1]) || 0,
+        review_points: Number(reviewRow[i + 1]) || 0,
+      };
     }
 
-    // ポイント計算関数
-    const calcPoints = (value: string | null): number => {
-      if (!value) return 0;
-      const v = value.trim();
-      if (v === 'Google口コミ') return 2;
-      if (v === 'アンケート用紙') return 1;
-      return 0;
-    };
-
-    for (const row of (data || [])) {
-      const assignee = (row.sales_assignee || '').trim();
-      if (!targetAssignees.includes(assignee)) continue;
-
-      // キャンペーン（紹介チラシ渡し = "あり"）
-      if (row.referral_flyer_given && String(row.referral_flyer_given).trim() === 'あり') {
-        stats[assignee].campaign_count += 1;
-      }
-
-      // 口コミポイント（売主 + 買主）
-      const sellerPts = calcPoints(row.review_seller);
-      const buyerPts = calcPoints(row.review_buyer);
-      stats[assignee].review_points += sellerPts + buyerPts;
-    }
-
-    // 目標: 各人72pt
-    const goalPerPerson = 72;
-    // 月間目標: 6pt
+    const goalPerPerson = Number(goalRow[1]) || 72;
     const monthlyGoal = 6;
 
-    // 経過月数を計算（2025/10/1を起点）
     const startDate = new Date(2025, 9, 1);
     const now = new Date();
     const elapsedMonths = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
@@ -219,7 +218,7 @@ router.get('/review-campaign-stats', async (req: Request, res: Response) => {
 
     const result = {
       period_start: '2025-10-01',
-      assignees: targetAssignees,
+      assignees,
       goal_per_person: goalPerPerson,
       monthly_goal: monthlyGoal,
       elapsed_months: elapsedMonths,
