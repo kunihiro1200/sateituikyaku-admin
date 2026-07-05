@@ -2393,6 +2393,8 @@ export class BuyerService {
             homeHearingCounts: {},
             homeHearingOwnedCounts: {},
             valuationRequiredCounts: {},
+            homeHearingNotDone: 0,
+            homeHearingNotNeeded: 0,
           };
         }
         const monthData = result.homeHearingMonthlyStats[month];
@@ -2404,7 +2406,11 @@ export class BuyerService {
         }
         
         const hearingAssignee = buyer.owned_home_hearing_inquiry ? String(buyer.owned_home_hearing_inquiry).trim() : '';
-        if (hearingAssignee && hearingAssignee !== '不要' && hearingAssignee !== '未') {
+        if (hearingAssignee === '未') {
+          monthData.homeHearingNotDone = (monthData.homeHearingNotDone || 0) + 1;
+        } else if (hearingAssignee === '不要') {
+          monthData.homeHearingNotNeeded = (monthData.homeHearingNotNeeded || 0) + 1;
+        } else if (hearingAssignee) {
           monthData.homeHearingCounts[hearingAssignee] = (monthData.homeHearingCounts[hearingAssignee] || 0) + 1;
           
           const hearingResult = buyer.owned_home_hearing_result ? String(buyer.owned_home_hearing_result).trim() : '';
@@ -2767,6 +2773,8 @@ export class BuyerService {
             homeHearingCounts: {},
             homeHearingOwnedCounts: {},
             valuationRequiredCounts: {},
+            homeHearingNotDone: 0,
+            homeHearingNotNeeded: 0,
           };
         }
         const monthData = homeHearingMonthlyStats[month];
@@ -2780,7 +2788,11 @@ export class BuyerService {
         
         // 持ち家ヒアリング数: owned_home_hearing_inquiry（担当イニシャル）別にカウント
         const hearingAssignee = buyer.owned_home_hearing_inquiry ? String(buyer.owned_home_hearing_inquiry).trim() : '';
-        if (hearingAssignee && hearingAssignee !== '不要' && hearingAssignee !== '未') {
+        if (hearingAssignee === '未') {
+          monthData.homeHearingNotDone = (monthData.homeHearingNotDone || 0) + 1;
+        } else if (hearingAssignee === '不要') {
+          monthData.homeHearingNotNeeded = (monthData.homeHearingNotNeeded || 0) + 1;
+        } else if (hearingAssignee) {
           monthData.homeHearingCounts[hearingAssignee] = (monthData.homeHearingCounts[hearingAssignee] || 0) + 1;
           
           // 持ち家ヒアリング結果が持家（マンション）or 持家（戸建）のカウント

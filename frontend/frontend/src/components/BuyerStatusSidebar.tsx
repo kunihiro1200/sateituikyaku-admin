@@ -40,6 +40,8 @@ interface CategoryCounts {
     homeHearingCounts: Record<string, number>;
     homeHearingOwnedCounts: Record<string, number>;
     valuationRequiredCounts: Record<string, number>;
+    homeHearingNotDone?: number;
+    homeHearingNotNeeded?: number;
   }>;
 }
 
@@ -441,6 +443,8 @@ export default function BuyerStatusSidebar({
             const monthHearing = Object.values(data.homeHearingCounts).reduce((s, v) => s + v, 0);
             const monthOwned = Object.values(data.homeHearingOwnedCounts).reduce((s, v) => s + v, 0);
             const monthValuation = Object.values(data.valuationRequiredCounts).reduce((s, v) => s + v, 0);
+            const monthNotDone = data.homeHearingNotDone ?? 0;
+            const monthNotNeeded = data.homeHearingNotNeeded ?? 0;
             if (monthInitial === 0) return null;
             const hearingPct = monthInitial > 0 ? Math.round((monthHearing / monthInitial) * 100) : 0;
             const ownedPct = monthHearing > 0 ? Math.round((monthOwned / monthHearing) * 100) : 0;
@@ -481,6 +485,18 @@ export default function BuyerStatusSidebar({
                         </Box>
                       );
                     })}
+                    {monthNotDone > 0 && (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5 }}>
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#d32f2f' }}>未</Typography>
+                        <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem', color: '#d32f2f' }}>{monthNotDone}</Typography>
+                      </Box>
+                    )}
+                    {monthNotNeeded > 0 && (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5 }}>
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#888' }}>不要</Typography>
+                        <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem', color: '#888' }}>{monthNotNeeded}</Typography>
+                      </Box>
+                    )}
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5, borderTop: '1px solid #eee' }}>
                       <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>計</Typography>
                       <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{monthHearing} ({hearingPct}%)</Typography>
