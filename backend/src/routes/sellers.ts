@@ -4105,15 +4105,43 @@ router.get('/:id/exclusive-analysis/qa', authenticate, async (req: Request, res:
     const d = new Date(seller.contract_year_month);
     const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
-    const { data: qa } = await supabase
+    // 担当者名をイニシャルに正規化（フルネーム表記のブレを統一）
+    const normalizeQaAssignee = await buildNormalizeInitialMap(supabase);
+    const normalizedAssignee = normalizeQaAssignee(seller.visit_assignee);
+
+    // assignee + target_month で検索（seller_id は使わない）
+    // 正規化済みイニシャルとフルネーム両方を検索してヒットしたものを返す
+    const { data: employees } = await supabase
+      .from('employees')
+      .select('initials, name')
+      .not('initials', 'is', null);
+    const qaVariants: string[] = [normalizedAssignee];
+    for (const emp of (employees || [])) {
+      if (emp.initials && normalizeQaAssignee(emp.initials) === normalizedAssignee) {
+        if (emp.name && !qaVariants.includes(emp.name)) qaVariants.push(emp.name);
+        if (!qaVariants.includes(emp.initials)) qaVariants.push(emp.initials);
+      }
+    }
+
+    // 同一担当・同月のQAを全取得し、回答が最も充実したものを返す
+    const { data: qaList } = await supabase
       .from('exclusive_analysis_qa')
       .select('*')
-      .eq('seller_id', id)
-      .eq('assignee', seller.visit_assignee)
+      .in('assignee', qaVariants)
       .eq('target_month', targetMonth)
-      .maybeSingle();
+      .order('updated_at', { ascending: false });
 
-    return res.json({ qa: qa || null, assignee: seller.visit_assignee, targetMonth });
+    // 回答数が最も多いレコードを選ぶ
+    let bestQa: any = null;
+    if (qaList && qaList.length > 0) {
+      bestQa = qaList.reduce((best: any, cur: any) => {
+        const bestAnswered = (best?.answers || []).filter((a: any) => a.answer?.trim()).length;
+        const curAnswered = (cur?.answers || []).filter((a: any) => a.answer?.trim()).length;
+        return curAnswered > bestAnswered ? cur : best;
+      }, qaList[0]);
+    }
+
+    return res.json({ qa: bestQa || null, assignee: normalizedAssignee, targetMonth });
   } catch (error) {
     console.error('[exclusive-analysis/qa GET] Error:', error);
     return res.status(500).json({ error: 'Failed to get QA' });
@@ -4148,14 +4176,27 @@ router.post('/:id/exclusive-analysis/qa/generate', authenticate, async (req: Req
     const d = new Date(seller.contract_year_month);
     const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
+    // 担当者名をイニシャルに正規化
+    const normalizeQaGen = await buildNormalizeInitialMap(supabase);
+    const normalizedAssignee = normalizeQaGen(seller.visit_assignee);
+
+    // 同一担当・同月のバリアントを構築
+    const { data: empForQaGen } = await supabase.from('employees').select('initials, name').not('initials', 'is', null);
+    const qaGenVariants: string[] = [normalizedAssignee];
+    for (const emp of (empForQaGen || [])) {
+      if (emp.initials && normalizeQaGen(emp.initials) === normalizedAssignee) {
+        if (emp.name && !qaGenVariants.includes(emp.name)) qaGenVariants.push(emp.name);
+        if (!qaGenVariants.includes(emp.initials)) qaGenVariants.push(emp.initials);
+      }
+    }
+
     // ── 過去の回答履歴を取得（同担当者の全月分） ──
     // 回答済み質問：被らないようAIに伝える
     // 回答なし質問：再利用OK（ただし同月の現在のQAは除く）
     const { data: pastQaRecords } = await supabase
       .from('exclusive_analysis_qa')
       .select('target_month, ai_questions, answers')
-      .eq('seller_id', id)
-      .eq('assignee', seller.visit_assignee)
+      .in('assignee', qaGenVariants)
       .neq('target_month', targetMonth) // 今月以外の過去分
       .order('target_month', { ascending: false })
       .limit(12); // 直近1年分
@@ -4255,29 +4296,50 @@ JSON配列形式で返してください（他のテキストは不要）：
     const { data: existing } = await supabase
       .from('exclusive_analysis_qa')
       .select('id, answers')
-      .eq('seller_id', id)
-      .eq('assignee', seller.visit_assignee)
+      .in('assignee', qaGenVariants)
       .eq('target_month', targetMonth)
+      .order('updated_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     const upsertData = {
       seller_id: id,
-      assignee: seller.visit_assignee,
+      assignee: normalizedAssignee, // 常にイニシャルで保存
       target_month: targetMonth,
       ai_questions: aiQuestions,
       answers: existing?.answers || [],
       updated_at: new Date().toISOString(),
     };
 
-    const { data: qa, error: upsertError } = await supabase
-      .from('exclusive_analysis_qa')
-      .upsert(upsertData, { onConflict: 'seller_id,assignee,target_month' })
-      .select()
-      .single();
-
-    if (upsertError) {
-      console.error('[exclusive-analysis/qa/generate] upsert error:', upsertError);
-      return res.status(500).json({ error: upsertError.message });
+    let qa: any;
+    if (existing?.id) {
+      // 既存レコードをIDで更新（assignee + target_month の重複を避ける）
+      const { data: updated, error: updateError } = await supabase
+        .from('exclusive_analysis_qa')
+        .update({
+          ai_questions: aiQuestions,
+          answers: existing.answers || [],
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+      if (updateError) {
+        console.error('[exclusive-analysis/qa/generate] update error:', updateError);
+        return res.status(500).json({ error: updateError.message });
+      }
+      qa = updated;
+    } else {
+      const { data: inserted, error: insertError } = await supabase
+        .from('exclusive_analysis_qa')
+        .insert(upsertData)
+        .select()
+        .single();
+      if (insertError) {
+        console.error('[exclusive-analysis/qa/generate] insert error:', insertError);
+        return res.status(500).json({ error: insertError.message });
+      }
+      qa = inserted;
     }
 
     return res.json({ qa });
@@ -4314,16 +4376,43 @@ router.put('/:id/exclusive-analysis/qa/answer', authenticate, async (req: Reques
     const d = new Date(seller.contract_year_month);
     const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
+    // 担当者名をイニシャルに正規化
+    const normalizeQaAnswer = await buildNormalizeInitialMap(supabase);
+    const normalizedAssignee = normalizeQaAnswer(seller.visit_assignee);
+
+    // 同一担当・同月のバリアント
+    const { data: empForAnswer } = await supabase.from('employees').select('initials, name').not('initials', 'is', null);
+    const answerVariants: string[] = [normalizedAssignee];
+    for (const emp of (empForAnswer || [])) {
+      if (emp.initials && normalizeQaAnswer(emp.initials) === normalizedAssignee) {
+        if (emp.name && !answerVariants.includes(emp.name)) answerVariants.push(emp.name);
+        if (!answerVariants.includes(emp.initials)) answerVariants.push(emp.initials);
+      }
+    }
+
+    // 最新のQAレコードをIDで特定して更新
+    const { data: existingQa } = await supabase
+      .from('exclusive_analysis_qa')
+      .select('id')
+      .in('assignee', answerVariants)
+      .eq('target_month', targetMonth)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!existingQa?.id) {
+      return res.status(404).json({ error: 'QAレコードが見つかりません' });
+    }
+
     const { data: qa, error } = await supabase
       .from('exclusive_analysis_qa')
       .update({
         answers,
+        assignee: normalizedAssignee, // 正規化済みイニシャルで上書き
         is_published: isPublished ?? false,
         updated_at: new Date().toISOString(),
       })
-      .eq('seller_id', id)
-      .eq('assignee', seller.visit_assignee)
-      .eq('target_month', targetMonth)
+      .eq('id', existingQa.id)
       .select()
       .single();
 
@@ -4382,10 +4471,10 @@ router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Re
     }
 
     const exclusiveDecisionDate = seller.contract_year_month;
-    const assignee = seller.visit_assignee; // 営業担当（イニシャル等）
+    const rawAssignee = seller.visit_assignee; // 営業担当（フルネームまたはイニシャル）
 
     // 専任決定日がなければ空を返す
-    if (!exclusiveDecisionDate || !assignee) {
+    if (!exclusiveDecisionDate || !rawAssignee) {
       return res.json({
         seller: {
           id: seller.id,
@@ -4393,12 +4482,29 @@ router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Re
           propertyAddress: seller.property_address || seller.address,
           status: seller.status,
           exclusiveDecisionDate: exclusiveDecisionDate || null,
-          visitAssignee: assignee || null,
+          visitAssignee: rawAssignee || null,
         },
         assigneeStats: null,
         sameMonthCases: [],
         aiAnalysis: '',
       });
+    }
+
+    // employeesテーブルからイニシャル正規化マップを構築し、担当者をイニシャルに統一
+    const normalizeAssignee = await buildNormalizeInitialMap(supabase);
+    const assignee = normalizeAssignee(rawAssignee); // 正規化されたイニシャル（例: "K"）
+
+    // 同じイニシャルに対応するすべての表記（フルネーム + イニシャル）を収集してOR検索
+    const { data: employeesData } = await supabase
+      .from('employees')
+      .select('initials, name')
+      .not('initials', 'is', null);
+    const assigneeVariants: string[] = [assignee];
+    for (const emp of (employeesData || [])) {
+      if (emp.initials && normalizeAssignee(emp.initials) === assignee) {
+        if (emp.name && !assigneeVariants.includes(emp.name)) assigneeVariants.push(emp.name);
+        if (!assigneeVariants.includes(emp.initials)) assigneeVariants.push(emp.initials);
+      }
     }
 
     // 専任決定月（YYYY-MM）を算出
@@ -4411,7 +4517,7 @@ router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Re
       : `${decisionYear}-${String(decisionMonth + 1).padStart(2, '0')}-01`;
 
     // 同じ営業担当が同月に取得した専任媒介の全案件を取得
-    // visit_assignee が同じ && contract_year_month が同月
+    // visit_assignee がイニシャルまたはフルネームで一致 && contract_year_month が同月
     const { data: sameMonthRaw } = await supabase
       .from('sellers')
       .select(`
@@ -4428,7 +4534,7 @@ router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Re
         visit_valuation_acquirer,
         inquiry_date
       `)
-      .eq('visit_assignee', assignee)
+      .in('visit_assignee', assigneeVariants)
       .in('status', ['専任媒介', '他決→専任', 'リースバック（専任）'])
       .gte('contract_year_month', monthStart)
       .lt('contract_year_month', nextMonth)
@@ -4452,7 +4558,7 @@ router.get('/:id/exclusive-analysis', authenticate, async (req: Request, res: Re
     const { count: totalExclusiveCount } = await supabase
       .from('sellers')
       .select('id', { count: 'exact', head: true })
-      .eq('visit_assignee', assignee)
+      .in('visit_assignee', assigneeVariants)
       .in('status', ['専任媒介', '他決→専任', 'リースバック（専任）'])
       .is('deleted_at', null);
 
@@ -4634,9 +4740,9 @@ router.get('/:id/other-decision-analysis', authenticate, async (req: Request, re
     }
 
     const decisionDate = seller.contract_year_month;
-    const assignee = seller.visit_assignee;
+    const rawAssignee = seller.visit_assignee;
 
-    if (!decisionDate || !assignee) {
+    if (!decisionDate || !rawAssignee) {
       return res.json({
         seller: {
           id: seller.id,
@@ -4644,12 +4750,29 @@ router.get('/:id/other-decision-analysis', authenticate, async (req: Request, re
           propertyAddress: seller.property_address || seller.address,
           status: seller.status,
           decisionDate: decisionDate || null,
-          visitAssignee: assignee || null,
+          visitAssignee: rawAssignee || null,
         },
         assigneeStats: null,
         sameMonthCases: [],
         aiAnalysis: '',
       });
+    }
+
+    // employeesテーブルからイニシャル正規化マップを構築し、担当者をイニシャルに統一
+    const normalizeAssigneeOtherDecision = await buildNormalizeInitialMap(supabase);
+    const assignee = normalizeAssigneeOtherDecision(rawAssignee);
+
+    // 同じイニシャルに対応するすべての表記（フルネーム + イニシャル）を収集してOR検索
+    const { data: employeesDataOD } = await supabase
+      .from('employees')
+      .select('initials, name')
+      .not('initials', 'is', null);
+    const assigneeVariantsOD: string[] = [assignee];
+    for (const emp of (employeesDataOD || [])) {
+      if (emp.initials && normalizeAssigneeOtherDecision(emp.initials) === assignee) {
+        if (emp.name && !assigneeVariantsOD.includes(emp.name)) assigneeVariantsOD.push(emp.name);
+        if (!assigneeVariantsOD.includes(emp.initials)) assigneeVariantsOD.push(emp.initials);
+      }
     }
 
     // 他決決定月（YYYY-MM）を算出
@@ -4845,15 +4968,36 @@ router.get('/:id/other-decision-analysis/qa', authenticate, async (req: Request,
     const d = new Date(seller.contract_year_month);
     const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
-    const { data: qa } = await supabase
+    // 担当者名をイニシャルに正規化
+    const normalizeOdQa = await buildNormalizeInitialMap(supabase);
+    const normalizedOdAssignee = normalizeOdQa(seller.visit_assignee);
+    const { data: empOd } = await supabase.from('employees').select('initials, name').not('initials', 'is', null);
+    const odQaVariants: string[] = [normalizedOdAssignee];
+    for (const emp of (empOd || [])) {
+      if (emp.initials && normalizeOdQa(emp.initials) === normalizedOdAssignee) {
+        if (emp.name && !odQaVariants.includes(emp.name)) odQaVariants.push(emp.name);
+        if (!odQaVariants.includes(emp.initials)) odQaVariants.push(emp.initials);
+      }
+    }
+
+    // assignee + target_month で検索（回答が最も充実したものを返す）
+    const { data: qaList } = await supabase
       .from('other_decision_analysis_qa')
       .select('*')
-      .eq('seller_id', id)
-      .eq('assignee', seller.visit_assignee)
+      .in('assignee', odQaVariants)
       .eq('target_month', targetMonth)
-      .maybeSingle();
+      .order('updated_at', { ascending: false });
 
-    return res.json({ qa: qa || null, assignee: seller.visit_assignee, targetMonth });
+    let bestOdQa: any = null;
+    if (qaList && qaList.length > 0) {
+      bestOdQa = qaList.reduce((best: any, cur: any) => {
+        const bestAnswered = (best?.answers || []).filter((a: any) => a.answer?.trim()).length;
+        const curAnswered = (cur?.answers || []).filter((a: any) => a.answer?.trim()).length;
+        return curAnswered > bestAnswered ? cur : best;
+      }, qaList[0]);
+    }
+
+    return res.json({ qa: bestOdQa || null, assignee: normalizedOdAssignee, targetMonth });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to get QA' });
   }
@@ -4878,12 +5022,23 @@ router.post('/:id/other-decision-analysis/qa/generate', authenticate, async (req
     const d = new Date(seller.contract_year_month);
     const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
+    // 担当者名をイニシャルに正規化
+    const normalizeOdGen = await buildNormalizeInitialMap(supabase);
+    const normalizedOdGenAssignee = normalizeOdGen(seller.visit_assignee);
+    const { data: empOdGen } = await supabase.from('employees').select('initials, name').not('initials', 'is', null);
+    const odGenVariants: string[] = [normalizedOdGenAssignee];
+    for (const emp of (empOdGen || [])) {
+      if (emp.initials && normalizeOdGen(emp.initials) === normalizedOdGenAssignee) {
+        if (emp.name && !odGenVariants.includes(emp.name)) odGenVariants.push(emp.name);
+        if (!odGenVariants.includes(emp.initials)) odGenVariants.push(emp.initials);
+      }
+    }
+
     // 過去の回答履歴を取得（同担当者・全月）
     const { data: pastQaRecords } = await supabase
       .from('other_decision_analysis_qa')
       .select('target_month, ai_questions, answers')
-      .eq('seller_id', id)
-      .eq('assignee', seller.visit_assignee)
+      .in('assignee', odGenVariants)
       .neq('target_month', targetMonth)
       .order('target_month', { ascending: false })
       .limit(12);
@@ -4967,23 +5122,32 @@ JSON配列形式で返してください（他のテキストは不要）：
     const { data: existing } = await supabase
       .from('other_decision_analysis_qa')
       .select('id, answers')
-      .eq('seller_id', id).eq('assignee', seller.visit_assignee).eq('target_month', targetMonth)
+      .in('assignee', odGenVariants)
+      .eq('target_month', targetMonth)
+      .order('updated_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-    const { data: qa, error: upsertError } = await supabase
-      .from('other_decision_analysis_qa')
-      .upsert({
-        seller_id: id,
-        assignee: seller.visit_assignee,
-        target_month: targetMonth,
-        ai_questions: aiQuestions,
-        answers: existing?.answers || [],
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'seller_id,assignee,target_month' })
-      .select().single();
+    let odQa: any;
+    if (existing?.id) {
+      const { data: updated, error: updateErr } = await supabase
+        .from('other_decision_analysis_qa')
+        .update({ ai_questions: aiQuestions, answers: existing.answers || [], updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+        .select().single();
+      if (updateErr) return res.status(500).json({ error: updateErr.message });
+      odQa = updated;
+    } else {
+      const { data: inserted, error: insertErr } = await supabase
+        .from('other_decision_analysis_qa')
+        .insert({ seller_id: id, assignee: normalizedOdGenAssignee, target_month: targetMonth, ai_questions: aiQuestions, answers: [], updated_at: new Date().toISOString() })
+        .select().single();
+      if (insertErr) return res.status(500).json({ error: insertErr.message });
+      odQa = inserted;
+    }
 
-    if (upsertError) return res.status(500).json({ error: upsertError.message });
-    return res.json({ qa });
+    if (!odQa) return res.status(500).json({ error: 'QA保存失敗' });
+    return res.json({ qa: odQa });
   } catch (error) {
     console.error('[other-decision-analysis/qa/generate] Error:', error);
     return res.status(500).json({ error: 'Failed to generate QA' });
@@ -5008,10 +5172,33 @@ router.put('/:id/other-decision-analysis/qa/answer', authenticate, async (req: R
     const d = new Date(seller.contract_year_month);
     const targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
+    // 担当者名をイニシャルに正規化
+    const normalizeOdAns = await buildNormalizeInitialMap(supabase);
+    const normalizedOdAns = normalizeOdAns(seller.visit_assignee);
+    const { data: empOdAns } = await supabase.from('employees').select('initials, name').not('initials', 'is', null);
+    const odAnsVariants: string[] = [normalizedOdAns];
+    for (const emp of (empOdAns || [])) {
+      if (emp.initials && normalizeOdAns(emp.initials) === normalizedOdAns) {
+        if (emp.name && !odAnsVariants.includes(emp.name)) odAnsVariants.push(emp.name);
+        if (!odAnsVariants.includes(emp.initials)) odAnsVariants.push(emp.initials);
+      }
+    }
+
+    const { data: existingOdAns } = await supabase
+      .from('other_decision_analysis_qa')
+      .select('id')
+      .in('assignee', odAnsVariants)
+      .eq('target_month', targetMonth)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!existingOdAns?.id) return res.status(404).json({ error: 'QAレコードが見つかりません' });
+
     const { data: qa, error } = await supabase
       .from('other_decision_analysis_qa')
-      .update({ answers, is_published: isPublished ?? false, updated_at: new Date().toISOString() })
-      .eq('seller_id', id).eq('assignee', seller.visit_assignee).eq('target_month', targetMonth)
+      .update({ answers, assignee: normalizedOdAns, is_published: isPublished ?? false, updated_at: new Date().toISOString() })
+      .eq('id', existingOdAns.id)
       .select().single();
 
     if (error) return res.status(500).json({ error: error.message });
