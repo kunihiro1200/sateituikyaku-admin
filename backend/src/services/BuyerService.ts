@@ -2337,11 +2337,13 @@ export class BuyerService {
       sellerViewingContactPending: 0,
       // 内覧後未入力（担当者別）
       viewingPostInputCounts: {} as Record<string, number>,
-      // 🆕 持ち家ヒアリング統計（担当別）
-      initialResponseCounts: {} as Record<string, number>,
-      homeHearingCounts: {} as Record<string, number>,
-      homeHearingOwnedCounts: {} as Record<string, number>,
-      valuationRequiredCounts: {} as Record<string, number>,
+      // 🆕 持ち家ヒアリング統計（月別×担当別）
+      homeHearingMonthlyStats: {} as Record<string, {
+        initialResponseCounts: Record<string, number>;
+        homeHearingCounts: Record<string, number>;
+        homeHearingOwnedCounts: Record<string, number>;
+        valuationRequiredCounts: Record<string, number>;
+      }>,
     };
 
     for (const buyer of cachedBuyers) {
@@ -2381,24 +2383,38 @@ export class BuyerService {
         result.viewingPostInputCounts[assignee] = (result.viewingPostInputCounts[assignee] || 0) + 1;
       }
 
-      // 持ち家ヒアリング統計
-      const initialAssignee = buyer.initial_assignee ? String(buyer.initial_assignee).trim() : '';
-      if (initialAssignee) {
-        result.initialResponseCounts[initialAssignee] = (result.initialResponseCounts[initialAssignee] || 0) + 1;
-      }
-      
-      const hearingAssignee = buyer.owned_home_hearing_inquiry ? String(buyer.owned_home_hearing_inquiry).trim() : '';
-      if (hearingAssignee && hearingAssignee !== '不要' && hearingAssignee !== '未') {
-        result.homeHearingCounts[hearingAssignee] = (result.homeHearingCounts[hearingAssignee] || 0) + 1;
+      // 持ち家ヒアリング統計（月別）
+      const receptionDate = buyer.reception_date ? String(buyer.reception_date).trim() : '';
+      if (receptionDate) {
+        const month = receptionDate.substring(0, 7).replace('-', '/');
+        if (!result.homeHearingMonthlyStats[month]) {
+          result.homeHearingMonthlyStats[month] = {
+            initialResponseCounts: {},
+            homeHearingCounts: {},
+            homeHearingOwnedCounts: {},
+            valuationRequiredCounts: {},
+          };
+        }
+        const monthData = result.homeHearingMonthlyStats[month];
         
-        const hearingResult = buyer.owned_home_hearing_result ? String(buyer.owned_home_hearing_result).trim() : '';
-        if (hearingResult === '持家（マンション）' || hearingResult === '持家（戸建）') {
-          result.homeHearingOwnedCounts[hearingAssignee] = (result.homeHearingOwnedCounts[hearingAssignee] || 0) + 1;
+        const initialAssignee = buyer.initial_assignee ? String(buyer.initial_assignee).trim() : '';
+        if (initialAssignee) {
+          monthData.initialResponseCounts[initialAssignee] = (monthData.initialResponseCounts[initialAssignee] || 0) + 1;
         }
         
-        const valuationRequired = buyer.valuation_required ? String(buyer.valuation_required).trim() : '';
-        if (valuationRequired === '要') {
-          result.valuationRequiredCounts[hearingAssignee] = (result.valuationRequiredCounts[hearingAssignee] || 0) + 1;
+        const hearingAssignee = buyer.owned_home_hearing_inquiry ? String(buyer.owned_home_hearing_inquiry).trim() : '';
+        if (hearingAssignee && hearingAssignee !== '不要' && hearingAssignee !== '未') {
+          monthData.homeHearingCounts[hearingAssignee] = (monthData.homeHearingCounts[hearingAssignee] || 0) + 1;
+          
+          const hearingResult = buyer.owned_home_hearing_result ? String(buyer.owned_home_hearing_result).trim() : '';
+          if (hearingResult === '持家（マンション）' || hearingResult === '持家（戸建）') {
+            monthData.homeHearingOwnedCounts[hearingAssignee] = (monthData.homeHearingOwnedCounts[hearingAssignee] || 0) + 1;
+          }
+          
+          const valuationRequired = buyer.valuation_required ? String(buyer.valuation_required).trim() : '';
+          if (valuationRequired === '要') {
+            monthData.valuationRequiredCounts[hearingAssignee] = (monthData.valuationRequiredCounts[hearingAssignee] || 0) + 1;
+          }
         }
       }
     }
@@ -2730,42 +2746,56 @@ export class BuyerService {
         }
       });
 
-      // 🆕 持ち家ヒアリング統計（担当別）
-      const initialResponseCounts: Record<string, number> = {};
-      const homeHearingCounts: Record<string, number> = {};
-      const homeHearingOwnedCounts: Record<string, number> = {};
-      const valuationRequiredCounts: Record<string, number> = {};
+      // 🆕 持ち家ヒアリング統計（月別×担当別）
+      const homeHearingMonthlyStats: Record<string, {
+        initialResponseCounts: Record<string, number>;
+        homeHearingCounts: Record<string, number>;
+        homeHearingOwnedCounts: Record<string, number>;
+        valuationRequiredCounts: Record<string, number>;
+      }> = {};
       
       allBuyers.forEach((buyer: any) => {
+        // 受付日から月を取得 (YYYY/MM形式)
+        const receptionDate = buyer.reception_date ? String(buyer.reception_date).trim() : '';
+        if (!receptionDate) return;
+        const month = receptionDate.substring(0, 7).replace('-', '/'); // 2026-04 → 2026/04
+        
+        if (!homeHearingMonthlyStats[month]) {
+          homeHearingMonthlyStats[month] = {
+            initialResponseCounts: {},
+            homeHearingCounts: {},
+            homeHearingOwnedCounts: {},
+            valuationRequiredCounts: {},
+          };
+        }
+        const monthData = homeHearingMonthlyStats[month];
+        
         // 初動対応数: initial_assignee 別にカウント
         const initialAssignee = buyer.initial_assignee ? String(buyer.initial_assignee).trim() : '';
         if (initialAssignee) {
-          initialResponseCounts[initialAssignee] = (initialResponseCounts[initialAssignee] || 0) + 1;
+          monthData.initialResponseCounts[initialAssignee] = (monthData.initialResponseCounts[initialAssignee] || 0) + 1;
         }
         
         // 持ち家ヒアリング数: owned_home_hearing_inquiry（担当イニシャル）別にカウント
         const hearingAssignee = buyer.owned_home_hearing_inquiry ? String(buyer.owned_home_hearing_inquiry).trim() : '';
         if (hearingAssignee && hearingAssignee !== '不要' && hearingAssignee !== '未') {
-          homeHearingCounts[hearingAssignee] = (homeHearingCounts[hearingAssignee] || 0) + 1;
+          monthData.homeHearingCounts[hearingAssignee] = (monthData.homeHearingCounts[hearingAssignee] || 0) + 1;
           
           // 持ち家ヒアリング結果が持家（マンション）or 持家（戸建）のカウント
           const hearingResult = buyer.owned_home_hearing_result ? String(buyer.owned_home_hearing_result).trim() : '';
           if (hearingResult === '持家（マンション）' || hearingResult === '持家（戸建）') {
-            homeHearingOwnedCounts[hearingAssignee] = (homeHearingOwnedCounts[hearingAssignee] || 0) + 1;
+            monthData.homeHearingOwnedCounts[hearingAssignee] = (monthData.homeHearingOwnedCounts[hearingAssignee] || 0) + 1;
           }
           
           // 要査定のカウント
           const valuationRequired = buyer.valuation_required ? String(buyer.valuation_required).trim() : '';
           if (valuationRequired === '要') {
-            valuationRequiredCounts[hearingAssignee] = (valuationRequiredCounts[hearingAssignee] || 0) + 1;
+            monthData.valuationRequiredCounts[hearingAssignee] = (monthData.valuationRequiredCounts[hearingAssignee] || 0) + 1;
           }
         }
       });
       
-      result.initialResponseCounts = initialResponseCounts;
-      result.homeHearingCounts = homeHearingCounts;
-      result.homeHearingOwnedCounts = homeHearingOwnedCounts;
-      result.valuationRequiredCounts = valuationRequiredCounts;
+      result.homeHearingMonthlyStats = homeHearingMonthlyStats;
 
       // 通常スタッフのイニシャルを取得
       const normalStaffInitials = await this.fetchNormalStaffInitials();
