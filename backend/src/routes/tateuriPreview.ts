@@ -89,26 +89,51 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
 
     const supabase = getSupabase();
 
-    // URLを正規化（クエリパラメータを除去して比較）
-    const normalizeUrl = (url: string) => {
-      try {
-        const u = new URL(url);
-        return `${u.protocol}//${u.host}${u.pathname}`.replace(/\/$/, '') + '/';
-      } catch {
-        return url;
+    // URLを正規化（サイトごとに物件を一意に識別できる形に変換）
+    // athome等：パスに物件IDが含まれるのでクエリパラメータ除去で比較可能
+    // SUUMO：ncパラメータが物件IDなのでncで部分一致検索
+    let normalized: string;
+    let isSuumo = false;
+    let suumoNc: string | null = null;
+
+    try {
+      const u = new URL(source_url);
+      if (u.host.includes('suumo.jp') || u.host.includes('suumo.co.jp')) {
+        isSuumo = true;
+        suumoNc = u.searchParams.get('nc');
       }
-    };
+      normalized = `${u.protocol}//${u.host}${u.pathname}`.replace(/\/$/, '') + '/';
+    } catch {
+      normalized = source_url;
+    }
 
-    const normalized = normalizeUrl(source_url);
-
-    // チェック1: 同じsource_urlで is_active = true かつ is_tateuri = true のレコードが存在するか確認
+    // チェック1: 同じ物件URLが既に登録済みか確認（is_active=true かつ is_tateuri=true）
     // 建売HP内での重複のみブロック（他社物件配信用のレコードは無視）
-    const { data, error } = await supabase
-      .from('property_previews')
-      .select('slug, title, address, created_at, is_tateuri, region')
-      .like('source_url', `${normalized}%`)
-      .eq('is_active', true)
-      .eq('is_tateuri', true);
+    let data: any[] | null = null;
+    let error: any = null;
+
+    if (isSuumo && suumoNc) {
+      // SUUMOの場合：ncパラメータ（物件ID）で検索
+      // SUUMOのURLはパスが共通（/jj/bukken/shosai/JJ010FJ100）でncで物件を区別するため
+      const result = await supabase
+        .from('property_previews')
+        .select('slug, title, address, created_at, is_tateuri, region, source_url')
+        .eq('is_active', true)
+        .eq('is_tateuri', true)
+        .like('source_url', `%nc=${suumoNc}%`);
+      data = result.data;
+      error = result.error;
+    } else {
+      // athome等：正規化したURLで前方一致チェック（パスに物件IDが含まれる）
+      const result = await supabase
+        .from('property_previews')
+        .select('slug, title, address, created_at, is_tateuri, region, source_url')
+        .eq('is_active', true)
+        .eq('is_tateuri', true)
+        .like('source_url', `${normalized}%`);
+      data = result.data;
+      error = result.error;
+    }
 
     if (error) throw error;
 
