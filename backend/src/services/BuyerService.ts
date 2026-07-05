@@ -2398,7 +2398,8 @@ export class BuyerService {
         const monthData = result.homeHearingMonthlyStats[month];
         
         const initialAssignee = buyer.initial_assignee ? String(buyer.initial_assignee).trim() : '';
-        if (initialAssignee) {
+        const vendorSurvey = buyer.vendor_survey ? String(buyer.vendor_survey).trim() : '';
+        if (initialAssignee && vendorSurvey !== '確認済み') {
           monthData.initialResponseCounts[initialAssignee] = (monthData.initialResponseCounts[initialAssignee] || 0) + 1;
         }
         
@@ -2770,9 +2771,10 @@ export class BuyerService {
         }
         const monthData = homeHearingMonthlyStats[month];
         
-        // 初動対応数: initial_assignee 別にカウント
+        // 初動対応数: initial_assignee 別にカウント（業者向けアンケート確認済みは除外）
         const initialAssignee = buyer.initial_assignee ? String(buyer.initial_assignee).trim() : '';
-        if (initialAssignee) {
+        const vendorSurvey = buyer.vendor_survey ? String(buyer.vendor_survey).trim() : '';
+        if (initialAssignee && vendorSurvey !== '確認済み') {
           monthData.initialResponseCounts[initialAssignee] = (monthData.initialResponseCounts[initialAssignee] || 0) + 1;
         }
         
