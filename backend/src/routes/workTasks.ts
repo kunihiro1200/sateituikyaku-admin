@@ -162,11 +162,11 @@ router.get('/review-campaign-stats', async (req: Request, res: Response) => {
       process.env.SUPABASE_SERVICE_KEY!
     );
 
-    // 2025/10/1以降の決済日があるレコードを取得
+    // 2025/10/1以降に作成されたレコードを取得（業務依頼に登録された物件）
     const { data, error } = await supabase
       .from('work_tasks')
       .select('sales_assignee, campaign, review_count')
-      .gte('settlement_date', '2025-10-01');
+      .gte('created_at', '2025-10-01');
 
     if (error) {
       throw new Error(`DB取得エラー: ${error.message}`);
