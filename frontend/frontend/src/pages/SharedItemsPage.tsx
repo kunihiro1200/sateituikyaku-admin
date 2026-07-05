@@ -23,6 +23,7 @@ import { Search as SearchIcon, Clear as ClearIcon, Add as AddIcon } from '@mui/i
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
+import ReviewCampaignStats from '../components/ReviewCampaignStats';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 import { SECTION_COLORS } from '../theme/sectionColors';
 
@@ -213,6 +214,11 @@ export default function SharedItemsPage() {
       
       {/* ページナビゲーション */}
       <PageNavigation />
+
+      {/* 口コミ・キャンペーン集計（常に表示） */}
+      <Box sx={{ mt: 2 }}>
+        <ReviewCampaignStats />
+      </Box>
 
       {/* サイドバー＋メインコンテンツ */}
       <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>

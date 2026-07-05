@@ -151,6 +151,80 @@ router.get('/site-due-date-counts', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/work-tasks/review-campaign-stats
+ * 口コミ・キャンペーン集計データを取得
+ * 2025/10/1以降の決済完了分を担当者別に集計
+ */
+router.get('/review-campaign-stats', async (req: Request, res: Response) => {
+  try {
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    // 2025/10/1以降の決済日があるレコードを取得
+    const { data, error } = await supabase
+      .from('work_tasks')
+      .select('sales_assignee, campaign, review_count')
+      .gte('settlement_date', '2025-10-01');
+
+    if (error) {
+      throw new Error(`DB取得エラー: ${error.message}`);
+    }
+
+    // 対象担当者
+    const targetAssignees = ['Y', 'U', 'I', 'K', '林', '麻'];
+
+    // 担当者別集計
+    const stats: Record<string, { campaign_count: number; review_points: number }> = {};
+    for (const assignee of targetAssignees) {
+      stats[assignee] = { campaign_count: 0, review_points: 0 };
+    }
+
+    for (const row of (data || [])) {
+      const assignee = (row.sales_assignee || '').trim();
+      if (!targetAssignees.includes(assignee)) continue;
+
+      // キャンペーン（値が「あり」の件数 = 新紹介者キャンペーン 3000万以上10万円）
+      if (row.campaign && String(row.campaign).trim() === 'あり') {
+        stats[assignee].campaign_count += 1;
+      }
+
+      // 口コミ取得数（口コミ=2pt、アンケート=1pt でカウントされた合計値）
+      const reviewCount = Number(row.review_count) || 0;
+      stats[assignee].review_points += reviewCount;
+    }
+
+    // 目標: 各人72pt
+    const goalPerPerson = 72;
+    // 月間目標: 6pt
+    const monthlyGoal = 6;
+
+    // 経過月数を計算（2025/10/1を起点、現在の月までの月数）
+    const startDate = new Date(2025, 9, 1); // 2025年10月1日
+    const now = new Date();
+    const elapsedMonths = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
+    const currentMonthTarget = monthlyGoal * elapsedMonths;
+
+    // レスポンス構築
+    const result = {
+      period_start: '2025-10-01',
+      assignees: targetAssignees,
+      goal_per_person: goalPerPerson,
+      monthly_goal: monthlyGoal,
+      elapsed_months: elapsedMonths,
+      current_month_target: currentMonthTarget,
+      stats,
+    };
+
+    return res.json(result);
+  } catch (error: any) {
+    console.error('[review-campaign-stats] エラー:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/work-tasks/:propertyNumber
  * 物件番号で業務依頼データを取得
  */
