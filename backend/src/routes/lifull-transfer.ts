@@ -101,7 +101,8 @@ router.post('/lifull-transfer', async (req: Request, res: Response) => {
     const normalizedBody = mailBody
       .replace(/\r\n|\n\r|\r/g, '\n')
       .replace(/^>\s*/gm, '');  // 行頭の > を除去（multiline）
-    const cleanedBody = normalizedBody.replace(/\n/g, ' ');
+    // 全角スペースの連続を半角スペースの連続に変換（LIFULLメールはフィールド間を全角スペースで区切る）
+    const cleanedBody = normalizedBody.replace(/\n/g, ' ').replace(/[　]+/g, (m) => ' '.repeat(m.length));
 
     // LIFULL用フィールド抽出関数（全角スペース・半角スペース対応）
     const extractField = (text: string, label: string): string => {
@@ -144,27 +145,27 @@ router.post('/lifull-transfer', async (req: Request, res: Response) => {
     const requestDateObj = receivedDate ? new Date(receivedDate.replace(/\//g, '-')) : new Date();
 
     // 物件種別
-    const propertyTypeRaw = extractByRegex(cleanedBody, /物件種別[：:]([^　\s]+?)(?=\s{2,}|\s*所在地)/);
+    const propertyTypeRaw = extractByRegex(cleanedBody, /物件種別[：:]\s*([^\s]+?)(?=\s{2,}|\s*所在地)/);
     let displayPropertyType = propertyTypeRaw;
     if (propertyTypeRaw.includes('一戸建て')) displayPropertyType = '戸';
     else if (propertyTypeRaw.includes('マンション')) displayPropertyType = 'マ';
     else if (propertyTypeRaw.includes('土地')) displayPropertyType = '土';
 
     // 所在地（間取りがない場合（土地等）も考慮して、次に来るあらゆるフィールドで止める）
-    const addressMatch = cleanedBody.match(/所在地[：:][\s　]*([^\s　](?:.*?)?)(?=\s{2,}[\S]|\s*(?:間取り|土地面積|建物面積|築年|現況|名義|売却理由))/);
+    const addressMatch = cleanedBody.match(/所在地[：:]\s*(\S(?:.*?)?)(?=\s{2,}\S|\s*(?:間取り|土地面積|建物面積|築年|現況|名義|残債|売却理由))/);
     const fullPropertyAddress = addressMatch ? addressMatch[1].replace(/^大分県/, '').trim() : '';
     console.log(`[lifull-transfer] 物件所在地抽出: "${fullPropertyAddress}"`);
 
     // 間取り
-    const layoutMatch = cleanedBody.match(/間取り[：:][\s　]*([^\s　]+?)(?=\s{2,}|\s*建物面積)/);
+    const layoutMatch = cleanedBody.match(/間取り[：:]\s*(\S+?)(?=\s{2,}|\s*(?:建物面積|土地面積))/);
     const layout = layoutMatch ? layoutMatch[1].trim() : '';
 
     // 建物面積
-    const buildingAreaMatch = cleanedBody.match(/建物面積[：:][\s　]*(\d+(?:\.\d+)?)/);
+    const buildingAreaMatch = cleanedBody.match(/建物面積[：:]\s*(\d+(?:\.\d+)?)/);
     const buildingArea = buildingAreaMatch ? buildingAreaMatch[1] : '';
 
     // 土地面積
-    const landAreaMatch = cleanedBody.match(/土地面積[：:][\s　]*(\d+(?:\.\d+)?)/);
+    const landAreaMatch = cleanedBody.match(/土地面積[：:]\s*(\d+(?:\.\d+)?)/);
     const landArea = landAreaMatch ? landAreaMatch[1] : '';
 
     // 築年（西暦XXXX年）
@@ -172,51 +173,56 @@ router.post('/lifull-transfer', async (req: Request, res: Response) => {
     const builtYear = builtYearMatch ? builtYearMatch[1] : '';
 
     // 現況
-    const currentStatusRaw = extractByRegex(cleanedBody, /現況[：:][\s　]*(.*?)(?=\s{2,}[\S]|\s*名義)/);
+    const currentStatusRaw = extractByRegex(cleanedBody, /現況[：:]\s*(.*?)(?=\s{2,}\S|\s*(?:名義|残債|売却理由))/);
     let propertyStatus = '';
     if (currentStatusRaw.includes('居住中')) propertyStatus = '居';
     else if (currentStatusRaw.includes('空き') || currentStatusRaw.includes('空家')) propertyStatus = '空';
+    else if (currentStatusRaw.includes('古屋')) propertyStatus = '空';
     else if (currentStatusRaw.includes('賃貸')) propertyStatus = '賃';
     else if (currentStatusRaw) propertyStatus = '他';
 
     // 売却理由
-    const reasonMatch = cleanedBody.match(/売却理由[：:][\s　]*(.*?)(?=\s{2,}[\S]|\s*売却希望時期)/);
+    const reasonMatch = cleanedBody.match(/売却理由[：:]\s*(.*?)(?=\s{2,}\S|\s*(?:売却希望時期|売却希望価格|ご要望|お名前))/);
     const reasonForEstimate = reasonMatch ? reasonMatch[1].trim() : '';
 
+    // 売却希望時期
+    const sellTimingMatch = cleanedBody.match(/売却希望時期[：:]\s*(.*?)(?=\s{2,}\S|\s*(?:売却希望価格|ご要望|お名前))/);
+    const sellTiming = sellTimingMatch ? sellTimingMatch[1].trim() : '';
+
+    // 売却希望価格（新フィールド）
+    const desiredPriceMatch = cleanedBody.match(/売却希望価格[：:]\s*(.*?)(?=\s{2,}\S|\s*(?:ご要望|お名前))/);
+    const desiredPrice = desiredPriceMatch ? desiredPriceMatch[1].trim() : '';
+
     // お名前
-    const nameMatch = cleanedBody.match(/お名前[：:][\s　]*([^\s　]+(?:[\s　][^\s　]+)?)/);
+    const nameMatch = cleanedBody.match(/お名前[：:]\s*(\S+(?:\s\S+)?)/);
     const name = nameMatch ? nameMatch[1].trim() : '';
 
     // フリガナ
-    const furiganaMatch = cleanedBody.match(/フリガナ[：:][\s　]*([^\s　]+(?:[\s　][^\s　]+)?)/);
+    const furiganaMatch = cleanedBody.match(/フリガナ[：:]\s*(\S+(?:\s\S+)?)/);
     const furigana = furiganaMatch ? furiganaMatch[1].trim() : '';
 
     // ご住所
-    const userAddressMatch = cleanedBody.match(/ご住所[：:][\s　]*([^\s　](?:.*?)?)(?=\s{2,}[\S]|\s*電話番号)/);
+    const userAddressMatch = cleanedBody.match(/ご住所[：:]\s*(\S(?:.*?)?)(?=\s{2,}\S|\s*電話番号)/);
     const userAddress = userAddressMatch ? userAddressMatch[1].trim() : '';
 
     // 電話番号
-    const telMatch = cleanedBody.match(/電話番号[：:][\s　]*([\d\-]+)/);
+    const telMatch = cleanedBody.match(/電話番号[：:]\s*([\d\-]+)/);
     const tel = telMatch ? telMatch[1].replace(/-/g, '') : '';
 
     // メールアドレス
-    const emailMatch = cleanedBody.match(/メールアドレス[：:][\s　]*([^\s　]+@[^\s　]+)/);
+    const emailMatch = cleanedBody.match(/メールアドレス[：:]\s*(\S+@\S+)/);
     const email = emailMatch ? emailMatch[1].trim() : '';
 
     // 希望の連絡時間
-    const contactTimeMatch = cleanedBody.match(/希望の連絡時間[：:][\s　]*(.*?)(?=\s{2,}[\S]|\s*希望の連絡方法)/);
+    const contactTimeMatch = cleanedBody.match(/希望の連絡時間[：:]\s*(.*?)(?=\s{2,}\S|\s*(?:希望の連絡方法|同時送信社数))/);
     const contactTime = contactTimeMatch ? contactTimeMatch[1].trim() : '';
 
     // 同時送信社数
-    const estimateCountMatch = cleanedBody.match(/同時送信社数[：:][\s　]*(\d+社?)/);
+    const estimateCountMatch = cleanedBody.match(/同時送信社数[：:]\s*(\d+社?)/);
     const estimateCount = estimateCountMatch ? estimateCountMatch[1].trim() : '';
 
-    // 売却希望時期
-    const sellTimingMatch = cleanedBody.match(/売却希望時期[：:][\s　]*(.*?)(?=\s{2,}[\S]|\s*ご要望)/);
-    const sellTiming = sellTimingMatch ? sellTimingMatch[1].trim() : '';
-
-    // ご要望
-    const requestMatch = cleanedBody.match(/ご要望[：:][\s　]*(.*?)(?=\s{2,}[\S]|\s*お名前)/);
+    // ご要望（売却希望時期・売却希望価格の後にある場合もある）
+    const requestMatch = cleanedBody.match(/ご要望[：:]\s*(.*?)(?=\s{2,}\S|\s*お名前)/);
     const requestToCompany = requestMatch ? requestMatch[1].trim() : '';
 
     // Manager URL
@@ -235,6 +241,7 @@ router.post('/lifull-transfer', async (req: Request, res: Response) => {
     if (furigana) commentParts.push(`フリガナ: ${furigana}`);
     if (contactTime && contactTime !== '指定なし') commentParts.push(`希望連絡時間: ${contactTime}`);
     if (sellTiming) commentParts.push(`売却希望時期: ${sellTiming}`);
+    if (desiredPrice) commentParts.push(`売却希望価格: ${desiredPrice}`);
     if (requestToCompany) commentParts.push(`ご要望: ${requestToCompany}`);
     if (estimateCount) commentParts.push(`同時送信社数: ${estimateCount}`);
     if (reasonForEstimate) commentParts.push(`売却理由: ${reasonForEstimate}`);
