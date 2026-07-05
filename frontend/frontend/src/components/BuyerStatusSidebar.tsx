@@ -430,124 +430,152 @@ export default function BuyerStatusSidebar({
       </Box>
 
       {/* 🆕 持ち家ヒアリング統計セクション（月別アコーディオン） */}
-      {hasMonthlyStats && (
-        <Box sx={{ borderTop: '2px solid #ccc' }}>
-          <Box sx={{ p: 1, backgroundColor: '#f5f5f5' }}>
-            <Typography variant="caption" fontWeight="bold" sx={{ color: '#333' }}>
-              持家ヒアリング統計（月別）
-            </Typography>
-          </Box>
-          {sortedMonths.map(month => {
-            const data = monthlyStats[month];
-            const monthInitial = Object.values(data.initialResponseCounts).reduce((s, v) => s + v, 0);
-            const monthHearing = Object.values(data.homeHearingCounts).reduce((s, v) => s + v, 0);
-            const monthOwned = Object.values(data.homeHearingOwnedCounts).reduce((s, v) => s + v, 0);
-            const monthValuation = Object.values(data.valuationRequiredCounts).reduce((s, v) => s + v, 0);
-            const monthNotDone = data.homeHearingNotDone ?? 0;
-            const monthNotNeeded = data.homeHearingNotNeeded ?? 0;
-            if (monthInitial === 0) return null;
-            const hearingPct = monthInitial > 0 ? Math.round((monthHearing / monthInitial) * 100) : 0;
-            const ownedPct = monthHearing > 0 ? Math.round((monthOwned / monthHearing) * 100) : 0;
-            const valPct = monthOwned > 0 ? Math.round((monthValuation / monthOwned) * 100) : 0;
-            
-            return (
-              <Accordion key={month} disableGutters sx={{ '&:before': { display: 'none' }, boxShadow: 'none' }}>
-                <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 16 }} />} sx={{ minHeight: 32, '& .MuiAccordionSummary-content': { my: 0.5 } }}>
-                  <Typography variant="caption" fontWeight="bold">{month}（初動{monthInitial}）</Typography>
-                </AccordionSummary>
-                <AccordionDetails sx={{ p: 0.5, pt: 0 }}>
-                  {/* 初動対応数 */}
-                  <Box sx={{ px: 1, py: 0.3, backgroundColor: '#fff8e1', borderBottom: '1px solid #eee' }}>
-                    <Typography variant="caption" fontWeight="bold" sx={{ color: '#e65100', fontSize: '0.65rem' }}>初動対応数</Typography>
-                    {Object.entries(data.initialResponseCounts).map(([staff, count]) => (
+      {hasMonthlyStats && (() => {
+        const currentYear = new Date().getFullYear().toString();
+        const currentYearMonths = sortedMonths.filter(m => m.startsWith(currentYear));
+        const pastMonths = sortedMonths.filter(m => !m.startsWith(currentYear));
+        // 過去年をグループ化
+        const pastYears: Record<string, string[]> = {};
+        pastMonths.forEach(m => {
+          const year = m.substring(0, 4);
+          if (!pastYears[year]) pastYears[year] = [];
+          pastYears[year].push(m);
+        });
+        const pastYearKeys = Object.keys(pastYears).sort().reverse();
+
+        const renderMonthAccordion = (month: string) => {
+          const data = monthlyStats[month];
+          const monthInitial = Object.values(data.initialResponseCounts).reduce((s, v) => s + v, 0);
+          const monthHearing = Object.values(data.homeHearingCounts).reduce((s, v) => s + v, 0);
+          const monthOwned = Object.values(data.homeHearingOwnedCounts).reduce((s, v) => s + v, 0);
+          const monthValuation = Object.values(data.valuationRequiredCounts).reduce((s, v) => s + v, 0);
+          const monthNotDone = data.homeHearingNotDone ?? 0;
+          const monthNotNeeded = data.homeHearingNotNeeded ?? 0;
+          if (monthInitial === 0) return null;
+          const hearingPct = monthInitial > 0 ? Math.round((monthHearing / monthInitial) * 100) : 0;
+          const ownedPct = monthHearing > 0 ? Math.round((monthOwned / monthHearing) * 100) : 0;
+          const valPct = monthOwned > 0 ? Math.round((monthValuation / monthOwned) * 100) : 0;
+          
+          return (
+            <Accordion key={month} disableGutters sx={{ '&:before': { display: 'none' }, boxShadow: 'none' }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 16 }} />} sx={{ minHeight: 32, '& .MuiAccordionSummary-content': { my: 0.5 } }}>
+                <Typography variant="caption" fontWeight="bold">{month}（初動{monthInitial}）</Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0.5, pt: 0 }}>
+                {/* 初動対応数 */}
+                <Box sx={{ px: 1, py: 0.3, backgroundColor: '#fff8e1', borderBottom: '1px solid #eee' }}>
+                  <Typography variant="caption" fontWeight="bold" sx={{ color: '#e65100', fontSize: '0.65rem' }}>初動対応数</Typography>
+                  {Object.entries(data.initialResponseCounts).map(([staff, count]) => (
+                    <Box key={staff} sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5 }}>
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>{staff}</Typography>
+                      <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{count}</Typography>
+                    </Box>
+                  ))}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5, borderTop: '1px solid #eee' }}>
+                    <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>計</Typography>
+                    <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{monthInitial}</Typography>
+                  </Box>
+                </Box>
+                {/* ヒアリング済 */}
+                <Box sx={{ px: 1, py: 0.3, backgroundColor: '#e8f5e9', borderBottom: '1px solid #eee' }}>
+                  <Typography variant="caption" fontWeight="bold" sx={{ color: '#2e7d32', fontSize: '0.65rem' }}>ヒアリング済 ({hearingPct}%)</Typography>
+                  {normalStaffInitials.filter(s => !['業者'].includes(s)).map(staff => {
+                    const count = data.homeHearingCounts[staff] ?? 0;
+                    const initCount = data.initialResponseCounts[staff] ?? 0;
+                    if (count === 0 && initCount === 0) return null;
+                    const pct = initCount > 0 ? Math.round((count / initCount) * 100) : 0;
+                    return (
                       <Box key={staff} sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5 }}>
                         <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>{staff}</Typography>
-                        <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{count}</Typography>
+                        <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{count} ({pct}%)</Typography>
                       </Box>
-                    ))}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5, borderTop: '1px solid #eee' }}>
-                      <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>計</Typography>
-                      <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{monthInitial}</Typography>
+                    );
+                  })}
+                  {monthNotDone > 0 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5 }}>
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#d32f2f' }}>未</Typography>
+                      <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem', color: '#d32f2f' }}>{monthNotDone}</Typography>
                     </Box>
+                  )}
+                  {monthNotNeeded > 0 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5 }}>
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#888' }}>不要</Typography>
+                      <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem', color: '#888' }}>{monthNotNeeded}</Typography>
+                    </Box>
+                  )}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5, borderTop: '1px solid #eee' }}>
+                    <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>計</Typography>
+                    <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{monthHearing} ({hearingPct}%)</Typography>
                   </Box>
-                  {/* ヒアリング済 */}
-                  <Box sx={{ px: 1, py: 0.3, backgroundColor: '#e8f5e9', borderBottom: '1px solid #eee' }}>
-                    <Typography variant="caption" fontWeight="bold" sx={{ color: '#2e7d32', fontSize: '0.65rem' }}>ヒアリング済 ({hearingPct}%)</Typography>
-                    {normalStaffInitials.filter(s => !['業者'].includes(s)).map(staff => {
-                      const count = data.homeHearingCounts[staff] ?? 0;
-                      const initCount = data.initialResponseCounts[staff] ?? 0;
-                      if (count === 0 && initCount === 0) return null;
-                      const pct = initCount > 0 ? Math.round((count / initCount) * 100) : 0;
-                      return (
-                        <Box key={staff} sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5 }}>
-                          <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>{staff}</Typography>
-                          <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{count} ({pct}%)</Typography>
-                        </Box>
-                      );
-                    })}
-                    {monthNotDone > 0 && (
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5 }}>
-                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#d32f2f' }}>未</Typography>
-                        <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem', color: '#d32f2f' }}>{monthNotDone}</Typography>
+                </Box>
+                {/* 持家 */}
+                <Box sx={{ px: 1, py: 0.3, backgroundColor: '#e3f2fd', borderBottom: '1px solid #eee' }}>
+                  <Typography variant="caption" fontWeight="bold" sx={{ color: '#1565c0', fontSize: '0.65rem' }}>持家（物件）({ownedPct}%)</Typography>
+                  {normalStaffInitials.filter(s => !['業者'].includes(s)).map(staff => {
+                    const count = data.homeHearingOwnedCounts[staff] ?? 0;
+                    const hearingCount = data.homeHearingCounts[staff] ?? 0;
+                    if (count === 0 && hearingCount === 0) return null;
+                    const pct = hearingCount > 0 ? Math.round((count / hearingCount) * 100) : 0;
+                    return (
+                      <Box key={staff} sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5 }}>
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>{staff}</Typography>
+                        <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{count} ({pct}%)</Typography>
                       </Box>
-                    )}
-                    {monthNotNeeded > 0 && (
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5 }}>
-                        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#888' }}>不要</Typography>
-                        <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem', color: '#888' }}>{monthNotNeeded}</Typography>
+                    );
+                  })}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5, borderTop: '1px solid #eee' }}>
+                    <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>計</Typography>
+                    <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{monthOwned} ({ownedPct}%)</Typography>
+                  </Box>
+                </Box>
+                {/* 要査定 */}
+                <Box sx={{ px: 1, py: 0.3, backgroundColor: '#fce4ec' }}>
+                  <Typography variant="caption" fontWeight="bold" sx={{ color: '#c62828', fontSize: '0.65rem' }}>要査定 ({valPct}%)</Typography>
+                  {normalStaffInitials.filter(s => !['業者'].includes(s)).map(staff => {
+                    const count = data.valuationRequiredCounts[staff] ?? 0;
+                    const ownedCount = data.homeHearingOwnedCounts[staff] ?? 0;
+                    if (count === 0 && ownedCount === 0) return null;
+                    const pct = ownedCount > 0 ? Math.round((count / ownedCount) * 100) : 0;
+                    return (
+                      <Box key={staff} sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5 }}>
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>{staff}</Typography>
+                        <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{count} ({pct}%)</Typography>
                       </Box>
-                    )}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5, borderTop: '1px solid #eee' }}>
-                      <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>計</Typography>
-                      <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{monthHearing} ({hearingPct}%)</Typography>
-                    </Box>
+                    );
+                  })}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5, borderTop: '1px solid #eee' }}>
+                    <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>計</Typography>
+                    <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{monthValuation} ({valPct}%)</Typography>
                   </Box>
-                  {/* 持家 */}
-                  <Box sx={{ px: 1, py: 0.3, backgroundColor: '#e3f2fd', borderBottom: '1px solid #eee' }}>
-                    <Typography variant="caption" fontWeight="bold" sx={{ color: '#1565c0', fontSize: '0.65rem' }}>持家（物件）({ownedPct}%)</Typography>
-                    {normalStaffInitials.filter(s => !['業者'].includes(s)).map(staff => {
-                      const count = data.homeHearingOwnedCounts[staff] ?? 0;
-                      const hearingCount = data.homeHearingCounts[staff] ?? 0;
-                      if (count === 0 && hearingCount === 0) return null;
-                      const pct = hearingCount > 0 ? Math.round((count / hearingCount) * 100) : 0;
-                      return (
-                        <Box key={staff} sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5 }}>
-                          <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>{staff}</Typography>
-                          <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{count} ({pct}%)</Typography>
-                        </Box>
-                      );
-                    })}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5, borderTop: '1px solid #eee' }}>
-                      <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>計</Typography>
-                      <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{monthOwned} ({ownedPct}%)</Typography>
-                    </Box>
-                  </Box>
-                  {/* 要査定 */}
-                  <Box sx={{ px: 1, py: 0.3, backgroundColor: '#fce4ec' }}>
-                    <Typography variant="caption" fontWeight="bold" sx={{ color: '#c62828', fontSize: '0.65rem' }}>要査定 ({valPct}%)</Typography>
-                    {normalStaffInitials.filter(s => !['業者'].includes(s)).map(staff => {
-                      const count = data.valuationRequiredCounts[staff] ?? 0;
-                      const ownedCount = data.homeHearingOwnedCounts[staff] ?? 0;
-                      if (count === 0 && ownedCount === 0) return null;
-                      const pct = ownedCount > 0 ? Math.round((count / ownedCount) * 100) : 0;
-                      return (
-                        <Box key={staff} sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5 }}>
-                          <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>{staff}</Typography>
-                          <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{count} ({pct}%)</Typography>
-                        </Box>
-                      );
-                    })}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5, borderTop: '1px solid #eee' }}>
-                      <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>計</Typography>
-                      <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{monthValuation} ({valPct}%)</Typography>
-                    </Box>
-                  </Box>
+                </Box>
+              </AccordionDetails>
+            </Accordion>
+          );
+        };
+
+        return (
+          <Box sx={{ borderTop: '2px solid #ccc' }}>
+            <Box sx={{ p: 1, backgroundColor: '#f5f5f5' }}>
+              <Typography variant="caption" fontWeight="bold" sx={{ color: '#333' }}>
+                持家ヒアリング統計（月別）
+              </Typography>
+            </Box>
+            {/* 今年の月（直接表示） */}
+            {currentYearMonths.map(renderMonthAccordion)}
+            {/* 過去年（年ごとにアコーディオンで折りたたみ） */}
+            {pastYearKeys.map(year => (
+              <Accordion key={year} disableGutters sx={{ '&:before': { display: 'none' }, boxShadow: 'none', borderTop: '1px solid #ddd' }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 16 }} />} sx={{ minHeight: 36, backgroundColor: '#eeeeee', '& .MuiAccordionSummary-content': { my: 0.5 } }}>
+                  <Typography variant="caption" fontWeight="bold" sx={{ color: '#666' }}>{year}年</Typography>
+                </AccordionSummary>
+                <AccordionDetails sx={{ p: 0 }}>
+                  {pastYears[year].map(renderMonthAccordion)}
                 </AccordionDetails>
               </Accordion>
-            );
-          })}
-        </Box>
-      )}
+            ))}
+          </Box>
+        );
+      })()}
     </Box>
   );
 }
