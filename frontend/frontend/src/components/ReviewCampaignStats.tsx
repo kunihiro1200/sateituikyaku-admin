@@ -40,7 +40,7 @@ export default function ReviewCampaignStats() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await api.get('/work-tasks/review-campaign-stats');
+        const res = await api.get('/api/work-tasks/review-campaign-stats');
         setData(res.data);
       } catch (err: any) {
         console.error('口コミ集計取得エラー:', err);
