@@ -2343,6 +2343,13 @@ export class BuyerService {
         homeHearingCounts: Record<string, number>;
         homeHearingOwnedCounts: Record<string, number>;
         valuationRequiredCounts: Record<string, number>;
+        homeHearingNotDone: number;
+        homeHearingNotNeeded: number;
+      }>,
+      // 🆕 買付統計（内覧日月別×後続担当別）
+      purchaseMonthlyStats: {} as Record<string, {
+        ryoteCounts: Record<string, number>;  // 買（両手）
+        katateCounts: Record<string, number>;  // 買（片手）
       }>,
     };
 
@@ -2436,6 +2443,33 @@ export class BuyerService {
               }
             }
           }
+        }
+      }
+    }
+
+    // 🆕 買付統計（内覧日月別×後続担当別）
+    for (const buyer of cachedBuyers) {
+      const latestStatus = buyer.latest_status ? String(buyer.latest_status).trim() : '';
+      const viewingDate = buyer.viewing_date ? String(buyer.viewing_date).trim() : '';
+      const followUpAssignee = buyer.follow_up_assignee ? String(buyer.follow_up_assignee).trim() : '';
+
+      // latest_statusが「買（両手）」または「買（片手）」を含むか判定
+      const isRyote = latestStatus.includes('両手');
+      const isKatate = latestStatus.includes('片手');
+
+      if ((isRyote || isKatate) && viewingDate && followUpAssignee) {
+        const month = viewingDate.substring(0, 7).replace('-', '/');
+        if (!result.purchaseMonthlyStats[month]) {
+          result.purchaseMonthlyStats[month] = {
+            ryoteCounts: {},
+            katateCounts: {},
+          };
+        }
+        const monthData = result.purchaseMonthlyStats[month];
+        if (isRyote) {
+          monthData.ryoteCounts[followUpAssignee] = (monthData.ryoteCounts[followUpAssignee] || 0) + 1;
+        } else if (isKatate) {
+          monthData.katateCounts[followUpAssignee] = (monthData.katateCounts[followUpAssignee] || 0) + 1;
         }
       }
     }
@@ -2775,6 +2809,8 @@ export class BuyerService {
         homeHearingCounts: Record<string, number>;
         homeHearingOwnedCounts: Record<string, number>;
         valuationRequiredCounts: Record<string, number>;
+        homeHearingNotDone: number;
+        homeHearingNotNeeded: number;
       }> = {};
       
       // 同一顧客の重複排除用セット
@@ -2839,6 +2875,34 @@ export class BuyerService {
       });
       
       result.homeHearingMonthlyStats = homeHearingMonthlyStats;
+
+      // 🆕 買付統計（内覧日月別×後続担当別）
+      const purchaseMonthlyStats: Record<string, {
+        ryoteCounts: Record<string, number>;
+        katateCounts: Record<string, number>;
+      }> = {};
+      allBuyers.forEach((buyer: any) => {
+        const latestStatus = buyer.latest_status ? String(buyer.latest_status).trim() : '';
+        const viewingDate = buyer.viewing_date ? String(buyer.viewing_date).trim() : '';
+        const followUpAssignee = buyer.follow_up_assignee ? String(buyer.follow_up_assignee).trim() : '';
+
+        const isRyote = latestStatus.includes('両手');
+        const isKatate = latestStatus.includes('片手');
+
+        if ((isRyote || isKatate) && viewingDate && followUpAssignee) {
+          const month = viewingDate.substring(0, 7).replace('-', '/');
+          if (!purchaseMonthlyStats[month]) {
+            purchaseMonthlyStats[month] = { ryoteCounts: {}, katateCounts: {} };
+          }
+          const monthData = purchaseMonthlyStats[month];
+          if (isRyote) {
+            monthData.ryoteCounts[followUpAssignee] = (monthData.ryoteCounts[followUpAssignee] || 0) + 1;
+          } else if (isKatate) {
+            monthData.katateCounts[followUpAssignee] = (monthData.katateCounts[followUpAssignee] || 0) + 1;
+          }
+        }
+      });
+      result.purchaseMonthlyStats = purchaseMonthlyStats;
 
       // 通常スタッフのイニシャルを取得
       const normalStaffInitials = await this.fetchNormalStaffInitials();
