@@ -30,6 +30,11 @@ interface CategoryCounts {
   viewingUnconfirmed?: number;  // 内覧未確定
   sellerViewingContactPending?: number;  // 売主内覧連絡未
   viewingPostInputCounts?: Record<string, number>;  // 内覧後未入力（担当者別）
+  // 🆕 持ち家ヒアリング統計（担当別）
+  initialResponseCounts?: Record<string, number>;  // 初動対応数
+  homeHearingCounts?: Record<string, number>;  // 持ち家ヒアリング数
+  homeHearingOwnedCounts?: Record<string, number>;  // 持ち家（マンション/戸建）数
+  valuationRequiredCounts?: Record<string, number>;  // 要査定数
 }
 
 export interface BuyerWithStatus {
@@ -331,6 +336,12 @@ export default function BuyerStatusSidebar({
     });
   }
 
+  // 🆕 持ち家ヒアリング統計（全体合計）
+  const totalInitialResponse = Object.values(categoryCounts.initialResponseCounts || {}).reduce((sum, v) => sum + v, 0);
+  const totalHomeHearing = Object.values(categoryCounts.homeHearingCounts || {}).reduce((sum, v) => sum + v, 0);
+  const totalHomeOwned = Object.values(categoryCounts.homeHearingOwnedCounts || {}).reduce((sum, v) => sum + v, 0);
+  const totalValuationRequired = Object.values(categoryCounts.valuationRequiredCounts || {}).reduce((sum, v) => sum + v, 0);
+
   const renderCategoryItem = (category: { key: string; label: string; count: number; color: string; isSubCategory?: boolean; parentKey?: string }) => {
     const isIndented = category.isSubCategory === true;
     const isAssignedCategory = category.key.startsWith('assigned:') && !category.isSubCategory;
@@ -342,7 +353,7 @@ export default function BuyerStatusSidebar({
         key={category.key}
         selected={selectedStatus === category.key}
         onClick={(e) => {
-          e.stopPropagation(); // イベント伝播を停止
+          e.stopPropagation();
           handleStatusClick(category.key);
         }}
         sx={{
@@ -410,6 +421,107 @@ export default function BuyerStatusSidebar({
         {/* カテゴリリスト */}
         {categoryList.map(renderCategoryItem)}
       </Box>
+
+      {/* 🆕 持ち家ヒアリング統計セクション（担当別） */}
+      {totalInitialResponse > 0 && (
+        <Box sx={{ borderTop: '2px solid #ccc' }}>
+          {/* 初動対応数セクション */}
+          <Box sx={{ p: 1, borderBottom: '1px solid #eee', backgroundColor: '#fff8e1' }}>
+            <Typography variant="caption" fontWeight="bold" sx={{ display: 'block', color: '#e65100' }}>
+              初動対応数
+            </Typography>
+            {normalStaffInitials.filter(s => !['業者'].includes(s)).map(staff => {
+              const count = categoryCounts.initialResponseCounts?.[staff] ?? 0;
+              if (count === 0) return null;
+              return (
+                <Box key={`init-${staff}`} sx={{ display: 'flex', justifyContent: 'space-between', pl: 1, py: 0.1 }}>
+                  <Typography variant="caption" sx={{ color: '#555' }}>{staff}</Typography>
+                  <Typography variant="caption" fontWeight="bold">{count}</Typography>
+                </Box>
+              );
+            })}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 1, pt: 0.3, borderTop: '1px solid #eee' }}>
+              <Typography variant="caption" fontWeight="bold">計</Typography>
+              <Typography variant="caption" fontWeight="bold">{totalInitialResponse}</Typography>
+            </Box>
+          </Box>
+
+          {/* 持家ヒアリング済セクション */}
+          <Box sx={{ p: 1, borderBottom: '1px solid #eee', backgroundColor: '#e8f5e9' }}>
+            <Typography variant="caption" fontWeight="bold" sx={{ display: 'block', color: '#2e7d32' }}>
+              持家ヒアリング済 ({totalInitialResponse > 0 ? Math.round((totalHomeHearing / totalInitialResponse) * 100) : 0}%)
+            </Typography>
+            {normalStaffInitials.filter(s => !['業者'].includes(s)).map(staff => {
+              const count = categoryCounts.homeHearingCounts?.[staff] ?? 0;
+              const initCount = categoryCounts.initialResponseCounts?.[staff] ?? 0;
+              if (count === 0 && initCount === 0) return null;
+              const pct = initCount > 0 ? Math.round((count / initCount) * 100) : 0;
+              return (
+                <Box key={`hearing-${staff}`} sx={{ display: 'flex', justifyContent: 'space-between', pl: 1, py: 0.1 }}>
+                  <Typography variant="caption" sx={{ color: '#555' }}>{staff}</Typography>
+                  <Typography variant="caption" fontWeight="bold">{count} ({pct}%)</Typography>
+                </Box>
+              );
+            })}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 1, pt: 0.3, borderTop: '1px solid #eee' }}>
+              <Typography variant="caption" fontWeight="bold">計</Typography>
+              <Typography variant="caption" fontWeight="bold">
+                {totalHomeHearing} ({totalInitialResponse > 0 ? Math.round((totalHomeHearing / totalInitialResponse) * 100) : 0}%)
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* 持家数セクション */}
+          <Box sx={{ p: 1, borderBottom: '1px solid #eee', backgroundColor: '#e3f2fd' }}>
+            <Typography variant="caption" fontWeight="bold" sx={{ display: 'block', color: '#1565c0' }}>
+              持家（物件） ({totalHomeHearing > 0 ? Math.round((totalHomeOwned / totalHomeHearing) * 100) : 0}%)
+            </Typography>
+            {normalStaffInitials.filter(s => !['業者'].includes(s)).map(staff => {
+              const count = categoryCounts.homeHearingOwnedCounts?.[staff] ?? 0;
+              const hearingCount = categoryCounts.homeHearingCounts?.[staff] ?? 0;
+              if (count === 0 && hearingCount === 0) return null;
+              const pct = hearingCount > 0 ? Math.round((count / hearingCount) * 100) : 0;
+              return (
+                <Box key={`owned-${staff}`} sx={{ display: 'flex', justifyContent: 'space-between', pl: 1, py: 0.1 }}>
+                  <Typography variant="caption" sx={{ color: '#555' }}>{staff}</Typography>
+                  <Typography variant="caption" fontWeight="bold">{count} ({pct}%)</Typography>
+                </Box>
+              );
+            })}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 1, pt: 0.3, borderTop: '1px solid #eee' }}>
+              <Typography variant="caption" fontWeight="bold">計</Typography>
+              <Typography variant="caption" fontWeight="bold">
+                {totalHomeOwned} ({totalHomeHearing > 0 ? Math.round((totalHomeOwned / totalHomeHearing) * 100) : 0}%)
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* 要査定セクション */}
+          <Box sx={{ p: 1, backgroundColor: '#fce4ec' }}>
+            <Typography variant="caption" fontWeight="bold" sx={{ display: 'block', color: '#c62828' }}>
+              要査定 ({totalHomeOwned > 0 ? Math.round((totalValuationRequired / totalHomeOwned) * 100) : 0}%)
+            </Typography>
+            {normalStaffInitials.filter(s => !['業者'].includes(s)).map(staff => {
+              const count = categoryCounts.valuationRequiredCounts?.[staff] ?? 0;
+              const ownedCount = categoryCounts.homeHearingOwnedCounts?.[staff] ?? 0;
+              if (count === 0 && ownedCount === 0) return null;
+              const pct = ownedCount > 0 ? Math.round((count / ownedCount) * 100) : 0;
+              return (
+                <Box key={`val-${staff}`} sx={{ display: 'flex', justifyContent: 'space-between', pl: 1, py: 0.1 }}>
+                  <Typography variant="caption" sx={{ color: '#555' }}>{staff}</Typography>
+                  <Typography variant="caption" fontWeight="bold">{count} ({pct}%)</Typography>
+                </Box>
+              );
+            })}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 1, pt: 0.3, borderTop: '1px solid #eee' }}>
+              <Typography variant="caption" fontWeight="bold">計</Typography>
+              <Typography variant="caption" fontWeight="bold">
+                {totalValuationRequired} ({totalHomeOwned > 0 ? Math.round((totalValuationRequired / totalHomeOwned) * 100) : 0}%)
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 }

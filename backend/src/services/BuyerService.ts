@@ -2337,6 +2337,11 @@ export class BuyerService {
       sellerViewingContactPending: 0,
       // 内覧後未入力（担当者別）
       viewingPostInputCounts: {} as Record<string, number>,
+      // 🆕 持ち家ヒアリング統計（担当別）
+      initialResponseCounts: {} as Record<string, number>,
+      homeHearingCounts: {} as Record<string, number>,
+      homeHearingOwnedCounts: {} as Record<string, number>,
+      valuationRequiredCounts: {} as Record<string, number>,
     };
 
     for (const buyer of cachedBuyers) {
@@ -2374,6 +2379,27 @@ export class BuyerService {
         // 担当者別内覧後未入力: 「R_内覧後未入力」→ assignee = 'R'
         const assignee = status.replace('_内覧後未入力', '');
         result.viewingPostInputCounts[assignee] = (result.viewingPostInputCounts[assignee] || 0) + 1;
+      }
+
+      // 持ち家ヒアリング統計
+      const initialAssignee = buyer.initial_assignee ? String(buyer.initial_assignee).trim() : '';
+      if (initialAssignee) {
+        result.initialResponseCounts[initialAssignee] = (result.initialResponseCounts[initialAssignee] || 0) + 1;
+      }
+      
+      const hearingAssignee = buyer.owned_home_hearing_inquiry ? String(buyer.owned_home_hearing_inquiry).trim() : '';
+      if (hearingAssignee && hearingAssignee !== '不要' && hearingAssignee !== '未') {
+        result.homeHearingCounts[hearingAssignee] = (result.homeHearingCounts[hearingAssignee] || 0) + 1;
+        
+        const hearingResult = buyer.owned_home_hearing_result ? String(buyer.owned_home_hearing_result).trim() : '';
+        if (hearingResult === '持家（マンション）' || hearingResult === '持家（戸建）') {
+          result.homeHearingOwnedCounts[hearingAssignee] = (result.homeHearingOwnedCounts[hearingAssignee] || 0) + 1;
+        }
+        
+        const valuationRequired = buyer.valuation_required ? String(buyer.valuation_required).trim() : '';
+        if (valuationRequired === '要') {
+          result.valuationRequiredCounts[hearingAssignee] = (result.valuationRequiredCounts[hearingAssignee] || 0) + 1;
+        }
       }
     }
 
@@ -2429,6 +2455,9 @@ export class BuyerService {
       'phone_contact_person',
       'preferred_contact_time',
       'contact_method',
+      'owned_home_hearing_inquiry',
+      'owned_home_hearing_result',
+      'valuation_required',
     ].join(', ');
 
     // count クエリ・最初のバッチ・property_listings件数を並列実行
@@ -2700,6 +2729,43 @@ export class BuyerService {
           result.viewingSurveyUnchecked++;
         }
       });
+
+      // 🆕 持ち家ヒアリング統計（担当別）
+      const initialResponseCounts: Record<string, number> = {};
+      const homeHearingCounts: Record<string, number> = {};
+      const homeHearingOwnedCounts: Record<string, number> = {};
+      const valuationRequiredCounts: Record<string, number> = {};
+      
+      allBuyers.forEach((buyer: any) => {
+        // 初動対応数: initial_assignee 別にカウント
+        const initialAssignee = buyer.initial_assignee ? String(buyer.initial_assignee).trim() : '';
+        if (initialAssignee) {
+          initialResponseCounts[initialAssignee] = (initialResponseCounts[initialAssignee] || 0) + 1;
+        }
+        
+        // 持ち家ヒアリング数: owned_home_hearing_inquiry（担当イニシャル）別にカウント
+        const hearingAssignee = buyer.owned_home_hearing_inquiry ? String(buyer.owned_home_hearing_inquiry).trim() : '';
+        if (hearingAssignee && hearingAssignee !== '不要' && hearingAssignee !== '未') {
+          homeHearingCounts[hearingAssignee] = (homeHearingCounts[hearingAssignee] || 0) + 1;
+          
+          // 持ち家ヒアリング結果が持家（マンション）or 持家（戸建）のカウント
+          const hearingResult = buyer.owned_home_hearing_result ? String(buyer.owned_home_hearing_result).trim() : '';
+          if (hearingResult === '持家（マンション）' || hearingResult === '持家（戸建）') {
+            homeHearingOwnedCounts[hearingAssignee] = (homeHearingOwnedCounts[hearingAssignee] || 0) + 1;
+          }
+          
+          // 要査定のカウント
+          const valuationRequired = buyer.valuation_required ? String(buyer.valuation_required).trim() : '';
+          if (valuationRequired === '要') {
+            valuationRequiredCounts[hearingAssignee] = (valuationRequiredCounts[hearingAssignee] || 0) + 1;
+          }
+        }
+      });
+      
+      result.initialResponseCounts = initialResponseCounts;
+      result.homeHearingCounts = homeHearingCounts;
+      result.homeHearingOwnedCounts = homeHearingOwnedCounts;
+      result.valuationRequiredCounts = valuationRequiredCounts;
 
       // 通常スタッフのイニシャルを取得
       const normalStaffInitials = await this.fetchNormalStaffInitials();
