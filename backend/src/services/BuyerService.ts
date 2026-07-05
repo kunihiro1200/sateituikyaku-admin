@@ -2459,6 +2459,8 @@ export class BuyerService {
 
       if ((isRyote || isKatate) && viewingDate && followUpAssignee) {
         const month = viewingDate.substring(0, 7).replace('-', '/');
+        // 2025年以降のみ対象
+        if (month < '2025') continue;
         if (!result.purchaseMonthlyStats[month]) {
           result.purchaseMonthlyStats[month] = {
             ryoteCounts: {},
@@ -2891,6 +2893,7 @@ export class BuyerService {
 
         if ((isRyote || isKatate) && viewingDate && followUpAssignee) {
           const month = viewingDate.substring(0, 7).replace('-', '/');
+          if (month < '2025') return;
           if (!purchaseMonthlyStats[month]) {
             purchaseMonthlyStats[month] = { ryoteCounts: {}, katateCounts: {} };
           }
