@@ -527,7 +527,13 @@ export class BuyerService {
       throw new Error(`Failed to fetch linked properties: ${error.message}`);
     }
 
-    return data || [];
+    // buyer.property_number の入力順（カンマ区切りの順序）を保持して返す
+    // DBはIN句の順序を保証しないため、JS側で並び替える
+    const sorted = propertyNumbers
+      .map((num: string) => (data || []).find((d: any) => d.property_number === num))
+      .filter(Boolean);
+
+    return sorted;
   }
 
   /**
@@ -608,11 +614,20 @@ export class BuyerService {
    */
   /**
    * 買主データから福岡物件かどうかを判定する
+   * - desired_area に「福岡」が含まれる場合: FK採番
    * - property_number がある場合: property_listings.address に「福岡」が含まれるか確認
    * - other_company_property がある場合: その住所に「福岡」が含まれるか確認
    */
   private async isFukuokaBuyer(buyerData: Partial<any>): Promise<boolean> {
     try {
+      // 希望エリアに「福岡」が含まれる場合（"|"区切りの文字列）
+      if (buyerData.desired_area) {
+        const areas = String(buyerData.desired_area).split('|').map((a: string) => a.trim());
+        if (areas.some((a: string) => a.includes('福岡'))) {
+          console.log(`[BuyerService] 福岡物件判定: desired_area に「福岡」含む (${buyerData.desired_area})`);
+          return true;
+        }
+      }
       // 自社物件の場合: property_listingsから住所を取得
       if (buyerData.property_number) {
         const firstPropertyNumber = String(buyerData.property_number).split(',')[0].trim();
