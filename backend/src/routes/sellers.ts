@@ -1659,10 +1659,14 @@ router.get('/exclusive-monthly-summary', async (req: Request, res: Response) => 
       return res.status(500).json({ error: error.message });
     }
 
+    // employeesテーブルからイニシャル正規化マップを構築（フルネーム→イニシャル統一）
+    const normalizeAssignee = await buildNormalizeInitialMap(supabase);
+
     const summary: Record<string, Record<string, { count: number; sellerIds: string[] }>> = {};
     for (const row of (data || [])) {
-      const assignee = row.visit_assignee;
-      if (!assignee) continue;
+      const rawAssignee = row.visit_assignee;
+      if (!rawAssignee) continue;
+      const assignee = normalizeAssignee(rawAssignee);
       const d = new Date(row.contract_year_month);
       if (isNaN(d.getTime())) continue;
       const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -1715,10 +1719,14 @@ router.get('/other-decision-monthly-summary', async (req: Request, res: Response
       return res.status(500).json({ error: error.message });
     }
 
+    // employeesテーブルからイニシャル正規化マップを構築（フルネーム→イニシャル統一）
+    const normalizeAssignee = await buildNormalizeInitialMap(supabase);
+
     const summary: Record<string, Record<string, { count: number; sellerIds: string[] }>> = {};
     for (const row of (data || [])) {
-      const assignee = row.visit_assignee;
-      if (!assignee) continue;
+      const rawAssignee = row.visit_assignee;
+      if (!rawAssignee) continue;
+      const assignee = normalizeAssignee(rawAssignee);
       const d = new Date(row.contract_year_month);
       if (isNaN(d.getTime())) continue;
       const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
