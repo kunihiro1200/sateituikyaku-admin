@@ -1,13 +1,13 @@
 /**
  * 📚 営業学習ライブラリ
- * 専任取得・他決それぞれの担当者インタビューをグループ別に表示
- * AIによるリアルタイム生成は行わず、登録済み回答をそのまま表示
+ * 専任取得・他決のQ&A回答を「問題・場面テーマ別」にグループ化して表示
+ * 担当者ではなく「どんな場面か」で分類し、複数担当者の知見を横断的に学べる
  */
 import { useEffect, useState } from 'react';
 import {
-  Box, Typography, Paper, Chip, CircularProgress, Alert, Button,
+  Box, Typography, Paper, Chip, Alert, Button,
   Divider, Card, Collapse, IconButton, Tab, Tabs, Avatar,
-  Skeleton, Badge,
+  Skeleton,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -22,26 +22,128 @@ interface QAEntry {
   id: string;
   assignee: string;
   targetMonth: string;
-  aiAnalysis: string;
   questions: { id: string; question: string }[];
   answers: { questionId: string; answer: string }[];
   caseCount: number;
 }
 
-// 回答済みQ&Aペアに変換した型
 interface QAPair {
+  assignee: string;
+  targetMonth: string;
   question: string;
   answer: string;
 }
 
-// 担当者ごとにまとめた型
-interface AssigneeGroup {
-  assignee: string;
-  entries: (QAEntry & { qaPairs: QAPair[] })[];
-  totalAnswers: number;
+interface Category {
+  id: string;
+  label: string;
+  icon: string;
+  color: string;
+  keywords: string[];
+  pairs: QAPair[];
 }
 
+// ── カテゴリ定義 ──────────────────────────────────────
+
+const EXCLUSIVE_CATEGORIES: Omit<Category, 'pairs'>[] = [
+  {
+    id: 'approach',
+    label: '最初のアプローチ・第一印象',
+    icon: '🚀',
+    color: '#1976d2',
+    keywords: ['最初', 'アプローチ', '第一', '初回', '連絡', 'きっかけ', '最初の'],
+  },
+  {
+    id: 'valuation',
+    label: '査定・価格の説明',
+    icon: '💰',
+    color: '#388e3c',
+    keywords: ['査定', '価格', '金額', '提示', '根拠', '説明', '高く', '安く', '相場'],
+  },
+  {
+    id: 'competitor',
+    label: '競合との差別化',
+    icon: '🏆',
+    color: '#f57c00',
+    keywords: ['競合', '他社', '差別化', '勝て', '負け', '比較', '選ばれ', '選んで'],
+  },
+  {
+    id: 'trust',
+    label: '信頼関係・売主の不安解消',
+    icon: '🤝',
+    color: '#7b1fa2',
+    keywords: ['信頼', '不安', '安心', '関係', '心配', '解消', '寄り添', '気持ち'],
+  },
+  {
+    id: 'visit',
+    label: '訪問・提案の工夫',
+    icon: '🏠',
+    color: '#0288d1',
+    keywords: ['訪問', '提案', '工夫', '資料', 'プレゼン', '説明方法', '伝え方', '見せ'],
+  },
+  {
+    id: 'closing',
+    label: 'クロージング・専任取得の決め手',
+    icon: '🎯',
+    color: '#c2185b',
+    keywords: ['クロージング', '決め手', '専任', '取得', '契約', '決断', 'サイン', '押し'],
+  },
+  {
+    id: 'other',
+    label: 'その他',
+    icon: '💬',
+    color: '#546e7a',
+    keywords: [],
+  },
+];
+
+const OTHER_CATEGORIES: Omit<Category, 'pairs'>[] = [
+  {
+    id: 'price_gap',
+    label: '価格・査定の折り合いがつかなかった',
+    icon: '💸',
+    color: '#d32f2f',
+    keywords: ['価格', '査定', '金額', '高い', '安い', '相場', '折り合い'],
+  },
+  {
+    id: 'speed',
+    label: 'タイミング・スピードの問題',
+    icon: '⏰',
+    color: '#f57c00',
+    keywords: ['タイミング', 'スピード', '早く', '遅く', '先に', '間に合', 'すでに', '既に'],
+  },
+  {
+    id: 'competitor_lose',
+    label: '競合他社に負けた要因',
+    icon: '😞',
+    color: '#7b1fa2',
+    keywords: ['競合', '他社', '負け', '選ばれなかった', '決め', '比べ'],
+  },
+  {
+    id: 'relationship',
+    label: '売主との関係構築の課題',
+    icon: '🔗',
+    color: '#1976d2',
+    keywords: ['関係', '信頼', '距離', '警戒', '不信', 'コミュニケーション'],
+  },
+  {
+    id: 'prevention',
+    label: '次回への対策・防ぎ方',
+    icon: '🛡️',
+    color: '#388e3c',
+    keywords: ['次回', '対策', '防ぐ', '改善', '反省', '教訓', '次は', 'すべき'],
+  },
+  {
+    id: 'other',
+    label: 'その他',
+    icon: '💬',
+    color: '#546e7a',
+    keywords: [],
+  },
+];
+
 // ── ユーティリティ ─────────────────────────────────────
+
 function formatMonth(ym: string) {
   if (!ym) return '';
   const [y, m] = ym.split('-');
@@ -49,42 +151,56 @@ function formatMonth(ym: string) {
 }
 
 function getInitialColor(name: string): string {
-  const colors = [
-    '#1976d2', '#388e3c', '#d32f2f', '#7b1fa2',
-    '#f57c00', '#0288d1', '#c2185b', '#455a64',
-  ];
+  const colors = ['#1976d2', '#388e3c', '#d32f2f', '#7b1fa2', '#f57c00', '#0288d1', '#c2185b', '#455a64'];
   let hash = 0;
   for (const c of name) hash = (hash * 31 + c.charCodeAt(0)) & 0xffffffff;
   return colors[Math.abs(hash) % colors.length];
 }
 
-function buildAssigneeGroups(entries: QAEntry[]): AssigneeGroup[] {
-  const map = new Map<string, AssigneeGroup>();
+function classifyPair(pair: QAPair, catDefs: Omit<Category, 'pairs'>[]): string {
+  const text = pair.question + ' ' + pair.answer;
+  for (const cat of catDefs) {
+    if (cat.id === 'other') continue;
+    if (cat.keywords.some(kw => text.includes(kw))) return cat.id;
+  }
+  return 'other';
+}
+
+function buildCategories(entries: QAEntry[], catDefs: Omit<Category, 'pairs'>[]): Category[] {
+  const allPairs: QAPair[] = [];
 
   for (const entry of entries) {
-    const qaPairs: QAPair[] = (entry.questions || []).flatMap(q => {
+    for (const q of entry.questions || []) {
       const ans = (entry.answers || []).find(a => a.questionId === q.id);
-      if (!ans?.answer?.trim()) return [];
-      return [{ question: q.question, answer: ans.answer.trim() }];
-    });
-
-    const enriched = { ...entry, qaPairs };
-
-    if (!map.has(entry.assignee)) {
-      map.set(entry.assignee, { assignee: entry.assignee, entries: [], totalAnswers: 0 });
+      if (ans?.answer?.trim()) {
+        allPairs.push({
+          assignee: entry.assignee,
+          targetMonth: entry.targetMonth,
+          question: q.question,
+          answer: ans.answer.trim(),
+        });
+      }
     }
-    const group = map.get(entry.assignee)!;
-    group.entries.push(enriched);
-    group.totalAnswers += qaPairs.length;
   }
 
-  return Array.from(map.values()).sort((a, b) => b.totalAnswers - a.totalAnswers);
+  const catMap = new Map<string, QAPair[]>();
+  for (const def of catDefs) catMap.set(def.id, []);
+
+  for (const pair of allPairs) {
+    const catId = classifyPair(pair, catDefs);
+    catMap.get(catId)!.push(pair);
+  }
+
+  return catDefs
+    .map(def => ({ ...def, pairs: catMap.get(def.id)! }))
+    .filter(cat => cat.pairs.length > 0);
 }
 
 // ── サブコンポーネント ─────────────────────────────────
 
-function QACard({ pair, idx, color }: { pair: QAPair; idx: number; color: string }) {
+function AnswerCard({ pair, color }: { pair: QAPair; color: string }) {
   const [open, setOpen] = useState(false);
+  const avatarColor = getInitialColor(pair.assignee);
 
   return (
     <Paper
@@ -105,14 +221,38 @@ function QACard({ pair, idx, color }: { pair: QAPair; idx: number; color: string
           '&:hover': { bgcolor: `${color}10` },
         }}
       >
-        <Chip
-          label={`Q${idx + 1}`}
-          size="small"
-          sx={{ bgcolor: color, color: '#fff', fontWeight: 'bold', height: 20, fontSize: '0.65rem', flexShrink: 0, mt: 0.2 }}
-        />
-        <Typography variant="body2" sx={{ flex: 1, fontWeight: open ? 'bold' : 'normal', color: '#333', lineHeight: 1.6 }}>
-          {pair.question}
-        </Typography>
+        {/* 担当者アバター */}
+        <Avatar
+          sx={{
+            bgcolor: avatarColor,
+            width: 28, height: 28,
+            fontSize: '0.72rem', fontWeight: 'bold', flexShrink: 0, mt: 0.2,
+          }}
+        >
+          {pair.assignee.slice(0, 1)}
+        </Avatar>
+
+        <Box sx={{ flex: 1 }}>
+          {/* 担当者名・月 */}
+          <Box sx={{ display: 'flex', gap: 0.8, mb: 0.5, flexWrap: 'wrap' }}>
+            <Chip
+              label={pair.assignee}
+              size="small"
+              sx={{ bgcolor: avatarColor, color: '#fff', fontWeight: 'bold', height: 18, fontSize: '0.65rem' }}
+            />
+            <Chip
+              label={formatMonth(pair.targetMonth)}
+              size="small"
+              variant="outlined"
+              sx={{ height: 18, fontSize: '0.65rem', borderColor: '#ccc', color: '#666' }}
+            />
+          </Box>
+          {/* 質問文 */}
+          <Typography variant="body2" sx={{ color: '#555', fontSize: '0.82rem', lineHeight: 1.5 }}>
+            ❓ {pair.question}
+          </Typography>
+        </Box>
+
         <IconButton size="small" sx={{ flexShrink: 0, mt: -0.3, color }}>
           {open ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
         </IconButton>
@@ -122,6 +262,9 @@ function QACard({ pair, idx, color }: { pair: QAPair; idx: number; color: string
       <Collapse in={open}>
         <Divider />
         <Box sx={{ px: 2.5, py: 2, bgcolor: '#fff' }}>
+          <Typography variant="caption" sx={{ color, fontWeight: 'bold', display: 'block', mb: 1 }}>
+            💬 {pair.assignee}の回答
+          </Typography>
           <Typography
             variant="body2"
             sx={{ lineHeight: 1.9, color: '#333', whiteSpace: 'pre-wrap' }}
@@ -134,126 +277,46 @@ function QACard({ pair, idx, color }: { pair: QAPair; idx: number; color: string
   );
 }
 
-function EntrySection({
-  entry,
-  color,
-  defaultOpen,
-}: {
-  entry: QAEntry & { qaPairs: QAPair[] };
-  color: string;
-  defaultOpen: boolean;
-}) {
+function CategorySection({ cat, defaultOpen }: { cat: Category; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
-  if (entry.qaPairs.length === 0) return null;
 
   return (
-    <Box sx={{ mb: 1.5 }}>
-      {/* 月ヘッダー */}
-      <Box
-        onClick={() => setOpen(v => !v)}
-        sx={{
-          display: 'flex', alignItems: 'center', gap: 1, py: 0.8, px: 1,
-          cursor: 'pointer', borderRadius: 1,
-          '&:hover': { bgcolor: '#f5f5f5' },
-        }}
-      >
-        <Chip
-          label={formatMonth(entry.targetMonth)}
-          size="small"
-          variant="outlined"
-          sx={{ borderColor: color, color, fontWeight: 'bold', fontSize: '0.72rem' }}
-        />
-        <Chip
-          label={`${entry.qaPairs.length}件の回答`}
-          size="small"
-          sx={{ bgcolor: '#f5f5f5', color: '#666', fontSize: '0.68rem' }}
-        />
-        {entry.caseCount > 0 && (
-          <Chip
-            label={`${entry.caseCount}案件`}
-            size="small"
-            sx={{ bgcolor: `${color}20`, color, fontSize: '0.68rem' }}
-          />
-        )}
-        <Box sx={{ flex: 1 }} />
-        <IconButton size="small" sx={{ color: '#999' }}>
-          {open ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-        </IconButton>
-      </Box>
-
-      <Collapse in={open}>
-        <Box sx={{ pl: 1, display: 'flex', flexDirection: 'column', gap: 0.8, mt: 0.5 }}>
-          {entry.qaPairs.map((pair, i) => (
-            <QACard key={i} pair={pair} idx={i} color={color} />
-          ))}
-        </Box>
-      </Collapse>
-    </Box>
-  );
-}
-
-function AssigneeCard({
-  group,
-  color,
-  defaultOpen,
-}: {
-  group: AssigneeGroup;
-  color: string;
-  defaultOpen: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  const avatarColor = getInitialColor(group.assignee);
-
-  return (
-    <Card sx={{ border: `2px solid ${open ? color : '#e0e0e0'}`, boxShadow: open ? 3 : 1, transition: 'all 0.2s' }}>
-      {/* 担当者ヘッダー */}
+    <Card sx={{ border: `2px solid ${open ? cat.color : '#e0e0e0'}`, boxShadow: open ? 3 : 1, transition: 'all 0.2s' }}>
+      {/* カテゴリヘッダー */}
       <Box
         onClick={() => setOpen(v => !v)}
         sx={{
           px: 2, py: 1.8, cursor: 'pointer',
-          bgcolor: open ? `${color}08` : '#fff',
+          bgcolor: open ? `${cat.color}10` : '#fff',
           display: 'flex', alignItems: 'center', gap: 1.5,
-          '&:hover': { bgcolor: `${color}08` },
+          '&:hover': { bgcolor: `${cat.color}10` },
         }}
       >
-        <Avatar
-          sx={{
-            bgcolor: avatarColor,
-            width: 36, height: 36,
-            fontSize: '0.85rem', fontWeight: 'bold', flexShrink: 0,
-          }}
-        >
-          {group.assignee.slice(0, 1)}
-        </Avatar>
+        <Typography sx={{ fontSize: '1.5rem', lineHeight: 1, flexShrink: 0 }}>{cat.icon}</Typography>
         <Box sx={{ flex: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.2 }}>
-            {group.assignee}
+            {cat.label}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {group.entries.length}ヶ月分・{group.totalAnswers}件の回答
+            {cat.pairs.length}件の回答
           </Typography>
         </Box>
         <Chip
-          label={`${group.totalAnswers}件`}
+          label={`${cat.pairs.length}件`}
           size="small"
-          sx={{ bgcolor: color, color: '#fff', fontWeight: 'bold', fontSize: '0.72rem' }}
+          sx={{ bgcolor: cat.color, color: '#fff', fontWeight: 'bold', fontSize: '0.72rem' }}
         />
-        <IconButton size="small" sx={{ color }}>
+        <IconButton size="small" sx={{ color: cat.color }}>
           {open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         </IconButton>
       </Box>
 
-      {/* 月別エントリー */}
+      {/* 回答一覧 */}
       <Collapse in={open}>
         <Divider />
-        <Box sx={{ p: 2 }}>
-          {group.entries.map((entry, i) => (
-            <EntrySection
-              key={entry.id}
-              entry={entry}
-              color={color}
-              defaultOpen={i === 0}
-            />
+        <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {cat.pairs.map((pair, i) => (
+            <AnswerCard key={i} pair={pair} color={cat.color} />
           ))}
         </Box>
       </Collapse>
@@ -261,18 +324,14 @@ function AssigneeCard({
   );
 }
 
-function LibraryTab({
-  type,
-  color,
-  icon,
-}: {
-  type: 'exclusive' | 'other';
-  color: string;
-  icon: React.ReactNode;
-}) {
-  const [groups, setGroups] = useState<AssigneeGroup[]>([]);
+function LibraryTab({ type }: { type: 'exclusive' | 'other' }) {
+  const catDefs = type === 'exclusive' ? EXCLUSIVE_CATEGORIES : OTHER_CATEGORIES;
+  const accentColor = type === 'exclusive' ? '#f57c00' : '#d32f2f';
+
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [totalAnswers, setTotalAnswers] = useState(0);
 
   const load = async () => {
     try {
@@ -284,7 +343,9 @@ function LibraryTab({
           : '/api/sellers/learning-library/other-decision';
       const res = await api.get(url);
       const entries: QAEntry[] = res.data.entries || [];
-      setGroups(buildAssigneeGroups(entries));
+      const cats = buildCategories(entries, catDefs);
+      setCategories(cats);
+      setTotalAnswers(cats.reduce((s, c) => s + c.pairs.length, 0));
     } catch (err: any) {
       setError(err?.response?.data?.error || 'データの取得に失敗しました');
     } finally {
@@ -293,8 +354,6 @@ function LibraryTab({
   };
 
   useEffect(() => { load(); }, [type]);
-
-  const totalAnswers = groups.reduce((s, g) => s + g.totalAnswers, 0);
 
   if (loading) {
     return (
@@ -314,13 +373,11 @@ function LibraryTab({
     );
   }
 
-  if (groups.length === 0) {
+  if (categories.length === 0) {
     return (
       <Box sx={{ textAlign: 'center', py: 6 }}>
         <QuestionAnswerIcon sx={{ fontSize: 48, color: '#ccc', mb: 1 }} />
-        <Typography color="text.secondary">
-          まだ回答データがありません。
-        </Typography>
+        <Typography color="text.secondary">まだ回答データがありません。</Typography>
         <Typography variant="caption" color="text.secondary">
           分析ページで担当者が質問に回答すると、ここに表示されます。
         </Typography>
@@ -333,33 +390,28 @@ function LibraryTab({
       {/* サマリー */}
       <Box sx={{ display: 'flex', gap: 1, mb: 2.5, flexWrap: 'wrap', alignItems: 'center' }}>
         <Chip
-          label={`${groups.length}名の担当者`}
-          sx={{ bgcolor: `${color}20`, color, fontWeight: 'bold' }}
+          label={`${categories.length}テーマ`}
+          sx={{ bgcolor: `${accentColor}20`, color: accentColor, fontWeight: 'bold' }}
         />
         <Chip
-          label={`計${totalAnswers}件の回答`}
-          sx={{ bgcolor: `${color}20`, color, fontWeight: 'bold' }}
+          label={`計${totalAnswers}件の知見`}
+          sx={{ bgcolor: `${accentColor}20`, color: accentColor, fontWeight: 'bold' }}
         />
         <Button
           size="small"
           startIcon={<RefreshIcon />}
           onClick={load}
-          sx={{ color, borderColor: color, ml: 'auto' }}
+          sx={{ color: accentColor, borderColor: accentColor, ml: 'auto' }}
           variant="outlined"
         >
           更新
         </Button>
       </Box>
 
-      {/* 担当者別カード */}
+      {/* テーマ別カード */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-        {groups.map((group, i) => (
-          <AssigneeCard
-            key={group.assignee}
-            group={group}
-            color={color}
-            defaultOpen={i === 0}
-          />
+        {categories.map((cat, i) => (
+          <CategorySection key={cat.id} cat={cat} defaultOpen={i === 0} />
         ))}
       </Box>
     </Box>
@@ -381,8 +433,8 @@ export default function SalesLearningLibraryPage() {
           </Typography>
         </Box>
         <Typography variant="body2" color="text.secondary">
-          専任取得・他決それぞれの場面で、各担当者が実際にどう乗り切ったかをまとめています。
-          後輩は先輩の言葉をそのまま読んで学べます。
+          専任取得・他決の場面ごとに、先輩担当者たちが実際にどう乗り切ったかをまとめています。
+          テーマを選んで、複数の担当者の言葉をまとめて学べます。
         </Typography>
       </Paper>
 
@@ -398,36 +450,14 @@ export default function SalesLearningLibraryPage() {
             '& .MuiTabs-indicator': { bgcolor: tab === 0 ? '#f57c00' : '#d32f2f', height: 3 },
           }}
         >
-          <Tab
-            icon={<EmojiEventsIcon />}
-            iconPosition="start"
-            label="専任取得"
-          />
-          <Tab
-            icon={<BlockIcon />}
-            iconPosition="start"
-            label="他決（競合負け）"
-          />
+          <Tab icon={<EmojiEventsIcon />} iconPosition="start" label="専任取得" />
+          <Tab icon={<BlockIcon />} iconPosition="start" label="他決（競合負け）" />
         </Tabs>
       </Paper>
 
       {/* タブコンテンツ */}
-      {tab === 0 && (
-        <LibraryTab
-          key="exclusive"
-          type="exclusive"
-          color="#f57c00"
-          icon={<EmojiEventsIcon />}
-        />
-      )}
-      {tab === 1 && (
-        <LibraryTab
-          key="other"
-          type="other"
-          color="#d32f2f"
-          icon={<BlockIcon />}
-        />
-      )}
+      {tab === 0 && <LibraryTab key="exclusive" type="exclusive" />}
+      {tab === 1 && <LibraryTab key="other" type="other" />}
     </Box>
   );
 }
