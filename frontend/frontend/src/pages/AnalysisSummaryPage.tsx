@@ -2,6 +2,7 @@
  * 📄 分析サマリーページ
  * AI分析テキスト＋Q&A回答を材料にClaudeが統合要約文を生成して表示
  * 後輩スタッフ向けの学習まとめとして印刷・共有できる
+ * @updated 2026-07-05
  */
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
