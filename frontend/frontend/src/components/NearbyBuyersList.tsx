@@ -375,7 +375,11 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
 
   // 業者フィルター → 価格帯フィルターの順で AND 結合
   const filteredBuyers = React.useMemo(() => {
-    const agencyFiltered = filterBuyersByAgency(activeBuyers, activeAgencyFilter);
+    // 土地（一般買主）モードのときは業者（broker_inquiry='業者（両手）'）を除外して重複を防ぐ
+    const baseList = landBuyerMode
+      ? activeBuyers.filter(b => (b.broker_inquiry || '').trim() !== '業者（両手）')
+      : activeBuyers;
+    const agencyFiltered = filterBuyersByAgency(baseList, activeAgencyFilter);
     return filterBuyersByPrice(agencyFiltered, selectedPriceRanges, landBuyerMode ? '土地' : propertyType);
   }, [activeBuyers, activeAgencyFilter, selectedPriceRanges, propertyType, landBuyerMode]);
 
