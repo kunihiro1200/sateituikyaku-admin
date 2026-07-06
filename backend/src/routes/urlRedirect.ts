@@ -44,14 +44,16 @@ function followRedirects(url: string, maxRedirects: number = 10): Promise<string
 
             console.log(`  ↪️ Redirect ${statusCode}: ${url.substring(0, 80)} -> ${nextUrl.substring(0, 120)}`);
 
-            // consent.google.com のリダイレクトが来た場合、continueパラメータから元URLを取得
+            // consent.google.com のリダイレクトが来た場合、continueパラメータから元URLを取得してさらに追跡
             if (nextUrl.includes('consent.google.com') || nextUrl.includes('consent.youtube.com')) {
               try {
                 const consentUrl = new URL(nextUrl);
                 const continueUrl = consentUrl.searchParams.get('continue');
                 if (continueUrl) {
-                  console.log('  ⚠️ Consent redirect detected, using continue URL:', continueUrl.substring(0, 120));
-                  resolve(continueUrl);
+                  const decodedContinue = decodeURIComponent(continueUrl);
+                  console.log('  ⚠️ Consent redirect detected, following continue URL:', decodedContinue.substring(0, 120));
+                  // continueパラメータのURLをそのまま返さず、さらにリダイレクト追跡する
+                  followRedirects(decodedContinue, maxRedirects - 1).then(resolve).catch(() => resolve(decodedContinue));
                   return;
                 }
               } catch {}

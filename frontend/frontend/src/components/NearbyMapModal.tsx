@@ -80,8 +80,23 @@ async function extractCoords(url: string, apiBase: string): Promise<{ lat: numbe
           const resolved = d.redirectedUrl;
           console.log('[NearbyMap] Resolved URL:', resolved?.substring(0, 150));
           if (resolved) {
+            // 展開後URLから座標抽出
             const coords = tryExtractFromUrl(resolved);
             if (coords) return coords;
+
+            // consent.google.com の continue パラメータから座標を試みる
+            try {
+              const resolvedUrl = new URL(resolved);
+              if (resolvedUrl.hostname.includes('consent.google.com')) {
+                const continueParam = resolvedUrl.searchParams.get('continue');
+                if (continueParam) {
+                  const decoded = decodeURIComponent(continueParam);
+                  console.log('[NearbyMap] Trying consent continue URL:', decoded.substring(0, 150));
+                  const continueCoords = tryExtractFromUrl(decoded);
+                  if (continueCoords) return continueCoords;
+                }
+              }
+            } catch {}
           }
         } else {
           console.warn('[NearbyMap] URL resolve failed:', r.status, await r.text().catch(() => ''));
