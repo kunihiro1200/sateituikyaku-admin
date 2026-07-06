@@ -180,8 +180,9 @@ const filterBuyersByAgency = (
   if (filterType === null) return buyers;
 
   return buyers.filter(buyer => {
-    // broker_inquiry が "業者（両手）" と完全一致することが共通条件
+    // broker_inquiry が "業者（両手）" かつ distribution_type が "要" の両方を満たすことが共通条件
     if (buyer.broker_inquiry !== '業者（両手）') return false;
+    if ((buyer.distribution_type || '').trim() !== '要') return false;
 
     const desiredType = (buyer.desired_type || '').trim();
 

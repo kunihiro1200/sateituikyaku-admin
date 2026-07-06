@@ -1923,7 +1923,27 @@ export class BuyerService {
         a.endsWith('_ALL') || /^[A-Za-z]+\d+/.test(a)
       );
       if (hasAlphaPrefixArea) return false;
-      return true; // 囲み数字エリアの物件はエリア不問の買主を表示
+
+      // 囲み数字エリアの物件に対して：
+      // 買主の property_number プレフィックスと物件エリアの地域が一致しない場合は除外
+      // （例: FI採番の買主（福岡案件）は大分物件（囲み数字）に表示しない）
+      if (buyer.property_number) {
+        const buyerPropertyPrefix = String(buyer.property_number).split(',')[0].trim().match(/^([A-Za-z]+)/)?.[1]?.toUpperCase() || '';
+        const propertyRegionIsOita = propertyAreaNumbers.some(a => this.OITA_AREA_NUMBERS.includes(a) || this.BEPPU_AREA_NUMBERS.includes(a));
+        const propertyRegionIsFukuoka = propertyAreaNumbers.some(a => /^[A-Za-z]+/.test(a) && !a.endsWith('_ALL'));
+
+        if (propertyRegionIsOita) {
+          // 物件が大分・別府エリア → 福岡系プレフィックス（F, FI, FK等）の買主は除外
+          const isFukuokaBuyer = buyerPropertyPrefix.startsWith('F');
+          if (isFukuokaBuyer) return false;
+        } else if (propertyRegionIsFukuoka) {
+          // 物件が福岡エリア → 大分系プレフィックス（AA, AB等）の買主は除外
+          const isOitaBuyer = buyerPropertyPrefix.startsWith('A');
+          if (isOitaBuyer) return false;
+        }
+      }
+
+      return true; // 囲み数字エリアの物件はエリア不問の買主を表示（地域不一致でない限り）
     }
     if (propertyAreaNumbers.length === 0) return false;
     const buyerAreaNumbers = this.extractAreaNumbers(desiredArea);
