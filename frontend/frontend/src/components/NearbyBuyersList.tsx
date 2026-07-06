@@ -48,6 +48,7 @@ interface NearbyBuyer {
   distribution_type?: string | null; // Q列「配信種別」
   corporate_name?: string | null;    // EE列「法人名」
   is_rich?: boolean | null;          // RICH顧客フラグ
+  continue_distribution_after_contract?: boolean | null; // 契約後配信継続フラグ
 }
 
 interface NearbyBuyersListProps {
@@ -181,6 +182,9 @@ const filterBuyersByAgency = (
   if (filterType === null) return buyers;
 
   return buyers.filter(buyer => {
+    // RICH顧客は業者フィルターをバイパスして常に表示
+    if (buyer.is_rich === true) return true;
+
     // broker_inquiry が "業者（両手）" かつ distribution_type が "要" の両方を満たすことが共通条件
     if (buyer.broker_inquiry !== '業者（両手）') return false;
     if ((buyer.distribution_type || '').trim() !== '要') return false;
