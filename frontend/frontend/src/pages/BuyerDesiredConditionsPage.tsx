@@ -82,6 +82,8 @@ export default function BuyerDesiredConditionsPage() {
   const [buyer, setBuyer] = useState<Buyer | null>(null);
   const [loading, setLoading] = useState(true);
   const [copiedBuyerNumber, setCopiedBuyerNumber] = useState(false);
+  const [isRich, setIsRich] = useState(false);
+  const [isTogglingRich, setIsTogglingRich] = useState(false);
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   // selectedAreas の最新値を ref で保持（onClose クロージャー問題を回避）
   const selectedAreasRef = useRef<string[]>([]);
@@ -115,6 +117,7 @@ export default function BuyerDesiredConditionsPage() {
       setLoading(true);
       const res = await api.get(`/api/buyers/${buyer_number}`);
       setBuyer(res.data);
+      setIsRich(!!res.data?.is_rich);
       // desired_area の初期値をローカル state にセット
       const areaVal = res.data?.desired_area || '';
       const initialAreas = areaVal ? areaVal.split('|').map((v: string) => v.trim()).filter(Boolean) : [];
@@ -313,6 +316,25 @@ export default function BuyerDesiredConditionsPage() {
     setSnackbar({ ...snackbar, open: false });
   };
 
+  const handleToggleRich = async () => {
+    if (!buyer_number) return;
+    setIsTogglingRich(true);
+    try {
+      const res = await api.patch(`/api/buyers/${buyer_number}/toggle-rich`);
+      setIsRich(res.data.is_rich);
+      setBuyer((prev: any) => prev ? { ...prev, is_rich: res.data.is_rich } : prev);
+      setSnackbar({
+        open: true,
+        message: res.data.is_rich ? 'RICH顧客に認定しました' : 'RICH顧客認定を解除しました',
+        severity: 'success',
+      });
+    } catch (error: any) {
+      setSnackbar({ open: true, message: 'RICH認定の更新に失敗しました', severity: 'error' });
+    } finally {
+      setIsTogglingRich(false);
+    }
+  };
+
   const handleCopyBuyerNumber = () => {
     if (buyer?.buyer_number) {
       navigator.clipboard.writeText(buyer.buyer_number);
@@ -444,9 +466,40 @@ export default function BuyerDesiredConditionsPage() {
         p: 3,
         borderTop: `4px solid ${SECTION_COLORS.buyer.main}`,
       }}>
-        <Typography variant="h6" sx={{ mb: 2, color: SECTION_COLORS.buyer.main }}>
-          希望条件
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Typography variant="h6" sx={{ color: SECTION_COLORS.buyer.main }}>
+            希望条件
+          </Typography>
+          <Button
+            variant={isRich ? 'contained' : 'outlined'}
+            size="small"
+            onClick={handleToggleRich}
+            disabled={isTogglingRich}
+            sx={isRich ? {
+              bgcolor: '#d32f2f',
+              color: 'white',
+              fontWeight: 'bold',
+              fontSize: '0.85rem',
+              px: 2,
+              '&:hover': { bgcolor: '#b71c1c' },
+              boxShadow: '0 0 8px rgba(211,47,47,0.7)',
+              animation: 'richGlow 1.5s ease-in-out infinite alternate',
+              '@keyframes richGlow': {
+                from: { boxShadow: '0 0 4px rgba(211,47,47,0.5)' },
+                to: { boxShadow: '0 0 12px rgba(211,47,47,0.9)' },
+              },
+            } : {
+              borderColor: '#d32f2f',
+              color: '#d32f2f',
+              fontWeight: 'bold',
+              fontSize: '0.85rem',
+              px: 2,
+              '&:hover': { borderColor: '#b71c1c', bgcolor: '#d32f2f0a' },
+            }}
+          >
+            💎 RICH
+          </Button>
+        </Box>
         <Grid container spacing={2}>
           {getDesiredConditionsFields(buyer_number).map((field) => (
             <Grid item xs={12} sm={6} md={4} key={field.key}>

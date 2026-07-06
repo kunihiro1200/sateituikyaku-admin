@@ -1770,7 +1770,8 @@ export class BuyerService {
         price,
         inquiry_hearing,
         viewing_result_follow_up,
-        corporate_name
+        corporate_name,
+        is_rich
       `;
     const PAGE_SIZE = 1000;
     let allBuyers: any[] = [];
@@ -1822,6 +1823,7 @@ export class BuyerService {
       property_address: propertyAddressMap[buyer.property_number] ?? null,
       desired_type: buyer.desired_property_type ?? null,
       corporate_name: buyer.corporate_name ?? null,
+      is_rich: buyer.is_rich ?? false,
     }));
   }
 

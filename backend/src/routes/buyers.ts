@@ -226,6 +226,29 @@ router.put('/batch', authenticateOrApiKey, async (req: Request, res: Response) =
   }
 });
 
+// RICH顧客フラグ切り替え
+router.patch('/:id/toggle-rich', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).user?.id || 'system';
+    const userEmail = (req as any).user?.email || 'system@example.com';
+
+    // getById はUUID/買主番号 両対応
+    const buyer = await buyerService.getById(id);
+    if (!buyer) {
+      return res.status(404).json({ error: 'Buyer not found' });
+    }
+
+    const newIsRich = !buyer.is_rich;
+    const buyerNumber = buyer.buyer_number || id;
+    const result = await buyerService.update(buyerNumber, { is_rich: newIsRich }, userId, userEmail);
+    return res.json({ is_rich: newIsRich, buyer: result });
+  } catch (error: any) {
+    console.error('[PATCH /buyers/:id/toggle-rich] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Pinrich500万以上登録 同メアド一括更新
 router.patch('/pinrich-500man-bulk-update', async (req: Request, res: Response) => {
   try {

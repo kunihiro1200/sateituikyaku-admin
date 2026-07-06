@@ -1497,6 +1497,26 @@ export default function BuyerDetailPage() {
           {buyer.latest_status && (
             <Chip label={buyer.latest_status.substring(0, 30)} sx={{ ml: 1 }} />
           )}
+          {/* RICHマーク */}
+          {buyer.is_rich && (
+            <Chip
+              label="💎 RICH"
+              size="medium"
+              sx={{
+                ml: 1,
+                bgcolor: '#d32f2f',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '0.9rem',
+                boxShadow: '0 0 8px rgba(211,47,47,0.7)',
+                animation: 'richGlow 1.5s ease-in-out infinite alternate',
+                '@keyframes richGlow': {
+                  from: { boxShadow: '0 0 4px rgba(211,47,47,0.5)' },
+                  to: { boxShadow: '0 0 14px rgba(211,47,47,1)' },
+                },
+              }}
+            />
+          )}
           <RelatedBuyerNotificationBadge 
             count={relatedBuyersCount} 
             onClick={scrollToRelatedBuyers}
