@@ -47,6 +47,7 @@ interface NearbyBuyer {
   broker_inquiry?: string | null;    // CV列「業者問合せ」
   distribution_type?: string | null; // Q列「配信種別」
   corporate_name?: string | null;    // EE列「法人名」
+  is_rich?: boolean | null;          // RICH顧客フラグ
 }
 
 interface NearbyBuyersListProps {
@@ -339,6 +340,9 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
   // 業者フィルター選択状態
   const [activeAgencyFilter, setActiveAgencyFilter] = useState<AgencyFilterType>(null);
 
+  // RICHフィルター状態
+  const [richFilterActive, setRichFilterActive] = useState(false);
+
   // ソート状態
   const [sortConfig, setSortConfig] = useState<{
     key: keyof NearbyBuyer | null;
@@ -373,15 +377,19 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
   // 現在表示するバイヤーリスト（通常 or 土地モード）
   const activeBuyers = landBuyerMode ? (landBuyers || []) : buyers;
 
-  // 業者フィルター → 価格帯フィルターの順で AND 結合
+  // 業者フィルター → 価格帯フィルター → RICHフィルターの順で AND 結合
   const filteredBuyers = React.useMemo(() => {
     // 土地（一般買主）モードのときは業者（broker_inquiry='業者（両手）'）を除外して重複を防ぐ
     const baseList = landBuyerMode
       ? activeBuyers.filter(b => (b.broker_inquiry || '').trim() !== '業者（両手）')
       : activeBuyers;
     const agencyFiltered = filterBuyersByAgency(baseList, activeAgencyFilter);
-    return filterBuyersByPrice(agencyFiltered, selectedPriceRanges, landBuyerMode ? '土地' : propertyType);
-  }, [activeBuyers, activeAgencyFilter, selectedPriceRanges, propertyType, landBuyerMode]);
+    const priceFiltered = filterBuyersByPrice(agencyFiltered, selectedPriceRanges, landBuyerMode ? '土地' : propertyType);
+    if (richFilterActive) {
+      return priceFiltered.filter(b => b.is_rich === true);
+    }
+    return priceFiltered;
+  }, [activeBuyers, activeAgencyFilter, selectedPriceRanges, propertyType, landBuyerMode, richFilterActive]);
 
   const sortedBuyers = React.useMemo(() => {
     if (!sortConfig.key) return filteredBuyers;
@@ -836,6 +844,26 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
             </Box>
           </Box>
         )}
+        {/* RICHフィルターボタン */}
+        <Button
+          variant={richFilterActive ? 'contained' : 'outlined'}
+          size="small"
+          onClick={() => setRichFilterActive(prev => !prev)}
+          sx={richFilterActive ? {
+            bgcolor: '#d32f2f',
+            color: 'white',
+            fontWeight: 'bold',
+            '&:hover': { bgcolor: '#b71c1c' },
+            boxShadow: '0 0 8px rgba(211,47,47,0.6)',
+          } : {
+            borderColor: '#d32f2f',
+            color: '#d32f2f',
+            fontWeight: 'bold',
+            '&:hover': { borderColor: '#b71c1c', bgcolor: '#d32f2f0a' },
+          }}
+        >
+          💎 RICH
+        </Button>
       </Box>
 
       {/* 価格帯フィルターボタン行 */}
@@ -898,11 +926,19 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
               <TableCell sx={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('viewing_date')}>
                 内覧日{getSortIcon('viewing_date')}
               </TableCell>
+              <TableCell>RICH</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {sortedBuyers.map((buyer) => {
-              const hearingOrResult = buyer.viewing_result_follow_up || buyer.inquiry_hearing || '-';
+              const hearingOrResultRaw = buyer.viewing_result_follow_up || buyer.inquiry_hearing || '-';
+              // HTMLタグを除去してプレーンテキスト化（<br>は改行に変換）
+              const hearingOrResult = hearingOrResultRaw === '-'
+                ? '-'
+                : hearingOrResultRaw
+                    .replace(/<br\s*\/?>/gi, '\n')
+                    .replace(/<[^>]*>/g, '')
+                    .trim();
               const isAreaExpanded = expandedAreaBuyer === buyer.buyer_number;
               return (
                 <TableRow
@@ -999,6 +1035,20 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
                   <TableCell>{buyer.latest_status || '-'}</TableCell>
                   <TableCell>
                     {buyer.viewing_date ? new Date(buyer.viewing_date).toLocaleDateString('ja-JP') : '-'}
+                  </TableCell>
+                  <TableCell>
+                    {buyer.is_rich && (
+                      <Chip
+                        label="💎 RICH"
+                        size="small"
+                        sx={{
+                          bgcolor: '#d32f2f',
+                          color: 'white',
+                          fontWeight: 'bold',
+                          fontSize: '0.7rem',
+                        }}
+                      />
+                    )}
                   </TableCell>
                 </TableRow>
               );
