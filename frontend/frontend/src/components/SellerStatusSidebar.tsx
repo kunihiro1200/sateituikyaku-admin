@@ -667,6 +667,9 @@ function SellerStatusSidebarComponent({
         {/* 当日TEL分（FI） */}
         {renderFiButton(`${FI_PREFIX}todayCall` as StatusCategory, '当日TEL分', fiTodayCall, '#d32f2f')}
 
+        {/* 未査定（FI） */}
+        {renderFiButton(`${FI_PREFIX}unvaluated` as StatusCategory, '未査定', fiUnvaluated, '#ed6c02')}
+
         {/* 当日TEL（内容）ラベル別（FI） */}
         {Object.keys(fiLabelCounts).length > 0
           ? Object.entries(fiLabelCounts).map(([label, count]) => {
@@ -678,9 +681,6 @@ function SellerStatusSidebarComponent({
             ? renderFiButton(`${FI_PREFIX}todayCallWithInfo` as StatusCategory, '当日TEL（内容）', fiTodayCallWithInfo, '#9c27b0')
             : null
         }
-
-        {/* 未査定（FI） */}
-        {renderFiButton(`${FI_PREFIX}unvaluated` as StatusCategory, '未査定', fiUnvaluated, '#ed6c02')}
       </Box>
     );
   };
