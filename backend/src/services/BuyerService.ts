@@ -1783,7 +1783,7 @@ export class BuyerService {
         .or('distribution_type.eq.要,broker_inquiry.eq.業者（両手）,is_rich.eq.true')
         .is('deleted_at', null)
         .or('is_rich.eq.true,latest_status.is.null,latest_status.not.ilike.*成約*')
-        .or('is_rich.eq.true,latest_status.is.null,latest_status.not.ilike.*D*')
+        .or('latest_status.is.null,latest_status.not.ilike.*D*')
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (error) {
         throw new Error(`Failed to fetch buyers by areas: ${error.message}`);
@@ -1904,10 +1904,13 @@ export class BuyerService {
   }
 
   private matchesStatus(buyer: any): boolean {
-    // RICH顧客はステータスに関わらず表示する
-    if (buyer.is_rich === true) return true;
     const latestStatus = (buyer.latest_status || '').trim();
-    if (latestStatus.includes('成約') || latestStatus.includes('D')) return false;
+    // 成約は常に除外
+    if (latestStatus.includes('成約')) return false;
+    // RICH顧客はD含みでも除外しない（ただし成約は除外）
+    if (buyer.is_rich === true) return true;
+    // 通常買主はDが含まれれば除外
+    if (latestStatus.includes('D')) return false;
     return true;
   }
 
