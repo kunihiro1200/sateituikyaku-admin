@@ -1780,10 +1780,10 @@ export class BuyerService {
       const { data, error } = await this.supabase
         .from('buyers')
         .select(SELECT_COLUMNS)
-        .or('distribution_type.eq.要,broker_inquiry.eq.業者（両手）')
+        .or('distribution_type.eq.要,broker_inquiry.eq.業者（両手）,is_rich.eq.true')
         .is('deleted_at', null)
-        .or('latest_status.is.null,latest_status.not.ilike.*成約*')
-        .or('latest_status.is.null,latest_status.not.ilike.*D*')
+        .or('is_rich.eq.true,latest_status.is.null,latest_status.not.ilike.*成約*')
+        .or('is_rich.eq.true,latest_status.is.null,latest_status.not.ilike.*D*')
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (error) {
         throw new Error(`Failed to fetch buyers by areas: ${error.message}`);
@@ -1867,6 +1867,8 @@ export class BuyerService {
   }
 
   private shouldExcludeBuyer(buyer: any): boolean {
+    // RICH顧客は全ての除外条件をスキップして必ず表示する
+    if (buyer.is_rich === true) return false;
     if (this.isBusinessInquiry(buyer)) return true;
     const brokerInquiry = (buyer.broker_inquiry || '').trim();
     const isDistributionRequired = this.hasDistributionRequired(buyer);
@@ -1902,6 +1904,8 @@ export class BuyerService {
   }
 
   private matchesStatus(buyer: any): boolean {
+    // RICH顧客はステータスに関わらず表示する
+    if (buyer.is_rich === true) return true;
     const latestStatus = (buyer.latest_status || '').trim();
     if (latestStatus.includes('成約') || latestStatus.includes('D')) return false;
     return true;
