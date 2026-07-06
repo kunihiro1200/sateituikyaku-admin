@@ -1003,7 +1003,7 @@ export class BuyerService {
     updateData: Partial<any>,
     userId?: string,
     userEmail?: string,
-    options?: { force?: boolean }
+    options?: { force?: boolean; allowEmptyValues?: boolean }
   ): Promise<UpdateWithSyncResult> {
     // 存在確認（UUIDか買主番号かを判定）
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -1045,7 +1045,8 @@ export class BuyerService {
       ? dbUpdatedAt > lastSyncedAt
       : dbUpdatedAt && !lastSyncedAt;
 
-    if (isManuallyUpdated) {
+    // allowEmptyValues=true の場合（フロントからの意図的なクリア操作）は保護をスキップ
+    if (isManuallyUpdated && !options?.allowEmptyValues) {
       for (const field of Object.keys(allowedData)) {
         if (field === 'db_updated_at') continue; // タイムスタンプは除外
         const val = allowedData[field];
@@ -1771,7 +1772,8 @@ export class BuyerService {
         inquiry_hearing,
         viewing_result_follow_up,
         corporate_name,
-        is_rich
+        is_rich,
+        continue_distribution_after_contract
       `;
     const PAGE_SIZE = 1000;
     let allBuyers: any[] = [];
@@ -1780,9 +1782,9 @@ export class BuyerService {
       const { data, error } = await this.supabase
         .from('buyers')
         .select(SELECT_COLUMNS)
-        .or('distribution_type.eq.要,broker_inquiry.eq.業者（両手）,is_rich.eq.true')
+        .or('distribution_type.eq.要,broker_inquiry.eq.業者（両手）')
         .is('deleted_at', null)
-        .or('is_rich.eq.true,latest_status.is.null,latest_status.not.ilike.*成約*')
+        .or('latest_status.is.null,latest_status.not.ilike.*成約*')
         .or('latest_status.is.null,latest_status.not.ilike.*D*')
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (error) {
@@ -1824,6 +1826,7 @@ export class BuyerService {
       desired_type: buyer.desired_property_type ?? null,
       corporate_name: buyer.corporate_name ?? null,
       is_rich: buyer.is_rich ?? false,
+      continue_distribution_after_contract: buyer.continue_distribution_after_contract ?? null,
     }));
   }
 
@@ -1867,16 +1870,13 @@ export class BuyerService {
   }
 
   private shouldExcludeBuyer(buyer: any): boolean {
-    // RICH顧客は全ての除外条件をスキップして必ず表示する
-    if (buyer.is_rich === true) return false;
+    // 契約後配信フラグが明示的に「いいえ（false）」の場合は除外
+    if (buyer.continue_distribution_after_contract === false) return true;
     if (this.isBusinessInquiry(buyer)) return true;
     const brokerInquiry = (buyer.broker_inquiry || '').trim();
     const isDistributionRequired = this.hasDistributionRequired(buyer);
     // 業者（両手）でも distribution_type='要' でもない買主は除外
     if (brokerInquiry !== '業者（両手）' && !isDistributionRequired) return true;
-    // distribution_type='要' でない買主（業者（両手）のみ）は
-    // desired_area/desired_property_type が両方空でも表示する
-    // → 追加除外条件なし（業者（両手）は常に表示）
     return false;
   }
 
@@ -1907,9 +1907,9 @@ export class BuyerService {
     const latestStatus = (buyer.latest_status || '').trim();
     // 成約は常に除外
     if (latestStatus.includes('成約')) return false;
-    // RICH顧客はD含みでも除外しない（ただし成約は除外）
-    if (buyer.is_rich === true) return true;
-    // 通常買主はDが含まれれば除外
+    // 契約後配信フラグが明示的に「いいえ（false）」の場合は除外
+    if (buyer.continue_distribution_after_contract === false) return false;
+    // Dが含まれれば除外
     if (latestStatus.includes('D')) return false;
     return true;
   }

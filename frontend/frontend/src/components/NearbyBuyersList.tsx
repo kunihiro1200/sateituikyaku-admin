@@ -182,9 +182,6 @@ const filterBuyersByAgency = (
   if (filterType === null) return buyers;
 
   return buyers.filter(buyer => {
-    // RICH顧客は業者フィルターをバイパスして常に表示
-    if (buyer.is_rich === true) return true;
-
     // broker_inquiry が "業者（両手）" かつ distribution_type が "要" の両方を満たすことが共通条件
     if (buyer.broker_inquiry !== '業者（両手）') return false;
     if ((buyer.distribution_type || '').trim() !== '要') return false;
@@ -387,12 +384,15 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
     const baseList = landBuyerMode
       ? activeBuyers.filter(b => (b.broker_inquiry || '').trim() !== '業者（両手）')
       : activeBuyers;
-    const agencyFiltered = filterBuyersByAgency(baseList, activeAgencyFilter);
-    const priceFiltered = filterBuyersByPrice(agencyFiltered, selectedPriceRanges, landBuyerMode ? '土地' : propertyType);
+
+    // RICHフィルターがアクティブな場合は業者フィルターをスキップして全買主からRICHを絞り込む
     if (richFilterActive) {
-      return priceFiltered.filter(b => b.is_rich === true);
+      const richBuyers = baseList.filter(b => b.is_rich === true);
+      return filterBuyersByPrice(richBuyers, selectedPriceRanges, landBuyerMode ? '土地' : propertyType);
     }
-    return priceFiltered;
+
+    const agencyFiltered = filterBuyersByAgency(baseList, activeAgencyFilter);
+    return filterBuyersByPrice(agencyFiltered, selectedPriceRanges, landBuyerMode ? '土地' : propertyType);
   }, [activeBuyers, activeAgencyFilter, selectedPriceRanges, propertyType, landBuyerMode, richFilterActive]);
 
   const sortedBuyers = React.useMemo(() => {
