@@ -1911,6 +1911,14 @@ export class BuyerService {
     if (buyer.continue_distribution_after_contract === false) return false;
     // Dが含まれれば除外
     if (latestStatus.includes('D')) return false;
+    // 「買（〜）」ステータスの一般買主は除外
+    // 業者（両手）は業者フィルターで制御するため除外しない
+    // continue_distribution_after_contract が明示的に true の場合は表示を継続
+    const isBuyingStatus = latestStatus.startsWith('買（') || latestStatus.startsWith('買 （');
+    const isAgencyBothSides = (buyer.broker_inquiry || '').trim() === '業者（両手）';
+    if (isBuyingStatus && !isAgencyBothSides && buyer.continue_distribution_after_contract !== true) {
+      return false;
+    }
     return true;
   }
 
