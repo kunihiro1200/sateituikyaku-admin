@@ -216,6 +216,17 @@ const isBuyingStatus = (value: string): boolean => {
   return value.includes('買');
 };
 
+// 「契約後も配信」の入力が必要な最新状況（3つのケース）
+const CONTRACT_BUYING_STATUSES_DETAIL = [
+  '買（専任 両手）',
+  '買（専任 片手）',
+  '買（他社　片手）',
+];
+const isContractBuyingStatusDetail = (value: string | null | undefined): boolean => {
+  if (!value) return false;
+  return CONTRACT_BUYING_STATUSES_DETAIL.includes(value.trim());
+};
+
 // 保存ボタン押下時にまとめて保存するフィールドのセット
 const SAVE_BUTTON_FIELDS = new Set([
   'inquiry_email_phone',
@@ -2661,6 +2672,73 @@ TEL：097-533-2022`;
                               showEditIndicator={true}
                             />
                           </Grid>
+                          {/* 契約後も物件情報配信するか（「買（専任 両手）」等のとき表示） */}
+                          {isContractBuyingStatusDetail(buyer.latest_status) && (
+                            <Grid item xs={12} key={`${section.title}-continue_distribution_after_contract`}>
+                              <Box
+                                sx={{
+                                  p: 1.5,
+                                  border: '2px solid',
+                                  borderColor: (buyer.continue_distribution_after_contract === null || buyer.continue_distribution_after_contract === undefined)
+                                    ? 'error.main'
+                                    : 'rgba(33, 150, 243, 0.4)',
+                                  borderRadius: 2,
+                                  bgcolor: (buyer.continue_distribution_after_contract === null || buyer.continue_distribution_after_contract === undefined)
+                                    ? 'rgba(211, 47, 47, 0.04)'
+                                    : 'rgba(33, 150, 243, 0.04)',
+                                }}
+                              >
+                                <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 1, color: 'text.primary' }}>
+                                  契約後、継続して物件情報配信する
+                                  {(buyer.continue_distribution_after_contract === null || buyer.continue_distribution_after_contract === undefined) && (
+                                    <span style={{ color: '#d32f2f', marginLeft: 6 }}>*必須</span>
+                                  )}
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                  <Button
+                                    variant={buyer.continue_distribution_after_contract === true ? 'contained' : 'outlined'}
+                                    size="small"
+                                    onClick={async () => {
+                                      if (buyer.continue_distribution_after_contract === true) return;
+                                      setBuyer((prev: any) => prev ? { ...prev, continue_distribution_after_contract: true } : prev);
+                                      await handleInlineFieldSave('continue_distribution_after_contract', true);
+                                    }}
+                                    sx={buyer.continue_distribution_after_contract === true ? {
+                                      bgcolor: '#1976d2', color: 'white', fontWeight: 'bold',
+                                      '&:hover': { bgcolor: '#1565c0' },
+                                    } : { borderColor: '#1976d2', color: '#1976d2', fontWeight: 'bold' }}
+                                  >
+                                    はい
+                                  </Button>
+                                  <Button
+                                    variant={buyer.continue_distribution_after_contract === false ? 'contained' : 'outlined'}
+                                    size="small"
+                                    onClick={async () => {
+                                      if (buyer.continue_distribution_after_contract === false) return;
+                                      setBuyer((prev: any) => prev ? { ...prev, continue_distribution_after_contract: false } : prev);
+                                      await handleInlineFieldSave('continue_distribution_after_contract', false);
+                                    }}
+                                    sx={buyer.continue_distribution_after_contract === false ? {
+                                      bgcolor: '#757575', color: 'white', fontWeight: 'bold',
+                                      '&:hover': { bgcolor: '#616161' },
+                                    } : { borderColor: '#757575', color: '#757575', fontWeight: 'bold' }}
+                                  >
+                                    いいえ
+                                  </Button>
+                                </Box>
+                                {buyer.continue_distribution_after_contract === true && (
+                                  <Typography variant="caption" sx={{ mt: 0.5, display: 'block', color: '#1976d2' }}>
+                                    ✓ 近隣買主リストに引き続き表示されます
+                                  </Typography>
+                                )}
+                                {buyer.continue_distribution_after_contract === false && (
+                                  <Typography variant="caption" sx={{ mt: 0.5, display: 'block', color: '#757575' }}>
+                                    ✓ 近隣買主リストから除外されます
+                                  </Typography>
+                                )}
+                              </Box>
+                            </Grid>
+                          )}
                         </>
                       );
                     }

@@ -333,7 +333,7 @@ router.put('/:id', authenticateOrApiKey, async (req: Request, res: Response) => 
       sanitizedData,
       userId,
       userEmail,
-      { force: force === 'true' }
+      { force: force === 'true', allowEmptyValues: true }
     );
     console.log('[PUT /buyers/:id] updateWithSync completed, syncStatus:', syncResult.syncResult.syncStatus);
 
