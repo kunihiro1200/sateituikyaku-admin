@@ -73,6 +73,9 @@ const TemodoriCalcPage = () => {
 
   const { sellerId } = useParams<{ sellerId: string }>();
 
+  // 売主番号がFで始まるかどうか（例：F101）
+  const isFSeller = typeof sellerId === 'string' && sellerId.toUpperCase().startsWith('F');
+
   // seller情報の読み込み
   const [loadingSeller, setLoadingSeller] = useState(false);
 
@@ -135,10 +138,36 @@ const TemodoriCalcPage = () => {
   const buildTalkText = (): string => {
     if (chinryoMonthYen <= 0) return '';
     const rows = talkYieldPrices
-      .map(({ yieldRate, price }) => `${yieldRate}％の場合${price.toLocaleString()}円`)
-      .join('、');
-    const price6 = talkYieldPrices.find((r) => r.yieldRate === 6)?.price ?? 0;
-    return `現状の表面利回りの計算は、月額賃料${chinryoManStr}万円で年間賃料は${nenkanChinryoStr}となり、${rows}となります。基本的に利回り８～１０％が売れる目安となりますが、売出価格は６％の${price6.toLocaleString()}円でも良いかと思います。如何でしょうか？`;
+      .map(({ yieldRate, price }) => `　${yieldRate}％の場合　${price.toLocaleString()}円`)
+      .join('\n');
+
+    if (isFSeller) {
+      // F付き売主：3%の価格を提案
+      const price3 = Math.round(chinryoYearYen / 0.03);
+      return [
+        `現状の表面利回りの計算は、`,
+        `月額賃料${chinryoManStr}万円で年間賃料は${nenkanChinryoStr}となります。`,
+        ``,
+        `各利回りの売出価格：`,
+        rows,
+        ``,
+        `基本的に利回り８～１０％が売れる目安となりますが、`,
+        `売り出し価格は３％の${price3.toLocaleString()}円でも良いかと思いますが如何でしょうか？`,
+      ].join('\n');
+    } else {
+      // 通常売主：6%の価格を提案
+      const price6 = talkYieldPrices.find((r) => r.yieldRate === 6)?.price ?? 0;
+      return [
+        `現状の表面利回りの計算は、`,
+        `月額賃料${chinryoManStr}万円で年間賃料は${nenkanChinryoStr}となります。`,
+        ``,
+        `各利回りの売出価格：`,
+        rows,
+        ``,
+        `基本的に利回り８～１０％が売れる目安となりますが、`,
+        `売出価格は６％の${price6.toLocaleString()}円でも良いかと思います。如何でしょうか？`,
+      ].join('\n');
+    }
   };
 
   const talkText = buildTalkText();
@@ -448,15 +477,19 @@ const TemodoriCalcPage = () => {
                 利回り別　売買価格
               </Typography>
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr 1fr 1fr' }, gap: 1 }}>
-                {yieldPrices.map(({ yieldRate, price }) => (
+                {yieldPrices.map(({ yieldRate, price }) => {
+                  const isHighlighted = isFSeller
+                    ? yieldRate === 3 || yieldRate === 4
+                    : yieldRate === 6 || yieldRate === 7;
+                  return (
                   <Box
                     key={yieldRate}
                     sx={{
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      bgcolor: yieldRate === 6 || yieldRate === 7 ? '#ede7f6' : '#fafafa',
-                      border: yieldRate === 6 || yieldRate === 7 ? '1.5px solid #6a1b9a' : '1px solid #e0e0e0',
+                      bgcolor: isHighlighted ? '#ede7f6' : '#fafafa',
+                      border: isHighlighted ? '1.5px solid #6a1b9a' : '1px solid #e0e0e0',
                       borderRadius: 1.5,
                       px: 2,
                       py: 1,
@@ -464,20 +497,21 @@ const TemodoriCalcPage = () => {
                   >
                     <Typography
                       variant="body2"
-                      fontWeight={yieldRate === 6 || yieldRate === 7 ? 700 : 500}
-                      color={yieldRate === 6 || yieldRate === 7 ? '#6a1b9a' : 'text.secondary'}
+                      fontWeight={isHighlighted ? 700 : 500}
+                      color={isHighlighted ? '#6a1b9a' : 'text.secondary'}
                     >
                       {yieldRate}.00%
                     </Typography>
                     <Typography
                       variant="body1"
-                      fontWeight={yieldRate === 6 || yieldRate === 7 ? 800 : 600}
-                      color={yieldRate === 6 || yieldRate === 7 ? '#6a1b9a' : 'text.primary'}
+                      fontWeight={isHighlighted ? 800 : 600}
+                      color={isHighlighted ? '#6a1b9a' : 'text.primary'}
                     >
                       {price > 0 ? `${Math.round(price / 10000).toLocaleString()}万円` : '—'}
                     </Typography>
                   </Box>
-                ))}
+                  );
+                })}
               </Box>
             </Paper>
           )}
