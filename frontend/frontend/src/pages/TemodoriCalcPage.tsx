@@ -127,8 +127,13 @@ const TemodoriCalcPage = () => {
   const [copySnackOpen, setCopySnackOpen] = useState(false);
 
   // トークテキスト（利回り別売買価格の説明文）生成
-  const TALK_YIELDS = [5, 6, 7, 8, 9, 10];
-  const talkYieldPrices = TALK_YIELDS.map((y) => ({
+  const TALK_YIELDS_NORMAL = [5, 6, 7, 8, 9, 10];
+  const TALK_YIELDS_F = [3, 4, 5, 6, 7, 8];
+  const talkYieldPrices = TALK_YIELDS_NORMAL.map((y) => ({
+    yieldRate: y,
+    price: chinryoYearYen > 0 ? Math.round(chinryoYearYen / (y / 100)) : 0,
+  }));
+  const talkYieldPricesF = TALK_YIELDS_F.map((y) => ({
     yieldRate: y,
     price: chinryoYearYen > 0 ? Math.round(chinryoYearYen / (y / 100)) : 0,
   }));
@@ -137,25 +142,28 @@ const TemodoriCalcPage = () => {
 
   const buildTalkText = (): string => {
     if (chinryoMonthYen <= 0) return '';
-    const rows = talkYieldPrices
-      .map(({ yieldRate, price }) => `　${yieldRate}％の場合　${price.toLocaleString()}円`)
-      .join('\n');
 
     if (isFSeller) {
-      // F付き売主：3%の価格を提案
-      const price3 = Math.round(chinryoYearYen / 0.03);
+      // F付き売主：3〜8%の売出価格を表示、3%の価格を提案
+      const rows = talkYieldPricesF
+        .map(({ yieldRate, price }) => `　${yieldRate}％の場合　${price.toLocaleString()}円`)
+        .join('\n');
+      const price3 = talkYieldPricesF.find((r) => r.yieldRate === 3)?.price ?? 0;
       return [
         `現状の表面利回りの計算は、`,
         `月額賃料${chinryoManStr}万円で年間賃料は${nenkanChinryoStr}となります。`,
         ``,
-        `各利回りの売出価格：`,
+        `各利回りの売り出し価格：`,
         rows,
         ``,
         `基本的に利回り５～６％が売れる目安となりますが、`,
         `売り出し価格は３％の${price3.toLocaleString()}円でも良いかと思いますが如何でしょうか？`,
       ].join('\n');
     } else {
-      // 通常売主：6%の価格を提案
+      // 通常売主：5〜10%の売出価格を表示、6%の価格を提案
+      const rows = talkYieldPrices
+        .map(({ yieldRate, price }) => `　${yieldRate}％の場合　${price.toLocaleString()}円`)
+        .join('\n');
       const price6 = talkYieldPrices.find((r) => r.yieldRate === 6)?.price ?? 0;
       return [
         `現状の表面利回りの計算は、`,
