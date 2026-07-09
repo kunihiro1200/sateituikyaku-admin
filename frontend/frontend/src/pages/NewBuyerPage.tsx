@@ -257,6 +257,16 @@ export default function NewBuyerPage() {
       return;
     }
 
+    // 法人名バリデーション：氏名・会社名に法人キーワードが含まれる場合は法人名必須
+    {
+      const CORPORATE_KEYWORDS = ['株', '㈱', '㈲', '有限', '合同', '合資', '合名', '会社', '法人', '(株)', '(有)'];
+      const isCorpName = CORPORATE_KEYWORDS.some(kw => name.trim().includes(kw));
+      if (isCorpName && !companyName.trim()) {
+        setError('氏名・会社名に法人名が含まれています。「法人名」を入力してください。');
+        return;
+      }
+    }
+
     // 問合時持家ヒアリングの必須チェック
     // 条件: (inquiry_email_phone === '済' OR inquiry_source に '電話' を含む) AND 受付日 >= 2026-04-25
     {
@@ -682,6 +692,10 @@ export default function NewBuyerPage() {
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
+                    required={(() => {
+                      const CORPORATE_KEYWORDS = ['株', '㈱', '㈲', '有限', '合同', '合資', '合名', '会社', '法人', '(株)', '(有)'];
+                      return CORPORATE_KEYWORDS.some(kw => name.trim().includes(kw));
+                    })()}
                     label="法人名"
                     value={companyName}
                     onChange={(e) => {

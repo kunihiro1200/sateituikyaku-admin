@@ -341,6 +341,14 @@ export default function BuyerDetailPage() {
     navigate(`/buyers/${buyer_number}/viewing-result`);
   };
 
+  // 氏名・会社名に法人キーワードが含まれるかを判定するヘルパー
+  const isCompanyNameRequired = (name: string | null | undefined): boolean => {
+    if (!name) return false;
+    const CORPORATE_KEYWORDS = ['株', '㈱', '㈲', '有限', '合同', '合資', '合名', '会社', '法人', '(株)', '(有)'];
+    const nameTrimmed = String(name).trim();
+    return CORPORATE_KEYWORDS.some(kw => nameTrimmed.includes(kw));
+  };
+
   // 必須フィールドの表示名マップ
   const REQUIRED_FIELD_LABEL_MAP: Record<string, string> = {
     initial_assignee: '初動担当',
@@ -348,6 +356,7 @@ export default function BuyerDetailPage() {
     latest_status: '★最新状況',
     neighbor_property_email_sent: '近隣物件送付メール',
     distribution_type: '配信メール',
+    company_name: '法人名',
     inquiry_email_phone: '【問合メール】電話対応',
     inquiry_email_reply: '【問合メール】メール返信',
     three_calls_confirmed: '3回架電確認済み',
@@ -594,6 +603,12 @@ export default function BuyerDetailPage() {
         buyer.building_name_price && String(buyer.building_name_price).trim() &&
         (!buyer.other_company_property || !String(buyer.other_company_property).trim())) {
       missingKeys.push('other_company_property');
+    }
+
+    // 法人名：氏名・会社名に法人キーワードが含まれる場合は必須
+    if (isCompanyNameRequired(buyer.name) &&
+        (!buyer.company_name || !String(buyer.company_name).trim())) {
+      missingKeys.push('company_name');
     }
 
     // ハイライト用 state を更新
@@ -958,6 +973,23 @@ export default function BuyerDetailPage() {
       setBlockNavigation(true);
       setValidationDialogOpen(true);
       return; // 保存中断
+    }
+
+    // 法人名バリデーション：氏名・会社名に法人キーワードが含まれる場合は法人名必須
+    {
+      const nameVal = ('name' in changedFields ? changedFields.name : buyer?.name) ?? '';
+      const companyNameVal = ('company_name' in changedFields ? changedFields.company_name : buyer?.company_name) ?? '';
+      if (isCompanyNameRequired(String(nameVal)) && !String(companyNameVal).trim()) {
+        setMissingRequiredFields(prev => {
+          const next = new Set(prev);
+          next.add('company_name');
+          return next;
+        });
+        setPendingMissingLabels(['法人名']);
+        setBlockNavigation(true);
+        setValidationDialogOpen(true);
+        return; // 保存中断
+      }
     }
 
     // inquiry_email_phone が表示されていて「済」以外の場合、
