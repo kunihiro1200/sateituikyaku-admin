@@ -75,20 +75,23 @@ const YOUTO_CODE_MAP: Record<string, string> = {
  * フィールド名はAPIバージョンで変わることがあるため複数候補を試す
  */
 function extractYoutoName(props: Record<string, any>): string | null {
-  // 日本語名フィールド（優先順）
+  // XKT002の正式フィールド名（APIドキュメント確認済み）
+  if (props.use_area_ja && typeof props.use_area_ja === 'string' && props.use_area_ja.trim()) {
+    return props.use_area_ja.trim();
+  }
+  // フォールバック（旧フォーマット）
   const candidates = [
     props.youto_chiiki_name_ja,
     props.youto_name_ja,
     props.youto_name,
-    props.district_name_ja,
-    props.A29_004,  // 国土数値情報旧フォーマット
+    props.A29_004,
     props.A29_005,
   ];
   for (const c of candidates) {
     if (c && typeof c === 'string' && c.trim()) return c.trim();
   }
-  // コードから変換
-  const code = String(props.youto_chiiki_code ?? props.youto_code ?? props.A29_003 ?? '');
+  // youto_id（整数コード）からマッピング
+  const code = String(props.youto_id ?? props.youto_code ?? '');
   return YOUTO_CODE_MAP[code] ?? null;
 }
 
@@ -126,8 +129,8 @@ router.get('/', async (req: Request, res: Response) => {
 
   const ZOOM = 15;
   const tile = latLngToTile(latNum, lngNum, ZOOM);
-  // datumパラメータなし（デフォルトはWGS84）
-  const url = `https://www.reinfolib.mlit.go.jp/ex-api/external/XKT002?z=${tile.z}&x=${tile.x}&y=${tile.y}`;
+  // response_format は必須パラメータ
+  const url = `https://www.reinfolib.mlit.go.jp/ex-api/external/XKT002?response_format=geojson&z=${tile.z}&x=${tile.x}&y=${tile.y}`;
 
   console.log(`[youtoChiiki] lat=${latNum}, lng=${lngNum} → tile z=${tile.z} x=${tile.x} y=${tile.y}`);
 
