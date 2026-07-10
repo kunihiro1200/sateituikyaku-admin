@@ -124,10 +124,10 @@ router.get('/', async (req: Request, res: Response) => {
     return res.status(503).json({ error: 'REINFOLIB_API_KEY が設定されていません' });
   }
 
-  // ズームレベル15でタイル座標を計算
   const ZOOM = 15;
   const tile = latLngToTile(latNum, lngNum, ZOOM);
-  const url = `https://www.reinfolib.mlit.go.jp/ex-api/external/XKT002?z=${tile.z}&x=${tile.x}&y=${tile.y}&datum=wgs84`;
+  // datumパラメータなし（デフォルトはWGS84）
+  const url = `https://www.reinfolib.mlit.go.jp/ex-api/external/XKT002?z=${tile.z}&x=${tile.x}&y=${tile.y}`;
 
   console.log(`[youtoChiiki] lat=${latNum}, lng=${lngNum} → tile z=${tile.z} x=${tile.x} y=${tile.y}`);
 
