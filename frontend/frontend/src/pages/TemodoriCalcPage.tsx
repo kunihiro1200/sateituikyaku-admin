@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Box, Typography, TextField, InputAdornment, Divider, Paper, CircularProgress, Button, Snackbar, Alert } from '@mui/material';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -72,9 +72,13 @@ const TemodoriCalcPage = () => {
   usePageMeta('計算');
 
   const { sellerId } = useParams<{ sellerId: string }>();
+  const [searchParams] = useSearchParams();
 
-  // 売主番号がFで始まるかどうか（例：F101）
-  const isFSeller = typeof sellerId === 'string' && sellerId.toUpperCase().startsWith('F');
+  // 売主番号がFI（またはF）で始まるかどうかを判定
+  // URLパラメータのsellerIdはDB上の数値IDなのでFで始まらない場合がある
+  // クエリパラメータ sellerNumber（例: FI731）を優先して判定する
+  const sellerNumber = searchParams.get('sellerNumber') ?? sellerId ?? '';
+  const isFSeller = sellerNumber.toUpperCase().startsWith('F');
 
   // seller情報の読み込み
   const [loadingSeller, setLoadingSeller] = useState(false);

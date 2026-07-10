@@ -8270,10 +8270,11 @@ HP：https://ifoo-oita.com/
                     size="small"
                     startIcon={<span style={{ fontSize: '1.1em' }}>🧮</span>}
                     onClick={() => {
-                      const newWin = window.open(
-                        seller?.id ? `/sellers/${seller.id}/temodori-calc` : '/sellers/0/temodori-calc',
-                        '_blank'
-                      );
+                      const base = seller?.id ? `/sellers/${seller.id}/temodori-calc` : '/sellers/0/temodori-calc';
+                      const url = seller?.sellerNumber
+                        ? `${base}?sellerNumber=${encodeURIComponent(seller.sellerNumber)}`
+                        : base;
+                      const newWin = window.open(url, '_blank');
                       if (newWin) newWin.blur();
                       window.focus();
                     }}
