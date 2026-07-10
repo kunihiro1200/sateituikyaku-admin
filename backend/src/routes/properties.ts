@@ -192,6 +192,8 @@ router.put(
         ...Object.values(PropertyType),
         '土地', '戸建て', '戸建', 'マンション', '商業用', '収益', 'income',
         '土', '戸', 'マ', '収', '他',
+        // normalizePropertyTypeToJapanese の変換後値（DBから読み込んで再送信されるケース）
+        'その他', '事業用', 'アパート一棟',
       ];
       return allowedValues.includes(value);
     }).withMessage('Invalid property type'),

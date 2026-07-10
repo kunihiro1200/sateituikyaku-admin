@@ -546,14 +546,18 @@ const CallModePage = () => {
       'apartment': 'apartment',
       // 商業用
       '商業用': 'commercial',
+      '事業用': 'commercial',
       'commercial': 'commercial',
       // 収益
       '収': 'income',
       '収益': 'income',
       '収益物件': 'income',
       'income': 'income',
+      // アパート一棟
+      'アパート一棟': 'アパート一棟',
       // 他
       '他': '他',
+      'その他': '他',
     };
     return map[type] ?? type;
   };
