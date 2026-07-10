@@ -5532,5 +5532,321 @@ router.post('/cleanup-duplicates', authenticate, async (req: Request, res: Respo
   }
 });
 
+// ===== 売主物件住所からSUUMO周辺事例を取得 =====
+// 売主の物件住所・種別を元にSUUMOエリア一覧をスクレイピングし、1km圏内の物件を返す
+// SUUMOのURLなしでも動作（住所→都道府県/市区スラッグの対応表を内部で保持）
+router.get('/:id/nearby-cases-suumo', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // 売主情報を取得
+    const seller = await sellerService.getSeller(id);
+    if (!seller) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+
+    const propertyAddress: string =
+      (seller as any).propertyAddress ||
+      (seller as any).property_address ||
+      '';
+
+    const propertyType: string =
+      (seller as any).propertyType ||
+      (seller as any).property_type ||
+      '';
+
+    if (!propertyAddress) {
+      return res.status(400).json({ error: '物件住所が設定されていません' });
+    }
+
+    // ── 住所 → SUUMOスラッグ対応表 ──
+    // キーワード（部分一致）→ { pref, city } のマッピング
+    // 順番重要：より具体的なものを先に記載（「別府」を「大分」より前に）
+    const AREA_SLUG_MAP: Array<{
+      keywords: string[];
+      pref: string;
+      city: string;
+      label: string;
+    }> = [
+      { keywords: ['別府'],       pref: 'oita',    city: 'beppu-city',         label: '別府市' },
+      { keywords: ['大分'],       pref: 'oita',    city: 'oita-city',           label: '大分市' },
+      { keywords: ['中津'],       pref: 'oita',    city: 'nakatsu-city',        label: '中津市' },
+      { keywords: ['日田'],       pref: 'oita',    city: 'hita-city',           label: '日田市' },
+      { keywords: ['佐伯'],       pref: 'oita',    city: 'saiki-city',          label: '佐伯市' },
+      { keywords: ['臼杵'],       pref: 'oita',    city: 'usuki-city',          label: '臼杵市' },
+      { keywords: ['津久見'],     pref: 'oita',    city: 'tsukumi-city',        label: '津久見市' },
+      { keywords: ['竹田'],       pref: 'oita',    city: 'taketa-city',         label: '竹田市' },
+      { keywords: ['豊後高田'],   pref: 'oita',    city: 'bungotakada-city',    label: '豊後高田市' },
+      { keywords: ['杵築'],       pref: 'oita',    city: 'kitsuki-city',        label: '杵築市' },
+      { keywords: ['宇佐'],       pref: 'oita',    city: 'usa-city',            label: '宇佐市' },
+      { keywords: ['豊後大野'],   pref: 'oita',    city: 'bungoono-city',       label: '豊後大野市' },
+      { keywords: ['由布'],       pref: 'oita',    city: 'yufu-city',           label: '由布市' },
+      { keywords: ['国東'],       pref: 'oita',    city: 'kunisaki-city',       label: '国東市' },
+      // 福岡市内（区の順序重要）
+      { keywords: ['福岡市博多'],   pref: 'fukuoka', city: 'fukuoka-city-hakata',    label: '福岡市博多区' },
+      { keywords: ['福岡市中央'],   pref: 'fukuoka', city: 'fukuoka-city-chuo',      label: '福岡市中央区' },
+      { keywords: ['福岡市南'],     pref: 'fukuoka', city: 'fukuoka-city-minami',    label: '福岡市南区' },
+      { keywords: ['福岡市西'],     pref: 'fukuoka', city: 'fukuoka-city-nishi',     label: '福岡市西区' },
+      { keywords: ['福岡市東'],     pref: 'fukuoka', city: 'fukuoka-city-higashi',   label: '福岡市東区' },
+      { keywords: ['福岡市城南'],   pref: 'fukuoka', city: 'fukuoka-city-jonan',     label: '福岡市城南区' },
+      { keywords: ['福岡市早良'],   pref: 'fukuoka', city: 'fukuoka-city-sawara',    label: '福岡市早良区' },
+      { keywords: ['北九州', '北九州市'], pref: 'fukuoka', city: 'kitakyushu-city', label: '北九州市' },
+      { keywords: ['久留米'],       pref: 'fukuoka', city: 'kurume-city',            label: '久留米市' },
+    ];
+
+    // エリアを検索
+    const areaEntry = AREA_SLUG_MAP.find(entry =>
+      entry.keywords.some(kw => propertyAddress.includes(kw))
+    );
+
+    if (!areaEntry) {
+      return res.status(400).json({
+        error: `住所「${propertyAddress}」に対応するSUUMOエリアが見つかりませんでした`,
+        supported_areas: AREA_SLUG_MAP.map(e => e.label).join('、'),
+      });
+    }
+
+    const { pref, city, label: areaLabel } = areaEntry;
+
+    // ── 種別 → SUUMOカテゴリ ──
+    const normalizeKind = (t: string): 'mansion' | 'house' | 'land' => {
+      if (t === 'マ' || t === 'マンション' || t === 'apartment') return 'mansion';
+      if (t === '土' || t === '土地'       || t === 'land')      return 'land';
+      return 'house'; // 戸建てデフォルト
+    };
+    const kind = normalizeKind(propertyType);
+
+    // ── SUUMO エリア一覧URL組み立て ──
+    let targetUrl: string;
+    let case_type: 'tochi' | 'chukoikkodate' | 'manshon';
+    if (kind === 'mansion') {
+      targetUrl = `https://suumo.jp/ms/chuko/${pref}/${city}/`;
+      case_type = 'manshon';
+    } else if (kind === 'land') {
+      targetUrl = `https://suumo.jp/tochi/${pref}/${city}/`;
+      case_type = 'tochi';
+    } else {
+      targetUrl = `https://suumo.jp/chukoikkodate/${pref}/${city}/`;
+      case_type = 'chukoikkodate';
+    }
+
+    // ── 売主の座標を取得（1kmフィルタ用） ──
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const { data: sellerRaw } = await supabase
+      .from('sellers')
+      .select('latitude, longitude')
+      .eq('id', id)
+      .single();
+
+    let targetLat: number = sellerRaw?.latitude || 0;
+    let targetLng: number = sellerRaw?.longitude || 0;
+
+    if (!targetLat || !targetLng) {
+      try {
+        const { GeocodingService } = await import('../services/GeocodingService');
+        const geocodingService = new GeocodingService();
+        const sellerPrefix = ((seller as any).sellerNumber || '').slice(0, 2);
+        const coords = await geocodingService.geocodeAddress(propertyAddress, sellerPrefix);
+        if (coords) {
+          targetLat = coords.lat;
+          targetLng = coords.lng;
+        }
+      } catch {
+        // 座標取得失敗時はフィルタなし（全件返す）
+      }
+    }
+
+    // ── HTMLスクレイピング ──
+    const axios = require('axios');
+    const fetchHtml = async (url: string): Promise<string> => {
+      const r = await axios.get(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml',
+          'Accept-Language': 'ja,en-US;q=0.9',
+        },
+        timeout: 20000,
+        responseType: 'arraybuffer',
+      });
+      return Buffer.from(r.data).toString('utf-8');
+    };
+
+    const targetHtml = await fetchHtml(targetUrl);
+
+    const stripTags = (s: string) =>
+      s.replace(/<[^>]+>/g, '').replace(/&[a-zA-Z]+;/g, (m) => {
+        const map: Record<string, string> = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&nbsp;': ' ', '&quot;': '"' };
+        return map[m] || m;
+      }).replace(/\s+/g, ' ').trim();
+
+    const extractPrice = (block: string): string => {
+      const m1 = block.match(/<dt[^>]*>販売価格<\/dt>[\s\S]{0,300}?<span[^>]*class="dottable-value"[^>]*>([\s\S]{0,100}?)<\/span>/);
+      if (m1) return stripTags(m1[1]);
+      const m2 = block.match(/<dt[^>]*>販売価格<\/dt>\s*<dd[^>]*>([\s\S]{0,200}?)<\/dd>/);
+      if (m2) return stripTags(m2[1]);
+      return '-';
+    };
+
+    const extractAddress = (block: string): string => {
+      const m = block.match(/<dt[^>]*>所在地<\/dt>\s*<dd[^>]*>([\s\S]{0,200}?)<\/dd>/);
+      return m ? stripTags(m[1]) : '-';
+    };
+
+    interface NearbyCase {
+      case_type: 'tochi' | 'chukoikkodate' | 'manshon';
+      title: string;
+      price: string;
+      address: string;
+      area?: string;
+      tsubo?: string;
+      tsubo_tanka?: string;
+      building_condition?: string;
+      built_year?: string;
+      building_area?: string;
+      land_area_str?: string;
+      exclusive_area?: string;
+      floor_plan?: string;
+      url: string;
+    }
+
+    const cases: NearbyCase[] = [];
+
+    if (case_type === 'tochi') {
+      const blocks = targetHtml.split(/(?=<h2[^>]*>\s*<a[^>]+\/tochi\/[^"]*nc_[0-9]+[^"]*")/g).slice(1);
+      for (const block of blocks) {
+        const urlMatch = block.match(/href="(\/tochi\/[^"]*nc_[0-9]+[^"]*)"/);
+        if (!urlMatch) continue;
+        const url = `https://suumo.jp${urlMatch[1]}`;
+        const titleMatch = block.match(/<h2[^>]*>\s*<a[^>]+>([^<]+)<\/a>/);
+        const title = titleMatch ? titleMatch[1].trim() : '-';
+        const price = extractPrice(block);
+        const address = extractAddress(block);
+        let area = '-'; let tsubo = '-'; let tsubo_tanka = '-';
+        const areaM = block.match(/<dt[^>]*>土地面積<\/dt>\s*<dd[^>]*>([\s\S]{0,300}?)<\/dd>/);
+        if (areaM) {
+          const areaRaw = stripTags(areaM[1]).replace('（登記）', '').trim();
+          area = areaRaw;
+          const sqmM = areaRaw.match(/([0-9,.]+)m2/);
+          if (sqmM) tsubo = `${(parseFloat(sqmM[1].replace(',', '')) / 3.30578).toFixed(1)}坪`;
+        }
+        const tankaM = block.match(/<dt[^>]*>坪単価<\/dt>\s*<dd[^>]*>([\s\S]{0,100}?)<\/dd>/);
+        if (tankaM) tsubo_tanka = stripTags(tankaM[1]).replace('／', '/').replace(/\s+/g, '');
+        const building_condition = block.includes('建築条件付土地') ? 'あり' : 'なし';
+        cases.push({ case_type: 'tochi', title, price, address, area, tsubo, tsubo_tanka, building_condition, url });
+      }
+    } else if (case_type === 'chukoikkodate') {
+      const blocks = targetHtml.split(/(?=<h2[^>]*>\s*<a[^>]+\/chukoikkodate\/[^"]*nc_[0-9]+[^"]*")/g).slice(1);
+      for (const block of blocks) {
+        const urlMatch = block.match(/href="(\/chukoikkodate\/[^"]*nc_[0-9]+[^"]*)"/);
+        if (!urlMatch) continue;
+        const url = `https://suumo.jp${urlMatch[1]}`;
+        const titleMatch = block.match(/<h2[^>]*>\s*<a[^>]+>([^<]+)<\/a>/);
+        const title = titleMatch ? titleMatch[1].trim() : '-';
+        const price = extractPrice(block);
+        const address = extractAddress(block);
+        let building_area = '-'; let land_area_str = '-'; let built_year = '-';
+        const bldAreaM = block.match(/<dt[^>]*>建物面積<\/dt>\s*<dd[^>]*>([\s\S]{0,300}?)<\/dd>/);
+        if (bldAreaM) building_area = stripTags(bldAreaM[1]).replace('（登記）', '').trim();
+        const landAreaM = block.match(/<dt[^>]*>土地面積<\/dt>\s*<dd[^>]*>([\s\S]{0,300}?)<\/dd>/);
+        if (landAreaM) land_area_str = stripTags(landAreaM[1]).replace('（登記）', '').trim();
+        const builtM = block.match(/<dt[^>]*>築年月<\/dt>\s*<dd[^>]*>([\s\S]{0,200}?)<\/dd>/);
+        if (builtM) built_year = stripTags(builtM[1]).trim();
+        else {
+          const builtM2 = block.match(/<dt[^>]*>築年数<\/dt>\s*<dd[^>]*>([\s\S]{0,200}?)<\/dd>/);
+          if (builtM2) built_year = stripTags(builtM2[1]).trim();
+        }
+        cases.push({ case_type: 'chukoikkodate', title, price, address, building_area, land_area_str, built_year, url });
+      }
+    } else {
+      const blocks = targetHtml.split(/(?=<h2[^>]*>\s*<a[^>]+\/(?:ms\/|chukomansion\/)[^"]*nc_[0-9]+[^"]*")/g).slice(1);
+      for (const block of blocks) {
+        const urlMatch = block.match(/href="(\/(?:ms\/|chukomansion\/)[^"]*nc_[0-9]+[^"]*)"/);
+        if (!urlMatch) continue;
+        const url = `https://suumo.jp${urlMatch[1]}`;
+        const titleMatch = block.match(/<h2[^>]*>\s*<a[^>]+>([^<]+)<\/a>/);
+        const title = titleMatch ? titleMatch[1].trim() : '-';
+        const price = extractPrice(block);
+        const address = extractAddress(block);
+        let exclusive_area = '-'; let built_year = '-'; let floor_plan = '-';
+        const exAreaM = block.match(/<dt[^>]*>専有面積<\/dt>\s*<dd[^>]*>([\s\S]{0,300}?)<\/dd>/);
+        if (exAreaM) exclusive_area = stripTags(exAreaM[1]).trim();
+        const builtM = block.match(/<dt[^>]*>築年月<\/dt>\s*<dd[^>]*>([\s\S]{0,200}?)<\/dd>/);
+        if (builtM) built_year = stripTags(builtM[1]).trim();
+        else {
+          const builtM2 = block.match(/<dt[^>]*>築年数<\/dt>\s*<dd[^>]*>([\s\S]{0,200}?)<\/dd>/);
+          if (builtM2) built_year = stripTags(builtM2[1]).trim();
+        }
+        const fpM = block.match(/<dt[^>]*>間取り<\/dt>\s*<dd[^>]*>([\s\S]{0,100}?)<\/dd>/);
+        if (fpM) floor_plan = stripTags(fpM[1]).trim();
+        cases.push({ case_type: 'manshon', title, price, address, exclusive_area, built_year, floor_plan, url });
+      }
+    }
+
+    // ── 重複排除 ──
+    const seen = new Set<string>();
+    const dedupedCases = cases.filter((c) => {
+      if (seen.has(c.url)) return false;
+      seen.add(c.url);
+      return true;
+    });
+
+    // ── 1km以内フィルタ（座標がある場合のみ） ──
+    const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+
+    let finalCases = dedupedCases;
+
+    if (targetLat && targetLng && dedupedCases.length > 0) {
+      const RADIUS_KM = 1.0;
+      const casesWithCoords = await Promise.all(
+        dedupedCases.map(async (c) => {
+          if (!c.url) return { ...c, distKm: 999 };
+          try {
+            const cHtml = await fetchHtml(c.url);
+            const idoM = cHtml.match(/initIdo\s*:\s*'([0-9.]+)'/);
+            const keidoM = cHtml.match(/initKeido\s*:\s*'([0-9.]+)'/);
+            if (idoM && keidoM) {
+              const distKm = haversineKm(
+                targetLat, targetLng,
+                parseFloat(idoM[1]), parseFloat(keidoM[1])
+              );
+              return { ...c, distKm };
+            }
+          } catch { /* 座標取得失敗は含める */ }
+          return { ...c, distKm: 0 };
+        })
+      );
+      finalCases = casesWithCoords
+        .filter((c) => c.distKm <= RADIUS_KM || c.distKm === 0)
+        .sort((a, b) => a.distKm - b.distKm)
+        .map(({ distKm, ...rest }) => rest);
+    }
+
+    res.json({
+      cases: finalCases,
+      case_type,
+      source_url: targetUrl,
+      area_label: areaLabel,
+      target_lat: targetLat,
+      target_lng: targetLng,
+      total: finalCases.length,
+    });
+
+  } catch (error: any) {
+    console.error('[nearby-cases-suumo] Error:', error.message);
+    res.status(500).json({ error: 'SUUMO周辺事例の取得に失敗しました: ' + (error.message || '') });
+  }
+});
+
 export default router;
 

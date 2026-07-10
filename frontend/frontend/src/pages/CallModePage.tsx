@@ -9032,6 +9032,7 @@ HP：https://ifoo-oita.com/
             {/* ネット掲載調査セクション */}
             <CollapsibleSection title="🌐 ネット掲載調査（競合物件を検索）" defaultExpanded={false} headerColor="#e3f2fd">
               <PortalSearchLinks
+                sellerId={seller.id}
                 propertyAddress={propInfo.address || seller?.propertyAddress}
                 propertyType={propInfo.propertyType}
                 buildYear={propInfo.buildYear ?? undefined}
