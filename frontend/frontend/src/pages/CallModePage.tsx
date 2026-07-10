@@ -582,6 +582,11 @@ const CallModePage = () => {
   const [addressReading, setAddressReading] = useState<string | null>(null);
   const [addressReadingLoading, setAddressReadingLoading] = useState(false);
 
+  // 用途地域
+  const [youtoChiiki1, setYoutoChiiki1] = useState<string | null>(null);
+  const [youtoChiiki2, setYoutoChiiki2] = useState<string | null>(null);
+  const [youtoChiikiLoading, setYoutoChiikiLoading] = useState(false);
+
   // プレゼンストラッキング（他のユーザーに「この売主を開いている」ことを通知）
   useSellerPresenceTrack(seller?.sellerNumber);
 
@@ -1724,6 +1729,40 @@ const CallModePage = () => {
         setAddressReadingLoading(false);
       });
   }, [seller?.id, seller?.propertyAddress]);
+
+  // 用途地域を取得（売主の座標から自動取得）
+  useEffect(() => {
+    if (!seller?.sellerNumber) return;
+
+    // 座標を取得してから用途地域APIを呼ぶ
+    const fetchYoutoChiiki = async () => {
+      setYoutoChiikiLoading(true);
+      setYoutoChiiki1(null);
+      setYoutoChiiki2(null);
+      try {
+        // 売主番号から座標を取得
+        const coordRes = await api.get(`/api/sellers/by-number/${seller.sellerNumber}`);
+        const { latitude, longitude } = coordRes.data;
+        if (!latitude || !longitude) {
+          setYoutoChiikiLoading(false);
+          return;
+        }
+        // 用途地域APIを呼ぶ
+        const youtoRes = await api.get('/api/youto-chiiki', {
+          params: { lat: latitude, lng: longitude },
+        });
+        setYoutoChiiki1(youtoRes.data.youtoChiiki1 ?? null);
+        setYoutoChiiki2(youtoRes.data.youtoChiiki2 ?? null);
+      } catch (err) {
+        // 取得失敗は無音で処理（表示しないだけ）
+        console.warn('[CallModePage] 用途地域取得失敗:', err);
+      } finally {
+        setYoutoChiikiLoading(false);
+      }
+    };
+
+    fetchYoutoChiiki();
+  }, [seller?.sellerNumber]);
 
   // サイドバー用の売主リストを取得（sellerが読み込まれた後にバックグラウンドで実行）
   // メインコンテンツ（売主詳細）はすでに表示済みのため、サイドバーデータは非ブロッキングで取得
@@ -5727,6 +5766,23 @@ HP：https://ifoo-oita.com/
                         <Typography variant="body2">
                           {formatCurrentStatusDetailed(displayCurrentStatus)}
                         </Typography>
+                      </Grid>
+                    )}
+                    {/* 用途地域 */}
+                    {(youtoChiikiLoading || youtoChiiki1) && (
+                      <Grid item xs={12}>
+                        <Typography variant="caption" color="text.secondary">用途地域</Typography>
+                        {youtoChiikiLoading ? (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <CircularProgress size={12} />
+                            <Typography variant="body2" color="text.secondary">取得中...</Typography>
+                          </Box>
+                        ) : (
+                          <Typography variant="body2">
+                            {youtoChiiki1}
+                            {youtoChiiki2 && `　／　${youtoChiiki2}`}
+                          </Typography>
+                        )}
                       </Grid>
                     )}
                   </Grid>

@@ -86,6 +86,7 @@ import testEmailRoutes from './routes/testEmail';
 import aiPropertyEnhanceRoutes from './routes/aiPropertyEnhance';
 import hazardAnalyzeRoutes from './routes/hazardAnalyze';
 import floorPlanCompareRoutes from './routes/floorPlanCompare';
+import youtoChiikiRoutes from './routes/youtoChiiki';
 import sitemapRoutes from './routes/sitemap';
 import { activityLogger } from './middleware/activityLogger';
 import { authenticate } from './middleware/auth';
@@ -1023,6 +1024,7 @@ app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/property-listing-sync', propertyListingSyncRoutes);
 app.use('/api/staff-sync', staffSyncRoutes); // スタッフ同期API
 app.use('/api/nearby-map', nearbyMapRoutes); // 近隣MAPapi
+app.use('/api/youto-chiiki', youtoChiikiRoutes); // 用途地域取得API（不動産情報ライブラリ）
 app.use('/api/distribution-history', distributionHistoryRoutes); // 他社物件配信履歴
 app.use('/api/property-preview', propertyPreviewRoutes); // 物件プレビュー（認証不要・公開）
 app.use('/api/ai', aiPropertyEnhanceRoutes); // AI物件情報解析（認証不要）
