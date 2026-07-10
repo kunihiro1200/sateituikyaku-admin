@@ -193,6 +193,17 @@ router.get('/', async (req: Request, res: Response) => {
       console.error('[youtoChiiki] 401 Unauthorized');
       return res.status(401).json({ error: 'REINFOLIB_API_KEY が無効です' });
     }
+    if (err?.response?.status === 400) {
+      // 400の詳細をそのまま返してデバッグに使う
+      const detail = err?.response?.data;
+      console.error('[youtoChiiki] 400 Bad Request:', JSON.stringify(detail));
+      return res.status(400).json({
+        error: 'XKT002 API 400 Bad Request',
+        detail,
+        requestUrl: url,
+        tile,
+      });
+    }
     if (err?.response?.status === 404) {
       // タイルにデータなし
       return res.json({
@@ -202,7 +213,7 @@ router.get('/', async (req: Request, res: Response) => {
         source: 'reinfolib_XKT002',
       });
     }
-    console.error('[youtoChiiki] Error:', err?.message, err?.response?.status);
+    console.error('[youtoChiiki] Error:', err?.message, err?.response?.status, JSON.stringify(err?.response?.data)?.substring(0, 300));
     return res.status(500).json({
       error: '用途地域の取得に失敗しました',
       detail: err?.message,
