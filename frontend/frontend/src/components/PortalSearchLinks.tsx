@@ -18,175 +18,120 @@ interface PortalSearchLinksProps {
   buildYear?: number;
 }
 
-type SuumoCategory = 'kodate' | 'ms' | 'tochi';
-type AthomeCategory = 'kodate' | 'mansion' | 'tochi';
-type HomesCategory = 'kodate' | 'mansion' | 'tochi';
+/** 物件種別の正規化結果 */
+type PropertyKind = 'house' | 'mansion' | 'land' | 'other';
 
 interface PortalCategory {
-  suumo: SuumoCategory;
-  athome: AthomeCategory;
-  homes: HomesCategory;
+  kind: PropertyKind;
   label: string;
+  /** SUUMOの種別日本語（検索クエリに使う） */
+  suumoLabel: string;
+  /** athomeの種別日本語（検索クエリに使う） */
+  athomeLabel: string;
 }
 
 /**
- * 物件種別を各ポータルサイト用の検索カテゴリに変換する
+ * 物件種別を正規化する
  */
 function resolvePortalCategory(propertyType: string | undefined): PortalCategory {
   const t = propertyType ?? '';
-  const normalized =
-    t === '戸' || t === '戸建' || t === '戸建て' || t === 'detached_house'
-      ? 'house'
-      : t === 'マ' || t === 'マンション' || t === 'apartment'
-      ? 'mansion'
-      : t === '土' || t === '土地' || t === 'land'
-      ? 'land'
-      : 'house'; // デフォルトは戸建て
-
-  if (normalized === 'mansion') {
-    return { suumo: 'ms', athome: 'mansion', homes: 'mansion', label: 'マンション' };
-  } else if (normalized === 'land') {
-    return { suumo: 'tochi', athome: 'tochi', homes: 'tochi', label: '土地' };
+  if (t === '戸' || t === '戸建' || t === '戸建て' || t === 'detached_house') {
+    return { kind: 'house', label: '戸建て', suumoLabel: '中古一戸建て', athomeLabel: '中古一戸建て' };
   }
-  return { suumo: 'kodate', athome: 'kodate', homes: 'kodate', label: '戸建て' };
+  if (t === 'マ' || t === 'マンション' || t === 'apartment') {
+    return { kind: 'mansion', label: 'マンション', suumoLabel: '中古マンション', athomeLabel: '中古マンション' };
+  }
+  if (t === '土' || t === '土地' || t === 'land') {
+    return { kind: 'land', label: '土地', suumoLabel: '土地', athomeLabel: '土地' };
+  }
+  return { kind: 'house', label: '戸建て', suumoLabel: '中古一戸建て', athomeLabel: '中古一戸建て' };
 }
 
 /**
- * SUUMO 中古戸建て / 中古マンション / 土地 検索URLを生成する
- * 
- * SUUMO の検索URLは地域コードが必要なため、テキスト検索（キーワード）を使う
- * URL形式: https://suumo.jp/jj/bukken/ichiran/JJ010FJ001/?ar=030&bs=011&ta=40&sc=...&kb=1&kt=9999999&skb=0&skt=9999&cn=9999
- */
-function buildSuumoUrl(
-  address: string,
-  category: 'kodate' | 'ms' | 'tochi' | null,
-  buildYear?: number
-): string {
-  const keyword = encodeURIComponent(address);
-
-  // 築年数フィルタ（SUUMOはkenchikuDate系パラメータ）
-  // kt=築年上限(西暦), kb=築年下限(西暦)
-  // SUUMOは「新築・築〇年以内」形式のため、ここはキーワード検索URLに絞り込み情報を付与
-  let url = '';
-
-  const yearMin = buildYear ? buildYear - 5 : undefined;
-  const yearMax = buildYear ? buildYear + 5 : undefined;
-
-  if (category === 'ms') {
-    // 中古マンション
-    url = `https://suumo.jp/ms/chuko/search/?ar=&bs=&keyword=${keyword}`;
-    if (yearMin && yearMax) {
-      url += `&kenchiku_year_from=${yearMin}&kenchiku_year_to=${yearMax}`;
-    }
-  } else if (category === 'tochi') {
-    // 土地
-    url = `https://suumo.jp/tochi/search/?keyword=${keyword}`;
-  } else {
-    // 中古一戸建て（デフォルト）
-    url = `https://suumo.jp/kodate/chuko/search/?ar=&bs=&keyword=${keyword}`;
-    if (yearMin && yearMax) {
-      url += `&kenchiku_year_from=${yearMin}&kenchiku_year_to=${yearMax}`;
-    }
-  }
-
-  return url;
-}
-
-/**
- * athome 検索URLを生成する
- * URL形式: https://www.athome.co.jp/kodate/chuko/list/?EPROPERTY_TYPE=chuko&...
- */
-function buildAthomeUrl(
-  address: string,
-  category: 'kodate' | 'mansion' | 'tochi' | null,
-  buildYear?: number
-): string {
-  const keyword = encodeURIComponent(address);
-
-  const yearMin = buildYear ? buildYear - 5 : undefined;
-  const yearMax = buildYear ? buildYear + 5 : undefined;
-
-  let baseUrl = '';
-  if (category === 'mansion') {
-    baseUrl = `https://www.athome.co.jp/mansion/chuko/list/?LARGE_SCALE_FLG=1&keyword=${keyword}`;
-    if (yearMin && yearMax) {
-      baseUrl += `&CONSTRUCT_YEAR_FROM=${yearMin}&CONSTRUCT_YEAR_TO=${yearMax}`;
-    }
-  } else if (category === 'tochi') {
-    baseUrl = `https://www.athome.co.jp/tochi/list/?keyword=${keyword}`;
-  } else {
-    // 中古一戸建て
-    baseUrl = `https://www.athome.co.jp/kodate/chuko/list/?LARGE_SCALE_FLG=1&keyword=${keyword}`;
-    if (yearMin && yearMax) {
-      baseUrl += `&CONSTRUCT_YEAR_FROM=${yearMin}&CONSTRUCT_YEAR_TO=${yearMax}`;
-    }
-  }
-
-  return baseUrl;
-}
-
-/**
- * HOME'S 検索URLを生成する
- * URL形式: https://www.homes.co.jp/kodate/chuko/list/?keyword=...
- */
-function buildHomesUrl(
-  address: string,
-  category: 'kodate' | 'mansion' | 'tochi' | null,
-  buildYear?: number
-): string {
-  const keyword = encodeURIComponent(address);
-  const yearMin = buildYear ? buildYear - 5 : undefined;
-  const yearMax = buildYear ? buildYear + 5 : undefined;
-
-  let baseUrl = '';
-  if (category === 'mansion') {
-    baseUrl = `https://www.homes.co.jp/mansion/chuko/list/?keyword=${keyword}`;
-    if (yearMin && yearMax) {
-      baseUrl += `&build_year_from=${yearMin}&build_year_to=${yearMax}`;
-    }
-  } else if (category === 'tochi') {
-    baseUrl = `https://www.homes.co.jp/tochi/list/?keyword=${keyword}`;
-  } else {
-    baseUrl = `https://www.homes.co.jp/kodate/chuko/list/?keyword=${keyword}`;
-    if (yearMin && yearMax) {
-      baseUrl += `&build_year_from=${yearMin}&build_year_to=${yearMax}`;
-    }
-  }
-
-  return baseUrl;
-}
-
-/**
- * Yahoo!不動産 検索URLを生成する
- */
-function buildYahooRealEstateUrl(
-  address: string,
-  buildYear?: number
-): string {
-  const keyword = encodeURIComponent(address);
-  const yearMin = buildYear ? buildYear - 5 : undefined;
-  const yearMax = buildYear ? buildYear + 5 : undefined;
-
-  let baseUrl = `https://realestate.yahoo.co.jp/used/search?q=${keyword}`;
-  if (yearMin && yearMax) {
-    baseUrl += `&build_year_min=${yearMin}&build_year_max=${yearMax}`;
-  }
-  return baseUrl;
-}
-
-/**
- * 住所の「市区町村＋町名」を抽出して検索に使いやすい形にする
- * 例: "福岡市早良区賀茂2丁目10番11号" → "福岡市早良区賀茂"
+ * 住所から「市区町村＋町名」のみを抽出する（番地・丁目・マンション名は除去）
+ * 例: "福岡市西区下山門2丁目10-18モントーレ姪浜ウエストコート306" → "福岡市西区下山門"
  */
 function extractSearchKeyword(address: string): string {
   if (!address) return '';
   // 都道府県を除去
   let s = address.replace(/^(北海道|東京都|大阪府|京都府|.{2,3}県)/, '');
-  // 番地・号を除去（数字-数字-数字 or 数字番数字号 など）
-  s = s.replace(/\d+番地?\d*号?$/, '').replace(/[0-9０-９]+[-－ー][0-9０-９]+[-－ー]?[0-9０-９]*$/, '');
-  // 丁目以降を除去
-  s = s.replace(/\d+丁目.*$/, '').replace(/[一二三四五六七八九十]+丁目.*$/, '');
+  // 「丁目」「番地」「号」より後ろを全部除去
+  s = s.replace(/[0-9０-９]+丁目.*$/, '');
+  s = s.replace(/[一二三四五六七八九十百]+丁目.*$/, '');
+  // 数字が続く部分（番地）以降を除去
+  s = s.replace(/[0-9０-９]+[-－ー番地号].*$/, '');
+  // 末尾の空白を除去
   return s.trim();
+}
+
+/**
+ * Google検索URL（site: 指定）を生成する
+ * 各サイトのBot検知を回避し、かつ確実に検索結果を表示できる
+ */
+function buildGoogleSearchUrl(
+  keyword: string,
+  site: string,
+  typeLabel: string,
+  buildYear?: number
+): string {
+  const yearMin = buildYear && buildYear > 0 ? buildYear - 5 : undefined;
+  const yearMax = buildYear && buildYear > 0 ? buildYear + 5 : undefined;
+
+  let query = `site:${site} ${keyword} ${typeLabel} 募集中`;
+  if (yearMin && yearMax) {
+    query += ` 築${String(yearMin).slice(2)}年〜築${String(yearMax).slice(2)}年`;
+  }
+  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+}
+
+/**
+ * SUUMO 検索URL（動作確認済みのパス形式）
+ * https://suumo.jp/jj/bukken/ichiran/JJ010FJ001/ 形式はパラメータ多数必要のため
+ * Google経由が最も確実
+ */
+function buildSuumoUrl(keyword: string, category: PortalCategory, buildYear?: number): string {
+  return buildGoogleSearchUrl(keyword, 'suumo.jp', category.suumoLabel, buildYear);
+}
+
+/**
+ * athome 検索URL
+ * /please_wait/ にリダイレクトされるBot検知があるため Google経由
+ */
+function buildAthomeUrl(keyword: string, category: PortalCategory, buildYear?: number): string {
+  return buildGoogleSearchUrl(keyword, 'athome.co.jp', category.athomeLabel, buildYear);
+}
+
+/**
+ * HOME'S 検索URL
+ * keyword パラメータが使えるが、キーワードは市区町村+町名のみにする
+ */
+function buildHomesUrl(keyword: string, category: PortalCategory, buildYear?: number): string {
+  const encoded = encodeURIComponent(keyword);
+  const yearMin = buildYear && buildYear > 0 ? buildYear - 5 : undefined;
+  const yearMax = buildYear && buildYear > 0 ? buildYear + 5 : undefined;
+
+  let baseUrl = '';
+  if (category.kind === 'mansion') {
+    baseUrl = `https://www.homes.co.jp/mansion/chuko/list/?keyword=${encoded}`;
+    if (yearMin && yearMax) {
+      baseUrl += `&build_year_from=${yearMin}&build_year_to=${yearMax}`;
+    }
+  } else if (category.kind === 'land') {
+    baseUrl = `https://www.homes.co.jp/tochi/list/?keyword=${encoded}`;
+  } else {
+    baseUrl = `https://www.homes.co.jp/kodate/chuko/list/?keyword=${encoded}`;
+    if (yearMin && yearMax) {
+      baseUrl += `&build_year_from=${yearMin}&build_year_to=${yearMax}`;
+    }
+  }
+  return baseUrl;
+}
+
+/**
+ * Yahoo!不動産 検索URL
+ */
+function buildYahooRealEstateUrl(keyword: string, buildYear?: number): string {
+  return buildGoogleSearchUrl(keyword, 'realestate.yahoo.co.jp', '中古 募集中', buildYear);
 }
 
 /**
@@ -201,7 +146,7 @@ const PortalSearchLinks: React.FC<PortalSearchLinksProps> = ({
 }) => {
   const category = useMemo(() => resolvePortalCategory(propertyType), [propertyType]);
 
-  // 検索キーワード（市区町村＋町名）
+  // 検索キーワード（市区町村＋町名のみ、番地・マンション名は除去）
   const keyword = useMemo(
     () => extractSearchKeyword(propertyAddress ?? ''),
     [propertyAddress]
@@ -213,9 +158,9 @@ const PortalSearchLinks: React.FC<PortalSearchLinksProps> = ({
   const urls = useMemo(() => {
     if (!hasAddress) return null;
     return {
-      suumo: buildSuumoUrl(keyword, category.suumo, buildYear),
-      athome: buildAthomeUrl(keyword, category.athome, buildYear),
-      homes: buildHomesUrl(keyword, category.homes, buildYear),
+      suumo: buildSuumoUrl(keyword, category, buildYear),
+      athome: buildAthomeUrl(keyword, category, buildYear),
+      homes: buildHomesUrl(keyword, category, buildYear),
       yahoo: buildYahooRealEstateUrl(keyword, buildYear),
     };
   }, [keyword, category, buildYear, hasAddress]);
@@ -265,7 +210,7 @@ const PortalSearchLinks: React.FC<PortalSearchLinksProps> = ({
           {conditionText}
         </Typography>
         <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontSize: '0.7rem' }}>
-          ※ 各ボタンをクリックすると、条件付き検索が別タブで開きます
+          ※ SUUMO・athome・Yahoo不動産はGoogle経由で検索します。HOME'Sは直接検索です。
         </Typography>
       </Box>
 
@@ -274,7 +219,7 @@ const PortalSearchLinks: React.FC<PortalSearchLinksProps> = ({
       {/* ポータルサイトボタン */}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         {/* SUUMO */}
-        <Tooltip title={`SUUMO で「${keyword}」の${category.label}を検索`} arrow>
+        <Tooltip title={`Google経由でSUUMOの「${keyword}」${category.label}を検索`} arrow>
           <Button
             variant="contained"
             size="small"
@@ -293,7 +238,7 @@ const PortalSearchLinks: React.FC<PortalSearchLinksProps> = ({
         </Tooltip>
 
         {/* athome */}
-        <Tooltip title={`athome で「${keyword}」の${category.label}を検索`} arrow>
+        <Tooltip title={`Google経由でathomeの「${keyword}」${category.label}を検索`} arrow>
           <Button
             variant="contained"
             size="small"
@@ -312,7 +257,7 @@ const PortalSearchLinks: React.FC<PortalSearchLinksProps> = ({
         </Tooltip>
 
         {/* HOME'S */}
-        <Tooltip title={`HOME'S で「${keyword}」の${category.label}を検索`} arrow>
+        <Tooltip title={`HOME'Sで「${keyword}」の${category.label}を直接検索`} arrow>
           <Button
             variant="contained"
             size="small"
@@ -331,7 +276,7 @@ const PortalSearchLinks: React.FC<PortalSearchLinksProps> = ({
         </Tooltip>
 
         {/* Yahoo!不動産 */}
-        <Tooltip title={`Yahoo!不動産 で「${keyword}」の${category.label}を検索`} arrow>
+        <Tooltip title={`Google経由でYahoo!不動産の「${keyword}」${category.label}を検索`} arrow>
           <Button
             variant="contained"
             size="small"
