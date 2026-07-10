@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -33,6 +33,14 @@ export const ConfirmationToAssignee: React.FC<ConfirmationToAssigneeProps> = ({
   const [confirmationText, setConfirmationText] = useState(buyer.confirmation_to_assignee || '');
   // 編集中の最新値を追跡するstate（フォーカスアウト前でもhandleSendで参照できるようにする）
   const [pendingText, setPendingText] = useState(buyer.confirmation_to_assignee || '');
+
+  // buyer.confirmation_to_assignee が外部から変わった場合（fetchBuyer後など）にstateを同期する
+  useEffect(() => {
+    const incoming = buyer.confirmation_to_assignee || '';
+    setConfirmationText(incoming);
+    setPendingText(incoming);
+  }, [buyer.confirmation_to_assignee]);
+
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
