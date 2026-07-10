@@ -188,4 +188,36 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * 取得した用途地域をDBに保存する
+ * POST /api/youto-chiiki/save
+ * body: { sellerNumber: string, youtoChiiki: string }
+ */
+router.post('/save', async (req: Request, res: Response) => {
+  const { sellerNumber, youtoChiiki } = req.body;
+  if (!sellerNumber || !youtoChiiki) {
+    return res.status(400).json({ error: 'sellerNumber と youtoChiiki は必須です' });
+  }
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const { error } = await supabase
+      .from('sellers')
+      .update({ youto_chiiki: youtoChiiki })
+      .eq('seller_number', sellerNumber);
+
+    if (error) {
+      console.error('[youtoChiiki/save] error:', error);
+      return res.status(500).json({ error: '保存に失敗しました' });
+    }
+    return res.json({ success: true });
+  } catch (err: any) {
+    console.error('[youtoChiiki/save] Unexpected error:', err?.message);
+    return res.status(500).json({ error: '保存に失敗しました', detail: err?.message });
+  }
+});
+
 export default router;

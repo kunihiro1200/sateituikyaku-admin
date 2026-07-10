@@ -1730,31 +1730,50 @@ const CallModePage = () => {
       });
   }, [seller?.id, seller?.propertyAddress]);
 
-  // 用途地域を取得（売主の座標から自動取得）
+  // 用途地域を取得（売主の座標から自動取得、DBにキャッシュ）
   useEffect(() => {
     if (!seller?.sellerNumber) return;
 
-    // 座標を取得してから用途地域APIを呼ぶ
     const fetchYoutoChiiki = async () => {
       setYoutoChiikiLoading(true);
       setYoutoChiiki1(null);
       setYoutoChiiki2(null);
       try {
-        // 売主番号から座標を取得
+        // まず by-number から座標とDBキャッシュを取得
         const coordRes = await api.get(`/api/sellers/by-number/${seller.sellerNumber}`);
-        const { latitude, longitude } = coordRes.data;
+        const { latitude, longitude, youtoChiiki } = coordRes.data;
+
+        // DBにキャッシュ済みならそれを使う
+        if (youtoChiiki) {
+          setYoutoChiiki1(youtoChiiki);
+          setYoutoChiikiLoading(false);
+          return;
+        }
+
+        // 座標がなければ取得不可
         if (!latitude || !longitude) {
           setYoutoChiikiLoading(false);
           return;
         }
-        // 用途地域APIを呼ぶ
+
+        // APIから取得
         const youtoRes = await api.get('/api/youto-chiiki', {
           params: { lat: latitude, lng: longitude },
         });
-        setYoutoChiiki1(youtoRes.data.youtoChiiki1 ?? null);
-        setYoutoChiiki2(youtoRes.data.youtoChiiki2 ?? null);
+        const result1: string | null = youtoRes.data.youtoChiiki1 ?? null;
+        const result2: string | null = youtoRes.data.youtoChiiki2 ?? null;
+        setYoutoChiiki1(result1);
+        setYoutoChiiki2(result2);
+
+        // DBに保存（2つある場合は「／」で結合して保存）
+        if (result1) {
+          const saveValue = result2 ? `${result1}　／　${result2}` : result1;
+          api.post('/api/youto-chiiki/save', {
+            sellerNumber: seller.sellerNumber,
+            youtoChiiki: saveValue,
+          }).catch(err => console.warn('[CallModePage] 用途地域保存失敗:', err));
+        }
       } catch (err) {
-        // 取得失敗は無音で処理（表示しないだけ）
         console.warn('[CallModePage] 用途地域取得失敗:', err);
       } finally {
         setYoutoChiikiLoading(false);
@@ -5788,8 +5807,7 @@ HP：https://ifoo-oita.com/
                             {youtoChiiki1 === '市街化調整区域' ? '⚠️ ' : ''}
                             {youtoChiiki1}
                             {youtoChiiki2 && `　／　${youtoChiiki2}`}
-                          </Typography>
-                        )}
+                          </Typography>                        )}
                       </Grid>
                     )}
                   </Grid>
@@ -8262,16 +8280,16 @@ HP：https://ifoo-oita.com/
                         px: 1.5,
                         py: 0.5,
                         borderRadius: 2,
-                        background: 'linear-gradient(135deg, #b71c1c 0%, #e53935 100%)',
-                        color: 'white',
+                        background: 'linear-gradient(135deg, #f57f17 0%, #fbc02d 100%)',
+                        color: '#1a1a1a',
                         fontWeight: 700,
                         fontSize: '0.82rem',
-                        boxShadow: '0 2px 8px rgba(183,28,28,0.4)',
-                        animation: 'pulse-red-shigaika 1.4s infinite',
-                        '@keyframes pulse-red-shigaika': {
-                          '0%': { boxShadow: '0 0 0 0 rgba(229,57,53,0.7)' },
-                          '70%': { boxShadow: '0 0 0 10px rgba(229,57,53,0)' },
-                          '100%': { boxShadow: '0 0 0 0 rgba(229,57,53,0)' },
+                        boxShadow: '0 2px 8px rgba(251,192,45,0.5)',
+                        animation: 'pulse-yellow-shigaika 1.4s infinite',
+                        '@keyframes pulse-yellow-shigaika': {
+                          '0%': { boxShadow: '0 0 0 0 rgba(251,192,45,0.8)' },
+                          '70%': { boxShadow: '0 0 0 10px rgba(251,192,45,0)' },
+                          '100%': { boxShadow: '0 0 0 0 rgba(251,192,45,0)' },
                         },
                         cursor: 'default',
                         userSelect: 'none',

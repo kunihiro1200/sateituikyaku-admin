@@ -591,6 +591,8 @@ export class SellerService extends BaseRepository {
     // 物件関連フィールド（sellersテーブルに直接保存）
     if ((data as any).propertyAddress !== undefined) {
       updates.property_address = (data as any).propertyAddress;
+      // 住所が変更されたら用途地域キャッシュをリセット（次回ページ読み込み時に再取得）
+      updates.youto_chiiki = null;
     }
     if ((data as any).propertyType !== undefined) {
       updates.property_type = (data as any).propertyType;
@@ -2271,6 +2273,8 @@ export class SellerService extends BaseRepository {
         // inquiry_id と site_url
         inquiryId: seller.inquiry_id,
         siteUrl: seller.site_url,
+        // 用途地域
+        youtoChiiki: seller.youto_chiiki,
       };
       
       console.log(`[PERF] decryptSeller total: ${Date.now() - _dt0}ms`);

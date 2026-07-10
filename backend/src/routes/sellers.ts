@@ -1069,15 +1069,16 @@ router.get('/by-number/:sellerNumber', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Seller not found' });
     }
 
-    // sellers テーブルから座標を直接取得
+    // sellers テーブルから座標・用途地域を直接取得
     const { data: sellerRaw } = await supabase
       .from('sellers')
-      .select('latitude, longitude')
+      .select('latitude, longitude, youto_chiiki')
       .eq('seller_number', sellerNumber)
       .single();
 
     let latitude: number | null = sellerRaw?.latitude ?? null;
     let longitude: number | null = sellerRaw?.longitude ?? null;
+    const youtoChiiki: string | null = sellerRaw?.youto_chiiki ?? null;
 
     // 座標がない場合、バックエンドでジオコーディングして取得・保存
     if ((latitude == null || longitude == null) && seller.propertyAddress) {
@@ -1119,6 +1120,7 @@ router.get('/by-number/:sellerNumber', async (req: Request, res: Response) => {
       visitAssignee: seller.visitAssignee,
       latitude,
       longitude,
+      youtoChiiki,
     });
   } catch (error) {
     console.error('Get seller by number error:', error);
