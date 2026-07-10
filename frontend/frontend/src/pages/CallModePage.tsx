@@ -79,6 +79,7 @@ import CollapsibleSection from '../components/CollapsibleSection';
 import CommentHighlightsPanel from '../components/CommentHighlightsPanel';
 import HouseMakerModal from '../components/HouseMakerModal';
 import MansionModal, { MANSION_BRANDS } from '../components/MansionModal';
+import PortalSearchLinks from '../components/PortalSearchLinks';
 
 import { formatCurrentStatusDetailed } from '../utils/propertyStatusFormatter';
 import PageNavigation from '../components/PageNavigation';
@@ -9239,6 +9240,15 @@ HP：https://ifoo-oita.com/
                 </CollapsibleSection>
               </div>
             )}
+
+            {/* ネット掲載調査セクション */}
+            <CollapsibleSection title="🌐 ネット掲載調査（競合物件を検索）" defaultExpanded={false} headerColor="#e3f2fd">
+              <PortalSearchLinks
+                propertyAddress={propInfo.address || seller?.propertyAddress}
+                propertyType={propInfo.propertyType}
+                buildYear={propInfo.buildYear ?? undefined}
+              />
+            </CollapsibleSection>
 
             {/* 実績セクション */}
             <CollapsibleSection title="実績" defaultExpanded={false} headerColor="success.light">
