@@ -147,30 +147,15 @@ router.get('/', async (req: Request, res: Response) => {
 
     console.log(`[youtoChiiki] features count: ${features.length}`);
 
-    // デバッグ: 最初のfeatureのpropertiesキーをログ出力
-    if (features.length > 0) {
-      console.log('[youtoChiiki] first feature properties:', JSON.stringify(features[0].properties));
-    }
-
     // 座標を含むポリゴンを全て探す
     const matched = features.filter(f => featureContainsPoint(f, latNum, lngNum));
 
-    console.log(`[youtoChiiki] matched count: ${matched.length}`);
-    if (matched.length > 0) {
-      console.log('[youtoChiiki] matched properties:', JSON.stringify(matched[0].properties));
-    }
-
     if (matched.length === 0) {
-      // マッチしない場合、全featuresのプロパティキー一覧をログ
-      if (features.length > 0) {
-        console.log('[youtoChiiki] no match - all property keys:', Object.keys(features[0].properties ?? {}));
-      }
       return res.json({
         youtoChiiki1: null,
         youtoChiiki2: null,
         note: '指定座標に対応する用途地域なし（市街化調整区域等の可能性）',
         source: 'reinfolib_XKT002',
-        _debug: { featuresTotal: features.length, tileZ: tile.z, tileX: tile.x, tileY: tile.y },
       });
     }
 
@@ -182,13 +167,10 @@ router.get('/', async (req: Request, res: Response) => {
       if (names.length >= 2) break;
     }
 
-    console.log(`[youtoChiiki] extracted names: ${JSON.stringify(names)}`);
-
     return res.json({
       youtoChiiki1: names[0] ?? null,
       youtoChiiki2: names[1] ?? null,
       source: 'reinfolib_XKT002',
-      _debug: { matchedCount: matched.length, props: matched[0].properties },
     });
 
   } catch (err: any) {
@@ -197,15 +179,8 @@ router.get('/', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'REINFOLIB_API_KEY が無効です' });
     }
     if (err?.response?.status === 400) {
-      // 400の詳細をそのまま返してデバッグに使う
-      const detail = err?.response?.data;
-      console.error('[youtoChiiki] 400 Bad Request:', JSON.stringify(detail));
-      return res.status(400).json({
-        error: 'XKT002 API 400 Bad Request',
-        detail,
-        requestUrl: url,
-        tile,
-      });
+      console.error('[youtoChiiki] 400 Bad Request:', JSON.stringify(err?.response?.data));
+      return res.status(500).json({ error: '用途地域の取得に失敗しました', detail: err?.message });
     }
     if (err?.response?.status === 404) {
       // タイルにデータなし
@@ -216,7 +191,7 @@ router.get('/', async (req: Request, res: Response) => {
         source: 'reinfolib_XKT002',
       });
     }
-    console.error('[youtoChiiki] Error:', err?.message, err?.response?.status, JSON.stringify(err?.response?.data)?.substring(0, 300));
+    console.error('[youtoChiiki] Error:', err?.message, err?.response?.status);
     return res.status(500).json({
       error: '用途地域の取得に失敗しました',
       detail: err?.message,

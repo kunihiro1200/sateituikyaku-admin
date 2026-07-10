@@ -1751,7 +1751,6 @@ const CallModePage = () => {
         const youtoRes = await api.get('/api/youto-chiiki', {
           params: { lat: latitude, lng: longitude },
         });
-        console.log('[CallMode] youto-chiiki response:', JSON.stringify(youtoRes.data));
         setYoutoChiiki1(youtoRes.data.youtoChiiki1 ?? null);
         setYoutoChiiki2(youtoRes.data.youtoChiiki2 ?? null);
       } catch (err) {
