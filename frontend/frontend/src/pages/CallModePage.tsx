@@ -5778,7 +5778,14 @@ HP：https://ifoo-oita.com/
                             <Typography variant="body2" color="text.secondary">取得中...</Typography>
                           </Box>
                         ) : (
-                          <Typography variant="body2">
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: youtoChiiki1 === '市街化調整区域' ? 'bold' : 'normal',
+                              color: youtoChiiki1 === '市街化調整区域' ? 'error.main' : 'inherit',
+                            }}
+                          >
+                            {youtoChiiki1 === '市街化調整区域' ? '⚠️ ' : ''}
                             {youtoChiiki1}
                             {youtoChiiki2 && `　／　${youtoChiiki2}`}
                           </Typography>
@@ -8245,6 +8252,35 @@ HP：https://ifoo-oita.com/
                   >
                     計算
                   </Button>
+                  {/* 市街化調整区域警告（用途地域が市街化調整区域の場合に表示） */}
+                  {(youtoChiiki1 === '市街化調整区域' || youtoChiiki2 === '市街化調整区域') && (
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        px: 1.5,
+                        py: 0.5,
+                        borderRadius: 2,
+                        background: 'linear-gradient(135deg, #b71c1c 0%, #e53935 100%)',
+                        color: 'white',
+                        fontWeight: 700,
+                        fontSize: '0.82rem',
+                        boxShadow: '0 2px 8px rgba(183,28,28,0.4)',
+                        animation: 'pulse-red-shigaika 1.4s infinite',
+                        '@keyframes pulse-red-shigaika': {
+                          '0%': { boxShadow: '0 0 0 0 rgba(229,57,53,0.7)' },
+                          '70%': { boxShadow: '0 0 0 10px rgba(229,57,53,0)' },
+                          '100%': { boxShadow: '0 0 0 0 rgba(229,57,53,0)' },
+                        },
+                        cursor: 'default',
+                        userSelect: 'none',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      ⚠️ 市街化調整区域？　再建築可能かを要確認
+                    </Box>
+                  )}
                 </Box>
               );
             })()}
