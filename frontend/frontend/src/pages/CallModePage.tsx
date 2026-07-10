@@ -5797,17 +5797,41 @@ HP：https://ifoo-oita.com/
                             <Typography variant="body2" color="text.secondary">取得中...</Typography>
                           </Box>
                         ) : (
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              fontWeight: youtoChiiki1 === '市街化調整区域' ? 'bold' : 'normal',
-                              color: youtoChiiki1 === '市街化調整区域' ? 'error.main' : 'inherit',
-                            }}
-                          >
-                            {youtoChiiki1 === '市街化調整区域' ? '⚠️ ' : ''}
-                            {youtoChiiki1}
-                            {youtoChiiki2 && `　／　${youtoChiiki2}`}
-                          </Typography>                        )}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontWeight: youtoChiiki1 === '市街化調整区域' ? 'bold' : 'normal',
+                                color: youtoChiiki1 === '市街化調整区域' ? 'error.main' : 'inherit',
+                              }}
+                            >
+                              {youtoChiiki1 === '市街化調整区域' ? '⚠️ ' : ''}
+                              {youtoChiiki1}
+                              {youtoChiiki2 && `　／　${youtoChiiki2}`}
+                            </Typography>
+                            {youtoChiiki1 && youtoChiiki1 !== '市街化調整区域' && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => window.open(`/youto-chiiki/${encodeURIComponent(youtoChiiki1)}`, '_blank')}
+                                sx={{
+                                  fontSize: '0.7rem',
+                                  py: 0,
+                                  px: 1,
+                                  minWidth: 0,
+                                  height: 22,
+                                  borderRadius: 1,
+                                  borderColor: '#90caf9',
+                                  color: '#1565c0',
+                                  lineHeight: 1,
+                                  '&:hover': { borderColor: '#1565c0', backgroundColor: '#e3f2fd' },
+                                }}
+                              >
+                                説明
+                              </Button>
+                            )}
+                          </Box>
+                        )}
                       </Grid>
                     )}
                   </Grid>

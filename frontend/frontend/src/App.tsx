@@ -61,6 +61,7 @@ import TateuriManagePage from './pages/TateuriManagePage';
 import FukuokaTateuriPage from './pages/FukuokaTateuriPage';
 import FukuokaTateuriManagePage from './pages/FukuokaTateuriManagePage';
 import TateuriRootPage from './pages/TateuriRootPage';
+import YoutoChiikiExplanationPage from './pages/YoutoChiikiExplanationPage';
 // FloorPlanComparePage は遅延読み込み（他ページへの影響を完全に分離）
 const FloorPlanComparePage = lazy(() => import('./pages/FloorPlanComparePage'));
 import ProtectedRoute from './components/ProtectedRoute';
@@ -496,6 +497,8 @@ function App() {
           </ProtectedRoute>
         }
       />
+      {/* 用途地域説明ページ（認証不要・通話中に別タブで開く想定） */}
+      <Route path="/youto-chiiki/:zoneName" element={<YoutoChiikiExplanationPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     </GoogleMapsProvider>
