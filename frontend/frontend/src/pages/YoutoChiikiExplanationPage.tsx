@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Box, Typography, Button, Divider, Chip } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, Home as HomeIcon, Store as StoreIcon, Factory as FactoryIcon } from '@mui/icons-material';
+import { Box, Typography, Button } from '@mui/material';
+import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 
 function usePageMeta(title: string) {
   useEffect(() => {
@@ -22,11 +22,8 @@ function usePageMeta(title: string) {
   }, [title]);
 }
 
-// 用途地域データ定義
 interface YoutoZoneInfo {
   name: string;
-  number: string;
-  category: 'residential' | 'commercial' | 'industrial';
   summary: string;
   features: string[];
 }
@@ -34,8 +31,6 @@ interface YoutoZoneInfo {
 const YOUTO_ZONE_DATA: YoutoZoneInfo[] = [
   {
     name: '第一種低層住居専用地域',
-    number: '①',
-    category: 'residential',
     summary: '低層住宅を中心とした、静かで落ち着いた住環境を守る地域',
     features: [
       '戸建住宅や低層アパートなどが中心',
@@ -47,8 +42,6 @@ const YOUTO_ZONE_DATA: YoutoZoneInfo[] = [
   },
   {
     name: '第二種低層住居専用地域',
-    number: '②',
-    category: 'residential',
     summary: '低層住宅の良好な環境を守りながら、小規模な店舗も建てられる地域',
     features: [
       '戸建住宅、低層アパート、低層マンションが中心',
@@ -60,8 +53,6 @@ const YOUTO_ZONE_DATA: YoutoZoneInfo[] = [
   },
   {
     name: '第一種中高層住居専用地域',
-    number: '③',
-    category: 'residential',
     summary: 'マンションなどの中高層住宅を中心に、良好な住環境を守る地域',
     features: [
       '戸建住宅、アパート、中高層マンションを建築可能',
@@ -73,8 +64,6 @@ const YOUTO_ZONE_DATA: YoutoZoneInfo[] = [
   },
   {
     name: '第二種中高層住居専用地域',
-    number: '④',
-    category: 'residential',
     summary: '中高層住宅を中心としながら、店舗や事務所も比較的建てやすい地域',
     features: [
       '戸建住宅、アパート、中高層マンションを建築可能',
@@ -86,8 +75,6 @@ const YOUTO_ZONE_DATA: YoutoZoneInfo[] = [
   },
   {
     name: '第一種住居地域',
-    number: '⑤',
-    category: 'residential',
     summary: '住宅環境を守りながら、店舗や事務所なども建てられる地域',
     features: [
       '戸建住宅、マンション、アパートを建築可能',
@@ -99,8 +86,6 @@ const YOUTO_ZONE_DATA: YoutoZoneInfo[] = [
   },
   {
     name: '第二種住居地域',
-    number: '⑥',
-    category: 'residential',
     summary: '住宅環境を守りつつ、店舗や事務所なども比較的幅広く建てられる地域',
     features: [
       '戸建住宅、マンション、アパートを建築可能',
@@ -112,8 +97,6 @@ const YOUTO_ZONE_DATA: YoutoZoneInfo[] = [
   },
   {
     name: '準住居地域',
-    number: '⑦',
-    category: 'residential',
     summary: '道路沿いの利便性を生かしながら、住宅との調和を図る地域',
     features: [
       '戸建住宅、マンション、アパートを建築可能',
@@ -125,8 +108,6 @@ const YOUTO_ZONE_DATA: YoutoZoneInfo[] = [
   },
   {
     name: '田園住居地域',
-    number: '⑧',
-    category: 'residential',
     summary: '農地や農業と調和した、ゆとりある住宅環境を守る地域',
     features: [
       '戸建住宅や低層住宅を中心とした地域',
@@ -138,8 +119,6 @@ const YOUTO_ZONE_DATA: YoutoZoneInfo[] = [
   },
   {
     name: '近隣商業地域',
-    number: '⑨',
-    category: 'commercial',
     summary: '近隣住民が日常の買物をする店舗などの利便性を高める地域',
     features: [
       'スーパー、飲食店、銀行、事務所などを建築可能',
@@ -151,8 +130,6 @@ const YOUTO_ZONE_DATA: YoutoZoneInfo[] = [
   },
   {
     name: '商業地域',
-    number: '⑩',
-    category: 'commercial',
     summary: '店舗やオフィスなどの商業活動を中心とした、利便性の高い地域',
     features: [
       '百貨店、商業施設、飲食店、事務所、ホテルなどを幅広く建築可能',
@@ -164,8 +141,6 @@ const YOUTO_ZONE_DATA: YoutoZoneInfo[] = [
   },
   {
     name: '準工業地域',
-    number: '⑪',
-    category: 'industrial',
     summary: '住宅や店舗と、環境への影響が少ない工場が共存できる地域',
     features: [
       '住宅、マンション、店舗、事務所などを建築可能',
@@ -177,8 +152,6 @@ const YOUTO_ZONE_DATA: YoutoZoneInfo[] = [
   },
   {
     name: '工業地域',
-    number: '⑫',
-    category: 'industrial',
     summary: '工場の利便性を高めることを目的とした地域',
     features: [
       '規模や種類を問わず、幅広い工場を建築可能',
@@ -190,8 +163,6 @@ const YOUTO_ZONE_DATA: YoutoZoneInfo[] = [
   },
   {
     name: '工業専用地域',
-    number: '⑬',
-    category: 'industrial',
     summary: '工場の操業環境を守るための、工場専用の地域',
     features: [
       '幅広い種類の工場を建築可能',
@@ -203,143 +174,167 @@ const YOUTO_ZONE_DATA: YoutoZoneInfo[] = [
   },
 ];
 
-const CATEGORY_LABELS: Record<YoutoZoneInfo['category'], string> = {
-  residential: '住居系',
-  commercial: '商業系',
-  industrial: '工業系',
-};
-
-const CATEGORY_COLORS: Record<YoutoZoneInfo['category'], { bg: string; text: string; light: string; border: string }> = {
-  residential: {
-    bg: '#1565c0',
-    text: '#ffffff',
-    light: '#e3f2fd',
-    border: '#90caf9',
-  },
-  commercial: {
-    bg: '#e65100',
-    text: '#ffffff',
-    light: '#fff3e0',
-    border: '#ffcc80',
-  },
-  industrial: {
-    bg: '#4e342e',
-    text: '#ffffff',
-    light: '#efebe9',
-    border: '#bcaaa4',
-  },
-};
-
-// 用途地域名から正規化（スペースや全角スペースを除去して一致させる）
 function normalizeName(name: string): string {
-  return name.replace(/[\s　]/g, '');
+  return name
+    .replace(/[\s　]/g, '')
+    // 全角数字 → 漢数字（用途地域名で使われる範囲）
+    .replace(/１/g, '一')
+    .replace(/２/g, '二')
+    .replace(/３/g, '三')
+    .replace(/４/g, '四')
+    .replace(/５/g, '五')
+    // 半角数字 → 漢数字
+    .replace(/1/g, '一')
+    .replace(/2/g, '二')
+    .replace(/3/g, '三')
+    .replace(/4/g, '四')
+    .replace(/5/g, '五');
 }
 
 export default function YoutoChiikiExplanationPage() {
   const { zoneName } = useParams<{ zoneName: string }>();
   const navigate = useNavigate();
 
-  // URLパラメータからデコードして一致する用途地域を探す
   const decodedZoneName = zoneName ? decodeURIComponent(zoneName) : '';
-  const targetZone = YOUTO_ZONE_DATA.find(
+  const zone = YOUTO_ZONE_DATA.find(
     z => normalizeName(z.name) === normalizeName(decodedZoneName)
   );
 
-  usePageMeta(targetZone ? `${targetZone.name} - 用途地域説明` : '用途地域説明');
-
-  const currentCategory = targetZone?.category ?? 'residential';
-  const colors = CATEGORY_COLORS[currentCategory];
+  usePageMeta(zone ? `${zone.name}とは` : '用途地域説明');
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        backgroundColor: '#f0f4f8',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       {/* ヘッダー */}
       <Box
         sx={{
-          backgroundColor: colors.bg,
-          color: colors.text,
+          backgroundColor: '#1565c0',
           px: 2,
           py: 1.5,
           display: 'flex',
           alignItems: 'center',
           gap: 1,
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
         }}
       >
         <Button
           onClick={() => navigate(-1)}
           startIcon={<ArrowBackIcon />}
-          sx={{ color: colors.text, minWidth: 0, p: 0.5, mr: 0.5 }}
+          sx={{ color: '#fff', minWidth: 0, p: 0.5 }}
           size="small"
         >
           戻る
         </Button>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: '0.95rem' }}>
+        <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem' }}>
           用途地域の説明
         </Typography>
       </Box>
 
-      <Box sx={{ maxWidth: 700, mx: 'auto', px: 2, py: 3 }}>
-
-        {/* 対象の用途地域（ハイライト表示） */}
-        {targetZone ? (
-          <Box
-            sx={{
-              backgroundColor: '#fff',
-              borderRadius: 3,
-              border: `2px solid ${colors.bg}`,
-              p: 3,
-              mb: 3,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
-              <Chip
-                label={CATEGORY_LABELS[targetZone.category]}
-                size="small"
-                sx={{ backgroundColor: colors.bg, color: colors.text, fontWeight: 700, fontSize: '0.75rem' }}
-                icon={
-                  targetZone.category === 'residential' ? <HomeIcon sx={{ color: `${colors.text} !important`, fontSize: '1rem' }} /> :
-                  targetZone.category === 'commercial' ? <StoreIcon sx={{ color: `${colors.text} !important`, fontSize: '1rem' }} /> :
-                  <FactoryIcon sx={{ color: `${colors.text} !important`, fontSize: '1rem' }} />
-                }
-              />
-              <Chip
-                label="現在の物件の用途地域"
-                size="small"
-                sx={{ backgroundColor: '#fff9c4', color: '#f57f17', fontWeight: 700, fontSize: '0.75rem', border: '1px solid #f9a825' }}
-              />
-            </Box>
-            <Typography variant="h6" sx={{ fontWeight: 800, color: colors.bg, mb: 1, fontSize: '1.1rem' }}>
-              {targetZone.number} {targetZone.name}
-            </Typography>
-            <Box
+      {/* コンテンツ */}
+      <Box
+        sx={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'center',
+          px: 3,
+          py: 4,
+        }}
+      >
+        {zone ? (
+          <Box sx={{ width: '100%', maxWidth: 640 }}>
+            {/* 地域名 */}
+            <Typography
               sx={{
-                backgroundColor: colors.light,
-                border: `1px solid ${colors.border}`,
-                borderRadius: 2,
-                px: 2,
-                py: 1.5,
+                fontSize: '1.8rem',
+                fontWeight: 900,
+                color: '#1565c0',
                 mb: 2,
+                lineHeight: 1.3,
               }}
             >
-              <Typography variant="body1" sx={{ fontWeight: 700, color: colors.bg, fontSize: '0.95rem', lineHeight: 1.6 }}>
-                「{targetZone.summary}」
+              {zone.name}
+            </Typography>
+
+            {/* サマリー */}
+            <Box
+              sx={{
+                backgroundColor: '#1565c0',
+                borderRadius: 2,
+                px: 3,
+                py: 2.5,
+                mb: 4,
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: '1.25rem',
+                  fontWeight: 700,
+                  color: '#fff',
+                  lineHeight: 1.6,
+                }}
+              >
+                「{zone.summary}」
               </Typography>
             </Box>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mb: 1 }}>
+
+            {/* 主な特徴 */}
+            <Typography
+              sx={{
+                fontSize: '1rem',
+                fontWeight: 700,
+                color: '#555',
+                mb: 2,
+                letterSpacing: '0.05em',
+              }}
+            >
               主な特徴
             </Typography>
-            <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
-              {targetZone.features.map((feature, i) => (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              {zone.features.map((feature, i) => (
                 <Box
                   key={i}
-                  component="li"
-                  sx={{ mb: 0.5 }}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 1.5,
+                    backgroundColor: '#fff',
+                    borderRadius: 2,
+                    px: 2.5,
+                    py: 2,
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                  }}
                 >
-                  <Typography variant="body2" sx={{ lineHeight: 1.7, color: '#333' }}>
+                  <Box
+                    sx={{
+                      minWidth: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      backgroundColor: '#e3f2fd',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 800,
+                      fontSize: '0.85rem',
+                      color: '#1565c0',
+                      mt: 0.1,
+                    }}
+                  >
+                    {i + 1}
+                  </Box>
+                  <Typography
+                    sx={{
+                      fontSize: '1.05rem',
+                      lineHeight: 1.7,
+                      color: '#333',
+                    }}
+                  >
                     {feature}
                   </Typography>
                 </Box>
@@ -347,129 +342,13 @@ export default function YoutoChiikiExplanationPage() {
             </Box>
           </Box>
         ) : (
-          <Box sx={{ backgroundColor: '#fff', borderRadius: 2, p: 3, mb: 3, textAlign: 'center' }}>
-            <Typography color="text.secondary">用途地域「{decodedZoneName}」の情報が見つかりませんでした。</Typography>
+          <Box sx={{ textAlign: 'center', mt: 8 }}>
+            <Typography sx={{ fontSize: '1.1rem', color: '#888' }}>
+              「{decodedZoneName}」の情報が見つかりませんでした。
+            </Typography>
           </Box>
         )}
-
-        {/* 全用途地域一覧 */}
-        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#555', mb: 1.5, px: 0.5 }}>
-          他の用途地域
-        </Typography>
-
-        {/* 住居系 */}
-        <CategorySection
-          label="住居系の用途地域"
-          category="residential"
-          zones={YOUTO_ZONE_DATA.filter(z => z.category === 'residential')}
-          currentZoneName={targetZone?.name}
-        />
-
-        {/* 商業系 */}
-        <CategorySection
-          label="商業系の用途地域"
-          category="commercial"
-          zones={YOUTO_ZONE_DATA.filter(z => z.category === 'commercial')}
-          currentZoneName={targetZone?.name}
-        />
-
-        {/* 工業系 */}
-        <CategorySection
-          label="工業系の用途地域"
-          category="industrial"
-          zones={YOUTO_ZONE_DATA.filter(z => z.category === 'industrial')}
-          currentZoneName={targetZone?.name}
-        />
-
       </Box>
-    </Box>
-  );
-}
-
-// カテゴリごとのセクションコンポーネント
-function CategorySection({
-  label,
-  category,
-  zones,
-  currentZoneName,
-}: {
-  label: string;
-  category: YoutoZoneInfo['category'];
-  zones: YoutoZoneInfo[];
-  currentZoneName?: string;
-}) {
-  const colors = CATEGORY_COLORS[category];
-
-  return (
-    <Box sx={{ mb: 3 }}>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          mb: 1,
-          px: 1,
-          py: 0.75,
-          backgroundColor: colors.light,
-          borderRadius: 1.5,
-          borderLeft: `4px solid ${colors.bg}`,
-        }}
-      >
-        {category === 'residential' && <HomeIcon sx={{ color: colors.bg, fontSize: '1.1rem' }} />}
-        {category === 'commercial' && <StoreIcon sx={{ color: colors.bg, fontSize: '1.1rem' }} />}
-        {category === 'industrial' && <FactoryIcon sx={{ color: colors.bg, fontSize: '1.1rem' }} />}
-        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: colors.bg }}>
-          {label}
-        </Typography>
-      </Box>
-
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-        {zones.map((zone, i) => {
-          const isCurrent = zone.name === currentZoneName;
-          return (
-            <Box
-              key={zone.name}
-              sx={{
-                backgroundColor: '#fff',
-                borderRadius: 2,
-                border: isCurrent ? `2px solid ${colors.bg}` : '1px solid #e0e0e0',
-                p: 2,
-                opacity: isCurrent ? 1 : 0.85,
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75, flexWrap: 'wrap' }}>
-                <Typography
-                  variant="subtitle2"
-                  sx={{ fontWeight: 700, color: isCurrent ? colors.bg : '#444', fontSize: '0.9rem' }}
-                >
-                  {zone.number} {zone.name}
-                </Typography>
-                {isCurrent && (
-                  <Chip
-                    label="この物件"
-                    size="small"
-                    sx={{ backgroundColor: '#fff9c4', color: '#f57f17', fontWeight: 700, fontSize: '0.7rem', border: '1px solid #f9a825', height: 20 }}
-                  />
-                )}
-              </Box>
-              <Typography variant="body2" sx={{ color: '#555', fontSize: '0.82rem', lineHeight: 1.6, mb: 1 }}>
-                「{zone.summary}」
-              </Typography>
-              {i < zones.length - 1 || isCurrent ? null : null}
-              <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
-                {zone.features.map((feature, fi) => (
-                  <Box key={fi} component="li">
-                    <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#666', lineHeight: 1.6 }}>
-                      {feature}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-            </Box>
-          );
-        })}
-      </Box>
-      <Divider sx={{ mt: 2 }} />
     </Box>
   );
 }
