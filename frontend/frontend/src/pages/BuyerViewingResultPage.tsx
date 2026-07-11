@@ -1028,8 +1028,10 @@ export default function BuyerViewingResultPage() {
 
   // 買付チャット送信ハンドラー
   const handleOfferChatSend = async () => {
-    // 「買（他社　片手）」の場合はDB上の物件紐づけ不要（他社物件情報のみで可）
-    const isOtherCompanyOffer = buyer?.latest_status?.includes('他社');
+    // 「買（他社　片手）」の場合、または他社物件情報が入力されている場合はDB上の物件紐づけ不要
+    const hasOtherCompanyInfo = !!(buyer?.other_company_property && buyer.other_company_property.trim()) ||
+                                 !!(buyer?.building_name_price && buyer.building_name_price.trim());
+    const isOtherCompanyOffer = buyer?.latest_status?.includes('他社') || hasOtherCompanyInfo;
     if (!buyer || (!isOtherCompanyOffer && (!linkedProperties || linkedProperties.length === 0))) {
       setSnackbar({
         open: true,
