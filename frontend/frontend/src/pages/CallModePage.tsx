@@ -7973,7 +7973,9 @@ HP：https://ifoo-oita.com/
               const showHouseMaker = HOUSE_MAKERS.some((m) => plainComment.includes(m));
 
               const rawType = propInfo.propertyType || seller?.propertyType || '';
-              const isApartment = rawType === 'apartment' || rawType === 'マ' || rawType === 'マンション';
+              const isApartment = rawType === 'apartment' || rawType === 'マ' || rawType === 'マンション'
+                || (seller?.propertyType !== undefined && (seller.propertyType === 'マ' || seller.propertyType === 'マンション' || seller.propertyType === 'apartment'))
+                || (property?.propertyType !== undefined && (property.propertyType === 'マ' || property.propertyType === 'マンション' || property.propertyType === 'apartment'));
               const mansionAddress = (propInfo.address || '') + ' ' + (seller?.propertyAddress || '');
               const showMansion = isApartment && MANSION_BRANDS.some((m) => mansionAddress.includes(m));
               // マンション名を抽出（同マンション売買事例ボタン用）
@@ -7986,7 +7988,9 @@ HP：https://ifoo-oita.com/
               // 手元残計算は常に表示するため、条件なしでBoxを返す
               // （他のボタンは既存の条件フラグで制御）
               return (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 1.5 }}>
+                {/* 1行目：ハウスメーカー・マンション・物件の長所・計算 */}
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                   {showHouseMaker && (
                     <Button
                       variant="contained"
@@ -8042,8 +8046,12 @@ HP：https://ifoo-oita.com/
                       size="small"
                       startIcon={<span style={{ fontSize: '1.1em' }}>🔍</span>}
                       onClick={async () => {
-                        const targetName = detectedMansionBrand || mansionAddress.trim();
-                        if (!targetName) return;
+                        const targetName = detectedMansionBrand 
+                          || (propInfo.address || seller?.propertyAddress || '').trim();
+                        if (!targetName) {
+                          alert('マンション名または住所が取得できませんでした');
+                          return;
+                        }
                         setMansionCasesOpen(true);
                         setMansionCasesResult('');
                         setMansionCasesError('');
