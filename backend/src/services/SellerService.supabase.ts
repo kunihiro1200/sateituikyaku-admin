@@ -1806,22 +1806,9 @@ export class SellerService extends BaseRepository {
     const isLabelFilter = (typeof statusCategory === 'string') &&
       (statusCategory.startsWith('todayCallWithInfo:') || statusCategory.startsWith('fi:todayCallWithInfo:'));
     if (isLabelFilter) {
-      const targetLabel = (statusCategory as string).startsWith('fi:todayCallWithInfo:')
-        ? (statusCategory as string).replace('fi:todayCallWithInfo:', '')
-        : (statusCategory as string).replace('todayCallWithInfo:', '');
-      const isValidVal = (v: string | null | undefined): boolean =>
-        !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
-      finalSellers = decryptedSellers.filter((s: any) => {
-        const parts: string[] = [];
-        const phone = s.phoneContactPerson || s.phone_contact_person || '';
-        const preferred = s.preferredContactTime || s.preferred_contact_time || '';
-        const contact = s.contactMethod || s.contact_method || '';
-        if (isValidVal(phone)) parts.push(phone.trim());
-        if (isValidVal(preferred)) parts.push(preferred.trim());
-        if (isValidVal(contact)) parts.push(contact.trim());
-        const label = parts.length > 0 ? `当日TEL(${parts.join('・')})` : '当日TEL（内容）';
-        return label === targetLabel;
-      });
+      // todayCallWithInfo:xxx（fi:なし）はIDプリフェッチ方式で既に正確にフィルタ済み
+      // ポストフィルタの二重適用はラベル再構築時の微妙な差異で0件になる問題があるためスキップ
+      // fi:todayCallWithInfo:xxx は下の fi:xxx ブロックで sharedGetTodayCallWithInfoLabel を使ってフィルタされる
     }
 
     // fi:xxx カテゴリの場合、JS側で各カテゴリの条件でフィルタリング
