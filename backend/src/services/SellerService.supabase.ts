@@ -1468,6 +1468,7 @@ export class SellerService extends BaseRepository {
               .select('id, visit_assignee, pinrich_status, status, confidence_level, visit_date, contract_year_month')
               .is('deleted_at', null)
               .or('pinrich_status.eq.配信中,pinrich_status.eq.クローズ,confidence_level.eq.D')
+              .order('id')
               .range(pinrichPage * pinrichPageSize, (pinrichPage + 1) * pinrichPageSize - 1);
             if (pageError || !pageData || pageData.length === 0) break;
             pinrichAllCandidates = pinrichAllCandidates.concat(pageData);
@@ -1602,15 +1603,34 @@ export class SellerService extends BaseRepository {
               .not('status', 'ilike', '%一般媒介%')
               .not('status', 'ilike', '%他社買取%');
           } else if (dynamicCategory.startsWith('todayCallWithInfo:')) {
-            // 当日TEL（内容）ラベル別（追客中 AND 次電日が今日以前 AND 営担なし AND コミュニケーション情報あり）
-            // ラベルによる絞り込みはJS側で行う（DBクエリでは当日TEL（内容）全件を取得）
-            // FI売主は福岡専用カテゴリー（fi:todayCallWithInfo:xxx）に表示するため除外
-            query = query
-              .not('seller_number', 'ilike', 'FI%')
-              .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
-              .lte('next_call_date', todayJST)
-              .or('status.ilike.%追客中%,status.ilike.%除外後追客中%,status.ilike.%他決→追客%')
-              .or('phone_contact_person.not.is.null,preferred_contact_time.not.is.null,contact_method.not.is.null');
+            // 当日TEL（内容）ラベル別 - ページネーション前にIDを特定する方式に変更
+            // 旧方式（DBクエリ + JS後フィルタ）ではページネーションとラベルフィルタが競合して0件になる問題があった
+            const targetLabelForPreFilter = dynamicCategory.replace('todayCallWithInfo:', '');
+            let tcwiPreCandidates: any[] = [];
+            let tcwiPrePage = 0;
+            const tcwiPrePageSize = 1000;
+            while (true) {
+              const { data, error } = await this.supabase
+                .from('sellers')
+                .select('id, seller_number, status, next_call_date, visit_assignee, phone_contact_person, preferred_contact_time, contact_method')
+                .is('deleted_at', null)
+                .not('seller_number', 'ilike', 'FI%')
+                .not('next_call_date', 'is', null)
+                .lte('next_call_date', todayJST)
+                .order('id')
+                .range(tcwiPrePage * tcwiPrePageSize, (tcwiPrePage + 1) * tcwiPrePageSize - 1);
+              if (error || !data || data.length === 0) break;
+              tcwiPreCandidates = tcwiPreCandidates.concat(data);
+              if (data.length < tcwiPrePageSize) break;
+              tcwiPrePage++;
+            }
+            // 共通関数でtodayCallWithInfo判定 + ラベル一致でフィルタ
+            const tcwiMatchedIds = tcwiPreCandidates
+              .filter(s => sharedIsTodayCallWithInfo(s, todayJST) && sharedGetTodayCallWithInfoLabel(s) === targetLabelForPreFilter)
+              .map(s => s.id);
+            query = tcwiMatchedIds.length === 0
+              ? query.eq('id', '00000000-0000-0000-0000-000000000000')
+              : query.in('id', tcwiMatchedIds);
           } else if (dynamicCategory.startsWith('visitThankYouPending:')) {
             const assignee = dynamicCategory.replace('visitThankYouPending:', '');
             // 訪問後御礼メール未送信（営担が指定のイニシャル AND 訪問日が 2026-05-28 以降かつ今日以前）
@@ -1864,8 +1884,10 @@ export class SellerService extends BaseRepository {
     // fi:xxx カテゴリはJSフィルタ後の件数を使用（DBのcountはJSフィルタ前の粗い絞り込みのため不正確）
     // 特に fi:todayCallNotStarted はunreachable_status等をJSで判定するため、
     // DBのcount（29件）とJSフィルタ後の実件数（0件など）が大きく乖離する場合がある
+    // todayCallWithInfo:xxx はIDプリフェッチ方式に変更したため、DBのcountをそのまま使用可能
     const isFiCategory = typeof statusCategory === 'string' && statusCategory.startsWith('fi:');
-    const totalCount = isLabelFilter || isFiCategory
+    const isFiLabelFilter = (typeof statusCategory === 'string') && statusCategory.startsWith('fi:todayCallWithInfo:');
+    const totalCount = isFiCategory || isFiLabelFilter
       ? sellersWithCallDate.length
       : (count || 0);
 
