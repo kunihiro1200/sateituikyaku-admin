@@ -8280,7 +8280,7 @@ HP：https://ifoo-oita.com/
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, gap: 2 }}>
                     <CircularProgress size={40} sx={{ color: '#7b1fa2' }} />
                     <Typography variant="body2" color="text.secondary">
-                      SUUMOで募集中の物件を検索中...
+                      WebSearchで募集中の物件を検索中...
                     </Typography>
                   </Box>
                 )}
@@ -8293,6 +8293,28 @@ HP：https://ifoo-oita.com/
                   <Alert severity="info" sx={{ mt: 1 }}>
                     {mansionCasesResult}
                   </Alert>
+                )}
+                {!mansionCasesLoading && !mansionCasesError && !mansionCasesNoData && mansionCasesList.length === 0 && mansionCasesResult && (
+                  <Box>
+                    <Box sx={{ backgroundColor: '#f3e5f5', borderRadius: 2, p: 2, border: '1px solid #ce93d8' }}>
+                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.9, color: '#1a1a1a', fontSize: '0.88rem' }}>
+                        {mansionCasesResult}
+                      </Typography>
+                    </Box>
+                    {mansionCasesSourceUrl && (
+                      <Box sx={{ mt: 1 }}>
+                        <a href={mansionCasesSourceUrl} target="_blank" rel="noopener noreferrer"
+                          style={{ fontSize: '0.75rem', color: '#1976d2' }}>
+                          SUUMOで検索 →
+                        </a>
+                      </Box>
+                    )}
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="caption" color="text.secondary">
+                        ※ WebSearch（AI検索）による参考情報です。
+                      </Typography>
+                    </Box>
+                  </Box>
                 )}
                 {!mansionCasesLoading && !mansionCasesError && !mansionCasesNoData && mansionCasesList.length > 0 && (
                   <Box>
