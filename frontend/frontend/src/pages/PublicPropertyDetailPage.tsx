@@ -830,14 +830,7 @@ const PublicPropertyDetailPage: React.FC = () => {
               </Paper>
             )}
             
-            {/* 「こちらの物件について」セクション（見出しなし） */}
-            {completeData?.propertyAbout && (
-              <Paper elevation={2} sx={{ p: 3, mb: 3, order: 7 }}> {/* 7番目 */}
-                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                  {completeData.propertyAbout}
-                </Typography>
-              </Paper>
-            )}
+            {/* 「こちらの物件について」セクション（内覧前伝達事項）- 独自サイトには表示しない */}
             
             {/* 「概算書」セクション（印刷時は非表示） */}
             <Paper elevation={2} sx={{ p: 3, mb: 3, order: 8 }} className="no-print"> {/* 8番目 */}
