@@ -1,0 +1,35 @@
+name: Deploy Public Site (property-site-frontend) to Vercel
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/api/**'
+      - 'backend/src/services/PropertyListingService.ts'
+      - 'backend/src/services/PropertyDetailsService.ts'
+      - 'backend/src/routes/publicProperties.ts'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trigger Vercel Deploy via API
+        run: |
+          curl -X POST "https://api.vercel.com/v13/deployments" \
+            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "property-site-frontend",
+              "gitSource": {
+                "type": "github",
+                "repoId": "${{ github.repository_id }}",
+                "ref": "main",
+                "sha": "${{ github.sha }}"
+              },
+              "projectId": "prj_MgwY5WiGTZezxtwJtO2b9o9Yw9oO",
+              "target": "production"
+            }'
