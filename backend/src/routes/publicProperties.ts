@@ -272,7 +272,8 @@ router.get('/properties/:id/complete', async (req: Request, res: Response): Prom
       recommendedComments: property.recommended_comments,
       athomeData: property.athome_data,
       settlementDate,
-      propertyAbout: property.property_about
+      // 内覧前伝達事項は独自サイトに表示しない
+      propertyAbout: null
     });
     
   } catch (error: any) {

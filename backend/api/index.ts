@@ -525,7 +525,8 @@ app.get('/api/public/properties/:id/complete', async (req, res) => {
       recommendedComments: dbDetails.recommended_comments,
       athomeData: dbDetails.athome_data,
       settlementDate,
-      propertyAbout: dbDetails.property_about,
+      // 内覧前伝達事項は独自サイトに表示しない
+      propertyAbout: null,
       panoramaUrl,
     });
     
@@ -1048,7 +1049,8 @@ app.post('/api/public/properties/:identifier/refresh-all', async (req, res) => {
         favoriteComment: dbDetails.favorite_comment,
         athomeData: dbDetails.athome_data,
         panoramaUrl,
-        propertyAbout: dbDetails.property_about
+        // 内覧前伝達事項は独自サイトに表示しない
+        propertyAbout: null
       },
       message: '全てのデータを更新しました（データベースにも保存しました）'
     });
