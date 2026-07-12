@@ -1037,93 +1037,193 @@ router.post('/summarize-transcript', authenticate, async (req: Request, res: Res
 });
 
 /**
- * 同マンションの売買・売出事例をOpenAI GPT-4oで検索・回答
+ * 同マンションの現在募集中物件をSUUMOキーワード検索でスクレイピング
  * POST /api/summarize/mansion-sales-cases
  * Body: { mansionName: string, address?: string, buildingArea?: string, floorPlan?: string }
- * Response: { result: string }
+ * Response: { result: string, cases: Array, sourceUrl: string }
  */
 router.post('/mansion-sales-cases', authenticate, async (req: Request, res: Response) => {
   try {
-    const { mansionName, address, buildingArea, floorPlan } = req.body;
+    const { mansionName, address } = req.body;
 
     if (!mansionName || typeof mansionName !== 'string' || mansionName.trim().length === 0) {
       return res.status(400).json({ error: 'mansionName は必須です' });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      console.error('[mansion-sales-cases] OPENAI_API_KEY not set');
-      return res.status(500).json({ error: 'OpenAI API key not configured' });
+    // ── 住所 → SUUMOスラッグ対応表（sellers.tsの近隣事例と同じ対応表） ──
+    const AREA_SLUG_MAP: Array<{ keywords: string[]; pref: string; city: string; label: string }> = [
+      { keywords: ['別府'],           pref: 'oita',    city: 'beppu-city',              label: '別府市' },
+      { keywords: ['大分'],           pref: 'oita',    city: 'oita-city',               label: '大分市' },
+      { keywords: ['中津'],           pref: 'oita',    city: 'nakatsu-city',            label: '中津市' },
+      { keywords: ['日田'],           pref: 'oita',    city: 'hita-city',               label: '日田市' },
+      { keywords: ['佐伯'],           pref: 'oita',    city: 'saiki-city',              label: '佐伯市' },
+      { keywords: ['臼杵'],           pref: 'oita',    city: 'usuki-city',              label: '臼杵市' },
+      { keywords: ['津久見'],         pref: 'oita',    city: 'tsukumi-city',            label: '津久見市' },
+      { keywords: ['竹田'],           pref: 'oita',    city: 'taketa-city',             label: '竹田市' },
+      { keywords: ['豊後高田'],       pref: 'oita',    city: 'bungotakada-city',        label: '豊後高田市' },
+      { keywords: ['杵築'],           pref: 'oita',    city: 'kitsuki-city',            label: '杵築市' },
+      { keywords: ['宇佐'],           pref: 'oita',    city: 'usa-city',                label: '宇佐市' },
+      { keywords: ['豊後大野'],       pref: 'oita',    city: 'bungoono-city',           label: '豊後大野市' },
+      { keywords: ['由布'],           pref: 'oita',    city: 'yufu-city',               label: '由布市' },
+      { keywords: ['国東'],           pref: 'oita',    city: 'kunisaki-city',           label: '国東市' },
+      { keywords: ['福岡市博多'],     pref: 'fukuoka', city: 'fukuoka-city-hakata',     label: '福岡市博多区' },
+      { keywords: ['福岡市中央'],     pref: 'fukuoka', city: 'fukuoka-city-chuo',       label: '福岡市中央区' },
+      { keywords: ['福岡市南'],       pref: 'fukuoka', city: 'fukuoka-city-minami',     label: '福岡市南区' },
+      { keywords: ['福岡市西'],       pref: 'fukuoka', city: 'fukuoka-city-nishi',      label: '福岡市西区' },
+      { keywords: ['福岡市東'],       pref: 'fukuoka', city: 'fukuoka-city-higashi',    label: '福岡市東区' },
+      { keywords: ['福岡市城南'],     pref: 'fukuoka', city: 'fukuoka-city-jonan',      label: '福岡市城南区' },
+      { keywords: ['福岡市早良'],     pref: 'fukuoka', city: 'fukuoka-city-sawara',     label: '福岡市早良区' },
+      { keywords: ['北九州', '北九州市'], pref: 'fukuoka', city: 'kitakyushu-city',    label: '北九州市' },
+      { keywords: ['久留米'],         pref: 'fukuoka', city: 'kurume-city',             label: '久留米市' },
+      { keywords: ['福岡'],           pref: 'fukuoka', city: 'fukuoka-city',            label: '福岡市' },
+    ];
+
+    // 住所からエリアを特定
+    const searchText = address || mansionName;
+    const areaEntry = AREA_SLUG_MAP.find(e => e.keywords.some(kw => searchText.includes(kw)));
+
+    if (!areaEntry) {
+      return res.status(400).json({
+        error: `住所「${searchText}」に対応するSUUMOエリアが見つかりませんでした。対応エリア: 大分県各市、福岡市各区、北九州市、久留米市`,
+      });
     }
 
-    const locationHint = address ? `（所在地：${address}）` : '';
-    const areaHint = buildingArea ? `、専有面積 約${buildingArea}㎡` : '';
-    const layoutHint = floorPlan ? `、間取り ${floorPlan}` : '';
+    const { pref, city, label: areaLabel } = areaEntry;
 
-    const systemPrompt = `あなたは日本の不動産市場に精通した専門家です。
-不動産会社の営業担当者が売主との通話中に「同じマンションで現在募集中の物件はどのくらいか？」を即座に確認するための回答を作成してください。
+    // SUUMOマンションキーワード検索URL
+    const keyword = encodeURIComponent(mansionName.trim());
+    const sourceUrl = `https://suumo.jp/ms/chuko/${pref}/${city}/?bknSrchKeyword=${keyword}`;
 
-【回答形式（必ずこの形式で出力すること）】
-現在募集中の同マンションとして以下の事例が確認できます。
+    console.log(`[mansion-sales-cases] SUUMO検索: ${sourceUrl}`);
 
-・〇階 / △△㎡ / □□□万円
-・〇階 / △△㎡ / □□□万円
-（事例が複数ある場合は全て列挙）
-
-※ 参考情報です。実際の価格は市場状況により異なります。
-
-【出力ルール】
-- 必ず「階数 / 面積 / 価格」の3点セットで各事例を箇条書きにする
-- 階数は「〇階」の形式（例：3階、10階、最上階など）
-- 面積は「〜㎡」の形式（例：48.14㎡、67.23㎡）
-- 価格は「〜万円」または「〜〜万円〜〜万円」の幅で表示
-- 現在募集中の具体的事例を3〜5件程度挙げる
-- 事例が不明な場合は「〇〇万円台」の相場感でよいが、必ず面積・階数の目安も添える
-- 説明文は最小限にし、事例リストをメインにする
-- 合計200文字以内に収める`;
-
-    const userMessage = `マンション名：${mansionName.trim()}${locationHint}${areaHint}${layoutHint}
-
-このマンションで現在募集中の物件事例を教えてください。各事例は「階数・面積・価格」の3点セットで回答してください。`;
-
-    const completion = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage },
-        ],
-        temperature: 0.3,
-        max_tokens: 600,
+    // HTML取得
+    const htmlRes = await axios.get(sourceUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'ja,en-US;q=0.9',
+        'Referer': 'https://suumo.jp/',
       },
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 30000,
-      }
-    );
+      timeout: 20000,
+      responseType: 'arraybuffer',
+    });
 
-    const result: string = completion.data?.choices?.[0]?.message?.content?.trim() || '';
-    if (!result) {
-      return res.status(500).json({ error: 'AIからの応答が空でした' });
+    const html: string = Buffer.from(htmlRes.data).toString('utf-8');
+
+    const stripTags = (s: string) =>
+      s.replace(/<[^>]+>/g, '').replace(/&[a-zA-Z]+;/g, (m) => {
+        const map: Record<string, string> = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&nbsp;': ' ', '&quot;': '"' };
+        return map[m] || m;
+      }).replace(/\s+/g, ' ').trim();
+
+    // 物件ブロックを分割してパース
+    const blocks = html.split(/(?=<h2[^>]*>\s*<a[^>]+\/(?:ms\/|chukomansion\/)[^"]*nc_[0-9]+[^"]*")/g).slice(1);
+
+    interface MansionCase {
+      title: string;
+      price: string;
+      address: string;
+      floor: string;
+      exclusiveArea: string;
+      builtYear: string;
+      floorPlan: string;
+      url: string;
     }
 
-    return res.json({ result });
+    const cases: MansionCase[] = [];
+    const seen = new Set<string>();
+
+    for (const block of blocks) {
+      const urlMatch = block.match(/href="(\/(?:ms\/|chukomansion\/)[^"]*nc_[0-9]+[^"]*)"/);
+      if (!urlMatch) continue;
+      const url = `https://suumo.jp${urlMatch[1]}`;
+      if (seen.has(url)) continue;
+      seen.add(url);
+
+      // タイトル
+      const titleMatch = block.match(/<h2[^>]*>\s*<a[^>]+>([^<]+)<\/a>/);
+      const title = titleMatch ? titleMatch[1].trim() : '-';
+
+      // 価格
+      let price = '-';
+      const p1 = block.match(/<dt[^>]*>販売価格<\/dt>[\s\S]{0,300}?<span[^>]*class="dottable-value"[^>]*>([\s\S]{0,100}?)<\/span>/);
+      if (p1) price = stripTags(p1[1]);
+      if (price === '-') {
+        const p2 = block.match(/<dt[^>]*>販売価格<\/dt>\s*<dd[^>]*>([\s\S]{0,200}?)<\/dd>/);
+        if (p2) price = stripTags(p2[1]);
+      }
+      // 価格が取れない場合はspan.emphasis等からフォールバック
+      if (price === '-') {
+        const p3 = block.match(/([0-9,]+万円)/);
+        if (p3) price = p3[1];
+      }
+
+      // 所在地
+      const addrMatch = block.match(/<dt[^>]*>所在地<\/dt>\s*<dd[^>]*>([\s\S]{0,200}?)<\/dd>/);
+      const addr = addrMatch ? stripTags(addrMatch[1]) : '-';
+
+      // 階数（「XX階」を物件タイトルや本文から抽出）
+      let floor = '-';
+      const floorMatch = block.match(/([0-9]+)階[^建]/);
+      if (floorMatch) floor = `${floorMatch[1]}階`;
+
+      // 専有面積
+      let exclusiveArea = '-';
+      const exAreaM = block.match(/<dt[^>]*>専有面積<\/dt>\s*<dd[^>]*>([\s\S]{0,300}?)<\/dd>/);
+      if (exAreaM) exclusiveArea = stripTags(exAreaM[1]).trim();
+
+      // 築年月
+      let builtYear = '-';
+      const builtM = block.match(/<dt[^>]*>築年月<\/dt>\s*<dd[^>]*>([\s\S]{0,200}?)<\/dd>/);
+      if (builtM) builtYear = stripTags(builtM[1]).trim();
+      if (builtYear === '-') {
+        const builtM2 = block.match(/<dt[^>]*>築年数<\/dt>\s*<dd[^>]*>([\s\S]{0,200}?)<\/dd>/);
+        if (builtM2) builtYear = stripTags(builtM2[1]).trim();
+      }
+
+      // 間取り
+      let floorPlanStr = '-';
+      const fpM = block.match(/<dt[^>]*>間取り<\/dt>\s*<dd[^>]*>([\s\S]{0,100}?)<\/dd>/);
+      if (fpM) floorPlanStr = stripTags(fpM[1]).trim();
+
+      if (price !== '-') {
+        cases.push({ title, price, address: addr, floor, exclusiveArea, builtYear, floorPlan: floorPlanStr, url });
+      }
+    }
+
+    console.log(`[mansion-sales-cases] ${areaLabel} / ${mansionName} → ${cases.length}件`);
+
+    if (cases.length === 0) {
+      return res.json({
+        result: `SUUMOで「${mansionName.trim()}」（${areaLabel}）の現在募集中の物件は見つかりませんでした。`,
+        cases: [],
+        sourceUrl,
+        areaLabel,
+        noData: true,
+      });
+    }
+
+    return res.json({
+      result: `SUUMOで「${mansionName.trim()}」（${areaLabel}）の現在募集中物件が${cases.length}件見つかりました。`,
+      cases,
+      sourceUrl,
+      areaLabel,
+      noData: false,
+    });
+
   } catch (error: any) {
     const status = error?.response?.status;
     const errMsg = error?.response?.data?.error?.message || error.message;
     console.error(`[mansion-sales-cases] Error (HTTP ${status}):`, errMsg);
 
-    if (status === 429) {
-      return res.status(429).json({ error: 'APIの利用制限に達しました。しばらく待ってから再試行してください。' });
+    if (status === 404) {
+      return res.status(200).json({
+        result: 'SUUMOでの検索結果が見つかりませんでした（404）。',
+        cases: [],
+        noData: true,
+      });
     }
-    if (status === 401) {
-      return res.status(401).json({ error: 'OpenAI APIキーが無効です。' });
-    }
-    return res.status(500).json({ error: '売買事例の取得に失敗しました' });
+    return res.status(500).json({ error: 'SUUMOの検索に失敗しました: ' + (errMsg || '不明なエラー') });
   }
 });
 

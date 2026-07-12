@@ -794,6 +794,10 @@ const CallModePage = () => {
   // 同マンション売買事例ダイアログの状態
   const [mansionCasesOpen, setMansionCasesOpen] = useState(false);
   const [mansionCasesResult, setMansionCasesResult] = useState<string>('');
+  const [mansionCasesList, setMansionCasesList] = useState<Array<{title: string; price: string; address: string; floor: string; exclusiveArea: string; builtYear: string; floorPlan: string; url: string}>>([]);
+  const [mansionCasesSourceUrl, setMansionCasesSourceUrl] = useState<string>('');
+  const [mansionCasesAreaLabel, setMansionCasesAreaLabel] = useState<string>('');
+  const [mansionCasesNoData, setMansionCasesNoData] = useState(false);
   const [mansionCasesLoading, setMansionCasesLoading] = useState(false);
   const [mansionCasesError, setMansionCasesError] = useState<string>('');
 
@@ -8054,6 +8058,10 @@ HP：https://ifoo-oita.com/
                         }
                         setMansionCasesOpen(true);
                         setMansionCasesResult('');
+                        setMansionCasesList([]);
+                        setMansionCasesSourceUrl('');
+                        setMansionCasesAreaLabel('');
+                        setMansionCasesNoData(false);
                         setMansionCasesError('');
                         setMansionCasesLoading(true);
                         try {
@@ -8064,6 +8072,10 @@ HP：https://ifoo-oita.com/
                             floorPlan: propInfo.floorPlan || '',
                           });
                           setMansionCasesResult(res.data?.result || '');
+                          setMansionCasesList(res.data?.cases || []);
+                          setMansionCasesSourceUrl(res.data?.sourceUrl || '');
+                          setMansionCasesAreaLabel(res.data?.areaLabel || '');
+                          setMansionCasesNoData(res.data?.noData || false);
                         } catch (err: any) {
                           setMansionCasesError(
                             err?.response?.data?.error || '売買事例の取得に失敗しました'
@@ -8268,7 +8280,7 @@ HP：https://ifoo-oita.com/
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, gap: 2 }}>
                     <CircularProgress size={40} sx={{ color: '#7b1fa2' }} />
                     <Typography variant="body2" color="text.secondary">
-                      ChatGPTで募集中の物件を検索中...
+                      SUUMOで募集中の物件を検索中...
                     </Typography>
                   </Box>
                 )}
@@ -8277,33 +8289,64 @@ HP：https://ifoo-oita.com/
                     {mansionCasesError}
                   </Alert>
                 )}
-                {!mansionCasesLoading && mansionCasesResult && (
-                  <Box
-                    sx={{
-                      backgroundColor: '#f3e5f5',
-                      borderRadius: 2,
-                      p: 2,
-                      border: '1px solid #ce93d8',
-                    }}
-                  >
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        whiteSpace: 'pre-wrap',
-                        lineHeight: 1.8,
-                        color: '#1a1a1a',
-                        fontSize: '0.9rem',
-                      }}
-                    >
-                      {mansionCasesResult}
-                    </Typography>
+                {!mansionCasesLoading && !mansionCasesError && mansionCasesNoData && (
+                  <Alert severity="info" sx={{ mt: 1 }}>
+                    {mansionCasesResult}
+                  </Alert>
+                )}
+                {!mansionCasesLoading && !mansionCasesError && !mansionCasesNoData && mansionCasesList.length > 0 && (
+                  <Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, flexWrap: 'wrap', gap: 1 }}>
+                      <Typography variant="body2" sx={{ color: '#4a148c', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                        {mansionCasesAreaLabel} / {mansionCasesList.length}件
+                      </Typography>
+                      {mansionCasesSourceUrl && (
+                        <a href={mansionCasesSourceUrl} target="_blank" rel="noopener noreferrer"
+                          style={{ fontSize: '0.75rem', color: '#1976d2', display: 'flex', alignItems: 'center', gap: 2 }}>
+                          SUUMOで確認 →
+                        </a>
+                      )}
+                    </Box>
+                    <Box sx={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#f3e5f5' }}>
+                            <th style={{ padding: '4px 8px', textAlign: 'left', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '1px solid #ce93d8' }}>物件名</th>
+                            <th style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '1px solid #ce93d8' }}>価格</th>
+                            <th style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '1px solid #ce93d8' }}>階数</th>
+                            <th style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '1px solid #ce93d8' }}>面積</th>
+                            <th style={{ padding: '4px 8px', textAlign: 'left', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '1px solid #ce93d8' }}>間取り</th>
+                            <th style={{ padding: '4px 8px', textAlign: 'left', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '1px solid #ce93d8' }}>築年月</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {mansionCasesList.map((c, i) => (
+                            <tr key={i} style={{ backgroundColor: i % 2 === 0 ? 'white' : '#fafafa' }}>
+                              <td style={{ padding: '4px 8px', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {c.url ? (
+                                  <a href={c.url} target="_blank" rel="noopener noreferrer"
+                                    style={{ color: '#4a148c', fontSize: '0.75rem' }}>
+                                    {c.title !== '-' ? c.title : '詳細'}
+                                  </a>
+                                ) : (c.title !== '-' ? c.title : '-')}
+                              </td>
+                              <td style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 'bold', whiteSpace: 'nowrap', color: '#c62828' }}>{c.price}</td>
+                              <td style={{ padding: '4px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>{c.floor !== '-' ? c.floor : '-'}</td>
+                              <td style={{ padding: '4px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>{c.exclusiveArea !== '-' ? c.exclusiveArea : '-'}</td>
+                              <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>{c.floorPlan !== '-' ? c.floorPlan : '-'}</td>
+                              <td style={{ padding: '4px 8px', whiteSpace: 'nowrap', fontSize: '0.72rem', color: '#555' }}>{c.builtYear !== '-' ? c.builtYear : '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </Box>
+                    <Box sx={{ mt: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary">
+                        ※ SUUMOの掲載データです。取得タイミングにより最新情報と異なる場合があります。
+                      </Typography>
+                    </Box>
                   </Box>
                 )}
-                <Box sx={{ mt: 1.5 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    ※ AIによる参考情報です。実際の成約価格は市場状況により異なります。
-                  </Typography>
-                </Box>
               </DialogContent>
               <DialogActions sx={{ px: 2, pb: 2 }}>
                 <Button onClick={() => setMansionCasesOpen(false)} variant="outlined" size="small">
