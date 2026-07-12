@@ -1036,5 +1036,96 @@ router.post('/summarize-transcript', authenticate, async (req: Request, res: Res
   }
 });
 
+/**
+ * 同マンションの売買・売出事例をOpenAI GPT-4oで検索・回答
+ * POST /api/summarize/mansion-sales-cases
+ * Body: { mansionName: string, address?: string, buildingArea?: string, floorPlan?: string }
+ * Response: { result: string }
+ */
+router.post('/mansion-sales-cases', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { mansionName, address, buildingArea, floorPlan } = req.body;
+
+    if (!mansionName || typeof mansionName !== 'string' || mansionName.trim().length === 0) {
+      return res.status(400).json({ error: 'mansionName は必須です' });
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.error('[mansion-sales-cases] OPENAI_API_KEY not set');
+      return res.status(500).json({ error: 'OpenAI API key not configured' });
+    }
+
+    const locationHint = address ? `（所在地：${address}）` : '';
+    const areaHint = buildingArea ? `、専有面積 約${buildingArea}㎡` : '';
+    const layoutHint = floorPlan ? `、間取り ${floorPlan}` : '';
+
+    const systemPrompt = `あなたは日本の不動産市場に精通した専門家です。
+不動産会社の営業担当者が売主との通話中に「同じマンションで現在募集中の物件はどのくらいか？」を即座に確認するための回答を作成してください。
+
+【回答形式（必ずこの形式で出力すること）】
+現在募集中の同マンションとして以下の事例が確認できます。
+
+・〇階 / △△㎡ / □□□万円
+・〇階 / △△㎡ / □□□万円
+（事例が複数ある場合は全て列挙）
+
+※ 参考情報です。実際の価格は市場状況により異なります。
+
+【出力ルール】
+- 必ず「階数 / 面積 / 価格」の3点セットで各事例を箇条書きにする
+- 階数は「〇階」の形式（例：3階、10階、最上階など）
+- 面積は「〜㎡」の形式（例：48.14㎡、67.23㎡）
+- 価格は「〜万円」または「〜〜万円〜〜万円」の幅で表示
+- 現在募集中の具体的事例を3〜5件程度挙げる
+- 事例が不明な場合は「〇〇万円台」の相場感でよいが、必ず面積・階数の目安も添える
+- 説明文は最小限にし、事例リストをメインにする
+- 合計200文字以内に収める`;
+
+    const userMessage = `マンション名：${mansionName.trim()}${locationHint}${areaHint}${layoutHint}
+
+このマンションで現在募集中の物件事例を教えてください。各事例は「階数・面積・価格」の3点セットで回答してください。`;
+
+    const completion = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage },
+        ],
+        temperature: 0.3,
+        max_tokens: 600,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    const result: string = completion.data?.choices?.[0]?.message?.content?.trim() || '';
+    if (!result) {
+      return res.status(500).json({ error: 'AIからの応答が空でした' });
+    }
+
+    return res.json({ result });
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const errMsg = error?.response?.data?.error?.message || error.message;
+    console.error(`[mansion-sales-cases] Error (HTTP ${status}):`, errMsg);
+
+    if (status === 429) {
+      return res.status(429).json({ error: 'APIの利用制限に達しました。しばらく待ってから再試行してください。' });
+    }
+    if (status === 401) {
+      return res.status(401).json({ error: 'OpenAI APIキーが無効です。' });
+    }
+    return res.status(500).json({ error: '売買事例の取得に失敗しました' });
+  }
+});
+
 export default router;
 
