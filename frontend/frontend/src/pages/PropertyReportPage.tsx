@@ -1114,7 +1114,26 @@ export default function PropertyReportPage() {
       </Dialog>
 
       {/* メールプレビュー＆送信ダイアログ（左：前回、右：今回） */}
-      <Dialog open={sendConfirmDialogOpen} onClose={handleSendCancel} fullScreen>
+      <Dialog
+        open={sendConfirmDialogOpen}
+        onClose={handleSendCancel}
+        PaperProps={{
+          sx: {
+            position: 'fixed',
+            right: 0,
+            top: 0,
+            m: 0,
+            width: { xs: '100vw', md: '60vw', lg: '50vw' },
+            maxWidth: '100vw',
+            height: '100vh',
+            maxHeight: '100vh',
+            borderRadius: 0,
+            display: 'flex',
+            flexDirection: 'column',
+          },
+        }}
+        sx={{ '& .MuiDialog-container': { justifyContent: 'flex-end' } }}
+      >
         <DialogTitle sx={{ pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Typography variant="h6" fontWeight="bold">メール確認</Typography>
           <Button onClick={handleSendCancel} color="inherit" size="small">閉じる</Button>
