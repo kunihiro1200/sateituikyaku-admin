@@ -1079,8 +1079,20 @@ export default function PropertyReportPage() {
       <Dialog
         open={templateDialogOpen}
         onClose={() => setTemplateDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
+        PaperProps={{
+          sx: {
+            position: 'fixed',
+            right: 0,
+            top: 0,
+            m: 0,
+            width: { xs: '100vw', sm: '420px' },
+            maxWidth: '100vw',
+            height: '100vh',
+            maxHeight: '100vh',
+            borderRadius: 0,
+          },
+        }}
+        sx={{ '& .MuiDialog-container': { justifyContent: 'flex-end' } }}
       >
         <DialogTitle>メールテンプレートを選択</DialogTitle>
         <DialogContent dividers sx={{ p: 0 }}>
