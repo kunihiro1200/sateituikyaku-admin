@@ -14,7 +14,7 @@ const PREFECTURES = [
   { code: '44', shpDir: 'A27-16_44', label: '大分県' },
   { code: '40', shpDir: 'A27-16_40', label: '福岡県' },
 ];
-const OUTPUT_PATH = path.resolve(__dirname, '../src/data/school-districts.geojson');
+const OUTPUT_PATH = path.resolve(__dirname, '../src/data/school-districts.json');
 
 // --- DBFパーサー ---
 function parseDBF(buffer) {

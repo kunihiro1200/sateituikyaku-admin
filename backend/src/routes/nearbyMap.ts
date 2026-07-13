@@ -1,8 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware/auth';
 import axios from 'axios';
-import * as fs from 'fs';
-import * as path from 'path';
 
 const router = Router();
 
@@ -166,14 +164,13 @@ function calcDistance(lat1: number, lng1: number, lat2: number, lng2: number): n
 
 // ---- 小学校区（校区ポリゴン） ----
 
-// GeoJSONデータをロード（起動時に1回読み込み）
+// GeoJSONデータをロード
+// require()を使うことでVercelバンドルに確実に含まれる
 let schoolDistrictsData: any = null;
 function loadSchoolDistricts() {
   if (schoolDistrictsData) return schoolDistrictsData;
   try {
-    const filePath = path.resolve(__dirname, '../data/school-districts.geojson');
-    const raw = fs.readFileSync(filePath, 'utf-8');
-    schoolDistrictsData = JSON.parse(raw);
+    schoolDistrictsData = require('../data/school-districts.json');
     console.log(`[nearbyMap] 校区データ読み込み完了: ${schoolDistrictsData.features?.length ?? 0}校区`);
   } catch (err: any) {
     console.warn('[nearbyMap] 校区データの読み込みに失敗:', err.message);
