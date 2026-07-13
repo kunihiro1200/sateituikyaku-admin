@@ -326,8 +326,9 @@ async function scrapeAthomeAndSave(url: string, region: string, res: Response) {
     const stripTags = (s: string) => s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
     // --- エラーページ検出 ---
-    if (html.includes('ページが見つかりません') || html.includes('404') || html.length < 5000) {
-      console.error(`[athome/scrape] エラーページまたは空ページ: ${html.length}文字`);
+    const pageTitle = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || '';
+    if (html.includes('ページが見つかりません') || pageTitle.startsWith('404') || html.length < 5000) {
+      console.error(`[athome/scrape] エラーページまたは空ページ: ${html.length}文字, title=${pageTitle}`);
       return res.status(422).json({
         success: false,
         error: 'athomeのページを取得できませんでした。URLを確認してください。',
