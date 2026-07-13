@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const INPUT = path.resolve(__dirname, '../src/data/oita-school-districts.geojson');
+const INPUT = path.resolve(__dirname, '../src/data/school-districts.geojson');
 const TOLERANCE = 0.0003; // 約30m
 
 function perpendicularDistance(point, lineStart, lineEnd) {

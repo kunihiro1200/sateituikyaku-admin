@@ -171,7 +171,7 @@ let schoolDistrictsData: any = null;
 function loadSchoolDistricts() {
   if (schoolDistrictsData) return schoolDistrictsData;
   try {
-    const filePath = path.resolve(__dirname, '../data/oita-school-districts.geojson');
+    const filePath = path.resolve(__dirname, '../data/school-districts.geojson');
     const raw = fs.readFileSync(filePath, 'utf-8');
     schoolDistrictsData = JSON.parse(raw);
     console.log(`[nearbyMap] 校区データ読み込み完了: ${schoolDistrictsData.features?.length ?? 0}校区`);

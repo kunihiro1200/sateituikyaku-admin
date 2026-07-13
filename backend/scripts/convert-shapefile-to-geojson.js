@@ -10,9 +10,11 @@ const path = require('path');
 const iconv = require('iconv-lite');
 
 // --- 設定 ---
-const SHP_PATH = path.resolve(process.env.TEMP || '/tmp', 'A27-16_44/shape/A27-16_44.shp');
-const DBF_PATH = path.resolve(process.env.TEMP || '/tmp', 'A27-16_44/shape/A27-16_44.dbf');
-const OUTPUT_PATH = path.resolve(__dirname, '../src/data/oita-school-districts.geojson');
+const PREFECTURES = [
+  { code: '44', shpDir: 'A27-16_44', label: '大分県' },
+  { code: '40', shpDir: 'A27-16_40', label: '福岡県' },
+];
+const OUTPUT_PATH = path.resolve(__dirname, '../src/data/school-districts.geojson');
 
 // --- DBFパーサー ---
 function parseDBF(buffer) {
@@ -124,63 +126,69 @@ function parseSHP(buffer) {
 
 // --- メイン ---
 function main() {
-  if (!fs.existsSync(SHP_PATH)) {
-    console.error(`❌ SHPファイルが見つかりません: ${SHP_PATH}`);
-    console.error('   先にダウンロード・解凍してください。');
-    process.exit(1);
+  const allFeatures = [];
+
+  for (const pref of PREFECTURES) {
+    const SHP_PATH = path.resolve(process.env.TEMP || '/tmp', `${pref.shpDir}/shape/${pref.shpDir}.shp`);
+    const DBF_PATH = path.resolve(process.env.TEMP || '/tmp', `${pref.shpDir}/shape/${pref.shpDir}.dbf`);
+
+    if (!fs.existsSync(SHP_PATH)) {
+      console.warn(`⚠️  ${pref.label} SHPファイルなし: ${SHP_PATH} → スキップ`);
+      continue;
+    }
+    if (!fs.existsSync(DBF_PATH)) {
+      console.warn(`⚠️  ${pref.label} DBFファイルなし: ${DBF_PATH} → スキップ`);
+      continue;
+    }
+
+    console.log(`\n📂 ${pref.label} SHP: ${SHP_PATH}`);
+
+    const shpBuffer = fs.readFileSync(SHP_PATH);
+    const dbfBuffer = fs.readFileSync(DBF_PATH);
+
+    console.log('  Parsing SHP...');
+    const geometries = parseSHP(shpBuffer);
+    console.log(`  ${geometries.length} geometries`);
+
+    console.log('  Parsing DBF...');
+    const records = parseDBF(dbfBuffer);
+    console.log(`  ${records.length} records`);
+
+    if (records.length > 0) {
+      console.log('  DBF fields:', Object.keys(records[0]).join(', '));
+      console.log('  Sample record:', JSON.stringify(records[0]));
+    }
+
+    const len = Math.min(geometries.length, records.length);
+    let count = 0;
+
+    for (let i = 0; i < len; i++) {
+      const geom = geometries[i];
+      const rec = records[i];
+      if (!geom) continue;
+
+      const name = rec['A27_007'] || rec['A27_006'] || rec['NAME'] || rec['name'] || '';
+      const adminCode = rec['A27_005'] || rec['ADMIN_CODE'] || '';
+
+      allFeatures.push({
+        type: 'Feature',
+        properties: {
+          name: name,
+          adminCode: String(adminCode),
+          prefecture: pref.code,
+        },
+        geometry: {
+          type: 'Polygon',
+          coordinates: geom,
+        },
+      });
+      count++;
+    }
+
+    console.log(`  有効な校区ポリゴン: ${count}`);
   }
-  if (!fs.existsSync(DBF_PATH)) {
-    console.error(`❌ DBFファイルが見つかりません: ${DBF_PATH}`);
-    process.exit(1);
-  }
 
-  console.log('📂 SHP:', SHP_PATH);
-  console.log('📂 DBF:', DBF_PATH);
-
-  const shpBuffer = fs.readFileSync(SHP_PATH);
-  const dbfBuffer = fs.readFileSync(DBF_PATH);
-
-  console.log('  Parsing SHP...');
-  const geometries = parseSHP(shpBuffer);
-  console.log(`  ${geometries.length} geometries`);
-
-  console.log('  Parsing DBF...');
-  const records = parseDBF(dbfBuffer);
-  console.log(`  ${records.length} records`);
-
-  // DBFフィールド名を確認
-  if (records.length > 0) {
-    console.log('  DBF fields:', Object.keys(records[0]).join(', '));
-    console.log('  Sample record:', JSON.stringify(records[0]));
-  }
-
-  // GeoJSON Feature生成
-  const features = [];
-  const len = Math.min(geometries.length, records.length);
-
-  for (let i = 0; i < len; i++) {
-    const geom = geometries[i];
-    const rec = records[i];
-    if (!geom) continue;
-
-    // DBFから学校名を取得
-    const name = rec['A27_007'] || rec['A27_006'] || rec['NAME'] || rec['name'] || '';
-    const adminCode = rec['A27_005'] || rec['ADMIN_CODE'] || '';
-
-    features.push({
-      type: 'Feature',
-      properties: {
-        name: name,
-        adminCode: String(adminCode),
-      },
-      geometry: {
-        type: 'Polygon',
-        coordinates: geom, // rings already in [lng, lat] format
-      },
-    });
-  }
-
-  console.log(`  有効な校区ポリゴン: ${features.length}`);
+  console.log(`\n📊 合計: ${allFeatures.length}校区`);
 
   // 出力ディレクトリ作成
   const outputDir = path.dirname(OUTPUT_PATH);
@@ -190,13 +198,13 @@ function main() {
 
   const geojson = {
     type: 'FeatureCollection',
-    features,
+    features: allFeatures,
   };
 
   fs.writeFileSync(OUTPUT_PATH, JSON.stringify(geojson), 'utf-8');
   const sizeMB = (fs.statSync(OUTPUT_PATH).size / 1024 / 1024).toFixed(2);
   console.log(`✅ 出力: ${OUTPUT_PATH} (${sizeMB} MB)`);
-  console.log(`   ${features.length}校区のGeoJSONを生成しました`);
+  console.log(`   ${allFeatures.length}校区のGeoJSONを生成しました`);
 }
 
 main();
