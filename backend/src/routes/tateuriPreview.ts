@@ -282,46 +282,259 @@ router.post('/scrape', async (req: Request, res: Response) => {
       return await scrapeSuumoAndSave(url, region, res);
     }
 
-    // athomeの場合はスクレイピングサーバーに転送（既存の動作を維持）
-    console.log('[tateuri/scrape] athome URLを検出、スクレイピングサーバーに転送します');
-    const scrapeApiUrl = process.env.SCRAPE_API_URL || 'https://sateituikyaku-scrape-server-production.up.railway.app';
+    // athomeの場合もバックエンド内で直接処理（Railwayタイムアウト問題回避）
+    console.log('[tateuri/scrape] athome URLを検出、バックエンド内で直接処理します');
+    return await scrapeAthomeAndSave(url, region, res);
+  } catch (err: any) {
+    console.error('[tateuri/scrape] エラー:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
 
-    // スクレイピングサーバーにリクエスト（バックエンド経由でCORSを回避）
-    // processImages=trueの場合、画像加工を指示
-    const scrapeRes = await fetch(`${scrapeApiUrl}/scrape`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, is_tateuri: true, region, process_images: processImages }),
+// athomeページをスクレイピングしてDBに保存する（Railwayタイムアウト問題回避のためバックエンド内で直接処理）
+async function scrapeAthomeAndSave(url: string, region: string, res: Response) {
+  try {
+    console.log(`[athome/scrape] 開始: ${url}`);
+
+    // URLを正規化（クエリパラメータを除去）
+    let cleanUrl: string;
+    try {
+      const u = new URL(url);
+      cleanUrl = `${u.protocol}//${u.host}${u.pathname}`;
+      if (!cleanUrl.endsWith('/')) cleanUrl += '/';
+    } catch {
+      cleanUrl = url;
+    }
+    console.log(`[athome/scrape] 正規化URL: ${cleanUrl}`);
+
+    // athomeのHTMLを取得
+    const htmlRes = await axios.get(cleanUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept-Language': 'ja-JP,ja;q=0.9',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Referer': 'https://www.athome.co.jp/',
+      },
+      timeout: 30000,
+      responseType: 'text',
     });
 
-    if (!scrapeRes.ok) {
-      const errText = await scrapeRes.text();
-      console.error('[tateuri/scrape] スクレイピングサーバーエラー:', scrapeRes.status, errText);
-      return res.status(scrapeRes.status).json({ error: `スクレイピングサーバーエラー: ${scrapeRes.status}` });
+    const html: string = htmlRes.data;
+    console.log(`[athome/scrape] HTML取得完了: ${html.length}文字`);
+
+    // タグを除去してテキストを取得するヘルパー
+    const stripTags = (s: string) => s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // --- エラーページ検出 ---
+    if (html.includes('ページが見つかりません') || html.includes('404') || html.length < 5000) {
+      console.error(`[athome/scrape] エラーページまたは空ページ: ${html.length}文字`);
+      return res.status(422).json({
+        success: false,
+        error: 'athomeのページを取得できませんでした。URLを確認してください。',
+      });
     }
 
-    const result = await scrapeRes.json() as any;
+    // --- タイトル ---
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    let title: string | null = titleMatch ? titleMatch[1].trim() : null;
+    if (title) {
+      // 「【アットホーム】...」の装飾を除去
+      title = title
+        .replace(/【[^】]+】/g, '')
+        .replace(/\s*[-|｜].*$/, '')
+        .replace(/\s*\|.*$/, '')
+        .trim();
+    }
 
-    // スクレイピング成功後、住所による重複チェック（URLチェックをすり抜けた場合の二重防止）
-    if (result.success && result.slug && result.data?.address) {
-      const supabase = getSupabase();
-      
-      // 同じ住所で既にアクティブな建売HP物件が存在するか確認（今回追加されたもの以外）
+    // --- 物件概要テーブルから各フィールドを抽出 ---
+    // athomeの物件概要は <th>ラベル</th><td>値</td> 形式
+    const extractField = (label: string): string | null => {
+      const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp(
+        escaped + '[\\s\\S]{0,300}?<\\/th>[\\s\\S]{0,100}?<td[^>]*>([\\s\\S]{1,500}?)<\\/td>',
+        'i'
+      );
+      const m = html.match(pattern);
+      if (!m) return null;
+      return stripTags(m[1]).trim() || null;
+    };
+
+    // --- 価格 ---
+    let price = extractField('価格');
+    if (!price) {
+      // フォールバック: 「万円」パターン
+      const m = html.match(/(\d{1,2},?\d{3}万円(?:\s*[～〜]\s*\d{1,2},?\d{3}万円)?)/);
+      if (m) price = m[1];
+    }
+    if (price) {
+      price = price.replace(/\s+/g, '').trim();
+    }
+
+    // --- 住所（所在地） ---
+    let address = extractField('所在地');
+    if (!address) {
+      // 別パターン: data-feの中や住所セクション
+      const addrMatch = html.match(/所在地[\s\S]{0,200}?([都道府県][\s\S]{3,80}?)(?:<\/|<br|$)/);
+      if (addrMatch) address = stripTags(addrMatch[1]).trim();
+    }
+    // 「地図を見る」や「周辺環境」などの不要テキストを除去
+    if (address) {
+      address = address.replace(/地図.*$/g, '').replace(/周辺.*$/g, '').trim();
+    }
+
+    // --- 間取り ---
+    let layout = extractField('間取り');
+    if (layout) {
+      const lm = layout.match(/[1-9][SLDK+]+/);
+      if (lm) layout = lm[0];
+    }
+
+    // --- 建物面積 ---
+    let area = extractField('建物面積');
+    if (!area) area = extractField('専有面積');
+    if (area) {
+      area = area.replace(/\s+/g, '');
+      const am = area.match(/[\d.]+m[²2]/);
+      if (am) area = am[0];
+    }
+
+    // --- 交通（アクセス） ---
+    let access = extractField('交通');
+    if (!access) {
+      // athomeは「沿線・駅」の場合もある
+      access = extractField('沿線・駅');
+    }
+    if (access) {
+      access = access.replace(/\s+/g, ' ').trim();
+      if (access.length > 80) access = access.substring(0, 80) + '...';
+    }
+
+    // --- 緯度経度 ---
+    let lat: number | null = null;
+    let lng: number | null = null;
+
+    // athomeのHTMLには "ido" と "keido" キーで座標が埋め込まれている
+    const idoMatch = html.match(/"ido"\s*:\s*"?(3[0-9]\.\d{4,})"?/);
+    const keidoMatch = html.match(/"keido"\s*:\s*"?(1[2-4][0-9]\.\d{4,})"?/);
+    if (idoMatch) lat = parseFloat(idoMatch[1]);
+    if (keidoMatch) lng = parseFloat(keidoMatch[1]);
+
+    // フォールバック: 正規表現パターン
+    if (!lat || !lng) {
+      const lats = [...html.matchAll(/3[0-9]\.\d{5,}/g)].map(m => parseFloat(m[0]));
+      const lngs = [...html.matchAll(/13[0-9]\.\d{5,}/g)].map(m => parseFloat(m[0]));
+      if (lats.length > 0 && !lat) lat = lats[0];
+      if (lngs.length > 0 && !lng) lng = lngs[0];
+    }
+
+    console.log(`[athome/scrape] 座標: lat=${lat}, lng=${lng}`);
+
+    // --- 画像 ---
+    const images: string[] = [];
+    const seen = new Set<string>();
+
+    // パターン1: image_files/path のURLを抽出
+    const imgMatches = html.matchAll(/(?:src|data-src|content)=["']((?:https?:)?\/\/[^"']*(?:image_files\/path|data_images)[^"']*\.(?:jpg|jpeg|png|webp)[^"']*)["']/gi);
+    for (const match of imgMatches) {
+      let imgUrl = match[1];
+      if (imgUrl.startsWith('//')) imgUrl = 'https:' + imgUrl;
+      if (imgUrl.includes('.svg')) continue;
+      if (!seen.has(imgUrl)) {
+        seen.add(imgUrl);
+        images.push(imgUrl);
+      }
+    }
+
+    // パターン2: athome CDNの画像URL
+    const cdnMatches = html.matchAll(/(?:src|data-src)=["'](https?:\/\/[^"']*athome[^"']*\.(?:jpg|jpeg|png|webp)[^"']*)["']/gi);
+    for (const match of cdnMatches) {
+      let imgUrl = match[1];
+      if (imgUrl.includes('.svg')) continue;
+      if (imgUrl.includes('/icon') || imgUrl.includes('/logo') || imgUrl.includes('/btn')) continue;
+      if (!seen.has(imgUrl)) {
+        seen.add(imgUrl);
+        images.push(imgUrl);
+      }
+    }
+
+    // パターン3: athome.co.jpドメインの画像（相対パス対応）
+    const relImgMatches = html.matchAll(/(?:src|data-src)=["'](\/[^"']*(?:image_files|data_images)[^"']*\.(?:jpg|jpeg|png|webp)[^"']*)["']/gi);
+    for (const match of relImgMatches) {
+      const imgUrl = `https://www.athome.co.jp${match[1]}`;
+      if (!seen.has(imgUrl)) {
+        seen.add(imgUrl);
+        images.push(imgUrl);
+      }
+    }
+
+    console.log(`[athome/scrape] 画像URL抽出: ${images.length}枚`);
+
+    // --- ポイントテキスト ---
+    let appeal_comment: string | null = null;
+    const pointTexts: string[] = [];
+
+    // point-textクラスのp要素を探す
+    const pointTextMatches = html.matchAll(/<p[^>]*class="[^"]*point-text[^"]*"[^>]*>([\s\S]*?)<\/p>/gi);
+    for (const match of pointTextMatches) {
+      const text = stripTags(match[1]).trim();
+      if (text && text.length > 30 && !pointTexts.includes(text)) {
+        pointTexts.push(text);
+      }
+    }
+
+    // 「ポイント」セクションからも取得
+    const pointSectionMatch = html.match(/ポイント[\s\S]{0,100}?<\/h[23]>([\s\S]{0,5000}?)(?:<h[23]|<\/section)/i);
+    if (pointSectionMatch) {
+      const sectionHtml = pointSectionMatch[1];
+      const liMatches = sectionHtml.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi);
+      for (const li of liMatches) {
+        const text = stripTags(li[1]).trim();
+        if (text && text.length > 30 && !pointTexts.includes(text)) {
+          pointTexts.push(text);
+        }
+      }
+    }
+
+    if (pointTexts.length > 0) {
+      appeal_comment = pointTexts.join('\n');
+    }
+
+    console.log(`[athome/scrape] ポイント: ${pointTexts.length}項目`);
+
+    // --- DBに保存 ---
+    const supabase = getSupabase();
+    const slug = randomBytes(6).toString('hex');
+
+    const payload = {
+      slug,
+      source_url: url,
+      title,
+      price,
+      address,
+      access,
+      layout,
+      area,
+      images,
+      lat,
+      lng,
+      appeal_comment,
+      is_tateuri: true,
+      is_active: true,
+      region,
+    };
+
+    console.log(`[athome/scrape] 保存データ: title=${title}, price=${price}, address=${address}, layout=${layout}, area=${area}, images=${images.length}枚`);
+
+    // 住所による重複チェック
+    if (address) {
       const { data: addressDup, error: addressDupError } = await supabase
         .from('property_previews')
         .select('slug, title, address, created_at, is_tateuri')
-        .eq('address', result.data.address)
+        .eq('address', address)
         .eq('is_active', true)
-        .eq('is_tateuri', true)
-        .neq('slug', result.slug);
+        .eq('is_tateuri', true);
 
       if (!addressDupError && addressDup && addressDup.length > 0) {
-        // 住所重複あり → 今回追加されたレコードを非アクティブ化して重複エラーを返す
-        await supabase
-          .from('property_previews')
-          .update({ is_active: false })
-          .eq('slug', result.slug);
-
         const existing = addressDup[0];
         const cleanTitle = (existing.title || '').replace(/\[\d+\].+$/, '').trim();
         const source = existing.is_tateuri ? '建売専門HP' : '他社物件配信';
@@ -331,41 +544,31 @@ router.post('/scrape', async (req: Request, res: Response) => {
           isDuplicate: true,
         });
       }
-
-      // distribution_historyテーブルは横断チェックしない（メール配信済みでも建売HPには登録可能）
-
-      // 重複なし → regionとis_tateuriをDBに反映
-      const { error: updateError } = await supabase
-        .from('property_previews')
-        .update({ region, is_tateuri: true })
-        .eq('slug', result.slug);
-      
-      if (updateError) {
-        console.error(`[tateuri/scrape] 更新エラー: slug=${result.slug}`, updateError);
-      } else {
-        console.log(`[tateuri/scrape] region='${region}', is_tateuri=true をslug=${result.slug}に設定`);
-      }
-    } else if (result.success && result.slug) {
-      // 住所がない場合はregionとis_tateuriのみ更新
-      const supabase = getSupabase();
-      const { error: updateError } = await supabase
-        .from('property_previews')
-        .update({ region, is_tateuri: true })
-        .eq('slug', result.slug);
-      
-      if (updateError) {
-        console.error(`[tateuri/scrape] 更新エラー: slug=${result.slug}`, updateError);
-      } else {
-        console.log(`[tateuri/scrape] region='${region}', is_tateuri=true をslug=${result.slug}に設定`);
-      }
     }
 
-    return res.json(result);
+    const { error: insertError } = await supabase
+      .from('property_previews')
+      .insert(payload);
+
+    if (insertError) {
+      console.error('[athome/scrape] DB保存エラー:', insertError);
+      return res.status(500).json({ success: false, error: insertError.message });
+    }
+
+    console.log(`[athome/scrape] 保存完了: slug=${slug}, region=${region}`);
+
+    return res.json({
+      success: true,
+      slug,
+      data: payload,
+      preview_url: `https://sateituikyaku-admin-frontend.vercel.app/property-preview/${slug}`,
+    });
+
   } catch (err: any) {
-    console.error('[tateuri/scrape] エラー:', err.message);
-    return res.status(500).json({ error: err.message });
+    console.error('[athome/scrape] エラー:', err.message);
+    return res.status(500).json({ success: false, error: err.message });
   }
-});
+}
 
 // SUUMOページをスクレイピングしてDBに保存する
 async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
