@@ -901,14 +901,16 @@ router.get('/call-tracking-ranking', async (req: Request, res: Response) => {
     // ヘッダー行からインデックスを動的に取得
     const headers = rawData[0];
     const dateColIdx = headers.findIndex((h: string) => h === '日付');
+    const sellerColIdx = headers.findIndex((h: string) => h === '売主番号');
     const firstHalfColIdx = headers.findIndex((h: string) => h === '担当（前半）');
     const secondHalfColIdx = headers.findIndex((h: string) => h === '担当（後半）');
 
-    console.log(`[CallTrackingRanking] Column indices - 日付:${dateColIdx}, 担当（前半）:${firstHalfColIdx}, 担当（後半）:${secondHalfColIdx}`);
+    console.log(`[CallTrackingRanking] Column indices - 日付:${dateColIdx}, 売主番号:${sellerColIdx}, 担当（前半）:${firstHalfColIdx}, 担当（後半）:${secondHalfColIdx}`);
     console.log(`[CallTrackingRanking] Headers: ${JSON.stringify(headers)}`);
 
     // ヘッダーが見つからない場合はデフォルト値を使用
     const effectiveDateIdx = dateColIdx >= 0 ? dateColIdx : 0;
+    const effectiveSellerIdx = sellerColIdx >= 0 ? sellerColIdx : 2;
     const effectiveFirstHalfIdx = firstHalfColIdx >= 0 ? firstHalfColIdx : 4;
     const effectiveSecondHalfIdx = secondHalfColIdx >= 0 ? secondHalfColIdx : 5;
 
@@ -917,6 +919,9 @@ router.get('/call-tracking-ranking', async (req: Request, res: Response) => {
 
     // 当月のデータをフィルタリングしてイニシャルを集計
     const counts = new Map<string, number>();
+    // 重複排除セット: "(担当イニシャル)_(売主番号)_(YYYY-MM-DD)_(HH)" で一意化
+    // 同一担当者が同一案件に同日同時間帯（同じ時）に複数回かけても1回としてカウント
+    const seenKeys = new Set<string>();
     const currentMonthStart = new Date(year, month, 1);
     const currentMonthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
 
@@ -926,14 +931,16 @@ router.get('/call-tracking-ranking', async (req: Request, res: Response) => {
 
     for (const row of dataRows) {
       const dateStr = row[effectiveDateIdx]; // 日付列
+      const sellerNumber = row[effectiveSellerIdx]; // 売主番号列
       const initial1 = row[effectiveFirstHalfIdx]; // 担当（前半）列
       const initial2 = row[effectiveSecondHalfIdx]; // 担当（後半）列
 
       // 日付が空欄の場合はスキップ
       if (!dateStr) continue;
 
-      // 日付を解析（JSTローカル時刻として扱う）
+      // 日付と時刻を解析（JSTローカル時刻として扱う）
       let date: Date;
+      let hour: number = 0;
       try {
         const dateStrNorm = String(dateStr).trim();
         // "2026/4/15" または "2026/4/15 10:30:00" 形式
@@ -941,15 +948,21 @@ router.get('/call-tracking-ranking', async (req: Request, res: Response) => {
         if (slashParts.length >= 3) {
           const y = parseInt(slashParts[0], 10);
           const m = parseInt(slashParts[1], 10) - 1;
-          const dayPart = slashParts[2].split(' ')[0]; // 時刻部分を除去
-          const d = parseInt(dayPart, 10);
+          const dayAndTime = slashParts[2].split(' ');
+          const d = parseInt(dayAndTime[0], 10);
           date = new Date(y, m, d);
+          if (dayAndTime[1]) {
+            hour = parseInt(dayAndTime[1].split(':')[0], 10);
+          }
         } else {
           // "2026-04-28 10:30:00" または "2026-04-28T10:30:00" 形式
-          // 日付部分のみ取り出してローカル時刻として解釈
           const datePart = dateStrNorm.substring(0, 10); // "2026-04-28"
           const [y, m, d] = datePart.split('-').map(Number);
           date = new Date(y, m - 1, d);
+          const timePart = dateStrNorm.substring(11, 13); // "HH"
+          if (timePart) {
+            hour = parseInt(timePart, 10) || 0;
+          }
         }
 
         // 無効な日付はスキップ
@@ -967,16 +980,28 @@ router.get('/call-tracking-ranking', async (req: Request, res: Response) => {
         continue;
       }
 
-      // E列のイニシャルをカウント
+      // 日付文字列（YYYY-MM-DD）を生成
+      const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const sellerKey = sellerNumber ? String(sellerNumber).trim() : '';
+
+      // E列のイニシャルをカウント（同一担当者×同一案件×同日同時間帯は1回のみ）
       if (initial1 && String(initial1).trim() !== '') {
         const initial = normalizeInitial(String(initial1).trim());
-        counts.set(initial, (counts.get(initial) || 0) + 1);
+        const dedupeKey = `${initial}_${sellerKey}_${dateKey}_${hour}`;
+        if (!seenKeys.has(dedupeKey)) {
+          seenKeys.add(dedupeKey);
+          counts.set(initial, (counts.get(initial) || 0) + 1);
+        }
       }
 
-      // F列のイニシャルをカウント
+      // F列のイニシャルをカウント（同一担当者×同一案件×同日同時間帯は1回のみ）
       if (initial2 && String(initial2).trim() !== '') {
         const initial = normalizeInitial(String(initial2).trim());
-        counts.set(initial, (counts.get(initial) || 0) + 1);
+        const dedupeKey = `${initial}_${sellerKey}_${dateKey}_${hour}`;
+        if (!seenKeys.has(dedupeKey)) {
+          seenKeys.add(dedupeKey);
+          counts.set(initial, (counts.get(initial) || 0) + 1);
+        }
       }
     }
 
