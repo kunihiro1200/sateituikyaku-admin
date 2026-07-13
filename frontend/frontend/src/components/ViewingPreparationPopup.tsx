@@ -37,7 +37,7 @@ const FIXED_LINKS = [
   {
     label: 'ATBB',
     url: 'https://atbb.athome.jp/',
-    description: '①詳細ページと②地図③インフォシートを印刷2枚',
+    description: '①詳細ページと②地図③インフォシート2枚印刷',
   },
 ] as const;
 
