@@ -8385,6 +8385,34 @@ HP：https://ifoo-oita.com/
                   </a>
                 )}
               </Box>
+              {/* 査定書郵送アラート：売主番号にFIが含まれ、状況（売主）に「空」が含まれる場合に表示 */}
+              {(seller.sellerNumber || '').toUpperCase().includes('FI') &&
+                (propInfo.currentStatus || seller.currentStatus || '').includes('空') && (
+                <Box
+                  sx={{
+                    mb: 1,
+                    px: 2,
+                    py: 1.2,
+                    backgroundColor: '#fff3e0',
+                    border: '2px solid #ff6d00',
+                    borderRadius: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontWeight: 'bold',
+                      fontSize: '1rem',
+                      color: '#e65100',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    📮 査定書郵送？？
+                  </Typography>
+                </Box>
+              )}
               <RichTextCommentEditor
                 ref={commentEditorRef}
                 value={editableComments}
