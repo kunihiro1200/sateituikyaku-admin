@@ -59,9 +59,9 @@ const REINS_FIELDS: {
   { key: 'report_date_setting', label: '報告日設定', options: ['する', 'しない'] },
 ];
 
-function buildEmailBody(sellerName: string, suumoUrl: string, reinsUrl: string, propertyNumber: string): string {
+function buildEmailBody(sellerName: string, suumoUrl: string, propertyNumber: string): string {
   const suumoLine = suumoUrl ? `■SUUMO\n${suumoUrl}` : '■SUUMO';
-  const reinsLine = reinsUrl ? `■レインズ\n${reinsUrl}` : '■レインズ';
+
   // seller_name に既に「様」が含まれている場合は重複しないようにする
   const nameWithSama = sellerName.endsWith('様') ? sellerName : `${sellerName}様`;
   const isFI = propertyNumber.startsWith('FI');
@@ -95,7 +95,6 @@ ${companyName}です。
 【各サイトのご案内】
 ■athome
 ${suumoLine}
-${reinsLine}
 
 今後、当社全員で、お客様の大切な物件の販売に努めてまいります。
 2週間に1度担当より、進捗状況をご報告させていただきます。
@@ -180,7 +179,7 @@ export default function ReinsRegistrationPage() {
           ? 'サイト公開＆レインズ登録証明書のご案内（株式会社くじら不動産）'
           : 'サイト公開＆レインズ登録証明書のご案内（株式会社いふう）'
       );
-      setEmailBody(buildEmailBody(d.seller_name ?? '売主', d.suumo_url ?? '', d.reins_url ?? '', propertyNumber ?? ''));
+      setEmailBody(buildEmailBody(d.seller_name ?? '売主', d.suumo_url ?? '', propertyNumber ?? ''));
     } catch (error) {
       setSnackbar({ open: true, message: 'データの取得に失敗しました', severity: 'error' });
     } finally {
@@ -286,7 +285,7 @@ export default function ReinsRegistrationPage() {
       await api.put(`/api/property-listings/${propertyNumber}`, { suumo_url: suumoUrlInput });
       setSnackbar({ open: true, message: 'Suumo URLを保存しました', severity: 'success' });
       // メール本文を更新
-      setEmailBody(buildEmailBody(data.seller_name ?? '売主', suumoUrlInput, data.reins_url ?? '', propertyNumber ?? ''));
+      setEmailBody(buildEmailBody(data.seller_name ?? '売主', suumoUrlInput, propertyNumber ?? ''));
     } catch (error) {
       setData((prev) => prev ? { ...prev, suumo_url: prevValue } : prev);
       setSuumoUrlInput(prevValue ?? '');
