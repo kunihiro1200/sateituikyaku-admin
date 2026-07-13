@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware/auth';
 import axios from 'axios';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const router = Router();
 
@@ -18,6 +20,7 @@ const PLACE_CATEGORIES = [
   { type: 'post_office',       label: '郵便局',             icon: '📮' },
   { type: 'park',              label: '公園',               icon: '🌳' },
   { type: 'train_station',     label: '駅',                 icon: '🚉' },
+  { type: 'bus_station',       label: 'バス停',             icon: '🚌' },
   { type: 'kindergarten',      label: '幼稚園・保育園',     icon: '幼' },
   { type: 'cram_school',       label: '塾',                 icon: '塾' },
 ];
@@ -36,6 +39,7 @@ const PLACES_API_KEYWORD_MAP: Record<string, string> = {
   middle_school: '中学校',
   high_school: '高校',
   kindergarten: '幼稚園 保育園',
+  bus_station: 'バス停',
 };
 
 // カテゴリごとの名前フィルタ（特定カテゴリのみ名前で絞り込む）
@@ -159,5 +163,118 @@ function calcDistance(lat1: number, lng1: number, lat2: number, lng2: number): n
   const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
+
+// ---- 小学校区（校区ポリゴン） ----
+
+// GeoJSONデータをロード（起動時に1回読み込み）
+let schoolDistrictsData: any = null;
+function loadSchoolDistricts() {
+  if (schoolDistrictsData) return schoolDistrictsData;
+  try {
+    const filePath = path.resolve(__dirname, '../data/oita-school-districts.geojson');
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    schoolDistrictsData = JSON.parse(raw);
+    console.log(`[nearbyMap] 校区データ読み込み完了: ${schoolDistrictsData.features?.length ?? 0}校区`);
+  } catch (err: any) {
+    console.warn('[nearbyMap] 校区データの読み込みに失敗:', err.message);
+    schoolDistrictsData = { type: 'FeatureCollection', features: [] };
+  }
+  return schoolDistrictsData;
+}
+
+// Point-in-Polygon判定（レイキャスティング法）
+function pointInPolygon(lat: number, lng: number, polygon: [number, number][]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    // GeoJSON座標は [lng, lat] の順
+    const xi = polygon[i][1], yi = polygon[i][0];
+    const xj = polygon[j][1], yj = polygon[j][0];
+    const intersect = ((yi > lng) !== (yj > lng)) &&
+      (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * 指定座標が属する小学校区を返すエンドポイント
+ * GET /api/nearby-map/school-district?lat=33.28&lng=131.48
+ * 
+ * レスポンス:
+ * {
+ *   found: true,
+ *   district: { name: "○○小学校", adminCode: "44201", polygon: [[lng,lat],...] },
+ *   neighbors: [{ name: "△△小学校", polygon: [...] }, ...] // 周辺校区（表示用）
+ * }
+ */
+router.get('/school-district', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { lat, lng } = req.query;
+
+    if (!lat || !lng) {
+      return res.status(400).json({ error: '緯度・経度が必要です' });
+    }
+
+    const latNum = parseFloat(lat as string);
+    const lngNum = parseFloat(lng as string);
+
+    const data = loadSchoolDistricts();
+    if (!data.features || data.features.length === 0) {
+      return res.json({ found: false, district: null, neighbors: [] });
+    }
+
+    // 物件座標が属する校区を検索
+    let matchedDistrict: any = null;
+    for (const feature of data.features) {
+      if (feature.geometry?.type !== 'Polygon') continue;
+      const rings = feature.geometry.coordinates;
+      if (!rings || rings.length === 0) continue;
+      // 外側リングでチェック
+      if (pointInPolygon(latNum, lngNum, rings[0])) {
+        matchedDistrict = feature;
+        break;
+      }
+    }
+
+    // 周辺校区を取得（物件から約3km以内のバウンディングボックスで絞り込み）
+    const DELTA = 0.03; // 約3km
+    const neighbors: any[] = [];
+    for (const feature of data.features) {
+      if (feature === matchedDistrict) continue;
+      if (feature.geometry?.type !== 'Polygon') continue;
+      const rings = feature.geometry.coordinates;
+      if (!rings || rings.length === 0) continue;
+      // バウンディングボックスチェック
+      const ring = rings[0] as [number, number][];
+      const hasNearby = ring.some(([pLng, pLat]) =>
+        Math.abs(pLat - latNum) < DELTA && Math.abs(pLng - lngNum) < DELTA
+      );
+      if (hasNearby) {
+        neighbors.push({
+          name: feature.properties?.name || '',
+          adminCode: feature.properties?.adminCode || '',
+          polygon: ring,
+        });
+      }
+    }
+
+    if (matchedDistrict) {
+      return res.json({
+        found: true,
+        district: {
+          name: matchedDistrict.properties?.name || '',
+          adminCode: matchedDistrict.properties?.adminCode || '',
+          polygon: matchedDistrict.geometry.coordinates[0],
+        },
+        neighbors: neighbors.slice(0, 10), // 最大10校区
+      });
+    }
+
+    return res.json({ found: false, district: null, neighbors: neighbors.slice(0, 10) });
+  } catch (error: any) {
+    console.error('[nearbyMap] school-district error:', error.message);
+    return res.status(500).json({ error: '校区情報の取得に失敗しました' });
+  }
+});
 
 export default router;

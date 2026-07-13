@@ -21,7 +21,7 @@ interface NearbyMapModalProps { open: boolean; onClose: () => void; googleMapUrl
 const DISPLAY_CATS = new Set([
   'supermarket', 'convenience_store',
   'elementary_school', 'middle_school', 'high_school', 'kindergarten', 'cram_school',
-  'hospital', 'dentist', 'bank', 'post_office', 'park', 'train_station',
+  'hospital', 'dentist', 'bank', 'post_office', 'park', 'train_station', 'bus_station',
   'restaurant',
 ]);
 
@@ -31,7 +31,7 @@ const COLORS: Record<string, string> = {
   kindergarten: '#0277bd', cram_school: '#1565c0',
   hospital: '#2e7d32', dentist: '#2e7d32',
   bank: '#e65100', post_office: '#bf360c',
-  park: '#33691e', train_station: '#283593',
+  park: '#33691e', train_station: '#283593', bus_station: '#4a148c',
   restaurant: '#d84315',
 };
 
@@ -129,6 +129,7 @@ const CAT_PREFIX: Record<string, string> = {
   post_office: '郵便',
   park: '公園',
   train_station: '駅',
+  bus_station: 'バス停',
   kindergarten: '幼稚園',
   cram_school: '塾',
 };
@@ -491,10 +492,12 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState(0);
+  const [schoolDistrict, setSchoolDistrict] = useState<{ found: boolean; district: any; neighbors: any[] } | null>(null);
 
   const mapRef = useRef<google.maps.Map | null>(null);
   const iwRef = useRef<google.maps.InfoWindow | null>(null);
   const mkRef = useRef<google.maps.Marker[]>([]);
+  const polygonRef = useRef<google.maps.Polygon[]>([]);
 
   useEffect(() => {
     if (!open || !googleMapUrl) return;
@@ -505,12 +508,14 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
   const doFetch = useCallback(async (c: { lat: number; lng: number }) => {
     setLoading(true); setError(null);
     try {
-      const [r1, r2] = await Promise.all([
+      const [r1, r2, rDistrict] = await Promise.all([
         api.get('/api/nearby-map/places', { params: { lat: c.lat, lng: c.lng, radius: 1000 } }),
         api.get('/api/nearby-map/places', { params: { lat: c.lat, lng: c.lng, radius: 2000 } }),
+        api.get('/api/nearby-map/school-district', { params: { lat: c.lat, lng: c.lng } }).catch(() => null),
       ]);
       setData1(r1.data);
       setData2(r2.data);
+      if (rDistrict?.data) setSchoolDistrict(rDistrict.data);
     } catch (e: any) {
       setError(e.response?.data?.error || '施設の取得に失敗しました');
     } finally {
@@ -531,13 +536,69 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     if (!data) return;
     mapRef.current.setZoom(tab === 0 ? 14 : 13);
     drawMarkers(mapRef.current, data, iwRef.current, mkRef);
-  }, [tab, data1, data2]);
+
+    // 校区ポリゴン描画
+    polygonRef.current.forEach(p => p.setMap(null));
+    polygonRef.current = [];
+    if (schoolDistrict && mapRef.current) {
+      const map = mapRef.current;
+      // 物件が属する校区（強調表示）
+      if (schoolDistrict.found && schoolDistrict.district?.polygon) {
+        const path = schoolDistrict.district.polygon.map(([lng, lat]: [number, number]) => ({ lat, lng }));
+        const poly = new google.maps.Polygon({
+          paths: path,
+          strokeColor: '#1565c0',
+          strokeOpacity: 0.9,
+          strokeWeight: 3,
+          fillColor: '#1565c0',
+          fillOpacity: 0.08,
+          map,
+          zIndex: 10,
+        });
+        // クリックで校区名表示
+        poly.addListener('click', (e: any) => {
+          if (iwRef.current) {
+            iwRef.current.setContent(`<div style="font-size:12px;padding:5px 8px;"><b>🏫 ${schoolDistrict.district.name}校区</b></div>`);
+            iwRef.current.setPosition(e.latLng);
+            iwRef.current.open(map);
+          }
+        });
+        polygonRef.current.push(poly);
+      }
+      // 周辺校区（薄く表示）
+      if (schoolDistrict.neighbors?.length) {
+        for (const neighbor of schoolDistrict.neighbors) {
+          if (!neighbor.polygon) continue;
+          const path = neighbor.polygon.map(([lng, lat]: [number, number]) => ({ lat, lng }));
+          const poly = new google.maps.Polygon({
+            paths: path,
+            strokeColor: '#90a4ae',
+            strokeOpacity: 0.6,
+            strokeWeight: 1.5,
+            fillColor: '#90a4ae',
+            fillOpacity: 0.04,
+            map,
+            zIndex: 5,
+          });
+          poly.addListener('click', (e: any) => {
+            if (iwRef.current) {
+              iwRef.current.setContent(`<div style="font-size:12px;padding:5px 8px;"><b>🏫 ${neighbor.name}校区</b></div>`);
+              iwRef.current.setPosition(e.latLng);
+              iwRef.current.open(map);
+            }
+          });
+          polygonRef.current.push(poly);
+        }
+      }
+    }
+  }, [tab, data1, data2, schoolDistrict]);
 
   const handleClose = () => {
     mkRef.current.forEach((m) => m.setMap(null)); mkRef.current = [];
+    polygonRef.current.forEach((p) => p.setMap(null)); polygonRef.current = [];
     iwRef.current?.close(); iwRef.current = null;
     mapRef.current = null;
-    setCoords(null); setData1(null); setData2(null); setLoading(false); setError(null); setTab(0);
+    setCoords(null); setData1(null); setData2(null); setSchoolDistrict(null); setLoading(false); setError(null); setTab(0);
     onClose();
   };
 
@@ -785,11 +846,24 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
                   </Box>
                 )}
                 {!loading && cur && (
-                  <FacilityList
-                    data={cur}
-                    label={tab === 0 ? '🔵 半径1km圏内の施設' : '🟢 半径2km圏内の施設'}
-                    color={tab === 0 ? '#1565c0' : '#2e7d32'}
-                  />
+                  <>
+                    {schoolDistrict?.found && schoolDistrict.district && (
+                      <Paper variant="outlined" sx={{ p: 0.75, borderLeft: '3px solid #1565c0', mb: 0.75, flexShrink: 0 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography fontSize={12}>🏫</Typography>
+                          <Typography variant="caption" fontWeight="bold" sx={{ color: '#1565c0', fontSize: '10px' }}>校区</Typography>
+                        </Box>
+                        <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', fontSize: '10px', mt: 0.25 }}>
+                          {schoolDistrict.district.name}
+                        </Typography>
+                      </Paper>
+                    )}
+                    <FacilityList
+                      data={cur}
+                      label={tab === 0 ? '🔵 半径1km圏内の施設' : '🟢 半径2km圏内の施設'}
+                      color={tab === 0 ? '#1565c0' : '#2e7d32'}
+                    />
+                  </>
                 )}
                 {!loading && !cur && !error && (
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
