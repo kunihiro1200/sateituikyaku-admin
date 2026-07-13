@@ -1515,7 +1515,27 @@ export default function SellersPage() {
                         {seller.propertyAddress || '-'}
                       </Typography>
                     </TableCell>
-                    <TableCell>{seller.propertyType || '-'}</TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+                        {seller.propertyType && (
+                          <Typography variant="body2">{seller.propertyType}</Typography>
+                        )}
+                        {(seller.currentStatus || '').includes('空') && (
+                          <Chip
+                            label="空"
+                            size="small"
+                            sx={{
+                              fontSize: '0.65rem',
+                              height: 18,
+                              bgcolor: '#e3f2fd',
+                              color: '#1565c0',
+                              '& .MuiChip-label': { px: 0.8 },
+                            }}
+                          />
+                        )}
+                        {!seller.propertyType && !(seller.currentStatus || '').includes('空') && '-'}
+                      </Box>
+                    </TableCell>
                     <TableCell>
                       {seller.valuationAmount1
                         ? `${Math.round(seller.valuationAmount1 / 10000).toLocaleString()}万円`
