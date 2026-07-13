@@ -8385,9 +8385,10 @@ HP：https://ifoo-oita.com/
                   </a>
                 )}
               </Box>
-              {/* 査定書郵送アラート：売主番号にFIが含まれ、状況（売主）に「空」が含まれる場合に表示 */}
+              {/* 査定書郵送アラート：売主番号にFIが含まれ、状況（売主）に「空」が含まれ、郵送が「済」でない場合に表示 */}
               {(seller.sellerNumber || '').toUpperCase().includes('FI') &&
-                (propInfo.currentStatus || seller.currentStatus || '').includes('空') && (
+                (propInfo.currentStatus || seller.currentStatus || '').includes('空') &&
+                mailingStatus !== '済' && (
                 <Box
                   sx={{
                     mb: 1,
