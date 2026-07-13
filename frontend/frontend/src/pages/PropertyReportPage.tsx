@@ -1129,22 +1129,16 @@ export default function PropertyReportPage() {
       <Dialog
         open={sendConfirmDialogOpen}
         onClose={handleSendCancel}
+        maxWidth="lg"
+        fullWidth
         PaperProps={{
           sx: {
-            position: 'fixed',
-            right: 0,
-            top: 0,
-            m: 0,
-            width: { xs: '100vw', md: '60vw', lg: '50vw' },
-            maxWidth: '100vw',
-            height: '100vh',
-            maxHeight: '100vh',
-            borderRadius: 0,
+            height: '90vh',
+            maxHeight: '90vh',
             display: 'flex',
             flexDirection: 'column',
           },
         }}
-        sx={{ '& .MuiDialog-container': { justifyContent: 'flex-end' } }}
       >
         <DialogTitle sx={{ pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Typography variant="h6" fontWeight="bold">メール確認</Typography>
