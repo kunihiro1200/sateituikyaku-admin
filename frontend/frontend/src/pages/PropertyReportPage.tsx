@@ -1129,12 +1129,10 @@ export default function PropertyReportPage() {
       <Dialog
         open={sendConfirmDialogOpen}
         onClose={handleSendCancel}
-        maxWidth="lg"
-        fullWidth
+        fullScreen
+        sx={{ zIndex: 1500 }}
         PaperProps={{
           sx: {
-            height: '90vh',
-            maxHeight: '90vh',
             display: 'flex',
             flexDirection: 'column',
           },
