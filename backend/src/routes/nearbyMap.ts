@@ -223,13 +223,23 @@ router.get('/school-district', authenticate, async (req: Request, res: Response)
     // 物件座標が属する校区を検索
     let matchedDistrict: any = null;
     for (const feature of data.features) {
-      if (feature.geometry?.type !== 'Polygon') continue;
-      const rings = feature.geometry.coordinates;
-      if (!rings || rings.length === 0) continue;
-      // 外側リングでチェック
-      if (pointInPolygon(latNum, lngNum, rings[0])) {
-        matchedDistrict = feature;
-        break;
+      const geomType = feature.geometry?.type;
+      if (geomType === 'Polygon') {
+        const rings = feature.geometry.coordinates;
+        if (!rings || rings.length === 0) continue;
+        if (pointInPolygon(latNum, lngNum, rings[0])) {
+          matchedDistrict = feature;
+          break;
+        }
+      } else if (geomType === 'MultiPolygon') {
+        const polygons = feature.geometry.coordinates;
+        for (const rings of polygons) {
+          if (rings && rings.length > 0 && pointInPolygon(latNum, lngNum, rings[0])) {
+            matchedDistrict = feature;
+            break;
+          }
+        }
+        if (matchedDistrict) break;
       }
     }
 
@@ -238,30 +248,44 @@ router.get('/school-district', authenticate, async (req: Request, res: Response)
     const neighbors: any[] = [];
     for (const feature of data.features) {
       if (feature === matchedDistrict) continue;
-      if (feature.geometry?.type !== 'Polygon') continue;
-      const rings = feature.geometry.coordinates;
-      if (!rings || rings.length === 0) continue;
+      const geomType = feature.geometry?.type;
+      let outerRing: [number, number][] | null = null;
+      if (geomType === 'Polygon') {
+        const rings = feature.geometry.coordinates;
+        if (!rings || rings.length === 0) continue;
+        outerRing = rings[0];
+      } else if (geomType === 'MultiPolygon') {
+        const polygons = feature.geometry.coordinates;
+        if (!polygons || polygons.length === 0) continue;
+        outerRing = polygons[0][0]; // 最初のポリゴンの外側リング
+      } else {
+        continue;
+      }
+      if (!outerRing) continue;
       // バウンディングボックスチェック
-      const ring = rings[0] as [number, number][];
-      const hasNearby = ring.some(([pLng, pLat]) =>
+      const hasNearby = outerRing.some(([pLng, pLat]: [number, number]) =>
         Math.abs(pLat - latNum) < DELTA && Math.abs(pLng - lngNum) < DELTA
       );
       if (hasNearby) {
         neighbors.push({
           name: feature.properties?.name || '',
           adminCode: feature.properties?.adminCode || '',
-          polygon: ring,
+          polygon: outerRing,
         });
       }
     }
 
     if (matchedDistrict) {
+      const geomType = matchedDistrict.geometry?.type;
+      const polygon = geomType === 'MultiPolygon'
+        ? matchedDistrict.geometry.coordinates[0][0]
+        : matchedDistrict.geometry.coordinates[0];
       return res.json({
         found: true,
         district: {
           name: matchedDistrict.properties?.name || '',
           adminCode: matchedDistrict.properties?.adminCode || '',
-          polygon: matchedDistrict.geometry.coordinates[0],
+          polygon,
         },
         neighbors: neighbors.slice(0, 10), // 最大10校区
       });
