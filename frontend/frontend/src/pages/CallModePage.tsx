@@ -794,7 +794,7 @@ const CallModePage = () => {
   // 同マンション売買事例ダイアログの状態
   const [mansionCasesOpen, setMansionCasesOpen] = useState(false);
   const [mansionCasesResult, setMansionCasesResult] = useState<string>('');
-  const [mansionCasesList, setMansionCasesList] = useState<Array<{title: string; price: string; address: string; floor: string; exclusiveArea: string; builtYear: string; floorPlan: string; url: string}>>([]);
+  const [mansionCasesList, setMansionCasesList] = useState<Array<{title: string; price: string; snippet: string; url: string; source: string}>>([]);
   const [mansionCasesSourceUrl, setMansionCasesSourceUrl] = useState<string>('');
   const [mansionCasesAreaLabel, setMansionCasesAreaLabel] = useState<string>('');
   const [mansionCasesNoData, setMansionCasesNoData] = useState(false);
@@ -8320,51 +8320,41 @@ HP：https://ifoo-oita.com/
                   <Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, flexWrap: 'wrap', gap: 1 }}>
                       <Typography variant="body2" sx={{ color: '#4a148c', fontWeight: 'bold', fontSize: '0.85rem' }}>
-                        {mansionCasesAreaLabel} / {mansionCasesList.length}件
+                        {mansionCasesList.length}件の掲載情報
                       </Typography>
                       {mansionCasesSourceUrl && (
                         <a href={mansionCasesSourceUrl} target="_blank" rel="noopener noreferrer"
-                          style={{ fontSize: '0.75rem', color: '#1976d2', display: 'flex', alignItems: 'center', gap: 2 }}>
-                          SUUMOで確認 →
+                          style={{ fontSize: '0.75rem', color: '#1976d2' }}>
+                          SUUMOで検索 →
                         </a>
                       )}
                     </Box>
-                    <Box sx={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
-                        <thead>
-                          <tr style={{ backgroundColor: '#f3e5f5' }}>
-                            <th style={{ padding: '4px 8px', textAlign: 'left', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '1px solid #ce93d8' }}>物件名</th>
-                            <th style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '1px solid #ce93d8' }}>価格</th>
-                            <th style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '1px solid #ce93d8' }}>階数</th>
-                            <th style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '1px solid #ce93d8' }}>面積</th>
-                            <th style={{ padding: '4px 8px', textAlign: 'left', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '1px solid #ce93d8' }}>間取り</th>
-                            <th style={{ padding: '4px 8px', textAlign: 'left', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '1px solid #ce93d8' }}>築年月</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {mansionCasesList.map((c, i) => (
-                            <tr key={i} style={{ backgroundColor: i % 2 === 0 ? 'white' : '#fafafa' }}>
-                              <td style={{ padding: '4px 8px', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {c.url ? (
-                                  <a href={c.url} target="_blank" rel="noopener noreferrer"
-                                    style={{ color: '#4a148c', fontSize: '0.75rem' }}>
-                                    {c.title !== '-' ? c.title : '詳細'}
-                                  </a>
-                                ) : (c.title !== '-' ? c.title : '-')}
-                              </td>
-                              <td style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 'bold', whiteSpace: 'nowrap', color: '#c62828' }}>{c.price}</td>
-                              <td style={{ padding: '4px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>{c.floor !== '-' ? c.floor : '-'}</td>
-                              <td style={{ padding: '4px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>{c.exclusiveArea !== '-' ? c.exclusiveArea : '-'}</td>
-                              <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>{c.floorPlan !== '-' ? c.floorPlan : '-'}</td>
-                              <td style={{ padding: '4px 8px', whiteSpace: 'nowrap', fontSize: '0.72rem', color: '#555' }}>{c.builtYear !== '-' ? c.builtYear : '-'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      {mansionCasesList.map((c, i) => (
+                        <Box key={i} sx={{ border: '1px solid #e1bee7', borderRadius: 1.5, p: 1.5, backgroundColor: i % 2 === 0 ? 'white' : '#fdf6ff' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1, mb: 0.5 }}>
+                            <a href={c.url} target="_blank" rel="noopener noreferrer"
+                              style={{ fontSize: '0.8rem', color: '#4a148c', fontWeight: 'bold', lineHeight: 1.4, flex: 1 }}>
+                              {c.title}
+                            </a>
+                            {c.price !== '-' && (
+                              <Typography sx={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#c62828', whiteSpace: 'nowrap' }}>
+                                {c.price}
+                              </Typography>
+                            )}
+                          </Box>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.5 }}>
+                            {c.snippet}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: '#888', fontSize: '0.68rem' }}>
+                            出典: {c.source}
+                          </Typography>
+                        </Box>
+                      ))}
                     </Box>
                     <Box sx={{ mt: 1.5 }}>
                       <Typography variant="caption" color="text.secondary">
-                        ※ SUUMOの掲載データです。取得タイミングにより最新情報と異なる場合があります。
+                        ※ Google検索による掲載情報です。最新情報は各サイトでご確認ください。
                       </Typography>
                     </Box>
                   </Box>

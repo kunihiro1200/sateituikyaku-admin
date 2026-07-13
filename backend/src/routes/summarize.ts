@@ -1037,7 +1037,7 @@ router.post('/summarize-transcript', authenticate, async (req: Request, res: Res
 });
 
 /**
- * 同マンションの現在募集中物件をOpenAI Web Search（Responses API）で検索
+ * 同マンションの現在募集中物件をGoogle Custom Search APIで検索
  * POST /api/summarize/mansion-sales-cases
  * Body: { mansionName: string, address?: string, buildingArea?: string, floorPlan?: string }
  * Response: { result: string, cases: Array, sourceUrl: string }
@@ -1050,68 +1050,81 @@ router.post('/mansion-sales-cases', authenticate, async (req: Request, res: Resp
       return res.status(400).json({ error: 'mansionName は必須です' });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: 'OpenAI API key not configured' });
+    const searchApiKey = process.env.GOOGLE_CUSTOM_SEARCH_API_KEY;
+    const searchCx = process.env.GOOGLE_CUSTOM_SEARCH_CX;
+
+    if (!searchApiKey || !searchCx) {
+      return res.status(500).json({ error: 'Google Custom Search APIが設定されていません' });
     }
 
-    const locationHint = address ? `（${address}）` : '';
-    const query = `${mansionName.trim()}${locationHint} 中古マンション 現在 売出中 価格 階数 面積 site:suumo.jp OR site:homes.co.jp OR site:athome.co.jp`;
+    const name = mansionName.trim();
+    const locationHint = address ? address.replace(/[0-9０-９\-－丁目番号室]/g, '').trim() : '';
+    // 検索クエリ：マンション名 + エリア + 売出中
+    const query = locationHint
+      ? `${name} ${locationHint} 中古マンション 売出中 価格`
+      : `${name} 中古マンション 売出中 価格`;
 
-    console.log(`[mansion-sales-cases] Responses API web search: ${mansionName}`);
+    console.log(`[mansion-sales-cases] Google Custom Search: "${query}"`);
 
-    // OpenAI Responses API with web_search_preview
-    const response = await axios.post(
-      'https://api.openai.com/v1/responses',
-      {
-        model: 'gpt-4o-mini-search-preview',
-        tools: [{ type: 'web_search_preview' }],
-        input: `「${mansionName.trim()}」${locationHint}の中古マンションで、現在SUUMOやLIFULL HOME'S・アットホームなどに掲載されている売出中の物件を調べてください。
-
-以下の形式で回答してください：
-・〇階 / △△㎡ / □□□万円
-・〇階 / △△㎡ / □□□万円
-（見つかった分を全て）
-
-情報が取得できた場合は「SUUMOより」「HOME'Sより」などの出典も添えてください。`,
+    const searchRes = await axios.get('https://www.googleapis.com/customsearch/v1', {
+      params: {
+        key: searchApiKey,
+        cx: searchCx,
+        q: query,
+        num: 10,
+        lr: 'lang_ja',
       },
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 40000,
-      }
-    );
+      timeout: 15000,
+    });
 
-    // Responses APIのレスポンス解析
-    let resultText = '';
-    const output = response.data?.output;
-    if (Array.isArray(output)) {
-      for (const o of output) {
-        if (o.type === 'message') {
-          for (const c of (o.content || [])) {
-            if (c.type === 'output_text') {
-              resultText += c.text;
-            }
-          }
-        }
-      }
+    const items: any[] = searchRes.data?.items || [];
+    console.log(`[mansion-sales-cases] 検索結果: ${items.length}件`);
+
+    if (items.length === 0) {
+      return res.json({
+        result: `「${name}」の現在募集中の物件情報が見つかりませんでした。`,
+        cases: [],
+        sourceUrl: `https://suumo.jp/ms/chuko/?fw2=${encodeURIComponent(name)}`,
+        noData: true,
+      });
     }
 
-    if (!resultText) {
-      return res.status(500).json({ error: 'AIからの応答が空でした' });
+    // 各検索結果のスニペットから物件情報を抽出
+    interface MansionCase {
+      title: string;
+      price: string;
+      snippet: string;
+      url: string;
+      source: string;
     }
 
-    console.log(`[mansion-sales-cases] 結果取得: ${resultText.substring(0, 100)}`);
+    const cases: MansionCase[] = items.map((item: any) => {
+      const snippet: string = item.snippet || '';
+      const title: string = item.title || '';
+      const url: string = item.link || '';
+
+      // 価格抽出（スニペット or タイトルから）
+      const priceMatch = (snippet + ' ' + title).match(/([0-9,０-９,]+)\s*万円/);
+      const price = priceMatch ? priceMatch[1].replace(/[０-９]/g, (c: string) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)) + '万円' : '-';
+
+      // ソースサイト判定
+      const source = url.includes('suumo') ? 'SUUMO' :
+                     url.includes('homes') ? "HOME'S" :
+                     url.includes('athome') ? 'athome' : '不動産サイト';
+
+      return { title, price, snippet: snippet.substring(0, 120), url, source };
+    });
+
+    // 価格情報があるものを優先
+    const withPrice = cases.filter(c => c.price !== '-');
+    const withoutPrice = cases.filter(c => c.price === '-');
+    const sortedCases = [...withPrice, ...withoutPrice];
 
     return res.json({
-      result: resultText,
-      cases: [],
-      sourceUrl: `https://suumo.jp/ms/chuko/?fw2=${encodeURIComponent(mansionName.trim())}`,
-      areaLabel: address || mansionName.trim(),
+      result: `「${name}」の現在募集中物件として${items.length}件の情報が見つかりました。`,
+      cases: sortedCases,
+      sourceUrl: `https://suumo.jp/ms/chuko/?fw2=${encodeURIComponent(name)}`,
       noData: false,
-      mode: 'websearch',
     });
 
   } catch (error: any) {
@@ -1119,32 +1132,12 @@ router.post('/mansion-sales-cases', authenticate, async (req: Request, res: Resp
     const errMsg = error?.response?.data?.error?.message || error.message;
     console.error(`[mansion-sales-cases] Error (HTTP ${status}):`, errMsg);
 
-    // Responses API非対応の場合はChat Completions + web_search fallback
-    if (status === 404 || status === 400) {
-      const { mansionName: mn, address: addr } = req.body;
-      const apiKey2 = process.env.OPENAI_API_KEY;
-      if (!apiKey2) return res.status(500).json({ error: 'APIキー未設定' });
-      try {
-        const fallback = await axios.post(
-          'https://api.openai.com/v1/chat/completions',
-          {
-            model: 'gpt-4o',
-            messages: [{ role: 'user', content: `「${mn}」${addr ? `（${addr}）` : ''}の中古マンションで現在売出中の物件を、階数・面積・価格の形式で回答してください。` }],
-            max_tokens: 400,
-            temperature: 0.3,
-          },
-          {
-            headers: { Authorization: `Bearer ${apiKey2}`, 'Content-Type': 'application/json' },
-            timeout: 30000,
-          }
-        );
-        const text = fallback.data?.choices?.[0]?.message?.content?.trim() || '';
-        return res.json({ result: text, cases: [], noData: !text, mode: 'gpt4o_fallback' });
-      } catch(e2: any) {
-        return res.status(500).json({ error: 'フォールバックも失敗: ' + (e2?.response?.data?.error?.message || e2.message) });
-      }
+    if (status === 429) {
+      return res.status(429).json({ error: 'Google検索APIの利用制限に達しました。しばらく待ってから再試行してください。' });
     }
-
+    if (status === 403) {
+      return res.status(500).json({ error: 'Google検索APIキーが無効か、APIが有効化されていません。' });
+    }
     return res.status(500).json({ error: '検索に失敗しました: ' + (errMsg || '不明なエラー') });
   }
 });
