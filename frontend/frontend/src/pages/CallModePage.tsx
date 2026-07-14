@@ -9399,7 +9399,7 @@ HP：https://ifoo-oita.com/
           <Button onClick={handleCancelSend} color="inherit">
             キャンセル
           </Button>
-          {confirmDialog.type === 'email' && seller?.phoneNumber && (
+          {confirmDialog.type === 'email' && seller?.phoneNumber && !isMobilePhone(seller.phoneNumber) && (
             <Tooltip title="クリックしてコピー">
               <Button
                 variant="outlined"
@@ -9416,14 +9416,16 @@ HP：https://ifoo-oita.com/
               </Button>
             </Tooltip>
           )}
-          <Button
-            onClick={handleFaxSend}
-            variant="outlined"
-            color="secondary"
-            startIcon={<PrintIcon />}
-          >
-            FAX送信
-          </Button>
+          {confirmDialog.type === 'email' && !isMobilePhone(seller?.phoneNumber) && (
+            <Button
+              onClick={handleFaxSend}
+              variant="outlined"
+              color="secondary"
+              startIcon={<PrintIcon />}
+            >
+              FAX送信
+            </Button>
+          )}
           <Button 
             onClick={handleConfirmSend} 
             variant="contained" 
