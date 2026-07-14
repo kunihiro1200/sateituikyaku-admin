@@ -53,7 +53,7 @@ const ContentEditable = styled('div')(({ theme }) => ({
 }));
 
 /**
- * テキスト内の生URLを <a> タグに変換する。
+ * テキスト内の生URLを <a> タグに変換する（表示用）。
  * すでに <a> タグに包まれているURLは対象外。
  */
 function linkifyHtml(html: string): string {
@@ -72,6 +72,18 @@ function linkifyHtml(html: string): string {
 
   // プレースホルダを元に戻す
   return linked.replace(/\x00ANCHOR(\d+)\x00/g, (_, i) => anchorPlaceholders[Number(i)]);
+}
+
+/**
+ * linkifyHtml で付与した <a> タグを元のURLテキストに戻す（保存用）。
+ * 手動で入力された <a> タグ等は保持する。
+ */
+function unlinkifyHtml(html: string): string {
+  // linkifyHtml が生成した <a> タグのみ除去（href と innerText が同じもの）
+  return html.replace(
+    /<a\s+href="(https?:\/\/[^"]+)"\s+target="_blank"\s+rel="noopener noreferrer">(https?:\/\/[^<]+)<\/a>/gi,
+    (_, href) => href
+  );
 }
 
 // ノードのテキストオフセットを取得するヘルパー
@@ -118,8 +130,12 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
 
     // 初期値の設定（フォーカス中は上書きしない）
     useEffect(() => {
-      if (editorRef.current && !isFocusedRef.current && editorRef.current.innerHTML !== value) {
-        editorRef.current.innerHTML = linkifyHtml(value);
+      if (editorRef.current && !isFocusedRef.current) {
+        // DOMの現在値をunlinkifyしてvalueと比較（linkify付与分の<a>タグを除いた状態で比較）
+        const currentRaw = unlinkifyHtml(editorRef.current.innerHTML);
+        if (currentRaw !== value) {
+          editorRef.current.innerHTML = linkifyHtml(value);
+        }
       }
     }, [value]);
 
@@ -140,7 +156,8 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
 
     const handleInput = () => {
       if (editorRef.current) {
-        onChange(editorRef.current.innerHTML);
+        // <a> タグ（linkify付与分）を除去してからonChangeに渡す（保存データはURLテキストのまま）
+        onChange(unlinkifyHtml(editorRef.current.innerHTML));
       }
     };
 
@@ -305,7 +322,7 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
                 range.startOffset
               );
 
-              onChange(editor.innerHTML);
+              onChange(unlinkifyHtml(editor.innerHTML));
               editor.focus();
               return;
             } catch (e) {
