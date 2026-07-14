@@ -1592,6 +1592,14 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       } else {
         setEditedData(prev => ({ ...prev, [field]: value }));
       }
+    } else if (field === 'site_registration_deadline') {
+      // サイト登録締め日が変更されたとき、公開予定日が空なら自動セット
+      const currentPublishDate = editedData['publish_scheduled_date'] ?? data?.publish_scheduled_date;
+      if (value && !currentPublishDate) {
+        setEditedData(prev => ({ ...prev, [field]: value, publish_scheduled_date: value }));
+      } else {
+        setEditedData(prev => ({ ...prev, [field]: value }));
+      }
     } else if (field === 'sales_price') {
       // 売買価格変更時は通常仲介手数料（売）・（買）を自動計算
       const fee = calcStandardBrokerageFeeFromPrice(value ? Number(value) : null);
