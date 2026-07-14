@@ -9395,10 +9395,27 @@ HP：https://ifoo-oita.com/
             </Box>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexWrap: 'wrap', gap: 0.5 }}>
           <Button onClick={handleCancelSend} color="inherit">
             キャンセル
           </Button>
+          {confirmDialog.type === 'email' && seller?.phoneNumber && (
+            <Tooltip title="クリックしてコピー">
+              <Button
+                variant="outlined"
+                color="inherit"
+                startIcon={<ContentCopyIcon />}
+                onClick={() => {
+                  navigator.clipboard.writeText(seller.phoneNumber || '');
+                  setSnackbarMessage(`電話番号をコピーしました: ${seller.phoneNumber}`);
+                  setSnackbarOpen(true);
+                }}
+                sx={{ fontFamily: 'monospace', letterSpacing: '0.05em' }}
+              >
+                {seller.phoneNumber}
+              </Button>
+            </Tooltip>
+          )}
           <Button
             onClick={handleFaxSend}
             variant="outlined"
