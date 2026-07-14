@@ -2297,36 +2297,51 @@ export class BuyerService {
 
   /**
    * ステータスカテゴリ + 全買主データを一度に返す（フロントエンドキャッシュ用）
-   * buyer_sidebar_counts テーブルからカテゴリを取得し、全買主データも返す
+   *
+   * ⚡ パフォーマンス改善（2026-07）:
+   * 旧実装: getSidebarCounts() と fetchAllBuyersWithStatus() を Promise.all で並列呼び出し
+   *   → キャッシュミス時は両方が独立して buyers + property_listings を全件取得（二重フェッチ）
+   *
+   * 新実装: fetchAllBuyersWithStatus() を先に呼んでキャッシュに載せる
+   *   → その後 getSidebarCounts() を呼ぶとキャッシュヒットし、DB アクセスが発生しない
+   *   → DB アクセスは 1 回分に削減される
    */
   async getStatusCategoriesWithBuyers(): Promise<{
     categories: any;
     buyers: any[];
     normalStaffInitials: string[];
   }> {
-    // サイドバーカウント（buyer_sidebar_countsテーブルから）と全買主データを並列取得
-    const [sidebarData, allBuyers] = await Promise.all([
+    const startTime = Date.now();
+
+    // Step 1: 全買主データを取得してキャッシュに載せる（最も重い処理）
+    const allBuyers = await this.fetchAllBuyersWithStatus();
+    console.log(`[INFO] getStatusCategoriesWithBuyers - fetchAllBuyersWithStatus completed in ${Date.now() - startTime}ms`);
+
+    // Step 2: getSidebarCounts はこの時点でキャッシュヒットするため、DB アクセスなしで即返る
+    const [sidebarData, normalStaffInitials] = await Promise.all([
       this.getSidebarCounts(),
-      this.fetchAllBuyersWithStatus(),
+      this.fetchNormalStaffInitials(),
     ]);
+    console.log(`[INFO] getStatusCategoriesWithBuyers - total completed in ${Date.now() - startTime}ms`);
 
-    console.log('🔍 [DEBUG] getStatusCategoriesWithBuyers - sidebarData:', JSON.stringify(sidebarData, null, 2));
-    console.log('🔍 [DEBUG] getStatusCategoriesWithBuyers - sidebarData.categoryCounts:', sidebarData.categoryCounts);
-    console.log('🔍 [DEBUG] getStatusCategoriesWithBuyers - sidebarData.normalStaffInitials:', sidebarData.normalStaffInitials);
-
-    // ✅ 修正: categoryCounts形式で返す（categories配列に変換しない）
     return {
-      categories: sidebarData.categoryCounts, // categoryCounts形式のまま返す
+      categories: sidebarData.categoryCounts,
       buyers: allBuyers,
-      normalStaffInitials: sidebarData.normalStaffInitials
+      normalStaffInitials: sidebarData.normalStaffInitials || normalStaffInitials,
     };
   }
 
   /**
    * サイドバー用のカテゴリカウントを取得
    * 【根本解決】buyer_sidebar_countsテーブルへの依存を廃止。
-   * 常にBuyerStatusCalculatorと同じロジック（getSidebarCountsFallback）で計算する。
-   * インメモリキャッシュ（5分TTL）で速度問題も解決。
+   * 常に fetchAllBuyersWithStatus() + _buildSidebarCountsFromCache() で計算する。
+   *
+   * ⚡ パフォーマンス改善（2026-07）:
+   * - キャッシュミス時は fetchAllBuyersWithStatus() を呼び、_moduleLevelStatusCache に載せる。
+   *   これにより後続の getStatusCategoriesWithBuyers() がキャッシュヒットし、DB 二重アクセスを防ぐ。
+   * - getStatusCategoriesWithBuyers() が先に呼ばれた場合も同様にキャッシュヒットする。
+   * - getSidebarCountsFallback() / fetchBuyersForSidebarCounts() は
+   *   updateSidebarCountsTable() 専用として残す（cron ジョブ用）。
    */
   async getSidebarCounts(): Promise<{
     categoryCounts: any;
@@ -2336,16 +2351,20 @@ export class BuyerService {
     const CACHE_TTL = 5 * 60 * 1000; // 5分
 
     // インメモリキャッシュが有効なら即返す
+    // _moduleLevelStatusCache は fetchAllBuyersWithStatus() が設定するキャッシュと共有しているため、
+    // getStatusCategoriesWithBuyers() が先に呼ばれた場合はここでキャッシュヒットする
     if (_moduleLevelStatusCache && (Date.now() - _moduleLevelStatusCache.computedAt) < CACHE_TTL) {
-      console.log('🔍 [BuyerService] getSidebarCounts - cache hit');
-      // キャッシュからカウントを再計算して返す
+      console.log('🔍 [BuyerService] getSidebarCounts - cache hit (skipping DB access)');
       return this._buildSidebarCountsFromCache(_moduleLevelStatusCache.buyers);
     }
 
-    console.log('🔍 [BuyerService] getSidebarCounts called - using BuyerStatusCalculator (always accurate)');
+    console.log('🔍 [BuyerService] getSidebarCounts - cache miss, fetching all buyers with status');
 
     try {
-      const result = await this.getSidebarCountsFallback();
+      // キャッシュミス時は fetchAllBuyersWithStatus() を使って取得・キャッシュに載せる。
+      // これにより後続の getStatusCategoriesWithBuyers() 呼び出しでもキャッシュが効く。
+      const allBuyers = await this.fetchAllBuyersWithStatus();
+      const result = this._buildSidebarCountsFromCache(allBuyers);
       const duration = Date.now() - startTime;
       console.log(`[INFO] getSidebarCounts completed in ${duration}ms`);
       if (duration > 5000) {
