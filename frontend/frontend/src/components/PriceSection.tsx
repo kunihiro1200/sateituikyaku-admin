@@ -7,9 +7,9 @@ import ImageSelectorModal from './ImageSelectorModal';
 import { PropertyChatSendData } from '../types/chat';
 import { supabase } from '../config/supabase';
 
-// 月々ローン支払い計算（元利均等返済、金利年3%/12、420回）
+// 月々ローン支払い計算（元利均等返済、金利年1.3%/12、420回）
 function calcMonthlyPayment(price: number): number {
-  const r = 0.0007916666667;
+  const r = 0.00108333333; // 月利 = 1.3% / 12
   const n = 420;
   return Math.round(price * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1));
 }
@@ -324,7 +324,7 @@ export default function PriceSection({
                 </Tooltip>
               </Box>
               <Typography variant="caption" color="text.secondary">
-                ※金利3%・35年・元利均等返済
+                ※金利1.3%・35年・元利均等返済
               </Typography>
             </Box>
           )}
