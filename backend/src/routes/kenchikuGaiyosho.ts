@@ -81,6 +81,69 @@ const GAIYOSHO_ITEMS = [
 ];
 
 /**
+ * GET /api/kenchiku-gaiyosho/test-sheet-access
+ * スプレッドシートへのアクセスをテストするデバッグ用エンドポイント
+ */
+router.get('/test-sheet-access', async (req: Request, res: Response) => {
+  try {
+    const spreadsheetUrl = req.query.spreadsheetUrl as string;
+    if (!spreadsheetUrl) {
+      return res.status(400).json({ error: 'spreadsheetUrl クエリパラメータが必要です' });
+    }
+
+    const spreadsheetId = extractSpreadsheetId(spreadsheetUrl);
+    if (!spreadsheetId) {
+      return res.status(400).json({ error: 'スプレッドシートIDの抽出に失敗しました', spreadsheetUrl });
+    }
+
+    const sheetsClient = new GoogleSheetsClient({
+      spreadsheetId,
+      sheetName: '重説',
+      serviceAccountKeyPath:
+        process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+    });
+
+    await sheetsClient.authenticate();
+
+    // メタデータ取得テスト
+    const metadata = await sheetsClient.getSpreadsheetMetadata();
+    const sheetNames = metadata.sheets?.map(s => s.properties?.title || '') || [];
+
+    // 読み取りテスト
+    let readResult: string[][] = [];
+    let readError: string | null = null;
+    try {
+      readResult = await sheetsClient.readRawRange('U39');
+    } catch (e: any) {
+      readError = e?.message || String(e);
+    }
+
+    // 書き込みテスト（値を読んで同じ値を書き戻す）
+    let writeError: string | null = null;
+    try {
+      const currentValue = readResult?.[0]?.[0] || '';
+      await sheetsClient.writeRawCell('U39', currentValue || 'TEST');
+      // テスト値を書いた場合は元に戻す
+      if (!currentValue) {
+        await sheetsClient.writeRawCell('U39', '');
+      }
+    } catch (e: any) {
+      writeError = e?.message || String(e);
+    }
+
+    return res.json({
+      success: true,
+      spreadsheetId,
+      sheetNames,
+      readTest: { cell: 'U39', value: readResult?.[0]?.[0] ?? null, error: readError },
+      writeTest: { error: writeError },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ error: error?.message || 'テスト失敗', stack: error?.stack?.substring(0, 500) });
+  }
+});
+
+/**
  * POST /api/kenchiku-gaiyosho/analyze
  * 建築概要書等のPDF/画像を複数枚まとめて解析し、各項目の内容を抽出する
  */
@@ -291,8 +354,9 @@ router.post('/write', async (req: Request, res: Response) => {
     if (!spreadsheetId) {
       return res.status(400).json({ error: 'スプレッドシートIDの抽出に失敗しました' });
     }
+    console.log(`[kenchiku-gaiyosho] 書き込み開始: spreadsheetUrl=${spreadsheetUrl}, spreadsheetId=${spreadsheetId}`);
 
-    const sheetsClient = new GoogleSheetsClient({
+    let sheetsClient = new GoogleSheetsClient({
       spreadsheetId,
       sheetName: '重説',
       serviceAccountKeyPath:
@@ -300,6 +364,42 @@ router.post('/write', async (req: Request, res: Response) => {
     });
 
     await sheetsClient.authenticate();
+
+    // シート一覧を取得して「重説」シートの存在を確認
+    let actualSheetName = '重説';
+    try {
+      const metadata = await sheetsClient.getSpreadsheetMetadata();
+      const sheetNames = metadata.sheets?.map(s => s.properties?.title || '') || [];
+      console.log(`[kenchiku-gaiyosho] スプレッドシート内シート一覧: [${sheetNames.join(', ')}] (spreadsheetId: ${spreadsheetId})`);
+      
+      const exactMatch = sheetNames.find(name => name === '重説');
+      if (!exactMatch) {
+        // 前後スペースを無視した部分一致で探す
+        const fuzzyMatch = sheetNames.find(name => name.trim() === '重説' || name.includes('重説'));
+        if (fuzzyMatch) {
+          console.log(`[kenchiku-gaiyosho] 「重説」完全一致なし。類似シート「${fuzzyMatch}」を使用します`);
+          actualSheetName = fuzzyMatch;
+        } else {
+          return res.status(400).json({
+            error: `スプレッドシートに「重説」シートが見つかりません。存在するシート: [${sheetNames.join(', ')}]`,
+          });
+        }
+      }
+    } catch (metaError: any) {
+      console.error(`[kenchiku-gaiyosho] メタデータ取得エラー: ${metaError?.message} (spreadsheetId: ${spreadsheetId})`);
+      // メタデータ取得に失敗してもそのまま書き込み試行を続ける
+    }
+
+    // actualSheetNameが「重説」と異なる場合、新しいクライアントを作成
+    if (actualSheetName !== '重説') {
+      sheetsClient = new GoogleSheetsClient({
+        spreadsheetId,
+        sheetName: actualSheetName,
+        serviceAccountKeyPath:
+          process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+      });
+      await sheetsClient.authenticate();
+    }
 
     // 常に最新のセルマッピングを使う（キャッシュずれ防止）
     const itemMap = new Map(GAIYOSHO_ITEMS.map((i) => [i.key, i]));
@@ -395,7 +495,14 @@ router.post('/write', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('[kenchiku-gaiyosho] 書き込みエラー:', error?.message || error);
-    return res.status(500).json({ error: error?.message || '書き込み中にエラーが発生しました' });
+    const msg = error?.message || '書き込み中にエラーが発生しました';
+    // Google Sheets APIのレンジエラーを親切なメッセージに変換
+    if (msg.includes('Unable to parse range')) {
+      return res.status(400).json({
+        error: `シートへのアクセスに失敗しました。以下を確認してください：\n① スプレッドシートがサービスアカウントに共有されているか\n② 「重説」シートが存在するか（シート名にスペースがないか）\n\n（詳細: ${msg}）`,
+      });
+    }
+    return res.status(500).json({ error: msg });
   }
 });
 
