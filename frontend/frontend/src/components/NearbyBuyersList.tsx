@@ -249,6 +249,8 @@ function buildEmailTemplate(params: {
   const buildingArea = params.buildingArea != null ? String(params.buildingArea) : '';
   const isMansion = params.propertyType === 'マ' || params.propertyType === 'マンション';
 
+  const companyName = params.isFukuoka ? '株式会社くじら不動産' : '株式会社いふう';
+
   const signature = params.isFukuoka
     ? `×××××××××××××××
 福岡市中央区舞鶴3－1－10
@@ -264,7 +266,7 @@ TEL:097-533-2022
   if (isMansion) {
     return `${name}様
 
-お世話になります。株式会社くじら不動産です。
+お世話になります。${companyName}です。
 
 下記を近々売りに出すことになりました！
 
@@ -280,7 +282,7 @@ ${signature}`;
 
   return `${name}様
 
-お世話になります。株式会社くじら不動産です。
+お世話になります。${companyName}です。
 
 下記を近々売りに出すことになりました！
 
