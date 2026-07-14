@@ -31,7 +31,7 @@ import {
   AccordionDetails,
   Badge,
 } from '@mui/material';
-import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Sms as SmsIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
+import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Sms as SmsIcon, OpenInNew as OpenInNewIcon, Print as PrintIcon } from '@mui/icons-material';
 import api, { emailImageApi } from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { Seller, PropertyInfo, Activity, SellerStatus, ConfidenceLevel, DuplicateMatch, SelectedImages, DriveImage } from '../types';
@@ -4418,6 +4418,81 @@ HP：https://ifoo-oita.com/
     // キャンセル時も選択画像をリセット（次回送信時に前回の添付が残らないようにする）
     setSelectedImages([]);
     setWrongNumberButtonDisabled(false);
+  };
+
+  // FAX送信ボタンのハンドラー
+  const handleFaxSend = () => {
+    const subject = editableEmailSubject || confirmDialog.template?.subject || '';
+    const bodyHtml = editableEmailBody || confirmDialog.template?.content || '';
+
+    // HTML本文をプレーンテキストに変換（FAX印刷用）
+    const bodyText = bodyHtml
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<p[^>]*>/gi, '')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .trim();
+
+    const printHtml = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4 portrait; margin: 20mm 15mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+    font-size: 11pt;
+    color: #000;
+    background: #fff;
+    margin: 0;
+    padding: 0;
+  }
+  .header {
+    border-bottom: 2px solid #000;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+  }
+  .label {
+    font-size: 9pt;
+    color: #555;
+    margin-bottom: 2px;
+  }
+  .subject {
+    font-size: 13pt;
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
+  .body {
+    white-space: pre-wrap;
+    line-height: 1.8;
+    font-size: 11pt;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="label">件名</div>
+    <div class="subject">${subject.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+  </div>
+  <div class="body">${bodyText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+</body>
+</html>`;
+
+    const printWindow = window.open('', '_blank', 'width=800,height=900');
+    if (printWindow) {
+      printWindow.document.write(printHtml);
+      printWindow.document.close();
+      printWindow.onload = () => {
+        printWindow.focus();
+        printWindow.print();
+      };
+    }
   };
 
   // 画像選択ボタンのハンドラー（新しい実装）
@@ -9323,6 +9398,14 @@ HP：https://ifoo-oita.com/
         <DialogActions>
           <Button onClick={handleCancelSend} color="inherit">
             キャンセル
+          </Button>
+          <Button
+            onClick={handleFaxSend}
+            variant="outlined"
+            color="secondary"
+            startIcon={<PrintIcon />}
+          >
+            FAX送信
           </Button>
           <Button 
             onClick={handleConfirmSend} 
