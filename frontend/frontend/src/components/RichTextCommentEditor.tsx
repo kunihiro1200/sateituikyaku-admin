@@ -49,7 +49,30 @@ const ContentEditable = styled('div')(({ theme }) => ({
   },
   '& b, & strong': { fontWeight: 'bold' },
   '& font[color="red"]': { color: 'red' },
+  '& a': { color: theme.palette.primary.main, textDecoration: 'underline', cursor: 'pointer' },
 }));
+
+/**
+ * テキスト内の生URLを <a> タグに変換する。
+ * すでに <a> タグに包まれているURLは対象外。
+ */
+function linkifyHtml(html: string): string {
+  // <a> タグの中身は変換しない（lookbehind が使えないため、タグを一時プレースホルダに）
+  const anchorPlaceholders: string[] = [];
+  const withoutAnchors = html.replace(/<a[\s\S]*?<\/a>/gi, (match) => {
+    anchorPlaceholders.push(match);
+    return `\x00ANCHOR${anchorPlaceholders.length - 1}\x00`;
+  });
+
+  // URLパターン（http/https）
+  const urlRegex = /(https?:\/\/[^\s<>"'）】\]]+)/g;
+  const linked = withoutAnchors.replace(urlRegex, (url) => {
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+  });
+
+  // プレースホルダを元に戻す
+  return linked.replace(/\x00ANCHOR(\d+)\x00/g, (_, i) => anchorPlaceholders[Number(i)]);
+}
 
 // ノードのテキストオフセットを取得するヘルパー
 function getTextOffset(root: Node, targetNode: Node, targetOffset: number): number {
@@ -96,7 +119,7 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
     // 初期値の設定（フォーカス中は上書きしない）
     useEffect(() => {
       if (editorRef.current && !isFocusedRef.current && editorRef.current.innerHTML !== value) {
-        editorRef.current.innerHTML = value;
+        editorRef.current.innerHTML = linkifyHtml(value);
       }
     }, [value]);
 
@@ -144,6 +167,16 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
     const handleContainerClick = () => {
       if (editorRef.current && !disabled) {
         editorRef.current.focus();
+      }
+    };
+
+    // contentEditable 内の <a> タグクリックを処理（新しいタブで開く）
+    const handleEditorClick = (e: React.MouseEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLElement;
+      const anchor = target.closest('a');
+      if (anchor && anchor.href) {
+        e.preventDefault();
+        window.open(anchor.href, '_blank', 'noopener,noreferrer');
       }
     };
 
@@ -329,6 +362,7 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
             onFocus={handleFocus}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
+            onClick={handleEditorClick}
             data-placeholder={placeholder}
             suppressContentEditableWarning
           />
