@@ -791,16 +791,6 @@ const CallModePage = () => {
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
   const [mansionModalOpen, setMansionModalOpen] = useState(false);
 
-  // 同マンション売買事例ダイアログの状態
-  const [mansionCasesOpen, setMansionCasesOpen] = useState(false);
-  const [mansionCasesResult, setMansionCasesResult] = useState<string>('');
-  const [mansionCasesList, setMansionCasesList] = useState<Array<{title: string; price: string; snippet: string; url: string; source: string}>>([]);
-  const [mansionCasesSourceUrl, setMansionCasesSourceUrl] = useState<string>('');
-  const [mansionCasesAreaLabel, setMansionCasesAreaLabel] = useState<string>('');
-  const [mansionCasesNoData, setMansionCasesNoData] = useState(false);
-  const [mansionCasesLoading, setMansionCasesLoading] = useState(false);
-  const [mansionCasesError, setMansionCasesError] = useState<string>('');
-
   // 不通確認ダイアログの状態
   const [unreachableConfirmOpen, setUnreachableConfirmOpen] = useState(false);
 
@@ -8043,65 +8033,6 @@ HP：https://ifoo-oita.com/
                       マンション
                     </Button>
                   )}
-                  {/* 同マンション売買事例ボタン（マンション種別の場合に常に表示） */}
-                  {isApartment && (
-                    <Button
-                      variant="contained"
-                      size="small"
-                      startIcon={<span style={{ fontSize: '1.1em' }}>🔍</span>}
-                      onClick={async () => {
-                        const targetName = detectedMansionBrand 
-                          || (propInfo.address || seller?.propertyAddress || '').trim();
-                        if (!targetName) {
-                          alert('マンション名または住所が取得できませんでした');
-                          return;
-                        }
-                        setMansionCasesOpen(true);
-                        setMansionCasesResult('');
-                        setMansionCasesList([]);
-                        setMansionCasesSourceUrl('');
-                        setMansionCasesAreaLabel('');
-                        setMansionCasesNoData(false);
-                        setMansionCasesError('');
-                        setMansionCasesLoading(true);
-                        try {
-                          const res = await api.post('/summarize/mansion-sales-cases', {
-                            mansionName: targetName,
-                            address: propInfo.address || seller?.propertyAddress || '',
-                            buildingArea: propInfo.buildingArea?.toString() || '',
-                            floorPlan: propInfo.floorPlan || '',
-                          });
-                          setMansionCasesResult(res.data?.result || '');
-                          setMansionCasesList(res.data?.cases || []);
-                          setMansionCasesSourceUrl(res.data?.sourceUrl || '');
-                          setMansionCasesAreaLabel(res.data?.areaLabel || '');
-                          setMansionCasesNoData(res.data?.noData || false);
-                        } catch (err: any) {
-                          setMansionCasesError(
-                            err?.response?.data?.error || '売買事例の取得に失敗しました'
-                          );
-                        } finally {
-                          setMansionCasesLoading(false);
-                        }
-                      }}
-                      sx={{
-                        background: 'linear-gradient(135deg, #4a148c 0%, #7b1fa2 100%)',
-                        color: 'white',
-                        fontWeight: 700,
-                        fontSize: '0.82rem',
-                        px: 2,
-                        py: 0.7,
-                        borderRadius: 2,
-                        boxShadow: '0 2px 8px rgba(74,20,140,0.3)',
-                        '&:hover': {
-                          background: 'linear-gradient(135deg, #6a1b9a 0%, #8e24aa 100%)',
-                          boxShadow: '0 4px 12px rgba(74,20,140,0.4)',
-                        },
-                      }}
-                    >
-                      現在募集中の同マンション
-                    </Button>
-                  )}
                   {showPortalMerits && (
                     <Button
                       variant="contained"
@@ -8239,134 +8170,6 @@ HP：https://ifoo-oita.com/
               address={propInfo.address || seller?.propertyAddress || ''}
             />
 
-            {/* 同マンション売買事例ダイアログ */}
-            <Dialog
-              open={mansionCasesOpen}
-              onClose={() => setMansionCasesOpen(false)}
-              maxWidth="sm"
-              fullWidth
-              sx={{ '& .MuiDialog-paper': { mx: { xs: 1, sm: 2 } } }}
-            >
-              <DialogTitle
-                sx={{
-                  background: 'linear-gradient(135deg, #4a148c 0%, #7b1fa2 100%)',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  py: 1.5,
-                  px: 2,
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <span style={{ fontSize: '1.3rem' }}>🔍</span>
-                  <Typography variant="h6" component="span" sx={{ fontWeight: 'bold', color: 'white' }}>
-                    現在募集中の同マンション
-                  </Typography>
-                </Box>
-                <IconButton
-                  aria-label="閉じる"
-                  onClick={() => setMansionCasesOpen(false)}
-                  size="small"
-                  sx={{ color: 'white' }}
-                >
-                  <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>✕</span>
-                </IconButton>
-              </DialogTitle>
-              <Divider />
-              <DialogContent sx={{ pt: 2, pb: 1 }}>
-                {mansionCasesLoading && (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, gap: 2 }}>
-                    <CircularProgress size={40} sx={{ color: '#7b1fa2' }} />
-                    <Typography variant="body2" color="text.secondary">
-                      WebSearchで募集中の物件を検索中...
-                    </Typography>
-                  </Box>
-                )}
-                {!mansionCasesLoading && mansionCasesError && (
-                  <Alert severity="error" sx={{ mt: 1 }}>
-                    {mansionCasesError}
-                  </Alert>
-                )}
-                {!mansionCasesLoading && !mansionCasesError && mansionCasesNoData && (
-                  <Alert severity="info" sx={{ mt: 1 }}>
-                    {mansionCasesResult}
-                  </Alert>
-                )}
-                {!mansionCasesLoading && !mansionCasesError && !mansionCasesNoData && mansionCasesList.length === 0 && mansionCasesResult && (
-                  <Box>
-                    <Box sx={{ backgroundColor: '#f3e5f5', borderRadius: 2, p: 2, border: '1px solid #ce93d8' }}>
-                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.9, color: '#1a1a1a', fontSize: '0.88rem' }}>
-                        {mansionCasesResult}
-                      </Typography>
-                    </Box>
-                    {mansionCasesSourceUrl && (
-                      <Box sx={{ mt: 1 }}>
-                        <a href={mansionCasesSourceUrl} target="_blank" rel="noopener noreferrer"
-                          style={{ fontSize: '0.75rem', color: '#1976d2' }}>
-                          SUUMOで検索 →
-                        </a>
-                      </Box>
-                    )}
-                    <Box sx={{ mt: 1 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        ※ WebSearch（AI検索）による参考情報です。
-                      </Typography>
-                    </Box>
-                  </Box>
-                )}
-                {!mansionCasesLoading && !mansionCasesError && !mansionCasesNoData && mansionCasesList.length > 0 && (
-                  <Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, flexWrap: 'wrap', gap: 1 }}>
-                      <Typography variant="body2" sx={{ color: '#4a148c', fontWeight: 'bold', fontSize: '0.85rem' }}>
-                        {mansionCasesList.length}件の掲載情報
-                      </Typography>
-                      {mansionCasesSourceUrl && (
-                        <a href={mansionCasesSourceUrl} target="_blank" rel="noopener noreferrer"
-                          style={{ fontSize: '0.75rem', color: '#1976d2' }}>
-                          SUUMOで検索 →
-                        </a>
-                      )}
-                    </Box>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      {mansionCasesList.map((c, i) => (
-                        <Box key={i} sx={{ border: '1px solid #e1bee7', borderRadius: 1.5, p: 1.5, backgroundColor: i % 2 === 0 ? 'white' : '#fdf6ff' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1, mb: 0.5 }}>
-                            <a href={c.url} target="_blank" rel="noopener noreferrer"
-                              style={{ fontSize: '0.8rem', color: '#4a148c', fontWeight: 'bold', lineHeight: 1.4, flex: 1 }}>
-                              {c.title}
-                            </a>
-                            {c.price !== '-' && (
-                              <Typography sx={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#c62828', whiteSpace: 'nowrap' }}>
-                                {c.price}
-                              </Typography>
-                            )}
-                          </Box>
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.5 }}>
-                            {c.snippet}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: '#888', fontSize: '0.68rem' }}>
-                            出典: {c.source}
-                          </Typography>
-                        </Box>
-                      ))}
-                    </Box>
-                    <Box sx={{ mt: 1.5 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        ※ Google検索による掲載情報です。最新情報は各サイトでご確認ください。
-                      </Typography>
-                    </Box>
-                  </Box>
-                )}
-              </DialogContent>
-              <DialogActions sx={{ px: 2, pb: 2 }}>
-                <Button onClick={() => setMansionCasesOpen(false)} variant="outlined" size="small">
-                  閉じる
-                </Button>
-              </DialogActions>
-            </Dialog>
-
             {/* コメント入力・編集エリア（直接書き込み可能） */}
             <Box sx={{ mb: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
@@ -8385,8 +8188,8 @@ HP：https://ifoo-oita.com/
                   </a>
                 )}
               </Box>
-              {/* 査定書郵送アラート：売主番号にFIが含まれ、状況（売主）に「空」が含まれ、郵送が「済」でない場合に表示 */}
-              {(seller.sellerNumber || '').toUpperCase().includes('FI') &&
+              {/* 査定書郵送アラート：売主番号にFIまたはAAが含まれ、状況（売主）に「空」が含まれ、郵送が「済」でない場合に表示 */}
+              {((seller.sellerNumber || '').toUpperCase().includes('FI') || (seller.sellerNumber || '').toUpperCase().includes('AA')) &&
                 (propInfo.currentStatus || seller.currentStatus || '').includes('空') &&
                 mailingStatus !== '済' && (
                 <Box
