@@ -257,6 +257,8 @@ router.post('/extract-and-register-property', async (req: Request, res: Response
       company_name: ownCompany.company_name,
       // 公開日に今日の日付をセット
       distribution_date: today,
+      // 担当者（登録したユーザーのイニシャル）
+      sales_assignee: (merged as any).sales_assignee || null,
     };
 
     // 任意フィールドを追加

@@ -6,6 +6,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { fixImageOrientationToBase64 } from '../utils/imageOrientationFix';
 import { pdfToImageBase64 } from '../utils/pdfToImages';
+import { useAuthStore } from '../store/authStore';
 import {
   Dialog,
   DialogTitle,
@@ -84,6 +85,7 @@ interface Props {
 }
 
 export default function TashaPropertyImageRegisterModal({ open, onClose, onRegistered }: Props) {
+  const { employee } = useAuthStore();
   const [step, setStep] = useState<'upload' | 'process' | 'done'>('upload');
   const [items, setItems] = useState<ImageItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -282,7 +284,7 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
       const res = await api.post('/api/ai/extract-and-register-property', {
         imageBase64: finalBase64,
         mediaType,
-        overrides: item.editedValues,
+        overrides: { ...item.editedValues, sales_assignee: employee?.initials || null },
       });
 
       const registeredNumber = res.data.propertyNumber;
