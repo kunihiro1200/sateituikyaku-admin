@@ -4,6 +4,7 @@
  * 複数の物件概要書画像をドロップ/選択 → 1枚ずつClaude AIが読み取り → 確認してproperty_listingsに登録
  */
 import { useState, useCallback, useRef } from 'react';
+import { fixImageOrientationToBase64 } from '../utils/imageOrientationFix';
 import {
   Dialog,
   DialogTitle,
@@ -154,10 +155,11 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
 
     try {
       const file = itemList[index].file;
-      const base64 = await toBase64(file);
+      // EXIF回転補正しながらbase64化
+      const { base64, mediaType: fixedMediaType } = await fixImageOrientationToBase64(file);
 
       // MIMEタイプが空の場合は拡張子から推定
-      let mediaType = file.type;
+      let mediaType = fixedMediaType || file.type;
       if (!mediaType || mediaType === 'application/octet-stream') {
         const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
         const extMap: Record<string, string> = {
@@ -218,9 +220,9 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
     setIsRegistering(true);
 
     try {
-      const base64 = await toBase64(item.file);
+      const base64Res = await fixImageOrientationToBase64(item.file);
       // MIMEタイプが空の場合は拡張子から推定
-      let mediaType = item.file.type;
+      let mediaType = base64Res.mediaType || item.file.type;
       if (!mediaType || mediaType === 'application/octet-stream') {
         const ext = item.file.name.split('.').pop()?.toLowerCase() ?? '';
         const extMap: Record<string, string> = {
@@ -233,7 +235,7 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
         mediaType = extMap[ext] ?? 'image/jpeg';
       }
       const res = await api.post('/api/ai/extract-and-register-property', {
-        imageBase64: base64,
+        imageBase64: base64Res.base64,
         mediaType,
         overrides: item.editedValues,
       });
@@ -243,7 +245,7 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
       // 登録成功後、画像をStorageに保存（失敗しても登録自体は成功扱い）
       try {
         await api.post(`/api/ai/tasha-property-image/${registeredNumber}`, {
-          imageBase64: base64,
+          imageBase64: base64Res.base64,
           mediaType,
           fileName: item.file.name,
         });

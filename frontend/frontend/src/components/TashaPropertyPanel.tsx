@@ -35,6 +35,7 @@ import {
   AutoFixHigh as AutoFixHighIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
+import { fixImageOrientationToBase64 } from '../utils/imageOrientationFix';
 
 interface TashaImage {
   name: string;
@@ -145,16 +146,8 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
     setUploadError(null);
     try {
       for (const file of files) {
-        let mediaType = file.type;
-        if (!mediaType || mediaType === 'application/octet-stream') {
-          const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-          const extMap: Record<string, string> = {
-            jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-            gif: 'image/gif', webp: 'image/webp', pdf: 'application/pdf',
-          };
-          mediaType = extMap[ext] ?? 'image/jpeg';
-        }
-        const base64 = await toBase64(file);
+        // EXIF回転補正しながらbase64化
+        const { base64, mediaType } = await fixImageOrientationToBase64(file);
         await api.post(`/api/ai/tasha-property-image/${propertyNumber}`, {
           imageBase64: base64,
           mediaType,
