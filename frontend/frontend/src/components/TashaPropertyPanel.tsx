@@ -36,6 +36,7 @@ import {
 } from '@mui/icons-material';
 import api from '../services/api';
 import { fixImageOrientationToBase64 } from '../utils/imageOrientationFix';
+import ImageCompanyReplacer from './ImageCompanyReplacer';
 
 interface TashaImage {
   name: string;
@@ -103,6 +104,7 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
   const [uploading, setUploading] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [replaceProgress, setReplaceProgress] = useState('');
+  const [replaceTarget, setReplaceTarget] = useState<{ url: string; name: string } | null>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -449,6 +451,17 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
                       }}
                       onClick={() => setLightboxUrl(img.url)}
                     />
+                    {/* 差し替えボタン */}
+                    {!isReplaced && !dimmed && (
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={(e) => { e.stopPropagation(); setReplaceTarget({ url: img.url, name: img.name }); }}
+                        sx={{ mt: 0.5, width: '100%', fontSize: '0.65rem', bgcolor: '#7b1fa2', '&:hover': { bgcolor: '#6a1b9a' } }}
+                      >
+                        社名差し替え
+                      </Button>
+                    )}
                     <Tooltip title="拡大">
                       <IconButton
                         className="zoom-btn"
@@ -526,6 +539,19 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
           )}
         </DialogContent>
       </Dialog>
+
+      {/* 手動矩形選択による社名差し替え */}
+      {replaceTarget && (
+        <ImageCompanyReplacer
+          open={!!replaceTarget}
+          onClose={() => setReplaceTarget(null)}
+          imageUrl={replaceTarget.url}
+          imageName={replaceTarget.name}
+          propertyNumber={propertyNumber}
+          ownCompanyLines={ownCompanyLines}
+          onReplaced={() => fetchImages()}
+        />
+      )}
     </Paper>
   );
 }
