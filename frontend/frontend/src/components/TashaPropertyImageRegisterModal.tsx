@@ -5,6 +5,7 @@
  */
 import { useState, useCallback, useRef } from 'react';
 import { fixImageOrientationToBase64 } from '../utils/imageOrientationFix';
+import { pdfToImageBase64 } from '../utils/pdfToImages';
 import {
   Dialog,
   DialogTitle,
@@ -120,23 +121,55 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
   const processFiles = useCallback(async (files: File[]) => {
     // image/* に限らず、拡張子ベースでも判定（typeが空の場合に対応）。PDFも可。
     const imageExts = /\.(jpe?g|png|gif|webp|bmp|tiff?|heic|avif|pdf)$/i;
-    const imageFiles = files.filter(f =>
+    const acceptedFiles = files.filter(f =>
       f.type.startsWith('image/') ||
       f.type === 'application/pdf' ||
       imageExts.test(f.name) ||
       f.type === ''
     );
     // ファイルが1件もない場合はエラー表示
-    if (imageFiles.length === 0) {
+    if (acceptedFiles.length === 0) {
       setGlobalError('画像またはPDFファイルを選択してください（JPEG・PNG・WebP・PDF 等）');
       return;
     }
 
-    const newItems: ImageItem[] = imageFiles.map(file => ({
-      file,
-      previewUrl: URL.createObjectURL(file),
-      status: 'pending',
-    }));
+    // PDFは各ページを画像に変換してからItemsに追加
+    const newItems: ImageItem[] = [];
+    for (const file of acceptedFiles) {
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      if (isPdf) {
+        try {
+          const pageBase64s = await pdfToImageBase64(file);
+          for (let i = 0; i < pageBase64s.length; i++) {
+            // base64 から Blob → File を作成
+            const byteChars = atob(pageBase64s[i]);
+            const byteArr = new Uint8Array(byteChars.length);
+            for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
+            const blob = new Blob([byteArr], { type: 'image/jpeg' });
+            const imgFile = new File([blob], `${file.name}_page${i + 1}.jpg`, { type: 'image/jpeg' });
+            newItems.push({
+              file: imgFile,
+              previewUrl: URL.createObjectURL(blob),
+              status: 'pending',
+            });
+          }
+        } catch (err) {
+          console.error('[PDF→Image] 変換失敗:', err);
+          // PDF変換失敗時はそのままPDFとして追加（AI解析はできるかもしれない）
+          newItems.push({
+            file,
+            previewUrl: URL.createObjectURL(file),
+            status: 'pending',
+          });
+        }
+      } else {
+        newItems.push({
+          file,
+          previewUrl: URL.createObjectURL(file),
+          status: 'pending',
+        });
+      }
+    }
 
     setItems(newItems);
     setCurrentIndex(0);
