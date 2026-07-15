@@ -114,8 +114,16 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
 
   // ファイルを受け取って items に追加し、1枚目の解析を開始
   const processFiles = useCallback(async (files: File[]) => {
-    const imageFiles = files.filter(f => f.type.startsWith('image/'));
-    if (imageFiles.length === 0) return;
+    // image/* に限らず、拡張子ベースでも判定（typeが空の場合に対応）
+    const imageExts = /\.(jpe?g|png|gif|webp|bmp|tiff?|heic|avif)$/i;
+    const imageFiles = files.filter(f =>
+      f.type.startsWith('image/') || imageExts.test(f.name) || f.type === ''
+    );
+    // ファイルが1件もない場合はエラー表示
+    if (imageFiles.length === 0) {
+      setGlobalError('画像ファイルを選択してください（JPEG・PNG・WebP 等）');
+      return;
+    }
 
     const newItems: ImageItem[] = imageFiles.map(file => ({
       file,
@@ -128,8 +136,9 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
     setStep('process');
     setGlobalError(null);
 
-    // 1枚目を即座に解析開始
+    // 1枚目を即座に解析開始（newItemsを直接渡してstateの非同期更新を回避）
     await analyzeItem(newItems, 0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const analyzeItem = async (itemList: ImageItem[], index: number) => {
@@ -141,9 +150,23 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
     try {
       const file = itemList[index].file;
       const base64 = await toBase64(file);
+
+      // MIMEタイプが空の場合は拡張子から推定
+      let mediaType = file.type;
+      if (!mediaType || mediaType === 'application/octet-stream') {
+        const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+        const extMap: Record<string, string> = {
+          jpg: 'image/jpeg', jpeg: 'image/jpeg',
+          png: 'image/png', gif: 'image/gif',
+          webp: 'image/webp', bmp: 'image/png',
+          heic: 'image/jpeg', avif: 'image/webp',
+        };
+        mediaType = extMap[ext] ?? 'image/jpeg';
+      }
+
       const res = await api.post('/api/ai/extract-property-preview', {
         imageBase64: base64,
-        mediaType: file.type || 'image/jpeg',
+        mediaType,
       });
 
       setItems(prev => prev.map((it, i) =>
@@ -177,7 +200,7 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
     e.preventDefault();
     setIsDragging(false);
     const files = Array.from(e.dataTransfer.files);
-    processFiles(files);
+    if (files.length > 0) processFiles(files);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); setIsDragging(true); };
@@ -190,9 +213,21 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
 
     try {
       const base64 = await toBase64(item.file);
+      // MIMEタイプが空の場合は拡張子から推定
+      let mediaType = item.file.type;
+      if (!mediaType || mediaType === 'application/octet-stream') {
+        const ext = item.file.name.split('.').pop()?.toLowerCase() ?? '';
+        const extMap: Record<string, string> = {
+          jpg: 'image/jpeg', jpeg: 'image/jpeg',
+          png: 'image/png', gif: 'image/gif',
+          webp: 'image/webp', bmp: 'image/png',
+          heic: 'image/jpeg', avif: 'image/webp',
+        };
+        mediaType = extMap[ext] ?? 'image/jpeg';
+      }
       const res = await api.post('/api/ai/extract-and-register-property', {
         imageBase64: base64,
-        mediaType: item.file.type || 'image/jpeg',
+        mediaType,
         overrides: item.editedValues,
       });
 
@@ -331,7 +366,7 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.bmp,.heic,.avif"
               multiple
               style={{ display: 'none' }}
               onChange={handleFileChange}
