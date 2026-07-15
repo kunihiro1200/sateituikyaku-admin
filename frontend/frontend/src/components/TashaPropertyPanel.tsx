@@ -2,6 +2,7 @@
  * 他社物件（FT/OT番号）専用パネル
  * - 保存済み画像の表示・印刷
  * - 物件の削除
+ * - 会社情報を当社情報に差し替えた加工画像の生成・保存
  * PropertyListingDetailPage でこの物件番号が FT/OT の場合に表示する
  */
 import { useState, useEffect, useRef } from 'react';
@@ -21,6 +22,7 @@ import {
   Divider,
   IconButton,
   Tooltip,
+  LinearProgress,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -30,6 +32,7 @@ import {
   Close as CloseIcon,
   Warning as WarningIcon,
   AddPhotoAlternate as AddPhotoAlternateIcon,
+  AutoFixHigh as AutoFixHighIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -46,6 +49,48 @@ interface Props {
   onDeleted: () => void;
 }
 
+/** Canvas上で会社情報エリアを塗りつぶし、当社情報を描画した画像のbase64を返す */
+async function replaceCompanyInfo(
+  imageUrl: string,
+  region: { x: number; y: number; width: number; height: number },
+  ownCompanyLines: string[]
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+
+      // 会社情報エリアを白で塗りつぶし
+      const rx = Math.floor(region.x * img.width);
+      const ry = Math.floor(region.y * img.height);
+      const rw = Math.ceil(region.width * img.width);
+      const rh = Math.ceil(region.height * img.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(rx, ry, rw, rh);
+
+      // 当社情報を描画
+      const fontSize = Math.max(10, Math.floor(rh / (ownCompanyLines.length + 1)));
+      ctx.fillStyle = '#000000';
+      ctx.font = `${fontSize}px sans-serif`;
+      const lineH = fontSize * 1.4;
+      const startY = ry + lineH;
+      const padX = rx + 8;
+      ownCompanyLines.forEach((line, i) => {
+        ctx.fillText(line, padX, startY + i * lineH);
+      });
+
+      resolve(canvas.toDataURL('image/jpeg', 0.92).split(',')[1]);
+    };
+    img.onerror = reject;
+    img.src = imageUrl;
+  });
+}
+
 export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props) {
   const [images, setImages] = useState<TashaImage[]>([]);
   const [loadingImages, setLoadingImages] = useState(true);
@@ -55,12 +100,19 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [replacing, setReplacing] = useState(false);
+  const [replaceProgress, setReplaceProgress] = useState('');
   const addFileInputRef = useRef<HTMLInputElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
   const isFT = propertyNumber.startsWith('FT');
   const chipColor = isFT ? '#1565c0' : '#2e7d32';
   const prefectureLabel = isFT ? '福岡' : '大分';
+
+  // 当社情報（表示テキスト）
+  const ownCompanyLines = isFT
+    ? ['株式会社くじら不動産', '〒810-0073 福岡市中央区舞鶴3-1-10', 'TEL:092-401-5331  mail:tenant@ifoo-oita.com']
+    : ['株式会社いふう', '〒870-0021 大分市舞鶴町1-3-30', 'TEL:097-533-2022  mail:tenant@ifoo-oita.com'];
 
   useEffect(() => {
     fetchImages();
@@ -115,6 +167,63 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
     } finally {
       setUploading(false);
       if (addFileInputRef.current) addFileInputRef.current.value = '';
+    }
+  };
+
+  /** 全画像の会社情報を当社情報に差し替えて上書き保存 */
+  const handleReplaceCompanyInfo = async () => {
+    const targetImages = images.filter(img => !isPdf(img.name));
+    if (targetImages.length === 0) {
+      setUploadError('差し替え対象の画像がありません');
+      return;
+    }
+    setReplacing(true);
+    setUploadError(null);
+    try {
+      for (let i = 0; i < targetImages.length; i++) {
+        const img = targetImages[i];
+        setReplaceProgress(`${i + 1}/${targetImages.length} 枚目を処理中...`);
+
+        // 1. 画像をfetchしてbase64化（Storageから取得）
+        const fetchRes = await fetch(img.url);
+        const blob = await fetchRes.blob();
+        const imgBase64 = await new Promise<string>((res, rej) => {
+          const reader = new FileReader();
+          reader.onload = () => res((reader.result as string).split(',')[1]);
+          reader.onerror = rej;
+          reader.readAsDataURL(blob);
+        });
+        const mediaType = blob.type || 'image/jpeg';
+
+        // 2. Claudeで会社情報エリアを検出
+        const detectRes = await api.post('/api/ai/detect-company-region', {
+          imageBase64: imgBase64,
+          mediaType,
+          prefecture: prefectureLabel,
+        });
+
+        if (!detectRes.data.found || !detectRes.data.region) {
+          console.warn(`[Replace] ${img.name}: 会社情報エリアが見つかりませんでした`);
+          continue;
+        }
+
+        // 3. Canvasで塗りつぶし→当社情報を描画
+        const processedBase64 = await replaceCompanyInfo(img.url, detectRes.data.region, ownCompanyLines);
+
+        // 4. 加工済み画像を上書き保存（ファイル名はそのまま）
+        await api.post(`/api/ai/tasha-property-image/${propertyNumber}`, {
+          imageBase64: processedBase64,
+          mediaType: 'image/jpeg',
+          fileName: img.name.replace(/\.[^.]+$/, '_replaced.jpg'),
+        });
+      }
+      await fetchImages();
+      setReplaceProgress('');
+    } catch (err: any) {
+      setUploadError(err?.response?.data?.error || '差し替え処理に失敗しました');
+      setReplaceProgress('');
+    } finally {
+      setReplacing(false);
     }
   };
 
@@ -206,11 +315,23 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
             variant="outlined"
             startIcon={uploading ? <CircularProgress size={14} /> : <AddPhotoAlternateIcon />}
             onClick={() => addFileInputRef.current?.click()}
-            disabled={uploading}
+            disabled={uploading || replacing}
             sx={{ borderColor: chipColor, color: chipColor }}
           >
             {uploading ? 'アップロード中...' : '画像を追加'}
           </Button>
+          {images.filter(img => !isPdf(img.name)).length > 0 && (
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={replacing ? <CircularProgress size={14} /> : <AutoFixHighIcon />}
+              onClick={handleReplaceCompanyInfo}
+              disabled={replacing || uploading}
+              sx={{ borderColor: '#7b1fa2', color: '#7b1fa2' }}
+            >
+              {replacing ? '処理中...' : '会社情報を差し替え'}
+            </Button>
+          )}
           <input
             ref={addFileInputRef}
             type="file"
@@ -240,6 +361,13 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
 
       {uploadError && (
         <Alert severity="error" sx={{ mb: 1 }} onClose={() => setUploadError(null)}>{uploadError}</Alert>
+      )}
+
+      {replacing && (
+        <Box sx={{ mb: 1 }}>
+          <Typography variant="caption" color="text.secondary">{replaceProgress}</Typography>
+          <LinearProgress sx={{ mt: 0.5, '& .MuiLinearProgress-bar': { bgcolor: '#7b1fa2' } }} />
+        </Box>
       )}
 
       {loadingImages ? (

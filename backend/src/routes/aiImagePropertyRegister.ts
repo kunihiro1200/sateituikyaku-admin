@@ -459,4 +459,79 @@ router.get('/tasha-property-image/:propertyNumber', async (req: Request, res: Re
   }
 });
 
+/**
+ * POST /api/ai/detect-company-region
+ * 画像内の「会社情報エリア」の位置をClaudeで検出する
+ * フロントエンドのCanvasで塗りつぶし→当社情報を上書きするために使用
+ * body: { imageBase64, mediaType, prefecture }
+ * returns: { region: { x, y, width, height, position } | null }
+ *   - x,y,width,height は画像サイズに対する割合（0〜1）
+ *   - position: 'bottom-left' | 'bottom-right' | 'bottom-center' など
+ */
+router.post('/detect-company-region', async (req: Request, res: Response) => {
+  try {
+    const { imageBase64, mediaType, prefecture } = req.body;
+    if (!imageBase64 || !mediaType) {
+      return res.status(400).json({ error: 'imageBase64 と mediaType が必要です' });
+    }
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY が未設定です' });
+
+    const client = new Anthropic({ apiKey });
+
+    const isPdf = mediaType === 'application/pdf';
+
+    const prompt = `この画像は不動産の物件概要書です。
+画像の下部に記載されている「不動産会社の情報エリア」（会社名・住所・電話番号・メールアドレス・ロゴなどを含む領域）を検出してください。
+
+以下のJSON形式で返してください：
+{
+  "found": true または false,
+  "region": {
+    "x": 画像幅に対する左端の割合（0〜1）,
+    "y": 画像高さに対する上端の割合（0〜1）,
+    "width": 画像幅に対する幅の割合（0〜1）,
+    "height": 画像高さに対する高さの割合（0〜1）
+  },
+  "position": "bottom-left" または "bottom-right" または "bottom-full",
+  "company_text": "検出した会社名・住所・電話番号のテキスト（確認用）"
+}
+
+重要なルール：
+- 物件の住所・価格・備考などの「物件情報」は含めないこと
+- 発行会社のロゴ・会社名・住所・TEL・メールが書かれたエリアのみ対象
+- 見つからない場合は found: false を返す
+- regionの値は必ず0〜1の範囲で返すこと
+- 典型的には画像の左下または右下に位置する
+
+JSONのみを返してください。`;
+
+    const response = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 512,
+      messages: [{
+        role: 'user',
+        content: [
+          isPdf
+            ? { type: 'document' as const, source: { type: 'base64' as const, media_type: 'application/pdf' as const, data: imageBase64 } }
+            : { type: 'image' as const, source: { type: 'base64' as const, media_type: mediaType as any, data: imageBase64 } },
+          { type: 'text', text: prompt },
+        ],
+      }],
+    });
+
+    const text = response.content.filter(b => b.type === 'text').map((b: any) => b.text).join('');
+    const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/\{[\s\S]*\}/);
+    const jsonText = jsonMatch ? (jsonMatch[1] ?? jsonMatch[0]) : text;
+    const result = JSON.parse(jsonText);
+
+    console.log('[Detect Company Region] result:', result);
+    return res.json(result);
+  } catch (error: any) {
+    console.error('[Detect Company Region] Error:', error);
+    return res.status(500).json({ error: '会社情報エリアの検出に失敗しました', details: error?.message });
+  }
+});
+
 export default router;
