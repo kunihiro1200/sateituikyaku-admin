@@ -29,6 +29,7 @@ import {
   ZoomIn as ZoomInIcon,
   Close as CloseIcon,
   Warning as WarningIcon,
+  AddPhotoAlternate as AddPhotoAlternateIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -52,6 +53,9 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const addFileInputRef = useRef<HTMLInputElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
 
   const isFT = propertyNumber.startsWith('FT');
@@ -71,6 +75,46 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
       setImages([]);
     } finally {
       setLoadingImages(false);
+    }
+  };
+
+  const toBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const handleAddImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      for (const file of files) {
+        let mediaType = file.type;
+        if (!mediaType || mediaType === 'application/octet-stream') {
+          const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+          const extMap: Record<string, string> = {
+            jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+            gif: 'image/gif', webp: 'image/webp', pdf: 'application/pdf',
+          };
+          mediaType = extMap[ext] ?? 'image/jpeg';
+        }
+        const base64 = await toBase64(file);
+        await api.post(`/api/ai/tasha-property-image/${propertyNumber}`, {
+          imageBase64: base64,
+          mediaType,
+          fileName: file.name,
+        });
+      }
+      await fetchImages();
+    } catch (err: any) {
+      setUploadError(err?.response?.data?.error || '画像アップロードに失敗しました');
+    } finally {
+      setUploading(false);
+      if (addFileInputRef.current) addFileInputRef.current.value = '';
     }
   };
 
@@ -160,6 +204,24 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
           <Button
             size="small"
             variant="outlined"
+            startIcon={uploading ? <CircularProgress size={14} /> : <AddPhotoAlternateIcon />}
+            onClick={() => addFileInputRef.current?.click()}
+            disabled={uploading}
+            sx={{ borderColor: chipColor, color: chipColor }}
+          >
+            {uploading ? 'アップロード中...' : '画像を追加'}
+          </Button>
+          <input
+            ref={addFileInputRef}
+            type="file"
+            accept="image/*,.pdf,application/pdf"
+            multiple
+            style={{ display: 'none' }}
+            onChange={handleAddImage}
+          />
+          <Button
+            size="small"
+            variant="outlined"
             color="error"
             startIcon={<DeleteIcon />}
             onClick={() => setDeleteDialogOpen(true)}
@@ -175,6 +237,10 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
       <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
         登録時の概要書画像
       </Typography>
+
+      {uploadError && (
+        <Alert severity="error" sx={{ mb: 1 }} onClose={() => setUploadError(null)}>{uploadError}</Alert>
+      )}
 
       {loadingImages ? (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 2 }}>
