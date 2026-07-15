@@ -1,6 +1,6 @@
 /**
- * 他社物件 画像登録モーダル
- * 物件概要書の画像をドロップ/選択 → Claude AIが読み取り → 確認してproperty_listingsに登録
+ * 他社物件 画像一括登録モーダル
+ * 複数の物件概要書画像をドロップ/選択 → 1枚ずつClaude AIが読み取り → 確認してproperty_listingsに登録
  */
 import { useState, useCallback, useRef } from 'react';
 import {
@@ -18,12 +18,18 @@ import {
   Grid,
   Divider,
   IconButton,
+  LinearProgress,
+  Stepper,
+  Step,
+  StepLabel,
 } from '@mui/material';
 import {
   CloudUpload as CloudUploadIcon,
   Close as CloseIcon,
   CheckCircle as CheckCircleIcon,
   AutoFixHigh as AutoFixHighIcon,
+  SkipNext as SkipNextIcon,
+  NavigateNext as NavigateNextIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -55,33 +61,42 @@ interface PreviewData {
   };
 }
 
+// 1枚分の処理状態
+interface ImageItem {
+  file: File;
+  previewUrl: string;
+  status: 'pending' | 'analyzing' | 'ready' | 'registered' | 'skipped' | 'error';
+  previewData?: PreviewData;
+  editedValues?: Partial<ExtractedProperty>;
+  registeredNumber?: string;
+  errorMessage?: string;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
-  onRegistered: (propertyNumber: string) => void;
+  onRegistered: (propertyNumbers: string[]) => void;
 }
 
 export default function TashaPropertyImageRegisterModal({ open, onClose, onRegistered }: Props) {
-  const [step, setStep] = useState<'upload' | 'preview' | 'done'>('upload');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<PreviewData | null>(null);
-  const [editedValues, setEditedValues] = useState<Partial<ExtractedProperty>>({});
-  const [registeredNumber, setRegisteredNumber] = useState<string>('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [step, setStep] = useState<'upload' | 'process' | 'done'>('upload');
+  const [items, setItems] = useState<ImageItem[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [globalError, setGlobalError] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleReset = () => {
     setStep('upload');
-    setImageFile(null);
-    setImagePreviewUrl(null);
-    setLoading(false);
-    setError(null);
-    setPreview(null);
-    setEditedValues({});
-    setRegisteredNumber('');
+    setItems([]);
+    setCurrentIndex(0);
+    setGlobalError(null);
+    setIsAnalyzing(false);
+    setIsRegistering(false);
+    // objectURLを解放
+    items.forEach(item => URL.revokeObjectURL(item.previewUrl));
   };
 
   const handleClose = () => {
@@ -89,126 +104,206 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
     onClose();
   };
 
-  const processImage = useCallback(async (file: File) => {
-    setImageFile(file);
-    setImagePreviewUrl(URL.createObjectURL(file));
-    setError(null);
-    setLoading(true);
+  const toBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
-    try {
-      // ファイルをBase64に変換
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          // "data:image/jpeg;base64,XXXX" → "XXXX"
-          resolve(result.split(',')[1]);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+  // ファイルを受け取って items に追加し、1枚目の解析を開始
+  const processFiles = useCallback(async (files: File[]) => {
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
 
-      const mediaType = file.type || 'image/jpeg';
+    const newItems: ImageItem[] = imageFiles.map(file => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+      status: 'pending',
+    }));
 
-      const res = await api.post('/api/ai/extract-property-preview', {
-        imageBase64: base64,
-        mediaType,
-      });
+    setItems(newItems);
+    setCurrentIndex(0);
+    setStep('process');
+    setGlobalError(null);
 
-      setPreview(res.data);
-      setEditedValues(res.data.extracted);
-      setStep('preview');
-    } catch (err: any) {
-      const msg = err?.response?.data?.error || err.message || '画像解析に失敗しました';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
+    // 1枚目を即座に解析開始
+    await analyzeItem(newItems, 0);
   }, []);
 
+  const analyzeItem = async (itemList: ImageItem[], index: number) => {
+    setIsAnalyzing(true);
+
+    // status を analyzing に更新
+    setItems(prev => prev.map((it, i) => i === index ? { ...it, status: 'analyzing' } : it));
+
+    try {
+      const file = itemList[index].file;
+      const base64 = await toBase64(file);
+      const res = await api.post('/api/ai/extract-property-preview', {
+        imageBase64: base64,
+        mediaType: file.type || 'image/jpeg',
+      });
+
+      setItems(prev => prev.map((it, i) =>
+        i === index
+          ? {
+              ...it,
+              status: 'ready',
+              previewData: res.data,
+              editedValues: { ...res.data.extracted },
+            }
+          : it
+      ));
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err.message || '解析失敗';
+      setItems(prev => prev.map((it, i) =>
+        i === index ? { ...it, status: 'error', errorMessage: msg } : it
+      ));
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processImage(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) processFiles(files);
+    // 同じファイルを再選択できるようリセット
+    e.target.value = '';
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      processImage(file);
-    }
+    const files = Array.from(e.dataTransfer.files);
+    processFiles(files);
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = () => setIsDragging(false);
 
   const handleRegister = async () => {
-    if (!imageFile || !preview) return;
-    setLoading(true);
-    setError(null);
+    const item = items[currentIndex];
+    if (!item || item.status !== 'ready') return;
+    setIsRegistering(true);
 
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve((reader.result as string).split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(imageFile);
-      });
-
+      const base64 = await toBase64(item.file);
       const res = await api.post('/api/ai/extract-and-register-property', {
         imageBase64: base64,
-        mediaType: imageFile.type || 'image/jpeg',
-        overrides: editedValues,
+        mediaType: item.file.type || 'image/jpeg',
+        overrides: item.editedValues,
       });
 
-      setRegisteredNumber(res.data.propertyNumber);
-      setStep('done');
-      onRegistered(res.data.propertyNumber);
+      setItems(prev => prev.map((it, i) =>
+        i === currentIndex
+          ? { ...it, status: 'registered', registeredNumber: res.data.propertyNumber }
+          : it
+      ));
+      goToNext(true);
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err.message || '登録に失敗しました';
-      setError(msg);
+      const msg = err?.response?.data?.error || err.message || '登録失敗';
+      setItems(prev => prev.map((it, i) =>
+        i === currentIndex ? { ...it, errorMessage: msg } : it
+      ));
     } finally {
-      setLoading(false);
+      setIsRegistering(false);
     }
   };
 
-  const getField = (key: keyof ExtractedProperty) =>
-    (editedValues[key] ?? preview?.extracted[key] ?? '') as string;
-
-  const setField = (key: keyof ExtractedProperty, value: string) => {
-    setEditedValues(prev => ({ ...prev, [key]: value }));
+  const handleSkip = () => {
+    setItems(prev => prev.map((it, i) =>
+      i === currentIndex ? { ...it, status: 'skipped' } : it
+    ));
+    goToNext(false);
   };
 
-  const prefectureLabel = preview?.preview.prefecture_label || '';
-  const propertyNumber = preview?.preview.property_number || '';
-  const prefixColor = preview?.preview.prefix === 'FT' ? '#1565c0' : '#2e7d32';
+  const goToNext = async (registered: boolean) => {
+    const nextIndex = currentIndex + 1;
+    if (nextIndex >= items.length) {
+      // 全枚数処理完了
+      const registered_numbers = items
+        .filter(it => it.status === 'registered')
+        .map(it => it.registeredNumber!)
+        .filter(Boolean);
+      // 最後に登録したものも含める
+      onRegistered(registered_numbers);
+      setStep('done');
+      return;
+    }
+
+    setCurrentIndex(nextIndex);
+
+    // 次の画像がまだ解析されていなければ解析する
+    const nextItem = items[nextIndex];
+    if (nextItem.status === 'pending') {
+      await analyzeItem(items, nextIndex);
+    }
+  };
+
+  const setFieldForCurrent = (key: keyof ExtractedProperty, value: string | number | null) => {
+    setItems(prev => prev.map((it, i) =>
+      i === currentIndex
+        ? { ...it, editedValues: { ...it.editedValues, [key]: value } }
+        : it
+    ));
+  };
+
+  // 現在のアイテム
+  const currentItem = items[currentIndex];
+  const editedValues = currentItem?.editedValues ?? {};
+  const previewData = currentItem?.previewData;
+
+  const getField = (key: keyof ExtractedProperty): string => {
+    const v = editedValues[key] ?? previewData?.extracted[key] ?? '';
+    return v != null ? String(v) : '';
+  };
+
+  const prefectureLabel = previewData?.preview.prefecture_label ?? '';
+  const propertyNumber = previewData?.preview.property_number ?? '';
+  const prefixColor = previewData?.preview.prefix === 'FT' ? '#1565c0' : '#2e7d32';
+
+  // 進捗カウント
+  const registeredCount = items.filter(it => it.status === 'registered').length;
+  const skippedCount = items.filter(it => it.status === 'skipped').length;
+  const doneCount = registeredCount + skippedCount + items.filter(it => it.status === 'error').length;
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <AutoFixHighIcon sx={{ color: '#7b1fa2' }} />
           <Typography variant="h6" fontWeight="bold">他社物件を画像から登録</Typography>
+          {step === 'process' && (
+            <Chip
+              label={`${currentIndex + 1} / ${items.length} 枚`}
+              size="small"
+              sx={{ bgcolor: '#7b1fa2', color: 'white', fontWeight: 'bold' }}
+            />
+          )}
         </Box>
-        <IconButton onClick={handleClose} size="small">
-          <CloseIcon />
-        </IconButton>
+        <IconButton onClick={handleClose} size="small"><CloseIcon /></IconButton>
       </DialogTitle>
 
-      <DialogContent>
-        {/* STEP 1: 画像アップロード */}
+      {/* 進捗バー */}
+      {step === 'process' && items.length > 1 && (
+        <LinearProgress
+          variant="determinate"
+          value={(doneCount / items.length) * 100}
+          sx={{ mx: 3, mb: 1, borderRadius: 1, bgcolor: '#e1bee7', '& .MuiLinearProgress-bar': { bgcolor: '#7b1fa2' } }}
+        />
+      )}
+
+      <DialogContent sx={{ pt: step === 'process' ? 1 : 2 }}>
+
+        {/* STEP 1: アップロード */}
         {step === 'upload' && (
           <Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              物件概要書の画像をアップロードすると、Claude AIが内容を読み取って自動入力します。
-              住所が福岡なら <strong>FT番号</strong>、大分なら <strong>OT番号</strong> で登録されます。
+              物件概要書の画像を<strong>複数枚まとめて</strong>アップロードできます。
+              1枚ずつAIが読み取り、確認してから登録します。
             </Typography>
-
             <Box
               onClick={() => fileInputRef.current?.click()}
               onDrop={handleDrop}
@@ -225,250 +320,279 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
                 '&:hover': { borderColor: '#7b1fa2', bgcolor: '#f3e5f5' },
               }}
             >
-              {loading ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                  <CircularProgress sx={{ color: '#7b1fa2' }} />
-                  <Typography variant="body2" color="text.secondary">
-                    Claude AIが画像を解析中...
-                  </Typography>
-                </Box>
-              ) : (
-                <>
-                  <CloudUploadIcon sx={{ fontSize: 64, color: '#ccc', mb: 1 }} />
-                  <Typography variant="body1" color="text.secondary">
-                    ここに画像をドロップ、またはクリックして選択
-                  </Typography>
-                  <Typography variant="caption" color="text.disabled">
-                    JPEG / PNG / WebP 対応
-                  </Typography>
-                </>
-              )}
+              <CloudUploadIcon sx={{ fontSize: 64, color: '#ccc', mb: 1 }} />
+              <Typography variant="body1" color="text.secondary">
+                ここに画像をドロップ、またはクリックして選択
+              </Typography>
+              <Typography variant="caption" color="text.disabled">
+                複数枚同時に選択可 / JPEG・PNG・WebP 対応
+              </Typography>
             </Box>
-
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              multiple
               style={{ display: 'none' }}
               onChange={handleFileChange}
             />
-
-            {error && (
-              <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>
-            )}
+            {globalError && <Alert severity="error" sx={{ mt: 2 }}>{globalError}</Alert>}
           </Box>
         )}
 
-        {/* STEP 2: AI抽出結果の確認・編集 */}
-        {step === 'preview' && preview && (
+        {/* STEP 2: 1枚ずつ確認・登録 */}
+        {step === 'process' && currentItem && (
           <Box>
-            <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-              {imagePreviewUrl && (
+            {/* サムネイル一覧 */}
+            {items.length > 1 && (
+              <Box sx={{ display: 'flex', gap: 1, mb: 2, overflowX: 'auto', pb: 1 }}>
+                {items.map((item, i) => (
+                  <Box
+                    key={i}
+                    sx={{
+                      position: 'relative',
+                      flexShrink: 0,
+                      width: 60,
+                      height: 45,
+                      borderRadius: 1,
+                      overflow: 'hidden',
+                      border: i === currentIndex ? '2px solid #7b1fa2' : '2px solid transparent',
+                      opacity: item.status === 'skipped' || item.status === 'error' ? 0.4 : 1,
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={item.previewUrl}
+                      sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                    {item.status === 'registered' && (
+                      <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(46,125,50,0.6)' }}>
+                        <CheckCircleIcon sx={{ color: 'white', fontSize: 20 }} />
+                      </Box>
+                    )}
+                    {item.status === 'analyzing' && (
+                      <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(0,0,0,0.4)' }}>
+                        <CircularProgress size={16} sx={{ color: 'white' }} />
+                      </Box>
+                    )}
+                  </Box>
+                ))}
+              </Box>
+            )}
+
+            {/* 解析中 */}
+            {currentItem.status === 'analyzing' && (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <CircularProgress sx={{ color: '#7b1fa2', mb: 2 }} />
+                <Typography variant="body2" color="text.secondary">
+                  Claude AIが画像を解析中... ({currentIndex + 1}/{items.length}枚目)
+                </Typography>
+              </Box>
+            )}
+
+            {/* エラー */}
+            {currentItem.status === 'error' && (
+              <Box sx={{ py: 2 }}>
+                <Alert severity="error" sx={{ mb: 2 }}>{currentItem.errorMessage}</Alert>
                 <Box
                   component="img"
-                  src={imagePreviewUrl}
-                  alt="アップロード画像"
-                  sx={{ width: 180, height: 120, objectFit: 'cover', borderRadius: 1, border: '1px solid #eee' }}
+                  src={currentItem.previewUrl}
+                  sx={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 1 }}
                 />
-              )}
-              <Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  AIが以下の情報を読み取りました。必要に応じて修正してから登録してください。
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Chip
-                    label={`物件番号: ${propertyNumber}`}
-                    sx={{ fontWeight: 'bold', bgcolor: prefixColor, color: 'white', fontSize: '0.9rem' }}
-                  />
-                  <Chip
-                    label={`他社物件 / ${prefectureLabel}`}
-                    variant="outlined"
-                    color="secondary"
-                  />
-                </Box>
               </Box>
-            </Box>
+            )}
 
-            <Divider sx={{ mb: 2 }} />
-
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  label="所在地 *"
-                  fullWidth
-                  size="small"
-                  value={getField('address')}
-                  onChange={e => setField('address', e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  label="種別"
-                  fullWidth
-                  size="small"
-                  value={getField('property_type')}
-                  onChange={e => setField('property_type', e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  label="価格（円）"
-                  fullWidth
-                  size="small"
-                  type="number"
-                  value={editedValues.price ?? preview.extracted.price ?? ''}
-                  onChange={e => setEditedValues(prev => ({ ...prev, price: e.target.value ? Number(e.target.value) : null }))}
-                  helperText={
-                    (editedValues.price ?? preview.extracted.price)
-                      ? `${((editedValues.price ?? preview.extracted.price ?? 0) / 10000).toLocaleString()}万円`
-                      : ''
-                  }
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  label="土地面積"
-                  fullWidth
-                  size="small"
-                  value={getField('land_area')}
-                  onChange={e => setField('land_area', e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  label="建物面積"
-                  fullWidth
-                  size="small"
-                  value={getField('building_area')}
-                  onChange={e => setField('building_area', e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  label="交通アクセス"
-                  fullWidth
-                  size="small"
-                  value={getField('access')}
-                  onChange={e => setField('access', e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  label="用途地域"
-                  fullWidth
-                  size="small"
-                  value={getField('youto_chiiki')}
-                  onChange={e => setField('youto_chiiki', e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={4}>
-                <TextField
-                  label="建蔽率"
-                  fullWidth
-                  size="small"
-                  value={getField('building_coverage_ratio')}
-                  onChange={e => setField('building_coverage_ratio', e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={4}>
-                <TextField
-                  label="容積率"
-                  fullWidth
-                  size="small"
-                  value={getField('floor_area_ratio')}
-                  onChange={e => setField('floor_area_ratio', e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={4}>
-                <TextField
-                  label="道路接道"
-                  fullWidth
-                  size="small"
-                  value={getField('road_access')}
-                  onChange={e => setField('road_access', e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="備考"
-                  fullWidth
-                  size="small"
-                  multiline
-                  rows={2}
-                  value={getField('remarks')}
-                  onChange={e => setField('remarks', e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="発行会社（他社）→ 特記に保存"
-                  fullWidth
-                  size="small"
-                  multiline
-                  rows={2}
-                  value={getField('issuing_company')}
-                  onChange={e => setField('issuing_company', e.target.value)}
-                  helperText="画像左下の不動産会社情報。特記欄に自動保存されます。"
-                  sx={{ '& .MuiInputLabel-root': { color: '#7b1fa2' } }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Box sx={{ p: 1.5, bgcolor: '#f3e5f5', borderRadius: 1, border: '1px solid #ce93d8' }}>
-                  <Typography variant="caption" sx={{ color: '#7b1fa2', fontWeight: 'bold' }}>
-                    当社情報（取引業者欄に自動設定）
-                  </Typography>
-                  <Typography variant="caption" sx={{ display: 'block', color: '#555', mt: 0.5 }}>
-                    {prefectureLabel === '福岡'
-                      ? '株式会社くじら不動産　福岡市中央区舞鶴3-1-10　TEL:092-401-5331'
-                      : '株式会社いふう　大分市舞鶴町1-3-30　TEL:097-533-2022'}
-                  </Typography>
+            {/* 確認・編集フォーム */}
+            {currentItem.status === 'ready' && previewData && (
+              <Box>
+                <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                  <Box
+                    component="img"
+                    src={currentItem.previewUrl}
+                    sx={{ width: 160, height: 110, objectFit: 'cover', borderRadius: 1, border: '1px solid #eee', flexShrink: 0 }}
+                  />
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      AIが以下の情報を読み取りました。修正してから登録してください。
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      <Chip
+                        label={`物件番号: ${propertyNumber}`}
+                        sx={{ fontWeight: 'bold', bgcolor: prefixColor, color: 'white' }}
+                      />
+                      <Chip label={`他社物件 / ${prefectureLabel}`} variant="outlined" color="secondary" />
+                    </Box>
+                  </Box>
                 </Box>
-              </Grid>
-            </Grid>
 
-            {error && (
-              <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>
+                <Divider sx={{ mb: 2 }} />
+
+                <Grid container spacing={1.5}>
+                  <Grid item xs={12}>
+                    <TextField label="所在地 *" fullWidth size="small"
+                      value={getField('address')}
+                      onChange={e => setFieldForCurrent('address', e.target.value)} />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TextField label="種別" fullWidth size="small"
+                      value={getField('property_type')}
+                      onChange={e => setFieldForCurrent('property_type', e.target.value)} />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TextField label="価格（円）" fullWidth size="small" type="number"
+                      value={editedValues.price ?? previewData.extracted.price ?? ''}
+                      onChange={e => setFieldForCurrent('price', e.target.value ? Number(e.target.value) : null)}
+                      helperText={
+                        (editedValues.price ?? previewData.extracted.price)
+                          ? `${(((editedValues.price ?? previewData.extracted.price) as number) / 10000).toLocaleString()}万円`
+                          : ''
+                      }
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TextField label="土地面積" fullWidth size="small"
+                      value={getField('land_area')}
+                      onChange={e => setFieldForCurrent('land_area', e.target.value)} />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TextField label="建物面積" fullWidth size="small"
+                      value={getField('building_area')}
+                      onChange={e => setFieldForCurrent('building_area', e.target.value)} />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TextField label="交通アクセス" fullWidth size="small"
+                      value={getField('access')}
+                      onChange={e => setFieldForCurrent('access', e.target.value)} />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TextField label="用途地域" fullWidth size="small"
+                      value={getField('youto_chiiki')}
+                      onChange={e => setFieldForCurrent('youto_chiiki', e.target.value)} />
+                  </Grid>
+                  <Grid item xs={4}>
+                    <TextField label="建蔽率" fullWidth size="small"
+                      value={getField('building_coverage_ratio')}
+                      onChange={e => setFieldForCurrent('building_coverage_ratio', e.target.value)} />
+                  </Grid>
+                  <Grid item xs={4}>
+                    <TextField label="容積率" fullWidth size="small"
+                      value={getField('floor_area_ratio')}
+                      onChange={e => setFieldForCurrent('floor_area_ratio', e.target.value)} />
+                  </Grid>
+                  <Grid item xs={4}>
+                    <TextField label="道路接道" fullWidth size="small"
+                      value={getField('road_access')}
+                      onChange={e => setFieldForCurrent('road_access', e.target.value)} />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField label="備考" fullWidth size="small" multiline rows={2}
+                      value={getField('remarks')}
+                      onChange={e => setFieldForCurrent('remarks', e.target.value)} />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      label="発行会社（他社）→ 特記に保存"
+                      fullWidth size="small" multiline rows={2}
+                      value={getField('issuing_company')}
+                      onChange={e => setFieldForCurrent('issuing_company', e.target.value)}
+                      helperText="画像左下の不動産会社情報。特記欄に自動保存されます。"
+                      sx={{ '& .MuiInputLabel-root': { color: '#7b1fa2' } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Box sx={{ p: 1.5, bgcolor: '#f3e5f5', borderRadius: 1, border: '1px solid #ce93d8' }}>
+                      <Typography variant="caption" sx={{ color: '#7b1fa2', fontWeight: 'bold' }}>
+                        当社情報（取引業者欄に自動設定）
+                      </Typography>
+                      <Typography variant="caption" sx={{ display: 'block', color: '#555', mt: 0.5 }}>
+                        {prefectureLabel === '福岡'
+                          ? '株式会社くじら不動産　福岡市中央区舞鶴3-1-10　TEL:092-401-5331'
+                          : '株式会社いふう　大分市舞鶴町1-3-30　TEL:097-533-2022'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+
+                {currentItem.errorMessage && (
+                  <Alert severity="error" sx={{ mt: 1 }}>{currentItem.errorMessage}</Alert>
+                )}
+              </Box>
             )}
           </Box>
         )}
 
-        {/* STEP 3: 登録完了 */}
+        {/* STEP 3: 全完了 */}
         {step === 'done' && (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Box sx={{ textAlign: 'center', py: 3 }}>
             <CheckCircleIcon sx={{ fontSize: 72, color: '#2e7d32', mb: 2 }} />
-            <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-              登録完了！
+            <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
+              処理完了！
             </Typography>
-            <Chip
-              label={registeredNumber}
-              sx={{ fontWeight: 'bold', bgcolor: prefixColor, color: 'white', fontSize: '1rem', mb: 2 }}
-            />
+            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap', mb: 2 }}>
+              {items.filter(it => it.status === 'registered').map(it => (
+                <Chip
+                  key={it.registeredNumber}
+                  label={it.registeredNumber}
+                  sx={{ fontWeight: 'bold', bgcolor: '#2e7d32', color: 'white' }}
+                />
+              ))}
+            </Box>
             <Typography variant="body2" color="text.secondary">
-              {prefectureLabel}の他社物件として物件リストに追加されました。
+              {registeredCount}件登録 / {skippedCount}件スキップ
             </Typography>
           </Box>
         )}
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
         {step === 'upload' && (
           <Button onClick={handleClose}>キャンセル</Button>
         )}
-        {step === 'preview' && (
+
+        {step === 'process' && (
           <>
-            <Button onClick={handleReset} disabled={loading}>やり直す</Button>
-            <Button onClick={handleClose} disabled={loading}>キャンセル</Button>
-            <Button
-              variant="contained"
-              onClick={handleRegister}
-              disabled={loading || !getField('address')}
-              startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
-              sx={{ bgcolor: '#7b1fa2', '&:hover': { bgcolor: '#6a1b9a' } }}
-            >
-              {loading ? '登録中...' : 'この内容で登録する'}
-            </Button>
+            <Button onClick={handleClose} disabled={isAnalyzing || isRegistering}>閉じる</Button>
+
+            {/* エラー時はスキップのみ */}
+            {currentItem?.status === 'error' && (
+              <Button
+                variant="outlined"
+                startIcon={<SkipNextIcon />}
+                onClick={handleSkip}
+              >
+                スキップして次へ
+              </Button>
+            )}
+
+            {/* 解析完了時：スキップ + 登録 */}
+            {currentItem?.status === 'ready' && (
+              <>
+                <Button
+                  variant="outlined"
+                  startIcon={<SkipNextIcon />}
+                  onClick={handleSkip}
+                  disabled={isRegistering}
+                >
+                  スキップ
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={handleRegister}
+                  disabled={isRegistering || !getField('address')}
+                  startIcon={isRegistering ? <CircularProgress size={16} color="inherit" /> : <NavigateNextIcon />}
+                  sx={{ bgcolor: '#7b1fa2', '&:hover': { bgcolor: '#6a1b9a' } }}
+                >
+                  {isRegistering
+                    ? '登録中...'
+                    : currentIndex + 1 < items.length
+                    ? 'この内容で登録して次へ'
+                    : 'この内容で登録して完了'}
+                </Button>
+              </>
+            )}
           </>
         )}
+
         {step === 'done' && (
           <>
             <Button onClick={handleReset}>別の画像を登録</Button>

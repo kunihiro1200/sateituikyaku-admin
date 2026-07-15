@@ -1173,9 +1173,11 @@ export default function PropertyListingsPage() {
       <TashaPropertyImageRegisterModal
         open={tashaRegisterOpen}
         onClose={() => setTashaRegisterOpen(false)}
-        onRegistered={(propertyNumber) => {
-          setSnackbarMessage(`${propertyNumber} を登録しました`);
-          setSnackbarOpen(true);
+        onRegistered={(propertyNumbers) => {
+          if (propertyNumbers.length > 0) {
+            setSnackbarMessage(`${propertyNumbers.join('・')} を登録しました`);
+            setSnackbarOpen(true);
+          }
           fetchAllData(true);
         }}
       />
