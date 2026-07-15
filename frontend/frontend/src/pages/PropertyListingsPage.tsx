@@ -33,10 +33,11 @@ import {
   useMediaQuery,
   Snackbar,
 } from '@mui/material';
-import { Search as SearchIcon, ClearAll as ClearAllIcon, Clear as ClearIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
+import { Search as SearchIcon, ClearAll as ClearAllIcon, Clear as ClearIcon, ExpandMore as ExpandMoreIcon, AddPhotoAlternate as AddPhotoAlternateIcon } from '@mui/icons-material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import api from '../services/api';
 import PropertyListingDetailModal from '../components/PropertyListingDetailModal';
+import TashaPropertyImageRegisterModal from '../components/TashaPropertyImageRegisterModal';
 import PageNavigation from '../components/PageNavigation';
 import BuyerIndicator from '../components/BuyerIndicator';
 import { InquiryResponseButton } from '../components/InquiryResponseButton';
@@ -104,6 +105,7 @@ export default function PropertyListingsPage() {
   const isFetchingRef = useRef(false); // 二重フェッチ防止フラグ
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [tashaRegisterOpen, setTashaRegisterOpen] = useState(false);
 
   // ソート用state
   type PropertySortKey = 'property_number' | 'sales_assignee' | 'property_type' | 'address' | 'display_address' | 'seller_name' | 'atbb_status' | 'buyer_name' | 'contract_date' | 'settlement_date' | 'price' | 'report_date';
@@ -671,7 +673,15 @@ export default function PropertyListingsPage() {
     <Container maxWidth="xl" sx={isMobile ? { overflowX: 'hidden', px: 1, py: 2 } : { py: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isMobile ? 1 : 2, flexDirection: { xs: 'row', sm: 'row' }, gap: 1 }}>
         <Typography variant={isMobile ? 'subtitle1' : 'h5'} fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>物件リスト</Typography>
-
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<AddPhotoAlternateIcon />}
+          onClick={() => setTashaRegisterOpen(true)}
+          sx={{ borderColor: '#7b1fa2', color: '#7b1fa2', '&:hover': { borderColor: '#6a1b9a', bgcolor: '#f3e5f5' } }}
+        >
+          他社物件を画像登録
+        </Button>
       </Box>
 
       <PageNavigation />
@@ -1158,6 +1168,16 @@ export default function PropertyListingsPage() {
         onClose={() => { setModalOpen(false); setSelectedPropertyNumber(null); }}
         propertyNumber={selectedPropertyNumber}
         onUpdate={() => fetchAllData(true)}
+      />
+
+      <TashaPropertyImageRegisterModal
+        open={tashaRegisterOpen}
+        onClose={() => setTashaRegisterOpen(false)}
+        onRegistered={(propertyNumber) => {
+          setSnackbarMessage(`${propertyNumber} を登録しました`);
+          setSnackbarOpen(true);
+          fetchAllData(true);
+        }}
       />
     </Container>
   );

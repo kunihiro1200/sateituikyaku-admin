@@ -253,11 +253,19 @@ export default function PropertySidebarStatus({
       if (status && status !== '値下げ未完了' && status !== '未完了' && !normalizedStatus.startsWith('未報告')
           && status !== 'SUUMO URL\u3000要登録' && status !== 'レインズ登録＋SUUMO URL 要登録'
           && status !== '非公開予定（確認後）'
-          && status !== '本日公開予定') {
+          && status !== '本日公開予定'
+          // 他社物件は専用カテゴリーで管理（通常カテゴリーから除外）
+          && status !== '他社物件_福岡'
+          && status !== '他社物件_大分') {
         counts[status] = (counts[status] || 0) + 1;
       }
     });
 
+    // 他社物件カテゴリー（sidebar_status で判別）
+    const tashaFukuokaCount = listings.filter(l => l.sidebar_status === '他社物件_福岡').length;
+    const tashaOitaCount = listings.filter(l => l.sidebar_status === '他社物件_大分').length;
+    if (tashaFukuokaCount > 0) counts['他社物件_福岡'] = tashaFukuokaCount;
+    if (tashaOitaCount > 0) counts['他社物件_大分'] = tashaOitaCount;
 
     return counts;
   }, [listings, pendingPriceReductionProperties, workTaskMap]);
@@ -317,6 +325,8 @@ export default function PropertySidebarStatus({
     console.log('[PropertySidebarStatus] フィルタリング後のステータス:', sortedStatuses);
 
     sortedStatuses.forEach(([key, count]) => {
+      // 他社物件は専用セクションで後から追加するためここではスキップ
+      if (key === '他社物件_福岡' || key === '他社物件_大分') return;
       // 「買付申し込み」(優先度8)より上のカテゴリーに薄い背景色
       // 専任公開中系（X専任公開中）にも薄い背景色
       const isSeninBg = key.endsWith('専任公開中') || key === '専任・公開中';
@@ -326,6 +336,19 @@ export default function PropertySidebarStatus({
       const isRed = HIGH_PRIORITY_RED_STATUSES.has(key);
       list.push({ key, label: key, count, isHighPriorityBg: isHighBg, isSeninBg, isRed, isBoldRed });
     });
+
+    // 他社物件セクション（末尾に追加）
+    const tashaFukuoka = statusCounts['他社物件_福岡'] ?? 0;
+    const tashaOita = statusCounts['他社物件_大分'] ?? 0;
+    if (tashaFukuoka > 0 || tashaOita > 0) {
+      list.push({ key: '__tasha_divider__', label: '── 他社物件 ──', count: 0, isDivider: true });
+      if (tashaOita > 0) {
+        list.push({ key: '他社物件_大分', label: '他社物件（大分）', count: tashaOita, isSeninBg: true });
+      }
+      if (tashaFukuoka > 0) {
+        list.push({ key: '他社物件_福岡', label: '他社物件（福岡）', count: tashaFukuoka, isSeninBg: true });
+      }
+    }
 
     console.log('[PropertySidebarStatus] statusList生成完了:', {
       リスト件数: list.length,
@@ -348,9 +371,9 @@ export default function PropertySidebarStatus({
           {statusList.map((item) => {
             if (item.isDivider) {
               return (
-                <Box key="__divider__" sx={{ mx: 1, my: 0.5, borderTop: '2px solid #bbb' }}>
+                <Box key={item.key} sx={{ mx: 1, my: 0.5, borderTop: '2px solid #bbb' }}>
                   <Typography variant="caption" sx={{ px: 1, color: 'text.secondary', fontSize: '0.7rem' }}>
-                    公開中物件（優先度低）
+                    {item.label || '公開中物件（優先度低）'}
                   </Typography>
                 </Box>
               );
