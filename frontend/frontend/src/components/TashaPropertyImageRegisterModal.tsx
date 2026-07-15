@@ -254,6 +254,7 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
     setIsRegistering(true);
 
     try {
+      // 1枚目で物件登録（AI解析＋DB登録）
       const { base64: orientedBase64, mediaType: fixedMediaType } = await fixImageOrientationToBase64(item.file);
       let mediaType = fixedMediaType || item.file.type || 'image/jpeg';
 
@@ -286,12 +287,45 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
 
       const registeredNumber = res.data.propertyNumber;
 
-      setItems(prev => prev.map((it, i) =>
-        i === currentIndex
-          ? { ...it, status: 'registered', registeredNumber }
-          : it
-      ));
-      goToNext(true);
+      // 全画像をこの物件番号でStorageに保存
+      for (let i = 0; i < items.length; i++) {
+        try {
+          const imgItem = items[i];
+          const { base64: imgBase64 } = await fixImageOrientationToBase64(imgItem.file);
+          // 各画像の回転を適用
+          let imgFinal = imgBase64;
+          const imgRotation = imgItem.rotation ?? 0;
+          if (imgRotation !== 0 && imgItem.file.type !== 'application/pdf') {
+            imgFinal = await new Promise<string>((resolve) => {
+              const imgEl = new Image();
+              imgEl.onload = () => {
+                const canvas = document.createElement('canvas');
+                const swap = imgRotation === 90 || imgRotation === 270;
+                canvas.width = swap ? imgEl.height : imgEl.width;
+                canvas.height = swap ? imgEl.width : imgEl.height;
+                const ctx = canvas.getContext('2d')!;
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.rotate((imgRotation * Math.PI) / 180);
+                ctx.drawImage(imgEl, -imgEl.width / 2, -imgEl.height / 2);
+                resolve(canvas.toDataURL('image/jpeg', 0.92).split(',')[1]);
+              };
+              imgEl.src = `data:image/jpeg;base64,${imgBase64}`;
+            });
+          }
+          await api.post(`/api/ai/tasha-property-image/${registeredNumber}`, {
+            imageBase64: imgFinal,
+            mediaType: 'image/jpeg',
+            fileName: `page_${i + 1}.jpg`,
+          });
+        } catch (imgErr) {
+          console.warn(`[TashaRegister] 画像${i + 1}保存失敗:`, imgErr);
+        }
+      }
+
+      // 全アイテムを登録済みに更新
+      setItems(prev => prev.map(it => ({ ...it, status: 'registered', registeredNumber })));
+      onRegistered([registeredNumber]);
+      setStep('done');
     } catch (err: any) {
       const msg = err?.response?.data?.error || err.message || '登録失敗';
       setItems(prev => prev.map((it, i) =>
@@ -709,17 +743,9 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
               </Button>
             )}
 
-            {/* 解析完了時：スキップ + 登録 */}
+            {/* 解析完了時：登録 */}
             {currentItem?.status === 'ready' && (
               <>
-                <Button
-                  variant="outlined"
-                  startIcon={<SkipNextIcon />}
-                  onClick={handleSkip}
-                  disabled={isRegistering}
-                >
-                  スキップ
-                </Button>
                 <Button
                   variant="contained"
                   onClick={handleRegister}
@@ -729,9 +755,9 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
                 >
                   {isRegistering
                     ? '登録中...'
-                    : currentIndex + 1 < items.length
-                    ? 'この内容で登録して次へ'
-                    : 'この内容で登録して完了'}
+                    : items.length > 1
+                    ? `全${items.length}枚を1つの物件として登録`
+                    : 'この内容で登録'}
                 </Button>
               </>
             )}
