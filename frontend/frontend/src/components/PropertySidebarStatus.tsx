@@ -367,7 +367,7 @@ export default function PropertySidebarStatus({
             カテゴリー
           </Typography>
         </Box>
-        <List dense sx={{ maxHeight: 'calc(100vh - 200px)', overflow: 'auto', border: 'none', pb: 0 }}>
+        <List dense sx={{ border: 'none', pb: 0 }}>
           {statusList.map((item) => {
             if (item.isDivider) {
               return (
