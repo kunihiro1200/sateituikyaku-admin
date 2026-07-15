@@ -246,8 +246,24 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    const imagesHtml = images
-      .filter(img => !img.name.endsWith('.pdf'))
+    // _replaced.jpg がある場合はそちらを優先、なければ元画像を使用
+    // 元ファイル名（_replaced除去）ごとに最新版を選ぶ
+    const imageMap = new Map<string, TashaImage>();
+    images
+      .filter(img => !isPdf(img.name))
+      .forEach(img => {
+        // _replaced.jpg → 元のベース名を取得
+        const baseName = img.name.replace('_replaced.jpg', '').replace(/\.[^.]+$/, '');
+        const existing = imageMap.get(baseName);
+        // _replaced を優先
+        if (!existing || img.name.includes('_replaced')) {
+          imageMap.set(baseName, img);
+        }
+      });
+
+    const printImages = Array.from(imageMap.values());
+
+    const imagesHtml = printImages
       .map(img => `
         <div style="page-break-inside:avoid; margin-bottom:16px;">
           <img src="${img.url}" style="max-width:100%; max-height:90vh; object-fit:contain;" />
@@ -381,8 +397,15 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
         </Typography>
       ) : (
         <Box ref={printRef}>
+          {/* _replaced がある場合はそちらを優先表示、元画像は薄く表示 */}
           <Grid container spacing={1.5}>
-            {images.map((img) => (
+            {images.map((img) => {
+              const isReplaced = img.name.includes('_replaced');
+              const hasReplaced = images.some(i => i.name === img.name.replace(/\.[^.]+$/, '_replaced.jpg'));
+              // 元画像に対応するreplacedが存在する場合、元画像を薄く表示
+              const dimmed = !isReplaced && hasReplaced;
+              return (
+              return (
               <Grid item key={img.path} xs={6} sm={4} md={3}>
                 {isPdf(img.name) ? (
                   <Box
@@ -412,7 +435,13 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
                     <Typography variant="caption" color="text.disabled">クリックで開く</Typography>
                   </Box>
                 ) : (
-                  <Box sx={{ position: 'relative', '&:hover .zoom-btn': { opacity: 1 } }}>
+                  <Box sx={{ position: 'relative', opacity: dimmed ? 0.35 : 1, '&:hover .zoom-btn': { opacity: 1 } }}>
+                    {isReplaced && (
+                      <Chip label="差替済" size="small" sx={{ position: 'absolute', top: 4, left: 4, zIndex: 1, bgcolor: '#7b1fa2', color: 'white', fontSize: '0.6rem', height: 18 }} />
+                    )}
+                    {dimmed && (
+                      <Chip label="元画像" size="small" sx={{ position: 'absolute', top: 4, left: 4, zIndex: 1, bgcolor: '#999', color: 'white', fontSize: '0.6rem', height: 18 }} />
+                    )}
                     <Box
                       component="img"
                       src={img.url}
@@ -422,7 +451,7 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
                         height: 120,
                         objectFit: 'cover',
                         borderRadius: 1,
-                        border: '1px solid #eee',
+                        border: isReplaced ? '2px solid #7b1fa2' : '1px solid #eee',
                         display: 'block',
                         cursor: 'pointer',
                       }}
@@ -446,7 +475,8 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
                   </Box>
                 )}
               </Grid>
-            ))}
+              );
+            })}
           </Grid>
         </Box>
       )}
