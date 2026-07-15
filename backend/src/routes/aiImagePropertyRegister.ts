@@ -5,6 +5,7 @@
  */
 import { Router, Request, Response } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
+import sharp from 'sharp';
 import supabase from '../config/supabase';
 import { authenticate } from '../middleware/auth';
 
@@ -12,16 +13,128 @@ const router = Router();
 router.use(authenticate);
 
 /** 当社情報（都道府県別） */
-const OWN_COMPANY_INFO: Record<'福岡' | '大分', { company_name: string }> = {
+const OWN_COMPANY_INFO: Record<'福岡' | '大分', { company_name: string; lines: string[] }> = {
   福岡: {
     company_name:
       '株式会社くじら不動産　〒810-0073 福岡市中央区舞鶴3-1-10　TEL:092-401-5331　mail:tenant@ifoo-oita.com',
+    lines: [
+      '株式会社くじら不動産',
+      '〒810-0073 福岡市中央区舞鶴3-1-10',
+      'TEL:092-401-5331  mail:tenant@ifoo-oita.com',
+    ],
   },
   大分: {
     company_name:
       '株式会社いふう　〒870-0021 大分市舞鶴町1-3-30　TEL:097-533-2022　mail:tenant@ifoo-oita.com',
+    lines: [
+      '株式会社いふう',
+      '〒870-0021 大分市舞鶴町1-3-30',
+      'TEL:097-533-2022  mail:tenant@ifoo-oita.com',
+    ],
   },
 };
+
+/**
+ * Claudeで画像内の会社情報エリアを検出し、sharpで白塗り→SVGテキストを合成して差し替えた画像を返す
+ */
+async function replaceCompanyInfoInImage(
+  imageBase64: string,
+  mediaType: string,
+  prefecture: '福岡' | '大分'
+): Promise<Buffer | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+
+  // PDFは差し替え不可
+  if (mediaType === 'application/pdf') return null;
+
+  const client = new Anthropic({ apiKey });
+
+  // 1. 会社情報エリアを検出
+  const detectPrompt = `この画像は不動産の物件概要書です。
+画像の下部に記載されている「不動産会社の情報エリア」（会社名・住所・電話番号・メールアドレス・ロゴなどを含む領域）を検出してください。
+
+以下のJSON形式で返してください：
+{
+  "found": true または false,
+  "region": {
+    "x": 画像幅に対する左端の割合（0〜1）,
+    "y": 画像高さに対する上端の割合（0〜1）,
+    "width": 画像幅に対する幅の割合（0〜1）,
+    "height": 画像高さに対する高さの割合（0〜1）
+  }
+}
+
+重要：物件情報（住所・価格・備考など）は含めない。発行会社のロゴ・会社名・住所・TEL・メールのエリアのみ。
+JSONのみ返してください。`;
+
+  try {
+    const response = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 256,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image' as const, source: { type: 'base64' as const, media_type: mediaType as any, data: imageBase64 } },
+          { type: 'text', text: detectPrompt },
+        ],
+      }],
+    });
+
+    const text = response.content.filter(b => b.type === 'text').map((b: any) => b.text).join('');
+    const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/\{[\s\S]*\}/);
+    const jsonText = jsonMatch ? (jsonMatch[1] ?? jsonMatch[0]) : text;
+    const result = JSON.parse(jsonText);
+
+    if (!result.found || !result.region) {
+      console.log('[Replace] 会社情報エリアが検出されませんでした');
+      return null;
+    }
+
+    const region = result.region;
+    console.log('[Replace] 検出エリア:', region);
+
+    // 2. sharpで画像加工
+    const imgBuffer = Buffer.from(imageBase64, 'base64');
+    const metadata = await sharp(imgBuffer).metadata();
+    const imgW = metadata.width!;
+    const imgH = metadata.height!;
+
+    const rx = Math.floor(region.x * imgW);
+    const ry = Math.floor(region.y * imgH);
+    const rw = Math.ceil(region.width * imgW);
+    const rh = Math.ceil(region.height * imgH);
+
+    // 白い矩形を作成
+    const whiteRect = await sharp({
+      create: { width: rw, height: rh, channels: 3, background: { r: 255, g: 255, b: 255 } },
+    }).jpeg().toBuffer();
+
+    // テキストSVGを作成
+    const ownInfo = OWN_COMPANY_INFO[prefecture];
+    const fontSize = Math.max(12, Math.floor(rh / 5));
+    const lineHeight = fontSize * 1.5;
+    const textLines = ownInfo.lines.map((line, i) =>
+      `<text x="10" y="${fontSize + i * lineHeight}" font-size="${fontSize}" font-family="sans-serif" fill="black">${line}</text>`
+    ).join('');
+    const textSvg = Buffer.from(
+      `<svg width="${rw}" height="${rh}"><rect width="100%" height="100%" fill="white"/>${textLines}</svg>`
+    );
+
+    // 合成: 元画像にSVGを重ねる
+    const processed = await sharp(imgBuffer)
+      .composite([
+        { input: await sharp(textSvg).png().toBuffer(), left: rx, top: ry },
+      ])
+      .jpeg({ quality: 92 })
+      .toBuffer();
+
+    return processed;
+  } catch (err) {
+    console.error('[Replace] 会社情報差し替えエラー:', err);
+    return null;
+  }
+}
 
 /**
  * 次の他社物件番号を採番する
@@ -310,6 +423,29 @@ router.post('/extract-and-register-property', async (req: Request, res: Response
     }
 
     console.log(`[AI Register] 他社物件登録成功: ${propertyNumber} (${sidebarCategory})`);
+
+    // 6. 画像をStorageに保存＋会社情報を差し替え
+    if (mediaType !== 'application/pdf') {
+      try {
+        // 元画像を保存
+        const originalBuffer = Buffer.from(imageBase64, 'base64');
+        await supabase.storage
+          .from('tasha-property-images')
+          .upload(`${propertyNumber}/original.jpg`, originalBuffer, { contentType: 'image/jpeg', upsert: true });
+
+        // 会社情報を差し替えた画像を生成・保存
+        const pref = (prefecture === '福岡' ? '福岡' : '大分') as '福岡' | '大分';
+        const replaced = await replaceCompanyInfoInImage(imageBase64, mediaType, pref);
+        if (replaced) {
+          await supabase.storage
+            .from('tasha-property-images')
+            .upload(`${propertyNumber}/replaced.jpg`, replaced, { contentType: 'image/jpeg', upsert: true });
+          console.log(`[AI Register] 会社情報差し替え画像を保存: ${propertyNumber}/replaced.jpg`);
+        }
+      } catch (imgErr) {
+        console.warn('[AI Register] Storage保存失敗（登録自体は成功）:', imgErr);
+      }
+    }
 
     return res.status(201).json({
       propertyNumber,

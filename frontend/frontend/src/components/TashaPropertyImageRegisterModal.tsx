@@ -253,17 +253,6 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
 
       const registeredNumber = res.data.propertyNumber;
 
-      // 登録成功後、画像をStorageに保存
-      try {
-        await api.post(`/api/ai/tasha-property-image/${registeredNumber}`, {
-          imageBase64: finalBase64,
-          mediaType,
-          fileName: item.file.name,
-        });
-      } catch (imgErr) {
-        console.warn('[TashaRegister] 画像保存失敗（登録は成功）:', imgErr);
-      }
-
       setItems(prev => prev.map((it, i) =>
         i === currentIndex
           ? { ...it, status: 'registered', registeredNumber }
