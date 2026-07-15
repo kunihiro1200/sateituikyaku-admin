@@ -73,6 +73,7 @@ interface ImageItem {
   editedValues?: Partial<ExtractedProperty>;
   registeredNumber?: string;
   errorMessage?: string;
+  rotation?: 0 | 90 | 180 | 270; // 手動回転（度）
 }
 
 interface Props {
@@ -220,32 +221,42 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
     setIsRegistering(true);
 
     try {
-      const base64Res = await fixImageOrientationToBase64(item.file);
-      // MIMEタイプが空の場合は拡張子から推定
-      let mediaType = base64Res.mediaType || item.file.type;
-      if (!mediaType || mediaType === 'application/octet-stream') {
-        const ext = item.file.name.split('.').pop()?.toLowerCase() ?? '';
-        const extMap: Record<string, string> = {
-          jpg: 'image/jpeg', jpeg: 'image/jpeg',
-          png: 'image/png', gif: 'image/gif',
-          webp: 'image/webp', bmp: 'image/png',
-          heic: 'image/jpeg', avif: 'image/webp',
-          pdf: 'application/pdf',
-        };
-        mediaType = extMap[ext] ?? 'image/jpeg';
+      const { base64: orientedBase64, mediaType: fixedMediaType } = await fixImageOrientationToBase64(item.file);
+      let mediaType = fixedMediaType || item.file.type || 'image/jpeg';
+
+      // 手動回転が指定されている場合はCanvasで回転
+      let finalBase64 = orientedBase64;
+      const rotation = item.rotation ?? 0;
+      if (rotation !== 0 && mediaType !== 'application/pdf') {
+        finalBase64 = await new Promise<string>((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const swap = rotation === 90 || rotation === 270;
+            canvas.width = swap ? img.height : img.width;
+            canvas.height = swap ? img.width : img.height;
+            const ctx = canvas.getContext('2d')!;
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate((rotation * Math.PI) / 180);
+            ctx.drawImage(img, -img.width / 2, -img.height / 2);
+            resolve(canvas.toDataURL('image/jpeg', 0.92).split(',')[1]);
+          };
+          img.src = `data:image/jpeg;base64,${orientedBase64}`;
+        });
       }
+
       const res = await api.post('/api/ai/extract-and-register-property', {
-        imageBase64: base64Res.base64,
+        imageBase64: finalBase64,
         mediaType,
         overrides: item.editedValues,
       });
 
       const registeredNumber = res.data.propertyNumber;
 
-      // 登録成功後、画像をStorageに保存（失敗しても登録自体は成功扱い）
+      // 登録成功後、画像をStorageに保存
       try {
         await api.post(`/api/ai/tasha-property-image/${registeredNumber}`, {
-          imageBase64: base64Res.base64,
+          imageBase64: finalBase64,
           mediaType,
           fileName: item.file.name,
         });
@@ -305,6 +316,16 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
         ? { ...it, editedValues: { ...it.editedValues, [key]: value } }
         : it
     ));
+  };
+
+  // 現在の画像を90度回転する
+  const handleRotate = () => {
+    setItems(prev => prev.map((it, i) => {
+      if (i !== currentIndex) return it;
+      const current = it.rotation ?? 0;
+      const next = ((current + 90) % 360) as 0 | 90 | 180 | 270;
+      return { ...it, rotation: next };
+    }));
   };
 
   // 現在のアイテム
@@ -484,11 +505,34 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
                       </Typography>
                     </Box>
                   ) : (
-                    <Box
-                      component="img"
-                      src={currentItem.previewUrl}
-                      sx={{ width: 160, height: 110, objectFit: 'cover', borderRadius: 1, border: '1px solid #eee', flexShrink: 0 }}
-                    />
+                    <Box sx={{ flexShrink: 0 }}>
+                      <Box
+                        component="img"
+                        src={currentItem.previewUrl}
+                        sx={{
+                          width: 160,
+                          height: 110,
+                          objectFit: 'contain',
+                          borderRadius: 1,
+                          border: '1px solid #eee',
+                          display: 'block',
+                          transform: `rotate(${currentItem.rotation ?? 0}deg)`,
+                          transition: 'transform 0.3s',
+                          // 90/270度回転時ははみ出さないようにする
+                          ...(((currentItem.rotation ?? 0) === 90 || (currentItem.rotation ?? 0) === 270)
+                            ? { width: 110, height: 160 } : {}),
+                        }}
+                      />
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={handleRotate}
+                        sx={{ mt: 0.5, width: '100%', fontSize: '0.7rem' }}
+                        startIcon={<span style={{ fontSize: '1rem' }}>↻</span>}
+                      >
+                        回転
+                      </Button>
+                    </Box>
                   )}
                   <Box>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
