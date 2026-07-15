@@ -230,19 +230,23 @@ router.post('/extract-and-register-property', async (req: Request, res: Response
     // 5. property_listingsに挿入
     const ownCompany = OWN_COMPANY_INFO[prefecture as '福岡' | '大分'] ?? OWN_COMPANY_INFO['大分'];
 
+    // 今日の日付（公開日）
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
     const insertData: Record<string, any> = {
       property_number: propertyNumber,
       address: merged.address || null,
       property_type: merged.property_type || null,
       price: merged.price || null,
       sidebar_status: sidebarCategory,
-      // 他社物件フラグとして使えるよう atbb_status に設定
       atbb_status: '他社物件',
       confirmation: '済',
       // 発行会社（他社）を特記に保存
       special_notes: merged.issuing_company || null,
       // 当社情報で取引業者を上書き
       company_name: ownCompany.company_name,
+      // 公開日に今日の日付をセット
+      distribution_date: today,
     };
 
     // 任意フィールドを追加
@@ -257,6 +261,8 @@ router.post('/extract-and-register-property', async (req: Request, res: Response
     if (merged.road_access) insertData['road_access'] = merged.road_access;
     if (merged.remarks) insertData['report_memo'] = merged.remarks;
 
+    console.log('[AI Register] insertData:', JSON.stringify(insertData, null, 2));
+
     const { data: inserted, error: insertError } = await supabase
       .from('property_listings')
       .insert(insertData)
@@ -265,8 +271,9 @@ router.post('/extract-and-register-property', async (req: Request, res: Response
 
     if (insertError) {
       console.error('[AI Register] Supabase insert error:', insertError);
-      // カラムが存在しない場合は最小限のデータで再試行
-      const minimalData = {
+      // カラムが存在しないエラーの場合、存在しないカラムを除いて再試行
+      // ただし special_notes・company_name・distribution_date は必ず含める
+      const minimalData: Record<string, any> = {
         property_number: propertyNumber,
         address: merged.address || null,
         property_type: merged.property_type || null,
@@ -274,7 +281,17 @@ router.post('/extract-and-register-property', async (req: Request, res: Response
         sidebar_status: sidebarCategory,
         atbb_status: '他社物件',
         confirmation: '済',
+        distribution_date: today,
       };
+      // special_notes が原因でなければ含める
+      if (!insertError.message?.includes('special_notes')) {
+        minimalData['special_notes'] = merged.issuing_company || null;
+      }
+      // company_name が原因でなければ含める
+      if (!insertError.message?.includes('company_name')) {
+        minimalData['company_name'] = ownCompany.company_name;
+      }
+
       const { data: retryInserted, error: retryError } = await supabase
         .from('property_listings')
         .insert(minimalData)
