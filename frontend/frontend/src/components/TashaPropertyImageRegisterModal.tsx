@@ -238,9 +238,22 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
         overrides: item.editedValues,
       });
 
+      const registeredNumber = res.data.propertyNumber;
+
+      // 登録成功後、画像をStorageに保存（失敗しても登録自体は成功扱い）
+      try {
+        await api.post(`/api/ai/tasha-property-image/${registeredNumber}`, {
+          imageBase64: base64,
+          mediaType,
+          fileName: item.file.name,
+        });
+      } catch (imgErr) {
+        console.warn('[TashaRegister] 画像保存失敗（登録は成功）:', imgErr);
+      }
+
       setItems(prev => prev.map((it, i) =>
         i === currentIndex
-          ? { ...it, status: 'registered', registeredNumber: res.data.propertyNumber }
+          ? { ...it, status: 'registered', registeredNumber }
           : it
       ));
       goToNext(true);

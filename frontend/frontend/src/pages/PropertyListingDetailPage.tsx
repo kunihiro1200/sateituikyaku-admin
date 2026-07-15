@@ -75,6 +75,7 @@ import { ChatHistoryItem } from '../types/chatHistory';
 import HouseMakerModal from '../components/HouseMakerModal';
 import MansionModal, { MANSION_BRANDS } from '../components/MansionModal';
 import NearbyMapModal from '../components/NearbyMapModal';
+import TashaPropertyPanel from '../components/TashaPropertyPanel';
 
 interface PropertyListing {
   id: number;
@@ -1605,6 +1606,15 @@ export default function PropertyListingDetailPage() {
           >
             物件リストに戻る
           </Button>
+        </Box>
+      )}
+      {/* 他社物件（FT/OT）専用パネル */}
+      {(propertyNumber?.startsWith('FT') || propertyNumber?.startsWith('OT')) && (
+        <Box sx={{ px: 1, pt: 1 }}>
+          <TashaPropertyPanel
+            propertyNumber={propertyNumber!}
+            onDeleted={() => navigate('/property-listings')}
+          />
         </Box>
       )}
       {/* Header */}

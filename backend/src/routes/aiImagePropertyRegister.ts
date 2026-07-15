@@ -326,4 +326,137 @@ router.post('/extract-and-register-property', async (req: Request, res: Response
   }
 });
 
+/**
+ * DELETE /api/ai/tasha-property/:propertyNumber
+ * 他社物件（FT/OT番号）を削除する
+ * ・property_listingsから削除
+ * ・Storageの画像も削除
+ */
+router.delete('/tasha-property/:propertyNumber', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+
+    // FT or OT 番号のみ削除可能（誤削除防止）
+    if (!propertyNumber.startsWith('FT') && !propertyNumber.startsWith('OT')) {
+      return res.status(400).json({ error: '他社物件（FT/OT番号）のみ削除できます' });
+    }
+
+    // Storageの画像を削除（存在しなくてもエラーにしない）
+    const { data: storageFiles } = await supabase.storage
+      .from('tasha-property-images')
+      .list(propertyNumber);
+
+    if (storageFiles && storageFiles.length > 0) {
+      const paths = storageFiles.map((f: any) => `${propertyNumber}/${f.name}`);
+      await supabase.storage.from('tasha-property-images').remove(paths);
+      console.log(`[Tasha Delete] Storage削除: ${paths.join(', ')}`);
+    }
+
+    // property_listingsから削除
+    const { error: deleteError } = await supabase
+      .from('property_listings')
+      .delete()
+      .eq('property_number', propertyNumber);
+
+    if (deleteError) {
+      return res.status(500).json({ error: '削除に失敗しました', details: deleteError.message });
+    }
+
+    console.log(`[Tasha Delete] 他社物件削除成功: ${propertyNumber}`);
+    return res.json({ success: true, propertyNumber });
+  } catch (error: any) {
+    console.error('[Tasha Delete] Error:', error);
+    return res.status(500).json({ error: '削除に失敗しました', details: error?.message });
+  }
+});
+
+/**
+ * POST /api/ai/tasha-property-image/:propertyNumber
+ * 他社物件の画像をSupabase Storageに保存する
+ * body: { imageBase64: string, mediaType: string, fileName?: string }
+ */
+router.post('/tasha-property-image/:propertyNumber', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+    const { imageBase64, mediaType, fileName } = req.body;
+
+    if (!imageBase64 || !mediaType) {
+      return res.status(400).json({ error: 'imageBase64 と mediaType が必要です' });
+    }
+
+    // Base64をBufferに変換
+    const buffer = Buffer.from(imageBase64, 'base64');
+
+    // ファイル名決定（タイムスタンプ付き）
+    const ext = mediaType === 'application/pdf' ? 'pdf'
+      : mediaType === 'image/png' ? 'png'
+      : mediaType === 'image/webp' ? 'webp'
+      : 'jpg';
+    const timestamp = Date.now();
+    const storagePath = `${propertyNumber}/${fileName || `${timestamp}.${ext}`}`;
+
+    // Supabase Storageにアップロード
+    const { error: uploadError } = await supabase.storage
+      .from('tasha-property-images')
+      .upload(storagePath, buffer, {
+        contentType: mediaType,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error('[Tasha Image] Upload error:', uploadError);
+      return res.status(500).json({ error: '画像保存に失敗しました', details: uploadError.message });
+    }
+
+    // 公開URLを取得
+    const { data: urlData } = supabase.storage
+      .from('tasha-property-images')
+      .getPublicUrl(storagePath);
+
+    console.log(`[Tasha Image] 画像保存成功: ${storagePath}`);
+    return res.json({ success: true, path: storagePath, url: urlData.publicUrl });
+  } catch (error: any) {
+    console.error('[Tasha Image] Error:', error);
+    return res.status(500).json({ error: '画像保存に失敗しました', details: error?.message });
+  }
+});
+
+/**
+ * GET /api/ai/tasha-property-image/:propertyNumber
+ * 他社物件の保存済み画像URL一覧を取得する
+ */
+router.get('/tasha-property-image/:propertyNumber', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+
+    const { data: files, error } = await supabase.storage
+      .from('tasha-property-images')
+      .list(propertyNumber, { sortBy: { column: 'created_at', order: 'asc' } });
+
+    if (error) {
+      // バケットが存在しない・フォルダが空の場合は空配列を返す
+      return res.json({ images: [] });
+    }
+
+    const images = (files || []).map((f: any) => {
+      const path = `${propertyNumber}/${f.name}`;
+      const { data: urlData } = supabase.storage
+        .from('tasha-property-images')
+        .getPublicUrl(path);
+      return {
+        name: f.name,
+        path,
+        url: urlData.publicUrl,
+        size: f.metadata?.size,
+        createdAt: f.created_at,
+      };
+    });
+
+    return res.json({ images });
+  } catch (error: any) {
+    console.error('[Tasha Image List] Error:', error);
+    return res.status(500).json({ error: '画像一覧取得に失敗しました', details: error?.message });
+  }
+});
+
 export default router;
