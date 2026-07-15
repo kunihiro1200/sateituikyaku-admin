@@ -405,7 +405,6 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
               // 元画像に対応するreplacedが存在する場合、元画像を薄く表示
               const dimmed = !isReplaced && hasReplaced;
               return (
-              return (
               <Grid item key={img.path} xs={6} sm={4} md={3}>
                 {isPdf(img.name) ? (
                   <Box
