@@ -30,6 +30,7 @@ import {
   AutoFixHigh as AutoFixHighIcon,
   SkipNext as SkipNextIcon,
   NavigateNext as NavigateNextIcon,
+  PictureAsPdf as PictureAsPdfIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -114,14 +115,17 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
 
   // ファイルを受け取って items に追加し、1枚目の解析を開始
   const processFiles = useCallback(async (files: File[]) => {
-    // image/* に限らず、拡張子ベースでも判定（typeが空の場合に対応）
-    const imageExts = /\.(jpe?g|png|gif|webp|bmp|tiff?|heic|avif)$/i;
+    // image/* に限らず、拡張子ベースでも判定（typeが空の場合に対応）。PDFも可。
+    const imageExts = /\.(jpe?g|png|gif|webp|bmp|tiff?|heic|avif|pdf)$/i;
     const imageFiles = files.filter(f =>
-      f.type.startsWith('image/') || imageExts.test(f.name) || f.type === ''
+      f.type.startsWith('image/') ||
+      f.type === 'application/pdf' ||
+      imageExts.test(f.name) ||
+      f.type === ''
     );
     // ファイルが1件もない場合はエラー表示
     if (imageFiles.length === 0) {
-      setGlobalError('画像ファイルを選択してください（JPEG・PNG・WebP 等）');
+      setGlobalError('画像またはPDFファイルを選択してください（JPEG・PNG・WebP・PDF 等）');
       return;
     }
 
@@ -160,6 +164,7 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
           png: 'image/png', gif: 'image/gif',
           webp: 'image/webp', bmp: 'image/png',
           heic: 'image/jpeg', avif: 'image/webp',
+          pdf: 'application/pdf',
         };
         mediaType = extMap[ext] ?? 'image/jpeg';
       }
@@ -222,6 +227,7 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
           png: 'image/png', gif: 'image/gif',
           webp: 'image/webp', bmp: 'image/png',
           heic: 'image/jpeg', avif: 'image/webp',
+          pdf: 'application/pdf',
         };
         mediaType = extMap[ext] ?? 'image/jpeg';
       }
@@ -360,13 +366,13 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
                 ここに画像をドロップ、またはクリックして選択
               </Typography>
               <Typography variant="caption" color="text.disabled">
-                複数枚同時に選択可 / JPEG・PNG・WebP 対応
+                複数枚同時に選択可 / JPEG・PNG・WebP・PDF 対応
               </Typography>
             </Box>
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.bmp,.heic,.avif"
+              accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.bmp,.heic,.avif,.pdf,application/pdf"
               multiple
               style={{ display: 'none' }}
               onChange={handleFileChange}
@@ -395,11 +401,17 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
                       opacity: item.status === 'skipped' || item.status === 'error' ? 0.4 : 1,
                     }}
                   >
-                    <Box
-                      component="img"
-                      src={item.previewUrl}
-                      sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
+                    {item.file.type === 'application/pdf' || item.file.name.endsWith('.pdf') ? (
+                      <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#ffebee' }}>
+                        <PictureAsPdfIcon sx={{ color: '#c62828', fontSize: 28 }} />
+                      </Box>
+                    ) : (
+                      <Box
+                        component="img"
+                        src={item.previewUrl}
+                        sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    )}
                     {item.status === 'registered' && (
                       <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(46,125,50,0.6)' }}>
                         <CheckCircleIcon sx={{ color: 'white', fontSize: 20 }} />
@@ -429,11 +441,18 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
             {currentItem.status === 'error' && (
               <Box sx={{ py: 2 }}>
                 <Alert severity="error" sx={{ mb: 2 }}>{currentItem.errorMessage}</Alert>
-                <Box
-                  component="img"
-                  src={currentItem.previewUrl}
-                  sx={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 1 }}
-                />
+                {currentItem.file.type === 'application/pdf' || currentItem.file.name.endsWith('.pdf') ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 2, bgcolor: '#ffebee', borderRadius: 1 }}>
+                    <PictureAsPdfIcon sx={{ color: '#c62828' }} />
+                    <Typography variant="body2">{currentItem.file.name}</Typography>
+                  </Box>
+                ) : (
+                  <Box
+                    component="img"
+                    src={currentItem.previewUrl}
+                    sx={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 1 }}
+                  />
+                )}
               </Box>
             )}
 
@@ -441,11 +460,20 @@ export default function TashaPropertyImageRegisterModal({ open, onClose, onRegis
             {currentItem.status === 'ready' && previewData && (
               <Box>
                 <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                  <Box
-                    component="img"
-                    src={currentItem.previewUrl}
-                    sx={{ width: 160, height: 110, objectFit: 'cover', borderRadius: 1, border: '1px solid #eee', flexShrink: 0 }}
-                  />
+                  {currentItem.file.type === 'application/pdf' || currentItem.file.name.endsWith('.pdf') ? (
+                    <Box sx={{ width: 160, height: 110, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', bgcolor: '#ffebee', borderRadius: 1, border: '1px solid #ef9a9a', flexShrink: 0, gap: 0.5 }}>
+                      <PictureAsPdfIcon sx={{ color: '#c62828', fontSize: 40 }} />
+                      <Typography variant="caption" sx={{ color: '#c62828', textAlign: 'center', px: 1, wordBreak: 'break-all' }}>
+                        {currentItem.file.name}
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box
+                      component="img"
+                      src={currentItem.previewUrl}
+                      sx={{ width: 160, height: 110, objectFit: 'cover', borderRadius: 1, border: '1px solid #eee', flexShrink: 0 }}
+                    />
+                  )}
                   <Box>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                       AIが以下の情報を読み取りました。修正してから登録してください。

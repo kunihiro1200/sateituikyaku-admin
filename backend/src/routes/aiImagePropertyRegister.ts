@@ -115,6 +115,8 @@ priceは税込・税抜問わず記載の数値をそのまま取得。
 
 JSONのみを返してください。説明文は不要です。`;
 
+  const isPdf = mediaType === 'application/pdf';
+
   const response = await client.messages.create({
     model: 'claude-opus-4-5',
     max_tokens: 2048,
@@ -122,14 +124,23 @@ JSONのみを返してください。説明文は不要です。`;
       {
         role: 'user',
         content: [
-          {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-              data: imageBase64,
-            },
-          },
+          isPdf
+            ? {
+                type: 'document' as const,
+                source: {
+                  type: 'base64' as const,
+                  media_type: 'application/pdf' as const,
+                  data: imageBase64,
+                },
+              }
+            : {
+                type: 'image' as const,
+                source: {
+                  type: 'base64' as const,
+                  media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+                  data: imageBase64,
+                },
+              },
           {
             type: 'text',
             text: prompt,
