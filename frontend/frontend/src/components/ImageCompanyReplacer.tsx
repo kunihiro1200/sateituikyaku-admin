@@ -77,13 +77,16 @@ export default function ImageCompanyReplacer({
   const drawCanvas = useCallback((img: HTMLImageElement, rectsToDraw: Rect[], tempRect?: Rect) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-    // Canvasサイズを画像に合わせる（表示は縮小）
-    canvas.width = img.width;
-    canvas.height = img.height;
     const ctx = canvas.getContext('2d')!;
 
-    // 元画像を描画
+    // Canvasサイズは初回のみ設定（毎フレームリセットするとスケール計算が狂う）
+    if (canvas.width !== img.width || canvas.height !== img.height) {
+      canvas.width = img.width;
+      canvas.height = img.height;
+    }
+
+    // クリアして元画像を描画
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0);
 
     // 確定済み矩形は白塗りのみ（テキストは描画しない＝選択しやすくする）
