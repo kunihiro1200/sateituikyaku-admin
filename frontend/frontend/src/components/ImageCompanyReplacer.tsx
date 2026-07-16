@@ -86,32 +86,25 @@ export default function ImageCompanyReplacer({
     // 元画像を描画
     ctx.drawImage(img, 0, 0);
 
-    // 確定済み矩形を白塗り＋テキスト描画
+    // 確定済み矩形は白塗りのみ（テキストは描画しない＝選択しやすくする）
     rectsToDraw.forEach(rect => {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
-      // テキスト描画（矩形内に収まるサイズで）
-      const maxFontSize = Math.floor(rect.height / (ownCompanyLines.length * 1.6));
-      const maxFontByWidth = Math.floor(rect.width / 20); // 幅から推定
-      const fontSize = Math.min(maxFontSize, maxFontByWidth, 24); // 最大24px
-      ctx.fillStyle = '#000000';
-      ctx.font = `${fontSize}px sans-serif`;
-      const lineH = fontSize * 1.5;
-      const startY = rect.y + fontSize + 4;
-      ownCompanyLines.forEach((line, i) => {
-        ctx.fillText(line, rect.x + 6, startY + i * lineH);
-      });
+      // 確定済みの枠線（薄い緑）
+      ctx.strokeStyle = '#4caf50';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
     });
 
-    // ドラッグ中の矩形（赤い点線）
+    // ドラッグ中の矩形（赤い点線＋半透明白）
     if (tempRect) {
       ctx.strokeStyle = '#d32f2f';
       ctx.lineWidth = 3;
       ctx.setLineDash([8, 4]);
       ctx.strokeRect(tempRect.x, tempRect.y, tempRect.width, tempRect.height);
       ctx.setLineDash([]);
-      // 半透明の白
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
       ctx.fillRect(tempRect.x, tempRect.y, tempRect.width, tempRect.height);
     }
   }, [ownCompanyLines]);
@@ -173,7 +166,28 @@ export default function ImageCompanyReplacer({
 
   const handlePreview = () => {
     setPreviewMode(true);
-    if (imgRef.current) drawCanvas(imgRef.current, rects);
+    // プレビュー時はテキスト付きで描画
+    if (!imgRef.current || !canvasRef.current) return;
+    const img = imgRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(img, 0, 0);
+    rects.forEach(rect => {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+      const maxFontSize = Math.floor(rect.height / (ownCompanyLines.length * 1.6));
+      const maxFontByWidth = Math.floor(rect.width / 20);
+      const fontSize = Math.min(maxFontSize, maxFontByWidth, 24);
+      ctx.fillStyle = '#000000';
+      ctx.font = `${fontSize}px sans-serif`;
+      const lineH = fontSize * 1.5;
+      const startY = rect.y + fontSize + 4;
+      ownCompanyLines.forEach((line, i) => {
+        ctx.fillText(line, rect.x + 6, startY + i * lineH);
+      });
+    });
   };
 
   const handleSave = async () => {
