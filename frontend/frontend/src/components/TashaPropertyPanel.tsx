@@ -237,9 +237,11 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
   };
 
   const handlePrint = () => {
-    if (!printRef.current) return;
     const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+    if (!printWindow) {
+      setUploadError('ポップアップがブロックされました。ポップアップを許可してください。');
+      return;
+    }
 
     // _replaced.jpg がある場合はそちらを優先、なければ元画像を使用
     // 元ファイル名（_replaced除去）ごとに最新版を選ぶ
