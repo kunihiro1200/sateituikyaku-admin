@@ -120,7 +120,11 @@ export class BuyerCandidateService {
     salesPrice: number | null,
     distributionAreas: string | null
   ): any[] {
-    const propertyAreaNumbers = this.extractAreaNumbers(distributionAreas || '');
+    // 丸数字エリア番号と英字プレフィックスコードの両方を抽出
+    const propertyAreaNumbers = [
+      ...this.extractAreaNumbers(distributionAreas || ''),
+      ...this.extractAlphaAreaCodes(distributionAreas || '')
+    ];
 
     return buyers.filter(buyer => {
       // 1. 除外条件の評価（早期リターン）
@@ -232,26 +236,21 @@ export class BuyerCandidateService {
   /**
    * 業者問合せかどうかを判定
    * - inquiry_source（問合せ元）が「業者問合せ」の場合: true
-   * - distribution_type（配信種別）が「業者問合せ」の場合: true
-   * - broker_inquiry（業者問合せフラグ）に値がある場合: true
+   * - inquiry_source（問合せ元）が「業者問合せ」の場合: true
+   * - broker_inquiry（業者問合せフラグ）が「業者問合せ」の場合: true
+   * ※「業者（両手）」は除外しない
    */
   private isGyoshaInquiry(buyer: any): boolean {
     const inquirySource = (buyer.inquiry_source || '').trim();
-    const distributionType = (buyer.distribution_type || '').trim();
     const brokerInquiry = (buyer.broker_inquiry || '').trim();
 
-    // 問合せ元が「業者問合せ」
-    if (inquirySource === '業者問合せ' || inquirySource.includes('業者')) {
+    // 問合せ元が「業者問合せ」の場合のみ除外（「業者（両手）」は除外しない）
+    if (inquirySource === '業者問合せ') {
       return true;
     }
 
-    // 配信種別が「業者問合せ」
-    if (distributionType === '業者問合せ' || distributionType.includes('業者')) {
-      return true;
-    }
-
-    // 業者問合せフラグに値がある場合（チェックが入っている場合）
-    if (brokerInquiry && brokerInquiry !== '' && brokerInquiry !== '0' && brokerInquiry.toLowerCase() !== 'false') {
+    // 業者問合せフラグが「業者問合せ」の場合のみ除外
+    if (brokerInquiry === '業者問合せ') {
       return true;
     }
 
@@ -303,8 +302,37 @@ export class BuyerCandidateService {
       if (isBeppuProperty) return true;
     }
 
-    // 1つでも合致すれば条件を満たす
-    return propertyAreaNumbers.some(area => buyerAreaNumbers.includes(area));
+    // 通常のエリアマッチング（丸数字）
+    if (propertyAreaNumbers.some(area => buyerAreaNumbers.includes(area))) {
+      return true;
+    }
+
+    // 英字プレフィックス形式のエリアマッチング（F1〜F11等）
+    const buyerAlphaAreas = this.extractAlphaAreaCodes(desiredArea);
+    if (buyerAlphaAreas.length > 0) {
+      const propertyAlphaAreas = propertyAreaNumbers.filter(a => /^[A-Za-z]+\d+$/.test(a)).map(a => a.toUpperCase());
+
+      if (propertyAlphaAreas.length > 0) {
+        // 買主が「全部」「全域」エリアの場合: 同じプレフィックスを持つ物件エリアがあればマッチ
+        const isAllArea = desiredArea.includes('全部') || desiredArea.includes('全域');
+
+        return buyerAlphaAreas.some(buyerCode => {
+          if (isAllArea) {
+            const buyerPrefix = buyerCode.match(/^([A-Za-z]+)/)?.[1]?.toUpperCase() || '';
+            if (buyerPrefix) {
+              return propertyAlphaAreas.some(propCode => {
+                const propPrefix = propCode.match(/^([A-Za-z]+)/)?.[1]?.toUpperCase() || '';
+                return propPrefix === buyerPrefix;
+              });
+            }
+          }
+          // 完全一致
+          return propertyAlphaAreas.includes(buyerCode);
+        });
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -387,6 +415,17 @@ export class BuyerCandidateService {
     // 丸数字を抽出
     const circledNumbers = areaString.match(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯㊵㊶]/g) || [];
     return circledNumbers;
+  }
+
+  /**
+   * 英字プレフィックス形式のエリアコードを抽出する
+   * 例: "F7 福岡市早良区" → ["F7"]
+   * 例: "F2 福岡市博多区|F1 福岡市東区" → ["F2", "F1"]
+   * 例: "F11 福岡市全部" → ["F11"]
+   */
+  private extractAlphaAreaCodes(areaString: string): string[] {
+    const codes = areaString.match(/[A-Za-z]+\d+/g) || [];
+    return codes.map(c => c.toUpperCase());
   }
 
   /**

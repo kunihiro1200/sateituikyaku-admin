@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { BeppuAreaMappingService } from './BeppuAreaMappingService';
 import { GeolocationService } from './GeolocationService';
 import { GeocodingService } from './GeocodingService';
-import { getOitaCityAreas, getBeppuCityAreas } from '../utils/cityAreaMapping';
+import { getOitaCityAreas, getBeppuCityAreas, getFukuokaAreaCode } from '../utils/cityAreaMapping';
 import { BuyerService } from './BuyerService';
 
 export interface BuyerCandidate {
@@ -450,21 +450,19 @@ export class BuyerCandidateService {
 
   /**
    * 業者問合せかどうかを判定
+   * 「業者問合せ」のみ除外。「業者（両手）」は除外しない。
    */
   private isGyoshaInquiry(buyer: any): boolean {
     const inquirySource = (buyer.inquiry_source || '').trim();
-    const distributionType = (buyer.distribution_type || '').trim();
     const brokerInquiry = (buyer.broker_inquiry || '').trim();
 
-    if (inquirySource === '業者問合せ' || inquirySource.includes('業者')) {
+    // 問合せ元が「業者問合せ」の場合のみ除外（「業者（両手）」は除外しない）
+    if (inquirySource === '業者問合せ') {
       return true;
     }
 
-    if (distributionType === '業者問合せ' || distributionType.includes('業者')) {
-      return true;
-    }
-
-    if (brokerInquiry && brokerInquiry !== '' && brokerInquiry !== '0' && brokerInquiry.toLowerCase() !== 'false' && brokerInquiry.toLowerCase() !== 'null') {
+    // 業者問合せフラグが「業者問合せ」の場合のみ除外
+    if (brokerInquiry === '業者問合せ') {
       return true;
     }
 
@@ -515,8 +513,34 @@ export class BuyerCandidateService {
         if (isBeppuProperty) return true;
       }
 
-      // 通常のエリアマッチング
-      const matches = propertyAreaNumbers.some(area => buyerAreaNumbers.includes(area));
+      // 通常のエリアマッチング（丸数字）
+      const circledMatches = propertyAreaNumbers.some(area => buyerAreaNumbers.includes(area));
+      if (circledMatches) return true;
+
+      // 英字プレフィックス形式のエリアマッチング（F1〜F11等）
+      const buyerAlphaAreas = this.extractAlphaAreaCodes(desiredArea);
+      if (buyerAlphaAreas.length > 0) {
+        const propertyAlphaAreas = propertyAreaNumbers.filter(a => /^[A-Za-z]+\d+$/.test(a)).map(a => a.toUpperCase());
+
+        if (propertyAlphaAreas.length > 0) {
+          // 買主が「全部」「全域」エリアの場合: 同じプレフィックスを持つ物件エリアがあればマッチ
+          const isAllArea = desiredArea.includes('全部') || desiredArea.includes('全域');
+
+          return buyerAlphaAreas.some(buyerCode => {
+            if (isAllArea) {
+              const buyerPrefix = buyerCode.match(/^([A-Za-z]+)/)?.[1]?.toUpperCase() || '';
+              if (buyerPrefix) {
+                return propertyAlphaAreas.some(propCode => {
+                  const propPrefix = propCode.match(/^([A-Za-z]+)/)?.[1]?.toUpperCase() || '';
+                  return propPrefix === buyerPrefix;
+                });
+              }
+            }
+            // 完全一致
+            return propertyAlphaAreas.includes(buyerCode);
+          });
+        }
+      }
       
       // デバッグログ（買主6752の場合のみ）
       if (buyer.buyer_number === '6752') {
@@ -524,10 +548,10 @@ export class BuyerCandidateService {
         console.log(`  - Desired area: ${desiredArea}`);
         console.log(`  - Buyer area numbers: ${JSON.stringify(buyerAreaNumbers)}`);
         console.log(`  - Property area numbers: ${JSON.stringify(propertyAreaNumbers)}`);
-        console.log(`  - Matches: ${matches}`);
+        console.log(`  - Matches: false`);
       }
       
-      return matches;
+      return false;
     }
 
     return false;
@@ -688,6 +712,17 @@ export class BuyerCandidateService {
   }
 
   /**
+   * 英字プレフィックス形式のエリアコードを抽出する
+   * 例: "F7 福岡市早良区" → ["F7"]
+   * 例: "F2 福岡市博多区|F1 福岡市東区" → ["F2", "F1"]
+   * 例: "F11 福岡市全部" → ["F11"]
+   */
+  private extractAlphaAreaCodes(areaString: string): string[] {
+    const codes = areaString.match(/[A-Za-z]+\d+/g) || [];
+    return codes.map(c => c.toUpperCase());
+  }
+
+  /**
    * 数字を丸数字に変換
    */
   private numberToCircled(num: number): string | null {
@@ -726,6 +761,18 @@ export class BuyerCandidateService {
       if (distributionAreas) {
         const extracted = distributionAreas.match(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯㊵㊶㊷㊸]/g) || [];
         extracted.forEach((num: string) => areaNumbers.add(num));
+
+        // 英字プレフィックス形式のエリアコード（F1〜F11等）も抽出
+        const alphaCodes = this.extractAlphaAreaCodes(distributionAreas);
+        alphaCodes.forEach((code: string) => areaNumbers.add(code));
+      } else if (property.address) {
+        // distribution_areasが空の場合: 住所からエリアコードをフォールバック算出
+        const address = property.address || '';
+        const fukuokaCode = getFukuokaAreaCode(address);
+        if (fukuokaCode) {
+          areaNumbers.add(fukuokaCode);
+          console.log(`[BuyerCandidateService] Fallback: derived area code ${fukuokaCode} from address: ${address}`);
+        }
       }
 
       const result = Array.from(areaNumbers);
