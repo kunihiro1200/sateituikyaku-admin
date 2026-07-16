@@ -111,11 +111,12 @@ export default function ImageCompanyReplacer({
   const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement>): { x: number; y: number } => {
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
+    // 表示サイズと実サイズの比率（CSSで縮小されている場合を考慮）
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
+      x: Math.round((e.clientX - rect.left) * scaleX),
+      y: Math.round((e.clientY - rect.top) * scaleY),
     };
   };
 
@@ -167,11 +168,32 @@ export default function ImageCompanyReplacer({
   };
 
   const handleSave = async () => {
-    if (!canvasRef.current || rects.length === 0) return;
+    if (!imgRef.current || rects.length === 0) return;
     setSaving(true);
     setError(null);
     try {
-      const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.92);
+      // 保存用に新しいCanvasで確実に再描画
+      const img = imgRef.current;
+      const saveCanvas = document.createElement('canvas');
+      saveCanvas.width = img.width;
+      saveCanvas.height = img.height;
+      const ctx = saveCanvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+
+      // 全矩形を白塗り＋テキスト描画
+      rects.forEach(rect => {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+        const fontSize = Math.max(12, Math.floor(rect.height / (ownCompanyLines.length + 1)));
+        ctx.fillStyle = '#000000';
+        ctx.font = `${fontSize}px sans-serif`;
+        const lineH = fontSize * 1.4;
+        ownCompanyLines.forEach((line, i) => {
+          ctx.fillText(line, rect.x + 8, rect.y + fontSize + i * lineH);
+        });
+      });
+
+      const dataUrl = saveCanvas.toDataURL('image/jpeg', 0.92);
       const base64 = dataUrl.split(',')[1];
       await api.post(`/api/ai/tasha-property-image/${propertyNumber}`, {
         imageBase64: base64,

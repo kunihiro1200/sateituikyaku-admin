@@ -1,6 +1,7 @@
 /**
  * PDFファイルを画像（JPEG base64）に変換するユーティリティ
  * pdfjs-dist を使ってCanvasにレンダリングし、JPEGに変換する
+ * 横長ページは自動で90度回転して縦向きにする
  */
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -12,6 +13,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 
 /**
  * PDFファイルの各ページをJPEG画像のbase64配列に変換する
+ * 横長ページは自動で90度反時計回りに回転して縦向きにする
  * @param file PDFファイル
  * @param maxPages 変換する最大ページ数（デフォルト: 全ページ）
  * @param scale レンダリング倍率（デフォルト: 2.0 = 高解像度）
@@ -38,9 +40,21 @@ export async function pdfToImageBase64(
 
     await page.render({ canvasContext: ctx, viewport }).promise;
 
-    // JPEG に変換（品質: 92%）
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-    results.push(dataUrl.split(',')[1]);
+    // 横長ページを検出して90度回転（反時計回り = 物件概要書が正しい向きになる）
+    if (viewport.width > viewport.height) {
+      const rotatedCanvas = document.createElement('canvas');
+      rotatedCanvas.width = viewport.height;
+      rotatedCanvas.height = viewport.width;
+      const rotCtx = rotatedCanvas.getContext('2d')!;
+      rotCtx.translate(0, viewport.width);
+      rotCtx.rotate(-Math.PI / 2);
+      rotCtx.drawImage(canvas, 0, 0);
+      const dataUrl = rotatedCanvas.toDataURL('image/jpeg', 0.92);
+      results.push(dataUrl.split(',')[1]);
+    } else {
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      results.push(dataUrl.split(',')[1]);
+    }
   }
 
   return results;
