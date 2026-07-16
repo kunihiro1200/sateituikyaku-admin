@@ -194,35 +194,13 @@ export default function ImageCompanyReplacer({
   };
 
   const handleSave = async () => {
-    if (!imgRef.current || rects.length === 0) return;
+    const canvas = canvasRef.current;
+    if (!canvas || rects.length === 0) return;
     setSaving(true);
     setError(null);
     try {
-      // 保存用に新しいCanvasで確実に再描画
-      const img = imgRef.current;
-      const saveCanvas = document.createElement('canvas');
-      saveCanvas.width = img.width;
-      saveCanvas.height = img.height;
-      const ctx = saveCanvas.getContext('2d')!;
-      ctx.drawImage(img, 0, 0);
-
-      // 全矩形を白塗り＋テキスト描画
-      rects.forEach(rect => {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
-        const maxFontSize = Math.floor(rect.height / (ownCompanyLines.length * 1.6));
-        const maxFontByWidth = Math.floor(rect.width / 20);
-        const fontSize = Math.min(maxFontSize, maxFontByWidth, 24);
-        ctx.fillStyle = '#000000';
-        ctx.font = `${fontSize}px sans-serif`;
-        const lineH = fontSize * 1.5;
-        const startY = rect.y + fontSize + 4;
-        ownCompanyLines.forEach((line, i) => {
-          ctx.fillText(line, rect.x + 6, startY + i * lineH);
-        });
-      });
-
-      const dataUrl = saveCanvas.toDataURL('image/jpeg', 0.92);
+      // プレビュー表示中のCanvasをそのまま保存
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
       const base64 = dataUrl.split(',')[1];
       await api.post(`/api/ai/tasha-property-image/${propertyNumber}`, {
         imageBase64: base64,
