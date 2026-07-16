@@ -237,28 +237,20 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
   };
 
   const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      setUploadError('ポップアップがブロックされました。ポップアップを許可してください。');
-      return;
-    }
-
     // _replaced.jpg がある場合はそちらを優先、なければ元画像を使用
-    // 元ファイル名（_replaced除去）ごとに最新版を選ぶ
     const imageMap = new Map<string, TashaImage>();
     images
       .filter(img => !isPdf(img.name))
       .forEach(img => {
-        // _replaced.jpg → 元のベース名を取得
         const baseName = img.name.replace('_replaced.jpg', '').replace(/\.[^.]+$/, '');
         const existing = imageMap.get(baseName);
-        // _replaced を優先
         if (!existing || img.name.includes('_replaced')) {
           imageMap.set(baseName, img);
         }
       });
 
     const printImages = Array.from(imageMap.values());
+    if (printImages.length === 0) return;
 
     const imagesHtml = printImages
       .map(img => `
@@ -267,7 +259,7 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
         </div>
       `).join('');
 
-    printWindow.document.write(`
+    const html = `
       <html>
         <head>
           <title>${propertyNumber} 物件概要書</title>
@@ -279,12 +271,37 @@ export default function TashaPropertyPanel({ propertyNumber, onDeleted }: Props)
         </head>
         <body>
           <h2>${propertyNumber}（他社物件 / ${prefectureLabel}）</h2>
-          ${imagesHtml || '<p>印刷可能な画像がありません</p>'}
-          <script>window.onload = function(){ window.print(); window.close(); }<\/script>
+          ${imagesHtml}
         </body>
       </html>
-    `);
-    printWindow.document.close();
+    `;
+
+    // iframeを使って印刷（ポップアップブロッカー回避）
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.top = '-10000px';
+    iframe.style.left = '-10000px';
+    iframe.style.width = '1px';
+    iframe.style.height = '1px';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) {
+      setUploadError('印刷に失敗しました');
+      document.body.removeChild(iframe);
+      return;
+    }
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    // 画像が読み込まれてから印刷
+    iframe.onload = () => {
+      setTimeout(() => {
+        iframe.contentWindow?.print();
+        setTimeout(() => document.body.removeChild(iframe), 1000);
+      }, 500);
+    };
   };
 
   const isPdf = (name: string) => name.toLowerCase().endsWith('.pdf');
