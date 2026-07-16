@@ -57,15 +57,21 @@ export default function ImageCompanyReplacer({
     setPreviewMode(false);
     setError(null);
 
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      imgRef.current = img;
-      drawCanvas(img, []);
-      setImgLoaded(true);
-    };
-    img.onerror = () => setError('画像の読み込みに失敗しました');
-    img.src = imageUrl;
+    // CORS回避: fetchでBlobとして取得し、objectURLで読み込む
+    fetch(imageUrl)
+      .then(res => res.blob())
+      .then(blob => {
+        const objectUrl = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => {
+          imgRef.current = img;
+          drawCanvas(img, []);
+          setImgLoaded(true);
+        };
+        img.onerror = () => setError('画像の読み込みに失敗しました');
+        img.src = objectUrl;
+      })
+      .catch(() => setError('画像の取得に失敗しました'));
   }, [open, imageUrl]);
 
   const drawCanvas = useCallback((img: HTMLImageElement, rectsToDraw: Rect[], tempRect?: Rect) => {
