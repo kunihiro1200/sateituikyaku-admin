@@ -112,16 +112,16 @@ export default function ImageCompanyReplacer({
     }
   }, [ownCompanyLines]);
 
-  // Canvas座標を取得
+  // Canvas座標を取得（offsetX/Yを使うことでスクロール位置に関係なく正確に取得）
   const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement>): { x: number; y: number } => {
     const canvas = canvasRef.current!;
+    // offsetX/Y はCanvas要素に対する相対座標（スクロール関係なし）
     const rect = canvas.getBoundingClientRect();
-    // 表示サイズと実サイズの比率（CSSで縮小されている場合を考慮）
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     return {
-      x: Math.round((e.clientX - rect.left) * scaleX),
-      y: Math.round((e.clientY - rect.top) * scaleY),
+      x: Math.round(e.nativeEvent.offsetX * scaleX),
+      y: Math.round(e.nativeEvent.offsetY * scaleY),
     };
   };
 
