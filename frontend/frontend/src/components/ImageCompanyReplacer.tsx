@@ -90,13 +90,16 @@ export default function ImageCompanyReplacer({
     rectsToDraw.forEach(rect => {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
-      // テキスト描画
-      const fontSize = Math.max(12, Math.floor(rect.height / (ownCompanyLines.length + 1)));
+      // テキスト描画（矩形内に収まるサイズで）
+      const maxFontSize = Math.floor(rect.height / (ownCompanyLines.length * 1.6));
+      const maxFontByWidth = Math.floor(rect.width / 20); // 幅から推定
+      const fontSize = Math.min(maxFontSize, maxFontByWidth, 24); // 最大24px
       ctx.fillStyle = '#000000';
       ctx.font = `${fontSize}px sans-serif`;
-      const lineH = fontSize * 1.4;
+      const lineH = fontSize * 1.5;
+      const startY = rect.y + fontSize + 4;
       ownCompanyLines.forEach((line, i) => {
-        ctx.fillText(line, rect.x + 8, rect.y + fontSize + i * lineH);
+        ctx.fillText(line, rect.x + 6, startY + i * lineH);
       });
     });
 
@@ -190,12 +193,15 @@ export default function ImageCompanyReplacer({
       rects.forEach(rect => {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
-        const fontSize = Math.max(12, Math.floor(rect.height / (ownCompanyLines.length + 1)));
+        const maxFontSize = Math.floor(rect.height / (ownCompanyLines.length * 1.6));
+        const maxFontByWidth = Math.floor(rect.width / 20);
+        const fontSize = Math.min(maxFontSize, maxFontByWidth, 24);
         ctx.fillStyle = '#000000';
         ctx.font = `${fontSize}px sans-serif`;
-        const lineH = fontSize * 1.4;
+        const lineH = fontSize * 1.5;
+        const startY = rect.y + fontSize + 4;
         ownCompanyLines.forEach((line, i) => {
-          ctx.fillText(line, rect.x + 8, rect.y + fontSize + i * lineH);
+          ctx.fillText(line, rect.x + 6, startY + i * lineH);
         });
       });
 
