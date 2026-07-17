@@ -107,15 +107,17 @@ const RichTextEmailEditor: React.FC<RichTextEmailEditorProps> = ({
     }
   };
 
-  // 画像ペーストハンドラー
+  // ペーストハンドラー（画像 + プレーンテキストの改行保持）
   const handlePaste = async (event: React.ClipboardEvent<HTMLDivElement>) => {
     const items = event.clipboardData?.items;
     if (!items) return;
 
     // 画像アイテムを探す
+    let hasImage = false;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       if (item.type.startsWith('image/')) {
+        hasImage = true;
         event.preventDefault(); // デフォルトのペースト動作を防ぐ
         
         const file = item.getAsFile();
@@ -139,6 +141,32 @@ const RichTextEmailEditor: React.FC<RichTextEmailEditorProps> = ({
           await insertImageAtCursor(file, savedRange);
         }
         break;
+      }
+    }
+
+    // 画像がない場合：プレーンテキストの改行を<br>に変換して挿入
+    // （ブラウザのデフォルト動作では\nが<br>にならずメール送信時に改行が消える問題の修正）
+    if (!hasImage) {
+      const plainText = event.clipboardData?.getData('text/plain');
+      const htmlText = event.clipboardData?.getData('text/html');
+
+      // HTMLデータがある場合（他のリッチテキストからのコピー）はブラウザのデフォルト動作に任せる
+      if (htmlText) return;
+
+      // プレーンテキストに改行が含まれる場合のみ介入
+      if (plainText && plainText.includes('\n')) {
+        event.preventDefault();
+        // \nを<br>に変換し、特殊文字をエスケープ
+        const escaped = plainText
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\n/g, '<br>');
+        document.execCommand('insertHTML', false, escaped);
+        // 変更を親コンポーネントに通知
+        if (editorRef.current) {
+          onChange(editorRef.current.innerHTML);
+        }
       }
     }
   };

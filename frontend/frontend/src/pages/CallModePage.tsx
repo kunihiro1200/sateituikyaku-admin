@@ -3724,7 +3724,7 @@ HP：https://ifoo-oita.com/
     // 編集可能なフィールドに初期値を設定
     setEditableEmailRecipient(seller.email || '');
     setEditableEmailSubject(subject);
-    setEditableEmailBody(body);
+    setEditableEmailBody(body.replace(/\n/g, '<br>'));
     // テンプレート選択時に選択画像をリセット（前回の添付が残らないようにする）
     setSelectedImages([]);
   };
