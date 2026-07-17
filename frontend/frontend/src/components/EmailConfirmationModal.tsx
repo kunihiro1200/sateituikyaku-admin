@@ -42,6 +42,7 @@ interface EmailConfirmationModalProps {
   recipientCount: number;
   defaultSubject: string;
   defaultBody: string;
+  defaultAttachments?: ImageFile[];
 }
 
 export default function EmailConfirmationModal({
@@ -51,6 +52,7 @@ export default function EmailConfirmationModal({
   recipientCount,
   defaultSubject,
   defaultBody,
+  defaultAttachments,
 }: EmailConfirmationModalProps) {
   const [subject, setSubject] = useState(defaultSubject);
   const [body, setBody] = useState(defaultBody);
@@ -84,7 +86,7 @@ export default function EmailConfirmationModal({
     if (open) {
       setSubject(defaultSubject);
       setBody(defaultBody);
-      setAttachments([]);
+      setAttachments(defaultAttachments || []);
       setReplyTo(DEFAULT_REPLY_TO); // Reply-To をリセット
       fetchEmployees();
     }

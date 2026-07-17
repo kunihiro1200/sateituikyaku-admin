@@ -26,10 +26,13 @@ import {
   Person as PersonIcon,
   Email as EmailIcon,
   Sms as SmsIcon,
+  AttachFile as AttachFileIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import EmailConfirmationModal from '../components/EmailConfirmationModal';
+import { ImageFile } from '../components/ImageSelectorModal';
+import { AttachmentPayload } from '../types/email';
 
 interface BuyerCandidate {
   buyer_number: string;
@@ -76,6 +79,9 @@ export default function BuyerCandidateListPage() {
   const [landBuyerMode, setLandBuyerMode] = useState(false);
   const [landBuyerData, setLandBuyerData] = useState<BuyerCandidateResponse | null>(null);
   const [landBuyerLoading, setLandBuyerLoading] = useState(false);
+  // 他社物件PDF添付用
+  const [tashaAttaching, setTashaAttaching] = useState(false);
+  const [tashaPreAttachments, setTashaPreAttachments] = useState<ImageFile[]>([]);
 
   // ソート用state
   type SortKey = 'buyer_number' | 'name' | 'latest_status' | 'inquiry_property_address' | 'desired_area' | 'desired_property_type' | 'desired_price_range' | 'reception_date';
@@ -244,17 +250,21 @@ export default function BuyerCandidateListPage() {
       return;
     }
 
+    const isTashaProperty = propertyNumber?.startsWith('FT') || propertyNumber?.startsWith('OT');
     const publicUrl = `https://property-site-frontend-kappa.vercel.app/public/properties/${propertyNumber}`;
     const address = activeData.property.address || '物件';
     const subject = `${address}にご興味のある方へ、もうすぐ売りに出します！事前に内覧可能です！`;
+
+    // FT/OT物件の場合は物件詳細URLを入れない
+    const propertyDetailLine = isTashaProperty ? '' : `\n\n物件詳細: ${publicUrl}`;
 
     // 1件選択時: 実際の買主名を表示、複数件: {氏名}プレースホルダー
     let bodyTemplate: string;
     if (candidatesWithEmail.length === 1) {
       const buyerName = candidatesWithEmail[0].name || 'お客様';
-      bodyTemplate = `${buyerName}様\n\nお世話になります。株式会社いふうの不動産事業部です。\n\n${address}を近々売りに出すことになりました！\nもしご興味がございましたら、誰よりも早く内覧することが可能となっておりますので、このメールにご返信頂けると嬉しいです。\n\n物件詳細: ${publicUrl}\n\nよろしくお願いいたします。\n━━━━━━━━━━━━━━━━\n大分市舞鶴町1-3-30STビル１階\n株式会社いふう\nTEL:097-533-2022\n━━━━━━━━━━━━━━━━`;
+      bodyTemplate = `${buyerName}様\n\nお世話になります。株式会社いふうの不動産事業部です。\n\n${address}を近々売りに出すことになりました！\nもしご興味がございましたら、誰よりも早く内覧することが可能となっておりますので、このメールにご返信頂けると嬉しいです。${propertyDetailLine}\n\nよろしくお願いいたします。\n━━━━━━━━━━━━━━━━\n大分市舞鶴町1-3-30STビル１階\n株式会社いふう\nTEL:097-533-2022\n━━━━━━━━━━━━━━━━`;
     } else {
-      bodyTemplate = `{氏名}様\n\nお世話になります。株式会社いふうの不動産事業部です。\n\n${address}を近々売りに出すことになりました！\nもしご興味がございましたら、誰よりも早く内覧することが可能となっておりますので、このメールにご返信頂けると嬉しいです。\n\n物件詳細: ${publicUrl}\n\nよろしくお願いいたします。\n━━━━━━━━━━━━━━━━\n大分市舞鶴町1-3-30STビル１階\n株式会社いふう\nTEL:097-533-2022\n━━━━━━━━━━━━━━━━`;
+      bodyTemplate = `{氏名}様\n\nお世話になります。株式会社いふうの不動産事業部です。\n\n${address}を近々売りに出すことになりました！\nもしご興味がございましたら、誰よりも早く内覧することが可能となっておりますので、このメールにご返信頂けると嬉しいです。${propertyDetailLine}\n\nよろしくお願いいたします。\n━━━━━━━━━━━━━━━━\n大分市舞鶴町1-3-30STビル１階\n株式会社いふう\nTEL:097-533-2022\n━━━━━━━━━━━━━━━━`;
     }
 
     setEmailSubject(subject);
@@ -262,14 +272,106 @@ export default function BuyerCandidateListPage() {
     setEmailModalOpen(true);
   };
 
+  // 他社物件（FT/OT）の差し替え済み画像を添付してメール送信（確認モーダルを開く）
+  const handleSendEmailWithTashaImages = async () => {
+    if (selectedBuyers.size === 0) {
+      setSnackbar({ open: true, message: '買主を選択してください', severity: 'warning' });
+      return;
+    }
+    if (!activeData) return;
+
+    const selectedCandidates = activeData.candidates.filter(c => selectedBuyers.has(c.buyer_number));
+    const candidatesWithEmail = selectedCandidates.filter(c => c.email && c.email.trim() !== '');
+
+    if (candidatesWithEmail.length === 0) {
+      setSnackbar({ open: true, message: '選択された買主にメールアドレスが登録されていません', severity: 'error' });
+      return;
+    }
+
+    setTashaAttaching(true);
+    try {
+      // 他社物件画像を取得
+      const res = await api.get(`/api/ai/tasha-property-image/${propertyNumber}`);
+      const images: Array<{ name: string; path: string; url: string }> = res.data.images || [];
+
+      // _replaced.jpg がある場合はそちらを優先、なければ元画像を使用（印刷と同じロジック）
+      const imageMap = new Map<string, { name: string; url: string }>();
+      images
+        .filter(img => !img.name.toLowerCase().endsWith('.pdf'))
+        .forEach(img => {
+          const baseName = img.name.replace('_replaced.jpg', '').replace(/\.[^.]+$/, '');
+          const existing = imageMap.get(baseName);
+          if (!existing || img.name.includes('_replaced')) {
+            imageMap.set(baseName, img);
+          }
+        });
+
+      const printImages = Array.from(imageMap.values());
+      if (printImages.length === 0) {
+        setSnackbar({ open: true, message: '添付可能な画像がありません', severity: 'warning' });
+        setTashaAttaching(false);
+        return;
+      }
+
+      // ImageFile形式に変換してpre-attachmentsとして設定
+      const preAttachments: ImageFile[] = printImages.map((img, index) => ({
+        id: `tasha-${index}`,
+        name: img.name,
+        source: 'url' as const,
+        size: 0,
+        mimeType: 'image/jpeg',
+        previewUrl: img.url,
+        url: img.url,
+      }));
+
+      setTashaPreAttachments(preAttachments);
+
+      // メール本文を生成（物件詳細URLなし）
+      const address = activeData.property.address || '物件';
+      const subject = `${address}にご興味のある方へ、もうすぐ売りに出します！事前に内覧可能です！`;
+
+      let bodyTemplate: string;
+      if (candidatesWithEmail.length === 1) {
+        const buyerName = candidatesWithEmail[0].name || 'お客様';
+        bodyTemplate = `${buyerName}様\n\nお世話になります。株式会社いふうの不動産事業部です。\n\n${address}を近々売りに出すことになりました！\nもしご興味がございましたら、誰よりも早く内覧することが可能となっておりますので、このメールにご返信頂けると嬉しいです。\n\n物件概要書を添付しておりますのでご参考ください。\n\nよろしくお願いいたします。\n━━━━━━━━━━━━━━━━\n大分市舞鶴町1-3-30STビル１階\n株式会社いふう\nTEL:097-533-2022\n━━━━━━━━━━━━━━━━`;
+      } else {
+        bodyTemplate = `{氏名}様\n\nお世話になります。株式会社いふうの不動産事業部です。\n\n${address}を近々売りに出すことになりました！\nもしご興味がございましたら、誰よりも早く内覧することが可能となっておりますので、このメールにご返信頂けると嬉しいです。\n\n物件概要書を添付しておりますのでご参考ください。\n\nよろしくお願いいたします。\n━━━━━━━━━━━━━━━━\n大分市舞鶴町1-3-30STビル１階\n株式会社いふう\nTEL:097-533-2022\n━━━━━━━━━━━━━━━━`;
+      }
+
+      setEmailSubject(subject);
+      setEmailBody(bodyTemplate);
+      setEmailModalOpen(true);
+    } catch (err: any) {
+      console.error('[BuyerCandidateList] Failed to fetch tasha images:', err);
+      setSnackbar({ open: true, message: '画像の取得に失敗しました', severity: 'error' });
+    } finally {
+      setTashaAttaching(false);
+    }
+  };
+
   // メール送信確認後の実際の送信処理
-  const handleConfirmSendEmail = async (subject: string, body: string) => {
+  const handleConfirmSendEmail = async (subject: string, body: string, attachments: ImageFile[], replyTo: string) => {
     if (!activeData) return;
 
     const selectedCandidates = activeData.candidates.filter(c => selectedBuyers.has(c.buyer_number));
     const candidatesWithEmail = selectedCandidates.filter(c => c.email && c.email.trim() !== '');
 
     setSnackbar({ open: true, message: `メール送信中... (${candidatesWithEmail.length}件)`, severity: 'info' });
+
+    // ImageFile[] を API のattachment形式に変換
+    const attachmentPayloads: AttachmentPayload[] = attachments.map(img => {
+      if (img.source === 'drive') {
+        return { id: img.driveFileId || img.id, name: img.name };
+      } else if (img.source === 'url' && img.url) {
+        return { id: img.id, name: img.name, url: img.url };
+      } else if (img.source === 'local' && img.previewUrl) {
+        const base64Match = img.previewUrl.match(/^data:([^;]+);base64,(.+)$/);
+        if (base64Match) {
+          return { id: img.id, name: img.name, base64Data: base64Match[2], mimeType: base64Match[1] };
+        }
+      }
+      return { id: img.id, name: img.name };
+    });
 
     const results = await Promise.allSettled(
       candidatesWithEmail.map(async (candidate) => {
@@ -278,11 +380,13 @@ export default function BuyerCandidateListPage() {
         const personalizedBody = body.replace(/\{氏名\}/g, buyerName);
         return await api.post('/api/emails/send-distribution', {
           senderAddress: 'tenant@ifoo-oita.com',
-          recipients: [{ email: candidate.email!, buyerNumber: candidate.buyer_number }], // buyer_numberを追加
+          recipients: [{ email: candidate.email!, buyerNumber: candidate.buyer_number }],
           subject: subject,
           body: personalizedBody,
           propertyNumber: propertyNumber,
-          source: 'buyer_candidate_list', // 送信元識別子を追加
+          source: 'buyer_candidate_list',
+          replyTo,
+          ...(attachmentPayloads.length > 0 ? { attachments: attachmentPayloads } : {}),
         });
       })
     );
@@ -486,6 +590,20 @@ export default function BuyerCandidateListPage() {
           >
             メール送信
           </Button>
+          {(propertyNumber?.startsWith('FT') || propertyNumber?.startsWith('OT')) && (
+            <Button
+              variant="contained"
+              startIcon={<AttachFileIcon />}
+              onClick={handleSendEmailWithTashaImages}
+              disabled={selectedBuyers.size === 0 || tashaAttaching}
+              sx={{
+                bgcolor: '#7b1fa2',
+                '&:hover': { bgcolor: '#4a148c' },
+              }}
+            >
+              {tashaAttaching ? '読込中...' : '添付メール'}
+            </Button>
+          )}
         </Box>
       </Box>
 
@@ -737,13 +855,14 @@ export default function BuyerCandidateListPage() {
       {/* メール送信確認モーダル */}
       <EmailConfirmationModal
         open={emailModalOpen}
-        onClose={() => setEmailModalOpen(false)}
+        onClose={() => { setEmailModalOpen(false); setTashaPreAttachments([]); }}
         onConfirm={handleConfirmSendEmail}
         recipientCount={
           activeData?.candidates.filter(c => selectedBuyers.has(c.buyer_number) && c.email && c.email.trim() !== '').length || 0
         }
         defaultSubject={emailSubject}
         defaultBody={emailBody}
+        defaultAttachments={tashaPreAttachments.length > 0 ? tashaPreAttachments : undefined}
       />
     </Container>
   );
