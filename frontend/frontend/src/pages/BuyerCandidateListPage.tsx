@@ -328,14 +328,19 @@ export default function BuyerCandidateListPage() {
 
       // メール本文を生成（物件詳細URLなし）
       const address = activeData.property.address || '物件';
-      const subject = `${address}にご興味のある方へ、もうすぐ売りに出します！事前に内覧可能です！`;
+      const isFT = propertyNumber?.startsWith('FT');
+      const companyName = isFT ? '株式会社くじら不動産' : '株式会社いふう';
+      const signature = isFT
+        ? `━━━━━━━━━━━━━━━━\n福岡県福岡市中央区舞鶴3－1－10\nオフィスニューガイアセレス赤坂門No.19\n株式会社くじら不動産\nTEL:092-401-5331\n━━━━━━━━━━━━━━━━`
+        : `━━━━━━━━━━━━━━━━\n大分市舞鶴町1-3-30STビル１階\n株式会社いふう\nTEL:097-533-2022\n━━━━━━━━━━━━━━━━`;
+      const subject = `売買物件のご案内【${address}】`;
 
       let bodyTemplate: string;
       if (candidatesWithEmail.length === 1) {
         const buyerName = candidatesWithEmail[0].name || 'お客様';
-        bodyTemplate = `${buyerName}様\n\nお世話になります。株式会社いふうの不動産事業部です。\n\n${address}を近々売りに出すことになりました！\nもしご興味がございましたら、誰よりも早く内覧することが可能となっておりますので、このメールにご返信頂けると嬉しいです。\n\n物件概要書を添付しておりますのでご参考ください。\n\nよろしくお願いいたします。\n━━━━━━━━━━━━━━━━\n大分市舞鶴町1-3-30STビル１階\n株式会社いふう\nTEL:097-533-2022\n━━━━━━━━━━━━━━━━`;
+        bodyTemplate = `${buyerName}様\n\nお世話になります。${companyName}の不動産事業部です。\n\n売買物件のご案内です。\n\n物件概要書を添付しておりますのでご参考ください。\nもしご興味がございましたら、このメールにご返信頂けると嬉しいです。\n\nよろしくお願いいたします。\n${signature}`;
       } else {
-        bodyTemplate = `{氏名}様\n\nお世話になります。株式会社いふうの不動産事業部です。\n\n${address}を近々売りに出すことになりました！\nもしご興味がございましたら、誰よりも早く内覧することが可能となっておりますので、このメールにご返信頂けると嬉しいです。\n\n物件概要書を添付しておりますのでご参考ください。\n\nよろしくお願いいたします。\n━━━━━━━━━━━━━━━━\n大分市舞鶴町1-3-30STビル１階\n株式会社いふう\nTEL:097-533-2022\n━━━━━━━━━━━━━━━━`;
+        bodyTemplate = `{氏名}様\n\nお世話になります。${companyName}の不動産事業部です。\n\n売買物件のご案内です。\n\n物件概要書を添付しておりますのでご参考ください。\nもしご興味がございましたら、このメールにご返信頂けると嬉しいです。\n\nよろしくお願いいたします。\n${signature}`;
       }
 
       setEmailSubject(subject);
