@@ -40,11 +40,6 @@ function generateEvaluationPrintHtml(
   `).join('');
 
   const companyName = isFukuoka ? '株式会社くじら不動産' : '株式会社いふう';
-  const companyAddress = isFukuoka
-    ? '〒810-0073 福岡市中央区舞鶴3-1-10'
-    : '〒870-0044 大分県大分市舞鶴町1-3-30';
-  const companyTel = isFukuoka ? 'TEL:092-401-5331' : 'TEL:097-533-2022';
-  const companyMail = 'mail:tenant@ifoo-oita.com';
 
   return `<!DOCTYPE html>
 <html>
@@ -232,25 +227,22 @@ function generateEvaluationPrintHtml(
       padding-top: 2px;
       line-height: 1.5;
     }
-    /* ヘッダー内の会社情報（右上配置） */
-    .header-area {
-      position: relative;
+    /* 会社情報（サブタイトル行の右端） */
+    .header-subtitle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 2px;
     }
-    .header-company {
-      position: absolute;
-      top: 10px;
-      right: 16px;
-      text-align: right;
+    .header-subtitle {
+      font-size: 9pt;
+      color: #fff;
+      opacity: 0.9;
     }
     .header-company-name {
       font-size: 9pt;
       font-weight: bold;
-      color: #333;
-    }
-    .header-company-detail {
-      font-size: 7.5pt;
-      color: #555;
-      margin-top: 1px;
+      color: #fff;
     }
   </style>
 </head>
@@ -258,11 +250,9 @@ function generateEvaluationPrintHtml(
   <div class="page-wrapper">
     <div class="header-area">
       <div class="header-title">物件の評価ポイント！おすすめポイント！</div>
-      <div class="header-subtitle">＊下記内容を中心に物件の特長や魅力についてお伝えいたします</div>
-      <div class="header-company">
+      <div class="header-subtitle-row">
+        <div class="header-subtitle">＊下記内容を中心に物件の特長や魅力についてお伝えいたします</div>
         <div class="header-company-name">${companyName}</div>
-        <div class="header-company-detail">${companyAddress}</div>
-        <div class="header-company-detail">${companyTel} ${companyMail}</div>
       </div>
     </div>
 
