@@ -1592,14 +1592,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       } else {
         setEditedData(prev => ({ ...prev, [field]: value }));
       }
-    } else if (field === 'site_registration_deadline') {
-      // サイト登録締め日が変更されたとき、公開予定日が空なら自動セット
-      const currentPublishDate = editedData['publish_scheduled_date'] ?? data?.publish_scheduled_date;
-      if (value && !currentPublishDate) {
-        setEditedData(prev => ({ ...prev, [field]: value, publish_scheduled_date: value }));
-      } else {
-        setEditedData(prev => ({ ...prev, [field]: value }));
-      }
     } else if (field === 'sales_price') {
       // 売買価格変更時は通常仲介手数料（売）・（買）を自動計算
       const fee = calcStandardBrokerageFeeFromPrice(value ? Number(value) : null);
@@ -4305,47 +4297,45 @@ https://docs.google.com/document/d/12vr8d5TQ-fWd7kQeOFmBe6Dd5kbt1dqaU0cjO9y2xnI/
           )}
           </div>
 
-          {/* 確認OKの場合のみ表示 */}
-          {getValue('sales_contract_confirmed') === '確認OK' && (
-            <Box sx={{ bgcolor: '#fff8e1', borderRadius: 1, p: 1.5, mb: 1 }}>
-              {/* 契約書、重説他　修正点（必須） */}
-              <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
-                <Grid item xs={4}>
-                  <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>
-                    契約書、重説他　修正点*（必須）
-                  </Typography>
-                </Grid>
-                <Grid item xs={8}>
-                  <ButtonGroup size="small" variant="outlined">
-                    {['あり', 'なし'].map((opt) => (
-                      <Button
-                        key={opt}
-                        variant={getValue('contract_revision_exists') === opt ? 'contained' : 'outlined'}
-                        color={getValue('contract_revision_exists') === opt ? (opt === 'あり' ? 'error' : 'success') : 'inherit'}
-                        onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('contract_revision_exists', getValue('contract_revision_exists') === opt ? null : opt); }}
-                      >
-                        {opt}
-                      </Button>
-                    ))}
-                  </ButtonGroup>
-                  {!getValue('contract_revision_exists') && (
-                    <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
-                      必須項目です
-                    </Typography>
-                  )}
-                </Grid>
+          {/* 契約書、重説他　修正点（常に表示・入力可能） */}
+          <Box sx={{ bgcolor: '#fff8e1', borderRadius: 1, p: 1.5, mb: 1 }}>
+            {/* 契約書、重説他　修正点 */}
+            <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+              <Grid item xs={4}>
+                <Typography variant="body2" color={getValue('sales_contract_confirmed') === '確認OK' ? 'error' : 'text.secondary'} sx={{ fontWeight: 700 }}>
+                  契約書、重説他　修正点{getValue('sales_contract_confirmed') === '確認OK' ? '*（必須）' : ''}
+                </Typography>
               </Grid>
+              <Grid item xs={8}>
+                <ButtonGroup size="small" variant="outlined">
+                  {['あり', 'なし'].map((opt) => (
+                    <Button
+                      key={opt}
+                      variant={getValue('contract_revision_exists') === opt ? 'contained' : 'outlined'}
+                      color={getValue('contract_revision_exists') === opt ? (opt === 'あり' ? 'error' : 'success') : 'inherit'}
+                      onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('contract_revision_exists', getValue('contract_revision_exists') === opt ? null : opt); }}
+                    >
+                      {opt}
+                    </Button>
+                  ))}
+                </ButtonGroup>
+                {getValue('sales_contract_confirmed') === '確認OK' && !getValue('contract_revision_exists') && (
+                  <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+                    必須項目です
+                  </Typography>
+                )}
+              </Grid>
+            </Grid>
 
-              {/* 「あり」の場合のみ修正内容を表示（必須） */}
-              {getValue('contract_revision_exists') === 'あり' && (
-                <ContractRevisionContentField
-                  value={getValue('contract_revision_content') || ''}
-                  hasError={!getValue('contract_revision_content')}
-                  onCommit={(v) => handleFieldChange('contract_revision_content', v)}
-                />
-              )}
-            </Box>
-          )}
+            {/* 「あり」の場合のみ修正内容を表示 */}
+            {getValue('contract_revision_exists') === 'あり' && (
+              <ContractRevisionContentField
+                value={getValue('contract_revision_content') || ''}
+                hasError={getValue('sales_contract_confirmed') === '確認OK' && !getValue('contract_revision_content')}
+                onCommit={(v) => handleFieldChange('contract_revision_content', v)}
+              />
+            )}
+          </Box>
 
           {/* 山本マネージャーに確認: 今回確認OKに変更した場合のみ表示（過去データは対象外）、または既に済の場合は表示 */}
           {getValue('sales_contract_confirmed') === '確認OK' && (editedData.hasOwnProperty('sales_contract_confirmed') || getValue('manager_confirmation_done') === '済') && (
