@@ -268,6 +268,15 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
         const m_email = line.match(/^メールアドレス\s+(\S+)/);
         if (m_email) { convertedLines.push('■E-mail　　　　　　　　: ' + m_email[1]); continue; }
 
+        // 「査定依頼者郵便番号 810-0032」→ 郵便番号を保持して後で住所に結合する
+        const m_zip = line.match(/^査定依頼者郵便番号\s+(\S+)/);
+        if (m_zip) {
+          // 郵便番号を一時保持（次の「査定依頼者住所」行で使用）
+          (convertedLines as any).__pendingZip = m_zip[1];
+          convertedLines.push('■郵便番号　　　　　　　: ' + m_zip[1]);
+          continue;
+        }
+
         // 「査定依頼者住所 福岡県...」→「■ご住所　　　　　　　　: / 　　　　　　　　　　　　: 福岡県...」形式に変換
         // 同一行に「査定依頼者建物名号室」が続く場合はその手前で切る
         const m_addr = line.match(/^査定依頼者住所\s+(.+)/);
@@ -275,10 +284,22 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
           const addrRaw = m_addr[1];
           // 「査定依頼者建物名号室」以降を除去（同一行に続く場合の対策）
           const addrOnly = addrRaw.split('査定依頼者建物名号室')[0].trim();
+          // 郵便番号をprefixとして結合（住所に郵便番号が含まれていない場合）
+          const pendingZip = (convertedLines as any).__pendingZip || '';
+          let fullAddr = addrOnly;
+          if (pendingZip && addrOnly && !addrOnly.startsWith(pendingZip)) {
+            fullAddr = pendingZip + ' ' + addrOnly;
+          } else if (pendingZip && !addrOnly) {
+            // 住所が空で郵便番号のみの場合は郵便番号だけ保持（後でaddress抽出が空にならないように）
+            fullAddr = pendingZip;
+          }
           convertedLines.push('■ご住所　　　　　　　　:');
-          convertedLines.push('　　　　　　　　　　　　: ' + addrOnly);
+          convertedLines.push('　　　　　　　　　　　　: ' + fullAddr);
+          (convertedLines as any).__pendingZip = '';
           continue;
         }
+        // 「査定依頼者住所」なしで「査定依頼者建物名号室」が直接来る場合もスキップ
+        if (/^査定依頼者建物名号室/.test(line)) continue;
 
         // 「査定の理由 住み替え／...」→「■査定の理由　　　　　　: 住み替え／...」
         const m_reason = line.match(/^査定の理由\s+(.+)/);
@@ -426,20 +447,36 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
     const requests = extractData(cleanedBody, '■要望・質問（自由記入）:', '-----------------------------------------------------------------').trim();
 
     // 住所（■ご住所の後の行）
-    // extractDataは終端マッチが不安定なため、■ご住所の次の「：」行から1行だけ取得する
+    // extractDataは終端マッチが不安定なため、■ご住所の次の「：」行から住所を取得する
+    // 住所が複数行に分かれている場合（1行目：郵便番号、2行目：住所本体）は結合する
     const address = (() => {
       const lines2 = cleanedBody.split('\n');
       const idx = lines2.findIndex(l => l.trimStart().startsWith('■ご住所'));
-      if (idx === -1) return '';
+      if (idx === -1) {
+        // ■ご住所が見つからない場合、■郵便番号からフォールバック取得
+        const zipIdx = lines2.findIndex(l => l.trimStart().startsWith('■郵便番号'));
+        if (zipIdx !== -1) {
+          const zipMatch = lines2[zipIdx].match(/■郵便番号[^：:]*[：:]\s*(.+)/);
+          if (zipMatch && zipMatch[1].trim()) {
+            console.log(`[home4u-transfer] ■ご住所なし。■郵便番号からフォールバック: "${zipMatch[1].trim()}"`);
+            return zipMatch[1].trim();
+          }
+        }
+        return '';
+      }
       // ■ご住所の行自体に値がある場合（旧フォーマット）
       const sameLineMatch = lines2[idx].match(/■ご住所[^：:]*[：:]\s*(.+)/);
       if (sameLineMatch && sameLineMatch[1].trim()) {
         return sameLineMatch[1].trim();
       }
       // 次行以降の「：」で始まる行から住所を取得（新フォーマット）
+      // 住所が複数行に分かれている場合は結合する（郵便番号 + 住所本体）
+      const addrParts: string[] = [];
       for (let ni = idx + 1; ni < Math.min(idx + 5, lines2.length); ni++) {
         const l = lines2[ni].replace(/^>\s*/g, '').trim();
         if (!l) continue;
+        // ■で始まる行は次のセクションなので終了
+        if (l.startsWith('■')) break;
         const m = l.match(/^[：:]\s*(.+)/);
         if (m) {
           // 「査定依頼者建物名号室」「>」「■」以降は除去
@@ -447,13 +484,26 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
             .split('査定依頼者建物名号室')[0]
             .split(/>|■/)[0]
             .trim();
-          return val;
+          if (val) addrParts.push(val);
+        } else {
+          // 「：」がない行でも■で始まらなければ住所として扱う
+          const val = l.split('査定依頼者建物名号室')[0].split(/>|■/)[0].trim();
+          if (val && val !== ':' && val !== '：') addrParts.push(val);
+          break;
         }
-        // 「：」がない行でも■で始まらなければ住所として扱う
-        if (!l.startsWith('■')) {
-          return l.split('査定依頼者建物名号室')[0].split(/>|■/)[0].trim();
+      }
+      if (addrParts.length > 0) {
+        // 郵便番号のみの行（例：〒810-0032, 810-0032）と住所本体を結合
+        return addrParts.join(' ');
+      }
+      // ■ご住所の次行から住所が取得できなかった場合、■郵便番号からフォールバック
+      const zipIdx2 = lines2.findIndex(l => l.trimStart().startsWith('■郵便番号'));
+      if (zipIdx2 !== -1) {
+        const zipMatch2 = lines2[zipIdx2].match(/■郵便番号[^：:]*[：:]\s*(.+)/);
+        if (zipMatch2 && zipMatch2[1].trim()) {
+          console.log(`[home4u-transfer] ■ご住所の値が空。■郵便番号からフォールバック: "${zipMatch2[1].trim()}"`);
+          return zipMatch2[1].trim();
         }
-        break;
       }
       return '';
     })();
