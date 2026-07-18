@@ -635,25 +635,37 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
     );
     try {
       setSnackbar({ open: true, message: `メール送信中... (${candidatesWithEmail.length}件)`, severity: 'info' });
-      const results = await Promise.allSettled(
-        candidatesWithEmail.map(async (candidate) => {
+      const effectivePropertyNumber = propertyNumber || propertyNumberState;
+      const attachmentPayloads = convertImageFilesToAttachments(attachments);
+
+      // 並列送信ではなく逐次送信（Gmail APIのレート制限・認証競合を回避）
+      let successCount = 0;
+      let failedCount = 0;
+      for (const candidate of candidatesWithEmail) {
+        try {
           const buyerName = candidate.name || 'お客様';
           const personalizedBody = body.replace(/{氏名}/g, buyerName);
-          const effectivePropertyNumber = propertyNumber || propertyNumberState;
-          const attachmentPayloads = convertImageFilesToAttachments(attachments);
-          return await api.post('/api/emails/send-distribution', {
-            senderAddress: 'tenant@ifoo-oita.com', // 送信元アドレスを追加
-            recipients: [{ email: candidate.email!, buyerNumber: candidate.buyer_number }], // buyer_numberを追加
+          await api.post('/api/emails/send-distribution', {
+            senderAddress: 'tenant@ifoo-oita.com',
+            recipients: [{ email: candidate.email!, buyerNumber: candidate.buyer_number }],
             subject,
             body: personalizedBody,
-            propertyNumber: effectivePropertyNumber || undefined, // 物件番号を追加
-            replyTo, // Reply-Toアドレスを追加
+            propertyNumber: effectivePropertyNumber || undefined,
+            source: 'nearby_buyers',
+            replyTo,
             ...(attachmentPayloads.length > 0 ? { attachments: attachmentPayloads } : {}),
           });
-        })
-      );
-      const successCount = results.filter(r => r.status === 'fulfilled').length;
-      const failedCount = results.filter(r => r.status === 'rejected').length;
+          successCount++;
+          // Gmail API レート制限対策：送信間隔を300ms空ける
+          if (candidatesWithEmail.indexOf(candidate) < candidatesWithEmail.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        } catch (err: any) {
+          console.error(`[NearbyBuyersList] Failed to send email to ${candidate.email}:`, err);
+          failedCount++;
+        }
+      }
+
       if (failedCount === 0) {
         setSnackbar({ open: true, message: `メールを送信しました (${successCount}件)`, severity: 'success' });
       } else {

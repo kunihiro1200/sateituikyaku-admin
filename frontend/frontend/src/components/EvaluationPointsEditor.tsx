@@ -16,6 +16,291 @@ import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 
+/**
+ * おすすめポイント印刷用HTML生成（お客様提出用・カラーデザイン版）
+ */
+function generateEvaluationPrintHtml(
+  allPoints: string[],
+  allCautions: string[],
+  propertyAddress: string,
+  isFukuoka: boolean,
+): string {
+  const pointRows = allPoints.map((p, i) => `
+    <div class="point-row">
+      <div class="point-number">${i + 1}</div>
+      <div class="point-text">${p}</div>
+    </div>
+  `).join('');
+
+  const cautionRows = allCautions.map((c, i) => `
+    <div class="caution-row">
+      <div class="caution-number">${i + 1}</div>
+      <div class="caution-text">${c}</div>
+    </div>
+  `).join('');
+
+  const companyName = isFukuoka ? '株式会社くじら不動産' : '株式会社いふう';
+  const companyAddress = isFukuoka
+    ? '〒810-0073 福岡市中央区舞鶴3-1-10'
+    : '〒870-0044 大分県大分市舞鶴町1-3-30';
+  const companyTel = isFukuoka ? 'TEL:092-401-5331' : 'TEL:097-533-2022';
+  const companyMail = 'mail:tenant@ifoo-oita.com';
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>おすすめポイント - ${propertyAddress}</title>
+  <style>
+    @page { margin: 12mm 15mm 20mm 15mm; size: A4; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Hiragino Kaku Gothic Pro', 'Yu Gothic', 'MS Gothic', sans-serif;
+      margin: 0;
+      padding: 0;
+      color: #333;
+      line-height: 1.5;
+    }
+    .page-wrapper {
+      padding: 10px 20px;
+    }
+    /* ヘッダー */
+    .header-area {
+      background: linear-gradient(135deg, #FF8C00, #FFD700);
+      border-radius: 8px;
+      padding: 14px 24px;
+      margin-bottom: 14px;
+      box-shadow: 0 3px 8px rgba(255, 140, 0, 0.3);
+    }
+    .header-title {
+      font-size: 20pt;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+      margin: 0;
+    }
+    .header-subtitle {
+      font-size: 9pt;
+      color: #fff;
+      margin-top: 2px;
+      opacity: 0.9;
+    }
+    /* 物件情報 */
+    .property-info {
+      background: #f8f9fa;
+      border-left: 4px solid #FF8C00;
+      padding: 10px 16px;
+      margin-bottom: 12px;
+      border-radius: 0 6px 6px 0;
+    }
+    .property-label {
+      font-size: 9pt;
+      color: #666;
+      margin-bottom: 2px;
+    }
+    .property-address {
+      font-size: 12pt;
+      font-weight: bold;
+      color: #222;
+    }
+    .description {
+      font-size: 10pt;
+      color: #555;
+      margin-bottom: 16px;
+      padding-left: 4px;
+    }
+    /* おすすめポイント */
+    .points-section {
+      margin-bottom: 20px;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #FF8C00;
+    }
+    .section-header-icon {
+      width: 24px;
+      height: 24px;
+      background: #FF8C00;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .section-header-text {
+      font-size: 12pt;
+      font-weight: bold;
+      color: #333;
+    }
+    .point-row {
+      display: flex;
+      align-items: flex-start;
+      padding: 8px 8px;
+      margin-bottom: 4px;
+      border-radius: 6px;
+      background: #FFFDE7;
+      border-left: 4px solid #FFB300;
+    }
+    .point-row:nth-child(even) {
+      background: #FFF8E1;
+    }
+    .point-number {
+      min-width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #FF8C00, #FFA726);
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 11pt;
+      margin-right: 12px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 4px rgba(255, 140, 0, 0.3);
+    }
+    .point-text {
+      font-size: 10.5pt;
+      color: #333;
+      padding-top: 4px;
+      line-height: 1.6;
+    }
+    /* 注意点 */
+    .caution-section {
+      margin-top: 20px;
+    }
+    .caution-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #F57C00;
+    }
+    .caution-header-icon {
+      width: 24px;
+      height: 24px;
+      background: #F57C00;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .caution-header-text {
+      font-size: 11pt;
+      font-weight: bold;
+      color: #E65100;
+    }
+    .caution-row {
+      display: flex;
+      align-items: flex-start;
+      padding: 7px 8px;
+      margin-bottom: 4px;
+      border-radius: 6px;
+      background: #FFF3E0;
+      border-left: 4px solid #F57C00;
+    }
+    .caution-row:nth-child(even) {
+      background: #FFE0B2;
+    }
+    .caution-number {
+      min-width: 24px;
+      height: 24px;
+      background: #F57C00;
+      color: #fff;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 10pt;
+      margin-right: 12px;
+      flex-shrink: 0;
+    }
+    .caution-text {
+      font-size: 10pt;
+      color: #4E342E;
+      padding-top: 2px;
+      line-height: 1.5;
+    }
+    /* フッター */
+    .footer {
+      position: fixed;
+      bottom: 12mm;
+      left: 15mm;
+      right: 15mm;
+      border-top: 2px solid #FF8C00;
+      padding-top: 8px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+    }
+    .footer-content {
+      text-align: right;
+    }
+    .footer-company {
+      font-size: 10pt;
+      font-weight: bold;
+      color: #333;
+    }
+    .footer-detail {
+      font-size: 8pt;
+      color: #666;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrapper">
+    <div class="header-area">
+      <div class="header-title">物件の評価ポイント！おすすめポイント！</div>
+      <div class="header-subtitle">＊下記内容を中心に物件の特長や魅力についてお伝えいたします</div>
+    </div>
+
+    <div class="property-info">
+      <div class="property-label">物件</div>
+      <div class="property-address">${propertyAddress}</div>
+    </div>
+
+    <div class="points-section">
+      <div class="section-header">
+        <div class="section-header-icon">★</div>
+        <div class="section-header-text">おすすめポイント</div>
+      </div>
+      ${pointRows}
+    </div>
+
+    ${allCautions.length > 0 ? `
+    <div class="caution-section">
+      <div class="caution-header">
+        <div class="caution-header-icon">！</div>
+        <div class="caution-header-text">注意点（告知事項等）</div>
+      </div>
+      ${cautionRows}
+    </div>
+    ` : ''}
+
+    <div class="footer">
+      <div class="footer-content">
+        <div class="footer-company">${companyName}</div>
+        <div class="footer-detail">${companyAddress}<br>${companyTel} ${companyMail}</div>
+      </div>
+    </div>
+  </div>
+  <script>window.onload = function() { window.print(); }</script>
+</body>
+</html>`;
+}
+
 interface EvaluationPointsEditorProps {
   sellerId: string;
   propertyAddress?: string;
@@ -168,55 +453,8 @@ export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
   const handlePrint = () => {
     const allPoints = points.filter(p => p.trim() !== '');
     const allCautions = cautions.filter(c => c.trim() !== '');
-
-    const pointRows = allPoints.map((p, i) => `
-      <tr>
-        <td style="width:30px;font-weight:bold;text-align:center;padding:6px 4px;">${i + 1}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #333;background:#FFF8E1;">${p}</td>
-      </tr>
-      <tr><td colspan="2" style="height:4px;"></td></tr>
-    `).join('');
-
-    const cautionRows = allCautions.map((c, i) => `
-      <tr>
-        <td style="width:30px;font-weight:bold;text-align:center;padding:6px 4px;">${i + 1}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #333;background:#FFECB3;">${c}</td>
-      </tr>
-      <tr><td colspan="2" style="height:4px;"></td></tr>
-    `).join('');
-
     const isFukuoka = sellerNumber?.startsWith('FI');
-    const companyInfo = isFukuoka
-      ? '株式会社くじら不動産<br>〒810-0073 福岡市中央区舞鶴3-1-10<br>TEL:092-401-5331 mail:tenant@ifoo-oita.com'
-      : '株式会社いふう<br>〒870-0044 大分県大分市舞鶴町1-3-30<br>TEL:097-533-2022 mail:tenant@ifoo-oita.com';
-
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>評価ポイント - ${propertyAddress || ''}</title>
-  <style>
-    @page { margin: 15mm; size: A4; }
-    body { font-family: 'Hiragino Kaku Gothic Pro', 'MS Gothic', sans-serif; margin: 0; padding: 20px; }
-    .header { background: #FFFF00; display: inline-block; padding: 8px 16px; font-size: 18pt; font-weight: bold; margin-bottom: 16px; }
-    .property { font-weight: bold; font-size: 12pt; margin-bottom: 12px; }
-    .description { font-size: 10pt; margin-bottom: 16px; color: #333; }
-    table { width: 100%; border-collapse: collapse; }
-    .section-title { font-weight: bold; font-size: 11pt; margin: 20px 0 10px 0; }
-    .footer { position: fixed; bottom: 15mm; right: 15mm; text-align: right; font-size: 9pt; color: #333; }
-  </style>
-</head>
-<body>
-  <div class="header">物件の評価ポイント！おすすめポイント！</div>
-  <div class="property">物件：${propertyAddress || ''}</div>
-  <div class="description">＊下記内容を中心に物件の特長や魅力についてお伝えいたします！</div>
-  <table>${pointRows}</table>
-  <div class="section-title">・注意点(告知事項等）</div>
-  <table>${cautionRows}</table>
-  <div class="footer">${companyInfo}</div>
-  <script>window.onload = function() { window.print(); }</script>
-</body>
-</html>`;
+    const html = generateEvaluationPrintHtml(allPoints, allCautions, propertyAddress || '', !!isFukuoka);
 
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -404,54 +642,8 @@ export const EvaluationPointsDisplay: React.FC<{
   }, [sellerNumber]);
 
   const handlePrint = () => {
-    const pointRows = points.map((p, i) => `
-      <tr>
-        <td style="width:30px;font-weight:bold;text-align:center;padding:6px 4px;">${i + 1}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #333;background:#FFF8E1;">${p}</td>
-      </tr>
-      <tr><td colspan="2" style="height:4px;"></td></tr>
-    `).join('');
-
-    const cautionRows = cautions.map((c, i) => `
-      <tr>
-        <td style="width:30px;font-weight:bold;text-align:center;padding:6px 4px;">${i + 1}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #333;background:#FFECB3;">${c}</td>
-      </tr>
-      <tr><td colspan="2" style="height:4px;"></td></tr>
-    `).join('');
-
     const isFukuoka = sellerNumber?.startsWith('FI');
-    const companyInfo = isFukuoka
-      ? '株式会社くじら不動産<br>〒810-0073 福岡市中央区舞鶴3-1-10<br>TEL:092-401-5331 mail:tenant@ifoo-oita.com'
-      : '株式会社いふう<br>〒870-0044 大分県大分市舞鶴町1-3-30<br>TEL:097-533-2022 mail:tenant@ifoo-oita.com';
-
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>評価ポイント - ${propertyAddress || ''}</title>
-  <style>
-    @page { margin: 15mm; size: A4; }
-    body { font-family: 'Hiragino Kaku Gothic Pro', 'MS Gothic', sans-serif; margin: 0; padding: 20px; }
-    .header { background: #FFFF00; display: inline-block; padding: 8px 16px; font-size: 18pt; font-weight: bold; margin-bottom: 16px; }
-    .property { font-weight: bold; font-size: 12pt; margin-bottom: 12px; }
-    .description { font-size: 10pt; margin-bottom: 16px; color: #333; }
-    table { width: 100%; border-collapse: collapse; }
-    .section-title { font-weight: bold; font-size: 11pt; margin: 20px 0 10px 0; }
-    .footer { position: fixed; bottom: 15mm; right: 15mm; text-align: right; font-size: 9pt; color: #333; }
-  </style>
-</head>
-<body>
-  <div class="header">物件の評価ポイント！おすすめポイント！</div>
-  <div class="property">物件：${propertyAddress || ''}</div>
-  <div class="description">＊下記内容を中心に物件の特長や魅力についてお伝えいたします！</div>
-  <table>${pointRows}</table>
-  <div class="section-title">・注意点(告知事項等）</div>
-  <table>${cautionRows}</table>
-  <div class="footer">${companyInfo}</div>
-  <script>window.onload = function() { window.print(); }</script>
-</body>
-</html>`;
+    const html = generateEvaluationPrintHtml(points, cautions, propertyAddress || '', !!isFukuoka);
 
     const printWindow = window.open('', '_blank');
     if (printWindow) {

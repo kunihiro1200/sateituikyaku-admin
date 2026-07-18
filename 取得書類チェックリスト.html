@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>取得書類チェックリスト</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "MS Gothic", "ＭＳ ゴシック", monospace;
+    font-size: 7.5pt;
+    width: 210mm;
+    height: 297mm;
+    padding: 5mm 8mm;
+    background: white;
+    overflow: hidden;
+  }
+
+  /* ページ全体をflex縦並びにして、ライフラインテーブルに残り高さを配分 */
+  .page-wrap {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .life-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 90mm; /* ライフライン全体の高さ上限 */
+  }
+  .life-table2-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .life-section .life-table2 {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    table-layout: fixed;
+  }
+  .life-section .life-table2 tbody tr {
+    height: 1px; /* flexでtbodyが伸びるよう最小指定 */
+  }
+  /* ライフライン各行の最大高さを抑制 */
+  .life-table2 td, .life-table2 th {
+    max-height: 18mm;
+  }
+  h2 {
+    font-size: 9pt;
+    text-align: center;
+    text-decoration: underline;
+    margin-bottom: 1mm;
+  }
+  .header-note {
+    font-size: 7pt;
+    margin-bottom: 0.5mm;
+    line-height: 1.4;
+  }
+  .property-row {
+    font-size: 7.5pt;
+    margin-bottom: 1mm;
+  }
+
+  /* ===== セクションタイトル ===== */
+  .section-title {
+    font-weight: bold;
+    font-size: 8pt;
+    margin: 1mm 0 0.5mm 0;
+    border-bottom: 1px solid #333;
+    padding-bottom: 0;
+  }
+
+  /* ===== 共通テーブル ===== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1mm;
+    font-size: 7pt;
+  }
+  th, td {
+    border: 1px solid #333;
+    padding: 0.8mm 1.5mm;
+    vertical-align: middle;
+  }
+  th {
+    background: #ffffff;
+    text-align: center;
+    font-weight: bold;
+  }
+
+  /* ===== 取得書類テーブル ===== */
+  .doc-table th:nth-child(1) { width: 55%; }
+  .doc-table th:nth-child(2) { width: 10%; }
+  .doc-table th:nth-child(3) { width: 12%; }
+  .doc-table th:nth-child(4) { width: 23%; }
+  .doc-table td:nth-child(2),
+  .doc-table td:nth-child(3) { text-align: center; }
+  .doc-table tr td { height: 7mm; }
+  .yellow { background: #ffffff; }
+
+  /* ===== 接道テーブル ===== */
+  .road-table th:nth-child(1) { width: 22%; }
+  .road-table th:nth-child(2) { width: 17%; }
+  .road-table th:nth-child(3) { width: 23%; }
+  .road-table th:nth-child(4) { width: 19%; }
+  .road-table th:nth-child(5) { width: 19%; }
+  .road-table td { text-align: center; }
+  .road-table tbody tr:not(:last-child) td { height: 10mm; } /* 接道3行を高く */
+  .road-type-cell {
+    font-size: 6.5pt;
+    text-align: left !important;
+    line-height: 1.7;
+    padding: 2mm 2mm;
+  }
+
+  /* ===== 注釈ボックス ===== */
+  .note-box {
+    border: 2px solid #333;
+    background: #ffffff;
+    padding: 0.8mm 2mm;
+    font-size: 7pt;
+    font-weight: bold;
+    display: inline-block;
+    margin: 0.5mm 0;
+  }
+
+  /* ===== ライフライン新テーブル ===== */
+  .life-table2 {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1mm;
+    font-size: 7pt;
+  }
+  .life-table2 th, .life-table2 td {
+    border: 1px solid #333;
+    padding: 0.8mm 1.5mm;
+    vertical-align: middle;
+  }
+  .life-table2 th {
+    background: #ffffff;
+    text-align: center;
+    font-weight: bold;
+    font-size: 7pt;
+  }
+  .life-table2 colgroup col:nth-child(1) { width: 5%; }
+  .life-table2 colgroup col:nth-child(2) { width: 9%; }
+  .life-table2 colgroup col:nth-child(3) { width: 30%; }
+  .life-table2 colgroup col:nth-child(4) { width: 56%; }
+
+  .num-cell  { text-align: center; vertical-align: middle; }
+  .type-cell { text-align: center; vertical-align: middle; }
+  .facility-cell { vertical-align: middle; }
+  .pipe-cell { vertical-align: middle; line-height: 1.6; }
+  .sub-item  { font-size: 6.5pt; line-height: 1.55; }
+  .green     { background: #ffffff; }
+  .green-inline { background: #ffffff; padding: 0 1px; }
+  .orange-light { background: #ffffff; }
+
+  /* ===== フッター ===== */
+  .footer-note {
+    font-size: 6.5pt;
+    margin-top: 1mm;
+    line-height: 1.5;
+  }
+
+  @media print {
+    body { margin: 0; padding: 5mm 8mm; overflow: hidden; }
+    @page { size: A4 portrait; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+<!-- ===== ヘッダー ===== -->
+<h2>【取得書類】</h2>
+<div class="header-note">取得前に「ぜんりん」「謄本」「下水道管図」を印刷していくこと。</div>
+<div class="header-note">「自分の住所記載の印鑑」を忘れないこと。　＊別府の場合は「下水道管図」は印刷不可</div>
+<div class="property-row">物件名　【　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　】</div>
+
+<!-- ===== 取得書類チェックリスト ===== -->
+<table class="doc-table">
+  <thead>
+    <tr>
+      <th>項　目</th>
+      <th>取得者</th>
+      <th>日　付</th>
+      <th>備　考</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>固定資産税公課証明</td><td></td><td></td><td></td></tr>
+    <tr><td>建築概要書＆証明書</td><td></td><td></td><td></td></tr>
+    <tr><td>用途地域図（別府は備考欄に記入）（宅地造成工事規制区域か必ず確認）</td><td></td><td></td><td>景観　環境　居住誘導　宅地造成</td></tr>
+    <tr><td>道路台帳図　<span style="font-size:6.5pt">（別府の場合はゼンリンの住宅情報より頁数等を取得後、役所で確認）</span></td><td></td><td></td><td></td></tr>
+    <tr><td>市道証明書（市道の場合のみ）</td><td></td><td></td><td></td></tr>
+    <tr class="yellow"><td>別府市：指定道路図の番号（例：10）</td><td></td><td></td><td>番号：</td></tr>
+    <tr><td>道路種類確認（市道でない場合その管轄がどこなのか）　（位置指定道路確認）</td><td></td><td></td><td></td></tr>
+    <tr><td>上水道の前面道路の配管図</td><td></td><td></td><td></td></tr>
+    <tr><td>上水道の敷地内配管図</td><td></td><td></td><td></td></tr>
+    <tr><td>公共下水か浄化槽かが「下水道管図」を調べても不明な場合は確認する</td><td></td><td></td><td></td></tr>
+    <tr class="yellow"><td>※別府市：公共下水の場合　下水道台帳施設平面図の番号（例：71-3-03）</td><td></td><td></td><td>番号：</td></tr>
+    <tr><td></td><td></td><td></td><td></td></tr>
+  </tbody>
+</table>
+
+<div class="note-box">別府市浄化槽の場合でも上記の番号確認要！</div>
+
+<!-- ===== 接道の状況 ===== -->
+<div class="section-title">■ 接道の状況</div>
+<table class="road-table">
+  <thead>
+    <tr>
+      <th>接道方向</th>
+      <th>公・私道の別</th>
+      <th>接面道路の種類※</th>
+      <th>幅　員</th>
+      <th>接道長さ</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>　　側</td><td>　▼</td><td>　　▼</td><td>　　m</td><td>　　m</td></tr>
+    <tr><td>　　側</td><td>　▼</td><td>　　▼</td><td>　　m</td><td>　　m</td></tr>
+    <tr><td>　　側</td><td>　▼</td><td>　　▼</td><td>　　m</td><td>　　m</td></tr>
+    <tr>
+      <td colspan="5" class="road-type-cell">
+        ※道路の種類　　ア．建築基準法第42条第1項第1号の道路　　イ．同条第1項第2号の道路　　ウ．同条第1項第3号の道　　エ．同条第1項第4号の道路<br>
+        オ．同条第1項第5号の道路（位置指定道路）〔指定番号：　▼　　年　　月　　日　第　　　号〕<br>
+        カ．同条第2項道路（幅員が4m又は6m未満のため、道路中心線から（□2m・□3m）後退した線が敷地と道路の境界線とみなされます。）<br>
+        キ．建築基準法第42条の道路に該当しません。（原則として建築不可。ただし例外あり。）
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===== ライフライン ===== -->
+<div class="life-section">
+<div class="section-title">■ ライフライン（上下水道等）</div>
+<div class="life-table2-wrap">
+<table class="life-table2">
+  <colgroup>
+    <col style="width:5%">
+    <col style="width:9%">
+    <col style="width:30%">
+    <col style="width:56%">
+  </colgroup>
+  <thead>
+    <tr>
+      <th colspan="2">項　目</th>
+      <th>直ちに利用可能な施設※</th>
+      <th>配　管　等　の　状　況</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="num-cell">①</td>
+      <td class="type-cell">飲用水</td>
+      <td class="green facility-cell">水道（公営）　▼</td>
+      <td class="sub-item pipe-cell">
+        前面道路配管　（□有□無）　口径（<span class="orange-light">　　</span>mm）<br>
+        敷地内引込管　（□有□無）　口径（<span class="orange-light">　　</span>mm）<br>
+        私設管の有無　（<span class="green-inline">□有□無　▼</span>）
+      </td>
+    </tr>
+    <tr>
+      <td class="num-cell">④</td>
+      <td class="type-cell">汚　水</td>
+      <td class="green facility-cell sub-item">
+        □公共下水　　□個別浄化槽（合併）<br>
+        □個別浄化槽（単独）　□集中浄化槽<br>
+        □汲取式　□無
+      </td>
+      <td class="sub-item pipe-cell">
+        前面道路配管　　　（<span class="green-inline">□有□無</span>）<br>
+        私設管の有無　　　（<span class="green-inline">□有□無</span>）<br>
+        浄化槽施設の必要　（<span class="green-inline">□有□無</span>）
+      </td>
+    </tr>
+    <tr>
+      <td class="num-cell">⑤</td>
+      <td class="type-cell">雑排水</td>
+      <td class="green facility-cell sub-item">
+        □公共下水　　□個別浄化槽（合併）<br>
+        □個別浄化槽（単独）　□集中浄化槽<br>
+        □側溝等　□浸透式　□無
+      </td>
+      <td class="sub-item pipe-cell">
+        前面道路配管　　　（<span class="green-inline">□有□無</span>）<br>
+        私設管の有無　　　（<span class="green-inline">□有□無</span>）
+      </td>
+    </tr>
+    <tr>
+      <td class="num-cell">⑥</td>
+      <td class="type-cell">雨　水</td>
+      <td class="green facility-cell sub-item">
+        □公共下水　□側溝<br>
+        □浸透式　□無
+      </td>
+      <td class="pipe-cell" style="border-top: 2px solid #4a90d9;">
+        浄化槽への雨水の流入はできません。
+      </td>
+    </tr>
+  </tbody>
+</table>
+</div><!-- /life-table2-wrap -->
+
+<!-- ===== フッター注釈 ===== -->
+<div class="footer-note">
+  ※大分市東野台の上水道は由布市で管理しており、電話で確認できます。下記に電話後、住所と地図をFAXで送付してください。<br>
+  『由布市　挾間庁舎水道課』　　TEL：097-583-1111（代表）　FAX：097-583-1719
+</div>
+</div><!-- /life-section -->
+
+</div><!-- /page-wrap -->
+</body>
+</html>

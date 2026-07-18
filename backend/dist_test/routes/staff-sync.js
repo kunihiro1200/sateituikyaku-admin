@@ -1,0 +1,69 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const StaffSyncService_1 = require("../services/StaffSyncService");
+const auth_1 = require("../middleware/auth");
+const router = (0, express_1.Router)();
+/**
+ * スタッフ管理シートからemployeesテーブルに同期
+ * POST /api/staff-sync
+ */
+router.post('/', auth_1.authenticate, async (req, res) => {
+    try {
+        console.log('[StaffSyncAPI] スタッフ同期リクエストを受信');
+        const staffSyncService = new StaffSyncService_1.StaffSyncService();
+        await staffSyncService.syncStaff();
+        res.json({
+            success: true,
+            message: 'スタッフ同期が完了しました',
+        });
+    }
+    catch (error) {
+        console.error('[StaffSyncAPI] スタッフ同期エラー:', error);
+        // Google Sheets APIのクォータエラーを検出
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('Quota exceeded') || errorMessage.includes('quota metric')) {
+            return res.status(429).json({
+                error: {
+                    code: 'QUOTA_EXCEEDED',
+                    message: 'Google Sheets APIの読み取り制限を超えました。1分後に再度お試しください。',
+                    retryable: true,
+                },
+            });
+        }
+        res.status(500).json({
+            error: {
+                code: 'STAFF_SYNC_ERROR',
+                message: 'スタッフ同期に失敗しました',
+                retryable: true,
+            },
+        });
+    }
+});
+/**
+ * 特定のスタッフを同期
+ * POST /api/staff-sync/:initials
+ */
+router.post('/:initials', auth_1.authenticate, async (req, res) => {
+    try {
+        const { initials } = req.params;
+        console.log(`[StaffSyncAPI] スタッフ「${initials}」の同期リクエストを受信`);
+        const staffSyncService = new StaffSyncService_1.StaffSyncService();
+        await staffSyncService.syncSingleStaff(initials);
+        res.json({
+            success: true,
+            message: `スタッフ「${initials}」の同期が完了しました`,
+        });
+    }
+    catch (error) {
+        console.error('[StaffSyncAPI] スタッフ同期エラー:', error);
+        res.status(500).json({
+            error: {
+                code: 'STAFF_SYNC_ERROR',
+                message: 'スタッフ同期に失敗しました',
+                retryable: true,
+            },
+        });
+    }
+});
+exports.default = router;

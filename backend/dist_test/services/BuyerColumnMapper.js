@@ -1,0 +1,417 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.BuyerColumnMapper = void 0;
+// 買主リストのカラムマッピングサービス
+const buyer_column_mapping_json_1 = __importDefault(require("../config/buyer-column-mapping.json"));
+class BuyerColumnMapper {
+    constructor() {
+        // Merge both mapping objects
+        this.spreadsheetToDb = {
+            ...buyer_column_mapping_json_1.default.spreadsheetToDatabase,
+            ...buyer_column_mapping_json_1.default.spreadsheetToDatabaseExtended
+        };
+        // databaseToSpreadsheetセクションが存在する場合はそれを使用、なければ自動生成
+        if (buyer_column_mapping_json_1.default.databaseToSpreadsheet && Object.keys(buyer_column_mapping_json_1.default.databaseToSpreadsheet).length > 0) {
+            this.dbToSpreadsheet = buyer_column_mapping_json_1.default.databaseToSpreadsheet;
+        }
+        else {
+            // 自動生成（後方互換性）
+            this.dbToSpreadsheet = {};
+            for (const [key, value] of Object.entries(this.spreadsheetToDb)) {
+                this.dbToSpreadsheet[value] = key;
+            }
+        }
+        this.typeConversions = buyer_column_mapping_json_1.default.typeConversions;
+    }
+    /**
+     * スプレッドシートの行データをデータベース形式に変換
+     */
+    mapSpreadsheetToDatabase(headers, row) {
+        const result = {};
+        headers.forEach((header, index) => {
+            const dbColumn = this.spreadsheetToDb[header];
+            if (dbColumn && row[index] !== undefined) {
+                result[dbColumn] = this.convertValue(dbColumn, row[index]);
+            }
+        });
+        return result;
+    }
+    /**
+     * データベースレコードをスプレッドシート形式に変換
+     */
+    mapDatabaseToSpreadsheet(record) {
+        const result = {};
+        console.log(`[BuyerColumnMapper] mapDatabaseToSpreadsheet called with:`, JSON.stringify(record, null, 2));
+        console.log(`[BuyerColumnMapper] dbToSpreadsheet mapping:`, JSON.stringify(this.dbToSpreadsheet, null, 2));
+        for (const [dbColumn, value] of Object.entries(record)) {
+            const spreadsheetColumn = this.dbToSpreadsheet[dbColumn];
+            console.log(`[BuyerColumnMapper] Mapping ${dbColumn} -> ${spreadsheetColumn}`);
+            if (spreadsheetColumn) {
+                const formattedValue = this.formatValueForSpreadsheet(dbColumn, value);
+                console.log(`[BuyerColumnMapper] Formatted value for ${spreadsheetColumn}:`, formattedValue);
+                result[spreadsheetColumn] = formattedValue;
+            }
+            else {
+                console.warn(`[BuyerColumnMapper] No mapping found for DB column: ${dbColumn}`);
+            }
+        }
+        console.log(`[BuyerColumnMapper] Final result:`, JSON.stringify(result, null, 2));
+        return result;
+    }
+    /**
+     * 値を適切な型に変換
+     */
+    convertValue(column, value) {
+        if (value === null || value === undefined || value === '') {
+            return null;
+        }
+        const type = this.typeConversions[column];
+        if (type === 'date') {
+            return this.parseDate(value);
+        }
+        if (type === 'datetime') {
+            return this.parseDatetime(value);
+        }
+        if (type === 'number') {
+            return this.parseNumber(value);
+        }
+        if (type === 'time') {
+            return this.parseTime(value);
+        }
+        return String(value).trim();
+    }
+    /**
+     * HTMLタグをプレーンテキストに変換
+     * RichTextEditorで保存されたHTMLをスプレッドシート用にストリップする
+     */
+    stripHtml(html) {
+        // <br>, <br/>, <br /> を改行に変換
+        let text = html.replace(/<br\s*\/?>/gi, '\n');
+        // <p>タグを改行に変換
+        text = text.replace(/<\/p>/gi, '\n');
+        text = text.replace(/<p[^>]*>/gi, '');
+        // その他のHTMLタグを除去
+        text = text.replace(/<[^>]+>/g, '');
+        // HTMLエンティティをデコード
+        text = text.replace(/&nbsp;/g, ' ');
+        text = text.replace(/&lt;/g, '<');
+        text = text.replace(/&gt;/g, '>');
+        text = text.replace(/&amp;/g, '&');
+        text = text.replace(/&quot;/g, '"');
+        text = text.replace(/&#39;/g, "'");
+        // 連続する改行を最大2つに制限
+        text = text.replace(/\n{3,}/g, '\n\n');
+        return text.trim();
+    }
+    /**
+     * スプレッドシート出力用に値をフォーマット
+     */
+    formatValueForSpreadsheet(column, value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+        const type = this.typeConversions[column];
+        // date型: タイムゾーンずれを防ぐため文字列パースで処理
+        // new Date("YYYY-MM-DD") はUTC 00:00として解釈されるため、UTC-X環境で1日ずれる
+        if (type === 'date' && value) {
+            const str = String(value);
+            const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (match) {
+                return `${match[1]}/${match[2]}/${match[3]}`;
+            }
+            // フォールバック: Dateオブジェクトで処理
+            const date = new Date(value);
+            if (!isNaN(date.getTime())) {
+                return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+            }
+        }
+        // time型: "HH:mm"形式をそのまま返す
+        if (type === 'time' && value) {
+            return String(value);
+        }
+        // number型: 数値をそのまま返す（文字列変換しない）
+        // 万円表示の文字列（例: "2380万円"）が渡された場合はNaNになるため元の値を返す
+        if (type === 'number' && value !== null && value !== undefined) {
+            const num = Number(value);
+            return isNaN(num) ? value : num;
+        }
+        // HTMLを含む可能性があるフィールドはプレーンテキストに変換
+        const htmlFields = ['inquiry_hearing', 'viewing_result_follow_up', 'message_to_assignee'];
+        if (htmlFields.includes(column) && typeof value === 'string' && value.includes('<')) {
+            return this.stripHtml(value);
+        }
+        return value;
+    }
+    /**
+     * 時刻をパース（スプレッドシートのシリアル値 or 文字列）
+     * シリアル値: 0.416667 = 10:00, 0.583333 = 14:00
+     */
+    parseTime(value) {
+        if (value === null || value === undefined || value === '')
+            return null;
+        // 数値（シリアル値）の場合
+        if (typeof value === 'number') {
+            const totalMinutes = Math.round(value * 24 * 60);
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
+        const str = String(value).trim();
+        // 数値文字列の場合
+        const num = parseFloat(str);
+        if (!isNaN(num) && num >= 0 && num < 1) {
+            const totalMinutes = Math.round(num * 24 * 60);
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
+        // "HH:mm" or "HH:mm:ss" 形式
+        const timeMatch = str.match(/^(\d{1,2}):(\d{2})/);
+        if (timeMatch) {
+            return `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+        }
+        return str || null;
+    }
+    /**
+     * 日付文字列をパース
+     * UNFORMATTED_VALUE で取得した場合、日付セルはシリアル値（数値）で返ってくる
+     */
+    parseDate(value) {
+        if (!value)
+            return null;
+        // Googleスプレッドシートの日付シリアル値（数値）の場合
+        // 起算日: 1899/12/30
+        if (typeof value === 'number') {
+            // 異常な値をチェック（1900年1月1日 = 1, 2100年12月31日 = 73413）
+            if (value < 1 || value > 100000) {
+                console.warn(`[BuyerColumnMapper] Invalid date serial value: ${value}`);
+                return null;
+            }
+            // Excelシリアル値を日付に変換
+            // 1900年1月1日を起点として日数を加算
+            const excelEpoch = new Date(1899, 11, 30); // 1899年12月30日
+            const days = value > 60 ? value - 1 : value; // 1900年のうるう年バグ対応
+            const date = new Date(excelEpoch.getTime() + days * 86400000);
+            if (!isNaN(date.getTime())) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+            return null;
+        }
+        const str = String(value).trim();
+        if (!str)
+            return null;
+        // YYYY/MM/DD or YYYY-MM-DD
+        const match = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+        if (match) {
+            const [, year, month, day] = match;
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+        // MM/DD/YYYY
+        const match2 = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+        if (match2) {
+            const [, month, day, year] = match2;
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+        // MM/DD（年なし）: 前年を使用
+        // 理由: スプレッドシートで年が省略されている場合、通常は前年のデータ
+        const match3 = str.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
+        if (match3) {
+            const [, month, day] = match3;
+            const currentYear = new Date().getFullYear();
+            const previousYear = currentYear - 1; // 前年を使用
+            return `${previousYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+        return null;
+    }
+    /**
+     * 日時文字列をパース
+     */
+    parseDatetime(value) {
+        if (!value)
+            return null;
+        // 数値（Excelシリアル値）の場合は、parseDate()を使用してYYYY-MM-DDに変換
+        if (typeof value === 'number') {
+            const dateStr = this.parseDate(value);
+            return dateStr ? `${dateStr}T00:00:00.000Z` : null;
+        }
+        const str = String(value).trim();
+        if (!str)
+            return null;
+        // 数値文字列の場合もExcelシリアル値として扱う
+        const num = parseFloat(str);
+        if (!isNaN(num) && num >= 1 && num <= 100000) {
+            const dateStr = this.parseDate(num);
+            return dateStr ? `${dateStr}T00:00:00.000Z` : null;
+        }
+        // YYYY/MM/DD HH:mm:ss
+        const match = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+        if (match) {
+            const [, year, month, day, hour, minute, second = '00'] = match;
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:${second}`;
+        }
+        // YYYY/MM/DD or YYYY-MM-DD（時刻なし）
+        const dateMatch = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+        if (dateMatch) {
+            const [, year, month, day] = dateMatch;
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00.000Z`;
+        }
+        // ISO形式の日付文字列（YYYY-MM-DDTHH:mm:ss.sssZ）
+        if (str.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)) {
+            const date = new Date(str);
+            if (!isNaN(date.getTime())) {
+                return date.toISOString();
+            }
+        }
+        return null;
+    }
+    /**
+     * 数値をパース
+     */
+    parseNumber(value) {
+        if (!value)
+            return null;
+        const str = String(value).trim();
+        if (!str)
+            return null;
+        // 「2380万円」「2380万」のような万円表示を円単位に変換
+        const manYenMatch = str.match(/^([\d,，.]+)万円?$/);
+        if (manYenMatch) {
+            const manValue = parseFloat(manYenMatch[1].replace(/[,，]/g, ''));
+            if (!isNaN(manValue)) {
+                return Math.round(manValue * 10000);
+            }
+        }
+        const cleaned = str.replace(/[,，円￥\s万]/g, '').trim();
+        if (!cleaned)
+            return null;
+        const num = parseFloat(cleaned);
+        return isNaN(num) ? null : num;
+    }
+    /**
+     * データベースカラム名の一覧を取得
+     */
+    getDbColumns() {
+        return Object.values(this.spreadsheetToDb);
+    }
+    /**
+     * スプレッドシートカラム名の一覧を取得
+     */
+    getSpreadsheetColumns() {
+        return Object.keys(this.spreadsheetToDb);
+    }
+    /**
+     * 必須フィールドを取得
+     */
+    getRequiredFields() {
+        return buyer_column_mapping_json_1.default.requiredFields;
+    }
+    /**
+     * 型変換ルールを取得
+     */
+    getTypeConversions() {
+        return this.typeConversions;
+    }
+    /**
+     * DBフィールド名からスプレッドシートの列インデックス（0始まり）を取得
+     * @param dbFieldName データベースのフィールド名
+     * @param headers スプレッドシートのヘッダー配列
+     * @returns 列インデックス（見つからない場合は-1）
+     */
+    getColumnIndex(dbFieldName, headers) {
+        const spreadsheetColumn = this.dbToSpreadsheet[dbFieldName];
+        if (!spreadsheetColumn) {
+            return -1;
+        }
+        return headers.indexOf(spreadsheetColumn);
+    }
+    /**
+     * DBフィールド名からスプレッドシートの列文字（A, B, C...）を取得
+     * @param dbFieldName データベースのフィールド名
+     * @param headers スプレッドシートのヘッダー配列
+     * @returns 列文字（見つからない場合はnull）
+     */
+    getColumnLetter(dbFieldName, headers) {
+        const index = this.getColumnIndex(dbFieldName, headers);
+        if (index < 0) {
+            return null;
+        }
+        return this.indexToColumnLetter(index);
+    }
+    /**
+     * 列インデックスを列文字に変換（0 -> A, 1 -> B, 26 -> AA）
+     * @param index 0始まりの列インデックス
+     * @returns 列文字
+     */
+    indexToColumnLetter(index) {
+        let result = '';
+        let n = index;
+        while (n >= 0) {
+            result = String.fromCharCode((n % 26) + 65) + result;
+            n = Math.floor(n / 26) - 1;
+        }
+        return result;
+    }
+    /**
+     * 列文字を列インデックスに変換（A -> 0, B -> 1, AA -> 26）
+     * @param letter 列文字
+     * @returns 0始まりの列インデックス
+     */
+    columnLetterToIndex(letter) {
+        let result = 0;
+        for (let i = 0; i < letter.length; i++) {
+            result = result * 26 + (letter.charCodeAt(i) - 64);
+        }
+        return result - 1;
+    }
+    /**
+     * DBフィールド名からスプレッドシートのカラム名を取得
+     * @param dbFieldName データベースのフィールド名
+     * @returns スプレッドシートのカラム名（見つからない場合はnull）
+     */
+    getSpreadsheetColumnName(dbFieldName) {
+        return this.dbToSpreadsheet[dbFieldName] || null;
+    }
+    /**
+     * スプレッドシートのカラム名からDBフィールド名を取得
+     * @param spreadsheetColumn スプレッドシートのカラム名
+     * @returns DBフィールド名（見つからない場合はnull）
+     */
+    getDbFieldName(spreadsheetColumn) {
+        return this.spreadsheetToDb[spreadsheetColumn] || null;
+    }
+    /**
+     * マッピングされているすべてのDBフィールド名を取得
+     * @returns DBフィールド名の配列
+     */
+    getMappedFields() {
+        return Object.values(this.spreadsheetToDb);
+    }
+    /**
+     * 指定されたヘッダーに対してマッピングされているカラム名を取得
+     * @param headers スプレッドシートのヘッダー配列
+     * @returns マッピングされているカラム名の配列
+     */
+    getMappedColumns(headers) {
+        return headers.filter(header => this.spreadsheetToDb[header] !== undefined);
+    }
+    /**
+     * 指定されたフィールドがヘッダーにマッピングを持つかチェック
+     * @param fieldName DBフィールド名
+     * @param headers スプレッドシートのヘッダー配列
+     * @returns マッピングが存在する場合true
+     */
+    hasColumnMapping(fieldName, headers) {
+        const spreadsheetColumn = this.dbToSpreadsheet[fieldName];
+        if (!spreadsheetColumn) {
+            return false;
+        }
+        return headers.includes(spreadsheetColumn);
+    }
+}
+exports.BuyerColumnMapper = BuyerColumnMapper;

@@ -1,0 +1,240 @@
+"use strict";
+/**
+ * 買主ステータス算出ロジック
+ *
+ * AppSheetのIFSロジックと同一の優先順位でステータスを算出します。
+ * 条件は上から順に評価し、最初に一致した条件のステータスを返します。
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.calculateBuyerStatus = calculateBuyerStatus;
+exports.calculateBuyerStatusComplete = calculateBuyerStatusComplete;
+const dateHelpers_1 = require("../utils/dateHelpers");
+const fieldHelpers_1 = require("../utils/fieldHelpers");
+const buyer_status_definitions_1 = require("../config/buyer-status-definitions");
+function calculateBuyerStatus(buyer) {
+    try {
+        // Priority 1: 査定アンケート回答あり
+        if ((0, fieldHelpers_1.and)((0, fieldHelpers_1.isNotBlank)(buyer.valuation_survey), (0, fieldHelpers_1.isBlank)(buyer.valuation_survey_confirmed))) {
+            const status = '査定アンケート回答あり';
+            return { status, priority: 1, matchedCondition: '査定アンケート回答あり', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 2: 業者問合せあり
+        // vendor_survey = '未' であれば broker_inquiry の値に関係なく「業者問合せあり」を返す
+        if ((0, fieldHelpers_1.equals)(buyer.vendor_survey, '未')) {
+            const status = '業者問合せあり';
+            return { status, priority: 2, matchedCondition: '業者向けアンケート = 未', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 3: 内覧日前日（業者問合せは除外、通知送信者が入力済みの場合も除外）
+        if ((0, fieldHelpers_1.and)((0, fieldHelpers_1.isNotBlank)(buyer.viewing_date), (0, fieldHelpers_1.not)((0, fieldHelpers_1.equals)(buyer.broker_inquiry, '業者問合せ')), (0, fieldHelpers_1.isBlank)(buyer.notification_sender), (0, fieldHelpers_1.or)((0, fieldHelpers_1.and)((0, dateHelpers_1.isTomorrow)(buyer.viewing_date), (0, fieldHelpers_1.not)((0, fieldHelpers_1.equals)((0, dateHelpers_1.getDayOfWeek)(buyer.viewing_date), '木曜日'))), (0, fieldHelpers_1.and)((0, dateHelpers_1.isDaysFromToday)(buyer.viewing_date, 2), (0, fieldHelpers_1.equals)((0, dateHelpers_1.getDayOfWeek)(buyer.viewing_date), '木曜日'))))) {
+            const status = '内覧日前日';
+            return { status, priority: 3, matchedCondition: '内覧日の前日（木曜日は2日前）', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 4: 内覧未確定
+        if ((0, fieldHelpers_1.equals)(buyer.viewing_unconfirmed, '未確定')) {
+            const status = '内覧未確定';
+            return { status, priority: 4, matchedCondition: '内覧が未確定', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 8: 一般媒介_内覧後売主連絡未
+        // 条件A: 内覧日が2025/8/1以降かつ今日未満 かつ 内覧形態_一般媒介が非空 かつ 内覧後売主連絡が未入力 かつ atbb_statusに"公開中"が含まれる
+        // 条件B: 内覧後売主連絡 = "未" かつ atbb_statusに"公開中"が含まれる
+        const conditionA = (0, fieldHelpers_1.and)((0, fieldHelpers_1.isNotBlank)(buyer.viewing_type_general), (0, fieldHelpers_1.isNotBlank)(buyer.latest_viewing_date), (0, dateHelpers_1.isPast)(buyer.latest_viewing_date), (0, dateHelpers_1.isAfterOrEqual)(buyer.latest_viewing_date, '2025-08-01'), (0, fieldHelpers_1.isBlank)(buyer.post_viewing_seller_contact), (0, fieldHelpers_1.contains)(buyer.atbb_status, '公開中'));
+        const conditionB = (0, fieldHelpers_1.and)((0, fieldHelpers_1.equals)(buyer.post_viewing_seller_contact, '未'), (0, fieldHelpers_1.contains)(buyer.atbb_status, '公開中'));
+        if ((0, fieldHelpers_1.or)(conditionA, conditionB)) {
+            const status = '一般媒介_内覧後売主連絡未';
+            return { status, priority: 8, matchedCondition: '一般媒介で内覧後の売主連絡が未完了（公開中のみ）', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 8.5: 売主内覧連絡未
+        // 条件: seller_viewing_date_contact = '未' かつ 内覧日が2026-04-29以降
+        if ((0, fieldHelpers_1.and)((0, fieldHelpers_1.equals)(buyer.seller_viewing_date_contact, '未'), (0, fieldHelpers_1.isNotBlank)(buyer.viewing_date), (0, dateHelpers_1.isAfterOrEqual)(buyer.viewing_date, '2026-04-29'))) {
+            const status = '売主内覧連絡未';
+            return { status, priority: 8.5, matchedCondition: '売主内覧日連絡が未（2026-04-29以降）', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 6: 当日TEL（次電日が当日以前 かつ 追客担当なし かつ 案件担当なし）
+        // 追客担当または案件担当がある場合は Priority 23以降の担当者別カテゴリで「当日TEL(K)」として表示
+        if ((0, fieldHelpers_1.and)((0, fieldHelpers_1.isNotBlank)(buyer.next_call_date), (0, dateHelpers_1.isTodayOrPast)(buyer.next_call_date), (0, fieldHelpers_1.isBlank)(buyer.follow_up_assignee), (0, fieldHelpers_1.isBlank)(buyer.project_assignee))) {
+            const status = '当日TEL';
+            return { status, priority: 6, matchedCondition: '次電日が当日以前（担当なし）', color: (0, buyer_status_definitions_1.getStatusColor)('当日TEL') };
+        }
+        // Priority 5: 問合メール未対応
+        // スプレッドシートのIFS式に合わせてOR条件で判定:
+        //   1. 電話対応が "未"
+        //   2. メール返信が "未"
+        //   3. 内覧日が空欄 かつ 電話対応が "不要" かつ メール返信が "未" または空欄
+        if ((0, fieldHelpers_1.or)((0, fieldHelpers_1.equals)(buyer.inquiry_email_phone, '未'), (0, fieldHelpers_1.equals)(buyer.inquiry_email_reply, '未'), (0, fieldHelpers_1.and)((0, fieldHelpers_1.isBlank)(buyer.latest_viewing_date), (0, fieldHelpers_1.equals)(buyer.inquiry_email_phone, '不要'), (0, fieldHelpers_1.or)((0, fieldHelpers_1.equals)(buyer.inquiry_email_reply, '未'), (0, fieldHelpers_1.isBlank)(buyer.inquiry_email_reply))))) {
+            // 他社物件問合せの場合は「他社物件問合せ未」として表示
+            if ((0, fieldHelpers_1.isNotBlank)(buyer.other_company_property)) {
+                const status = '他社物件問合せ未';
+                return { status, priority: 5, matchedCondition: '他社物件の問い合わせメールへの対応が未完了', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+            }
+            const status = '問合メール未対応';
+            return { status, priority: 5, matchedCondition: '問い合わせメールへの対応が未完了', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 7: 3回架電未
+        // 条件: [3回架電確認済み] = "3回架電未" AND ([【問合メール】電話対応] = "不通" OR "未")
+        if ((0, fieldHelpers_1.and)((0, fieldHelpers_1.equals)(buyer.three_calls_confirmed, '3回架電未'), (0, fieldHelpers_1.or)((0, fieldHelpers_1.equals)(buyer.inquiry_email_phone, '不通'), (0, fieldHelpers_1.equals)(buyer.inquiry_email_phone, '未')))) {
+            const status = '3回架電未';
+            return { status, priority: 7, matchedCondition: '3回架電が未完了', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 9: Y_内覧後未入力（追加条件あり）
+        if ((0, fieldHelpers_1.and)((0, fieldHelpers_1.equals)(buyer.follow_up_assignee, 'Y'), (0, fieldHelpers_1.isNotBlank)(buyer.latest_viewing_date), (0, dateHelpers_1.isPast)(buyer.latest_viewing_date), (0, fieldHelpers_1.isBlank)(buyer.viewing_result_follow_up), (0, fieldHelpers_1.contains)(buyer.atbb_status, '公開中'), (0, fieldHelpers_1.notEquals)(buyer.broker_inquiry, '業者問合せ'))) {
+            return {
+                status: 'Y_内覧後未入力',
+                priority: 9,
+                matchedCondition: '担当Y: 内覧後の入力が未完了（公開中かつ業者問合せでない）',
+                color: (0, buyer_status_definitions_1.getStatusColor)('Y_内覧後未入力'),
+            };
+        }
+        // Priority 10-15: 担当者別内覧後未入力（Y_内覧後未入力と同じ条件: 公開中かつ業者問合せでない）
+        const viewingPostInputConditions = [
+            { assignee: '生', priority: 10, status: '生_内覧後未入力' },
+            { assignee: 'U', priority: 11, status: 'U_内覧後未入力' },
+            { assignee: '久', priority: 12, status: '久_内覧後未入力' },
+            { assignee: 'K', priority: 13, status: 'K_内覧後未入力' },
+            { assignee: 'I', priority: 14, status: 'I_内覧後未入力' },
+            { assignee: 'R', priority: 15, status: 'R_内覧後未入力' },
+        ];
+        for (const condition of viewingPostInputConditions) {
+            if ((0, fieldHelpers_1.and)((0, fieldHelpers_1.equals)(buyer.follow_up_assignee, condition.assignee), (0, fieldHelpers_1.isNotBlank)(buyer.latest_viewing_date), (0, dateHelpers_1.isPast)(buyer.latest_viewing_date), (0, fieldHelpers_1.isBlank)(buyer.viewing_result_follow_up), (0, fieldHelpers_1.contains)(buyer.atbb_status, '公開中'), (0, fieldHelpers_1.notEquals)(buyer.broker_inquiry, '業者問合せ'))) {
+                return {
+                    status: condition.status,
+                    priority: condition.priority,
+                    matchedCondition: `担当${condition.assignee}: 内覧後の入力が未完了（公開中かつ業者問合せでない）`,
+                    color: (0, buyer_status_definitions_1.getStatusColor)(condition.status),
+                };
+            }
+        }
+        return calculateBuyerStatusComplete(buyer);
+    }
+    catch (error) {
+        console.error('[calculateBuyerStatus] Error for buyer:', buyer.buyer_number, error);
+        console.error('[calculateBuyerStatus] Error stack:', error.stack);
+        console.error('[calculateBuyerStatus] Buyer data:', JSON.stringify(buyer, null, 2));
+        return { status: '', priority: 0, matchedCondition: 'エラー', color: '#cccccc' };
+    }
+}
+function calculateBuyerStatusComplete(buyer) {
+    try {
+        const statusAorB = (0, fieldHelpers_1.or)((0, fieldHelpers_1.equals)(buyer.latest_status, 'A:この物件を気に入っている（こちらからの一押しが必要）'), (0, fieldHelpers_1.equals)(buyer.latest_status, 'B:1年以内に引っ越し希望だが、この物件ではない。駐車場の要件や、日当たり等が合わない。'));
+        // Priority 16: 担当(Y)次電日空欄
+        if ((0, fieldHelpers_1.and)(statusAorB, (0, fieldHelpers_1.isBlank)(buyer.next_call_date), (0, fieldHelpers_1.equals)(buyer.follow_up_assignee, 'Y'))) {
+            const status = '担当(Y)次電日空欄';
+            return { status, priority: 16, matchedCondition: '担当Y: 次電日が空欄', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 17: 担当(久)次電日空欄
+        if ((0, fieldHelpers_1.and)(statusAorB, (0, fieldHelpers_1.isBlank)(buyer.broker_inquiry), (0, fieldHelpers_1.isBlank)(buyer.next_call_date), (0, fieldHelpers_1.equals)(buyer.follow_up_assignee, '久'))) {
+            const status = '担当(久)次電日空欄';
+            return { status, priority: 17, matchedCondition: '担当久: 次電日が空欄', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 18: 担当(U)次電日空欄
+        if ((0, fieldHelpers_1.and)(statusAorB, (0, fieldHelpers_1.isBlank)(buyer.next_call_date), (0, fieldHelpers_1.isBlank)(buyer.broker_inquiry), (0, fieldHelpers_1.equals)(buyer.follow_up_assignee, 'U'))) {
+            const status = '担当(U)次電日空欄';
+            return { status, priority: 18, matchedCondition: '担当U: 次電日が空欄', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 19: 担当(R)次電日空欄
+        if ((0, fieldHelpers_1.and)(statusAorB, (0, fieldHelpers_1.isBlank)(buyer.next_call_date), (0, fieldHelpers_1.isBlank)(buyer.broker_inquiry), (0, fieldHelpers_1.equals)(buyer.follow_up_assignee, 'R'))) {
+            const status = '担当(R)次電日空欄';
+            return { status, priority: 19, matchedCondition: '担当R: 次電日が空欄', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 20: 担当(K)次電日空欄
+        if ((0, fieldHelpers_1.and)(statusAorB, (0, fieldHelpers_1.isBlank)(buyer.next_call_date), (0, fieldHelpers_1.isBlank)(buyer.broker_inquiry), (0, fieldHelpers_1.equals)(buyer.follow_up_assignee, 'K'))) {
+            const status = '担当(K)次電日空欄';
+            return { status, priority: 20, matchedCondition: '担当K: 次電日が空欄', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 21: 担当(I)次電日空欄
+        if ((0, fieldHelpers_1.and)(statusAorB, (0, fieldHelpers_1.isBlank)(buyer.next_call_date), (0, fieldHelpers_1.isBlank)(buyer.broker_inquiry), (0, fieldHelpers_1.equals)(buyer.follow_up_assignee, 'I'))) {
+            const status = '担当(I)次電日空欄';
+            return { status, priority: 21, matchedCondition: '担当I: 次電日が空欄', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 22: 担当(生)次電日空欄
+        if ((0, fieldHelpers_1.and)(statusAorB, (0, fieldHelpers_1.isBlank)(buyer.next_call_date), (0, fieldHelpers_1.isBlank)(buyer.broker_inquiry), (0, fieldHelpers_1.equals)(buyer.follow_up_assignee, '生'))) {
+            const status = '担当(生)次電日空欄';
+            return { status, priority: 22, matchedCondition: '担当生: 次電日が空欄', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 23-30: 担当者別
+        // 🚨 重要：次電日が今日以前の場合は「当日TEL(イニシャル)」を優先（内覧済みよりも優先）
+        // 内覧日が過去の場合は「内覧済み(林)」、次電日が今日以前の場合は「当日TEL(林)」、そうでなければ「担当(林)」
+        // 固定リストにない担当者（林など）も汎用的に対応
+        // 🆕 優先順位: follow_up_assignee（後続担当）が最優先、空の場合のみ project_assignee（案件担当）を使用
+        const knownAssignees = [
+            { assignee: 'Y', priority: 23 },
+            { assignee: 'W', priority: 24 },
+            { assignee: 'U', priority: 25 },
+            { assignee: '生', priority: 26 },
+            { assignee: 'K', priority: 27 },
+            { assignee: '久', priority: 28 },
+            { assignee: 'I', priority: 29 },
+            { assignee: 'R', priority: 30 },
+        ];
+        // 🆕 優先順位: 後続担当が最優先、空の場合のみ案件担当を使用
+        const effectiveAssignee = buyer.follow_up_assignee || buyer.project_assignee;
+        if ((0, fieldHelpers_1.isNotBlank)(effectiveAssignee)) {
+            const assignee = effectiveAssignee || '';
+            const known = knownAssignees.find(a => a.assignee === assignee);
+            const priority = known ? known.priority : 23; // 未知の担当者は priority 23 扱い
+            // 🚨 重要：次電日が今日以前の場合は「当日TEL(イニシャル)」を最優先（内覧済みよりも優先）
+            if ((0, fieldHelpers_1.isNotBlank)(buyer.next_call_date) && (0, dateHelpers_1.isTodayOrPast)(buyer.next_call_date)) {
+                // 次電日が今日以前 → 当日TEL(林) として担当カテゴリのサブ扱い
+                const status = `当日TEL(${assignee})`;
+                console.log(`[calculateBuyerStatusComplete] Priority 23-30: ${status} for buyer:`, buyer.buyer_number);
+                return { status, priority, matchedCondition: `担当${assignee}: 次電日が当日以前`, color: (0, buyer_status_definitions_1.getStatusColor)('当日TEL') };
+            }
+            // Priority 36: 内覧済み(イニシャル) - 内覧日が過去の場合（次電日が今日以前でない場合のみ）
+            if ((0, fieldHelpers_1.isNotBlank)(buyer.viewing_date) && (0, dateHelpers_1.isPast)(buyer.viewing_date)) {
+                const status = `内覧済み(${assignee})`;
+                console.log(`[calculateBuyerStatusComplete] Priority 36: ${status} for buyer:`, buyer.buyer_number);
+                return { status, priority: 36, matchedCondition: `内覧済み(${assignee})`, color: (0, buyer_status_definitions_1.getStatusColor)('内覧済み') };
+            }
+            // Priority 37: 担当(イニシャル) - 通常の担当カテゴリ
+            // latest_status や next_call_date が null でも、follow_up_assignee または project_assignee があれば担当カテゴリに分類
+            const status = `担当(${assignee})`;
+            console.log(`[calculateBuyerStatusComplete] Priority 37: ${status} for buyer:`, buyer.buyer_number);
+            return { status, priority: 37, matchedCondition: `担当${assignee}`, color: (0, buyer_status_definitions_1.getStatusColor)(`担当(${assignee})`) };
+        }
+        // Priority 38: 内覧済み（担当者なし）
+        // 条件: viewing_dateが過去の日付 かつ follow_up_assigneeが存在しない
+        if ((0, fieldHelpers_1.and)((0, fieldHelpers_1.isNotBlank)(buyer.viewing_date), (0, dateHelpers_1.isPast)(buyer.viewing_date), (0, fieldHelpers_1.isBlank)(buyer.follow_up_assignee))) {
+            const status = '内覧済み';
+            console.log(`[calculateBuyerStatusComplete] Priority 38: ${status} for buyer:`, buyer.buyer_number);
+            return { status, priority: 38, matchedCondition: '内覧済み', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 31: ピンリッチ未登録
+        // 条件:
+        // - pinrich が NULL・空文字・「登録無し」のいずれか
+        // - email が存在する
+        // - broker_inquiry が空欄
+        // - reception_date >= '2026-01-01'
+        // - inquiry_source が '2件目以降' でない（2件目以降は登録不要（不可）のため除外）
+        if ((0, fieldHelpers_1.and)((0, fieldHelpers_1.or)((0, fieldHelpers_1.isBlank)(buyer.pinrich), (0, fieldHelpers_1.equals)(buyer.pinrich, '登録無し')), (0, fieldHelpers_1.isNotBlank)(buyer.email), (0, fieldHelpers_1.isBlank)(buyer.broker_inquiry), (0, dateHelpers_1.isAfterOrEqual)(buyer.reception_date, '2026-01-01'), (0, fieldHelpers_1.notEquals)(buyer.inquiry_source, '2件目以降'))) {
+            const status = 'ピンリッチ未登録';
+            return { status, priority: 31, matchedCondition: 'ピンリッチに未登録', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 32: 内覧促進メール（Pinrich）
+        if ((0, fieldHelpers_1.and)((0, fieldHelpers_1.isBlank)(buyer.price), (0, dateHelpers_1.isWithinDaysAgo)(buyer.reception_date, 14, 7), (0, fieldHelpers_1.isBlank)(buyer.latest_viewing_date), (0, fieldHelpers_1.isBlank)(buyer.follow_up_assignee), (0, fieldHelpers_1.isBlank)(buyer.latest_status), (0, fieldHelpers_1.isBlank)(buyer.broker_inquiry), (0, fieldHelpers_1.notEquals)(buyer.inquiry_source, '配信希望アンケート'), (0, fieldHelpers_1.isBlank)(buyer.viewing_promotion_not_needed), (0, fieldHelpers_1.isBlank)(buyer.viewing_promotion_sender))) {
+            const status = '内覧促進メール（Pinrich)';
+            return { status, priority: 32, matchedCondition: '内覧促進メール送信対象（Pinrich）', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 33: 要内覧促進客
+        if ((0, fieldHelpers_1.and)((0, dateHelpers_1.isWithinDaysAgo)(buyer.reception_date, 14, 4), (0, fieldHelpers_1.isBlank)(buyer.latest_viewing_date), (0, fieldHelpers_1.isBlank)(buyer.follow_up_assignee), (0, fieldHelpers_1.isBlank)(buyer.latest_status), (0, fieldHelpers_1.notEquals)(buyer.viewing_promotion_not_needed, '不要'), (0, fieldHelpers_1.isBlank)(buyer.viewing_promotion_sender), (0, fieldHelpers_1.isBlank)(buyer.broker_inquiry), (0, fieldHelpers_1.notEquals)(buyer.inquiry_source, '配信希望アンケート'), (0, fieldHelpers_1.not)((0, fieldHelpers_1.contains)(buyer.inquiry_source, 'ピンリッチ')), (0, fieldHelpers_1.not)((0, fieldHelpers_1.contains)(buyer.inquiry_source, '2件目以降紹介')), (0, fieldHelpers_1.and)((0, fieldHelpers_1.notEquals)(buyer.inquiry_confidence, 'e（買付物件の問合せ）'), (0, fieldHelpers_1.notEquals)(buyer.inquiry_confidence, 'd（資料送付不要、条件不適合など）'), (0, fieldHelpers_1.notEquals)(buyer.inquiry_confidence, 'b（内覧検討）')))) {
+            const status = '要内覧促進客';
+            return { status, priority: 33, matchedCondition: '内覧促進が必要な顧客', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 34: 買付有り、物件不適合の内覧促進客
+        if ((0, fieldHelpers_1.and)((0, dateHelpers_1.isWithinDaysAgo)(buyer.reception_date, 7, 4), (0, fieldHelpers_1.isBlank)(buyer.latest_viewing_date), (0, fieldHelpers_1.isBlank)(buyer.follow_up_assignee), (0, fieldHelpers_1.isBlank)(buyer.latest_status), (0, fieldHelpers_1.isBlank)(buyer.viewing_promotion_sender), (0, fieldHelpers_1.isBlank)(buyer.viewing_promotion_not_needed), (0, fieldHelpers_1.or)((0, fieldHelpers_1.equals)(buyer.inquiry_confidence, 'e（買付物件の問合せ）'), (0, fieldHelpers_1.equals)(buyer.inquiry_confidence, 'd（資料送付不要、条件不適合など）')), (0, fieldHelpers_1.notEquals)(buyer.inquiry_confidence, 'b（内覧検討）'), (0, fieldHelpers_1.isBlank)(buyer.broker_inquiry), (0, fieldHelpers_1.notEquals)(buyer.inquiry_source, '配信希望アンケート'))) {
+            const status = '買付有り、物件不適合の内覧促進客';
+            return { status, priority: 34, matchedCondition: '買付有りだが物件不適合の内覧促進対象', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 35: メアド確認必要
+        if ((0, fieldHelpers_1.and)((0, fieldHelpers_1.isBlank)(buyer.email), (0, fieldHelpers_1.not)((0, fieldHelpers_1.contains)(buyer.latest_status, '買')), (0, fieldHelpers_1.isBlank)(buyer.follow_up_assignee), (0, dateHelpers_1.isAfterOrEqual)(buyer.reception_date, '2023-01-01'), (0, fieldHelpers_1.isBlank)(buyer.broker_inquiry), (0, fieldHelpers_1.isBlank)(buyer.past_buyer_list), (0, fieldHelpers_1.isBlank)(buyer.email_confirmation_assignee), (0, fieldHelpers_1.equals)(buyer.email_confirmed, '未確認'), (0, fieldHelpers_1.not)((0, fieldHelpers_1.or)((0, fieldHelpers_1.contains)(buyer.inquiry_confidence, 'D'), (0, fieldHelpers_1.contains)(buyer.inquiry_confidence, 'd'))), (0, fieldHelpers_1.not)((0, fieldHelpers_1.or)((0, fieldHelpers_1.contains)(buyer.latest_status, 'D'), (0, fieldHelpers_1.contains)(buyer.latest_status, 'd'))))) {
+            const status = 'メアド確認必要';
+            return { status, priority: 35, matchedCondition: 'メールアドレスの確認が必要', color: (0, buyer_status_definitions_1.getStatusColor)(status) };
+        }
+        // Priority 36-38 are now integrated into Priority 23-30 section above
+        // No additional logic needed here - all assignee-based statuses are handled in Priority 23-30
+        return { status: '', priority: 0, matchedCondition: '該当なし', color: '#cccccc' };
+    }
+    catch (error) {
+        console.error('[calculateBuyerStatusComplete] Error for buyer:', buyer.buyer_number, error);
+        console.error('[calculateBuyerStatusComplete] Error stack:', error.stack);
+        return { status: '', priority: 0, matchedCondition: 'Error', color: '#cccccc' };
+    }
+}

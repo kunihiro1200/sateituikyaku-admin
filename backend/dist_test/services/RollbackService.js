@@ -1,0 +1,192 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.RollbackService = void 0;
+const SyncLogger_1 = require("./SyncLogger");
+/**
+ * ロールバックサービス
+ *
+ * データのスナップショットを作成し、必要に応じてロールバックします。
+ */
+class RollbackService {
+    constructor(supabase, logger) {
+        this.supabase = supabase;
+        this.logger = logger;
+    }
+    /**
+     * スナップショットを作成
+     */
+    async createSnapshot(description) {
+        try {
+            // 現在の売主データを取得
+            const { data: sellers, error: fetchError } = await this.supabase
+                .from('sellers')
+                .select('*');
+            if (fetchError) {
+                throw new Error(`Failed to fetch sellers: ${fetchError.message}`);
+            }
+            const sellerCount = sellers?.length || 0;
+            // スナップショットを保存
+            const { data: snapshot, error: insertError } = await this.supabase
+                .from('seller_snapshots')
+                .insert({
+                seller_count: sellerCount,
+                description,
+                snapshot_data: sellers,
+            })
+                .select('id, created_at, seller_count, description')
+                .single();
+            if (insertError) {
+                throw new Error(`Failed to create snapshot: ${insertError.message}`);
+            }
+            // ログを記録
+            await this.logger.startSyncLog('manual', undefined, {
+                operation: 'snapshot_created',
+                metadata: { snapshotId: snapshot.id, sellerCount },
+            });
+            return {
+                id: snapshot.id,
+                created_at: new Date(snapshot.created_at),
+                seller_count: snapshot.seller_count,
+                description: snapshot.description,
+            };
+        }
+        catch (error) {
+            await this.logger.logError('unknown', error.message, {
+                operation: 'create_snapshot',
+                stackTrace: error.stack,
+            });
+            throw error;
+        }
+    }
+    /**
+     * スナップショットからロールバック
+     */
+    async rollback(snapshotId) {
+        const startTime = Date.now();
+        try {
+            // スナップショットを取得
+            const { data: snapshot, error: fetchError } = await this.supabase
+                .from('seller_snapshots')
+                .select('*')
+                .eq('id', snapshotId)
+                .single();
+            if (fetchError || !snapshot) {
+                throw new Error(`Snapshot not found: ${snapshotId}`);
+            }
+            const snapshotData = snapshot.snapshot_data;
+            if (!Array.isArray(snapshotData)) {
+                throw new Error('Invalid snapshot data format');
+            }
+            // ログを開始
+            await this.logger.startSyncLog('manual', undefined, {
+                operation: 'rollback',
+                metadata: { snapshotId, targetCount: snapshotData.length },
+            });
+            // トランザクション的に処理
+            // 1. 現在のデータを削除
+            const { error: deleteError } = await this.supabase
+                .from('sellers')
+                .delete()
+                .neq('id', '00000000-0000-0000-0000-000000000000'); // すべて削除
+            if (deleteError) {
+                throw new Error(`Failed to delete current data: ${deleteError.message}`);
+            }
+            // 2. スナップショットデータを復元
+            const { error: insertError } = await this.supabase
+                .from('sellers')
+                .insert(snapshotData);
+            if (insertError) {
+                throw new Error(`Failed to restore snapshot data: ${insertError.message}`);
+            }
+            const duration = Date.now() - startTime;
+            // ログを完了
+            return {
+                success: true,
+                restoredCount: snapshotData.length,
+                duration,
+            };
+        }
+        catch (error) {
+            const duration = Date.now() - startTime;
+            await this.logger.logError(SyncLogger_1.SyncLogger.determineErrorType(error), error.message, {
+                operation: 'rollback',
+                stackTrace: error.stack,
+                metadata: { snapshotId },
+            });
+            return {
+                success: false,
+                restoredCount: 0,
+                error: error.message,
+                duration,
+            };
+        }
+    }
+    /**
+     * スナップショット一覧を取得
+     */
+    async listSnapshots(limit = 50) {
+        const { data: snapshots, error } = await this.supabase
+            .from('seller_snapshots')
+            .select('id, created_at, seller_count, description')
+            .order('created_at', { ascending: false })
+            .limit(limit);
+        if (error) {
+            console.error('Failed to fetch snapshots:', error);
+            return [];
+        }
+        return snapshots?.map(s => ({
+            id: s.id,
+            created_at: new Date(s.created_at),
+            seller_count: s.seller_count,
+            description: s.description,
+        })) || [];
+    }
+    /**
+     * スナップショットを削除
+     */
+    async deleteSnapshot(snapshotId) {
+        try {
+            const { error } = await this.supabase
+                .from('seller_snapshots')
+                .delete()
+                .eq('id', snapshotId);
+            if (error) {
+                throw new Error(`Failed to delete snapshot: ${error.message}`);
+            }
+            return true;
+        }
+        catch (error) {
+            await this.logger.logError('unknown', error.message, {
+                operation: 'delete_snapshot',
+                metadata: { snapshotId },
+            });
+            return false;
+        }
+    }
+    /**
+     * 古いスナップショットを自動削除（保持期間を超えたもの）
+     */
+    async cleanupOldSnapshots(retentionDays = 30) {
+        try {
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+            const { data: deleted, error } = await this.supabase
+                .from('seller_snapshots')
+                .delete()
+                .lt('created_at', cutoffDate.toISOString())
+                .select('id');
+            if (error) {
+                throw new Error(`Failed to cleanup snapshots: ${error.message}`);
+            }
+            return deleted?.length || 0;
+        }
+        catch (error) {
+            await this.logger.logError('unknown', error.message, {
+                operation: 'cleanup_snapshots',
+                metadata: { retentionDays },
+            });
+            return 0;
+        }
+    }
+}
+exports.RollbackService = RollbackService;

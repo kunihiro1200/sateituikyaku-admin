@@ -1,0 +1,763 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.EnhancedBuyerDistributionService = void 0;
+// 拡張買主配信フィルタリングサービス - 複数条件対応
+const supabase_js_1 = require("@supabase/supabase-js");
+const BuyerService_1 = require("./BuyerService");
+const EnhancedGeolocationService_1 = require("./EnhancedGeolocationService");
+class EnhancedBuyerDistributionService {
+    constructor() {
+        this.supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+        this.geolocationService = new EnhancedGeolocationService_1.EnhancedGeolocationService();
+    }
+    /**
+     * すべての条件に合致する買主を取得
+     * @param criteria フィルタリング条件
+     * @returns フィルタリング結果
+     */
+    async getQualifiedBuyersWithAllCriteria(criteria) {
+        try {
+            console.log(`[EnhancedBuyerDistributionService] Starting buyer filtering for property ${criteria.propertyNumber}`);
+            // 1. 物件情報を取得
+            const property = await this.fetchProperty(criteria.propertyNumber);
+            console.log(`[EnhancedBuyerDistributionService] Property details:`, {
+                propertyNumber: criteria.propertyNumber,
+                city: property.city,
+                price: property.price,
+                propertyType: property.property_type,
+                distributionAreas: property.distribution_areas
+            });
+            // Check if distribution_areas is set
+            if (!property.distribution_areas || property.distribution_areas.trim() === '') {
+                console.warn(`[EnhancedBuyerDistributionService] Property ${criteria.propertyNumber} has no distribution areas set`);
+                // distribution_areasが未設定の場合、エリアフィルターをスキップして全買主を対象にする
+                // （property_listingsに登録されていない物件の場合、distribution_areasが取得できないため）
+                console.log(`[EnhancedBuyerDistributionService] Proceeding without distribution area filter`);
+            }
+            // 2. 物件の座標を取得
+            const propertyCoords = await this.geolocationService.getCoordinates(property.google_map_url, property.address);
+            if (!propertyCoords) {
+                console.warn(`[EnhancedBuyerDistributionService] No coordinates for property ${criteria.propertyNumber}`);
+            }
+            // 3. すべての買主を取得
+            const allBuyers = await this.fetchAllBuyers();
+            console.log(`[EnhancedBuyerDistributionService] Total buyers in database: ${allBuyers.length}`);
+            // 4. メールアドレスごとに買主を統合
+            const consolidatedBuyersMap = this.consolidateBuyersByEmail(allBuyers);
+            const consolidatedBuyers = Array.from(consolidatedBuyersMap.values());
+            console.log(`[EnhancedBuyerDistributionService] Consolidated into ${consolidatedBuyers.length} unique emails`);
+            // 5. 全買主の問い合わせ履歴を一括取得
+            const inquiryMap = await this.fetchAllBuyerInquiries();
+            console.log(`[EnhancedBuyerDistributionService] Inquiry history for ${inquiryMap.size} buyers`);
+            // 5.5. 問い合わせ物件の座標を事前に一括並列取得（速度改善）
+            const inquiryCoordsCacheStart = Date.now();
+            const inquiryCoordsCache = await this.buildInquiryCoordinatesCache(inquiryMap);
+            console.log(`[EnhancedBuyerDistributionService] Pre-fetched coordinates for ${inquiryCoordsCache.size} inquiry properties in ${Date.now() - inquiryCoordsCacheStart}ms`);
+            // 6. 各統合買主にフィルターを適用（Promise.all で並列化）
+            const filterStart = Date.now();
+            const filteredBuyers = await Promise.all(consolidatedBuyers.map(async (consolidatedBuyer) => {
+                // Get inquiries for all buyer records with this email
+                const allInquiries = [];
+                for (const originalRecord of consolidatedBuyer.originalRecords) {
+                    const buyerInquiries = inquiryMap.get(originalRecord.buyer_number) || [];
+                    allInquiries.push(...buyerInquiries);
+                }
+                // 地理的フィルター（問い合わせ + エリア）- キャッシュ済み座標を使用
+                const geoMatch = await this.filterByGeographyConsolidatedCached(propertyCoords, property.distribution_areas, consolidatedBuyer, allInquiries, inquiryCoordsCache);
+                // 配信フラグフィルター - 統合された配信タイプを使用
+                const distMatch = this.filterByDistributionFlagConsolidated(consolidatedBuyer);
+                // ステータスフィルター - 統合されたステータスを使用
+                const statusMatch = this.filterByLatestStatusConsolidated(consolidatedBuyer);
+                // 価格帯フィルター - 統合された価格帯を使用
+                const priceMatch = this.filterByPriceRangeConsolidated(property.price, property.property_type, consolidatedBuyer);
+                return {
+                    buyer_number: consolidatedBuyer.buyerNumbers.join(','),
+                    name: consolidatedBuyer.name,
+                    email: consolidatedBuyer.email,
+                    desired_area: consolidatedBuyer.allDesiredAreas,
+                    distribution_type: consolidatedBuyer.distributionType,
+                    latest_status: consolidatedBuyer.mostPermissiveStatus,
+                    desired_property_type: consolidatedBuyer.propertyTypes.join('、'),
+                    price_range_apartment: consolidatedBuyer.priceRanges.apartment.join(' / '),
+                    price_range_house: consolidatedBuyer.priceRanges.house.join(' / '),
+                    price_range_land: consolidatedBuyer.priceRanges.land.join(' / '),
+                    filterResults: {
+                        geography: geoMatch.matched,
+                        distribution: distMatch,
+                        status: statusMatch,
+                        priceRange: priceMatch
+                    },
+                    geographicMatch: geoMatch
+                };
+            }));
+            console.log(`[EnhancedBuyerDistributionService] Parallel filtering completed in ${Date.now() - filterStart}ms`);
+            // 7. 合格した買主を抽出
+            const qualifiedBuyersBase = filteredBuyers.filter(b => b.filterResults.geography &&
+                b.filterResults.distribution &&
+                b.filterResults.status &&
+                b.filterResults.priceRange);
+            // buyer_filter_* フィルターを適用
+            const buyerFilterPet = property.buyer_filter_pet || 'どちらでも';
+            const buyerFilterParking = property.buyer_filter_parking || '指定なし';
+            const buyerFilterOnsen = property.buyer_filter_onsen || 'どちらでも';
+            const buyerFilterFloor = property.buyer_filter_floor || 'どちらでも';
+            let qualifiedBuyers = qualifiedBuyersBase;
+            qualifiedBuyers = BuyerService_1.BuyerService.filterByPet(qualifiedBuyers, buyerFilterPet);
+            qualifiedBuyers = BuyerService_1.BuyerService.filterByParking(qualifiedBuyers, buyerFilterParking);
+            qualifiedBuyers = BuyerService_1.BuyerService.filterByOnsen(qualifiedBuyers, buyerFilterOnsen);
+            qualifiedBuyers = BuyerService_1.BuyerService.filterByFloor(qualifiedBuyers, buyerFilterFloor);
+            console.log(`[EnhancedBuyerDistributionService] After buyer_filter_* filtering: ${qualifiedBuyers.length} qualified buyers`);
+            // Since we already consolidated by email, each qualified buyer represents one unique email
+            const emails = qualifiedBuyers
+                .map(b => b.email)
+                .filter(e => e && e.trim() !== '');
+            console.log(`[EnhancedBuyerDistributionService] Filtering complete:`, {
+                totalBuyerRecords: allBuyers.length,
+                consolidatedEmails: consolidatedBuyers.length,
+                qualifiedBuyers: qualifiedBuyers.length,
+                uniqueEmails: emails.length
+            });
+            return {
+                emails,
+                count: emails.length,
+                totalBuyers: allBuyers.length,
+                filteredBuyers,
+                appliedFilters: {
+                    geographyFilter: true,
+                    distributionFilter: true,
+                    statusFilter: true,
+                    priceRangeFilter: true
+                }
+            };
+        }
+        catch (error) {
+            console.error('[EnhancedBuyerDistributionService] Error in getQualifiedBuyersWithAllCriteria:', error);
+            throw error;
+        }
+    }
+    /**
+     * 物件情報を取得
+     * 1. property_listingsテーブルを優先検索
+     * 2. 見つからない場合はsellersテーブルからフォールバック
+     */
+    async fetchProperty(propertyNumber) {
+        console.log(`[fetchProperty] Looking for property: ${propertyNumber}`);
+        // 1. property_listingsテーブルを優先検索
+        const { data: propertyData, error: propertyError } = await this.supabase
+            .from('property_listings')
+            .select('property_number, google_map_url, address, price, property_type, distribution_areas, buyer_filter_pet, buyer_filter_parking, buyer_filter_onsen, buyer_filter_floor')
+            .eq('property_number', propertyNumber)
+            .single();
+        console.log(`[fetchProperty] Property_listings table query result:`, {
+            found: !!propertyData,
+            error: propertyError?.message || 'none',
+            errorCode: propertyError?.code || 'none'
+        });
+        if (!propertyError && propertyData) {
+            console.log(`[fetchProperty] ✓ Found in property_listings table`);
+            const city = this.extractCityFromAddress(propertyData.address);
+            return {
+                property_number: propertyData.property_number,
+                google_map_url: propertyData.google_map_url,
+                address: propertyData.address,
+                city: city,
+                price: propertyData.price,
+                property_type: propertyData.property_type,
+                distribution_areas: propertyData.distribution_areas,
+                buyer_filter_pet: propertyData.buyer_filter_pet,
+                buyer_filter_parking: propertyData.buyer_filter_parking,
+                buyer_filter_onsen: propertyData.buyer_filter_onsen,
+                buyer_filter_floor: propertyData.buyer_filter_floor
+            };
+        }
+        // 2. sellersテーブルからフォールバック
+        console.log(`[fetchProperty] Not found in property_listings, trying sellers table...`);
+        const { data: sellerData, error: sellerError } = await this.supabase
+            .from('sellers')
+            .select('seller_number, property_address, property_type, valuation_amount_1')
+            .eq('seller_number', propertyNumber)
+            .single();
+        console.log(`[fetchProperty] Sellers table query result:`, {
+            found: !!sellerData,
+            error: sellerError?.message || 'none',
+            errorCode: sellerError?.code || 'none'
+        });
+        if (!sellerError && sellerData) {
+            console.log(`[fetchProperty] ✓ Found in sellers table (fallback)`);
+            const city = this.extractCityFromAddress(sellerData.property_address);
+            return {
+                property_number: sellerData.seller_number,
+                google_map_url: null,
+                address: sellerData.property_address,
+                city: city,
+                price: sellerData.valuation_amount_1 || null,
+                property_type: sellerData.property_type,
+                // distribution_areasがない場合は空文字（後続処理でwarningを出す）
+                distribution_areas: ''
+            };
+        }
+        // Property not found in either table
+        console.log(`[fetchProperty] ✗ Property not found in property_listings or sellers table`);
+        const diagnosticError = new Error(`Property not found: ${propertyNumber}`);
+        diagnosticError.code = 'PROPERTY_NOT_FOUND';
+        diagnosticError.propertyNumber = propertyNumber;
+        diagnosticError.statusCode = 404;
+        throw diagnosticError;
+    }
+    /**
+     * 住所から市区町村を抽出
+     */
+    extractCityFromAddress(address) {
+        if (!address)
+            return null;
+        // 大分市田尻北3-14 → 大分市
+        // 東京都渋谷区恵比寿1-2-3 → 渋谷区
+        const cityMatch = address.match(/([^\s]+?[都道府県])?([^\s]+?[市区町村])/);
+        if (cityMatch) {
+            return cityMatch[2] || cityMatch[0];
+        }
+        return null;
+    }
+    /**
+     * すべての買主を取得
+     */
+    async fetchAllBuyers() {
+        // Fetch all buyers with pagination to avoid Supabase's default 1000 row limit
+        let allBuyers = [];
+        let from = 0;
+        const pageSize = 1000;
+        let hasMore = true;
+        while (hasMore) {
+            const { data, error } = await this.supabase
+                .from('buyers')
+                .select(`
+          buyer_number,
+          name,
+          email,
+          desired_area,
+          distribution_type,
+          latest_status,
+          desired_property_type,
+          price_range_apartment,
+          price_range_house,
+          price_range_land
+        `)
+                .not('email', 'is', null)
+                .neq('email', '')
+                .eq('distribution_type', '要')
+                .is('deleted_at', null)
+                .range(from, from + pageSize - 1);
+            if (error) {
+                throw new Error(`Failed to fetch buyers: ${error.message}`);
+            }
+            if (data && data.length > 0) {
+                allBuyers = allBuyers.concat(data);
+                from += pageSize;
+                hasMore = data.length === pageSize; // Continue if we got a full page
+            }
+            else {
+                hasMore = false;
+            }
+        }
+        console.log(`[fetchAllBuyers] Retrieved ${allBuyers.length} total buyers`);
+        return allBuyers;
+    }
+    /**
+     * メールアドレスごとに買主レコードを統合
+     */
+    consolidateBuyersByEmail(buyers) {
+        const emailMap = new Map();
+        for (const buyer of buyers) {
+            // Normalize email (lowercase, trim)
+            const normalizedEmail = buyer.email?.trim().toLowerCase();
+            if (!normalizedEmail) {
+                console.warn(`[Email Consolidation] Buyer ${buyer.buyer_number} has no email, skipping`);
+                continue;
+            }
+            if (!emailMap.has(normalizedEmail)) {
+                // First record for this email - initialize
+                emailMap.set(normalizedEmail, {
+                    email: buyer.email, // Use original casing
+                    name: buyer.name || null,
+                    buyerNumbers: [buyer.buyer_number],
+                    allDesiredAreas: buyer.desired_area || '',
+                    mostPermissiveStatus: buyer.latest_status || '',
+                    propertyTypes: buyer.desired_property_type ? [buyer.desired_property_type] : [],
+                    priceRanges: {
+                        apartment: buyer.price_range_apartment ? [buyer.price_range_apartment] : [],
+                        house: buyer.price_range_house ? [buyer.price_range_house] : [],
+                        land: buyer.price_range_land ? [buyer.price_range_land] : []
+                    },
+                    distributionType: buyer.distribution_type || '',
+                    originalRecords: [buyer]
+                });
+            }
+            else {
+                // Additional record for this email - merge
+                const consolidated = emailMap.get(normalizedEmail);
+                // Add buyer number
+                consolidated.buyerNumbers.push(buyer.buyer_number);
+                // Merge desired areas (remove duplicates)
+                const existingAreas = new Set(consolidated.allDesiredAreas.split(''));
+                const newAreas = (buyer.desired_area || '').split('');
+                newAreas.forEach((area) => {
+                    if (area.trim())
+                        existingAreas.add(area);
+                });
+                consolidated.allDesiredAreas = Array.from(existingAreas).join('');
+                // Use most permissive status
+                if (this.isMorePermissiveStatus(buyer.latest_status, consolidated.mostPermissiveStatus)) {
+                    consolidated.mostPermissiveStatus = buyer.latest_status;
+                }
+                // Merge property types (unique)
+                if (buyer.desired_property_type &&
+                    !consolidated.propertyTypes.includes(buyer.desired_property_type)) {
+                    consolidated.propertyTypes.push(buyer.desired_property_type);
+                }
+                // Merge price ranges (unique)
+                if (buyer.price_range_apartment &&
+                    !consolidated.priceRanges.apartment.includes(buyer.price_range_apartment)) {
+                    consolidated.priceRanges.apartment.push(buyer.price_range_apartment);
+                }
+                if (buyer.price_range_house &&
+                    !consolidated.priceRanges.house.includes(buyer.price_range_house)) {
+                    consolidated.priceRanges.house.push(buyer.price_range_house);
+                }
+                if (buyer.price_range_land &&
+                    !consolidated.priceRanges.land.includes(buyer.price_range_land)) {
+                    consolidated.priceRanges.land.push(buyer.price_range_land);
+                }
+                // Use most permissive distribution type (要 > mail > others)
+                if (this.isMorePermissiveDistributionType(buyer.distribution_type, consolidated.distributionType)) {
+                    consolidated.distributionType = buyer.distribution_type;
+                }
+                // Keep original record
+                consolidated.originalRecords.push(buyer);
+            }
+        }
+        console.log(`[Email Consolidation] Consolidated ${buyers.length} buyer records into ${emailMap.size} unique emails`);
+        // Log details for emails with multiple records
+        for (const consolidated of emailMap.values()) {
+            if (consolidated.buyerNumbers.length > 1) {
+                console.log(`[Email Consolidation] ${consolidated.email}: ${consolidated.buyerNumbers.length} records (${consolidated.buyerNumbers.join(', ')})`);
+                console.log(`  - Merged areas: ${consolidated.allDesiredAreas}`);
+                console.log(`  - Status: ${consolidated.mostPermissiveStatus}`);
+                console.log(`  - Distribution type: ${consolidated.distributionType}`);
+            }
+        }
+        return emailMap;
+    }
+    /**
+     * ステータスの優先順位を比較（より許容的なステータスを選択）
+     */
+    isMorePermissiveStatus(status1, status2) {
+        // Status priority: C (active) > others > D (inactive)
+        const priority = {
+            'C': 3, // Active - highest priority
+            'B': 2, // Medium priority
+            'A': 2, // Medium priority
+            'D': 1 // Inactive - lowest priority
+        };
+        const p1 = priority[status1 || ''] || 2;
+        const p2 = priority[status2 || ''] || 2;
+        return p1 > p2;
+    }
+    /**
+     * 配信タイプの優先順位を比較（より許容的なタイプを選択）
+     */
+    isMorePermissiveDistributionType(type1, type2) {
+        // Distribution type priority: 要 > mail > LINE→mail > others
+        const priority = {
+            '要': 3,
+            'mail': 2,
+            'LINE→mail': 1
+        };
+        const p1 = priority[type1 || ''] || 0;
+        const p2 = priority[type2 || ''] || 0;
+        return p1 > p2;
+    }
+    /**
+     * 全買主の問い合わせ履歴を一括取得
+     */
+    async fetchAllBuyerInquiries() {
+        const { data, error } = await this.supabase
+            .from('buyer_inquiries')
+            .select(`
+        buyer_number,
+        property_number,
+        property_listings!inner(
+          property_number,
+          address,
+          google_map_url
+        )
+      `)
+            .order('inquiry_date', { ascending: false });
+        if (error) {
+            console.error('[fetchAllBuyerInquiries] Error:', error);
+            return new Map();
+        }
+        const inquiryMap = new Map();
+        data?.forEach((row) => {
+            const key = row.buyer_number;
+            if (!key)
+                return;
+            if (!inquiryMap.has(key)) {
+                inquiryMap.set(key, []);
+            }
+            inquiryMap.get(key).push({
+                propertyNumber: row.property_number,
+                address: row.property_listings?.address || null,
+                googleMapUrl: row.property_listings?.google_map_url || null
+            });
+        });
+        console.log(`[fetchAllBuyerInquiries] Retrieved inquiries for ${inquiryMap.size} buyers`);
+        return inquiryMap;
+    }
+    /**
+     * 問い合わせベースマッチング（問い合わせ物件から3km圏内）
+     */
+    async checkInquiryBasedMatch(propertyCoordinates, buyerInquiries) {
+        if (!buyerInquiries || buyerInquiries.length === 0) {
+            return { matched: false, matchedInquiries: [] };
+        }
+        const matchedInquiries = [];
+        let minDistance = Infinity;
+        for (const inquiry of buyerInquiries) {
+            // 問い合わせ物件の座標を取得
+            const inquiryCoords = await this.geolocationService.getCoordinates(inquiry.googleMapUrl, inquiry.address);
+            if (!inquiryCoords) {
+                console.log(`[Inquiry Match] No coordinates for ${inquiry.propertyNumber}`);
+                continue;
+            }
+            // 距離を計算
+            const distance = this.geolocationService.calculateDistance(propertyCoordinates, inquiryCoords);
+            console.log(`[Inquiry Match] Distance from ${inquiry.propertyNumber}: ${distance.toFixed(2)}km`);
+            // 3km以内ならマッチ
+            if (distance <= 3.0) {
+                matchedInquiries.push({
+                    propertyNumber: inquiry.propertyNumber,
+                    distance
+                });
+                minDistance = Math.min(minDistance, distance);
+            }
+        }
+        return {
+            matched: matchedInquiries.length > 0,
+            matchedInquiries,
+            minDistance: matchedInquiries.length > 0 ? minDistance : undefined
+        };
+    }
+    /**
+     * エリアベースマッチング（★エリア番号の比較）
+     */
+    checkAreaBasedMatch(propertyDistributionAreas, buyerDesiredArea) {
+        // Extract area numbers from buyer's desired area
+        const buyerAreas = this.geolocationService.extractAreaNumbers(buyerDesiredArea);
+        if (buyerAreas.length === 0) {
+            return {
+                matched: false,
+                matchedAreas: []
+            };
+        }
+        // Extract area numbers from property's distribution areas
+        const propertyAreas = this.geolocationService.extractAreaNumbers(propertyDistributionAreas);
+        if (propertyAreas.length === 0) {
+            return {
+                matched: false,
+                matchedAreas: []
+            };
+        }
+        // Find matching areas
+        const matchedAreas = buyerAreas.filter(buyerArea => propertyAreas.includes(buyerArea));
+        return {
+            matched: matchedAreas.length > 0,
+            matchedAreas
+        };
+    }
+    /**
+     * 地理的マッチングの詳細ログ出力
+     */
+    logGeographicMatch(buyerNumber, geoMatch) {
+        console.log(`[Geographic Match] Buyer ${buyerNumber}:`);
+        console.log(`  Match Type: ${geoMatch.matchType}`);
+        if (geoMatch.matchType === 'inquiry' || geoMatch.matchType === 'both') {
+            console.log(`  Inquiry-Based Match:`);
+            geoMatch.matchedInquiries?.forEach(inquiry => {
+                console.log(`    - Property ${inquiry.propertyNumber}: ${inquiry.distance.toFixed(2)}km`);
+            });
+            if (geoMatch.minDistance !== undefined) {
+                console.log(`  Min Distance: ${geoMatch.minDistance.toFixed(2)}km`);
+            }
+        }
+        if (geoMatch.matchType === 'area' || geoMatch.matchType === 'both') {
+            console.log(`  Area-Based Match:`);
+            console.log(`    - Matched Areas: ${geoMatch.matchedAreas?.join(', ')}`);
+        }
+        if (geoMatch.matchType === 'none') {
+            console.log(`  No match (neither inquiry nor area)`);
+        }
+    }
+    /**
+     * 問い合わせ物件の座標を事前に一括並列取得してキャッシュ（速度改善）
+     */
+    async buildInquiryCoordinatesCache(inquiryMap) {
+        // 全ユニーク物件番号を収集
+        const uniqueInquiries = new Map();
+        for (const inquiries of inquiryMap.values()) {
+            for (const inquiry of inquiries) {
+                if (!uniqueInquiries.has(inquiry.propertyNumber)) {
+                    uniqueInquiries.set(inquiry.propertyNumber, inquiry);
+                }
+            }
+        }
+        // 並列で座標を取得
+        const entries = Array.from(uniqueInquiries.entries());
+        const results = await Promise.all(entries.map(async ([propertyNumber, inquiry]) => {
+            const coords = await this.geolocationService.getCoordinates(inquiry.googleMapUrl, inquiry.address);
+            return [propertyNumber, coords];
+        }));
+        return new Map(results);
+    }
+    /**
+     * 統合地理フィルター（キャッシュ済み座標使用版）
+     */
+    async filterByGeographyConsolidatedCached(propertyCoordinates, propertyDistributionAreas, consolidatedBuyer, allInquiries, inquiryCoordsCache) {
+        const hasDistributionAreas = propertyDistributionAreas && propertyDistributionAreas.trim() !== '';
+        // 1. 問い合わせベースマッチング（キャッシュ参照）
+        let inquiryMatch = { matched: false, matchedInquiries: [], minDistance: undefined };
+        if (propertyCoordinates && allInquiries.length > 0) {
+            const matchedInquiries = [];
+            let minDistance = Infinity;
+            for (const inquiry of allInquiries) {
+                const inquiryCoords = inquiryCoordsCache.get(inquiry.propertyNumber);
+                if (!inquiryCoords)
+                    continue;
+                const distance = this.geolocationService.calculateDistance(propertyCoordinates, inquiryCoords);
+                if (distance <= 3.0) {
+                    matchedInquiries.push({ propertyNumber: inquiry.propertyNumber, distance });
+                    minDistance = Math.min(minDistance, distance);
+                }
+            }
+            inquiryMatch = {
+                matched: matchedInquiries.length > 0,
+                matchedInquiries,
+                minDistance: matchedInquiries.length > 0 ? minDistance : undefined
+            };
+        }
+        // 2. エリアベースマッチング
+        // distribution_areasが未設定の場合はエリアフィルター不一致（全員通過させない）
+        const areaMatch = hasDistributionAreas
+            ? this.checkAreaBasedMatch(propertyDistributionAreas, consolidatedBuyer.allDesiredAreas)
+            : { matched: false, matchedAreas: [] };
+        // 3. 結果を統合（OR条件）
+        if (inquiryMatch.matched && areaMatch.matched) {
+            return {
+                matched: true,
+                matchType: 'both',
+                matchedAreas: areaMatch.matchedAreas,
+                matchedInquiries: inquiryMatch.matchedInquiries,
+                minDistance: inquiryMatch.minDistance
+            };
+        }
+        else if (inquiryMatch.matched) {
+            return {
+                matched: true,
+                matchType: 'inquiry',
+                matchedInquiries: inquiryMatch.matchedInquiries,
+                minDistance: inquiryMatch.minDistance
+            };
+        }
+        else if (areaMatch.matched) {
+            return {
+                matched: true,
+                matchType: 'area',
+                matchedAreas: areaMatch.matchedAreas
+            };
+        }
+        else {
+            return { matched: false, matchType: 'none' };
+        }
+    }
+    /**
+     * 統合地理フィルター（統合買主用）
+     */
+    async filterByGeographyConsolidated(propertyCoordinates, propertyDistributionAreas, consolidatedBuyer, allInquiries) {
+        // distribution_areasが未設定の場合（property_listingsに未登録の物件）、全買主を対象にする
+        const hasDistributionAreas = propertyDistributionAreas && propertyDistributionAreas.trim() !== '';
+        // 1. 問い合わせベースマッチング
+        let inquiryMatch = { matched: false, matchedInquiries: [], minDistance: undefined };
+        if (propertyCoordinates && allInquiries.length > 0) {
+            inquiryMatch = await this.checkInquiryBasedMatch(propertyCoordinates, allInquiries);
+        }
+        // 2. エリアベースマッチング - 統合されたエリアを使用
+        // distribution_areasが未設定の場合はエリアマッチングをスキップ（全員マッチ扱い）
+        const areaMatch = hasDistributionAreas
+            ? this.checkAreaBasedMatch(propertyDistributionAreas, consolidatedBuyer.allDesiredAreas)
+            : { matched: true, matchedAreas: [] };
+        // 3. 結果を統合（OR条件）
+        if (inquiryMatch.matched && areaMatch.matched) {
+            return {
+                matched: true,
+                matchType: 'both',
+                matchedAreas: areaMatch.matchedAreas,
+                matchedInquiries: inquiryMatch.matchedInquiries,
+                minDistance: inquiryMatch.minDistance
+            };
+        }
+        else if (inquiryMatch.matched) {
+            return {
+                matched: true,
+                matchType: 'inquiry',
+                matchedInquiries: inquiryMatch.matchedInquiries,
+                minDistance: inquiryMatch.minDistance
+            };
+        }
+        else if (areaMatch.matched) {
+            return {
+                matched: true,
+                matchType: 'area',
+                matchedAreas: areaMatch.matchedAreas
+            };
+        }
+        else {
+            return {
+                matched: false,
+                matchType: 'none'
+            };
+        }
+    }
+    /**
+     * 配信フラグフィルター（統合買主用）
+     */
+    filterByDistributionFlagConsolidated(consolidatedBuyer) {
+        const distributionType = consolidatedBuyer.distributionType?.trim() || '';
+        // Accept "要", "mail", "LINE→mail", and "配信希望" as valid distribution flags
+        return distributionType === '要' ||
+            distributionType === 'mail' ||
+            distributionType === '配信希望' ||
+            distributionType.includes('LINE→mail');
+    }
+    /**
+     * 最新ステータスフィルター（統合買主用）
+     */
+    filterByLatestStatusConsolidated(consolidatedBuyer) {
+        const status = consolidatedBuyer.mostPermissiveStatus || '';
+        // Exclude if contains "買付" or "D"
+        if (status.includes('買付') || status.includes('D')) {
+            return false;
+        }
+        return true;
+    }
+    /**
+     * 価格帯フィルター（統合買主用）
+     */
+    filterByPriceRangeConsolidated(propertyPrice, propertyType, consolidatedBuyer) {
+        // If property price is not available, include buyer
+        if (!propertyPrice) {
+            return true;
+        }
+        // Get the appropriate price ranges based on property type
+        // Normalize property type to handle abbreviated forms (戸, マ, 土) and full forms
+        const normalizedType = (propertyType || '').trim();
+        let priceRangeTexts = [];
+        if (normalizedType === 'マンション' || normalizedType === 'マ' || normalizedType === 'アパート' || normalizedType === 'apartment') {
+            priceRangeTexts = consolidatedBuyer.priceRanges.apartment;
+        }
+        else if (normalizedType === '戸建' || normalizedType === '戸建て' || normalizedType === '戸' || normalizedType === 'detached_house') {
+            priceRangeTexts = consolidatedBuyer.priceRanges.house;
+        }
+        else if (normalizedType === '土地' || normalizedType === '土' || normalizedType === 'land') {
+            priceRangeTexts = consolidatedBuyer.priceRanges.land;
+        }
+        // If no price range specified or any are "指定なし", check property type match
+        // Note: use "some" so that if ANY record has "指定なし" (no restriction), the buyer passes
+        if (priceRangeTexts.length === 0 ||
+            priceRangeTexts.some(text => !text || text.includes('指定なし') || text.trim() === '')) {
+            // If buyer has specific desired property types, at least one must match
+            if (consolidatedBuyer.propertyTypes.length > 0) {
+                const actualType = propertyType?.trim() || '';
+                const anyTypeMatches = consolidatedBuyer.propertyTypes.some(desiredType => this.checkPropertyTypeMatch(desiredType, actualType));
+                if (!anyTypeMatches) {
+                    console.log(`[Price Filter] Property type mismatch: Buyer wants "${consolidatedBuyer.propertyTypes.join('、')}", Property is "${actualType}" - excluding buyer`);
+                    return false;
+                }
+            }
+            return true;
+        }
+        // Check if property price matches ANY of the price ranges
+        for (const priceRangeText of priceRangeTexts) {
+            if (!priceRangeText || priceRangeText.includes('指定なし') || priceRangeText.trim() === '') {
+                continue;
+            }
+            // Parse price range formats:
+            // 1. "X万円以上" - minimum only
+            const minOnlyMatch = priceRangeText.match(/(\d+)万円以上/);
+            if (minOnlyMatch) {
+                const minPrice = parseInt(minOnlyMatch[1]) * 10000;
+                if (propertyPrice >= minPrice) {
+                    console.log(`[Price Filter] Match found: ${minPrice.toLocaleString()}円以上, Property: ${propertyPrice.toLocaleString()}円`);
+                    return true;
+                }
+                continue;
+            }
+            // 2. "X万円～Y万円" or "X万～Y万" or "X～Y万円" or "～X万円" or "～X" - range or max-only with tilde
+            const rangeMatch = priceRangeText.match(/(\d+)(?:万円?)?[～~](\d+)(?:万円?)?/);
+            if (rangeMatch) {
+                const minPrice = parseInt(rangeMatch[1]) * 10000;
+                const maxPrice = parseInt(rangeMatch[2]) * 10000;
+                if (propertyPrice >= minPrice && propertyPrice <= maxPrice) {
+                    console.log(`[Price Filter] Match found: ${minPrice.toLocaleString()}円～${maxPrice.toLocaleString()}円, Property: ${propertyPrice.toLocaleString()}円`);
+                    return true;
+                }
+                continue;
+            }
+            // 3. "~X万円" or "～X万円" or "～X" - maximum only (tilde prefix, no range)
+            const tildeMaxMatch = priceRangeText.match(/^[～~](\d+)(?:万円)?(?:以下)?$/);
+            if (tildeMaxMatch) {
+                const maxPrice = parseInt(tildeMaxMatch[1]) * 10000;
+                if (propertyPrice <= maxPrice) {
+                    console.log(`[Price Filter] Match found: ～${maxPrice.toLocaleString()}円以下, Property: ${propertyPrice.toLocaleString()}円`);
+                    return true;
+                }
+                continue;
+            }
+            // 4. "X万円以下" - maximum only (no tilde)
+            const maxOnlyMatch = priceRangeText.match(/^(\d+)万円以下$/);
+            if (maxOnlyMatch) {
+                const maxPrice = parseInt(maxOnlyMatch[1]) * 10000;
+                if (propertyPrice <= maxPrice) {
+                    console.log(`[Price Filter] Match found: ${maxPrice.toLocaleString()}円以下, Property: ${propertyPrice.toLocaleString()}円`);
+                    return true;
+                }
+                continue;
+            }
+            console.warn(`[Price Filter] Unable to parse price range format: "${priceRangeText}"`);
+        }
+        // No price range matched
+        console.log(`[Price Filter] No price range matched for property ${propertyPrice.toLocaleString()}円`);
+        return false;
+    }
+    /**
+     * 物件種別のマッチングチェック
+     */
+    checkPropertyTypeMatch(desiredType, actualType) {
+        // Normalize type - handle abbreviated forms (戸, マ, 土) and full forms
+        const normalizeType = (t) => {
+            const s = t.trim();
+            if (s === '戸' || s === '戸建' || s === '戸建て' || s === '一戸建' || s === '一戸建て' || s === 'detached_house')
+                return '戸建';
+            if (s === 'マ' || s === 'マンション' || s === 'アパート' || s === 'apartment')
+                return 'マンション';
+            if (s === '土' || s === '土地' || s === 'land')
+                return '土地';
+            if (s === '収' || s === '収益物件' || s === 'income')
+                return '収益物件';
+            return s;
+        };
+        const normalizedActual = normalizeType(actualType);
+        // Split desired types by common separators (、, ・, /, etc.)
+        const desiredTypes = desiredType.split(/[、・\/,]/).map(t => normalizeType(t)).filter(t => t);
+        return desiredTypes.some(desired => desired === normalizedActual);
+    }
+}
+exports.EnhancedBuyerDistributionService = EnhancedBuyerDistributionService;

@@ -1,0 +1,273 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const zod_1 = require("zod");
+const supabase_js_1 = require("@supabase/supabase-js");
+const router = (0, express_1.Router)();
+const supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY);
+// Validation schema for inquiry form
+const inquirySchema = zod_1.z.object({
+    property_id: zod_1.z.string().min(1, '物件IDまたは物件番号を指定してください').optional(),
+    propertyId: zod_1.z.string().min(1, '物件IDまたは物件番号を指定してください').optional(),
+    propertyAddress: zod_1.z.string().optional(), // 物件住所
+    sourceUrl: zod_1.z.string().optional(), // 元のURL
+    previewUrl: zod_1.z.string().optional(), // プレビューURL
+    name: zod_1.z.string().min(1, '名前を入力してください').max(100, '名前は100文字以内で入力してください'),
+    email: zod_1.z.string().email('有効なメールアドレスを入力してください').max(255, 'メールアドレスは255文字以内で入力してください'),
+    phone: zod_1.z.string()
+        .min(10, '有効な電話番号を入力してください')
+        .max(15, '電話番号は15文字以内で入力してください')
+        .regex(/^[0-9\-+() ]+$/, '電話番号は数字、ハイフン、括弧のみ使用できます'),
+    message: zod_1.z.string().min(1, 'お問い合わせ内容を入力してください').max(2000, 'お問い合わせ内容は2000文字以内で入力してください')
+}).refine(data => {
+    // property_idまたはpropertyIdのいずれかが存在すればOK
+    const hasPropertyId = (data.property_id && data.property_id.length > 0) ||
+        (data.propertyId && data.propertyId.length > 0);
+    return hasPropertyId;
+}, {
+    message: '物件IDまたは物件番号を指定してください',
+    path: ['propertyId'],
+});
+/**
+ * POST /api/public/inquiries
+ * Submit a property inquiry
+ *
+ * スプレッドシート同期を廃止し、buyersテーブルに直接保存する方式に変更
+ * サイドバーカテゴリーに自動的に表示される
+ */
+router.post('/', 
+// createRateLimiter({
+//   windowMs: 60 * 60 * 1000, // 1 hour
+//   maxRequests: 10
+// }),
+async (req, res) => {
+    try {
+        console.log('[publicInquiries] Received inquiry request:', {
+            body: req.body,
+            property_id: req.body.property_id,
+            propertyId: req.body.propertyId
+        });
+        // Validate request body
+        const validationResult = inquirySchema.safeParse(req.body);
+        if (!validationResult.success) {
+            console.error('[publicInquiries] Validation error:', validationResult.error);
+            return res.status(400).json({
+                success: false,
+                message: '入力内容に誤りがあります',
+                errors: validationResult.error.issues?.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message
+                })) || []
+            });
+        }
+        const inquiryData = validationResult.data;
+        // property_idまたはpropertyIdを取得
+        const propertyIdOrNumber = inquiryData.property_id || inquiryData.propertyId;
+        console.log('[publicInquiries] Property ID or Number:', propertyIdOrNumber);
+        // UUIDかどうかをチェック（UUID形式: 8-4-4-4-12の形式）
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(propertyIdOrNumber);
+        console.log('[publicInquiries] Is UUID:', isUUID);
+        // Verify that the property exists and is public
+        let query = supabase
+            .from('property_listings')
+            .select('id, property_number, address, atbb_status');
+        // UUIDの場合はidで検索、それ以外は物件番号で検索
+        if (isUUID) {
+            console.log('[publicInquiries] Searching by UUID:', propertyIdOrNumber);
+            query = query.eq('id', propertyIdOrNumber);
+        }
+        else {
+            console.log('[publicInquiries] Searching by property_number:', propertyIdOrNumber);
+            query = query.eq('property_number', propertyIdOrNumber);
+        }
+        const { data: property, error: propertyError } = await query.single();
+        console.log('[publicInquiries] Property search result:', { property, propertyError });
+        // 物件が見つからない場合でも問い合わせを受け付ける
+        let propertyNumber = '';
+        let propertyAddress = '';
+        let inquirySource = 'サイト'; // デフォルト
+        if (propertyError || !property) {
+            console.log('[publicInquiries] Property not found, but accepting inquiry. Using propertyId as address.');
+            // 物件が見つからない場合は、propertyIdOrNumberを住所として扱う
+            propertyAddress = propertyIdOrNumber;
+        }
+        else {
+            // 物件が見つかった場合
+            propertyNumber = property.property_number;
+            propertyAddress = property.address || '';
+            // ATBB状況に基づいて問合せ元を判定
+            if (property.atbb_status) {
+                const status = property.atbb_status.toLowerCase();
+                if (status.includes('公開中')) {
+                    inquirySource = 'いふう独自サイト';
+                }
+                else if (status.includes('公開前')) {
+                    inquirySource = '公開前・いふう独自サイト';
+                }
+                else if (status.includes('非公開')) {
+                    inquirySource = '非公開・いふう独自サイト';
+                }
+            }
+        }
+        // 買主番号を採番（スプレッドシートの連番シートB2セルから取得）
+        // 新規買主作成と同じロジックを使用して番号の衝突を防ぐ
+        const { BuyerNumberSpreadsheetClient } = await Promise.resolve().then(() => __importStar(require('../services/BuyerNumberSpreadsheetClient')));
+        const { GoogleSheetsClient } = await Promise.resolve().then(() => __importStar(require('../services/GoogleSheetsClient')));
+        const BUYER_NUMBER_SPREADSHEET_ID = process.env.BUYER_NUMBER_SPREADSHEET_ID || '1tI_iXaiLuWBggs5y0RH7qzkbHs9wnLLdRekAmjkhcLY';
+        const BUYER_NUMBER_SHEET_NAME = process.env.BUYER_NUMBER_SHEET_NAME || '連番';
+        const BUYER_NUMBER_CELL = process.env.BUYER_NUMBER_CELL || 'B2';
+        const sheetsClient = new GoogleSheetsClient({
+            spreadsheetId: BUYER_NUMBER_SPREADSHEET_ID,
+            sheetName: BUYER_NUMBER_SHEET_NAME,
+        });
+        await sheetsClient.authenticate();
+        const buyerNumberClient = new BuyerNumberSpreadsheetClient(sheetsClient, BUYER_NUMBER_CELL);
+        const buyerNumber = await buyerNumberClient.getNextBuyerNumber();
+        console.log('[publicInquiries] Generated buyer_number from spreadsheet:', buyerNumber);
+        // buyer_idを生成（buyer_number + タイムスタンプ）
+        const buyerId = `buyer_${buyerNumber}_${Date.now()}`;
+        // 電話番号を正規化（数字のみ）
+        const normalizedPhone = inquiryData.phone.replace(/[^0-9]/g, '');
+        // 受付日（今日の日付）
+        const receptionDate = new Date();
+        // コメント欄に追記する情報を整形
+        const additionalInfo = [];
+        if (inquiryData.propertyAddress) {
+            additionalInfo.push(`物件住所: ${inquiryData.propertyAddress}`);
+        }
+        if (inquiryData.previewUrl) {
+            additionalInfo.push(`プレビューURL: ${inquiryData.previewUrl}`);
+        }
+        if (inquiryData.sourceUrl) {
+            additionalInfo.push(`元のURL: ${inquiryData.sourceUrl}`);
+        }
+        // ユーザーのメッセージと追加情報を結合
+        const fullMessage = additionalInfo.length > 0
+            ? `${inquiryData.message}\n\n--- 物件情報 ---\n${additionalInfo.join('\n')}`
+            : inquiryData.message;
+        // buyersテーブルに直接保存
+        const { data: savedBuyer, error: saveError } = await supabase
+            .from('buyers')
+            .insert({
+            buyer_id: buyerId,
+            buyer_number: buyerNumber,
+            name: inquiryData.name,
+            phone_number: normalizedPhone,
+            email: inquiryData.email,
+            inquiry_hearing: fullMessage,
+            inquiry_source: inquirySource,
+            property_number: propertyNumber,
+            property_address: propertyAddress || propertyIdOrNumber,
+            reception_date: receptionDate.toISOString(),
+            created_datetime: receptionDate.toISOString(),
+            created_at: receptionDate.toISOString(),
+            updated_at: receptionDate.toISOString(),
+            is_deleted: false,
+            // 他社物件問合せとしてマーク（サイドバーカテゴリー用）
+            // フォームから送信された物件住所を使用（propertyAddressパラメータ）
+            other_company_property: inquiryData.propertyAddress || propertyAddress || null,
+            inquiry_email_reply: '未' // 「他社物件問合せ未」カテゴリーに表示するため
+        })
+            .select()
+            .single();
+        if (saveError) {
+            console.error('[publicInquiries] Database save error:', saveError);
+            return res.status(500).json({
+                success: false,
+                message: 'お問い合わせの保存中にエラーが発生しました。'
+            });
+        }
+        console.log('[publicInquiries] Buyer saved to database:', {
+            buyer_id: savedBuyer.buyer_id,
+            buyer_number: savedBuyer.buyer_number,
+            name: savedBuyer.name
+        });
+        // DB保存成功後、採番スプレッドシートのB2セルを更新
+        // 新規買主作成と同じロジックで、次回の採番に反映させる
+        try {
+            await buyerNumberClient.updateBuyerNumber(buyerNumber);
+            console.log('[publicInquiries] Updated buyer number cell to:', buyerNumber);
+        }
+        catch (updateError) {
+            console.warn('[publicInquiries] Failed to update buyer number cell:', updateError.message);
+            // 更新失敗してもユーザーにはエラーを返さない
+        }
+        // サイドバーカウントを更新（非同期、ノンブロッキング）
+        try {
+            const { SidebarCountsUpdateService } = await Promise.resolve().then(() => __importStar(require('../services/SidebarCountsUpdateService')));
+            const sidebarService = new SidebarCountsUpdateService(supabase);
+            await sidebarService.updateBuyerSidebarCounts(buyerNumber, null);
+            console.log('[publicInquiries] Updated buyer sidebar counts for:', buyerNumber);
+        }
+        catch (sidebarError) {
+            console.warn('[publicInquiries] Failed to update sidebar counts:', sidebarError.message);
+            // サイドバーカウント更新失敗してもユーザーにはエラーを返さない
+        }
+        // property_inquiriesテーブルにも記録（履歴用）
+        await supabase
+            .from('property_inquiries')
+            .insert({
+            property_id: null,
+            property_number: propertyNumber,
+            name: inquiryData.name,
+            email: inquiryData.email,
+            phone: inquiryData.phone,
+            message: fullMessage,
+            buyer_number: parseInt(buyerNumber, 10),
+            sheet_sync_status: 'synced', // buyersテーブルに保存済みなので'synced'
+            created_at: receptionDate.toISOString()
+        });
+        console.log('[publicInquiries] Inquiry also saved to property_inquiries table');
+        // ユーザーには成功を返す
+        return res.status(201).json({
+            success: true,
+            message: 'お問い合わせを受け付けました。担当者より折り返しご連絡いたします。',
+            buyer_number: buyerNumber
+        });
+    }
+    catch (error) {
+        console.error('Unexpected error in inquiry submission:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('Error message:', errorMessage);
+        console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+        return res.status(500).json({
+            success: false,
+            message: `お問い合わせの送信中にエラーが発生しました: ${errorMessage}`,
+            error: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+        });
+    }
+});
+exports.default = router;

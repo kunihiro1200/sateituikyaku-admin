@@ -1,0 +1,1204 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.PropertyListingSyncService = void 0;
+// Property Listing Sync Service
+// Creates missing property_listings records from sellers table data
+// AND syncs updates from spreadsheet to database
+const supabase_js_1 = require("@supabase/supabase-js");
+const DataIntegrityDiagnosticService_1 = require("./DataIntegrityDiagnosticService");
+const PropertyListingColumnMapper_1 = require("./PropertyListingColumnMapper");
+const encryption_1 = require("../utils/encryption");
+/**
+ * O列（seller_name）が空欄または"様"のみの場合はBL列（owner_info）にフォールバックする
+ */
+function resolveSellerName(sellerName, ownerInfo) {
+    const trimmed = (sellerName || '').trim();
+    const isBlankOrSamaOnly = !trimmed || trimmed === '様';
+    return isBlankOrSamaOnly ? (ownerInfo || null) : trimmed;
+}
+class PropertyListingSyncService {
+    constructor(sheetsClient) {
+        this.supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+        this.diagnosticService = new DataIntegrityDiagnosticService_1.DataIntegrityDiagnosticService();
+        this.sheetsClient = sheetsClient;
+        this.columnMapper = new PropertyListingColumnMapper_1.PropertyListingColumnMapper();
+    }
+    /**
+     * Sync a single property_listing from seller data
+     */
+    async syncFromSeller(propertyNumber) {
+        try {
+            // First, diagnose the property
+            const diagnostic = await this.diagnosticService.diagnoseProperty(propertyNumber);
+            // If property_listing already exists, no need to sync
+            if (diagnostic.existsInPropertyListings) {
+                return {
+                    propertyNumber,
+                    success: true,
+                    action: 'already_exists',
+                };
+            }
+            // If seller data doesn't exist, cannot sync
+            if (!diagnostic.existsInSellers || !diagnostic.sellerData) {
+                return {
+                    propertyNumber,
+                    success: false,
+                    action: 'no_seller_data',
+                    error: 'No seller data found for this property number',
+                };
+            }
+            // Get full seller data
+            const { data: seller, error: sellerError } = await this.supabase
+                .from('sellers')
+                .select('*')
+                .eq('property_number', propertyNumber)
+                .single();
+            if (sellerError || !seller) {
+                return {
+                    propertyNumber,
+                    success: false,
+                    action: 'failed',
+                    error: `Failed to fetch seller data: ${sellerError?.message || 'Not found'}`,
+                };
+            }
+            // Map seller fields to property_listing fields
+            const propertyListingData = await this.mapSellerToPropertyListing(seller);
+            // Insert into property_listings
+            const { error: insertError } = await this.supabase
+                .from('property_listings')
+                .insert(propertyListingData)
+                .select()
+                .single();
+            if (insertError) {
+                return {
+                    propertyNumber,
+                    success: false,
+                    action: 'failed',
+                    error: `Failed to create property_listing: ${insertError.message}`,
+                };
+            }
+            // 戸建ての場合、ハウスメーカーをathomeシートF10から非同期で取得
+            const pt = (seller.property_type || '').toLowerCase();
+            const isDetachedHouse = pt === 'detached_house' || pt.includes('戸建') || pt === '戸';
+            if (isDetachedHouse) {
+                try {
+                    const { AthomeSheetSyncService } = await Promise.resolve().then(() => __importStar(require('./AthomeSheetSyncService')));
+                    const athomeService = new AthomeSheetSyncService();
+                    await athomeService.syncHouseMaker(propertyNumber);
+                    console.log(`[PropertyListingSyncService] house_maker synced for ${propertyNumber}`);
+                }
+                catch (err) {
+                    // ハウスメーカー取得失敗は致命的エラーではないのでログのみ
+                    console.warn(`[PropertyListingSyncService] house_maker sync failed for ${propertyNumber}:`, err.message);
+                }
+            }
+            return {
+                propertyNumber,
+                success: true,
+                action: 'created',
+            };
+        }
+        catch (error) {
+            return {
+                propertyNumber,
+                success: false,
+                action: 'failed',
+                error: error.message || 'Unknown error',
+            };
+        }
+    }
+    /**
+     * Sync multiple property_listings in batch
+     */
+    async syncBatch(propertyNumbers) {
+        const results = [];
+        for (const propertyNumber of propertyNumbers) {
+            const result = await this.syncFromSeller(propertyNumber);
+            results.push(result);
+            // Add a small delay to avoid overwhelming the database
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        return results;
+    }
+    /**
+     * Sync all missing property_listings
+     */
+    async syncAllMissing() {
+        // Find all missing property_listings
+        const missingPropertyNumbers = await this.diagnosticService.findAllMissingPropertyListings();
+        if (missingPropertyNumbers.length === 0) {
+            return [];
+        }
+        console.log(`Found ${missingPropertyNumbers.length} missing property_listings. Starting sync...`);
+        // Sync in batches
+        return await this.syncBatch(missingPropertyNumbers);
+    }
+    /**
+     * 業務リストから格納先URLを取得し、athome公開フォルダのURLを返す
+     *
+     * @param propertyNumber 物件番号
+     * @returns athome公開フォルダのURL（見つからない場合は親フォルダURL）
+     */
+    async getStorageUrlFromGyomuList(propertyNumber) {
+        try {
+            // 業務リストサービスのインスタンスを初回のみ作成（キャッシュ）
+            if (!this.gyomuListService) {
+                const { GyomuListService } = await Promise.resolve().then(() => __importStar(require('./GyomuListService')));
+                this.gyomuListService = new GyomuListService();
+            }
+            // Google Driveサービスのインスタンスを初回のみ作成（キャッシュ）
+            if (!this.driveService) {
+                const { GoogleDriveService } = await Promise.resolve().then(() => __importStar(require('./GoogleDriveService')));
+                this.driveService = new GoogleDriveService();
+            }
+            const gyomuData = await this.gyomuListService.getByPropertyNumber(propertyNumber);
+            if (gyomuData && gyomuData.storageUrl) {
+                console.log(`[PropertyListingSyncService] Found storage_url in 業務リスト for ${propertyNumber}: ${gyomuData.storageUrl}`);
+                // 親フォルダURLからathome公開フォルダのURLを取得
+                const athomePublicUrl = await this.findAthomePublicFolderUrl(gyomuData.storageUrl, propertyNumber, this.driveService);
+                if (athomePublicUrl) {
+                    console.log(`[PropertyListingSyncService] Found athome公開 folder URL for ${propertyNumber}: ${athomePublicUrl}`);
+                    return athomePublicUrl;
+                }
+                // athome公開フォルダが見つからない場合は親フォルダURLを返す
+                console.log(`[PropertyListingSyncService] athome公開 folder not found, using parent folder URL for ${propertyNumber}`);
+                return gyomuData.storageUrl;
+            }
+            console.log(`[PropertyListingSyncService] No storage_url found in 業務リスト for ${propertyNumber}`);
+            return null;
+        }
+        catch (error) {
+            console.error(`[PropertyListingSyncService] Error getting storage_url from 業務リスト for ${propertyNumber}:`, error.message);
+            return null;
+        }
+    }
+    /**
+     * 親フォルダURLからathome公開フォルダのURLを取得
+     *
+     * @param parentFolderUrl 親フォルダのURL
+     * @param propertyNumber 物件番号
+     * @param driveService GoogleDriveServiceインスタンス
+     * @returns athome公開フォルダのURL、見つからない場合はnull
+     */
+    async findAthomePublicFolderUrl(parentFolderUrl, propertyNumber, driveService) {
+        try {
+            // URLからフォルダIDを抽出
+            const folderIdMatch = parentFolderUrl.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+            if (!folderIdMatch) {
+                console.log(`[PropertyListingSyncService] Invalid folder URL format: ${parentFolderUrl}`);
+                return null;
+            }
+            const parentFolderId = folderIdMatch[1];
+            console.log(`[PropertyListingSyncService] Searching for athome公開 in parent folder: ${parentFolderId}`);
+            // 1. 物件番号を含むサブフォルダを検索
+            const propertyFolderId = await this.findPropertyFolderInParent(parentFolderId, propertyNumber, driveService);
+            if (!propertyFolderId) {
+                console.log(`[PropertyListingSyncService] Property folder not found for ${propertyNumber} in ${parentFolderId}`);
+                return null;
+            }
+            console.log(`[PropertyListingSyncService] Found property folder: ${propertyFolderId}`);
+            // 2. 物件フォルダ内でathome公開フォルダを検索
+            const athomeFolderId = await driveService.findFolderByName(propertyFolderId, 'athome公開', true);
+            if (!athomeFolderId) {
+                console.log(`[PropertyListingSyncService] athome公開 folder not found in property folder: ${propertyFolderId}`);
+                return null;
+            }
+            // 3. athome公開フォルダのURLを生成
+            const athomePublicUrl = `https://drive.google.com/drive/folders/${athomeFolderId}`;
+            return athomePublicUrl;
+        }
+        catch (error) {
+            console.error(`[PropertyListingSyncService] Error finding athome公開 folder:`, error.message);
+            return null;
+        }
+    }
+    /**
+     * 親フォルダ内で物件番号を含むサブフォルダを検索
+     *
+     * @param parentFolderId 親フォルダID
+     * @param propertyNumber 物件番号
+     * @param driveService GoogleDriveServiceインスタンス
+     * @returns 物件フォルダID、見つからない場合はnull
+     */
+    async findPropertyFolderInParent(parentFolderId, propertyNumber, driveService) {
+        try {
+            // サブフォルダ一覧を取得
+            const subfolders = await driveService.listSubfolders(parentFolderId);
+            console.log(`[PropertyListingSyncService] Found ${subfolders.length} subfolders in parent`);
+            // 物件番号を含むフォルダを検索
+            const propertyFolder = subfolders.find((folder) => folder.name && folder.name.includes(propertyNumber));
+            if (propertyFolder) {
+                console.log(`[PropertyListingSyncService] Found property folder: ${propertyFolder.name} (${propertyFolder.id})`);
+                return propertyFolder.id;
+            }
+            return null;
+        }
+        catch (error) {
+            console.error(`[PropertyListingSyncService] Error finding property folder:`, error.message);
+            return null;
+        }
+    }
+    /**
+     * Map seller fields to property_listing fields
+     *
+     * Maps data from sellers table to property_listings table format.
+     * Note: storage_location uses site_url (preferred) with fallback to site
+     *
+     * ⚠️ 重要: storage_locationは親フォルダURLのため、
+     * 実際の画像取得時にはathome公開フォルダを検索する必要がある
+     */
+    async mapSellerToPropertyListing(seller) {
+        // storage_locationの取得（athome公開フォルダURLを優先）
+        let storageLocation = seller.site_url || seller.site;
+        // 業務リストからathome公開フォルダURLを取得を試みる
+        if (storageLocation) {
+            try {
+                const athomePublicUrl = await this.getStorageUrlFromGyomuList(seller.property_number);
+                if (athomePublicUrl) {
+                    storageLocation = athomePublicUrl;
+                    console.log(`[PropertyListingSyncService] Using athome公開 URL for ${seller.property_number}: ${storageLocation}`);
+                }
+            }
+            catch (error) {
+                console.error(`[PropertyListingSyncService] Error getting athome公開 URL for ${seller.property_number}:`, error.message);
+                // エラーの場合は元のURLを使用
+            }
+        }
+        return {
+            property_number: seller.property_number,
+            seller_number: seller.seller_number,
+            seller_name: seller.name ? (0, encryption_1.decrypt)(seller.name) : null, // ⚠️ 暗号化フィールドは必ず復号してから保存
+            seller_email: seller.email ? (0, encryption_1.decrypt)(seller.email) : null, // ⚠️ 暗号化フィールドは必ず復号してから保存
+            seller_phone: seller.phone_number ? (0, encryption_1.decrypt)(seller.phone_number) : null, // ⚠️ 暗号化フィールドは必ず復号してから保存
+            address: seller.address,
+            city: seller.city,
+            prefecture: seller.prefecture,
+            price: seller.price,
+            property_type: seller.property_type,
+            land_area: seller.land_area,
+            building_area: seller.building_area,
+            build_year: seller.build_year,
+            structure: seller.structure,
+            floors: seller.floors,
+            rooms: seller.rooms,
+            parking: seller.parking,
+            status: seller.status,
+            inquiry_date: seller.inquiry_date,
+            inquiry_source: seller.inquiry_source,
+            sales_assignee: seller.sales_assignee,
+            sales_assignee_name: seller.sales_assignee_name,
+            valuation_assignee: seller.valuation_assignee,
+            valuation_assignee_name: seller.valuation_assignee_name,
+            valuation_amount: seller.valuation_amount,
+            valuation_date: seller.valuation_date,
+            valuation_method: seller.valuation_method,
+            confidence: seller.confidence,
+            exclusive: seller.exclusive,
+            exclusive_date: seller.exclusive_date,
+            exclusive_action: seller.exclusive_action,
+            visit_date: seller.visit_date,
+            visit_time: seller.visit_time,
+            visit_assignee: seller.visit_assignee,
+            visit_assignee_name: seller.visit_assignee_name,
+            visit_department: seller.visit_department,
+            document_delivery_date: seller.document_delivery_date,
+            follow_up_progress: seller.follow_up_progress,
+            competitor: seller.competitor,
+            pinrich: seller.pinrich,
+            seller_situation: seller.seller_situation,
+            site: seller.site,
+            google_map_url: seller.google_map_url,
+            // Storage location: athome公開フォルダURL（取得できた場合）または親フォルダURL
+            storage_location: storageLocation,
+            other_section_1: seller.other_section_1,
+            other_section_2: seller.other_section_2,
+            other_section_3: seller.other_section_3,
+            other_section_4: seller.other_section_4,
+            other_section_5: seller.other_section_5,
+            other_section_6: seller.other_section_6,
+            other_section_7: seller.other_section_7,
+            other_section_8: seller.other_section_8,
+            other_section_9: seller.other_section_9,
+            other_section_10: seller.other_section_10,
+            other_section_11: seller.other_section_11,
+            other_section_12: seller.other_section_12,
+            other_section_13: seller.other_section_13,
+            other_section_14: seller.other_section_14,
+            other_section_15: seller.other_section_15,
+            other_section_16: seller.other_section_16,
+            other_section_17: seller.other_section_17,
+            other_section_18: seller.other_section_18,
+            other_section_19: seller.other_section_19,
+            other_section_20: seller.other_section_20,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        };
+    }
+    // ============================================================================
+    // UPDATE SYNC FUNCTIONALITY (NEW)
+    // ============================================================================
+    /**
+     * Detect property listings that have been updated in the spreadsheet
+     *
+     * Compares spreadsheet data with database data to find properties with changes.
+     * Returns list of properties that need to be updated.
+     */
+    async detectUpdatedPropertyListings() {
+        if (!this.sheetsClient) {
+            throw new Error('GoogleSheetsClient not configured for update sync');
+        }
+        // 1. Read all property listings from spreadsheet
+        const spreadsheetData = await this.sheetsClient.readAll();
+        // 2. Read all property listings from database (with pagination)
+        const dbData = [];
+        const pageSize = 1000;
+        let offset = 0;
+        let hasMore = true;
+        while (hasMore) {
+            const { data: pageData, error: dbError } = await this.supabase
+                .from('property_listings')
+                .select('*')
+                .range(offset, offset + pageSize - 1);
+            if (dbError) {
+                throw new Error(`Failed to read database: ${dbError.message}`);
+            }
+            if (!pageData || pageData.length === 0) {
+                hasMore = false;
+            }
+            else {
+                dbData.push(...pageData);
+                offset += pageSize;
+                // If we got less than pageSize, we're done
+                if (pageData.length < pageSize) {
+                    hasMore = false;
+                }
+            }
+        }
+        console.log(`📊 Database properties loaded: ${dbData.length}`);
+        // 3. Create lookup map for database properties
+        const dbMap = new Map(dbData.map(p => [p.property_number, p]));
+        // 3.5. work_tasksテーブルから公開予定日データを取得してgyomuListData形式に変換
+        // calculateSidebarStatus()の条件⑤（本日公開予定）と条件⑥（レインズ登録＋SUUMO登録）に必要
+        const gyomuListData = await this.fetchGyomuListDataFromWorkTasks();
+        // 4. Compare and detect changes
+        const updates = [];
+        for (const row of spreadsheetData) {
+            const propertyNumber = String(row['物件番号'] || '').trim();
+            if (!propertyNumber)
+                continue;
+            const dbProperty = dbMap.get(propertyNumber);
+            // Skip if property doesn't exist in database (that's an INSERT, not UPDATE)
+            if (!dbProperty)
+                continue;
+            // Detect changes between spreadsheet and database
+            const changes = this.detectChanges(row, dbProperty);
+            // sidebar_statusの再計算結果が現在のDB値と異なる場合も変更として検出
+            const newSidebarStatus = this.calculateSidebarStatus(row, gyomuListData);
+            const currentSidebarStatus = dbProperty.sidebar_status || '';
+            if (newSidebarStatus !== currentSidebarStatus) {
+                changes['sidebar_status'] = {
+                    old: currentSidebarStatus,
+                    new: newSidebarStatus
+                };
+            }
+            if (Object.keys(changes).length > 0) {
+                updates.push({
+                    property_number: propertyNumber,
+                    changed_fields: changes,
+                    spreadsheet_data: row
+                });
+            }
+        }
+        return updates;
+    }
+    /**
+     * Update a single property listing in the database
+     *
+     * @param propertyNumber - Property number to update
+     * @param updates - Partial property listing data to update
+     * @returns Result indicating success or failure
+     */
+    async updatePropertyListing(propertyNumber, updates) {
+        try {
+            // 1. Validate property exists
+            const { data: existing, error } = await this.supabase
+                .from('property_listings')
+                .select('property_number')
+                .eq('property_number', propertyNumber)
+                .single();
+            if (error || !existing) {
+                return {
+                    success: false,
+                    property_number: propertyNumber,
+                    error: 'Property not found in database'
+                };
+            }
+            // 2. Add updated_at timestamp
+            const updateData = {
+                ...updates,
+                updated_at: new Date().toISOString()
+            };
+            // 3. Execute update
+            const { error: updateError } = await this.supabase
+                .from('property_listings')
+                .update(updateData)
+                .eq('property_number', propertyNumber);
+            if (updateError) {
+                return {
+                    success: false,
+                    property_number: propertyNumber,
+                    error: updateError.message
+                };
+            }
+            return {
+                success: true,
+                property_number: propertyNumber,
+                fields_updated: Object.keys(updates)
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                property_number: propertyNumber,
+                error: error.message || 'Unknown error'
+            };
+        }
+    }
+    /**
+     * Sync all updated property listings from spreadsheet to database
+     *
+     * Main entry point for property listing update sync.
+     * Detects changes and applies them in batches.
+     *
+     * @returns Summary of sync operation
+     */
+    async syncUpdatedPropertyListings() {
+        const startTime = Date.now();
+        try {
+            console.log('🔄 Starting property listing update sync...');
+            // 1. Detect updates
+            const updates = await this.detectUpdatedPropertyListings();
+            if (updates.length === 0) {
+                console.log('✅ No updates detected - all properties are synchronized');
+                return {
+                    total: 0,
+                    updated: 0,
+                    failed: 0,
+                    duration_ms: Date.now() - startTime
+                };
+            }
+            console.log(`📊 Detected ${updates.length} properties with changes`);
+            // 1.5. 業務リストのキャッシュを事前にリフレッシュ（Google Sheets APIクォータ対策）
+            console.log('📋 Pre-loading 業務リスト cache to avoid API quota issues...');
+            try {
+                const { GyomuListService } = await Promise.resolve().then(() => __importStar(require('./GyomuListService')));
+                const gyomuListService = new GyomuListService();
+                // ダミーの物件番号で呼び出してキャッシュをリフレッシュ
+                await gyomuListService.getByPropertyNumber('DUMMY');
+                console.log('✅ 業務リスト cache pre-loaded');
+            }
+            catch (error) {
+                console.warn('⚠️ Failed to pre-load 業務リスト cache:', error.message);
+                // エラーでも続行（業務リスト取得は必須ではない）
+            }
+            // 1.7. work_tasksテーブルから公開予定日データを取得（sidebar_status計算用）
+            // calculateSidebarStatus()の条件⑤（本日公開予定）と条件⑥（レインズ登録＋SUUMO登録）に必要
+            const gyomuListData = await this.fetchGyomuListDataFromWorkTasks();
+            console.log(`📋 [PropertyListingSyncService] gyomuListData loaded: ${gyomuListData.length} entries`);
+            // 2. Process in batches
+            const BATCH_SIZE = 10;
+            const results = [];
+            for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+                const batch = updates.slice(i, i + BATCH_SIZE);
+                const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+                const totalBatches = Math.ceil(updates.length / BATCH_SIZE);
+                console.log(`Processing batch ${batchNum}/${totalBatches} (${batch.length} properties)...`);
+                const batchResults = await Promise.all(batch.map(async (update) => {
+                    try {
+                        // Map spreadsheet data to database format
+                        const mappedUpdates = this.columnMapper.mapSpreadsheetToDatabase(update.spreadsheet_data);
+                        // O列（seller_name）が空欄または"様"のみの場合はBL列（owner_info）にフォールバック
+                        mappedUpdates.seller_name = resolveSellerName(mappedUpdates.seller_name, mappedUpdates.owner_info);
+                        // Only include changed fields
+                        // ⚠️ 重要: mappedUpdatesに存在しないフィールド（スプレッドシートが空欄）はnullとして更新する
+                        const changedFieldsOnly = {};
+                        for (const dbField of Object.keys(update.changed_fields)) {
+                            changedFieldsOnly[dbField] = mappedUpdates.hasOwnProperty(dbField)
+                                ? mappedUpdates[dbField]
+                                : null;
+                        }
+                        // seller_nameのフォールバック保護:
+                        // changedFieldsOnlyにseller_nameが含まれる場合、DBのowner_infoも参照してフォールバックを再適用
+                        // （スプレッドシートのBL列マッピングが失敗した場合でも、DBのowner_infoを使って正しい値を保持）
+                        if ('seller_name' in changedFieldsOnly) {
+                            const ownerInfoFromSpreadsheet = mappedUpdates.owner_info;
+                            const currentSellerName = changedFieldsOnly.seller_name;
+                            const trimmed = (currentSellerName || '').trim();
+                            const isBlankOrSamaOnly = !trimmed || trimmed === '様';
+                            if (isBlankOrSamaOnly && !ownerInfoFromSpreadsheet) {
+                                // スプレッドシートからowner_infoが取得できない場合、DBから取得
+                                const { data: dbRecord } = await this.supabase
+                                    .from('property_listings')
+                                    .select('owner_info')
+                                    .eq('property_number', update.property_number)
+                                    .single();
+                                const dbOwnerInfo = dbRecord?.owner_info;
+                                changedFieldsOnly.seller_name = dbOwnerInfo || null;
+                            }
+                        }
+                        // サイドバーステータスを計算して更新
+                        // gyomuListDataを渡して公開予定日を正しく取得する
+                        const sidebarStatus = this.calculateSidebarStatus(update.spreadsheet_data, gyomuListData);
+                        changedFieldsOnly.sidebar_status = sidebarStatus;
+                        // 業務リストから格納先URLを取得（storage_locationが空の場合）
+                        // キャッシュが事前にロードされているため、API呼び出しは発生しない
+                        if (!changedFieldsOnly.storage_location || changedFieldsOnly.storage_location === null) {
+                            const storageUrlFromGyomu = await this.getStorageUrlFromGyomuList(update.property_number);
+                            if (storageUrlFromGyomu) {
+                                changedFieldsOnly.storage_location = storageUrlFromGyomu;
+                                console.log(`[PropertyListingSyncService] Added storage_location from 業務リスト for ${update.property_number}`);
+                            }
+                        }
+                        // 追加データも取得して保存（初回から高速表示のため）
+                        // エラーが発生しても処理を続行（エラーハンドリング済み）
+                        await this.updatePropertyDetailsFromSheets(update.property_number);
+                        return await this.updatePropertyListing(update.property_number, changedFieldsOnly);
+                    }
+                    catch (error) {
+                        return {
+                            success: false,
+                            property_number: update.property_number,
+                            error: error.message
+                        };
+                    }
+                }));
+                results.push(...batchResults);
+                // Log batch results
+                const batchSuccess = batchResults.filter(r => r.success).length;
+                const batchFailed = batchResults.filter(r => !r.success).length;
+                console.log(`  ✅ ${batchSuccess} updated, ❌ ${batchFailed} failed`);
+                // Google Sheets APIのレート制限を考慮（バッチ間に1秒待機）
+                if (i + BATCH_SIZE < updates.length) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+            // 3. Collect summary
+            const summary = {
+                total: updates.length,
+                updated: results.filter(r => r.success).length,
+                failed: results.filter(r => !r.success).length,
+                duration_ms: Date.now() - startTime,
+                errors: results
+                    .filter(r => !r.success)
+                    .map(r => ({
+                    property_number: r.property_number || 'unknown',
+                    error: r.error || 'Unknown error'
+                }))
+            };
+            // 4. Log to sync_logs
+            await this.logSyncResult('property_listing_update', summary);
+            // 5. Print summary
+            console.log('\n📊 Sync Summary:');
+            console.log(`  Total: ${summary.total}`);
+            console.log(`  Updated: ${summary.updated}`);
+            console.log(`  Failed: ${summary.failed}`);
+            console.log(`  Duration: ${summary.duration_ms}ms`);
+            if (summary.failed > 0) {
+                console.log('\n❌ Failed updates:');
+                summary.errors?.forEach(err => {
+                    console.log(`  - ${err.property_number}: ${err.error}`);
+                });
+            }
+            return summary;
+        }
+        catch (error) {
+            console.error('❌ Sync failed:', error.message);
+            // Log error
+            await this.logSyncError('property_listing_update', error);
+            throw error;
+        }
+    }
+    /**
+     * スプレッドシートから追加データを取得してデータベースに保存
+     * （おすすめコメント、お気に入り文言、Athome情報、こちらの物件について）
+     * property_detailsテーブルに保存（スキーマキャッシュ問題を回避）
+     */
+    async updatePropertyDetailsFromSheets(propertyNumber) {
+        try {
+            console.log(`[PropertyListingSyncService] Updating property details for ${propertyNumber}`);
+            // 必要なサービスを動的にインポート
+            const { PropertyService } = await Promise.resolve().then(() => __importStar(require('./PropertyService')));
+            const { RecommendedCommentService } = await Promise.resolve().then(() => __importStar(require('./RecommendedCommentService')));
+            const { FavoriteCommentService } = await Promise.resolve().then(() => __importStar(require('./FavoriteCommentService')));
+            const { AthomeDataService } = await Promise.resolve().then(() => __importStar(require('./AthomeDataService')));
+            const { PropertyListingService } = await Promise.resolve().then(() => __importStar(require('./PropertyListingService')));
+            const { PropertyDetailsService } = await Promise.resolve().then(() => __importStar(require('./PropertyDetailsService')));
+            const propertyService = new PropertyService();
+            const recommendedCommentService = new RecommendedCommentService();
+            const favoriteCommentService = new FavoriteCommentService();
+            const athomeDataService = new AthomeDataService();
+            const propertyListingService = new PropertyListingService();
+            const propertyDetailsService = new PropertyDetailsService();
+            // 物件情報を取得
+            const property = await propertyListingService.getByPropertyNumber(propertyNumber);
+            if (!property) {
+                console.error(`[PropertyListingSyncService] Property not found: ${propertyNumber}`);
+                return;
+            }
+            // 並列でデータを取得
+            const [propertyAbout, recommendedComment, favoriteComment, athomeData] = await Promise.all([
+                propertyService.getPropertyAbout(propertyNumber).catch(err => {
+                    console.error(`[PropertyListingSyncService] Failed to get property_about for ${propertyNumber}:`, err);
+                    return null;
+                }),
+                recommendedCommentService.getRecommendedComment(propertyNumber, property.property_type, property.id).catch(err => {
+                    console.error(`[PropertyListingSyncService] Failed to get recommended_comments for ${propertyNumber}:`, err);
+                    return { comments: [] };
+                }),
+                favoriteCommentService.getFavoriteComment(property.id).catch(err => {
+                    console.error(`[PropertyListingSyncService] Failed to get favorite_comment for ${propertyNumber}:`, err);
+                    return { comment: null };
+                }),
+                athomeDataService.getAthomeData(propertyNumber, property.property_type, property.storage_location).catch(err => {
+                    console.error(`[PropertyListingSyncService] Failed to get athome_data for ${propertyNumber}:`, err);
+                    return { data: [] };
+                })
+            ]);
+            // property_detailsテーブルにupsert（スキーマキャッシュ問題を回避）
+            const success = await propertyDetailsService.upsertPropertyDetails(propertyNumber, {
+                property_about: propertyAbout,
+                recommended_comments: recommendedComment.comments,
+                athome_data: athomeData.data,
+                favorite_comment: favoriteComment.comment
+            });
+            if (!success) {
+                throw new Error('Failed to upsert property details');
+            }
+            console.log(`[PropertyListingSyncService] Successfully updated property details for ${propertyNumber}`);
+        }
+        catch (error) {
+            console.error(`[PropertyListingSyncService] Error updating property details for ${propertyNumber}:`, error);
+        }
+    }
+    /**
+     * Detect changes between spreadsheet row and database property
+     *
+     * Compares all mapped columns and returns fields that have changed.
+     *
+     * @param spreadsheetRow - Raw spreadsheet row data
+     * @param dbProperty - Database property record
+     * @returns Object with changed fields and their old/new values
+     */
+    detectChanges(spreadsheetRow, dbProperty) {
+        const changes = {};
+        // Map spreadsheet row to database format
+        const mappedData = this.columnMapper.mapSpreadsheetToDatabase(spreadsheetRow);
+        // O列（seller_name）が空欄または"様"のみの場合はBL列（owner_info）にフォールバック
+        const fallbackSellerName = resolveSellerName(mappedData.seller_name, mappedData.owner_info);
+        mappedData.seller_name = fallbackSellerName;
+        // seller_nameのフォールバック値がDBと異なる場合は必ず変更として検出する
+        // （他フィールドに変更がなくても seller_name の不整合を修正するため）
+        // ただし、DBにowner_infoが存在する場合はseller_nameをnullに変更しない
+        // （スプレッドシートのBL列が一時的に空になっても、DBのowner_infoを保持する）
+        const normalizedFallback = this.normalizeValue(fallbackSellerName);
+        const normalizedDbSellerName = this.normalizeValue(dbProperty['seller_name']);
+        const dbOwnerInfo = this.normalizeValue(dbProperty['owner_info']);
+        // DBにowner_infoがある場合、seller_nameをnullに変更しない（保護）
+        const effectiveFallback = (!normalizedFallback && dbOwnerInfo) ? dbOwnerInfo : normalizedFallback;
+        if (effectiveFallback !== normalizedDbSellerName) {
+            changes['seller_name'] = {
+                old: normalizedDbSellerName,
+                new: effectiveFallback
+            };
+            // mappedDataも更新（バッチ処理で使用される）
+            mappedData.seller_name = effectiveFallback;
+        }
+        // Compare each field
+        for (const [dbField, spreadsheetValue] of Object.entries(mappedData)) {
+            // Skip metadata fields
+            if (dbField === 'created_at' || dbField === 'updated_at') {
+                continue;
+            }
+            // ⚠️ 重要: image_urlは手動更新ボタンで管理されるため、自動同期から除外
+            if (dbField === 'image_url') {
+                console.log(`[PropertyListingSyncService] Skipping image_url comparison (managed by manual refresh)`);
+                continue;
+            }
+            // ⚠️ 重要: storage_locationは手動更新ボタンで管理されるため、自動同期から除外
+            if (dbField === 'storage_location') {
+                console.log(`[PropertyListingSyncService] Skipping storage_location comparison (managed by manual refresh)`);
+                continue;
+            }
+            const dbValue = dbProperty[dbField];
+            const normalizedSpreadsheetValue = this.normalizeValue(spreadsheetValue);
+            const normalizedDbValue = this.normalizeValue(dbValue);
+            if (normalizedSpreadsheetValue !== normalizedDbValue) {
+                changes[dbField] = {
+                    old: normalizedDbValue,
+                    new: normalizedSpreadsheetValue
+                };
+            }
+        }
+        return changes;
+    }
+    /**
+     * Normalize values for comparison
+     *
+     * Handles null, undefined, empty strings, and whitespace.
+     *
+     * @param value - Value to normalize
+     * @returns Normalized value
+     */
+    normalizeValue(value) {
+        if (value === null || value === undefined)
+            return null;
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            return trimmed === '' ? null : trimmed;
+        }
+        return value;
+    }
+    /**
+     * Log sync result to sync_logs table
+     */
+    async logSyncResult(syncType, summary) {
+        try {
+            await this.supabase
+                .from('sync_logs')
+                .insert({
+                sync_type: syncType,
+                started_at: new Date(Date.now() - summary.duration_ms).toISOString(),
+                completed_at: new Date().toISOString(),
+                status: summary.failed === 0 ? 'success' : 'partial_success',
+                properties_updated: summary.updated,
+                properties_failed: summary.failed,
+                duration_ms: summary.duration_ms,
+                error_details: summary.errors && summary.errors.length > 0
+                    ? { errors: summary.errors }
+                    : null
+            });
+        }
+        catch (error) {
+            console.error('Failed to log sync result:', error);
+        }
+    }
+    /**
+     * Log sync error to sync_logs table
+     */
+    async logSyncError(syncType, error) {
+        try {
+            await this.supabase
+                .from('sync_logs')
+                .insert({
+                sync_type: syncType,
+                started_at: new Date().toISOString(),
+                completed_at: new Date().toISOString(),
+                status: 'error',
+                properties_updated: 0,
+                properties_failed: 0,
+                duration_ms: 0,
+                error_details: {
+                    error: error.message || 'Unknown error',
+                    stack: error.stack
+                }
+            });
+        }
+        catch (logError) {
+            console.error('Failed to log sync error:', logError);
+        }
+    }
+    // ============================================================================
+    // NEW PROPERTY ADDITION FUNCTIONALITY (Phase 4.6)
+    // ============================================================================
+    /**
+     * Detect new properties that exist in spreadsheet but not in database
+     *
+     * @returns Array of property numbers that need to be added
+     */
+    async detectNewProperties() {
+        if (!this.sheetsClient) {
+            throw new Error('GoogleSheetsClient not configured');
+        }
+        console.log('🔍 Detecting new properties...');
+        // 1. Read all properties from spreadsheet
+        const spreadsheetData = await this.sheetsClient.readAll();
+        const spreadsheetPropertyNumbers = new Set();
+        for (const row of spreadsheetData) {
+            const propertyNumber = String(row['物件番号'] || '').trim();
+            // 物件番号が空でなければすべて取得（AA, BB, CC, 久原など、すべての形式をサポート）
+            if (propertyNumber) {
+                spreadsheetPropertyNumbers.add(propertyNumber);
+            }
+        }
+        console.log(`📊 Spreadsheet properties: ${spreadsheetPropertyNumbers.size}`);
+        // 2. Read all property numbers from database (with pagination)
+        const dbPropertyNumbers = new Set();
+        const pageSize = 1000;
+        let offset = 0;
+        let hasMore = true;
+        while (hasMore) {
+            const { data: dbProperties, error } = await this.supabase
+                .from('property_listings')
+                .select('property_number')
+                .range(offset, offset + pageSize - 1);
+            if (error) {
+                throw new Error(`Failed to read database: ${error.message}`);
+            }
+            if (!dbProperties || dbProperties.length === 0) {
+                hasMore = false;
+            }
+            else {
+                for (const property of dbProperties) {
+                    if (property.property_number) {
+                        dbPropertyNumbers.add(property.property_number);
+                    }
+                }
+                offset += pageSize;
+                // If we got less than pageSize, we're done
+                if (dbProperties.length < pageSize) {
+                    hasMore = false;
+                }
+            }
+        }
+        console.log(`📊 Database properties: ${dbPropertyNumbers.size}`);
+        // 3. Find properties in spreadsheet but not in database
+        const newProperties = [];
+        for (const propertyNumber of spreadsheetPropertyNumbers) {
+            if (!dbPropertyNumbers.has(propertyNumber)) {
+                newProperties.push(propertyNumber);
+            }
+        }
+        // Sort by property number
+        newProperties.sort((a, b) => {
+            const numA = parseInt(a.replace('AA', ''), 10);
+            const numB = parseInt(b.replace('AA', ''), 10);
+            return numA - numB;
+        });
+        console.log(`🆕 New properties detected: ${newProperties.length}`);
+        if (newProperties.length > 0) {
+            console.log(`   First few: ${newProperties.slice(0, 5).join(', ')}${newProperties.length > 5 ? '...' : ''}`);
+        }
+        return newProperties;
+    }
+    /**
+     * Add a new property to database
+     *
+     * Phase 4.6: 物件リスト(property_listings)のみの同期
+     * 売主(sellers)テーブルの操作は行わない
+     *
+     * @param spreadsheetRow - Spreadsheet row data
+     * @returns Success result
+     */
+    async addNewProperty(spreadsheetRow) {
+        try {
+            // 1. Get property number
+            const propertyNumber = String(spreadsheetRow['物件番号'] || '').trim();
+            if (!propertyNumber) {
+                throw new Error('Property number is required');
+            }
+            // 2. Map spreadsheet data to property_listings format
+            const propertyData = this.columnMapper.mapSpreadsheetToDatabase(spreadsheetRow);
+            // 3. 業務リストから格納先URLを取得（storage_locationが空の場合）
+            if (!propertyData.storage_location || propertyData.storage_location === null) {
+                const storageUrlFromGyomu = await this.getStorageUrlFromGyomuList(propertyNumber);
+                if (storageUrlFromGyomu) {
+                    propertyData.storage_location = storageUrlFromGyomu;
+                    console.log(`[PropertyListingSyncService] Added storage_location from 業務リスト for ${propertyNumber}`);
+                }
+            }
+            // 4. サイドバーステータスを計算
+            // work_tasksテーブルから公開予定日データを取得してgyomuListData形式に変換
+            const gyomuListDataForNew = await this.fetchGyomuListDataFromWorkTasks();
+            propertyData.sidebar_status = this.calculateSidebarStatus(spreadsheetRow, gyomuListDataForNew);
+            // 5. Add timestamps
+            propertyData.created_at = new Date().toISOString();
+            propertyData.updated_at = new Date().toISOString();
+            // 5. Insert into database (property_listings table only)
+            const { error: insertError } = await this.supabase
+                .from('property_listings')
+                .insert(propertyData);
+            if (insertError) {
+                throw new Error(insertError.message);
+            }
+            return { success: true };
+        }
+        catch (error) {
+            return {
+                success: false,
+                error: error.message || 'Unknown error'
+            };
+        }
+    }
+    /**
+     * Sync new properties from spreadsheet to database
+     *
+     * Main entry point for new property addition.
+     * Detects new properties and adds them in batches.
+     *
+     * @returns Summary of sync operation
+     */
+    async syncNewProperties() {
+        const startTime = Date.now();
+        try {
+            console.log('🆕 Starting new property addition sync...');
+            // 1. Detect new properties
+            const newPropertyNumbers = await this.detectNewProperties();
+            if (newPropertyNumbers.length === 0) {
+                console.log('✅ No new properties detected');
+                return {
+                    total: 0,
+                    added: 0,
+                    failed: 0,
+                    duration_ms: Date.now() - startTime
+                };
+            }
+            console.log(`📊 Detected ${newPropertyNumbers.length} new properties`);
+            // 2. Get spreadsheet data for new properties
+            const spreadsheetData = await this.sheetsClient.readAll();
+            const spreadsheetMap = new Map(spreadsheetData.map(row => [
+                String(row['物件番号'] || '').trim(),
+                row
+            ]));
+            // 3. Process in batches
+            const BATCH_SIZE = 10;
+            let added = 0;
+            let failed = 0;
+            const errors = [];
+            for (let i = 0; i < newPropertyNumbers.length; i += BATCH_SIZE) {
+                const batch = newPropertyNumbers.slice(i, i + BATCH_SIZE);
+                const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+                const totalBatches = Math.ceil(newPropertyNumbers.length / BATCH_SIZE);
+                console.log(`Processing batch ${batchNum}/${totalBatches} (${batch.length} properties)...`);
+                for (const propertyNumber of batch) {
+                    const spreadsheetRow = spreadsheetMap.get(propertyNumber);
+                    if (!spreadsheetRow) {
+                        failed++;
+                        errors.push({
+                            property_number: propertyNumber,
+                            error: 'Spreadsheet data not found'
+                        });
+                        continue;
+                    }
+                    const result = await this.addNewProperty(spreadsheetRow);
+                    if (result.success) {
+                        added++;
+                        console.log(`  ✅ ${propertyNumber}: Added`);
+                    }
+                    else {
+                        failed++;
+                        errors.push({
+                            property_number: propertyNumber,
+                            error: result.error || 'Unknown error'
+                        });
+                        console.log(`  ❌ ${propertyNumber}: ${result.error}`);
+                    }
+                }
+                // Delay between batches
+                if (i + BATCH_SIZE < newPropertyNumbers.length) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+            // 4. Log summary
+            const summary = {
+                total: newPropertyNumbers.length,
+                added,
+                updated: 0,
+                failed,
+                duration_ms: Date.now() - startTime,
+                errors: errors.length > 0 ? errors : undefined
+            };
+            await this.logSyncResult('new_property_addition', summary);
+            console.log('\n📊 Sync Summary:');
+            console.log(`  Total: ${summary.total}`);
+            console.log(`  Added: ${summary.added}`);
+            console.log(`  Failed: ${summary.failed}`);
+            console.log(`  Duration: ${summary.duration_ms}ms`);
+            return summary;
+        }
+        catch (error) {
+            console.error('❌ Sync failed:', error.message);
+            await this.logSyncError('new_property_addition', error);
+            throw error;
+        }
+    }
+    // ===========================================================
+    // SIDEBAR STATUS CALCULATION
+    // ===========================================================
+    /**
+     * サイドバーステータスを計算
+     * @param row 物件リストスプレッドシートの1行
+     * @param gyomuListData 業務依頼シートの全データ
+     */
+    /**
+     * work_tasksテーブルから公開予定日データを取得してgyomuListData形式に変換
+     * calculateSidebarStatus()の条件⑤（本日公開予定）と条件⑥（レインズ登録＋SUUMO登録）で使用
+     */
+    async fetchGyomuListDataFromWorkTasks() {
+        try {
+            const { data, error } = await this.supabase
+                .from('work_tasks')
+                .select('property_number, publish_scheduled_date');
+            if (error) {
+                console.warn('[PropertyListingSyncService] Failed to fetch work_tasks for gyomuListData:', error.message);
+                return [];
+            }
+            // calculateSidebarStatus()が期待するgyomuListData形式に変換
+            // lookupGyomuList(propertyNumber, gyomuListData, '公開予定日') で参照される
+            return (data || []).map((row) => ({
+                '物件番号': row.property_number,
+                '公開予定日': row.publish_scheduled_date,
+            }));
+        }
+        catch (error) {
+            console.warn('[PropertyListingSyncService] Error fetching work_tasks for gyomuListData:', error.message);
+            return [];
+        }
+    }
+    calculateSidebarStatus(row, gyomuListData = []) {
+        const propertyNumber = String(row['物件番号'] || '');
+        const atbbStatus = String(row['atbb成約済み/非公開'] || '');
+        // ① 未報告（最優先）
+        const reportDate = row['報告日'];
+        if (reportDate && this.isDateBeforeOrToday(reportDate)) {
+            const assignee = row['報告担当_override'] || row['報告担当'] || '';
+            return assignee ? `未報告 ${assignee}` : '未報告';
+        }
+        // ② 未完了
+        if (row['確認'] === '未') {
+            return '未完了';
+        }
+        // ③ 非公開予定（確認後）
+        if (row['一般媒介非公開（仮）'] === '非公開予定') {
+            return '非公開予定（確認後）';
+        }
+        // ④ 一般媒介の掲載確認未
+        if (row['１社掲載'] === '未確認') {
+            return '一般媒介の掲載確認未';
+        }
+        // ⑤ 本日公開予定
+        if (atbbStatus.includes('公開前')) {
+            const scheduledDate = this.lookupGyomuList(propertyNumber, gyomuListData, '公開予定日');
+            if (scheduledDate && this.isDateBeforeOrToday(scheduledDate)) {
+                return '本日公開予定';
+            }
+        }
+        // ⑥ SUUMO / レインズ登録必要
+        if (atbbStatus === '一般・公開中' || atbbStatus === '専任・公開中') {
+            const scheduledDate = this.lookupGyomuList(propertyNumber, gyomuListData, '公開予定日');
+            const suumoUrl = row['Suumo URL'];
+            const suumoRegistration = row['Suumo登録'];
+            // 🚨 修正: SUUMO URLが空であることを厳密にチェック
+            const isSuumoUrlEmpty = !suumoUrl || (typeof suumoUrl === 'string' && suumoUrl.trim() === '');
+            if (scheduledDate &&
+                this.isDateBeforeYesterday(scheduledDate) &&
+                isSuumoUrlEmpty &&
+                suumoRegistration !== 'S不要') {
+                return atbbStatus === '一般・公開中'
+                    ? 'SUUMO URL　要登録'
+                    : 'レインズ登録＋SUUMO URL 要登録';
+            }
+        }
+        // ⑦ 買付申込み（内覧なし）２
+        const kaitsukeStatus = row['買付'];
+        if ((kaitsukeStatus === '専任片手' && atbbStatus === '専任・公開中') ||
+            (kaitsukeStatus === '一般他決' && atbbStatus === '一般・公開中') ||
+            (kaitsukeStatus === '専任両手' && atbbStatus === '専任・公開中') ||
+            (kaitsukeStatus === '一般両手' && atbbStatus === '一般・公開中') ||
+            (kaitsukeStatus === '一般片手' && atbbStatus === '一般・公開中')) {
+            return '買付申込み（内覧なし）２';
+        }
+        // ⑧ 公開前情報
+        if (atbbStatus === '一般・公開前' || atbbStatus === '専任・公開前') {
+            return '公開前情報';
+        }
+        // ⑨ 非公開（配信メールのみ）
+        if (atbbStatus === '非公開（配信メールのみ）') {
+            return '非公開（配信メールのみ）';
+        }
+        // ⑩ 一般公開中物件
+        if (atbbStatus === '一般・公開中') {
+            return '一般公開中物件';
+        }
+        // ⑪ 専任・公開中（担当別）
+        if (atbbStatus === '専任・公開中') {
+            const assignee = row['担当名（営業）'];
+            return this.getAssigneeStatus(assignee);
+        }
+        return '';
+    }
+    lookupGyomuList(propertyNumber, gyomuListData, columnName) {
+        const row = gyomuListData.find(r => r['物件番号'] === propertyNumber);
+        return row ? row[columnName] : null;
+    }
+    isDateBeforeOrToday(dateValue) {
+        if (!dateValue)
+            return false;
+        const date = this.parseSidebarDate(dateValue);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return date <= today;
+    }
+    isDateBeforeYesterday(dateValue) {
+        if (!dateValue)
+            return false;
+        const date = this.parseSidebarDate(dateValue);
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setHours(0, 0, 0, 0);
+        return date <= yesterday;
+    }
+    parseSidebarDate(dateValue) {
+        if (typeof dateValue === 'number') {
+            const excelEpoch = new Date(1899, 11, 30);
+            return new Date(excelEpoch.getTime() + dateValue * 86400000);
+        }
+        return new Date(dateValue);
+    }
+    getAssigneeStatus(assignee) {
+        const mapping = {
+            '\u5c71\u672c': 'Y\u5c02\u4efb\u516c\u958b\u4e2d',
+            '\u751f\u91ce': '\u751f\u30fb\u5c02\u4efb\u516c\u958b\u4e2d',
+            '\u4e45': '\u4e45\u30fb\u5c02\u4efb\u516c\u958b\u4e2d',
+            '\u88cf': 'U\u5c02\u4efb\u516c\u958b\u4e2d',
+            '\u6797': '\u6797\u30fb\u5c02\u4efb\u516c\u958b\u4e2d',
+            '\u56fd\u5e83': 'K\u5c02\u4efb\u516c\u958b\u4e2d',
+            '\u6728\u6751': 'R\u5c02\u4efb\u516c\u958b\u4e2d',
+            '\u89d2\u4e95': 'I\u5c02\u4efb\u516c\u958b\u4e2d',
+        };
+        return mapping[assignee] || '\u5c02\u4efb\u30fb\u516c\u958b\u4e2d';
+    }
+}
+exports.PropertyListingSyncService = PropertyListingSyncService;

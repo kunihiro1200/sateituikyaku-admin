@@ -174,3 +174,67 @@ git push -f origin main
 
 **最終更新日**: 2026年6月8日
 **更新理由**: 他社物件新着配信の地図座標修正（`fix_athome_coords_for_preview`追加）を保護対象に追加
+
+---
+
+## 📍 他社物件新着配信（`/api/buyers/scrape-property`）の座標取得ルール
+
+**実装ファイル**: `backend/src/routes/buyers.ts`（Railwayではなくバックエンド内で直接処理）
+
+### 🚨 絶対に守るべきルール：座標はJSON-LDから取得する
+
+athomeのHTMLには `<script type="application/ld+json">` に正確な物件座標が埋め込まれている。
+
+```
+{"@type":"GeoCoordinates","latitude":"33.51682","longitude":"130.4678"}
+```
+
+**この値を最優先で使うこと。**
+
+### ❌ 過去にやった間違い（繰り返し禁止）
+
+1. `set()` + 正規表現で緯度経度を拾う → **周辺施設の座標が混入して駅付近にピンが刺さる**
+2. `"ido"`/`"keido"` キーを探す → **このページには存在しない（別のathomeページ用）**
+3. Google Geocoding APIで住所から座標を取得 → **マンション名が住所に含まれると駅付近に引っ張られる**
+4. 住所から郵便番号・マンション名を除去してジオコーディング → **登録住所と実際の物件位置が異なるケースで不正確**
+
+### ✅ 正しい実装（2026年6月26日確認済み）
+
+```typescript
+// 優先1: JSON-LDの GeoCoordinates（物件本体の正確な座標）
+const geoCoordMatch = html.match(/"GeoCoordinates"[^}]*"latitude"\s*:\s*"?([0-9]{2}\.[0-9]+)"?[^}]*"longitude"\s*:\s*"?([0-9]{3}\.[0-9]+)"?/);
+const geoCoordMatchRev = !geoCoordMatch && html.match(/"GeoCoordinates"[^}]*"longitude"\s*:\s*"?([0-9]{3}\.[0-9]+)"?[^}]*"latitude"\s*:\s*"?([0-9]{2}\.[0-9]+)"?/);
+if (geoCoordMatch) {
+  lat = parseFloat(geoCoordMatch[1]);
+  lng = parseFloat(geoCoordMatch[2]);
+} else if (geoCoordMatchRev) {
+  lng = parseFloat(geoCoordMatchRev[1]);
+  lat = parseFloat(geoCoordMatchRev[2]);
+} else {
+  // フォールバック: center=lat,lng → 汎用正規表現
+}
+```
+
+### ✅ タイトルの提供元情報の除去（2026年6月26日確認済み）
+
+athomeのタイトルには「（提供元：〇〇不動産）」が含まれる場合がある。除去すること。
+
+```typescript
+title = title
+  .replace(/【[^】]+】/g, '')
+  .replace(/（提供元[^）]*）/g, '')  // 全角括弧
+  .replace(/\(提供元[^)]*\)/g, '')   // 半角括弧
+  .replace(/\s*[-|｜].*$/, '')
+  .trim();
+```
+
+### ✅ DB保存とプレビューURL生成（2026年6月26日追加）
+
+`scrape-property`（athome用）はスクレイピング後に `property_previews` テーブルへ保存し、
+`https://sateituikyaku-admin-frontend.vercel.app/property-preview/{slug}` を返す。
+（以前は元URLをそのまま返していたため、プレビューが古いページのままになっていた）
+
+---
+
+**最終更新日**: 2026年6月26日
+**更新理由**: athome scrape-propertyの地図座標・タイトル・プレビューURL問題を修正・記録

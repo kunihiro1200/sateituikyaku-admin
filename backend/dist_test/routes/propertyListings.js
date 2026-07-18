@@ -1,0 +1,1888 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+// 物件リストのAPIルート
+const express_1 = require("express");
+const PropertyListingService_1 = require("../services/PropertyListingService");
+const BuyerLinkageService_1 = require("../services/BuyerLinkageService");
+const BuyerLinkageCache_1 = require("../services/BuyerLinkageCache");
+const BuyerDistributionService_1 = require("../services/BuyerDistributionService");
+const EnhancedBuyerDistributionService_1 = require("../services/EnhancedBuyerDistributionService");
+const DataIntegrityDiagnosticService_1 = require("../services/DataIntegrityDiagnosticService");
+const BuyerCandidateService_1 = require("../services/BuyerCandidateService");
+const urlValidator_1 = require("../utils/urlValidator");
+const supabase_js_1 = require("@supabase/supabase-js");
+const EmailService_supabase_1 = require("../services/EmailService.supabase");
+const auth_1 = require("../middleware/auth");
+/**
+ * 買付情報保存時に Google Chat へ通知を送信するヘルパー関数
+ * 失敗しても保存結果には影響しない（例外を外部に伝播させない）
+ */
+async function notifyGoogleChatOfferSaved(propertyNumber, offerData) {
+    // Google Chat Webhook URL
+    const WEBHOOK_URL = 'https://chat.googleapis.com/v1/spaces/AAAA6iEDkiU/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=azlyf21pENCpLLUdJPjnRNXOzsIAP550xebOMVxYRMQ';
+    // 通知メッセージを組み立てる
+    const message = `【買付情報更新】\n` +
+        `物件番号: ${propertyNumber}\n` +
+        `所在地: ${offerData.address ?? '未設定'}\n` +
+        `住居表示: ${offerData.display_address ?? '未設定'}\n` +
+        `種別: ${offerData.property_type ?? '未設定'}\n` +
+        `物件担当: ${offerData.sales_assignee ?? '未設定'}\n` +
+        `買付日: ${offerData.offer_date ?? '未設定'}\n` +
+        `状況: ${offerData.offer_status ?? '未設定'}\n` +
+        `買付コメント: ${offerData.offer_comment ?? '未設定'}`;
+    try {
+        // axios を使って Google Chat Webhook に POST する
+        const axios = require('axios');
+        await axios.post(WEBHOOK_URL, { text: message });
+    }
+    catch (err) {
+        // 通知失敗はログ記録のみ（保存結果には影響しない）
+        console.error('[notifyGoogleChatOfferSaved] Google Chat 通知の送信に失敗しました:', err);
+    }
+}
+const router = (0, express_1.Router)();
+// Supabaseクライアントを初期化
+const supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+// multer: multipart/form-data (添付ファイル) 対応
+const multer_1 = __importDefault(require("multer"));
+const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const propertyListingService = new PropertyListingService_1.PropertyListingService();
+const buyerLinkageService = new BuyerLinkageService_1.BuyerLinkageService();
+const buyerLinkageCache = new BuyerLinkageCache_1.BuyerLinkageCache();
+const buyerDistributionService = new BuyerDistributionService_1.BuyerDistributionService();
+const enhancedBuyerDistributionService = new EnhancedBuyerDistributionService_1.EnhancedBuyerDistributionService();
+const diagnosticService = new DataIntegrityDiagnosticService_1.DataIntegrityDiagnosticService();
+const buyerCandidateService = new BuyerCandidateService_1.BuyerCandidateService();
+const emailService = new EmailService_supabase_1.EmailService();
+// 一覧取得
+router.get('/', async (req, res) => {
+    try {
+        const { limit = '50', offset = '0', orderBy = 'created_at', orderDirection = 'desc', search, status, salesAssignee, propertyType, } = req.query;
+        const result = await propertyListingService.getAll({
+            limit: parseInt(limit, 10),
+            offset: parseInt(offset, 10),
+            orderBy: orderBy,
+            orderDirection: orderDirection,
+            search: search,
+            status: status,
+            salesAssignee: salesAssignee,
+            propertyType: propertyType,
+        });
+        res.json(result);
+    }
+    catch (error) {
+        console.error('Error fetching property listings:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+// 統計取得
+router.get('/stats', async (_req, res) => {
+    try {
+        const stats = await propertyListingService.getStats();
+        res.json(stats);
+    }
+    catch (error) {
+        console.error('Error fetching stats:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+// seller_phone バックフィル: property_listings の seller_phone を sellers テーブルから一括補完
+router.get('/backfill-seller-phone', async (req, res) => {
+    try {
+        const supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+        const { decrypt } = await Promise.resolve().then(() => __importStar(require('../utils/encryption')));
+        const { data: listings, error: listErr } = await supabase
+            .from('property_listings')
+            .select('property_number')
+            .is('seller_phone', null);
+        if (listErr)
+            throw new Error(listErr.message);
+        if (!listings || listings.length === 0) {
+            return res.json({ updated: 0, message: 'seller_phone が NULL の物件はありません' });
+        }
+        const propertyNumbers = listings.map((l) => l.property_number).filter(Boolean);
+        const { data: sellers, error: sellerErr } = await supabase
+            .from('sellers')
+            .select('seller_number, phone_number')
+            .in('seller_number', propertyNumbers);
+        if (sellerErr)
+            throw new Error(sellerErr.message);
+        const phoneMap = {};
+        for (const s of sellers || []) {
+            if (s.phone_number) {
+                try {
+                    phoneMap[s.seller_number] = decrypt(s.phone_number);
+                }
+                catch { /* skip */ }
+            }
+        }
+        let updated = 0;
+        for (const listing of listings) {
+            const phone = phoneMap[listing.property_number];
+            if (!phone)
+                continue;
+            const { error: upErr } = await supabase
+                .from('property_listings')
+                .update({ seller_phone: phone })
+                .eq('property_number', listing.property_number);
+            if (!upErr)
+                updated++;
+        }
+        res.json({ updated, total: listings.length, message: `${updated}件の seller_phone を更新しました` });
+    }
+    catch (error) {
+        console.error('[backfill-seller-phone] Error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+// 公開物件一覧取得（公開物件サイト用）
+router.get('/public', async (req, res) => {
+    try {
+        const { limit = '20', offset = '0', propertyType, priceMin, priceMax, areas, location, propertyNumber, buildingAgeMin, buildingAgeMax, } = req.query;
+        // propertyTypeが配列の場合とカンマ区切りの文字列の場合に対応
+        let propertyTypeArray;
+        if (propertyType) {
+            if (Array.isArray(propertyType)) {
+                propertyTypeArray = propertyType;
+            }
+            else if (typeof propertyType === 'string') {
+                propertyTypeArray = propertyType.split(',').map(t => t.trim());
+            }
+        }
+        // areasが配列の場合とカンマ区切りの文字列の場合に対応
+        let areasArray;
+        if (areas) {
+            if (Array.isArray(areas)) {
+                areasArray = areas;
+            }
+            else if (typeof areas === 'string') {
+                areasArray = areas.split(',').map(a => a.trim());
+            }
+        }
+        const result = await propertyListingService.getPublicProperties({
+            limit: parseInt(limit, 10),
+            offset: parseInt(offset, 10),
+            propertyType: propertyTypeArray,
+            priceRange: {
+                min: priceMin ? parseInt(priceMin, 10) : undefined,
+                max: priceMax ? parseInt(priceMax, 10) : undefined,
+            },
+            areas: areasArray,
+            location: location,
+            propertyNumber: propertyNumber,
+            buildingAgeRange: {
+                min: buildingAgeMin ? parseInt(buildingAgeMin, 10) : undefined,
+                max: buildingAgeMax ? parseInt(buildingAgeMax, 10) : undefined,
+            },
+        });
+        res.json(result);
+    }
+    catch (error) {
+        console.error('Error fetching public properties:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+// 個別取得
+router.get('/:propertyNumber', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const data = await propertyListingService.getByPropertyNumber(propertyNumber);
+        if (!data) {
+            res.status(404).json({ error: 'Property listing not found' });
+            return;
+        }
+        res.json(data);
+    }
+    catch (error) {
+        console.error('Error fetching property listing:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+// 更新
+router.put('/:propertyNumber', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const updates = req.body;
+        const { notify_offer, ...updatesWithoutFlag } = updates;
+        const safeUpdates = updatesWithoutFlag;
+        // Validate distribution_areas if provided
+        if (safeUpdates.distribution_areas !== undefined && safeUpdates.distribution_areas !== null) {
+            const { PropertyDistributionAreaCalculator } = await Promise.resolve().then(() => __importStar(require('../services/PropertyDistributionAreaCalculator')));
+            const calculator = new PropertyDistributionAreaCalculator();
+            if (!calculator.validateAreaNumbers(safeUpdates.distribution_areas)) {
+                return res.status(400).json({
+                    error: 'Invalid distribution_areas format. Must contain only valid area numbers (①-⑯, ㊵, ㊶)'
+                });
+            }
+        }
+        // 買付フィールドの空文字列を null に変換する（空欄保存時の500エラー防止）
+        const OFFER_FIELDS = ['offer_date', 'offer_status', 'offer_amount', 'offer_comment'];
+        for (const field of OFFER_FIELDS) {
+            if (safeUpdates[field] === '') {
+                safeUpdates[field] = null;
+            }
+        }
+        // price_reduction_scheduled_date の空文字列を null に変換する（date型カラムへの空文字列保存エラー防止）
+        if (safeUpdates.price_reduction_scheduled_date === '') {
+            safeUpdates.price_reduction_scheduled_date = null;
+        }
+        // OFFER_FIELDSのいずれかが更新される場合、offer_status_updated_atを記録
+        const hasOfferUpdate = OFFER_FIELDS.some(f => safeUpdates[f] !== undefined);
+        if (hasOfferUpdate) {
+            safeUpdates.offer_status_updated_at = new Date().toISOString();
+        }
+        const data = await propertyListingService.update(propertyNumber, safeUpdates);
+        // 買付セクションからの保存時のみ Google Chat に通知する（notify_offer フラグで判定）
+        if (notify_offer === true) {
+            notifyGoogleChatOfferSaved(propertyNumber, {
+                offer_date: data?.offer_date ?? safeUpdates.offer_date,
+                offer_status: data?.offer_status ?? safeUpdates.offer_status,
+                offer_comment: data?.offer_comment ?? safeUpdates.offer_comment,
+                offer_amount: data?.offer_amount ?? safeUpdates.offer_amount,
+                address: data?.address,
+                display_address: data?.display_address,
+                property_type: data?.property_type,
+                sales_assignee: data?.sales_assignee,
+            });
+        }
+        res.json(data);
+    }
+    catch (error) {
+        console.error('Error updating property listing:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+// スプレッドシート同期デバッグ（ヘッダー確認）
+router.get('/debug/spreadsheet-headers', async (req, res) => {
+    try {
+        const headers = await propertyListingService.sheetsClient?.authenticate()
+            .then(() => propertyListingService.sheetsClient?.getHeaders());
+        res.json({
+            sheetsClientInitialized: !!propertyListingService.sheetsClient,
+            spreadsheetId: process.env.PROPERTY_LISTING_SPREADSHEET_ID,
+            sheetName: process.env.PROPERTY_LISTING_SHEET_NAME || '物件',
+            headers: headers || null,
+        });
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+// スプレッドシート同期デバッグ（物件番号で行検索）
+router.get('/debug/find-row/:propertyNumber', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const sheetsClient = propertyListingService.sheetsClient;
+        if (!sheetsClient) {
+            res.json({ error: 'sheetsClient not initialized' });
+            return;
+        }
+        await sheetsClient.authenticate();
+        const rowIndex = await sheetsClient.findRowByColumn('物件番号', propertyNumber);
+        // dbToSpreadsheetマッピングも確認
+        const columnMapper = propertyListingService.columnMapper;
+        const dbToSpreadsheet = columnMapper.dbToSpreadsheet;
+        res.json({
+            propertyNumber,
+            rowIndex,
+            found: rowIndex !== null,
+            sampleMappings: {
+                special_notes: dbToSpreadsheet['special_notes'],
+                status: dbToSpreadsheet['status'],
+                atbb_status: dbToSpreadsheet['atbb_status'],
+                price: dbToSpreadsheet['price'],
+            }
+        });
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+// 複数物件の買主カウント取得
+router.get('/buyer-counts/batch', async (req, res) => {
+    try {
+        const { propertyNumbers } = req.query;
+        if (!propertyNumbers || typeof propertyNumbers !== 'string') {
+            res.status(400).json({ error: 'propertyNumbers query parameter is required' });
+            return;
+        }
+        const propNumArray = propertyNumbers.split(',').map(n => n.trim()).filter(n => n);
+        if (propNumArray.length === 0) {
+            res.json({});
+            return;
+        }
+        // キャッシュチェック
+        const counts = {};
+        const uncachedNumbers = [];
+        for (const propNum of propNumArray) {
+            const cached = await buyerLinkageCache.getBuyerCount(propNum);
+            if (cached !== null) {
+                counts[propNum] = cached;
+            }
+            else {
+                uncachedNumbers.push(propNum);
+            }
+        }
+        // 未キャッシュのものを取得
+        if (uncachedNumbers.length > 0) {
+            const fetchedCounts = await buyerLinkageService.getBuyerCountsForProperties(uncachedNumbers);
+            for (const [propNum, count] of fetchedCounts.entries()) {
+                counts[propNum] = count;
+                await buyerLinkageCache.setBuyerCount(propNum, count);
+            }
+        }
+        res.json(counts);
+    }
+    catch (error) {
+        console.error('Error fetching buyer counts:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+// 特定物件の買主リスト取得
+router.get('/:propertyNumber/buyers', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const { sortBy, sortOrder, limit } = req.query;
+        // キャッシュチェック
+        const cached = await buyerLinkageCache.getBuyerList(propertyNumber);
+        if (cached) {
+            res.json(cached);
+            return;
+        }
+        const buyers = await buyerLinkageService.getBuyersForProperty(propertyNumber, {
+            sortBy: sortBy,
+            sortOrder: sortOrder,
+            limit: limit ? parseInt(limit, 10) : undefined
+        });
+        // キャッシュに保存
+        await buyerLinkageCache.setBuyerList(propertyNumber, buyers);
+        res.json(buyers);
+    }
+    catch (error) {
+        console.error('Error fetching buyers for property:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+// 買主リストキャッシュを手動クリア
+router.delete('/:propertyNumber/buyers/cache', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        await buyerLinkageCache.invalidate(propertyNumber);
+        console.log(`[cache-clear] Buyer list cache cleared for property: ${propertyNumber}`);
+        res.json({ success: true, message: `Cache cleared for ${propertyNumber}` });
+    }
+    catch (error) {
+        console.error('Error clearing buyer list cache:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+// 買主候補リスト取得（条件に合致する買主を抽出）
+router.get('/:propertyNumber/buyer-candidates', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const { propertyType } = req.query;
+        console.log(`[buyer-candidates] Fetching candidates for property: ${propertyNumber}${propertyType ? ` (propertyType override: ${propertyType})` : ''}`);
+        const result = await buyerCandidateService.getCandidatesForProperty(propertyNumber, typeof propertyType === 'string' ? propertyType : undefined);
+        console.log(`[buyer-candidates] Found ${result.total} candidates for property: ${propertyNumber}`);
+        res.json(result);
+    }
+    catch (error) {
+        console.error('Error fetching buyer candidates:', error);
+        if (error.message === 'Property not found') {
+            res.status(404).json({
+                error: 'Property not found',
+                code: 'PROPERTY_NOT_FOUND'
+            });
+            return;
+        }
+        res.status(500).json({
+            error: error.message,
+            code: 'INTERNAL_ERROR'
+        });
+    }
+});
+// 高確度買主を持つ物件リスト取得
+router.get('/high-confidence-buyers/list', async (_req, res) => {
+    try {
+        const propertyNumbers = await buyerLinkageService.getPropertiesWithHighConfidenceBuyers();
+        res.json(propertyNumbers);
+    }
+    catch (error) {
+        console.error('Error fetching high confidence properties:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+// Gmail配信用の買主メールアドレス取得
+router.get('/:propertyNumber/distribution-buyers', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const { includeRadius = 'true' } = req.query;
+        const result = await buyerDistributionService.getQualifiedBuyers({
+            propertyNumber,
+            includeRadiusFilter: includeRadius === 'true'
+        });
+        res.json(result);
+    }
+    catch (error) {
+        console.error('Error fetching distribution buyers:', error);
+        if (error.message.includes('Property not found')) {
+            res.status(404).json({
+                error: 'Property not found',
+                code: 'PROPERTY_NOT_FOUND'
+            });
+            return;
+        }
+        res.status(500).json({
+            error: error.message,
+            code: 'INTERNAL_ERROR'
+        });
+    }
+});
+// Gmail配信用の買主メールアドレス取得（拡張版 - 複数条件フィルタリング）
+router.get('/:propertyNumber/distribution-buyers-enhanced', async (req, res) => {
+    const startTime = Date.now();
+    const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    try {
+        const { propertyNumber } = req.params;
+        const { includeDetails = 'false' } = req.query;
+        console.log(`[${requestId}] Request received: GET /api/property-listings/${propertyNumber}/distribution-buyers-enhanced`, {
+            includeDetails,
+            timestamp: new Date().toISOString(),
+            userAgent: req.headers['user-agent']
+        });
+        // パラメータバリデーション
+        if (!propertyNumber || typeof propertyNumber !== 'string' || propertyNumber.trim() === '') {
+            console.warn(`[${requestId}] Invalid property number parameter: ${propertyNumber}`);
+            res.status(400).json({
+                error: 'Invalid property number',
+                code: 'INVALID_PARAMETER',
+                message: 'Property number must be a non-empty string'
+            });
+            return;
+        }
+        // includeDetailsパラメータのバリデーション
+        if (includeDetails && typeof includeDetails !== 'string') {
+            console.warn(`[${requestId}] Invalid includeDetails parameter: ${includeDetails}`);
+            res.status(400).json({
+                error: 'Invalid includeDetails parameter',
+                code: 'INVALID_PARAMETER',
+                message: 'includeDetails must be "true" or "false"'
+            });
+            return;
+        }
+        console.log(`[${requestId}] Fetching enhanced distribution buyers for property: ${propertyNumber}`);
+        // 拡張フィルタリングサービスを使用
+        const result = await enhancedBuyerDistributionService.getQualifiedBuyersWithAllCriteria({
+            propertyNumber
+        });
+        const duration = Date.now() - startTime;
+        // includeDetailsがfalseの場合、詳細情報を除外
+        if (includeDetails !== 'true') {
+            const { filteredBuyers, ...rest } = result;
+            console.log(`[${requestId}] Success: Returning ${rest.emails.length} qualified buyer emails (without details)`, {
+                duration: `${duration}ms`,
+                totalBuyers: rest.totalBuyers,
+                qualifiedCount: rest.count
+            });
+            res.json(rest);
+            return;
+        }
+        console.log(`[${requestId}] Success: Returning ${result.emails.length} qualified buyer emails (with details)`, {
+            duration: `${duration}ms`,
+            totalBuyers: result.totalBuyers,
+            qualifiedCount: result.count
+        });
+        res.json(result);
+    }
+    catch (error) {
+        const duration = Date.now() - startTime;
+        console.error(`[${requestId}] Error fetching enhanced distribution buyers:`, {
+            error: error.message,
+            stack: error.stack,
+            duration: `${duration}ms`,
+            propertyNumber: req.params.propertyNumber
+        });
+        // エラータイプに応じた適切なレスポンス
+        if (error.code === 'PROPERTY_NOT_FOUND' || error.message.includes('Property not found') || error.message.includes('not found')) {
+            console.warn(`[${requestId}] Property not found: ${req.params.propertyNumber}`);
+            // Run diagnostics to provide helpful information
+            try {
+                const diagnostic = await diagnosticService.diagnoseProperty(req.params.propertyNumber);
+                console.log(`[${requestId}] Diagnostic result:`, {
+                    propertyNumber: req.params.propertyNumber,
+                    existsInSellers: diagnostic.existsInSellers,
+                    existsInPropertyListings: diagnostic.existsInPropertyListings,
+                    syncStatus: diagnostic.syncStatus
+                });
+                res.status(404).json({
+                    error: 'Property not found',
+                    code: 'PROPERTY_NOT_FOUND',
+                    message: `Property with number ${req.params.propertyNumber} does not exist in property_listings`,
+                    propertyNumber: req.params.propertyNumber,
+                    diagnostics: {
+                        existsInSellers: diagnostic.existsInSellers,
+                        canBeRecovered: diagnostic.existsInSellers && !diagnostic.existsInPropertyListings,
+                        syncStatus: diagnostic.syncStatus
+                    }
+                });
+            }
+            catch (diagError) {
+                console.error(`[${requestId}] Failed to run diagnostics:`, diagError);
+                res.status(404).json({
+                    error: 'Property not found',
+                    code: 'PROPERTY_NOT_FOUND',
+                    message: `Property with number ${req.params.propertyNumber} does not exist`,
+                    propertyNumber: req.params.propertyNumber
+                });
+            }
+            return;
+        }
+        if (error.message.includes('Invalid') || error.message.includes('validation')) {
+            console.warn(`[${requestId}] Validation error: ${error.message}`);
+            res.status(400).json({
+                error: 'Invalid request parameters',
+                code: 'INVALID_PARAMETER',
+                message: error.message
+            });
+            return;
+        }
+        // データベース接続エラー
+        if (error.message.includes('database') || error.message.includes('connection')) {
+            console.error(`[${requestId}] Database error: ${error.message}`);
+            res.status(503).json({
+                error: 'Service temporarily unavailable',
+                code: 'SERVICE_UNAVAILABLE',
+                message: 'Database connection error. Please try again later.'
+            });
+            return;
+        }
+        // その他のサーバーエラー
+        console.error(`[${requestId}] Internal server error: ${error.message}`, error.stack);
+        res.status(500).json({
+            error: 'Internal server error',
+            code: 'INTERNAL_ERROR',
+            message: 'An unexpected error occurred while processing your request',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+/**
+ * 物件配信メールを一括送信
+ */
+router.post('/:propertyNumber/send-distribution-emails', auth_1.authenticate, async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const { recipientEmails, recipients, subject, content, htmlBody, from, attachments, assigneeEmail } = req.body;
+        // デバッグログ: リクエストボディを記録
+        console.log(`[send-distribution-emails] Request body:`, JSON.stringify({
+            propertyNumber,
+            recipientEmails: recipientEmails?.length,
+            recipients: recipients?.length,
+            recipientsDetail: recipients,
+            subject,
+            from
+        }));
+        // recipients フィールドを優先、なければ recipientEmails を使用（後方互換性）
+        const normalizedRecipients = recipients || recipientEmails?.map((email) => ({ email })) || [];
+        console.log(`[send-distribution-emails] Normalized recipients:`, normalizedRecipients);
+        // バリデーション
+        if (!normalizedRecipients || normalizedRecipients.length === 0) {
+            return res.status(400).json({
+                error: 'recipients or recipientEmails is required and must be a non-empty array'
+            });
+        }
+        if (!subject || !content) {
+            return res.status(400).json({
+                error: 'subject and content are required'
+            });
+        }
+        if (!from) {
+            return res.status(400).json({
+                error: 'from (sender address) is required'
+            });
+        }
+        // 物件情報を取得
+        const property = await propertyListingService.getByPropertyNumber(propertyNumber);
+        if (!property) {
+            return res.status(404).json({
+                error: 'Property listing not found'
+            });
+        }
+        // 売主名のフォールバックロジック: seller_nameが空または"様"のみの場合はowner_infoを使用
+        const resolveSellerName = (sellerName, ownerInfo) => {
+            const trimmed = (sellerName || '').trim();
+            const isBlankOrSamaOnly = !trimmed || trimmed === '様';
+            return isBlankOrSamaOnly ? (ownerInfo || null) : trimmed;
+        };
+        const effectiveSellerName = resolveSellerName(property.seller_name, property.owner_info);
+        console.log(`[send-distribution-emails] Seller name resolved: "${property.seller_name}" → "${effectiveSellerName}" (owner_info: "${property.owner_info}")`);
+        // 買主番号から買主名を取得するマップを作成
+        const buyerNameMap = {};
+        const buyerNumbersToFetch = normalizedRecipients
+            .map(r => typeof r === 'string' ? undefined : r.buyerNumber)
+            .filter((bn) => !!bn);
+        if (buyerNumbersToFetch.length > 0) {
+            try {
+                const { BuyerService } = await Promise.resolve().then(() => __importStar(require('../services/BuyerService')));
+                const buyerService = new BuyerService();
+                for (const buyerNumber of buyerNumbersToFetch) {
+                    try {
+                        const buyer = await buyerService.getByBuyerNumber(buyerNumber);
+                        if (buyer && buyer.name) {
+                            buyerNameMap[buyerNumber] = buyer.name;
+                        }
+                    }
+                    catch (err) {
+                        console.warn(`Failed to fetch buyer name for ${buyerNumber}:`, err);
+                    }
+                }
+            }
+            catch (err) {
+                console.error('Failed to import BuyerService:', err);
+            }
+        }
+        // 各受信者にメールを送信
+        const results = await Promise.allSettled(normalizedRecipients.map(async (recipient) => {
+            const email = typeof recipient === 'string' ? recipient : recipient.email;
+            const buyerNumber = typeof recipient === 'string' ? undefined : recipient.buyerNumber;
+            // 買主名を取得（買主番号がある場合）、なければ「お客様」
+            const buyerName = buyerNumber && buyerNameMap[buyerNumber] ? buyerNameMap[buyerNumber] : 'お客様';
+            // {buyerName}プレースホルダーを実際の買主名に置換
+            const personalizedSubject = subject.replace(/\{buyerName\}/g, buyerName);
+            const personalizedContent = content.replace(/\{buyerName\}/g, buyerName);
+            // 添付ファイルがある場合は各ソースに応じてデータを取得して添付付きで送信
+            if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+                // URL指定の画像（公開プロキシURL）は<img>タグとしてHTMLに直接埋め込む
+                // 「他社物件新着配信」と同じ方式
+                const urlImages = attachments.filter((img) => img.url);
+                const fileImages = attachments.filter((img) => !img.url);
+                // URL画像を<img>タグに変換
+                const urlImgTags = urlImages
+                    .map((img) => `<img src="${img.url}" alt="${img.name || '物件画像'}" style="max-width:600px;width:100%;height:auto;display:block;margin:8px 0;" />`)
+                    .join('\n');
+                // content（プレーンテキスト）から公開URLを抽出して<a>タグを生成
+                const publicUrlMatch = (content || '').match(/https:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties\/[^\s]+/);
+                const extractedPublicUrl = publicUrlMatch ? publicUrlMatch[0] : '';
+                const publicUrlAnchor = extractedPublicUrl
+                    ? `<a href="${extractedPublicUrl}" style="color:#1a73e8;font-weight:bold;">こちら</a>`
+                    : 'こちら';
+                // {propertyImages}と{publicUrlLink}を置換
+                const rawHtmlBody = htmlBody ? htmlBody.replace(/\{buyerName\}/g, buyerName) : undefined;
+                const tateuriUrl = 'https://sateituikyaku-admin-frontend.vercel.app/tateuri';
+                const tateuriAnchor = `<a href="${tateuriUrl}" style="color:#1a73e8;font-weight:bold;">${tateuriUrl}</a>`;
+                const personalizedHtmlBody = rawHtmlBody
+                    ? rawHtmlBody
+                        .replace(/\{propertyImages\}/g, urlImgTags)
+                        .replace(/\{publicUrlLink\}/g, publicUrlAnchor)
+                        .replace(new RegExp(tateuriUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), tateuriAnchor)
+                    : undefined;
+                const cleanContent = personalizedContent
+                    .replace(/\{propertyImages\}/g, '')
+                    .replace(/\{publicUrlLink\}/g, 'こちら');
+                // ファイル添付（DriveファイルやBase64）がある場合のみ添付処理
+                if (fileImages.length > 0) {
+                    const { GoogleDriveService } = await Promise.resolve().then(() => __importStar(require('../services/GoogleDriveService')));
+                    const driveService = new GoogleDriveService();
+                    const emailAttachmentsRaw = await Promise.all(fileImages.map(async (img) => {
+                        if (img.base64Data) {
+                            return {
+                                filename: img.name || 'attachment.jpg',
+                                mimeType: img.mimeType || 'image/jpeg',
+                                data: Buffer.from(img.base64Data, 'base64'),
+                                cid: `attachment-${img.id}`,
+                            };
+                        }
+                        const fileId = img.driveFileId || img.id;
+                        const fileData = await driveService.getFile(fileId);
+                        if (!fileData) {
+                            console.warn(`⚠️ Could not fetch file from Google Drive: ${fileId}`);
+                            return null;
+                        }
+                        return {
+                            filename: img.name || `image-${fileId}.jpg`,
+                            mimeType: fileData.mimeType || 'image/jpeg',
+                            data: fileData.data,
+                            cid: `attachment-${img.id}`,
+                        };
+                    }));
+                    const emailAttachments = emailAttachmentsRaw.filter((a) => a !== null);
+                    return await emailService.sendEmailWithCcAndAttachments({
+                        to: email,
+                        subject: personalizedSubject,
+                        body: personalizedHtmlBody || cleanContent,
+                        from,
+                        attachments: emailAttachments,
+                        isHtml: !!htmlBody,
+                    });
+                }
+                // URL画像のみ（添付なし）: HTMLに埋め込み済みなので添付なしで送信
+                return await emailService.sendEmailWithCcAndAttachments({
+                    to: email,
+                    subject: personalizedSubject,
+                    body: personalizedHtmlBody || cleanContent,
+                    from,
+                    attachments: [],
+                    isHtml: !!htmlBody,
+                });
+            }
+            // 添付ファイルなし: 既存フロー（変更なし）
+            // ダミーのseller objectを作成（EmailServiceのインターフェースに合わせる）
+            const dummySeller = {
+                id: property.id,
+                seller_number: propertyNumber,
+                name: buyerName,
+                email: email,
+                phone_number: '',
+                property_address: property.property_address || '',
+                created_at: new Date(),
+                updated_at: new Date()
+            };
+            const tateuriUrlNoAttach = 'https://sateituikyaku-admin-frontend.vercel.app/tateuri';
+            const tateuriAnchorNoAttach = `<a href="${tateuriUrlNoAttach}" style="color:#1a73e8;font-weight:bold;">${tateuriUrlNoAttach}</a>`;
+            const htmlBodyNoAttach = htmlBody
+                ? htmlBody
+                    .replace(/\{buyerName\}/g, buyerName)
+                    .replace(/\{propertyImages\}/g, '')
+                    .replace(/\{publicUrlLink\}/g, 'こちら')
+                    .replace(new RegExp(tateuriUrlNoAttach.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), tateuriAnchorNoAttach)
+                : undefined;
+            return await emailService.sendTemplateEmail(dummySeller, personalizedSubject, personalizedContent.replace(/\{propertyImages\}/g, '').replace(/\{publicUrlLink\}/g, 'こちら'), from, req.employee?.id || 'system', htmlBodyNoAttach, from);
+        }));
+        // 成功・失敗をカウント
+        const successCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+        const failedCount = results.length - successCount;
+        // 失敗したメールのエラーメッセージを収集
+        const errors = results
+            .filter((r) => r.status === 'rejected')
+            .map(r => r.reason?.message || 'Unknown error')
+            .join(', ');
+        const failedResults = results
+            .filter((r) => r.status === 'fulfilled' && !r.value.success)
+            .map(r => r.value.error || 'Unknown error')
+            .join(', ');
+        const allErrors = [errors, failedResults].filter(e => e).join(', ');
+        // activity_logsに記録（メール送信成功後）
+        // 各買主ごとに記録
+        const { ActivityLogService } = await Promise.resolve().then(() => __importStar(require('../services/ActivityLogService')));
+        const activityLogService = new ActivityLogService();
+        // 物件住所を取得
+        const propertyAddresses = {};
+        if (property.property_address) {
+            propertyAddresses[propertyNumber] = property.property_address;
+        }
+        console.log(`[send-distribution-emails] Recording activity logs for ${normalizedRecipients.length} recipients with source: pre_public_price_reduction`);
+        console.log(`[send-distribution-emails] Employee ID: ${req.employee?.id || 'unknown'}`);
+        console.log(`[send-distribution-emails] Property addresses:`, propertyAddresses);
+        for (let i = 0; i < normalizedRecipients.length; i++) {
+            const recipient = normalizedRecipients[i];
+            const result = results[i];
+            // メール送信が成功した場合のみ記録
+            if (result.status === 'fulfilled' && result.value.success) {
+                try {
+                    const email = typeof recipient === 'string' ? recipient : recipient.email;
+                    const buyerNumber = typeof recipient === 'string' ? undefined : recipient.buyerNumber;
+                    // 買主名を取得（買主番号がある場合）、なければ「お客様」
+                    const buyerName = buyerNumber && buyerNameMap[buyerNumber] ? buyerNameMap[buyerNumber] : 'お客様';
+                    // {buyerName}プレースホルダーを実際の買主名に置換した本文を記録
+                    const personalizedSubject = subject.replace(/\{buyerName\}/g, buyerName);
+                    const personalizedContent = content.replace(/\{buyerName\}/g, buyerName);
+                    // 買主番号がカンマ区切りの場合、分割して各買主番号ごとに記録
+                    const buyerNumbers = buyerNumber ? buyerNumber.split(',').map((n) => n.trim()) : [];
+                    if (buyerNumbers.length > 0) {
+                        // 複数の買主番号がある場合、各買主番号ごとに記録
+                        for (const singleBuyerNumber of buyerNumbers) {
+                            console.log(`[send-distribution-emails] Logging email for buyer: ${singleBuyerNumber}`);
+                            await activityLogService.logEmail({
+                                buyerId: singleBuyerNumber,
+                                propertyNumbers: [propertyNumber],
+                                propertyAddresses: propertyAddresses,
+                                recipientEmail: email,
+                                subject: personalizedSubject,
+                                templateName: '公開前・値下げメール',
+                                senderEmail: from,
+                                source: 'pre_public_price_reduction', // 送信元識別子
+                                body: personalizedContent, // 個別化されたメール本文を記録
+                                createdBy: req.employee?.id || 'system',
+                            });
+                            console.log(`[send-distribution-emails] Successfully logged email for buyer: ${singleBuyerNumber}`);
+                        }
+                    }
+                    else {
+                        // 買主番号がない場合、メールアドレスで記録
+                        console.log(`[send-distribution-emails] Logging email for email: ${email}`);
+                        await activityLogService.logEmail({
+                            buyerId: email,
+                            propertyNumbers: [propertyNumber],
+                            propertyAddresses: propertyAddresses,
+                            recipientEmail: email,
+                            subject: personalizedSubject,
+                            templateName: '公開前・値下げメール',
+                            senderEmail: from,
+                            source: 'pre_public_price_reduction', // 送信元識別子
+                            body: personalizedContent, // 個別化されたメール本文を記録
+                            createdBy: req.employee?.id || 'system',
+                        });
+                        console.log(`[send-distribution-emails] Successfully logged email for email: ${email}`);
+                    }
+                }
+                catch (logError) {
+                    // activity_logs記録失敗はログのみ（ユーザーには通知しない）
+                    console.error(`[send-distribution-emails] Failed to log email activity for ${typeof recipient === 'string' ? recipient : recipient.buyerNumber || recipient.email}:`, logError);
+                }
+            }
+        }
+        // 担当者への通知メールを1通送信（assigneeEmailが指定されている場合のみ）
+        if (assigneeEmail && successCount > 0) {
+            try {
+                console.log(`[send-distribution-emails] Sending notification to assignee: ${assigneeEmail}`);
+                const assigneeSubject = `【配信済み】${subject}`;
+                const assigneeBody = `${successCount}件の買主様にメールを配信しました。\n\n` +
+                    `物件番号: ${propertyNumber}\n` +
+                    `物件住所: ${property.property_address || ''}\n` +
+                    `件名: ${subject}\n\n` +
+                    `---\n` +
+                    `${content}`;
+                const assigneeHtmlBody = assigneeBody.replace(/\n/g, '<br>');
+                await emailService.sendEmailWithCcAndAttachments({
+                    to: assigneeEmail,
+                    subject: assigneeSubject,
+                    body: assigneeHtmlBody,
+                    from,
+                    isHtml: true,
+                });
+                console.log(`[send-distribution-emails] Assignee notification sent to: ${assigneeEmail}`);
+            }
+            catch (assigneeError) {
+                // 担当者への送信失敗はログのみ（買主への送信結果には影響しない）
+                console.error(`[send-distribution-emails] Failed to send assignee notification:`, assigneeError);
+            }
+        }
+        res.json({
+            success: failedCount === 0,
+            successCount,
+            failedCount,
+            totalCount: normalizedRecipients.length,
+            error: failedCount > 0 ? allErrors : undefined
+        });
+    }
+    catch (error) {
+        console.error('Error sending distribution emails:', error);
+        res.status(500).json({
+            error: error.message || 'Failed to send distribution emails',
+            success: false,
+            successCount: 0,
+            failedCount: req.body.recipientEmails?.length || req.body.recipients?.length || 0
+        });
+    }
+});
+// 非表示画像リストを取得
+router.get('/:id/hidden-images', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const hiddenImages = await propertyListingService.getHiddenImages(id);
+        res.json({
+            hiddenImages,
+            count: hiddenImages.length
+        });
+    }
+    catch (error) {
+        console.error('Error fetching hidden images:', error);
+        res.status(500).json({
+            error: error.message,
+            code: 'INTERNAL_ERROR'
+        });
+    }
+});
+// 画像一覧を取得（非表示画像を除外）
+router.get('/:id/images', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const images = await propertyListingService.getVisibleImages(id);
+        res.json({
+            images,
+            count: images.length
+        });
+    }
+    catch (error) {
+        console.error('Error fetching images:', error);
+        res.status(500).json({
+            error: error.message,
+            code: 'INTERNAL_ERROR'
+        });
+    }
+});
+// 画像を非表示にする
+router.post('/:id/hide-image', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { fileId } = req.body;
+        if (!fileId) {
+            res.status(400).json({
+                error: 'fileId is required',
+                code: 'MISSING_FILE_ID'
+            });
+            return;
+        }
+        await propertyListingService.hideImage(id, fileId);
+        res.json({
+            success: true,
+            message: `Image ${fileId} has been hidden`
+        });
+    }
+    catch (error) {
+        console.error('Error hiding image:', error);
+        res.status(500).json({
+            error: error.message,
+            code: 'INTERNAL_ERROR'
+        });
+    }
+});
+// 画像を復元する（非表示を解除）
+router.post('/:id/unhide-image', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { fileId } = req.body;
+        if (!fileId) {
+            res.status(400).json({
+                error: 'fileId is required',
+                code: 'MISSING_FILE_ID'
+            });
+            return;
+        }
+        await propertyListingService.unhideImage(id, fileId);
+        res.json({
+            success: true,
+            message: `Image ${fileId} has been unhidden`
+        });
+    }
+    catch (error) {
+        console.error('Error unhiding image:', error);
+        res.status(500).json({
+            error: error.message,
+            code: 'INTERNAL_ERROR'
+        });
+    }
+});
+// 配信エリア番号を計算
+router.post('/:propertyNumber/calculate-distribution-areas', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        // 物件データを取得
+        const property = await propertyListingService.getByPropertyNumber(propertyNumber);
+        if (!property) {
+            res.status(404).json({ success: false, message: '物件が見つかりません' });
+            return;
+        }
+        const googleMapUrl = property.google_map_url;
+        if (!googleMapUrl) {
+            res.status(400).json({ success: false, message: 'GoogleマップURLが設定されていません' });
+            return;
+        }
+        const { PropertyDistributionAreaCalculator } = await Promise.resolve().then(() => __importStar(require('../services/PropertyDistributionAreaCalculator')));
+        const { CityNameExtractor } = await Promise.resolve().then(() => __importStar(require('../services/CityNameExtractor')));
+        const calculator = new PropertyDistributionAreaCalculator();
+        const cityExtractor = new CityNameExtractor();
+        const address = property.address || null;
+        const city = address ? cityExtractor.extractCityFromAddress(address) : null;
+        // DBに座標がある場合はそれを優先使用（URLからの短縮URL展開を回避）
+        const preloadedCoords = (property.latitude && property.longitude)
+            ? { lat: Number(property.latitude), lng: Number(property.longitude) }
+            : null;
+        if (preloadedCoords) {
+            console.log(`[DistributionArea] Using DB coordinates: ${preloadedCoords.lat}, ${preloadedCoords.lng}`);
+        }
+        else {
+            console.log(`[DistributionArea] No DB coordinates, will try URL extraction`);
+        }
+        const result = await calculator.calculateDistributionAreas(googleMapUrl, city, address, preloadedCoords);
+        // 計算結果をDBに自動保存
+        if (result.formatted) {
+            await propertyListingService.update(propertyNumber, {
+                distribution_areas: result.formatted
+            });
+            console.log(`[DistributionArea] Auto-saved distribution_areas for ${propertyNumber}: ${result.formatted}`);
+        }
+        res.json({
+            success: true,
+            areas: result.formatted,
+            areaList: result.areas,
+            radiusAreas: result.radiusAreas,
+            cityWideAreas: result.cityWideAreas,
+        });
+    }
+    catch (error) {
+        console.error('Error calculating distribution areas:', error);
+        res.status(500).json({ success: false, message: error.message || '計算に失敗しました' });
+    }
+});
+// Google Map URLを更新
+router.patch('/:propertyNumber/google-map-url', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const { googleMapUrl } = req.body;
+        // Validate URL
+        if (!urlValidator_1.UrlValidator.validateGoogleMapUrl(googleMapUrl)) {
+            res.status(400).json({
+                error: '有効なGoogle Map URLを入力してください'
+            });
+            return;
+        }
+        // Sanitize URL
+        const sanitizedUrl = urlValidator_1.UrlValidator.sanitizeUrl(googleMapUrl);
+        // Update property
+        const updatedProperty = await propertyListingService.update(propertyNumber, {
+            google_map_url: sanitizedUrl
+        });
+        res.json({
+            success: true,
+            distributionAreas: updatedProperty.distribution_areas
+        });
+    }
+    catch (error) {
+        console.error('Error updating Google Map URL:', error);
+        res.status(500).json({ error: 'Failed to update Google Map URL' });
+    }
+});
+// Storage Locationを更新
+router.patch('/:propertyNumber/storage-location', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const { storageLocation } = req.body;
+        // Validate URL
+        if (!urlValidator_1.UrlValidator.validateGoogleDriveFolderUrl(storageLocation)) {
+            res.status(400).json({
+                error: '有効なGoogle DriveフォルダURLを入力してください'
+            });
+            return;
+        }
+        // Sanitize URL
+        const sanitizedUrl = urlValidator_1.UrlValidator.sanitizeUrl(storageLocation);
+        // Update property
+        await propertyListingService.update(propertyNumber, {
+            storage_location: sanitizedUrl
+        });
+        res.json({ success: true });
+    }
+    catch (error) {
+        console.error('Error updating Storage Location:', error);
+        res.status(500).json({ error: 'Failed to update Storage Location' });
+    }
+});
+// 報告書送信履歴を取得
+router.get('/:propertyNumber/report-history', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+        const { data, error } = await supabase
+            .from('property_report_history')
+            .select('*')
+            .eq('property_number', propertyNumber)
+            .order('sent_at', { ascending: false })
+            .limit(50);
+        if (error) {
+            // テーブルが存在しない場合は空配列を返す
+            res.json([]);
+            return;
+        }
+        res.json(data || []);
+    }
+    catch (error) {
+        console.error('Error fetching report history:', error);
+        res.json([]);
+    }
+});
+// 報告書送信履歴を記録
+router.post('/:propertyNumber/report-history', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const { template_name, subject, body, report_date, report_assignee, report_completed } = req.body;
+        const supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+        const { data, error } = await supabase
+            .from('property_report_history')
+            .insert({
+            property_number: propertyNumber,
+            template_name: template_name || null,
+            subject: subject || null,
+            body: body || null,
+            report_date: report_date || null,
+            report_assignee: report_assignee || null,
+            report_completed: report_completed || 'N',
+            sent_at: new Date().toISOString(),
+        })
+            .select()
+            .single();
+        if (error) {
+            // テーブルが存在しない場合はエラーを無視
+            res.json({ success: false, message: 'Table not found, skipping history record' });
+            return;
+        }
+        res.json({ success: true, data });
+    }
+    catch (error) {
+        console.error('Error recording report history:', error);
+        res.json({ success: false });
+    }
+});
+// 報告書メール送信（Gmail API で直接送信 + 送信履歴の記録）
+// multipart/form-data 対応（添付ファイル・CC をサポート）
+router.post('/:propertyNumber/send-report-email', auth_1.authenticate, upload.array('attachments', 10), async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const { to, cc, subject, body, template_name, report_date, report_assignee, report_completed, from, replyTo } = req.body;
+        const files = req.files;
+        if (!to || !subject || !body) {
+            res.status(400).json({ error: '宛先・件名・本文は必須です' });
+            return;
+        }
+        const supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+        const senderAddress = from || req.employee?.email || 'tenant@ifoo-oita.com';
+        const employeeId = req.employee?.id || 'system';
+        console.log('[send-report-email] Sending email:', {
+            propertyNumber,
+            to,
+            cc: cc || '(none)',
+            subject,
+            senderAddress,
+            employeeId,
+            replyTo: replyTo || '(none)',
+            attachmentCount: files?.length || 0,
+            hasGmailRefreshToken: !!process.env.GMAIL_REFRESH_TOKEN,
+            hasGoogleCalendarClientId: !!process.env.GOOGLE_CALENDAR_CLIENT_ID,
+        });
+        // 添付ファイルを EmailAttachment 形式に変換
+        // multer は originalname を latin1 として扱うため、UTF-8 に変換する
+        const attachments = (files || []).map((file) => ({
+            filename: Buffer.from(file.originalname, 'latin1').toString('utf8'),
+            mimeType: file.mimetype,
+            data: file.buffer,
+            cid: `attachment-${Date.now()}-${file.originalname}`,
+        }));
+        // Gmail API で直接送信
+        const dummySeller = {
+            id: propertyNumber,
+            seller_number: propertyNumber,
+            name: '',
+            email: to,
+            phone_number: '',
+            property_address: '',
+            created_at: new Date(),
+            updated_at: new Date(),
+        };
+        let result;
+        if (attachments.length > 0 || cc) {
+            // 添付ファイルまたはCCがある場合は sendEmailWithCcAndAttachments を使用
+            result = await emailService.sendEmailWithCcAndAttachments({
+                to,
+                cc: cc || undefined,
+                subject,
+                body,
+                from: senderAddress,
+                attachments,
+                // replyTo が指定されている場合は Reply-To ヘッダーを設定する
+                replyTo: replyTo || undefined,
+            });
+        }
+        else if (replyTo) {
+            // 添付・CCなしでも replyTo が指定されている場合は sendEmailWithCcAndAttachments を使用
+            // （sendTemplateEmail は Reply-To ヘッダーをサポートしていないため）
+            result = await emailService.sendEmailWithCcAndAttachments({
+                to,
+                cc: undefined,
+                subject,
+                body,
+                from: senderAddress,
+                attachments: [],
+                replyTo,
+            });
+        }
+        else {
+            result = await emailService.sendTemplateEmail(dummySeller, subject, body, senderAddress, employeeId, undefined, senderAddress);
+        }
+        console.log('[send-report-email] Result:', { success: result.success, error: result.error, messageId: result.messageId });
+        if (!result.success) {
+            const errorMsg = result.error || 'メール送信に失敗しました';
+            if (errorMsg.includes('GOOGLE_AUTH_REQUIRED') || errorMsg.includes('認証') || errorMsg.includes('not configured')) {
+                res.status(500).json({
+                    error: 'Gmail認証が必要です。管理者にGoogle連携の設定を依頼してください。',
+                    detail: errorMsg
+                });
+            }
+            else {
+                res.status(500).json({ error: errorMsg });
+            }
+            return;
+        }
+        // 送信履歴を記録
+        await supabase.from('property_report_history').insert({
+            property_number: propertyNumber,
+            template_name: template_name || null,
+            subject,
+            body,
+            report_date: report_date || null,
+            report_assignee: report_assignee || null,
+            report_completed: report_completed || 'N',
+            sent_at: new Date().toISOString(),
+        });
+        res.json({ success: true, messageId: result.messageId });
+    }
+    catch (error) {
+        console.error('[send-report-email] Unexpected error:', error.message, error.stack);
+        res.status(500).json({ error: error.message || 'メール送信に失敗しました' });
+    }
+});
+// 売買契約完了 Google Chat通知
+router.post('/:propertyNumber/notify-contract-completed', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const { StaffManagementService } = require('../services/StaffManagementService');
+        const axios = require('axios');
+        const DEFAULT_WEBHOOK_URL = 'https://chat.googleapis.com/v1/spaces/AAAAlknS4P0/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=61OklKGHQpRoIFhiI00wGZPmcRHd4oY_BV47uQGMWbg';
+        // 物件情報を取得
+        const supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+        const { data: property, error } = await supabase
+            .from('property_listings')
+            .select('property_number, address, sales_assignee')
+            .eq('property_number', propertyNumber)
+            .single();
+        if (error || !property) {
+            res.status(404).json({ error: '物件が見つかりませんでした' });
+            return;
+        }
+        const message = `契約が完了しましたので、ネット非公開お願いします。${property.property_number}　${property.address || ''}よろしくお願いいたします`;
+        // 担当者のWebhook URLを取得
+        let webhookUrl = DEFAULT_WEBHOOK_URL;
+        if (property.sales_assignee) {
+            const staffService = new StaffManagementService();
+            const result = await staffService.getWebhookUrl(property.sales_assignee);
+            if (result.success && result.webhookUrl) {
+                webhookUrl = result.webhookUrl;
+                console.log(`[notify-contract-completed] Using assignee webhook for ${property.sales_assignee}`);
+            }
+            else {
+                // Webhook URL取得失敗 → フォールバックURLを使用
+                console.warn(`[notify-contract-completed] Failed to get webhook for ${property.sales_assignee}. Using fallback URL.`);
+                // webhookUrl は DEFAULT_WEBHOOK_URL のまま
+            }
+        }
+        else {
+            console.log(`[notify-contract-completed] No sales_assignee set for ${propertyNumber}. Using fallback URL.`);
+        }
+        // Google Chatに送信
+        await axios.post(webhookUrl, { text: message });
+        console.log(`[notify-contract-completed] Sent to ${webhookUrl} for ${propertyNumber}`);
+        res.json({ success: true, message });
+    }
+    catch (error) {
+        console.error('[notify-contract-completed] Error:', error.message);
+        res.status(500).json({ error: error.message || 'チャット送信に失敗しました' });
+    }
+});
+// 担当へCHAT送信
+router.post('/:propertyNumber/send-chat-to-assignee', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const { message, senderName } = req.body;
+        if (!message || !String(message).trim()) {
+            res.status(400).json({ error: 'メッセージを入力してください' });
+            return;
+        }
+        const { StaffManagementService } = require('../services/StaffManagementService');
+        const axios = require('axios');
+        // 物件情報を取得
+        const supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+        const { data: property, error } = await supabase
+            .from('property_listings')
+            .select('property_number, address, sales_assignee, seller_name, seller_contact, seller_email, owner_info')
+            .eq('property_number', propertyNumber)
+            .single();
+        if (error || !property) {
+            res.status(404).json({ error: '物件が見つかりませんでした' });
+            return;
+        }
+        // 売主名のフォールバックロジック: seller_nameが空または"様"のみの場合はowner_infoを使用
+        const resolveSellerName = (sellerName, ownerInfo) => {
+            const trimmed = (sellerName || '').trim();
+            const isBlankOrSamaOnly = !trimmed || trimmed === '様';
+            return isBlankOrSamaOnly ? (ownerInfo || null) : trimmed;
+        };
+        const effectiveSellerName = resolveSellerName(property.seller_name, property.owner_info);
+        // 物件担当がいない場合は事務チャットへ送信
+        if (!property.sales_assignee) {
+            console.log(`[send-chat-to-assignee] No assignee for ${propertyNumber}, sending to office chat`);
+            const officeWebhookUrl = 'https://chat.googleapis.com/v1/spaces/AAAAw9wyS-o/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=t6SJmZ8af-yyB38DZzAqGOKYI-DnIl6wYtVo-Lyskuk';
+            // 物件詳細画面のURL
+            const propertyUrl = `https://sateituikyaku-admin-frontend.vercel.app/property-listings/${property.property_number}`;
+            // 売主情報
+            const sellerInfo = [
+                effectiveSellerName ? `売主氏名: ${effectiveSellerName}` : null,
+                property.seller_contact ? `売主電話: ${property.seller_contact}` : null,
+                property.seller_email ? `売主メール: ${property.seller_email}` : null,
+            ].filter(Boolean).join('\n');
+            const senderLabel = senderName ? `送信者: ${senderName}` : null;
+            const chatMessage = `📩 *物件担当への質問・伝言（担当未設定のため事務へ送信）*\n\n物件番号: ${property.property_number}\n所在地: ${property.address || '未設定'}\n担当: 未設定\n${sellerInfo ? sellerInfo + '\n' : ''}物件URL: ${propertyUrl}\n${senderLabel ? senderLabel + '\n' : ''}\n${String(message).trim()}`;
+            await axios.post(officeWebhookUrl, { text: chatMessage });
+            console.log(`[send-chat-to-assignee] Sent to office chat for ${propertyNumber}`);
+            // CHAT送信履歴を保存
+            try {
+                await supabase
+                    .from('property_chat_history')
+                    .insert({
+                    property_number: propertyNumber,
+                    recipient_type: 'office',
+                    recipient_name: '事務',
+                    message: String(message).trim(),
+                    sender_label: senderLabel || null,
+                    sent_at: new Date().toISOString(),
+                });
+                console.log(`[send-chat-to-assignee] Chat history saved for ${propertyNumber}`);
+            }
+            catch (historyError) {
+                console.error(`[send-chat-to-assignee] Failed to save chat history:`, historyError);
+                // 履歴保存エラーでもレスポンスは成功を返す
+            }
+            res.json({ success: true });
+            return;
+        }
+        // 担当者のWebhook URLを取得
+        const staffService = new StaffManagementService();
+        const result = await staffService.getWebhookUrl(property.sales_assignee);
+        if (!result.success || !result.webhookUrl) {
+            res.status(404).json({ error: result.error || '担当者のChat webhook URLが見つかりませんでした' });
+            return;
+        }
+        // 物件詳細画面のURL
+        const propertyUrl = `https://sateituikyaku-admin-frontend.vercel.app/property-listings/${property.property_number}`;
+        // Google Chatにメッセージ送信
+        const sellerInfo = [
+            property.seller_name ? `売主氏名: ${property.seller_name}` : null,
+            property.seller_contact ? `売主電話: ${property.seller_contact}` : null,
+            property.seller_email ? `売主メール: ${property.seller_email}` : null,
+        ].filter(Boolean).join('\n');
+        const senderLabel = senderName ? `送信者: ${senderName}` : null;
+        // messageから📷で始まる画像URLを抽出し、テキスト部分と分離
+        const messageStr = String(message).trim();
+        const imageUrls = [];
+        const textLines = messageStr.split('\n').filter(line => {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('📷 ')) {
+                const url = trimmed.replace(/^📷\s+/, '').trim();
+                if (url)
+                    imageUrls.push(url);
+                return false; // テキスト部分から除外
+            }
+            return true;
+        });
+        const textOnly = textLines.join('\n').trim();
+        // Google DriveのURLを直接表示可能な形式に変換
+        // /file/d/FILE_ID/view → https://drive.google.com/uc?export=view&id=FILE_ID
+        const toDirectImageUrl = (url) => {
+            const match = url.match(/\/file\/d\/([^/]+)\//);
+            if (match) {
+                return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+            }
+            return url;
+        };
+        const chatMessage = `📩 *物件担当への質問・伝言*\n\n物件番号: ${property.property_number}\n所在地: ${property.address || '未設定'}\n担当: ${property.sales_assignee}\n${sellerInfo ? sellerInfo + '\n' : ''}物件URL: ${propertyUrl}\n${senderLabel ? senderLabel + '\n' : ''}\n${textOnly}`;
+        if (imageUrls.length > 0) {
+            // 画像がある場合はcardsV2形式で送信（画像をインライン表示）
+            const imageWidgets = imageUrls.map(url => ({
+                image: {
+                    imageUrl: toDirectImageUrl(url),
+                    altText: '添付画像',
+                },
+            }));
+            const payload = {
+                text: chatMessage,
+                cardsV2: [
+                    {
+                        cardId: 'imageCard',
+                        card: {
+                            sections: [
+                                {
+                                    widgets: imageWidgets,
+                                },
+                            ],
+                        },
+                    },
+                ],
+            };
+            await axios.post(result.webhookUrl, payload);
+        }
+        else {
+            // 画像なしの場合はテキストのみ
+            await axios.post(result.webhookUrl, { text: chatMessage });
+        }
+        console.log(`[send-chat-to-assignee] Sent to ${property.sales_assignee} for ${propertyNumber}`);
+        // CHAT送信履歴を保存
+        try {
+            await supabase
+                .from('property_chat_history')
+                .insert({
+                property_number: propertyNumber,
+                recipient_type: 'assignee',
+                recipient_name: property.sales_assignee || '',
+                message: String(message).trim(),
+                sender_label: senderLabel || null,
+                sent_at: new Date().toISOString(),
+            });
+            console.log(`[send-chat-to-assignee] Chat history saved for ${propertyNumber}`);
+        }
+        catch (historyError) {
+            console.error(`[send-chat-to-assignee] Failed to save chat history:`, historyError);
+            // 履歴保存エラーでもレスポンスは成功を返す
+        }
+        res.json({ success: true });
+    }
+    catch (error) {
+        console.error('[send-chat-to-assignee] Error:', error.message);
+        res.status(500).json({ error: error.message || 'チャット送信に失敗しました' });
+    }
+});
+// 確認フィールドを更新
+router.put('/:propertyNumber/confirmation', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const { confirmation } = req.body;
+        // バリデーション
+        if (!confirmation || !['未', '済'].includes(confirmation)) {
+            res.status(400).json({
+                error: '確認フィールドは「未」または「済」のみ有効です',
+                code: 'INVALID_CONFIRMATION_VALUE'
+            });
+            return;
+        }
+        console.log(`[confirmation] Updating confirmation for ${propertyNumber} to ${confirmation}`);
+        await propertyListingService.updateConfirmation(propertyNumber, confirmation);
+        res.json({
+            success: true,
+            message: `確認を「${confirmation}」に更新しました`
+        });
+    }
+    catch (error) {
+        console.error('[confirmation] Error:', error);
+        res.status(500).json({
+            error: error.message || '確認の更新に失敗しました',
+            code: 'INTERNAL_ERROR'
+        });
+    }
+});
+// 事務へチャット送信（物件担当がいる場合は担当へ、いない場合は事務チャットへ）
+router.post('/:propertyNumber/send-chat-to-office', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const { message, senderName } = req.body;
+        if (!message || !String(message).trim()) {
+            res.status(400).json({ error: 'メッセージを入力してください' });
+            return;
+        }
+        const { StaffManagementService } = require('../services/StaffManagementService');
+        const axios = require('axios');
+        // 物件情報を取得
+        const supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+        const { data: property, error } = await supabase
+            .from('property_listings')
+            .select('property_number, address, sales_assignee, seller_name, seller_contact, seller_email, owner_info')
+            .eq('property_number', propertyNumber)
+            .single();
+        if (error || !property) {
+            res.status(404).json({ error: '物件が見つかりませんでした' });
+            return;
+        }
+        // 売主名のフォールバックロジック: seller_nameが空または"様"のみの場合はowner_infoを使用
+        const resolveSellerName = (sellerName, ownerInfo) => {
+            const trimmed = (sellerName || '').trim();
+            const isBlankOrSamaOnly = !trimmed || trimmed === '様';
+            return isBlankOrSamaOnly ? (ownerInfo || null) : trimmed;
+        };
+        const effectiveSellerName = resolveSellerName(property.seller_name, property.owner_info);
+        const staffService = new StaffManagementService();
+        const propertyUrl = `https://sateituikyaku-admin-frontend.vercel.app/property-listings/${property.property_number}`;
+        // 売主情報
+        const sellerInfo = [
+            effectiveSellerName ? `売主氏名: ${effectiveSellerName}` : null,
+            property.seller_contact ? `売主電話: ${property.seller_contact}` : null,
+            property.seller_email ? `売主メール: ${property.seller_email}` : null,
+        ].filter(Boolean).join('\n');
+        const senderLabel = senderName ? `送信者: ${senderName}` : null;
+        // 物件担当がいる場合は担当へ送信
+        if (property.sales_assignee) {
+            const result = await staffService.getWebhookUrl(property.sales_assignee);
+            if (result.success && result.webhookUrl) {
+                const chatMessage = `📩 *事務への質問・伝言*\n\n物件番号: ${property.property_number}\n所在地: ${property.address || '未設定'}\n担当: ${property.sales_assignee}\n${sellerInfo ? sellerInfo + '\n' : ''}物件URL: ${propertyUrl}\n${senderLabel ? senderLabel + '\n' : ''}\n${String(message).trim()}`;
+                await axios.post(result.webhookUrl, { text: chatMessage });
+                console.log(`[send-chat-to-office] Sent to assignee ${property.sales_assignee} for ${propertyNumber}`);
+                // 履歴を保存
+                try {
+                    await supabase
+                        .from('property_chat_history')
+                        .insert({
+                        property_number: propertyNumber,
+                        chat_type: 'office',
+                        message: String(message).trim(),
+                        sender_name: senderName || '不明',
+                        sent_at: new Date().toISOString(),
+                    });
+                    console.log(`[send-chat-to-office] Saved chat history for ${propertyNumber}`);
+                }
+                catch (historyError) {
+                    console.error(`[send-chat-to-office] Failed to save chat history:`, historyError);
+                    // 履歴保存失敗でもチャット送信は成功しているのでエラーにしない
+                }
+                // 確認フィールドを「未」に自動設定
+                await supabase
+                    .from('property_listings')
+                    .update({ confirmation: '未' })
+                    .eq('property_number', propertyNumber);
+                // スプレッドシートへ直接同期（キューを使わず即座に実行）
+                try {
+                    const { PropertyListingSpreadsheetSync } = await Promise.resolve().then(() => __importStar(require('../services/PropertyListingSpreadsheetSync')));
+                    const { GoogleSheetsClient } = await Promise.resolve().then(() => __importStar(require('../services/GoogleSheetsClient')));
+                    const spreadsheetId = process.env.PROPERTY_LISTING_SPREADSHEET_ID || '';
+                    console.log(`[send-chat-to-office] PROPERTY_LISTING_SPREADSHEET_ID: ${spreadsheetId ? '設定済み' : '未設定'}`);
+                    if (!spreadsheetId) {
+                        throw new Error('PROPERTY_LISTING_SPREADSHEET_ID is not set');
+                    }
+                    const sheetsClient = new GoogleSheetsClient({
+                        spreadsheetId,
+                        sheetName: '物件',
+                    });
+                    await sheetsClient.authenticate();
+                    const syncService = new PropertyListingSpreadsheetSync(sheetsClient, supabase);
+                    await syncService.syncConfirmationToSpreadsheet(propertyNumber, '未');
+                    console.log(`[send-chat-to-office] Successfully synced confirmation to spreadsheet for ${propertyNumber}`);
+                }
+                catch (syncError) {
+                    console.error(`[send-chat-to-office] Failed to sync confirmation to spreadsheet for ${propertyNumber}:`, syncError);
+                    console.error(`[send-chat-to-office] Error details:`, {
+                        message: syncError.message,
+                        stack: syncError.stack,
+                        spreadsheetId: process.env.PROPERTY_LISTING_SPREADSHEET_ID ? '設定済み' : '未設定'
+                    });
+                    // 同期エラーでもレスポンスは成功を返す（チャット送信は成功しているため）
+                }
+                res.json({ success: true });
+                return;
+            }
+        }
+        // 物件担当がいない場合は事務チャットへ送信
+        console.log(`[send-chat-to-office] No assignee for ${propertyNumber}, sending to office chat`);
+        const officeWebhookUrl = 'https://chat.googleapis.com/v1/spaces/AAAAlknS4P0/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=61OklKGHQpRoIFhiI00wGZPmcRHd4oY_BV47uQGMWbg';
+        const chatMessage = `📩 *事務への質問・伝言*\n\n物件番号: ${property.property_number}\n所在地: ${property.address || '未設定'}\n担当: 未設定\n${sellerInfo ? sellerInfo + '\n' : ''}物件URL: ${propertyUrl}\n${senderLabel ? senderLabel + '\n' : ''}\n${String(message).trim()}`;
+        await axios.post(officeWebhookUrl, { text: chatMessage });
+        console.log(`[send-chat-to-office] Sent to office chat for ${propertyNumber}`);
+        // 履歴を保存
+        try {
+            await supabase
+                .from('property_chat_history')
+                .insert({
+                property_number: propertyNumber,
+                chat_type: 'office',
+                message: String(message).trim(),
+                sender_name: senderName || '不明',
+                sent_at: new Date().toISOString(),
+            });
+            console.log(`[send-chat-to-office] Saved chat history for ${propertyNumber}`);
+        }
+        catch (historyError) {
+            console.error(`[send-chat-to-office] Failed to save chat history:`, historyError);
+            // 履歴保存失敗でもチャット送信は成功しているのでエラーにしない
+        }
+        // 確認フィールドを「未」に自動設定
+        await supabase
+            .from('property_listings')
+            .update({ confirmation: '未' })
+            .eq('property_number', propertyNumber);
+        // スプレッドシートへ直接同期（キューを使わず即座に実行）
+        try {
+            const { PropertyListingSpreadsheetSync } = await Promise.resolve().then(() => __importStar(require('../services/PropertyListingSpreadsheetSync')));
+            const { GoogleSheetsClient } = await Promise.resolve().then(() => __importStar(require('../services/GoogleSheetsClient')));
+            const spreadsheetId = process.env.PROPERTY_LISTING_SPREADSHEET_ID || '';
+            console.log(`[send-chat-to-office] PROPERTY_LISTING_SPREADSHEET_ID: ${spreadsheetId ? '設定済み' : '未設定'}`);
+            if (!spreadsheetId) {
+                throw new Error('PROPERTY_LISTING_SPREADSHEET_ID is not set');
+            }
+            const sheetsClient = new GoogleSheetsClient({
+                spreadsheetId,
+                sheetName: '物件',
+            });
+            await sheetsClient.authenticate();
+            const syncService = new PropertyListingSpreadsheetSync(sheetsClient, supabase);
+            await syncService.syncConfirmationToSpreadsheet(propertyNumber, '未');
+            console.log(`[send-chat-to-office] Successfully synced confirmation to spreadsheet for ${propertyNumber}`);
+        }
+        catch (syncError) {
+            console.error(`[send-chat-to-office] Failed to sync confirmation to spreadsheet for ${propertyNumber}:`, syncError);
+            console.error(`[send-chat-to-office] Error details:`, {
+                message: syncError.message,
+                stack: syncError.stack,
+                spreadsheetId: process.env.PROPERTY_LISTING_SPREADSHEET_ID ? '設定済み' : '未設定'
+            });
+            // 同期エラーでもレスポンスは成功を返す（チャット送信は成功しているため）
+        }
+        res.json({ success: true });
+    }
+    catch (error) {
+        console.error('[send-chat-to-office] Error:', error.message);
+        res.status(500).json({ error: error.message || 'チャット送信に失敗しました' });
+    }
+});
+// CHAT送信履歴取得API
+// seller_email / seller_sms / seller_gmail の chat_type にも対応
+// レスポンスに subject フィールドを含む（sent_at 降順・最大50件）
+router.get('/:propertyNumber/chat-history', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const { chat_type, limit } = req.query;
+        // property_chat_historyテーブルから履歴を取得（新しい順）
+        // subject カラムを含む全フィールドを取得
+        let query = supabase
+            .from('property_chat_history')
+            .select('id, property_number, chat_type, subject, message, sender_name, sent_at, created_at')
+            .eq('property_number', propertyNumber);
+        // chat_typeでフィルタリング（指定なしの場合は全種別を返す）
+        if (chat_type) {
+            query = query.eq('chat_type', chat_type);
+        }
+        // sent_at 降順にソート（新しい順）
+        query = query.order('sent_at', { ascending: false });
+        // 件数制限（デフォルト最大50件）
+        const maxLimit = limit ? Math.min(Number(limit), 50) : 50;
+        query = query.limit(maxLimit);
+        const { data: history, error } = await query;
+        if (error) {
+            console.error('[get-chat-history] Error:', error);
+            res.status(500).json({ error: 'CHAT送信履歴の取得に失敗しました' });
+            return;
+        }
+        res.json({ history: history || [] });
+    }
+    catch (error) {
+        console.error('[get-chat-history] Error:', error.message);
+        res.status(500).json({ error: error.message || 'CHAT送信履歴の取得に失敗しました' });
+    }
+});
+// 売主への送信履歴保存API
+// POST /api/property-listings/:propertyNumber/seller-send-history
+router.post('/:propertyNumber/seller-send-history', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const { chat_type, subject, message, sender_name } = req.body;
+        // chat_type のバリデーション（seller_email / seller_sms / seller_gmail のみ許可）
+        const validChatTypes = ['seller_email', 'seller_sms', 'seller_gmail'];
+        if (!chat_type || !validChatTypes.includes(chat_type)) {
+            res.status(400).json({
+                error: '無効な送信種別です',
+                code: 'INVALID_CHAT_TYPE',
+            });
+            return;
+        }
+        // property_chat_history テーブルに履歴を保存
+        const { error } = await supabase
+            .from('property_chat_history')
+            .insert({
+            property_number: propertyNumber,
+            chat_type,
+            subject: subject || '',
+            message: message || '',
+            sender_name: sender_name || '',
+            sent_at: new Date().toISOString(),
+        });
+        if (error) {
+            console.error('[seller-send-history] DB insert error:', error);
+            res.status(500).json({ error: '送信履歴の保存に失敗しました' });
+            return;
+        }
+        res.json({ success: true });
+    }
+    catch (error) {
+        console.error('[seller-send-history] Error:', error.message);
+        res.status(500).json({ error: error.message || '送信履歴の保存に失敗しました' });
+    }
+});
+// 一般媒介非公開（仮）フィールドを更新
+// PUT /api/property-listings/:propertyNumber/general-mediation-private
+router.put('/:propertyNumber/general-mediation-private', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const { generalMediationPrivate } = req.body;
+        // バリデーション
+        if (!generalMediationPrivate || !['非公開予定', '不要'].includes(generalMediationPrivate)) {
+            res.status(400).json({
+                error: '一般媒介非公開（仮）フィールドは「非公開予定」または「不要」のみ有効です',
+                code: 'INVALID_GENERAL_MEDIATION_PRIVATE_VALUE',
+            });
+            return;
+        }
+        await propertyListingService.updateGeneralMediationPrivate(propertyNumber, generalMediationPrivate);
+        res.json({ success: true });
+    }
+    catch (error) {
+        console.error('[general-mediation-private] Error:', error);
+        res.status(500).json({
+            error: error.message || '一般媒介非公開（仮）の更新に失敗しました',
+            code: 'INTERNAL_ERROR',
+        });
+    }
+});
+// 非公開配信メールフィールドを更新
+// PUT /api/property-listings/:propertyNumber/private-mail-delivery
+router.put('/:propertyNumber/private-mail-delivery', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        const { privateMailDelivery } = req.body;
+        if (!privateMailDelivery || !['未', '済'].includes(privateMailDelivery)) {
+            res.status(400).json({
+                error: '非公開配信メールフィールドは「未」または「済」のみ有効です',
+                code: 'INVALID_VALUE',
+            });
+            return;
+        }
+        await propertyListingService.updatePrivateMailDelivery(propertyNumber, privateMailDelivery);
+        res.json({ success: true, message: `非公開配信メールを「${privateMailDelivery}」に更新しました` });
+    }
+    catch (error) {
+        console.error('[private-mail-delivery] Error:', error);
+        res.status(500).json({
+            error: error.message || '非公開配信メールの更新に失敗しました',
+            code: 'INTERNAL_ERROR',
+        });
+    }
+});
+// seller_phone バックフィル: property_listings の seller_phone を sellers テーブルから一括補完
+// 戸建て物件のハウスメーカーを一括同期（個別エンドポイントより前に定義する必要あり）
+// POST /api/property-listings/sync-house-maker-bulk
+router.post('/sync-house-maker-bulk', async (req, res) => {
+    try {
+        // 戸建て物件を全件取得
+        const { data: listings, error: fetchError } = await supabase
+            .from('property_listings')
+            .select('property_number, property_type')
+            .not('property_number', 'is', null);
+        if (fetchError) {
+            res.status(500).json({ error: fetchError.message });
+            return;
+        }
+        // 戸建て判定
+        const detachedListings = (listings || []).filter((l) => {
+            const pt = (l.property_type || '').toLowerCase();
+            return pt === 'detached_house' || pt.includes('戸建') || pt === '戸';
+        });
+        if (detachedListings.length === 0) {
+            res.json({ success: true, total: 0, synced: 0, failed: 0, skipped: 0, results: [] });
+            return;
+        }
+        const { AthomeSheetSyncService } = await Promise.resolve().then(() => __importStar(require('../services/AthomeSheetSyncService')));
+        const athomeService = new AthomeSheetSyncService();
+        let synced = 0;
+        let failed = 0;
+        let skipped = 0;
+        const results = [];
+        for (const listing of detachedListings) {
+            try {
+                const houseMaker = await athomeService.syncHouseMaker(listing.property_number);
+                if (houseMaker !== null) {
+                    synced++;
+                    results.push({ property_number: listing.property_number, status: 'synced', house_maker: houseMaker });
+                }
+                else {
+                    skipped++;
+                    results.push({ property_number: listing.property_number, status: 'skipped' });
+                }
+                // Google Sheets APIレート制限対策（1秒待機）
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            catch (err) {
+                failed++;
+                results.push({ property_number: listing.property_number, status: 'failed' });
+                console.error(`[sync-house-maker-bulk] Failed for ${listing.property_number}:`, err.message);
+            }
+        }
+        res.json({
+            success: true,
+            total: detachedListings.length,
+            synced,
+            failed,
+            skipped,
+            results,
+        });
+    }
+    catch (error) {
+        console.error('[sync-house-maker-bulk] Error:', error);
+        res.status(500).json({ error: error.message || 'ハウスメーカー一括同期に失敗しました' });
+    }
+});
+// ハウスメーカーをathomeシートF10セルから同期
+// POST /api/property-listings/:propertyNumber/sync-house-maker
+router.post('/:propertyNumber/sync-house-maker', async (req, res) => {
+    try {
+        const { propertyNumber } = req.params;
+        // 物件種別を確認（戸建てのみ対象）
+        const { data: listing, error: fetchError } = await supabase
+            .from('property_listings')
+            .select('property_type')
+            .eq('property_number', propertyNumber)
+            .single();
+        if (fetchError || !listing) {
+            res.status(404).json({ error: '物件が見つかりません' });
+            return;
+        }
+        const pt = (listing.property_type || '').toLowerCase();
+        const isDetachedHouse = pt === 'detached_house' ||
+            pt.includes('戸建') ||
+            pt.includes('戸建て') ||
+            pt === '戸';
+        if (!isDetachedHouse) {
+            res.status(400).json({ error: 'ハウスメーカー同期は戸建て物件のみ対応しています' });
+            return;
+        }
+        const { AthomeSheetSyncService } = await Promise.resolve().then(() => __importStar(require('../services/AthomeSheetSyncService')));
+        const athomeService = new AthomeSheetSyncService();
+        const houseMaker = await athomeService.syncHouseMaker(propertyNumber);
+        if (houseMaker === null) {
+            res.json({ success: false, message: 'スプシのF10セルが空か、スプシが見つかりませんでした' });
+            return;
+        }
+        res.json({ success: true, house_maker: houseMaker });
+    }
+    catch (error) {
+        console.error('[sync-house-maker] Error:', error);
+        res.status(500).json({ error: error.message || 'ハウスメーカー同期に失敗しました' });
+    }
+});
+exports.default = router;

@@ -1,0 +1,450 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const express_validator_1 = require("express-validator");
+const CalendarService_supabase_1 = require("../services/CalendarService.supabase");
+const GoogleAuthService_1 = require("../services/GoogleAuthService");
+const employeeUtils_1 = require("../utils/employeeUtils");
+const EmailService_1 = require("../services/EmailService");
+const auth_1 = require("../middleware/auth");
+const encryption_1 = require("../utils/encryption");
+const supabase_js_1 = require("@supabase/supabase-js");
+const router = (0, express_1.Router)();
+const calendarService = new CalendarService_supabase_1.CalendarService();
+const googleAuthService = new GoogleAuthService_1.GoogleAuthService();
+const employeeUtils = new employeeUtils_1.EmployeeUtils();
+const emailService = new EmailService_1.EmailService();
+const supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY);
+// 全てのルートに認証を適用
+router.use(auth_1.authenticate);
+/**
+ * 買主内覧予約を作成
+ */
+router.post('/', [
+    (0, express_validator_1.body)('buyerNumber').isString().withMessage('Invalid buyer number'),
+    (0, express_validator_1.body)('startTime').isISO8601().withMessage('Invalid start time'),
+    (0, express_validator_1.body)('endTime').isISO8601().withMessage('Invalid end time'),
+    (0, express_validator_1.body)('assignedTo').isString().withMessage('Assigned employee is required'),
+], async (req, res) => {
+    try {
+        console.log('[BuyerAppointments] POST /buyer-appointments - Request received');
+        console.log('[BuyerAppointments] Request details:', {
+            buyerNumber: req.body.buyerNumber,
+            assignedTo: req.body.assignedTo,
+            creatorEmployeeId: req.employee.id,
+            creatorEmployeeName: req.employee.name,
+            timestamp: new Date().toISOString(),
+        });
+        const errors = (0, express_validator_1.validationResult)(req);
+        if (!errors.isEmpty()) {
+            console.error('[BuyerAppointments] Validation failed:', errors.array());
+            return res.status(400).json({
+                error: {
+                    code: 'VALIDATION_ERROR',
+                    message: 'Validation failed',
+                    details: errors.array(),
+                    retryable: false,
+                },
+            });
+        }
+        const { buyerNumber, startTime, endTime, assignedTo, buyerName, buyerPhone, buyerEmail, viewingMobile, viewingTypeGeneral, viewingDate, viewingTime, followUpAssignee, propertyAddress, propertyGoogleMapUrl, inquiryHearing, creatorName, customTitle, customDescription, propertyNumber } = req.body;
+        // 後続担当イニシャルから従業員情報を取得
+        console.log('[BuyerAppointments] Looking up assigned employee by initials:', assignedTo);
+        let assignedEmployee;
+        try {
+            assignedEmployee = await employeeUtils.getEmployeeByInitials(assignedTo);
+        }
+        catch (error) {
+            // 重複イニシャルエラーをキャッチ
+            if (error.message && error.message.includes('複数の社員に一致します')) {
+                console.error('[BuyerAppointments] Ambiguous initials detected:', error.message);
+                return res.status(400).json({
+                    error: {
+                        code: 'AMBIGUOUS_INITIALS',
+                        message: error.message,
+                        retryable: false,
+                    },
+                });
+            }
+            throw error;
+        }
+        if (!assignedEmployee) {
+            console.error('[BuyerAppointments] Assigned employee not found:', assignedTo);
+            return res.status(404).json({
+                error: {
+                    code: 'ASSIGNED_EMPLOYEE_NOT_FOUND',
+                    message: `後続担当（${assignedTo}）が見つかりません`,
+                    retryable: false,
+                },
+            });
+        }
+        console.log('[BuyerAppointments] Assigned employee resolved:', {
+            initials: assignedTo,
+            employeeId: assignedEmployee.id,
+            employeeName: assignedEmployee.name,
+            employeeEmail: assignedEmployee.email,
+        });
+        // 後続担当がメールアドレスを持っているか検証
+        console.log('[BuyerAppointments] Validating assigned employee email');
+        if (!assignedEmployee.email) {
+            console.error('[BuyerAppointments] Assigned employee email missing:', {
+                employeeId: assignedEmployee.id,
+                employeeName: assignedEmployee.name,
+            });
+            return res.status(400).json({
+                error: {
+                    code: 'EMPLOYEE_EMAIL_MISSING',
+                    message: `後続担当（${assignedEmployee.name}）のメールアドレスが設定されていません`,
+                    retryable: false,
+                },
+            });
+        }
+        console.log('[BuyerAppointments] Assigned employee email validation passed');
+        // Google Calendar接続確認
+        const isCalendarConnected = await googleAuthService.isConnected();
+        if (!isCalendarConnected) {
+            console.error('[BuyerAppointments] Google Calendar not connected');
+            return res.status(400).json({
+                error: {
+                    code: 'GOOGLE_AUTH_REQUIRED',
+                    message: `会社アカウント（tenant@ifoo-oita.com）がGoogleカレンダーを接続していません。管理者に連絡してください。`,
+                    retryable: false,
+                },
+            });
+        }
+        // カレンダーイベントを作成
+        const defaultTitle = `${viewingMobile || '内覧'} ${propertyAddress || ''} ${buyerName || buyerNumber}`;
+        const defaultDescription = `買主番号: ${buyerNumber}\n` +
+            `物件住所: ${propertyAddress || 'なし'}\n` +
+            `GoogleMap: ${propertyGoogleMapUrl || 'なし'}\n` +
+            `\n` +
+            `お客様名: ${buyerName || buyerNumber}\n` +
+            `電話番号: ${buyerPhone || 'なし'}\n` +
+            `問合時ヒアリング: ${inquiryHearing || 'なし'}\n` +
+            `内覧取得者名: ${creatorName || 'なし'}\n` +
+            `\n` +
+            `買主詳細ページ:\n${(process.env.FRONTEND_URL || 'https://sateituikyaku-admin-frontend.vercel.app').split(',')[0].trim()}/buyers/${buyerNumber}`;
+        const eventData = {
+            summary: customTitle || defaultTitle,
+            location: propertyAddress || '',
+            description: customDescription || defaultDescription,
+            startTime: new Date(startTime),
+            endTime: new Date(endTime),
+        };
+        console.log('[BuyerAppointments] Creating Google Calendar event');
+        console.log('[BuyerAppointments] Event details:', {
+            assignedEmployeeId: assignedEmployee.id,
+            assignedEmployeeName: assignedEmployee.name,
+            assignedEmployeeEmail: assignedEmployee.email,
+            startTime: eventData.startTime.toISOString(),
+            endTime: eventData.endTime.toISOString(),
+        });
+        const calendarEventId = await calendarService.createGoogleCalendarEventForEmployee(assignedEmployee.id, assignedEmployee.email, eventData);
+        console.log('[BuyerAppointments] Calendar event created successfully:', {
+            calendarEventId,
+            assignedEmployeeId: assignedEmployee.id,
+            assignedEmployeeName: assignedEmployee.name,
+        });
+        // カレンダー登録成功後にメール通知を送信（失敗してもカレンダー登録は成功扱い）
+        try {
+            console.log('[BuyerAppointments] ===== メール送信処理開始 =====');
+            console.log('[BuyerAppointments] propertyNumber:', propertyNumber || '（未設定）');
+            // 1. 物件担当者（sales_assignee）のメールアドレスを取得
+            let salesEmployee = null;
+            let displayAddress = '（住所未設定）';
+            if (!propertyNumber || propertyNumber.trim() === '') {
+                console.log('[BuyerAppointments] ⚠️ 物件番号が設定されていないため、メール送信をスキップします');
+            }
+            else {
+                console.log('[BuyerAppointments] 物件情報を取得中... property_number:', propertyNumber);
+                const { data: propertyData, error: propertyError } = await supabase
+                    .from('property_listings')
+                    .select('sales_assignee, display_address, address')
+                    .eq('property_number', propertyNumber)
+                    .single();
+                if (propertyError) {
+                    console.log('[BuyerAppointments] ⚠️ 物件情報の取得に失敗:', propertyError.message);
+                }
+                else {
+                    console.log('[BuyerAppointments] 物件情報取得成功:', {
+                        property_number: propertyNumber,
+                        sales_assignee: propertyData?.sales_assignee || '（未設定）',
+                        display_address: propertyData?.display_address || '（未設定）',
+                    });
+                    // display_address → address → '（住所未設定）' のフォールバック
+                    displayAddress = propertyData?.display_address || propertyData?.address || '（住所未設定）';
+                    if (!propertyData?.sales_assignee) {
+                        console.log('[BuyerAppointments] ⚠️ 物件に物件担当（sales_assignee）が設定されていません');
+                    }
+                    else {
+                        console.log('[BuyerAppointments] 物件担当の従業員情報を取得中... initials:', propertyData.sales_assignee);
+                        try {
+                            salesEmployee = await employeeUtils.getEmployeeByInitials(propertyData.sales_assignee);
+                            if (salesEmployee) {
+                                console.log('[BuyerAppointments] 物件担当の従業員情報取得成功:', {
+                                    name: salesEmployee.name,
+                                    email: salesEmployee.email || '（未設定）',
+                                });
+                                if (!salesEmployee.email) {
+                                    console.log('[BuyerAppointments] ⚠️ 物件担当のメールアドレスが設定されていません');
+                                }
+                            }
+                            else {
+                                console.log('[BuyerAppointments] ⚠️ イニシャル「' + propertyData.sales_assignee + '」に一致する従業員が見つかりません');
+                                console.log('[BuyerAppointments] ⚠️ これは従業員マスタの問題です。物件担当が「' + propertyData.sales_assignee + '」の場合、従業員マスタでイニシャルまたは名前が一致する必要があります');
+                            }
+                        }
+                        catch (employeeError) {
+                            console.log('[BuyerAppointments] ⚠️ 従業員情報の取得に失敗:', employeeError.message);
+                            console.log('[BuyerAppointments] エラースタック:', employeeError.stack);
+                        }
+                    }
+                }
+            }
+            // sales_assignee が存在しない or メールアドレスなし → スキップ
+            if (!salesEmployee?.email) {
+                console.log('[BuyerAppointments] ===== メール送信をスキップ（物件担当のメールアドレスなし） =====');
+            }
+            else {
+                console.log('[BuyerAppointments] メール送信を実行します。宛先:', salesEmployee.email);
+                // 2. 売主情報を取得（物件番号 = 売主番号）
+                let ownerName = 'なし';
+                let ownerPhone = 'なし';
+                if (propertyNumber) {
+                    const { data: sellerData } = await supabase
+                        .from('sellers')
+                        .select('name, phone_number')
+                        .eq('seller_number', propertyNumber)
+                        .single();
+                    if (sellerData) {
+                        try {
+                            ownerName = sellerData.name ? (0, encryption_1.decrypt)(sellerData.name) : 'なし';
+                        }
+                        catch {
+                            ownerName = sellerData.name || 'なし';
+                        }
+                        try {
+                            ownerPhone = sellerData.phone_number ? (0, encryption_1.decrypt)(sellerData.phone_number) : 'なし';
+                        }
+                        catch {
+                            ownerPhone = sellerData.phone_number || 'なし';
+                        }
+                    }
+                }
+                // 内覧日時を読みやすい形式に変換
+                let formattedViewingDateTime = '';
+                if (viewingDate) {
+                    // viewingDateが "2026-05-09" または "2026-05-09T00:00:00+00:00" の形式の場合
+                    const dateMatch = viewingDate.match(/(\d{4})-(\d{2})-(\d{2})/);
+                    if (dateMatch) {
+                        const year = dateMatch[1];
+                        const month = parseInt(dateMatch[2], 10);
+                        const day = parseInt(dateMatch[3], 10);
+                        formattedViewingDateTime = `${year}年${month}月${day}日`;
+                        if (viewingTime) {
+                            formattedViewingDateTime += ` ${viewingTime}`;
+                        }
+                    }
+                    else {
+                        // フォールバック
+                        formattedViewingDateTime = viewingDate;
+                        if (viewingTime) {
+                            formattedViewingDateTime += ` ${viewingTime}`;
+                        }
+                    }
+                }
+                const subject = `${displayAddress}の内覧入りました！`;
+                const body = [
+                    `内覧担当は${followUpAssignee || assignedTo || ''}です。`,
+                    `${viewingMobile || viewingTypeGeneral || ''}`,
+                    `物件所在地${displayAddress}`,
+                    `内覧日${formattedViewingDateTime || 'なし'}`,
+                    `買主名：${buyerName || 'なし'}`,
+                    `問合時コメント：${inquiryHearing || 'なし'}`,
+                    `売主様：${ownerName}様`,
+                    `所有者連絡先${ownerPhone}`,
+                    `買主番号：${buyerNumber}`,
+                    `物件番号：${propertyNumber || 'なし'}`,
+                ].join('\n');
+                await emailService.sendEmail({ to: [salesEmployee.email], subject, body });
+                console.log('[BuyerAppointments] ===== メール送信成功 ===== 宛先:', salesEmployee.email);
+            }
+        }
+        catch (emailError) {
+            // メール送信失敗はログのみ（カレンダー登録の成功に影響させない）
+            console.error('[BuyerAppointments] ===== メール送信失敗（non-fatal） =====');
+            console.error('[BuyerAppointments] エラー詳細:', emailError.message);
+            console.error('[BuyerAppointments] スタックトレース:', emailError.stack);
+        }
+        res.status(201).json({
+            success: true,
+            calendarEventId,
+            assignedEmployee: {
+                id: assignedEmployee.id,
+                name: assignedEmployee.name,
+                email: assignedEmployee.email,
+            },
+        });
+    }
+    catch (error) {
+        console.error('Create buyer appointment error:', error);
+        // Google Calendar認証エラー
+        if (error.message === 'GOOGLE_AUTH_REQUIRED') {
+            console.error('[BuyerAppointments] Google Calendar not connected');
+            return res.status(400).json({
+                error: {
+                    code: 'GOOGLE_AUTH_REQUIRED',
+                    message: `会社アカウント（tenant@ifoo-oita.com）がGoogleカレンダーを接続していません。管理者に連絡してください。`,
+                    retryable: false,
+                },
+            });
+        }
+        // メールアドレス不足エラー
+        if (error.message && error.message.includes('メールアドレスが設定されていません')) {
+            console.error('[BuyerAppointments] Employee email missing:', error.message);
+            return res.status(400).json({
+                error: {
+                    code: 'EMPLOYEE_EMAIL_MISSING',
+                    message: error.message,
+                    retryable: false,
+                },
+            });
+        }
+        // その他のエラー
+        console.error('[BuyerAppointments] Unexpected error:', {
+            message: error.message,
+            stack: error.stack,
+            assignedTo: req.body.assignedTo,
+            buyerNumber: req.body.buyerNumber,
+            errorCode: error.code,
+            errorStatus: error.status,
+            errorResponse: error.response?.data,
+        });
+        res.status(500).json({
+            error: {
+                code: 'CREATE_APPOINTMENT_ERROR',
+                message: `カレンダー登録に失敗しました: ${error.message}`,
+                details: error.message,
+                retryable: true,
+            },
+        });
+    }
+});
+/**
+ * 内覧キャンセル通知メールを送信
+ * 内覧日が空欄になった（キャンセルされた）ときに呼び出す
+ */
+router.post('/cancel-notification', [
+    (0, express_validator_1.body)('buyerNumber').isString().withMessage('Invalid buyer number'),
+    (0, express_validator_1.body)('propertyNumber').optional().isString(),
+    (0, express_validator_1.body)('previousViewingDate').optional().isString(),
+    (0, express_validator_1.body)('viewingMobile').optional().isString(),
+    (0, express_validator_1.body)('viewingTypeGeneral').optional().isString(),
+    (0, express_validator_1.body)('followUpAssignee').optional().isString(),
+    (0, express_validator_1.body)('inquiryHearing').optional().isString(),
+], async (req, res) => {
+    try {
+        console.log('[BuyerAppointments] POST /cancel-notification - Request received');
+        const { buyerNumber, propertyNumber, previousViewingDate, viewingMobile, viewingTypeGeneral, followUpAssignee, inquiryHearing } = req.body;
+        // 1. 物件担当者（sales_assignee）のメールアドレスを取得
+        let salesEmployee = null;
+        let displayAddress = '（住所未設定）';
+        if (propertyNumber) {
+            const { data: propertyData } = await supabase
+                .from('property_listings')
+                .select('sales_assignee, display_address, address')
+                .eq('property_number', propertyNumber)
+                .single();
+            // display_address → address → '（住所未設定）' のフォールバック
+            displayAddress = propertyData?.display_address || propertyData?.address || '（住所未設定）';
+            if (propertyData?.sales_assignee) {
+                try {
+                    salesEmployee = await employeeUtils.getEmployeeByInitials(propertyData.sales_assignee);
+                }
+                catch (e) {
+                    console.warn('[BuyerAppointments] Could not resolve sales_assignee for cancel:', propertyData.sales_assignee);
+                }
+            }
+        }
+        // sales_assignee が存在しない or メールアドレスなし → スキップ
+        if (!salesEmployee?.email) {
+            console.log('[BuyerAppointments] No sales_assignee email found, skipping cancel notification email');
+            return res.status(200).json({ success: true, recipients: [] });
+        }
+        // 2. 売主情報を取得（物件番号 = 売主番号）
+        let ownerName = 'なし';
+        let ownerPhone = 'なし';
+        if (propertyNumber) {
+            const { data: sellerData } = await supabase
+                .from('sellers')
+                .select('name, phone_number')
+                .eq('seller_number', propertyNumber)
+                .single();
+            if (sellerData) {
+                try {
+                    ownerName = sellerData.name ? (0, encryption_1.decrypt)(sellerData.name) : 'なし';
+                }
+                catch {
+                    ownerName = sellerData.name || 'なし';
+                }
+                try {
+                    ownerPhone = sellerData.phone_number ? (0, encryption_1.decrypt)(sellerData.phone_number) : 'なし';
+                }
+                catch {
+                    ownerPhone = sellerData.phone_number || 'なし';
+                }
+            }
+        }
+        // 3. 買主情報を取得
+        let buyerName = 'なし';
+        const { data: buyerData } = await supabase
+            .from('buyers')
+            .select('name')
+            .eq('buyer_number', buyerNumber)
+            .single();
+        if (buyerData) {
+            buyerName = buyerData.name || 'なし';
+        }
+        // 内覧日時を読みやすい形式に変換
+        let formattedViewingDate = '';
+        if (previousViewingDate) {
+            const dateMatch = previousViewingDate.match(/(\d{4})-(\d{2})-(\d{2})/);
+            if (dateMatch) {
+                const year = dateMatch[1];
+                const month = parseInt(dateMatch[2], 10);
+                const day = parseInt(dateMatch[3], 10);
+                formattedViewingDate = `${year}年${month}月${day}日`;
+            }
+            else {
+                formattedViewingDate = previousViewingDate;
+            }
+        }
+        const subject = `${displayAddress}の内覧キャンセルです`;
+        const body = [
+            `内覧担当は${followUpAssignee || ''}でした。`,
+            `${viewingMobile || viewingTypeGeneral || ''}`,
+            `物件所在地${displayAddress}`,
+            `内覧日${formattedViewingDate || 'なし'}の予定でしたがキャンセルとなりました。報告書記入の際はお気をつけください。`,
+            `買主名：${buyerName}`,
+            `問合時コメント：${inquiryHearing || 'なし'}`,
+            `売主様：${ownerName}様`,
+            `所有者連絡先${ownerPhone}`,
+            `買主番号：${buyerNumber}`,
+            `物件番号：${propertyNumber || 'なし'}`,
+        ].join('\n');
+        await emailService.sendEmail({ to: [salesEmployee.email], subject, body });
+        console.log('[BuyerAppointments] Cancel notification email sent to:', salesEmployee.email);
+        res.status(200).json({ success: true, recipients: [salesEmployee.email] });
+    }
+    catch (error) {
+        console.error('[BuyerAppointments] Failed to send cancel notification:', error.message);
+        res.status(500).json({
+            error: {
+                code: 'CANCEL_NOTIFICATION_ERROR',
+                message: error.message,
+                retryable: true,
+            },
+        });
+    }
+});
+exports.default = router;

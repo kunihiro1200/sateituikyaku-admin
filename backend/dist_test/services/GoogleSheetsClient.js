@@ -1,0 +1,668 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.GoogleSheetsClient = void 0;
+const googleapis_1 = require("googleapis");
+const google_auth_library_1 = require("google-auth-library");
+const RateLimiter_1 = require("./RateLimiter");
+/**
+ * Google Sheets APIクライアント
+ *
+ * スプレッドシートの読み書きを抽象化し、認証やエラーハンドリングを管理します。
+ * OAuth 2.0とサービスアカウント認証の両方に対応。
+ */
+class GoogleSheetsClient {
+    constructor(config) {
+        this.sheets = null;
+        this.auth = null;
+        this.headerCache = null;
+        // spreadsheetIdのバリデーション
+        if (!config.spreadsheetId) {
+            throw new Error('Missing required parameters: spreadsheetId');
+        }
+        this.config = config;
+    }
+    /**
+     * 認証を実行（Environment Contract準拠）
+     * 優先順位:
+     * 1. GOOGLE_SERVICE_ACCOUNT_JSON (JSON文字列)
+     * 2. GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY (個別環境変数)
+     * 3. serviceAccountKeyPath (JSONファイルパス)
+     * 4. serviceAccountEmail + privateKey (コンストラクタ引数)
+     * 5. OAuth 2.0
+     */
+    async authenticate() {
+        console.error('[GoogleSheetsClient] Starting authentication...');
+        console.error('[GoogleSheetsClient] Environment check:', {
+            hasGOOGLE_SERVICE_ACCOUNT_JSON: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+            GOOGLE_SERVICE_ACCOUNT_JSON_length: process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.length || 0,
+            hasGOOGLE_SERVICE_ACCOUNT_EMAIL: !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+            hasGOOGLE_PRIVATE_KEY: !!process.env.GOOGLE_PRIVATE_KEY,
+            hasServiceAccountKeyPath: !!this.config.serviceAccountKeyPath,
+            hasServiceAccountEmail: !!this.config.serviceAccountEmail,
+            hasPrivateKey: !!this.config.privateKey,
+            hasOAuth: !!(this.config.clientId && this.config.clientSecret && this.config.refreshToken),
+        });
+        try {
+            // 1. 環境変数からJSON読み込み（Vercel環境用）
+            if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+                console.error('[GoogleSheetsClient] Using GOOGLE_SERVICE_ACCOUNT_JSON');
+                await this.authenticateWithServiceAccountJson();
+            }
+            // 2. 個別の環境変数から読み込み（Vercel環境用 - フォールバック）
+            else if (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
+                console.error('[GoogleSheetsClient] Using GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY');
+                await this.authenticateWithServiceAccountEnv();
+            }
+            // 3. JSONファイルから読み込み（ローカル環境用）
+            else if (this.config.serviceAccountKeyPath) {
+                console.error('[GoogleSheetsClient] Using serviceAccountKeyPath');
+                await this.authenticateWithServiceAccountFile();
+            }
+            // 4. コンストラクタ引数から読み込み
+            else if (this.config.serviceAccountEmail && this.config.privateKey) {
+                console.error('[GoogleSheetsClient] Using serviceAccountEmail + privateKey');
+                await this.authenticateWithServiceAccount();
+            }
+            // 5. OAuth 2.0認証（フォールバック）
+            else if (this.config.clientId && this.config.clientSecret && this.config.refreshToken) {
+                console.error('[GoogleSheetsClient] Using OAuth 2.0');
+                await this.authenticateWithOAuth();
+            }
+            else {
+                console.error('[GoogleSheetsClient] No valid authentication credentials provided');
+                throw new Error('No valid authentication credentials provided');
+            }
+        }
+        catch (error) {
+            console.error('[GoogleSheetsClient] Authentication error:', error.message);
+            console.error('[GoogleSheetsClient] Error stack:', error.stack);
+            throw new Error(`Google Sheets authentication failed: ${error.message}`);
+        }
+    }
+    /**
+     * OAuth 2.0認証を実行
+     */
+    async authenticateWithOAuth() {
+        const oauth2Client = new googleapis_1.google.auth.OAuth2(this.config.clientId, this.config.clientSecret, 'http://localhost:3000/api/google/callback');
+        oauth2Client.setCredentials({
+            refresh_token: this.config.refreshToken,
+        });
+        this.auth = oauth2Client;
+        this.sheets = googleapis_1.google.sheets({ version: 'v4', auth: oauth2Client });
+    }
+    /**
+     * サービスアカウント認証を実行（環境変数のJSONから）
+     * Environment Contract準拠: Vercel環境用
+     */
+    async authenticateWithServiceAccountJson() {
+        console.error('[GoogleSheetsClient] Authenticating with GOOGLE_SERVICE_ACCOUNT_JSON');
+        let jsonString = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+        console.error('[GoogleSheetsClient] Environment variable length:', jsonString.length);
+        console.error('[GoogleSheetsClient] First 50 chars:', jsonString.substring(0, 50));
+        console.error('[GoogleSheetsClient] Last 50 chars:', jsonString.substring(jsonString.length - 50));
+        // Base64エンコードされている場合はデコード
+        let isBase64 = false;
+        try {
+            // まずJSONとしてパースを試みる
+            JSON.parse(jsonString);
+            console.error('[GoogleSheetsClient] JSON format detected');
+        }
+        catch (e) {
+            // パースに失敗した場合、Base64としてデコード
+            console.error('[GoogleSheetsClient] Base64 format detected, decoding...');
+            isBase64 = true;
+            jsonString = Buffer.from(jsonString, 'base64').toString('utf8');
+            console.error('[GoogleSheetsClient] Decoded length:', jsonString.length);
+            console.error('[GoogleSheetsClient] Decoded first 100 chars:', jsonString.substring(0, 100));
+            console.error('[GoogleSheetsClient] Decoded last 100 chars:', jsonString.substring(jsonString.length - 100));
+        }
+        let keyFile;
+        try {
+            keyFile = JSON.parse(jsonString);
+            console.error('[GoogleSheetsClient] ✅ Parsed JSON successfully');
+        }
+        catch (parseError) {
+            console.error('[GoogleSheetsClient] ❌ JSON parse error:', parseError.message);
+            console.error('[GoogleSheetsClient] Failed to parse:', jsonString.substring(0, 200));
+            throw new Error(`Failed to parse service account JSON: ${parseError.message}`);
+        }
+        console.error('[GoogleSheetsClient] client_email:', keyFile.client_email);
+        console.error('[GoogleSheetsClient] project_id:', keyFile.project_id);
+        console.error('[GoogleSheetsClient] private_key exists:', !!keyFile.private_key);
+        console.error('[GoogleSheetsClient] private_key length:', keyFile.private_key?.length || 0);
+        // private_keyの改行を復元
+        // JSONファイルから読み込んだ場合、private_keyには実際の改行が含まれている
+        // しかし、環境変数経由の場合、\nがエスケープされている可能性がある
+        if (keyFile.private_key) {
+            console.error('[GoogleSheetsClient] Original private_key format:', {
+                hasNewlines: keyFile.private_key.includes('\n'),
+                hasEscapedNewlines: keyFile.private_key.includes('\\n'),
+                startsWithBegin: keyFile.private_key.startsWith('-----BEGIN'),
+                length: keyFile.private_key.length,
+                first50: keyFile.private_key.substring(0, 50)
+            });
+            if (!keyFile.private_key.includes('\n')) {
+                console.error('[GoogleSheetsClient] Replacing escaped newlines in private_key');
+                keyFile.private_key = keyFile.private_key.replace(/\\n/g, '\n');
+            }
+            console.error('[GoogleSheetsClient] After newline replacement:', {
+                hasNewlines: keyFile.private_key.includes('\n'),
+                startsWithBegin: keyFile.private_key.startsWith('-----BEGIN'),
+                length: keyFile.private_key.length,
+                first50: keyFile.private_key.substring(0, 50)
+            });
+        }
+        else {
+            console.error('[GoogleSheetsClient] ❌ private_key is missing!');
+            throw new Error('private_key is missing from service account JSON');
+        }
+        this.auth = new googleapis_1.google.auth.JWT({
+            email: keyFile.client_email,
+            key: keyFile.private_key,
+            scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+        });
+        console.error('[GoogleSheetsClient] JWT created, attempting authorization...');
+        await this.auth.authorize();
+        this.sheets = googleapis_1.google.sheets({ version: 'v4', auth: this.auth });
+        console.error('[GoogleSheetsClient] Authentication successful');
+    }
+    /**
+     * サービスアカウント認証を実行（JSONファイルから）
+     * Environment Contract準拠: ローカル環境用
+     */
+    async authenticateWithServiceAccountFile() {
+        console.error('[GoogleSheetsClient] Authenticating with service account file');
+        const fs = require('fs');
+        const path = require('path');
+        const keyPath = path.resolve(process.cwd(), this.config.serviceAccountKeyPath);
+        console.error('[GoogleSheetsClient] Key file path:', keyPath);
+        if (!fs.existsSync(keyPath)) {
+            throw new Error(`Service account key file not found: ${keyPath}`);
+        }
+        // JSONファイルを読み込む
+        const keyFileContent = fs.readFileSync(keyPath, 'utf8');
+        const keyFile = JSON.parse(keyFileContent);
+        console.error('[GoogleSheetsClient] Key file loaded:', {
+            client_email: keyFile.client_email,
+            project_id: keyFile.project_id,
+            private_key_id: keyFile.private_key_id,
+            has_private_key: !!keyFile.private_key,
+            private_key_length: keyFile.private_key?.length || 0
+        });
+        // JWTクライアントを作成
+        this.auth = new google_auth_library_1.JWT({
+            email: keyFile.client_email,
+            key: keyFile.private_key,
+            scopes: [
+                'https://www.googleapis.com/auth/spreadsheets',
+                'https://www.googleapis.com/auth/drive.readonly'
+            ],
+        });
+        console.error('[GoogleSheetsClient] JWT client created, authorizing...');
+        await this.auth.authorize();
+        console.error('[GoogleSheetsClient] Authorization successful');
+        this.sheets = googleapis_1.google.sheets({ version: 'v4', auth: this.auth });
+        console.error('[GoogleSheetsClient] Authentication successful');
+    }
+    /**
+     * サービスアカウント認証を実行（環境変数から）
+     */
+    async authenticateWithServiceAccount() {
+        this.auth = new googleapis_1.google.auth.JWT({
+            email: this.config.serviceAccountEmail,
+            key: this.config.privateKey.replace(/\\n/g, '\n'),
+            scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+        });
+        await this.auth.authorize();
+        this.sheets = googleapis_1.google.sheets({ version: 'v4', auth: this.auth });
+    }
+    /**
+     * サービスアカウント認証を実行（個別の環境変数から）
+     * Environment Contract準拠: Vercel環境用（フォールバック）
+     */
+    async authenticateWithServiceAccountEnv() {
+        console.log('[GoogleSheetsClient] Authenticating with GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY');
+        const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+        const privateKey = process.env.GOOGLE_PRIVATE_KEY;
+        // private_keyの改行を復元
+        const formattedPrivateKey = privateKey.replace(/\\n/g, '\n');
+        this.auth = new googleapis_1.google.auth.JWT({
+            email: email,
+            key: formattedPrivateKey,
+            scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive.readonly'],
+        });
+        await this.auth.authorize();
+        this.sheets = googleapis_1.google.sheets({ version: 'v4', auth: this.auth });
+        console.log('[GoogleSheetsClient] Authentication successful');
+    }
+    /**
+     * 認証済みかチェック
+     */
+    ensureAuthenticated() {
+        if (!this.sheets || !this.auth) {
+            throw new Error('Not authenticated. Call authenticate() first.');
+        }
+    }
+    /**
+     * ヘッダー行を取得（キャッシュ付き）
+     * スプレッドシートから直接読み込む（ハードコードは使用しない）
+     * シート名に日本語が含まれる場合はシングルクォートで囲む
+     */
+    async getHeaders() {
+        if (this.headerCache) {
+            return this.headerCache;
+        }
+        this.ensureAuthenticated();
+        // シート名に日本語・特殊文字が含まれる場合はシングルクォートで囲む（Google Sheets API仕様）
+        const sheetNameEscaped = `'${this.config.sheetName}'`;
+        const range = `${sheetNameEscaped}!A1:FZ1`;
+        console.log(`[GoogleSheetsClient.getHeaders] Fetching headers for sheet: ${this.config.sheetName}, range: ${range}`);
+        const response = await this.sheets.spreadsheets.values.get({
+            spreadsheetId: this.config.spreadsheetId,
+            range,
+        });
+        const headers = response.data.values?.[0] || [];
+        console.log(`[GoogleSheetsClient.getHeaders] Got ${headers.length} headers: ${JSON.stringify(headers.slice(0, 10))}`);
+        this.headerCache = headers;
+        return this.headerCache;
+    }
+    /**
+     * 行データをオブジェクトに変換
+     */
+    async rowToObject(row) {
+        const headers = await this.getHeaders();
+        const obj = {};
+        headers.forEach((header, index) => {
+            const value = row[index];
+            obj[header] = value !== undefined && value !== '' ? value : null;
+        });
+        return obj;
+    }
+    /**
+     * オブジェクトを行データに変換
+     */
+    async objectToRow(obj) {
+        const headers = await this.getHeaders();
+        const row = headers.map(header => obj[header] ?? '');
+        // デバッグ: 最初の10列のマッピング結果をログ出力
+        const debugInfo = headers.slice(0, 10).map((h, i) => `${h}="${row[i]}"`).join(', ');
+        console.log(`[GoogleSheetsClient.objectToRow] first 10 cols: ${debugInfo}`);
+        return row;
+    }
+    /**
+     * すべてのデータを読み取り（ヘッダー行を除く）
+     *
+     * valueRenderOption: 'UNFORMATTED_VALUE' を使用して、
+     * 日付セルはシリアル値（数値）として取得します。
+     * これにより、表示形式に関係なく正確な年月日を取得できます。
+     */
+    async readAll() {
+        this.ensureAuthenticated();
+        return await RateLimiter_1.sheetsRateLimiter.executeRequest(async () => {
+            // Google Sheets APIの仕様：シート名のみでは受け付けないため、範囲指定を追加
+            // A:FZ = 158列まで（買主リストの全列）
+            // シート名に日本語・特殊文字が含まれる場合はシングルクォートで囲む（Google Sheets API仕様）
+            const range = `'${this.config.sheetName}'!A:FZ`;
+            console.log('[GoogleSheetsClient.readAll] Range:', range);
+            const response = await this.sheets.spreadsheets.values.get({
+                spreadsheetId: this.config.spreadsheetId,
+                range,
+                // UNFORMATTED_VALUE: 日付はシリアル値（数値）として返される
+                // これにより表示形式（M/D）に関係なく、正確な年月日を取得できる
+                valueRenderOption: 'UNFORMATTED_VALUE',
+                dateTimeRenderOption: 'SERIAL_NUMBER',
+            });
+            const rows = response.data.values || [];
+            console.log('[GoogleSheetsClient.readAll] Got', rows.length, 'rows');
+            // ヘッダー行を除外（最初の行はヘッダー）
+            const dataRows = rows.slice(1);
+            const result = [];
+            for (const row of dataRows) {
+                result.push(await this.rowToObject(row));
+            }
+            return result;
+        });
+    }
+    /**
+     * 最後の行を取得（高速）
+     * 空行をスキップして、実際にデータがある最後の行を返す
+     */
+    async getLastRow() {
+        this.ensureAuthenticated();
+        return await RateLimiter_1.sheetsRateLimiter.executeRequest(async () => {
+            // 範囲を指定（A2:FZ = 158列まで）
+            // シート名に日本語・特殊文字が含まれる場合はシングルクォートで囲む（Google Sheets API仕様）
+            const range = `'${this.config.sheetName}'!A2:FZ`;
+            const response = await this.sheets.spreadsheets.values.get({
+                spreadsheetId: this.config.spreadsheetId,
+                range,
+            });
+            const rows = response.data.values || [];
+            if (rows.length === 0) {
+                return null;
+            }
+            // 最後の非空行を探す（後ろから検索）
+            for (let i = rows.length - 1; i >= 0; i--) {
+                const row = rows[i];
+                // 行に何かデータがあるかチェック
+                const hasData = row.some((cell) => cell !== undefined && cell !== null && cell !== '');
+                if (hasData) {
+                    return await this.rowToObject(row);
+                }
+            }
+            return null;
+        });
+    }
+    /**
+     * 指定範囲の生データを読み取り（ヘッダー変換なし）
+     * 単一セルの値取得など、ヘッダーが不要な場合に使用する
+     */
+    async readRawRange(range) {
+        this.ensureAuthenticated();
+        const response = await this.sheets.spreadsheets.values.get({
+            spreadsheetId: this.config.spreadsheetId,
+            range: `'${this.config.sheetName}'!${range}`,
+        });
+        return (response.data.values || []);
+    }
+    /**
+     * 指定セルに値を書き込む（ヘッダー変換なし）
+     * 採番セルの更新など、単一セルへの書き込みに使用する
+     */
+    async writeRawCell(cell, value) {
+        this.ensureAuthenticated();
+        await this.sheets.spreadsheets.values.update({
+            spreadsheetId: this.config.spreadsheetId,
+            range: `'${this.config.sheetName}'!${cell}`,
+            valueInputOption: 'USER_ENTERED',
+            requestBody: {
+                values: [[value]],
+            },
+        });
+    }
+    /**
+     * 指定範囲のデータを読み取り
+     */
+    async readRange(range) {
+        this.ensureAuthenticated();
+        const response = await this.sheets.spreadsheets.values.get({
+            spreadsheetId: this.config.spreadsheetId,
+            range: `'${this.config.sheetName}'!${range}`,
+            valueRenderOption: 'UNFORMATTED_VALUE',
+        });
+        const rows = response.data.values || [];
+        const result = [];
+        for (const row of rows) {
+            result.push(await this.rowToObject(row));
+        }
+        return result;
+    }
+    /**
+     * 新しい行を追加
+     */
+    async appendRow(row) {
+        this.ensureAuthenticated();
+        await RateLimiter_1.sheetsRateLimiter.executeRequest(async () => {
+            const values = await this.objectToRow(row);
+            // 日本語シート名の場合は、シートIDを使用してA1記法で範囲指定
+            let range;
+            if (this.config.sheetId !== undefined) {
+                // シートIDを使用してA1記法で範囲指定
+                // Google Sheets APIは gid= パラメータをサポートしていないため、
+                // シート名を使用する必要がある
+                // 回避策：シート名をエンコードせずに使用
+                range = `'${this.config.sheetName}'!A:A`;
+                console.log(`[GoogleSheetsClient.appendRow] Using sheetId: ${this.config.sheetId}, range: ${range}`);
+            }
+            else {
+                // 従来通りシート名を使用
+                range = `'${this.config.sheetName}'!A:A`;
+                console.log(`[GoogleSheetsClient.appendRow] Using sheetName, range: ${range}`);
+            }
+            await this.sheets.spreadsheets.values.append({
+                spreadsheetId: this.config.spreadsheetId,
+                range,
+                valueInputOption: 'RAW',
+                requestBody: {
+                    values: [values],
+                },
+            });
+        });
+    }
+    /**
+     * 指定行を更新（1-indexed、ヘッダー行は1）
+     */
+    async updateRow(rowIndex, row) {
+        this.ensureAuthenticated();
+        console.log('[GoogleSheetsClient.updateRow] Input:', {
+            rowIndex,
+            rowIndexType: typeof rowIndex,
+            isInteger: Number.isInteger(rowIndex),
+            sheetName: this.config.sheetName
+        });
+        await RateLimiter_1.sheetsRateLimiter.executeRequest(async () => {
+            const values = await this.objectToRow(row);
+            const range = `'${this.config.sheetName}'!A${rowIndex}:FZ${rowIndex}`;
+            console.log('[GoogleSheetsClient.updateRow] Range:', range);
+            await this.sheets.spreadsheets.values.update({
+                spreadsheetId: this.config.spreadsheetId,
+                range,
+                valueInputOption: 'RAW',
+                requestBody: {
+                    values: [values],
+                },
+            });
+        });
+    }
+    /**
+     * 指定行を削除（1-indexed）
+     */
+    async deleteRow(rowIndex) {
+        this.ensureAuthenticated();
+        // シートIDを取得
+        const spreadsheet = await this.sheets.spreadsheets.get({
+            spreadsheetId: this.config.spreadsheetId,
+        });
+        const sheet = spreadsheet.data.sheets?.find(s => s.properties?.title === this.config.sheetName);
+        if (!sheet || !sheet.properties?.sheetId) {
+            throw new Error(`Sheet "${this.config.sheetName}" not found`);
+        }
+        const sheetId = sheet.properties.sheetId;
+        // 行を削除（0-indexed）
+        await this.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: this.config.spreadsheetId,
+            requestBody: {
+                requests: [
+                    {
+                        deleteDimension: {
+                            range: {
+                                sheetId,
+                                dimension: 'ROWS',
+                                startIndex: rowIndex - 1,
+                                endIndex: rowIndex,
+                            },
+                        },
+                    },
+                ],
+            },
+        });
+    }
+    /**
+     * 複数行を一括更新
+     */
+    async batchUpdate(updates) {
+        this.ensureAuthenticated();
+        await RateLimiter_1.sheetsRateLimiter.executeRequest(async () => {
+            const data = [];
+            for (const update of updates) {
+                const values = await this.objectToRow(update.values);
+                const range = `'${this.config.sheetName}'!A${update.rowIndex}:ZZ${update.rowIndex}`;
+                data.push({
+                    range,
+                    values: [values],
+                });
+            }
+            await this.sheets.spreadsheets.values.batchUpdate({
+                spreadsheetId: this.config.spreadsheetId,
+                requestBody: {
+                    valueInputOption: 'RAW',
+                    data,
+                },
+            });
+        });
+    }
+    /**
+     * 特定のカラムで値を検索して行番号を取得（1-indexed）
+     * リトライロジック付き（最大3回、100ms遅延）
+     */
+    async findRowByColumn(columnName, value, maxRetries = 3) {
+        this.ensureAuthenticated();
+        console.log(`🔍 [GoogleSheetsClient] Finding row by column: ${columnName}, value: ${value}`);
+        const headers = await this.getHeaders();
+        const columnIndex = headers.indexOf(columnName);
+        if (columnIndex === -1) {
+            console.error(`❌ [GoogleSheetsClient] Column "${columnName}" not found in headers:`, headers);
+            throw new Error(`Column "${columnName}" not found in headers`);
+        }
+        console.log(`🔍 [GoogleSheetsClient] Column index: ${columnIndex}`);
+        // A=0, B=1, ... Z=25, AA=26, ...
+        const columnLetter = this.numberToColumnLetter(columnIndex);
+        // 検索範囲を明示的に指定（最大10000行まで）
+        const range = `'${this.config.sheetName}'!${columnLetter}2:${columnLetter}10000`;
+        console.log(`🔍 [GoogleSheetsClient] Reading range: ${range}`);
+        // リトライロジック
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                const response = await this.sheets.spreadsheets.values.get({
+                    spreadsheetId: this.config.spreadsheetId,
+                    range,
+                });
+                const values = response.data.values || [];
+                console.log(`🔍 [GoogleSheetsClient] Found ${values.length} rows in column ${columnName} (attempt ${attempt})`);
+                for (let i = 0; i < values.length; i++) {
+                    const cellValue = String(values[i][0] || '').trim();
+                    const searchValue = String(value).trim();
+                    if (i < 5) {
+                        console.log(`🔍 [GoogleSheetsClient] Row ${i + 2}: "${cellValue}" === "${searchValue}"? ${cellValue === searchValue}`);
+                    }
+                    if (cellValue === searchValue) {
+                        console.log(`✅ [GoogleSheetsClient] Found match at row ${i + 2} (attempt ${attempt})`);
+                        return i + 2; // +2 because: +1 for header row, +1 for 0-indexed to 1-indexed
+                    }
+                }
+                console.log(`❌ [GoogleSheetsClient] No match found for value: ${value} (attempt ${attempt})`);
+                return null;
+            }
+            catch (error) {
+                console.error(`❌ [GoogleSheetsClient] API error (attempt ${attempt}/${maxRetries}):`, error.message);
+                // 最後の試行でない場合は遅延を挟む
+                if (attempt < maxRetries) {
+                    console.log(`⏳ [GoogleSheetsClient] Waiting 100ms before retry...`);
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                else {
+                    // 最後の試行でもエラーの場合は例外をスロー
+                    throw error;
+                }
+            }
+        }
+        return null;
+    }
+    /**
+     * 数値をカラムレター に変換（0-indexed → A, B, C, ..., Z, AA, AB, ...）
+     */
+    numberToColumnLetter(num) {
+        let letter = '';
+        while (num >= 0) {
+            letter = String.fromCharCode((num % 26) + 65) + letter;
+            num = Math.floor(num / 26) - 1;
+        }
+        return letter;
+    }
+    /**
+     * 指定行の特定カラムのみを更新（部分更新）
+     * updateRowと異なり、指定したカラムのみを更新し、他のカラムは変更しない
+     */
+    async updateRowPartial(rowIndex, row) {
+        this.ensureAuthenticated();
+        const headers = await this.getHeaders();
+        await RateLimiter_1.sheetsRateLimiter.executeRequest(async () => {
+            const requests = [];
+            // シートIDを取得
+            const spreadsheet = await this.sheets.spreadsheets.get({
+                spreadsheetId: this.config.spreadsheetId,
+            });
+            const sheet = spreadsheet.data.sheets?.find(s => s.properties?.title === this.config.sheetName);
+            if (!sheet || sheet.properties?.sheetId === undefined) {
+                throw new Error(`Sheet "${this.config.sheetName}" not found`);
+            }
+            const sheetId = sheet.properties.sheetId;
+            for (const [columnName, value] of Object.entries(row)) {
+                const colIndex = headers.indexOf(columnName);
+                if (colIndex === -1)
+                    continue;
+                // 値の型に応じて適切なフィールドを設定
+                let userEnteredValue;
+                if (value === null || value === undefined || value === '') {
+                    userEnteredValue = { stringValue: '' };
+                }
+                else if (typeof value === 'number') {
+                    userEnteredValue = { numberValue: value };
+                }
+                else if (typeof value === 'boolean') {
+                    userEnteredValue = { boolValue: value };
+                }
+                else {
+                    userEnteredValue = { stringValue: String(value) };
+                }
+                requests.push({
+                    updateCells: {
+                        range: {
+                            sheetId,
+                            startRowIndex: rowIndex - 1,
+                            endRowIndex: rowIndex,
+                            startColumnIndex: colIndex,
+                            endColumnIndex: colIndex + 1,
+                        },
+                        rows: [{
+                                values: [{
+                                        userEnteredValue,
+                                    }],
+                            }],
+                        fields: 'userEnteredValue',
+                    },
+                });
+            }
+            if (requests.length === 0)
+                return;
+            await this.sheets.spreadsheets.batchUpdate({
+                spreadsheetId: this.config.spreadsheetId,
+                requestBody: { requests },
+            });
+        });
+    }
+    /**
+     * ヘッダーキャッシュをクリア
+     */
+    clearHeaderCache() {
+        this.headerCache = null;
+    }
+    /**
+     * 認証オブジェクトを取得
+     */
+    getAuth() {
+        this.ensureAuthenticated();
+        return this.auth;
+    }
+    /**
+     * スプレッドシートのメタデータを取得
+     */
+    async getSpreadsheetMetadata() {
+        this.ensureAuthenticated();
+        const response = await this.sheets.spreadsheets.get({
+            spreadsheetId: this.config.spreadsheetId,
+        });
+        return response.data;
+    }
+}
+exports.GoogleSheetsClient = GoogleSheetsClient;

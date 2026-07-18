@@ -1,0 +1,292 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.TateuriPriceCheckService = void 0;
+const supabase_js_1 = require("@supabase/supabase-js");
+const EmailService_1 = require("./EmailService");
+/**
+ * 建売専門HP掲載物件の価格変動チェックサービス
+ * 毎日スクレイピングして値下げを検知し、メール通知する
+ */
+class TateuriPriceCheckService {
+    constructor() {
+        this.supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+        this.emailService = new EmailService_1.EmailService();
+    }
+    /**
+     * 掲載中の全物件を再スクレイピングして価格変動をチェック
+     * 毎日全件ではなく、slug順で分割して処理（Vercelタイムアウト対策）
+     * 1回の実行で最大30件まで処理
+     */
+    async checkPrices() {
+        console.log('[TateuriPriceCheck] 価格チェック開始');
+        // 掲載中の建売物件を全件取得（slug順でソート）
+        const { data: properties, error } = await this.supabase
+            .from('property_previews')
+            .select('slug, title, price, address, source_url')
+            .eq('is_tateuri', true)
+            .eq('is_active', true)
+            .order('slug', { ascending: true });
+        if (error) {
+            console.error('[TateuriPriceCheck] DB取得エラー:', error);
+            throw error;
+        }
+        if (!properties || properties.length === 0) {
+            console.log('[TateuriPriceCheck] 掲載中の物件なし');
+            return { checked: 0, changed: 0, errors: 0 };
+        }
+        // 毎日30件ずつ処理（日付ベースでオフセットを計算）
+        const DAILY_LIMIT = 30;
+        const today = new Date();
+        const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
+        const offset = (dayOfYear * DAILY_LIMIT) % properties.length;
+        // オフセットから30件取得（末尾に達したら先頭に折り返す）
+        let targetProperties;
+        if (offset + DAILY_LIMIT <= properties.length) {
+            targetProperties = properties.slice(offset, offset + DAILY_LIMIT);
+        }
+        else {
+            targetProperties = [
+                ...properties.slice(offset),
+                ...properties.slice(0, DAILY_LIMIT - (properties.length - offset))
+            ];
+        }
+        console.log(`[TateuriPriceCheck] 全${properties.length}件中 ${offset}〜${offset + targetProperties.length}件目をチェック（本日分）`);
+        const scrapeApiUrl = process.env.SCRAPE_API_URL || 'https://sateituikyaku-scrape-server-production.up.railway.app';
+        const priceChanges = [];
+        const soldOuts = [];
+        let errors = 0;
+        // 順次処理（スクレイピングサーバーへの負荷を抑える）
+        for (const property of targetProperties) {
+            const result = await this.checkSingleProperty(property, scrapeApiUrl);
+            if (result.priceChange)
+                priceChanges.push(result.priceChange);
+            if (result.soldOut)
+                soldOuts.push(result.soldOut);
+            if (result.error)
+                errors++;
+        }
+        // 値下げ or 売却済みがあればメール通知
+        const priceDowns = priceChanges.filter(c => isPriceDown(c.oldPrice, c.newPrice));
+        if (priceDowns.length > 0 || soldOuts.length > 0) {
+            await this.sendNotification(priceDowns, soldOuts);
+        }
+        console.log(`[TateuriPriceCheck] 完了: チェック=${targetProperties.length}件, 値下げ=${priceDowns.length}件, 売却済み=${soldOuts.length}件, エラー=${errors}件`);
+        return { checked: targetProperties.length, changed: priceChanges.length, errors };
+    }
+    /**
+     * 掲載中の全物件を再スクレイピングして価格変動をチェック（制限付き）
+     */
+    async checkPricesLimited(limit) {
+        console.log(`[TateuriPriceCheck] 価格チェック開始（制限: ${limit}件）`);
+        // 掲載中の建売物件を制限付きで取得
+        const { data: properties, error } = await this.supabase
+            .from('property_previews')
+            .select('slug, title, price, address, source_url')
+            .eq('is_tateuri', true)
+            .eq('is_active', true)
+            .limit(limit);
+        if (error) {
+            console.error('[TateuriPriceCheck] DB取得エラー:', error);
+            throw error;
+        }
+        if (!properties || properties.length === 0) {
+            console.log('[TateuriPriceCheck] 掲載中の物件なし');
+            return { checked: 0, changed: 0, errors: 0 };
+        }
+        console.log(`[TateuriPriceCheck] ${properties.length}件をチェック（制限適用）`);
+        const scrapeApiUrl = process.env.SCRAPE_API_URL || 'https://sateituikyaku-scrape-server-production.up.railway.app';
+        const priceChanges = [];
+        const soldOuts = [];
+        let errors = 0;
+        // 制限付きの場合は並列処理を使わず順次処理（安全性重視）
+        for (const property of properties) {
+            const result = await this.checkSingleProperty(property, scrapeApiUrl);
+            if (result.priceChange)
+                priceChanges.push(result.priceChange);
+            if (result.soldOut)
+                soldOuts.push(result.soldOut);
+            if (result.error)
+                errors++;
+        }
+        // 値下げ or 売却済みがあればメール通知
+        const priceDowns = priceChanges.filter(c => isPriceDown(c.oldPrice, c.newPrice));
+        if (priceDowns.length > 0 || soldOuts.length > 0) {
+            await this.sendNotification(priceDowns, soldOuts);
+        }
+        console.log(`[TateuriPriceCheck] 完了（制限適用）: チェック=${properties.length}件, 値下げ=${priceDowns.length}件, 売却済み=${soldOuts.length}件, エラー=${errors}件`);
+        return { checked: properties.length, changed: priceChanges.length, errors };
+    }
+    async checkSingleProperty(property, scrapeApiUrl) {
+        if (!property.source_url) {
+            console.warn(`[TateuriPriceCheck] source_url なし: ${property.slug}`);
+            return { error: true };
+        }
+        try {
+            // 再スクレイピング（タイムアウトを短縮）
+            const res = await fetch(`${scrapeApiUrl}/scrape`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: property.source_url, is_tateuri: true, update_only: true }),
+                signal: AbortSignal.timeout(60000), // 60秒（スクレイピングに35秒程度かかるため）
+            });
+            // 404 or ページが存在しない → 売却済みとして自動削除
+            if (res.status === 404 || res.status === 410) {
+                console.log(`[TateuriPriceCheck] 売却済み検知（${res.status}）: ${property.slug}`);
+                await this.supabase
+                    .from('property_previews')
+                    .update({ is_active: false })
+                    .eq('slug', property.slug);
+                return {
+                    soldOut: {
+                        slug: property.slug,
+                        title: property.title,
+                        address: property.address,
+                        price: property.price,
+                        source_url: property.source_url,
+                    }
+                };
+            }
+            if (!res.ok) {
+                console.warn(`[TateuriPriceCheck] スクレイピング失敗 ${property.slug}: ${res.status}`);
+                return { error: true };
+            }
+            const result = await res.json();
+            // スクレイピングサーバーが sold_out フラグを返す場合
+            if (!result.success || !result.data) {
+                console.warn(`[TateuriPriceCheck] データ取得失敗 ${property.slug}`);
+                return { error: true };
+            }
+            if (result.data.sold_out === true) {
+                console.log(`[TateuriPriceCheck] 売却済み検知（sold_out flag）: ${property.slug}`);
+                await this.supabase
+                    .from('property_previews')
+                    .update({ is_active: false })
+                    .eq('slug', property.slug);
+                return {
+                    soldOut: {
+                        slug: property.slug,
+                        title: property.title,
+                        address: property.address,
+                        price: property.price,
+                        source_url: property.source_url,
+                    }
+                };
+            }
+            const newPrice = result.data?.price || null;
+            const oldPrice = property.price;
+            // 価格が変わっていたらDBを更新
+            if (newPrice !== oldPrice) {
+                console.log(`[TateuriPriceCheck] 価格変動検知: ${property.slug} ${oldPrice} → ${newPrice}`);
+                await this.supabase
+                    .from('property_previews')
+                    .update({
+                    price: newPrice,
+                    title: result.data?.title || property.title,
+                    updated_at: new Date().toISOString(),
+                })
+                    .eq('slug', property.slug);
+                return {
+                    priceChange: {
+                        slug: property.slug,
+                        title: property.title,
+                        address: property.address,
+                        oldPrice,
+                        newPrice,
+                        source_url: property.source_url,
+                    }
+                };
+            }
+            return {}; // 変更なし
+        }
+        catch (err) {
+            console.error(`[TateuriPriceCheck] エラー ${property.slug}:`, err.message);
+            return { error: true };
+        }
+    }
+    /**
+     * 値下げ・売却済み通知メールをまとめて送信
+     */
+    async sendNotification(priceDowns, soldOuts) {
+        const notifyEmail = process.env.TATEURI_NOTIFY_EMAIL || 'tenant@ifoo-oita.com';
+        const sections = [];
+        if (priceDowns.length > 0) {
+            const lines = priceDowns.map(c => {
+                const title = cleanTitle(c.title) || c.address || '物件';
+                return [
+                    `■ ${title}`,
+                    `  住所: ${c.address || '不明'}`,
+                    `  変更前: ${c.oldPrice || '不明'}`,
+                    `  変更後: ${c.newPrice || '不明'}`,
+                    `  掲載URL: https://sateituikyaku-admin-frontend.vercel.app/property-preview/${c.slug}`,
+                    `  元URL: ${c.source_url}`,
+                ].join('\n');
+            });
+            sections.push(`【値下げ物件 ${priceDowns.length}件】\n${lines.join('\n\n')}`);
+        }
+        if (soldOuts.length > 0) {
+            const lines = soldOuts.map(c => {
+                const title = cleanTitle(c.title) || c.address || '物件';
+                return [
+                    `■ ${title}`,
+                    `  住所: ${c.address || '不明'}`,
+                    `  価格: ${c.price || '不明'}`,
+                    `  ※ 掲載から自動削除しました`,
+                    `  掲載URL: https://sateituikyaku-admin-frontend.vercel.app/property-preview/${c.slug}`,
+                    `  元URL: ${c.source_url}`,
+                ].join('\n');
+            });
+            sections.push(`【売却済み（自動削除）${soldOuts.length}件】\n${lines.join('\n\n')}`);
+        }
+        const subject = [
+            priceDowns.length > 0 ? `値下げ${priceDowns.length}件` : '',
+            soldOuts.length > 0 ? `売却済み${soldOuts.length}件` : '',
+        ].filter(Boolean).join('・');
+        const body = [
+            `建売専門HPの物件に変動がありました。`,
+            ``,
+            ...sections,
+            ``,
+            `管理画面: https://sateituikyaku-admin-frontend.vercel.app/tateuri/manage`,
+        ].join('\n');
+        try {
+            await this.emailService.sendEmail({
+                to: [notifyEmail],
+                subject: `【建売専門HP】${subject}`,
+                body,
+            });
+            console.log(`[TateuriPriceCheck] 通知メール送信完了`);
+        }
+        catch (err) {
+            console.error('[TateuriPriceCheck] メール送信エラー:', err.message);
+        }
+    }
+}
+exports.TateuriPriceCheckService = TateuriPriceCheckService;
+/**
+ * 価格文字列から数値を抽出（万円単位）
+ * 例: "3,790万円" → 3790
+ */
+function parsePrice(price) {
+    if (!price)
+        return null;
+    const match = price.replace(/,/g, '').match(/(\d+(?:\.\d+)?)\s*万/);
+    if (match)
+        return parseFloat(match[1]);
+    return null;
+}
+/**
+ * 値下げかどうか判定
+ */
+function isPriceDown(oldPrice, newPrice) {
+    const old = parsePrice(oldPrice);
+    const next = parsePrice(newPrice);
+    if (old === null || next === null)
+        return false;
+    return next < old;
+}
+/**
+ * タイトルのクリーニング
+ */
+function cleanTitle(title) {
+    return (title || '').replace(/\[\d+\].+$/, '').trim();
+}

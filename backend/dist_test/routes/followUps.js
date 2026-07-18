@@ -1,0 +1,309 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const express_validator_1 = require("express-validator");
+const FollowUpService_supabase_1 = require("../services/FollowUpService.supabase");
+const SellerService_supabase_1 = require("../services/SellerService.supabase");
+const auth_1 = require("../middleware/auth");
+const types_1 = require("../types");
+const router = (0, express_1.Router)();
+const followUpService = new FollowUpService_supabase_1.FollowUpService();
+// 活動履歴のインメモリキャッシュ（TTL: 60秒）
+const activitiesCache = new Map();
+const ACTIVITIES_CACHE_TTL_MS = 60 * 1000; // 60秒
+function getActivitiesCache(sellerId) {
+    const entry = activitiesCache.get(sellerId);
+    if (!entry)
+        return null;
+    if (Date.now() > entry.expiresAt) {
+        activitiesCache.delete(sellerId);
+        return null;
+    }
+    return entry.data;
+}
+function setActivitiesCache(sellerId, data) {
+    activitiesCache.set(sellerId, { data, expiresAt: Date.now() + ACTIVITIES_CACHE_TTL_MS });
+}
+function invalidateActivitiesCache(sellerId) {
+    activitiesCache.delete(sellerId);
+}
+// 全てのルートに認証を適用
+router.use(auth_1.authenticate);
+/**
+ * 追客活動を記録
+ */
+router.post('/:sellerId/activities', [
+    (0, express_validator_1.body)('type').isIn(Object.values(types_1.ActivityType)).withMessage('Invalid activity type'),
+    (0, express_validator_1.body)('content').notEmpty().withMessage('Content is required'),
+], async (req, res) => {
+    try {
+        const errors = (0, express_validator_1.validationResult)(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                error: {
+                    code: 'VALIDATION_ERROR',
+                    message: 'Validation failed',
+                    details: errors.array(),
+                    retryable: false,
+                },
+            });
+        }
+        const { sellerId } = req.params;
+        const { type, content, result, metadata } = req.body;
+        const activity = await followUpService.recordActivity({
+            sellerId,
+            employeeId: req.employee.id,
+            type,
+            content,
+            result,
+            metadata,
+        });
+        // 新規活動を記録したのでキャッシュを無効化
+        invalidateActivitiesCache(sellerId);
+        // phone_call の場合は売主一覧の lastCalledAt キャッシュも無効化
+        if (type === 'phone_call') {
+            (0, SellerService_supabase_1.invalidateListSellersCache)();
+            // 売主追客ログスプレッドシートに非同期で追記（失敗してもレスポンスには影響しない）
+            appendCallLogToSpreadsheet(activity.id, sellerId, req.employee.initials || req.employee.name, new Date(activity.created_at || activity.createdAt)).catch((err) => {
+                console.error('[CallLog] Failed to append to spreadsheet:', err.message, err.stack);
+            });
+        }
+        res.status(201).json(activity);
+    }
+    catch (error) {
+        console.error('Record activity error:', error);
+        res.status(500).json({
+            error: {
+                code: 'RECORD_ACTIVITY_ERROR',
+                message: 'Failed to record activity',
+                retryable: true,
+            },
+        });
+    }
+});
+/**
+ * 追客履歴を取得
+ */
+router.get('/:sellerId/activities', async (req, res) => {
+    try {
+        let { sellerId } = req.params;
+        const typeFilter = req.query.type;
+        // 売主番号（例: AA13497）が渡された場合、UUIDに変換する
+        const isSellerNumber = /^[A-Z]{2}\d+$/.test(sellerId);
+        if (isSellerNumber) {
+            const supabase = (await Promise.resolve().then(() => __importStar(require('../config/supabase')))).default;
+            const { data: seller } = await supabase
+                .from('sellers')
+                .select('id')
+                .eq('seller_number', sellerId)
+                .is('deleted_at', null)
+                .single();
+            if (!seller) {
+                return res.json([]); // 売主が見つからない場合は空配列を返す
+            }
+            sellerId = seller.id;
+        }
+        // キャッシュキーにtypeフィルタを含める
+        const cacheKey = typeFilter ? `${sellerId}:${typeFilter}` : sellerId;
+        // キャッシュを確認（60秒TTL）
+        const cached = getActivitiesCache(cacheKey);
+        if (cached) {
+            return res.json(cached);
+        }
+        const activities = await followUpService.getActivityHistory(sellerId, typeFilter);
+        setActivitiesCache(cacheKey, activities);
+        res.json(activities);
+    }
+    catch (error) {
+        console.error('Get activity history error:', error);
+        res.status(500).json({
+            error: {
+                code: 'GET_ACTIVITY_HISTORY_ERROR',
+                message: 'Failed to get activity history',
+                retryable: true,
+            },
+        });
+    }
+});
+/**
+ * ヒアリング内容を記録
+ */
+router.post('/:sellerId/hearing', [(0, express_validator_1.body)('content').notEmpty().withMessage('Hearing content is required')], async (req, res) => {
+    try {
+        const errors = (0, express_validator_1.validationResult)(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                error: {
+                    code: 'VALIDATION_ERROR',
+                    message: 'Validation failed',
+                    details: errors.array(),
+                    retryable: false,
+                },
+            });
+        }
+        const { sellerId } = req.params;
+        const { content, metadata } = req.body;
+        const activity = await followUpService.recordHearing({
+            sellerId,
+            employeeId: req.employee.id,
+            content,
+            metadata,
+        });
+        // ヒアリング記録したのでキャッシュを無効化
+        invalidateActivitiesCache(sellerId);
+        res.status(201).json(activity);
+    }
+    catch (error) {
+        console.error('Record hearing error:', error);
+        res.status(500).json({
+            error: {
+                code: 'RECORD_HEARING_ERROR',
+                message: 'Failed to record hearing',
+                retryable: true,
+            },
+        });
+    }
+});
+/**
+ * 次電日を設定
+ */
+router.put('/:sellerId/next-call-date', [(0, express_validator_1.body)('date').isISO8601().withMessage('Invalid date format')], async (req, res) => {
+    try {
+        const errors = (0, express_validator_1.validationResult)(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                error: {
+                    code: 'VALIDATION_ERROR',
+                    message: 'Validation failed',
+                    details: errors.array(),
+                    retryable: false,
+                },
+            });
+        }
+        const { sellerId } = req.params;
+        const { date } = req.body;
+        await followUpService.setNextCallDate(sellerId, new Date(date));
+        res.json({ message: 'Next call date updated successfully' });
+    }
+    catch (error) {
+        console.error('Set next call date error:', error);
+        res.status(500).json({
+            error: {
+                code: 'SET_NEXT_CALL_DATE_ERROR',
+                message: 'Failed to set next call date',
+                retryable: true,
+            },
+        });
+    }
+});
+/**
+ * 確度を更新
+ */
+router.put('/:sellerId/confidence', [
+    (0, express_validator_1.body)('level')
+        .isIn(Object.values(types_1.ConfidenceLevel))
+        .withMessage('Invalid confidence level'),
+], async (req, res) => {
+    try {
+        const errors = (0, express_validator_1.validationResult)(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                error: {
+                    code: 'VALIDATION_ERROR',
+                    message: 'Validation failed',
+                    details: errors.array(),
+                    retryable: false,
+                },
+            });
+        }
+        const { sellerId } = req.params;
+        const { level } = req.body;
+        await followUpService.updateConfidence(sellerId, level);
+        res.json({ message: 'Confidence level updated successfully' });
+    }
+    catch (error) {
+        console.error('Update confidence error:', error);
+        res.status(500).json({
+            error: {
+                code: 'UPDATE_CONFIDENCE_ERROR',
+                message: 'Failed to update confidence level',
+                retryable: true,
+            },
+        });
+    }
+});
+/**
+ * 売主追客ログスプレッドシートに通話ログを追記する
+ * スプレッドシートID: 1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I
+ * シート名: 売主追客ログ
+ * A列: 日付時間（JST）, B列: キー（activity UUID先頭8文字）, C列: 売主番号, E列: 担当イニシャル
+ */
+async function appendCallLogToSpreadsheet(activityId, sellerId, initials, createdAt) {
+    // 売主番号を取得
+    const supabase = (await Promise.resolve().then(() => __importStar(require('../config/supabase')))).default;
+    const { data: seller, error } = await supabase
+        .from('sellers')
+        .select('seller_number')
+        .eq('id', sellerId)
+        .single();
+    if (error || !seller) {
+        throw new Error(`Seller not found for id: ${sellerId}`);
+    }
+    const sellerNumber = seller.seller_number;
+    // JST日時文字列を生成
+    const jstDate = new Date(createdAt.getTime() + 9 * 60 * 60 * 1000);
+    const jstDateString = jstDate.toISOString().replace('T', ' ').substring(0, 19);
+    // Google Sheets クライアントを初期化
+    const { GoogleSheetsClient } = await Promise.resolve().then(() => __importStar(require('../services/GoogleSheetsClient')));
+    const sheetsClient = new GoogleSheetsClient({
+        spreadsheetId: '1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I',
+        sheetName: '売主追客ログ',
+        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+    });
+    await sheetsClient.authenticate();
+    console.log(`[CallLog] Authentication successful, preparing row data`);
+    // 追記するデータ（ヘッダーに合わせた列名で指定）
+    const rowData = {
+        '日付': jstDateString,
+        '売主追客ログID': activityId.substring(0, 8),
+        '売主番号': sellerNumber,
+        '担当（前半）': initials,
+    };
+    console.log(`[CallLog] Attempting to append row: ${JSON.stringify(rowData)}`);
+    await sheetsClient.appendRow(rowData);
+    console.log(`[CallLog] SUCCESS - Appended to spreadsheet: ${sellerNumber} by ${initials} at ${jstDateString}`);
+}
+exports.default = router;

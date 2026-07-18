@@ -1,0 +1,569 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SpreadsheetSyncService = void 0;
+const ColumnMapper_1 = require("./ColumnMapper");
+const encryption_1 = require("../utils/encryption");
+/**
+ * 同期処理のロックマップ（売主番号 → Promise）
+ * 同じ売主番号に対する同期処理を直列化するために使用
+ */
+const syncLocks = new Map();
+/**
+ * スプレッドシート同期サービス
+ *
+ * Supabaseのデータをスプレッドシートに同期します。
+ * 単一レコードの同期とバッチ同期をサポートします。
+ */
+class SpreadsheetSyncService {
+    constructor(sheetsClient, supabase) {
+        this.sellerNumberColumn = '売主番号';
+        this.sheetsClient = sheetsClient;
+        this.columnMapper = new ColumnMapper_1.ColumnMapper();
+        this.supabase = supabase;
+    }
+    /**
+     * 単一の売主レコードをスプレッドシートに同期
+     */
+    async syncToSpreadsheet(sellerId) {
+        try {
+            console.log(`📝 [SpreadsheetSync] Starting sync for seller ID: ${sellerId}`);
+            // Supabaseから売主データを取得
+            const { data: seller, error } = await this.supabase
+                .from('sellers')
+                .select('*')
+                .eq('id', sellerId)
+                .single();
+            if (error || !seller) {
+                console.error(`❌ [SpreadsheetSync] Seller not found: ${sellerId}`);
+                return {
+                    success: false,
+                    rowsAffected: 0,
+                    error: `Seller not found: ${sellerId}`,
+                };
+            }
+            console.log(`✅ [SpreadsheetSync] Found seller: ${seller.seller_number}`);
+            // 売主番号でロックを取得（同じ売主番号の同期処理を直列化）
+            const existingLock = syncLocks.get(seller.seller_number);
+            if (existingLock) {
+                console.log(`🔒 [SpreadsheetSync] Waiting for existing sync to complete for ${seller.seller_number}`);
+                await existingLock;
+                console.log(`🔓 [SpreadsheetSync] Lock released for ${seller.seller_number}, proceeding with sync`);
+            }
+            // 新しいロックを作成
+            const syncPromise = this.performSync(seller);
+            syncLocks.set(seller.seller_number, syncPromise);
+            try {
+                const result = await syncPromise;
+                return result;
+            }
+            finally {
+                // ロックを解放
+                syncLocks.delete(seller.seller_number);
+                console.log(`🔓 [SpreadsheetSync] Lock released for ${seller.seller_number}`);
+            }
+        }
+        catch (error) {
+            console.error(`❌ [SpreadsheetSync] Error:`, error.message);
+            return {
+                success: false,
+                rowsAffected: 0,
+                error: error.message,
+            };
+        }
+    }
+    /**
+     * 実際の同期処理を実行（ロック内で実行される）
+     */
+    async performSync(seller) {
+        try {
+            // ヘッダーキャッシュをクリア（常に最新のヘッダー情報を使用）
+            this.sheetsClient.clearHeaderCache();
+            console.log(`🔄 [SpreadsheetSync] Header cache cleared for ${seller.seller_number}`);
+            // 暗号化フィールドを復号
+            const decryptedSeller = this.decryptSellerFields(seller);
+            // 査定担当をイニシャルに変換
+            if (decryptedSeller.valuation_assignee) {
+                decryptedSeller.valuation_assignee = this.convertToInitials(decryptedSeller.valuation_assignee);
+            }
+            // スプレッドシート形式に変換
+            const sheetRow = this.columnMapper.mapToSheet(decryptedSeller);
+            console.log(`📋 [SpreadsheetSync] Converted to sheet row`);
+            // 既存行を検索（リトライロジック付き）
+            const existingRowIndex = await this.findRowBySellerIdWithRetry(seller.seller_number);
+            if (existingRowIndex) {
+                // 既存行を部分更新（指定カラムのみ更新し、計算列などは変更しない）
+                console.log(`📝 [SpreadsheetSync] Updating existing row ${existingRowIndex} for ${seller.seller_number} (partial update)`);
+                await this.sheetsClient.updateRowPartial(existingRowIndex, sheetRow);
+                console.log(`✅ [SpreadsheetSync] Updated row ${existingRowIndex} for ${seller.seller_number}`);
+                // Supabaseの同期時刻を更新
+                await this.updateSyncTimestamp(seller.id);
+                return {
+                    success: true,
+                    rowsAffected: 1,
+                    operation: 'update',
+                };
+            }
+            else {
+                // 新規行を追加
+                console.log(`➕ [SpreadsheetSync] Adding new row for ${seller.seller_number} (existing row not found after retry)`);
+                await this.sheetsClient.appendRow(sheetRow);
+                console.log(`✅ [SpreadsheetSync] Added new row for ${seller.seller_number}`);
+                // Supabaseの同期時刻を更新
+                await this.updateSyncTimestamp(seller.id);
+                return {
+                    success: true,
+                    rowsAffected: 1,
+                    operation: 'create',
+                };
+            }
+        }
+        catch (error) {
+            console.error(`❌ [SpreadsheetSync] Error in performSync for ${seller.seller_number}:`, error.message);
+            throw error;
+        }
+    }
+    /**
+     * 既存行を検索（リトライロジック付き）
+     * 最大3回まで再試行し、100ms遅延を挟む
+     */
+    async findRowBySellerIdWithRetry(sellerNumber, maxRetries = 3) {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                console.log(`🔍 [SpreadsheetSync] Searching for seller ${sellerNumber} (attempt ${attempt}/${maxRetries})...`);
+                const rowIndex = await this.sheetsClient.findRowByColumn(this.sellerNumberColumn, sellerNumber);
+                if (rowIndex) {
+                    console.log(`✅ [SpreadsheetSync] Found existing row ${rowIndex} for ${sellerNumber} (attempt ${attempt})`);
+                    return rowIndex;
+                }
+                else {
+                    console.log(`❌ [SpreadsheetSync] Row not found for ${sellerNumber} (attempt ${attempt})`);
+                    // 最後の試行でない場合は遅延を挟む
+                    if (attempt < maxRetries) {
+                        console.log(`⏳ [SpreadsheetSync] Waiting 100ms before retry...`);
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                }
+            }
+            catch (error) {
+                console.error(`❌ [SpreadsheetSync] Error finding seller ${sellerNumber} (attempt ${attempt}):`, error.message);
+                // 最後の試行でない場合は遅延を挟む
+                if (attempt < maxRetries) {
+                    console.log(`⏳ [SpreadsheetSync] Waiting 100ms before retry...`);
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+        }
+        console.log(`❌ [SpreadsheetSync] Failed to find row for ${sellerNumber} after ${maxRetries} attempts`);
+        return null;
+    }
+    /**
+     * 複数の売主レコードをバッチでスプレッドシートに同期
+     */
+    async syncBatchToSpreadsheet(sellerIds) {
+        const errors = [];
+        let successCount = 0;
+        let failureCount = 0;
+        try {
+            // Supabaseから売主データを一括取得
+            const { data: sellers, error } = await this.supabase
+                .from('sellers')
+                .select('*')
+                .in('id', sellerIds);
+            if (error || !sellers) {
+                return {
+                    success: false,
+                    totalRows: sellerIds.length,
+                    successCount: 0,
+                    failureCount: sellerIds.length,
+                    errors: [{ sellerId: 'all', error: error?.message || 'Failed to fetch sellers' }],
+                };
+            }
+            // バッチ更新用のデータを準備
+            const updates = [];
+            const newRows = [];
+            const syncedSellerIds = [];
+            for (const seller of sellers) {
+                try {
+                    // 暗号化フィールドを復号
+                    const decryptedSeller = this.decryptSellerFields(seller);
+                    // 査定担当をイニシャルに変換
+                    if (decryptedSeller.valuation_assignee) {
+                        decryptedSeller.valuation_assignee = this.convertToInitials(decryptedSeller.valuation_assignee);
+                    }
+                    // スプレッドシート形式に変換
+                    const sheetRow = this.columnMapper.mapToSheet(decryptedSeller);
+                    // 売主番号で既存行を検索（リトライロジック付き）
+                    const existingRowIndex = await this.findRowBySellerIdWithRetry(seller.seller_number);
+                    if (existingRowIndex) {
+                        updates.push({ rowIndex: existingRowIndex, values: sheetRow });
+                    }
+                    else {
+                        newRows.push(sheetRow);
+                    }
+                    syncedSellerIds.push(seller.id);
+                    successCount++;
+                }
+                catch (error) {
+                    errors.push({ sellerId: seller.id, error: error.message });
+                    failureCount++;
+                }
+            }
+            // バッチ更新を実行（部分更新: 指定カラムのみ更新し、計算列などは変更しない）
+            if (updates.length > 0) {
+                for (const update of updates) {
+                    await this.sheetsClient.updateRowPartial(update.rowIndex, update.values);
+                }
+            }
+            // 新規行を追加
+            for (const row of newRows) {
+                await this.sheetsClient.appendRow(row);
+            }
+            // Supabaseの同期時刻を一括更新
+            if (syncedSellerIds.length > 0) {
+                await this.batchUpdateSyncTimestamp(syncedSellerIds);
+            }
+            return {
+                success: failureCount === 0,
+                totalRows: sellerIds.length,
+                successCount,
+                failureCount,
+                errors,
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                totalRows: sellerIds.length,
+                successCount,
+                failureCount: sellerIds.length - successCount,
+                errors: [...errors, { sellerId: 'batch', error: error.message }],
+            };
+        }
+    }
+    /**
+     * 売主の暗号化フィールドを復号する
+     * email は null の場合があるため null-safe に処理する
+     */
+    decryptSellerFields(seller) {
+        // address は暗号化対象外だが、過去に誤って暗号化されたデータが存在する可能性があるため
+        // try-catch で復号を試み、失敗した場合（平文の場合）はそのまま返す
+        const safeDecryptAddress = (value) => {
+            if (!value)
+                return value;
+            try {
+                return (0, encryption_1.decrypt)(value);
+            }
+            catch {
+                return value; // 平文の場合はそのまま返す
+            }
+        };
+        return {
+            ...seller,
+            name: (0, encryption_1.decrypt)(seller.name || ''),
+            phone_number: (0, encryption_1.decrypt)(seller.phone_number || ''),
+            email: seller.email ? (0, encryption_1.decrypt)(seller.email) : seller.email,
+            address: safeDecryptAddress(seller.address),
+        };
+    }
+    /**
+     * フルネームをイニシャルに変換
+     * @param fullName フルネーム（例: "山田太郎", "Yamada Taro"）
+     * @returns イニシャル（例: "Y"）
+     */
+    convertToInitials(fullName) {
+        if (!fullName || fullName.trim() === '') {
+            return '';
+        }
+        const trimmed = fullName.trim();
+        // スペースで分割（姓と名を分離）
+        const parts = trimmed.split(/\s+/);
+        if (parts.length === 0) {
+            return '';
+        }
+        // 姓（最初の部分）を取得
+        const surname = parts[0];
+        // 日本語（漢字・ひらがな・カタカナ）の場合
+        if (/^[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(surname)) {
+            // 姓の最初の1文字をローマ字に変換
+            const firstChar = surname.charAt(0);
+            return this.convertKanaToRomaji(firstChar).toUpperCase();
+        }
+        // 英語（アルファベット）の場合
+        if (/^[A-Za-z]/.test(surname)) {
+            // 姓の最初の1文字を大文字にして返す
+            return surname.charAt(0).toUpperCase();
+        }
+        // その他の場合は最初の1文字をそのまま返す
+        return surname.charAt(0);
+    }
+    /**
+     * 日本語の文字をローマ字に変換（簡易版）
+     * @param char 日本語の文字
+     * @returns ローマ字
+     */
+    convertKanaToRomaji(char) {
+        const kanaToRomaji = {
+            // ひらがな
+            'あ': 'A', 'い': 'I', 'う': 'U', 'え': 'E', 'お': 'O',
+            'か': 'K', 'き': 'K', 'く': 'K', 'け': 'K', 'こ': 'K',
+            'さ': 'S', 'し': 'S', 'す': 'S', 'せ': 'S', 'そ': 'S',
+            'た': 'T', 'ち': 'T', 'つ': 'T', 'て': 'T', 'と': 'T',
+            'な': 'N', 'に': 'N', 'ぬ': 'N', 'ね': 'N', 'の': 'N',
+            'は': 'H', 'ひ': 'H', 'ふ': 'H', 'へ': 'H', 'ほ': 'H',
+            'ま': 'M', 'み': 'M', 'む': 'M', 'め': 'M', 'も': 'M',
+            'や': 'Y', 'ゆ': 'Y', 'よ': 'Y',
+            'ら': 'R', 'り': 'R', 'る': 'R', 'れ': 'R', 'ろ': 'R',
+            'わ': 'W', 'を': 'W', 'ん': 'N',
+            // カタカナ
+            'ア': 'A', 'イ': 'I', 'ウ': 'U', 'エ': 'E', 'オ': 'O',
+            'カ': 'K', 'キ': 'K', 'ク': 'K', 'ケ': 'K', 'コ': 'K',
+            'サ': 'S', 'シ': 'S', 'ス': 'S', 'セ': 'S', 'ソ': 'S',
+            'タ': 'T', 'チ': 'T', 'ツ': 'T', 'テ': 'T', 'ト': 'T',
+            'ナ': 'N', 'ニ': 'N', 'ヌ': 'N', 'ネ': 'N', 'ノ': 'N',
+            'ハ': 'H', 'ヒ': 'H', 'フ': 'H', 'ヘ': 'H', 'ホ': 'H',
+            'マ': 'M', 'ミ': 'M', 'ム': 'M', 'メ': 'M', 'モ': 'M',
+            'ヤ': 'Y', 'ユ': 'Y', 'ヨ': 'Y',
+            'ラ': 'R', 'リ': 'R', 'ル': 'R', 'レ': 'R', 'ロ': 'R',
+            'ワ': 'W', 'ヲ': 'W', 'ン': 'N',
+            // 漢字（主要な姓の読み）
+            '山': 'Y', '田': 'T', '佐': 'S', '藤': 'F', '鈴': 'S',
+            '高': 'T', '橋': 'H', '渡': 'W', '伊': 'I', '中': 'N',
+            '小': 'K', '林': 'H', '加': 'K', '木': 'K', '斎': 'S',
+            '松': 'M', '井': 'I', '清': 'K', '森': 'M', '国': 'K',
+        };
+        return kanaToRomaji[char] || char.charAt(0).toUpperCase();
+    }
+    /**
+     * 売主番号でスプレッドシートの行を検索
+     */
+    async findRowBySellerId(sellerNumber) {
+        try {
+            console.log(`🔍 [SpreadsheetSync] Searching for seller ${sellerNumber}...`);
+            const rowIndex = await this.sheetsClient.findRowByColumn(this.sellerNumberColumn, sellerNumber);
+            console.log(`🔍 [SpreadsheetSync] Found at row index: ${rowIndex}`);
+            return rowIndex;
+        }
+        catch (error) {
+            // カラムが見つからない場合はnullを返す
+            console.error(`❌ [SpreadsheetSync] Error finding seller ${sellerNumber}:`, error.message);
+            return null;
+        }
+    }
+    /**
+     * スプレッドシートから売主レコードを削除
+     */
+    async deleteFromSpreadsheet(sellerId) {
+        try {
+            // Supabaseから売主番号を取得
+            const { data: seller, error } = await this.supabase
+                .from('sellers')
+                .select('seller_number')
+                .eq('id', sellerId)
+                .single();
+            if (error || !seller) {
+                return {
+                    success: false,
+                    rowsAffected: 0,
+                    error: `Seller not found: ${sellerId}`,
+                };
+            }
+            // スプレッドシートで行を検索
+            const rowIndex = await this.findRowBySellerId(seller.seller_number);
+            if (!rowIndex) {
+                return {
+                    success: false,
+                    rowsAffected: 0,
+                    error: `Row not found in spreadsheet for seller: ${seller.seller_number}`,
+                };
+            }
+            // 行を削除
+            await this.sheetsClient.deleteRow(rowIndex);
+            return {
+                success: true,
+                rowsAffected: 1,
+                operation: 'delete',
+            };
+        }
+        catch (error) {
+            return {
+                success: false,
+                rowsAffected: 0,
+                error: error.message,
+            };
+        }
+    }
+    /**
+     * Supabaseの同期時刻を更新
+     */
+    async updateSyncTimestamp(sellerId) {
+        await this.supabase
+            .from('sellers')
+            .update({ synced_to_sheet_at: new Date().toISOString() })
+            .eq('id', sellerId);
+    }
+    /**
+     * Supabaseの同期時刻を一括更新
+     */
+    async batchUpdateSyncTimestamp(sellerIds) {
+        await this.supabase
+            .from('sellers')
+            .update({ synced_to_sheet_at: new Date().toISOString() })
+            .in('id', sellerIds);
+    }
+    /**
+     * 同期が必要な売主を取得（最終同期時刻が更新時刻より古い）
+     */
+    async getUnsyncedSellers(limit = 100) {
+        const { data: sellers, error } = await this.supabase
+            .from('sellers')
+            .select('id')
+            .or('synced_to_sheet_at.is.null,synced_to_sheet_at.lt.updated_at')
+            .limit(limit);
+        if (error || !sellers) {
+            return [];
+        }
+        return sellers.map(s => s.id);
+    }
+    /**
+     * すべての売主を同期（差分同期）
+     */
+    async syncAllUnsynced() {
+        const unsynced = await this.getUnsyncedSellers(1000);
+        if (unsynced.length === 0) {
+            return {
+                success: true,
+                totalRows: 0,
+                successCount: 0,
+                failureCount: 0,
+                errors: [],
+            };
+        }
+        return await this.syncBatchToSpreadsheet(unsynced);
+    }
+    /**
+     * スプレッドシートから最新データを取得
+     */
+    async fetchLatestData() {
+        try {
+            const rows = await this.sheetsClient.readAll();
+            return rows;
+        }
+        catch (error) {
+            console.error('Failed to fetch latest data from spreadsheet:', error);
+            throw new Error(`Failed to fetch spreadsheet data: ${error.message}`);
+        }
+    }
+    /**
+     * キャッシュデータとスプレッドシートデータを比較して差分を計算
+     */
+    async compareWithCache(cachedData) {
+        try {
+            const latestData = await this.fetchLatestData();
+            // キャッシュデータをMapに変換（高速検索用）
+            const cachedMap = new Map(cachedData.map(seller => [String(seller['売主番号'] || ''), seller]));
+            const latestMap = new Map(latestData.map(seller => [String(seller['売主番号'] || ''), seller]));
+            const added = [];
+            const updated = [];
+            const deleted = [];
+            // 追加・更新されたレコードを検出
+            for (const [sellerNumber, latestSeller] of latestMap) {
+                const cachedSeller = cachedMap.get(sellerNumber);
+                if (!cachedSeller) {
+                    // 新規追加
+                    added.push(latestSeller);
+                }
+                else if (this.hasChanges(cachedSeller, latestSeller)) {
+                    // 更新
+                    updated.push(latestSeller);
+                }
+            }
+            // 削除されたレコードを検出
+            for (const [sellerNumber, cachedSeller] of cachedMap) {
+                if (!latestMap.has(sellerNumber)) {
+                    deleted.push(String(cachedSeller['id'] || sellerNumber));
+                }
+            }
+            return { added, updated, deleted };
+        }
+        catch (error) {
+            console.error('Failed to compare with cache:', error);
+            throw new Error(`Failed to compare data: ${error.message}`);
+        }
+    }
+    /**
+     * 2つの売主データに変更があるかチェック
+     */
+    hasChanges(cached, latest) {
+        // 簡易的な比較（JSON文字列で比較）
+        return JSON.stringify(cached) !== JSON.stringify(latest);
+    }
+    /**
+     * 差分をデータベースに適用
+     */
+    async applyChanges(diff) {
+        const errors = [];
+        let recordsAdded = 0;
+        let recordsUpdated = 0;
+        let recordsDeleted = 0;
+        try {
+            // 追加されたレコードを挿入
+            for (const seller of diff.added) {
+                try {
+                    const { error } = await this.supabase
+                        .from('sellers')
+                        .insert(seller);
+                    if (error)
+                        throw error;
+                    recordsAdded++;
+                }
+                catch (error) {
+                    const sellerNumber = String(seller['売主番号'] || 'unknown');
+                    errors.push({ record: sellerNumber, error: error.message });
+                }
+            }
+            // 更新されたレコードを更新
+            for (const seller of diff.updated) {
+                try {
+                    const { error } = await this.supabase
+                        .from('sellers')
+                        .update(seller)
+                        .eq('seller_number', String(seller['売主番号'] || ''));
+                    if (error)
+                        throw error;
+                    recordsUpdated++;
+                }
+                catch (error) {
+                    const sellerNumber = String(seller['売主番号'] || 'unknown');
+                    errors.push({ record: sellerNumber, error: error.message });
+                }
+            }
+            // 削除されたレコードを削除
+            for (const sellerId of diff.deleted) {
+                try {
+                    const { error } = await this.supabase
+                        .from('sellers')
+                        .delete()
+                        .eq('id', sellerId);
+                    if (error)
+                        throw error;
+                    recordsDeleted++;
+                }
+                catch (error) {
+                    errors.push({ record: sellerId, error: error.message });
+                }
+            }
+            return {
+                success: errors.length === 0,
+                recordsAdded,
+                recordsUpdated,
+                recordsDeleted,
+                errors,
+            };
+        }
+        catch (error) {
+            console.error('Failed to apply changes:', error);
+            throw new Error(`Failed to apply changes: ${error.message}`);
+        }
+    }
+}
+exports.SpreadsheetSyncService = SpreadsheetSyncService;

@@ -1,0 +1,68 @@
+"use strict";
+// 買主番号採番用スプレッドシートクライアント
+// 採番スプレッドシートの指定セルの値+1を次の買主番号として返す
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.BuyerNumberSpreadsheetClient = void 0;
+class BuyerNumberSpreadsheetClient {
+    constructor(sheetsClient, cell) {
+        this.sheetsClient = sheetsClient;
+        this.cell = cell;
+    }
+    /**
+     * 採番スプレッドシートから次の買主番号を取得する
+     * 指定セルの値 + 1 を返す
+     * @throws Error スプレッドシートアクセス失敗時
+     * @throws Error セルの値が空欄の場合
+     * @throws Error セルの値が数値でない場合
+     */
+    async getNextBuyerNumber() {
+        try {
+            // readRange は rowToObject を使うためヘッダーが必要だが、
+            // 連番シートは単一セルのため直接 Sheets API を呼ぶ
+            // GoogleSheetsClient の protected な sheets インスタンスにアクセスできないため、
+            // readRange を利用して値を取得する（ヘッダーなしシートでも最初の値を取得）
+            const rows = await this.sheetsClient.readRawRange(this.cell);
+            const rawValue = rows?.[0]?.[0];
+            if (rawValue === undefined || rawValue === null || rawValue === '') {
+                const msg = `Buyer number cell ${this.cell} is empty`;
+                console.error(`[BuyerNumberSpreadsheetClient] ${msg}`);
+                throw new Error(msg);
+            }
+            const n = parseInt(String(rawValue), 10);
+            if (isNaN(n)) {
+                const msg = `Buyer number cell value is not a valid number: ${rawValue}`;
+                console.error(`[BuyerNumberSpreadsheetClient] ${msg}`);
+                throw new Error(msg);
+            }
+            const next = n + 1;
+            console.log(`[BuyerNumberSpreadsheetClient] rawValue=${JSON.stringify(rawValue)} (type=${typeof rawValue}), n=${n}, next=${next}`);
+            return String(next);
+        }
+        catch (error) {
+            // 自分でスローしたエラーはそのまま再スロー
+            if (error.message?.startsWith('Buyer number cell')) {
+                throw error;
+            }
+            const msg = `Failed to access buyer number spreadsheet: ${error.message}`;
+            console.error(`[BuyerNumberSpreadsheetClient] ${msg}`);
+            throw new Error(msg);
+        }
+    }
+    /**
+     * 採番スプレッドシートの指定セルを新しい買主番号で更新する
+     * @param buyerNumber 採番した買主番号（文字列）
+     * @throws Error スプレッドシートへの書き込み失敗時
+     */
+    async updateBuyerNumber(buyerNumber) {
+        try {
+            await this.sheetsClient.writeRawCell(this.cell, buyerNumber);
+            console.log(`[BuyerNumberSpreadsheetClient] Updated cell ${this.cell} to ${buyerNumber}`);
+        }
+        catch (error) {
+            const msg = `Failed to update buyer number cell ${this.cell}: ${error.message}`;
+            console.error(`[BuyerNumberSpreadsheetClient] ${msg}`);
+            throw new Error(msg);
+        }
+    }
+}
+exports.BuyerNumberSpreadsheetClient = BuyerNumberSpreadsheetClient;

@@ -41,6 +41,7 @@ export default function SharedItemsPage() {
   const sharedItemsColor = SECTION_COLORS.sharedItems;
   const [allSharedItems, setAllSharedItems] = useState<SharedItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [searchQuery, setSearchQuery] = useState('');
@@ -67,6 +68,7 @@ export default function SharedItemsPage() {
 
     try {
       setLoading(true);
+      setFetchError(null);
       const response = await api.get('/api/shared-items', {
         params: {
           limit: 1000,
@@ -74,13 +76,15 @@ export default function SharedItemsPage() {
           orderBy: 'created_at',
           orderDirection: 'desc',
         },
+        timeout: 30000, // 30秒タイムアウト（Vercelコールドスタート対策）
       });
       const data = response.data.data || [];
       // キャッシュに保存（3分間有効）
       pageDataCache.set(CACHE_KEYS.SHARED_ITEMS, data);
       setAllSharedItems(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch shared items:', error);
+      setFetchError('共有データの取得に失敗しました。再読み込みしてください。');
     } finally {
       setLoading(false);
     }
@@ -420,6 +424,15 @@ export default function SharedItemsPage() {
                 <TableRow>
                   <TableCell colSpan={12} align="center">
                     読み込み中...
+                  </TableCell>
+                </TableRow>
+              ) : fetchError ? (
+                <TableRow>
+                  <TableCell colSpan={12} align="center">
+                    <Typography color="error" variant="body2" sx={{ mb: 1 }}>{fetchError}</Typography>
+                    <Button size="small" variant="outlined" onClick={() => fetchAllSharedItems(true)}>
+                      再読み込み
+                    </Button>
                   </TableCell>
                 </TableRow>
               ) : paginatedItems.length === 0 ? (

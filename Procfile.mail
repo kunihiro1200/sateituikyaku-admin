@@ -1,0 +1,1 @@
+web: python mail_notify_server.py

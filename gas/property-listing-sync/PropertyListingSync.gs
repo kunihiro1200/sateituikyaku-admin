@@ -356,6 +356,14 @@ function mapRowToRecord(headers, row) {
     }
   }
 
+  // ⚠️ 重要: 報告画面から手動で設定されるフィールドはGAS同期から除外する
+  // スプレッドシートの「報告日」「報告完了」「報告担当」列が空欄の場合、
+  // 管理画面で設定した正しい値がnullで上書きされてしまうため。
+  // これらはすべてDB（管理画面）側が正であり、スプレッドシートからの上書きは不要。
+  delete record.report_date;
+  delete record.report_completed;
+  delete record.report_assignee;
+
   return record;
 }
 

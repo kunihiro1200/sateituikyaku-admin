@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="130" viewBox="0 0 1000 130">
+  <!-- 背景：明るいブルー（元画像の黄色に対応） -->
+  <rect width="1000" height="130" fill="#1BAADB" rx="6"/>
+
+  <!-- 左側：家アイコンエリア（少し濃いブルー） -->
+  <rect x="0" y="0" width="148" height="130" fill="#158BBF" rx="6"/>
+  <rect x="140" y="0" width="8" height="130" fill="#158BBF"/>
+
+  <!-- 家のシルエット（白） -->
+  <!-- 外枠屋根 -->
+  <polygon points="74,12 16,62 132,62" fill="white"/>
+  <!-- 内側屋根（背景色で抜く） -->
+  <polygon points="74,22 24,64 124,64" fill="#158BBF"/>
+  <!-- 家本体 -->
+  <rect x="24" y="62" width="100" height="50" fill="white"/>
+  <!-- 窓左 -->
+  <rect x="30" y="70" width="26" height="22" fill="#158BBF"/>
+  <!-- 窓右 -->
+  <rect x="92" y="70" width="26" height="22" fill="#158BBF"/>
+  <!-- ドア中央 -->
+  <rect x="61" y="78" width="28" height="34" fill="#158BBF"/>
+
+  <!-- comfortable TENANT SEARCH テキスト（元画像の小文字） -->
+  <text x="74" y="122"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9"
+        fill="white"
+        text-anchor="middle"
+        opacity="0.85"
+        letter-spacing="0.5">comfortable TENANT SEARCH</text>
+
+  <!-- メインテキスト -->
+  <text x="580" y="75"
+        font-family="'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', 'Yu Gothic', sans-serif"
+        font-size="52"
+        font-weight="900"
+        fill="white"
+        text-anchor="middle"
+        dominant-baseline="middle"
+        letter-spacing="2">㈱いふう　（株式会社くじら不動産）</text>
+</svg>

@@ -92,6 +92,9 @@ export function useNewItemBadges(currentPath: string) {
   return { counts, markAsViewed, refetch: fetchCounts };
 }
 
+// deleted_at カラムを持つテーブル（sellers, buyers のみ）
+const TABLES_WITH_DELETED_AT = new Set(['sellers', 'buyers']);
+
 // テーブルから新規件数を取得
 async function getNewCount(tableName: string, pageKey: string): Promise<number> {
   const lastViewed = getLastViewed(pageKey);
@@ -99,11 +102,17 @@ async function getNewCount(tableName: string, pageKey: string): Promise<number> 
   // 初回（まだ一度も閲覧していない場合）は過去24時間の新規をカウント
   const since = lastViewed || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const { count, error } = await supabase
+  let query = supabase
     .from(tableName)
     .select('*', { count: 'exact', head: true })
-    .gt('created_at', since)
-    .is('deleted_at', null);
+    .gt('created_at', since);
+
+  // deleted_at カラムが存在するテーブルのみフィルターを追加
+  if (TABLES_WITH_DELETED_AT.has(tableName)) {
+    query = query.is('deleted_at', null);
+  }
+
+  const { count, error } = await query;
 
   if (error) {
     console.error(`[useNewItemBadges] ${tableName} カウントエラー:`, error.message);

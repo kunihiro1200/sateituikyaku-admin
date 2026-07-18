@@ -1,0 +1,1039 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.GoogleDriveService = void 0;
+const googleapis_1 = require("googleapis");
+const BaseRepository_1 = require("../repositories/BaseRepository");
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
+class GoogleDriveService extends BaseRepository_1.BaseRepository {
+    constructor() {
+        super();
+        this.serviceAccountAuth = null;
+        this.parentFolderId = process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID || '';
+        this.sharedDriveId = process.env.GOOGLE_SHARED_DRIVE_ID || '';
+        if (!this.parentFolderId) {
+            console.warn('⚠️ GOOGLE_DRIVE_PARENT_FOLDER_ID is not configured');
+        }
+        if (!this.sharedDriveId) {
+            console.warn('⚠️ GOOGLE_SHARED_DRIVE_ID is not configured');
+        }
+        this.initializeServiceAccount();
+    }
+    /**
+     * サービスアカウント認証を初期化
+     * Vercel環境では環境変数から直接読み込み、ローカル環境ではファイルから読み込む
+     */
+    initializeServiceAccount() {
+        try {
+            let keyFile;
+            // 1. 環境変数から直接読み込み（Vercel用）
+            if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+                console.log('📝 Loading service account from GOOGLE_SERVICE_ACCOUNT_JSON environment variable');
+                try {
+                    keyFile = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+                    console.log('✅ Successfully parsed GOOGLE_SERVICE_ACCOUNT_JSON');
+                    console.log('📧 Service account email:', keyFile.client_email);
+                    // ⚠️ 重要：private_keyの\\nを実際の改行に変換
+                    if (keyFile.private_key) {
+                        keyFile.private_key = keyFile.private_key.replace(/\\n/g, '\n');
+                        console.log('✅ Converted \\\\n to actual newlines in private_key');
+                    }
+                }
+                catch (parseError) {
+                    console.error('❌ Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON:', parseError.message);
+                    console.error('First 100 chars:', process.env.GOOGLE_SERVICE_ACCOUNT_JSON.substring(0, 100));
+                    throw new Error(`Invalid JSON in GOOGLE_SERVICE_ACCOUNT_JSON: ${parseError.message}`);
+                }
+            }
+            // 2. ファイルから読み込み（ローカル環境用）
+            else {
+                const keyPath = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json';
+                const absolutePath = path.resolve(__dirname, '../../', keyPath);
+                if (!fs.existsSync(absolutePath)) {
+                    console.warn('⚠️ Service account key file not found:', absolutePath);
+                    console.warn('⚠️ Set GOOGLE_SERVICE_ACCOUNT_JSON environment variable for Vercel deployment');
+                    return;
+                }
+                console.log('📝 Loading service account from file:', absolutePath);
+                keyFile = JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
+            }
+            this.serviceAccountAuth = new googleapis_1.google.auth.GoogleAuth({
+                credentials: keyFile,
+                scopes: ['https://www.googleapis.com/auth/drive'],
+            });
+            console.log('✅ Google Drive Service Account initialized');
+        }
+        catch (error) {
+            console.error('❌ Failed to initialize service account:', error.message);
+            console.error('Error stack:', error.stack);
+        }
+    }
+    /**
+     * 認証済みDriveクライアントを取得（サービスアカウント使用）
+     */
+    async getDriveClient() {
+        if (!this.serviceAccountAuth) {
+            throw new Error('Google Drive service account is not configured');
+        }
+        const auth = await this.serviceAccountAuth.getClient();
+        return googleapis_1.google.drive({ version: 'v3', auth });
+    }
+    /**
+     * 親フォルダ内でフォルダ名を検索
+     * マイドライブと共有ドライブの両方に対応
+     * 売主番号で前方一致検索（フォルダ名が「売主番号_住所_名前」形式のため）
+     */
+    async findFolderByName(parentId, name, isSharedDrive = true) {
+        try {
+            const drive = await this.getDriveClient();
+            console.log(`🔍 Searching for folder starting with "${name}" in parent: ${parentId} (sharedDriveId: ${this.sharedDriveId})`);
+            // 共有ドライブの場合は corpora: 'drive' + driveId が必須
+            // ただし parentId が共有ドライブのルートID（0Aで始まる）の場合は
+            // 'parentId' in parents クエリが使えないため allDrives で検索
+            const isSharedDriveRoot = parentId.startsWith('0A');
+            let queryParams;
+            if (this.sharedDriveId && isSharedDriveRoot) {
+                // 共有ドライブのルート直下を検索
+                queryParams = {
+                    q: `name contains '${name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+                    fields: 'files(id, name)',
+                    supportsAllDrives: true,
+                    includeItemsFromAllDrives: true,
+                    corpora: 'drive',
+                    driveId: this.sharedDriveId,
+                };
+            }
+            else if (this.sharedDriveId) {
+                // 共有ドライブ内の特定フォルダ配下を検索
+                queryParams = {
+                    q: `'${parentId}' in parents and name contains '${name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+                    fields: 'files(id, name)',
+                    supportsAllDrives: true,
+                    includeItemsFromAllDrives: true,
+                    corpora: 'drive',
+                    driveId: this.sharedDriveId,
+                };
+            }
+            else {
+                // マイドライブの場合
+                queryParams = {
+                    q: `'${parentId}' in parents and name contains '${name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+                    fields: 'files(id, name)',
+                    corpora: 'user',
+                };
+            }
+            console.log(`🔍 Query params:`, JSON.stringify(queryParams));
+            const response = await drive.files.list(queryParams);
+            const files = response.data.files;
+            console.log(`🔍 Found ${files?.length || 0} folders matching "${name}"`);
+            if (files && files.length > 0) {
+                // 売主番号で始まるフォルダを探す（前方一致）
+                const matchingFolder = files.find(f => f.name?.startsWith(name));
+                if (matchingFolder) {
+                    console.log(`✅ Found folder: ${matchingFolder.name} (${matchingFolder.id})`);
+                    return matchingFolder.id || null;
+                }
+            }
+            console.log(`📁 Folder starting with "${name}" not found`);
+            return null;
+        }
+        catch (error) {
+            console.error('Error finding folder:', error.message);
+            throw error;
+        }
+    }
+    /**
+     * 親フォルダ内のすべてのサブフォルダを取得
+     * @param parentId 親フォルダID
+     * @returns サブフォルダの配列（id, name）
+     */
+    async listSubfolders(parentId) {
+        try {
+            const drive = await this.getDriveClient();
+            const response = await drive.files.list({
+                q: `'${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+                fields: 'files(id, name)',
+                orderBy: 'name',
+                pageSize: 50,
+                supportsAllDrives: true,
+                includeItemsFromAllDrives: true,
+                corpora: 'allDrives',
+            });
+            const files = response.data.files || [];
+            return files.map(f => ({
+                id: f.id,
+                name: f.name,
+            }));
+        }
+        catch (error) {
+            console.error('Error listing subfolders:', error.message);
+            return [];
+        }
+    }
+    /**
+     * 新規フォルダを作成
+     * 共有ドライブ対応 - parentsに共有ドライブ内のフォルダIDを指定
+     */
+    async createFolder(parentId, name) {
+        try {
+            const drive = await this.getDriveClient();
+            console.log(`📁 Creating folder "${name}" in parent: ${parentId} (sharedDriveId: ${this.sharedDriveId})`);
+            // 共有ドライブにフォルダを作成
+            // supportsAllDrives: true のみ指定（driveId は files.create では不要）
+            const response = await drive.files.create({
+                requestBody: {
+                    name: name,
+                    mimeType: 'application/vnd.google-apps.folder',
+                    parents: [parentId],
+                },
+                fields: 'id, name',
+                supportsAllDrives: true,
+            });
+            if (!response.data.id) {
+                throw new Error('Failed to create folder: No ID returned');
+            }
+            console.log(`✅ Folder created: ${response.data.name} (${response.data.id})`);
+            return response.data.id;
+        }
+        catch (error) {
+            console.error('❌ Error creating folder:', error.message);
+            if (error.response?.data) {
+                console.error('API Error details:', JSON.stringify(error.response.data, null, 2));
+            }
+            throw error;
+        }
+    }
+    /**
+     * フォルダ名を生成: 売主番号_物件住所_依頼者名
+     */
+    generateFolderName(sellerNumber, propertyAddress, sellerName) {
+        const parts = [sellerNumber];
+        if (propertyAddress) {
+            // 住所からフォルダ名に使えない文字を除去
+            const cleanAddress = propertyAddress.replace(/[\\/:*?"<>|]/g, '').trim();
+            if (cleanAddress)
+                parts.push(cleanAddress);
+        }
+        if (sellerName) {
+            // 名前からフォルダ名に使えない文字を除去
+            const cleanName = sellerName.replace(/[\\/:*?"<>|]/g, '').trim();
+            if (cleanName)
+                parts.push(cleanName);
+        }
+        return parts.join('_');
+    }
+    /**
+     * フォルダ名を更新
+     * 共有ドライブ対応
+     */
+    async updateFolderName(folderId, newName) {
+        try {
+            const drive = await this.getDriveClient();
+            console.log(`📝 Updating folder name to "${newName}" for folder: ${folderId}`);
+            await drive.files.update({
+                fileId: folderId,
+                requestBody: {
+                    name: newName,
+                },
+                supportsAllDrives: true,
+            });
+            console.log(`✅ Folder name updated to: ${newName}`);
+        }
+        catch (error) {
+            console.error('❌ Error updating folder name:', error.message);
+            // フォルダ名の更新に失敗しても処理は続行
+        }
+    }
+    /**
+     * フォルダの現在の名前を取得
+     */
+    async getFolderName(folderId) {
+        try {
+            const drive = await this.getDriveClient();
+            const response = await drive.files.get({
+                fileId: folderId,
+                fields: 'name',
+                supportsAllDrives: true,
+            });
+            return response.data.name || null;
+        }
+        catch (error) {
+            console.error('Error getting folder name:', error.message);
+            return null;
+        }
+    }
+    /**
+     * 売主フォルダを取得または作成
+     * 既存フォルダの名前が文字化けしている場合は更新
+     */
+    async getOrCreateSellerFolder(sellerId, sellerNumber, propertyAddress, sellerName) {
+        if (!this.parentFolderId) {
+            throw new Error('GOOGLE_DRIVE_PARENT_FOLDER_ID is not configured');
+        }
+        // フォルダ名を生成
+        const folderName = this.generateFolderName(sellerNumber, propertyAddress, sellerName);
+        // まずDBから既存のフォルダIDを確認
+        const { data: existingFolder } = await this.table('seller_drive_folders')
+            .select('drive_folder_id')
+            .eq('seller_number', sellerNumber)
+            .single();
+        let folderId;
+        let shouldUpdateName = false;
+        if (existingFolder?.drive_folder_id) {
+            // DBにフォルダIDがある場合はそれを使用
+            folderId = existingFolder.drive_folder_id;
+            shouldUpdateName = true; // 既存フォルダの名前を確認・更新
+        }
+        else {
+            // Google Driveで既存フォルダを検索（売主番号で前方一致検索）
+            const existingDriveFolderId = await this.findFolderByName(this.parentFolderId, sellerNumber);
+            if (existingDriveFolderId) {
+                folderId = existingDriveFolderId;
+                shouldUpdateName = true; // 既存フォルダの名前を確認・更新
+            }
+            else {
+                // フォルダが存在しない場合は新規作成（フルネームで作成）
+                folderId = await this.createFolder(this.parentFolderId, folderName);
+            }
+            // DBに保存
+            await this.table('seller_drive_folders').upsert({
+                seller_id: sellerId,
+                seller_number: sellerNumber,
+                drive_folder_id: folderId,
+                updated_at: new Date().toISOString(),
+            }, {
+                onConflict: 'seller_number',
+            });
+        }
+        // 既存フォルダの名前が正しいか確認し、必要なら更新
+        if (shouldUpdateName && sellerName) {
+            const currentName = await this.getFolderName(folderId);
+            if (currentName && currentName !== folderName) {
+                // 現在の名前が期待する名前と異なる場合（文字化けしている可能性）
+                console.log(`📝 Folder name mismatch: "${currentName}" vs expected "${folderName}"`);
+                await this.updateFolderName(folderId, folderName);
+            }
+        }
+        // ファイル一覧を取得
+        const files = await this.listFiles(folderId);
+        return {
+            folderId,
+            folderUrl: this.getFolderUrl(folderId),
+            files,
+        };
+    }
+    /**
+     * フォルダ内のファイル一覧を取得
+     * 共有ドライブ対応 - corpora: 'drive'とdriveIdを指定
+     */
+    async listFiles(folderId) {
+        try {
+            const drive = await this.getDriveClient();
+            const queryParams = {
+                q: `'${folderId}' in parents and trashed = false`,
+                fields: 'files(id, name, mimeType, size, modifiedTime, webViewLink, webContentLink)',
+                orderBy: 'modifiedTime desc',
+                supportsAllDrives: true,
+                includeItemsFromAllDrives: true,
+            };
+            // 共有ドライブIDが設定されている場合のみ corpora: 'drive' を使用
+            if (this.sharedDriveId) {
+                queryParams.corpora = 'drive';
+                queryParams.driveId = this.sharedDriveId;
+            }
+            else {
+                queryParams.corpora = 'user';
+            }
+            const response = await drive.files.list(queryParams);
+            const files = response.data.files || [];
+            return files.map(file => ({
+                id: file.id || '',
+                name: file.name || '',
+                mimeType: file.mimeType || '',
+                size: parseInt(file.size || '0', 10),
+                modifiedTime: file.modifiedTime || '',
+                webViewLink: file.webViewLink || this.getPreviewUrl(file.id || ''),
+                webContentLink: file.webContentLink || this.getDownloadUrl(file.id || ''),
+            }));
+        }
+        catch (error) {
+            console.error('Error listing files:', error.message);
+            throw error;
+        }
+    }
+    /**
+     * ファイルをアップロード
+     * 共有ドライブ対応
+     */
+    async uploadFile(folderId, fileBuffer, fileName, mimeType) {
+        try {
+            const drive = await this.getDriveClient();
+            console.log(`📤 Uploading file "${fileName}" to folder: ${folderId}`);
+            const { Readable } = require('stream');
+            const stream = new Readable();
+            stream.push(fileBuffer);
+            stream.push(null);
+            const response = await drive.files.create({
+                requestBody: {
+                    name: fileName,
+                    parents: [folderId],
+                },
+                media: {
+                    mimeType: mimeType,
+                    body: stream,
+                },
+                fields: 'id, name, mimeType, size, modifiedTime, webViewLink, webContentLink',
+                supportsAllDrives: true,
+            });
+            const file = response.data;
+            console.log(`✅ File uploaded: ${file.name} (${file.id})`);
+            return {
+                id: file.id || '',
+                name: file.name || '',
+                mimeType: file.mimeType || '',
+                size: parseInt(file.size || '0', 10),
+                modifiedTime: file.modifiedTime || new Date().toISOString(),
+                webViewLink: file.webViewLink || this.getPreviewUrl(file.id || ''),
+                webContentLink: file.webContentLink || this.getDownloadUrl(file.id || ''),
+            };
+        }
+        catch (error) {
+            console.error('❌ Error uploading file:', error.message);
+            if (error.response?.data) {
+                console.error('API Error details:', JSON.stringify(error.response.data, null, 2));
+            }
+            throw error;
+        }
+    }
+    /**
+     * ファイルを削除
+     * 共有ドライブでは完全削除（files.delete）を使用
+     * trashed: true はコンテンツ管理者以上の権限が必要なため
+     */
+    async deleteFile(fileId) {
+        const drive = await this.getDriveClient();
+        try {
+            console.log(`🗑️ Deleting file: ${fileId}`);
+            // 完全削除を試行
+            // 共有ドライブでは supportsAllDrives: true が必須
+            await drive.files.delete({
+                fileId,
+                supportsAllDrives: true,
+            });
+            console.log(`✅ File deleted: ${fileId}`);
+        }
+        catch (error) {
+            console.error('❌ Error deleting file:', error.message);
+            if (error.response?.data) {
+                console.error('API Error details:', JSON.stringify(error.response.data, null, 2));
+            }
+            // 完全削除が失敗した場合、ゴミ箱移動を試行
+            if (error.code === 403 || error.code === 404) {
+                console.log('🔄 Trying to move to trash instead...');
+                try {
+                    await drive.files.update({
+                        fileId,
+                        requestBody: {
+                            trashed: true,
+                        },
+                        supportsAllDrives: true,
+                    });
+                    console.log(`✅ File moved to trash: ${fileId}`);
+                    return;
+                }
+                catch (trashError) {
+                    console.error('❌ Error moving file to trash:', trashError.message);
+                }
+            }
+            // 権限エラーの場合、より分かりやすいエラーメッセージを生成
+            if (error.code === 403 || error.message?.includes('insufficient permissions') ||
+                error.message?.includes('does not have sufficient permissions')) {
+                const permissionError = new Error('このファイルを削除する権限がありません。フォルダの所有者にサービスアカウントへの編集権限の付与を依頼してください。');
+                permissionError.code = 403;
+                permissionError.originalError = error;
+                throw permissionError;
+            }
+            throw error;
+        }
+    }
+    /**
+     * プレビューURLを生成
+     */
+    getPreviewUrl(fileId) {
+        return `https://drive.google.com/file/d/${fileId}/view`;
+    }
+    /**
+     * ダウンロードURLを生成
+     */
+    getDownloadUrl(fileId) {
+        return `https://drive.google.com/uc?export=download&id=${fileId}`;
+    }
+    /**
+     * フォルダURLを生成
+     */
+    getFolderUrl(folderId) {
+        return `https://drive.google.com/drive/folders/${folderId}`;
+    }
+    /**
+     * 画像ファイルのみを取得
+     * @param folderId フォルダID
+     * @returns 画像ファイル一覧
+     */
+    async listImageFiles(folderId) {
+        const allFiles = await this.listFiles(folderId);
+        // 画像ファイル形式のみをフィルタリング
+        const imageMimeTypes = [
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/gif'
+        ];
+        return allFiles.filter(file => imageMimeTypes.includes(file.mimeType.toLowerCase()));
+    }
+    /**
+     * サムネイル付き画像一覧を取得
+     * @param folderId フォルダID
+     * @returns サムネイル付き画像ファイル一覧
+     */
+    async listImagesWithThumbnails(folderId) {
+        try {
+            const drive = await this.getDriveClient();
+            // 共有ドライブを使用している場合は corpora: 'drive' と driveId を指定
+            // sharedDriveIdが設定されている場合のみ共有ドライブとして扱う
+            const isSharedDrive = !!this.sharedDriveId;
+            const queryParams = {
+                q: `'${folderId}' in parents and trashed = false and (mimeType contains 'image/')`,
+                fields: 'files(id, name, mimeType, size, modifiedTime, webViewLink, webContentLink, thumbnailLink)',
+                orderBy: 'modifiedTime desc',
+                supportsAllDrives: true,
+                includeItemsFromAllDrives: true,
+            };
+            if (isSharedDrive) {
+                queryParams.corpora = 'drive';
+                queryParams.driveId = this.sharedDriveId;
+            }
+            else {
+                queryParams.corpora = 'user';
+            }
+            const response = await drive.files.list(queryParams);
+            const files = response.data.files || [];
+            return files.map(file => ({
+                id: file.id || '',
+                name: file.name || '',
+                mimeType: file.mimeType || '',
+                size: parseInt(file.size || '0', 10),
+                modifiedTime: file.modifiedTime || '',
+                webViewLink: file.webViewLink || this.getPreviewUrl(file.id || ''),
+                webContentLink: file.webContentLink || this.getDownloadUrl(file.id || ''),
+                thumbnailLink: file.thumbnailLink || undefined,
+            }));
+        }
+        catch (error) {
+            console.error('❌ [GoogleDriveService] Error listing images with thumbnails:', error.message);
+            console.error('❌ [GoogleDriveService] Error details:', {
+                folderId,
+                isSharedDrive: !!this.parentFolderId,
+                parentFolderId: this.parentFolderId,
+                errorCode: error.code,
+                errorStatus: error.status,
+                errorMessage: error.message,
+                errorResponse: error.response?.data,
+                errorErrors: error.errors,
+            });
+            console.error('❌ [GoogleDriveService] Full error object:', JSON.stringify(error, null, 2));
+            throw error;
+        }
+    }
+    /**
+     * 画像データを取得
+     * @param fileId ファイルID
+     * @returns 画像データ（Buffer、mimeType、サイズ）
+     */
+    async getImageData(fileId) {
+        try {
+            const drive = await this.getDriveClient();
+            // ファイルメタデータを取得
+            const metadata = await drive.files.get({
+                fileId,
+                fields: 'mimeType, size',
+                supportsAllDrives: true,
+            });
+            // ファイルデータを取得
+            const response = await drive.files.get({
+                fileId,
+                alt: 'media',
+                supportsAllDrives: true,
+            }, {
+                responseType: 'arraybuffer',
+            });
+            const buffer = Buffer.from(response.data);
+            const mimeType = metadata.data.mimeType || 'image/jpeg';
+            const size = parseInt(metadata.data.size || '0', 10);
+            return {
+                buffer,
+                mimeType,
+                size
+            };
+        }
+        catch (error) {
+            console.error('Error getting image data:', error.message);
+            throw error;
+        }
+    }
+    /**
+     * ファイルを取得（プレビュー用）
+     * @param fileId ファイルID
+     * @returns ファイルデータとメタデータ
+     */
+    async getFile(fileId) {
+        try {
+            const imageData = await this.getImageData(fileId);
+            return {
+                data: imageData.buffer,
+                mimeType: imageData.mimeType
+            };
+        }
+        catch (error) {
+            console.error('Error getting file:', error.message);
+            return null;
+        }
+    }
+    /**
+     * フォルダの内容を取得（フォルダとファイルの一覧）
+     * @param folderId フォルダID（nullの場合はルートフォルダ）
+     */
+    async listFolderContents(folderId) {
+        try {
+            const drive = await this.getDriveClient();
+            // フォルダIDが指定されていない場合は親フォルダを使用
+            const targetFolderId = folderId || this.parentFolderId;
+            console.log(`📂 Listing contents of folder:`, {
+                folderId,
+                targetFolderId,
+                parentFolderId: this.parentFolderId,
+                isSharedDrive: true,
+            });
+            // フォルダとファイルを取得（共有ドライブ対応）
+            const response = await drive.files.list({
+                q: `'${targetFolderId}' in parents and trashed = false`,
+                fields: 'files(id, name, mimeType, size, modifiedTime, webViewLink, thumbnailLink)',
+                orderBy: 'folder,name',
+                pageSize: 100,
+                // 共有ドライブサポートのための必須パラメータ
+                supportsAllDrives: true,
+                includeItemsFromAllDrives: true,
+                corpora: 'drive',
+                driveId: this.sharedDriveId, // 共有ドライブID
+            });
+            const files = response.data.files || [];
+            console.log(`✅ Found ${files.length} items in folder`);
+            console.log('📋 Files:', files.map(f => ({
+                id: f.id,
+                name: f.name,
+                type: f.mimeType,
+                isFolder: f.mimeType === 'application/vnd.google-apps.folder'
+            })));
+            // ファイルを整形
+            const formattedFiles = files.map(file => ({
+                id: file.id,
+                name: file.name,
+                mimeType: file.mimeType,
+                size: parseInt(file.size || '0'),
+                modifiedTime: file.modifiedTime,
+                webViewLink: file.webViewLink || '',
+                thumbnailLink: file.thumbnailLink || undefined,
+                isFolder: file.mimeType === 'application/vnd.google-apps.folder',
+            }));
+            // フォルダパスを取得
+            const path = folderId ? await this.getFolderPath(folderId) : [];
+            return {
+                files: formattedFiles,
+                path,
+            };
+        }
+        catch (error) {
+            console.error('❌ Error listing folder contents:', {
+                message: error.message,
+                code: error.code,
+                errors: error.errors,
+                response: error.response?.data,
+                folderId,
+                targetFolderId: folderId || this.parentFolderId,
+            });
+            throw new Error(`フォルダ内容の取得に失敗しました: ${error.message}`);
+        }
+    }
+    /**
+     * フォルダのパスを取得（ルートからのパンくずリスト）
+     * @param folderId フォルダID
+     */
+    async getFolderPath(folderId) {
+        try {
+            const drive = await this.getDriveClient();
+            const path = [];
+            let currentId = folderId;
+            // ルートフォルダに到達するまで親をたどる
+            while (currentId && currentId !== this.parentFolderId) {
+                const response = await drive.files.get({
+                    fileId: currentId,
+                    fields: 'id, name, parents',
+                    supportsAllDrives: true,
+                });
+                const file = response.data;
+                path.unshift({
+                    id: file.id,
+                    name: file.name,
+                });
+                // 親フォルダに移動
+                if (file.parents && file.parents.length > 0) {
+                    currentId = file.parents[0];
+                }
+                else {
+                    break;
+                }
+            }
+            return path;
+        }
+        catch (error) {
+            console.error('Error getting folder path:', error.message);
+            return [];
+        }
+    }
+    /**
+     * ファイルのメタデータを取得
+     * @param fileId ファイルID
+     */
+    async getFileMetadata(fileId) {
+        try {
+            const drive = await this.getDriveClient();
+            const response = await drive.files.get({
+                fileId,
+                fields: 'id, name, mimeType, size, modifiedTime, webViewLink, webContentLink, thumbnailLink',
+                supportsAllDrives: true,
+            });
+            const file = response.data;
+            return {
+                id: file.id,
+                name: file.name,
+                mimeType: file.mimeType,
+                size: parseInt(file.size || '0'),
+                modifiedTime: file.modifiedTime,
+                webViewLink: file.webViewLink || '',
+                webContentLink: file.webContentLink || '',
+                thumbnailLink: file.thumbnailLink || undefined,
+            };
+        }
+        catch (error) {
+            console.error('Error getting file metadata:', error.message);
+            return null;
+        }
+    }
+    /**
+     * ルートレベルで物件番号のフォルダを検索
+     * まずマイドライブを検索し、見つからなければ共有ドライブも検索する
+     *
+     * フォルダ名のパターン:
+     * - AA13069_xxx (物件番号で始まる)
+     * - U_AA13069_xxx (プレフィックス付き)
+     * - その他の形式で物件番号を含む
+     *
+     * ⚠️ 全角・半角の違いに対応（CC6とCC６など）
+     *
+     * @param folderName 検索するフォルダ名（物件番号）
+     * @returns フォルダID、見つからない場合はnull
+     */
+    async searchFolderByName(folderName) {
+        try {
+            const drive = await this.getDriveClient();
+            // 全角・半角を正規化（検索用）
+            const normalizedSearchTerm = this.normalizePropertyNumber(folderName);
+            // 1. まずマイドライブを検索
+            console.log(`🔍 Searching for folder containing "${folderName}" (normalized: "${normalizedSearchTerm}") in My Drive`);
+            const myDriveResponse = await drive.files.list({
+                q: `name contains '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+                fields: 'files(id, name, parents)',
+                corpora: 'user',
+                pageSize: 20,
+            });
+            let files = myDriveResponse.data.files || [];
+            if (files.length > 0) {
+                console.log(`📋 Found ${files.length} folders in My Drive containing "${folderName}":`);
+                files.forEach(f => console.log(`  - ${f.name} (${f.id})`));
+                // フォルダ名を正規化してマッチング
+                const matchingFolder = this.findMatchingFolder(files, normalizedSearchTerm);
+                if (matchingFolder) {
+                    console.log(`✅ Selected folder: ${matchingFolder.name} (${matchingFolder.id})`);
+                    return matchingFolder.id || null;
+                }
+            }
+            else {
+                // 2. マイドライブで見つからなければ共有ドライブも検索
+                console.log(`📁 Not found in My Drive, searching in Shared Drives...`);
+                const sharedDriveResponse = await drive.files.list({
+                    q: `name contains '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+                    fields: 'files(id, name, parents)',
+                    supportsAllDrives: true,
+                    includeItemsFromAllDrives: true,
+                    corpora: 'allDrives',
+                    pageSize: 20,
+                });
+                files = sharedDriveResponse.data.files || [];
+                if (files.length > 0) {
+                    console.log(`📋 Found ${files.length} folders in Shared Drives containing "${folderName}":`);
+                    files.forEach(f => console.log(`  - ${f.name} (${f.id})`));
+                    // フォルダ名を正規化してマッチング
+                    const matchingFolder = this.findMatchingFolder(files, normalizedSearchTerm);
+                    if (matchingFolder) {
+                        console.log(`✅ Selected folder: ${matchingFolder.name} (${matchingFolder.id})`);
+                        return matchingFolder.id || null;
+                    }
+                }
+            }
+            console.log(`❌ Folder containing "${folderName}" not found in My Drive or Shared Drives`);
+            return null;
+        }
+        catch (error) {
+            console.error('Error searching folder:', error.message);
+            throw error;
+        }
+    }
+    /**
+     * 物件番号を正規化（全角→半角、大文字化）
+     * @param propertyNumber 物件番号
+     * @returns 正規化された物件番号
+     */
+    normalizePropertyNumber(propertyNumber) {
+        return propertyNumber
+            .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (char) => {
+            // 全角英数字を半角に変換
+            return String.fromCharCode(char.charCodeAt(0) - 0xFEE0);
+        })
+            .toUpperCase();
+    }
+    /**
+     * フォルダリストから物件番号にマッチするフォルダを検索
+     * 優先順位（完全一致を優先）:
+     * 1. 物件番号_xxx または 物件番号.xxx で始まるフォルダ（例: AA13069_xxx, AA13069.xxx）
+     * 2. プレフィックス_物件番号_xxx で始まるフォルダ（例: U_AA13069_xxx, I_AA13069_xxx）
+     * 3. 物件番号で始まるフォルダ（フォールバック、例: AA13069xxx）
+     * 4. その他、物件番号を含むフォルダ（最も柔軟なマッチング）
+     *
+     * @param files フォルダリスト
+     * @param normalizedSearchTerm 正規化された検索キーワード
+     * @returns マッチしたフォルダ、見つからない場合はundefined
+     */
+    findMatchingFolder(files, normalizedSearchTerm) {
+        // 1. 完全一致を優先: 物件番号_xxx または 物件番号.xxx で始まるフォルダ
+        // これにより、CC10を検索した時にCC100, CC101, CC102などを除外できる
+        let matchingFolder = files.find(f => {
+            const normalizedName = this.normalizePropertyNumber(f.name || '');
+            return normalizedName.startsWith(normalizedSearchTerm + '_') ||
+                normalizedName.startsWith(normalizedSearchTerm + '.');
+        });
+        if (matchingFolder) {
+            console.log(`✅ Found exact match: ${matchingFolder.name}`);
+            return matchingFolder;
+        }
+        // 2. プレフィックス付き完全一致: プレフィックス_物件番号_xxx または プレフィックス_物件番号.xxx
+        // 例: U_AA13069_xxx, I_AA13069_xxx
+        matchingFolder = files.find(f => {
+            const normalizedName = this.normalizePropertyNumber(f.name || '');
+            // プレフィックス_物件番号_ または プレフィックス_物件番号. のパターンにマッチ
+            const prefixPattern = new RegExp(`^[A-Z]_${normalizedSearchTerm}[_\\.]`);
+            return prefixPattern.test(normalizedName);
+        });
+        if (matchingFolder) {
+            console.log(`✅ Found prefix match: ${matchingFolder.name}`);
+            return matchingFolder;
+        }
+        // 3. 物件番号で始まるフォルダ（フォールバック）
+        // 注意: これはCC10がCC100にマッチする可能性があるため、最後の手段
+        matchingFolder = files.find(f => {
+            const normalizedName = this.normalizePropertyNumber(f.name || '');
+            return normalizedName.startsWith(normalizedSearchTerm);
+        });
+        if (matchingFolder) {
+            console.log(`⚠️ Found partial match (may be incorrect): ${matchingFolder.name}`);
+            return matchingFolder;
+        }
+        // 4. その他、物件番号を含むフォルダ（最も柔軟なマッチング）
+        matchingFolder = files.find(f => {
+            const normalizedName = this.normalizePropertyNumber(f.name || '');
+            return normalizedName.includes(normalizedSearchTerm);
+        });
+        if (matchingFolder) {
+            console.log(`⚠️ Found loose match (may be incorrect): ${matchingFolder.name}`);
+        }
+        return matchingFolder;
+    }
+    /**
+     * サブフォルダ内を再帰的に検索して「athome公開」フォルダを探す
+     * @param parentId 親フォルダID
+     * @param isSharedDrive 共有ドライブかどうか
+     * @param depth 現在の深さ（最大3階層まで）
+     * @returns 「athome公開」フォルダのID、見つからない場合はnull
+     */
+    async searchAthomeFolderRecursively(parentId, isSharedDrive, depth = 0) {
+        // 最大3階層まで検索
+        if (depth >= 3) {
+            return null;
+        }
+        try {
+            const drive = await this.getDriveClient();
+            // サブフォルダ一覧を取得
+            const queryParams = {
+                q: `'${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+                fields: 'files(id, name)',
+                supportsAllDrives: true,
+                includeItemsFromAllDrives: true,
+            };
+            if (isSharedDrive && this.sharedDriveId) {
+                queryParams.corpora = 'drive';
+                queryParams.driveId = this.sharedDriveId;
+            }
+            else {
+                queryParams.corpora = 'user';
+            }
+            const response = await drive.files.list(queryParams);
+            const subfolders = response.data.files || [];
+            console.log(`  📂 Found ${subfolders.length} subfolders at depth ${depth}`);
+            // 各サブフォルダで「athome公開」を探す
+            for (const subfolder of subfolders) {
+                console.log(`    - Checking: ${subfolder.name}`);
+                // 「athome公開」フォルダを発見
+                if (subfolder.name?.includes('athome') && subfolder.name?.includes('公開')) {
+                    console.log(`    ✅ Found "athome公開" in subfolder: ${subfolder.name}`);
+                    return subfolder.id || null;
+                }
+                // さらに深く検索
+                const foundId = await this.searchAthomeFolderRecursively(subfolder.id, isSharedDrive, depth + 1);
+                if (foundId) {
+                    return foundId;
+                }
+            }
+            return null;
+        }
+        catch (error) {
+            console.error(`Error searching subfolders at depth ${depth}:`, error.message);
+            return null;
+        }
+    }
+    /**
+     * 「athome公開」フォルダから画像を取得
+     *
+     * 取得ロジック:
+     * 1. storage_locationがあれば、そのフォルダ内の「athome公開」フォルダから画像取得（共有ドライブ）
+     * 2. storage_locationがなければ、業務リストのマイドライブで物件番号を含むフォルダを検索
+     *    - 直接ある場合: 物件番号フォルダ/athome公開
+     *    - サブフォルダ内にある場合: 親フォルダ/物件番号フォルダ/athome公開
+     *
+     * @param storageLocation storage_locationのURL（オプション）
+     * @param propertyNumber 物件番号
+     * @returns 画像情報配列（id, name, thumbnailUrl, fullImageUrl）
+     */
+    async getImagesFromAthomePublicFolder(storageLocation, propertyNumber) {
+        try {
+            let parentFolderId = null;
+            let isSharedDrive = false;
+            // 1. storage_locationがあれば、そこから取得（共有ドライブ）
+            if (storageLocation) {
+                console.log(`📂 Using storage_location (shared drive): ${storageLocation}`);
+                parentFolderId = this.extractFolderIdFromUrl(storageLocation);
+                isSharedDrive = true;
+            }
+            // 2. storage_locationがなければ、物件番号で検索（マイドライブ）
+            if (!parentFolderId) {
+                console.log(`🔍 Searching for folder containing property number in My Drive: ${propertyNumber}`);
+                parentFolderId = await this.searchFolderByName(propertyNumber);
+                isSharedDrive = false;
+            }
+            if (!parentFolderId) {
+                console.log(`❌ Parent folder not found for property: ${propertyNumber}`);
+                return [];
+            }
+            // 3. 「athome公開」フォルダを検索（直接の子フォルダ）
+            console.log(`🔍 Searching for "athome公開" folder in: ${parentFolderId} (${isSharedDrive ? 'shared drive' : 'my drive'})`);
+            let athomeFolderId = await this.findFolderByName(parentFolderId, 'athome公開', isSharedDrive);
+            // 4. 直接見つからない場合は、サブフォルダ内を再帰的に検索
+            if (!athomeFolderId) {
+                console.log(`📁 "athome公開" not found directly, searching in subfolders...`);
+                athomeFolderId = await this.searchAthomeFolderRecursively(parentFolderId, isSharedDrive);
+            }
+            if (!athomeFolderId) {
+                console.log(`❌ "athome公開" folder not found in: ${parentFolderId} or its subfolders`);
+                return [];
+            }
+            // 4. 「athome公開」フォルダ内の画像を取得
+            console.log(`📸 Getting images from "athome公開" folder: ${athomeFolderId}`);
+            const images = await this.listImagesWithThumbnails(athomeFolderId);
+            // 5. 画像URLを生成（webContentLinkを優先、なければ従来のURL）
+            const imageUrls = images.map(img => {
+                // webContentLinkがあればそれを使用（ダウンロードリンク）
+                const fullImageUrl = img.webContentLink || `https://drive.google.com/uc?export=download&id=${img.id}`;
+                // サムネイルURLは従来通り
+                const thumbnailUrl = img.thumbnailLink || `https://drive.google.com/thumbnail?id=${img.id}&sz=w400`;
+                return {
+                    id: img.id,
+                    name: img.name,
+                    thumbnailUrl,
+                    fullImageUrl,
+                };
+            });
+            console.log(`✅ Found ${imageUrls.length} images in "athome公開" folder`);
+            return imageUrls;
+        }
+        catch (error) {
+            console.error('Error getting images from athome public folder:', error.message);
+            return [];
+        }
+    }
+    /**
+     * Google DriveのURLからフォルダIDを抽出
+     * @param url Google DriveのURL
+     * @returns フォルダID、抽出できない場合はnull
+     */
+    extractFolderIdFromUrl(url) {
+        try {
+            // https://drive.google.com/drive/folders/FOLDER_ID 形式
+            const match = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+            return match ? match[1] : null;
+        }
+        catch (error) {
+            return null;
+        }
+    }
+}
+exports.GoogleDriveService = GoogleDriveService;

@@ -16,135 +16,116 @@ HOME4Uからの査定依頼メールを検知してDBに自動転記する仕組
 
 **件名に `[HOME4U] 査定依頼` が含まれていれば全て対象。**
 
-- ✅ `[HOME4U] 査定依頼 -- <大分県> 大分市`
-- ✅ `[HOME4U] 査定依頼 -- <大分県> 別府市`
-- ✅ `[HOME4U] 査定依頼 -- <福岡県> 福岡市早良区`
-- ✅ `[HOME4U] 査定依頼 -- <大分県> 中津市`（新しい地域も自動対応）
-
 **地域ごとに件名を列挙する方式は廃止。絶対に戻さない。**
 
 ---
 
-### 2. 本文に「HOME4Uログアウト」が含まれることが絶対条件
+### 2. 転記条件（3つ全て必須）
 
-HOME4Uメールを転記する前に、**必ず本文に `HOME4Uログアウト` が含まれているか確認する。**
+1. 件名に `Re:` が付いている
+2. 送信者が `tenant@ifoo-oita.com`（自分）
+3. 本文に `HOME4Uログアウト` が含まれている
 
-- ✅ 含まれている → `home4u-transfer` APIを呼び出す
-- ❌ 含まれていない → スキップ（転記しない）
-
-この条件は**2箇所**でチェックされている：
-1. `mail_notify_server.py`（メール監視サーバー側）
-2. `backend/src/routes/home4u-transfer.ts`（バックエンド側）
-
-**どちらか一方を削除・変更してはいけない。二重チェックが安全性の担保。**
+この3条件を満たすのはスタッフが手動でReplyしたメール1通のみ。
+元のHOME4U通知メール（Re:なし・送信元=HOME4U）は転記しない。
 
 ---
 
 ### 3. phone_number_hash / email_hash は必ず登録する（重複検出に必須）
-
-`home4u-transfer.ts` の `insertData` に以下が**必ず含まれていること**：
 
 ```typescript
 phone_number_hash: tel ? crypto.createHash('sha256').update(tel).digest('hex') : null,
 email_hash: email ? crypto.createHash('sha256').update(email).digest('hex') : null,
 ```
 
-**これがないと重複検出エンドポイント（`GET /:id/duplicates`）が一切機能しない。**
-重複検出はハッシュ比較に依存しており、ハッシュが `null` だと即座に空配列を返す。
-
 ---
 
 ### 4. extractMemo（スタッフコメント抽出）の正しい実装
 
-「HOME4Uログアウト」の直後の行にあるスタッフメモをコメントとして取得する。
+メール本文の構造：
+```
+HOME4Uログアウト
+K 査定額によって訪問考える   ← スタッフメモ（この行を取得したい）
+査定依頼
+株式会社威風 担当者様
+...
+```
 
 **正しい実装**：
 ```typescript
 const extractMemo = (text: string): string => {
-  // cleanedBodyは既に行頭の「> 」を除去済みなので再処理不要
-  const afterLogout = text.split('HOME4Uログアウト')[1];
-  if (!afterLogout) return '';
+  // HOME4Uログアウトは本文中に複数回出現する場合があるので最後の出現を使う
+  const parts = text.split('HOME4Uログアウト');
+  if (parts.length < 2) return '';
+  const afterLogout = parts[parts.length - 1]; // 最後の出現箇所の後
   // 「査定依頼」が現れる手前までを取得
   const beforeSateiIrai = afterLogout.split(/査定依頼/)[0];
   return beforeSateiIrai.trim();
 };
 ```
 
-**❌ やってはいけない（過去の間違い）**：
-```typescript
-// cleanedBodyを受け取っているのに、さらに内部でcleanedを作ると
-// \sが改行を含むため「HOME4Uログアウト」の前後が変形してsplitがマッチしなくなる
-const cleaned = text.replace(/^[>\s]*/gm, '');
+**なぜ `[1]` ではなく `[-1]`（最後）か：**
+- 元のHOME4Uメール本文にも `HOME4Uログアウト` リンクが含まれている
+- Gmailのパートは古い順（元メール→返信）に並ぶ
+- `split()[1]` は元メールのパートを返してしまいコメントが取れない
+- `split()[-1]`（最後）は自分の返信パートを返す
+
+---
+
+### 5. mail_notify_server.py でのコメント事前確認（重要）
+
+メール送信直後はGmailのパートがまだ揃っていない場合がある。
+コメントが取れていない状態でINSERTするとコメントなしのレコードが登録される。
+
+**対策：コメントが取れていない場合はスレッドを処理済みにせず次回チェックに委ねる。**
+
+```python
+# HOME4Uログアウトの最後の出現箇所を探す
+logout_indices = [i for i, l in enumerate(body_lines) if 'HOME4Uログアウト' in l]
+if logout_indices:
+    last_logout_idx = logout_indices[-1]
+    # HOME4Uログアウトの次の行から査定依頼までの間にコメントがあるか確認
+    for line in body_lines[last_logout_idx+1:]:
+        stripped = line.strip().lstrip('>').strip()
+        if '査定依頼' in stripped:
+            break
+        if stripped:
+            memo_found = True
+            break
+
+if not memo_found:
+    # 処理済みにせず次回チェック（10秒後）に委ねる
+    notified_ids.discard(msg_id)
+    continue
 ```
 
----
-
-## 🔴🔴 繰り返し発生したトラブルの全経緯（2026年6月）
-
-**この経緯を把握せずにhome4u-transfer.tsを修正してはいけない。**
-過去に以下の失敗サイクルが繰り返された。
-
-### サイクルの説明
-
-**① 同一案件がDBに2件重複登録される**
-- HOME4Uは1つの査定依頼を複数社に同時配信する
-- 数秒〜数分以内に同じ内容のメールが複数届く
-- 重複チェックが甘いと2件登録される
-
-**② コメントが取得できない**
-- 1通目（コメントなし）が先に登録される
-- 2通目（コメントあり：スタッフが「HOME4Uログアウト」の下に書いたメモ）が重複チェックでスキップされる
-- 結果：DBにコメントなしのレコードが残る
-
-**③ 重複解消を試みると今度はコメントなしの1通だけが来る**
-- 重複を防ぐためにチェックを厳しくすると、コメント入りの通が取れなくなる
-
-**④ 重複チェックのphone_number_hashをnullにしたことで本来の重複が検出されなくなる**
-- FI496とFI459のように、同一人物が異なるタイミングで申し込んだ本当の重複が、
-  重複マークとして表示されなくなった
-- 原因：`insertData`に `phone_number_hash` が含まれていなかった（2026年6月12日修正済み）
+**この処理を削除・変更してはいけない。**
 
 ---
 
-## ✅ 2026年6月12日時点の修正済み状態
+### 6. decode_body の正しい実装
 
-| 問題 | 修正内容 | ファイル |
-|------|---------|---------|
-| 重複マークが出ない | `phone_number_hash`/`email_hash` を `insertData` に追加 | `home4u-transfer.ts` |
-| 既存レコードのハッシュがnull | バックフィルスクリプトで1000件補完（16件修正） | スクリプト実行済み |
-| コメント抽出の失敗 | `extractMemo`内の二重クリーン処理を削除 | `home4u-transfer.ts` |
-| extractData2の全角スペース対応 | `[\s　]*` に変更 | `home4u-transfer.ts` |
-
----
-
-## ✅ コメント（スタッフメモ）取得の仕組み
-
-メール本文の構造：
-```
-HOME4Uログアウト
-林5/26　不通・留守×        ← ここがスタッフメモ（extractMemoで取得）
-査定依頼 株式会社威風...
-■物件所在地 ...
+```python
+# HOME4Uログアウトを含むパートが複数ある場合は最後のもの（自分の返信）を使う
+home4u_parts = [p for p in collected if 'HOME4Uログアウト' in p]
+if home4u_parts:
+    return home4u_parts[-1]  # 最後（最新の返信）を返す
 ```
 
-`extractMemo` は「HOME4Uログアウト」と「査定依頼」の間の文字列をメモとして取得する。
-スタッフメモがない場合は空文字になり、コメント欄は自動転記情報のみになる。
+**なぜ最後か：** 元のHOME4Uメールにも `HOME4Uログアウト` が含まれるため、
+最初のパートを使うと元メールの本文が返されコメントが取れない。
 
 ---
 
-## ✅ 重複スキップ時のコメント補完仕組み
+### 7. 重複スキップ時のコメント補完
 
-1通目（コメントなし）が登録済みで、2通目（コメントあり）が重複スキップされる場合、
-スキップ処理の中でコメントを既存レコードに書き込む：
+スキップされた場合でも `memo` が取れていれば既存レコードに書き込む：
 
 ```typescript
-// 既存commentsが「\n【以下自動転記（HOME4U）】」で始まっている場合のみメモを先頭に追加
-const updatedComments = existingComments.startsWith('\n【以下自動転記')
-  ? memoForUpdate + existingComments
-  : existingComments; // 既にメモがある場合は上書きしない
+const updatedComments = existingComments.includes(memo)
+  ? existingComments          // 既にある → そのまま
+  : memo + '\n' + existingComments;  // なければ先頭に追加
 ```
-
-**この仕組みを削除・変更してはいけない。**
 
 ---
 
@@ -152,33 +133,11 @@ const updatedComments = existingComments.startsWith('\n【以下自動転記')
 
 | ファイル | 役割 |
 |---------|------|
-| `mail_notify_server.py` | メール監視・HOME4U検知・API呼び出し（Railwayで稼働） |
+| `mail_notify_server.py`（`sateituikyaku-mail-server` リポジトリ） | メール監視・HOME4U検知・API呼び出し（Railwayで稼働） |
 | `backend/src/routes/home4u-transfer.ts` | DB転記・重複チェック・コメント抽出 |
 
----
-
-## ✅ 正しい実装（mail_notify_server.py）
-
-```python
-# HOME4Uは件名部分一致で検知
-HOME4U_SUBJECT_PREFIX = "[HOME4U] 査定依頼"
-
-# 転記前に本文チェック
-elif HOME4U_SUBJECT_PREFIX in subject:
-    if 'HOME4Uログアウト' in body:
-        trigger_home4u_transfer(body)
-    else:
-        logging.info("スキップ: HOME4Uだが本文に「HOME4Uログアウト」なし")
-```
-
----
-
-## ❌ 絶対にやってはいけないこと
-
-- **地域ごとに件名を列挙する方式に戻さない**（転記漏れの原因）
-- **`phone_number_hash`/`email_hash` を `insertData` から削除しない**（重複検出が壊れる）
-- **`extractMemo` 内で `cleanedBody` を再クリーンしない**（コメントが取れなくなる）
-- **重複スキップ時のコメント補完処理を削除しない**（コメントなしレコードが残る）
+⚠️ **`sateituikyaku-admin` だけにプッシュしてもRailwayには反映されない。**
+必ず `sateituikyaku-mail-server` にもコピーしてプッシュすること。
 
 ---
 
@@ -186,12 +145,14 @@ elif HOME4U_SUBJECT_PREFIX in subject:
 
 | 日付 | 問題 | 原因 | 修正 |
 |------|------|------|------|
-| 2026年5月30日 | HOME4Uメールが届いてもDBに転記されない | `HOME4U_SUBJECTS`リストに存在しない地域の件名が来た | 件名の完全一致リストを廃止し、`[HOME4U] 査定依頼` の部分一致に変更 |
-| 2026年6月12日 | FI496・FI459の重複マークが出ない | `insertData`に `phone_number_hash`/`email_hash` がなくハッシュがnull | `home4u-transfer.ts`に `crypto.createHash` でハッシュを追加、既存1000件をバックフィル |
-| 2026年6月12日 | HOME4Uログアウト直後のスタッフコメントが取得できない | `extractMemo`内で `^[>\s]*` の二重クリーンを行い `HOME4Uログアウト` 前後が変形 | 内部の `cleaned` 処理を削除し `cleanedBody` をそのまま使用 |
-| 2026年6月12日 | 査定理由等の全角スペース区切り項目が空になる | `extractData2` の `\s*` が全角スペース `　` にマッチしない | `[\s　]*` に変更 |
+| 2026年5月30日 | HOME4Uメールが届いてもDBに転記されない | 件名完全一致リストに存在しない地域が来た | 件名部分一致に変更 |
+| 2026年6月12日 | 重複マークが出ない | `insertData`に `phone_number_hash`/`email_hash` がなくnull | ハッシュを追加、既存1000件バックフィル |
+| 2026年6月12日 | コメントが取得できない | `extractMemo`内で二重クリーン処理 | 内部の `cleaned` 処理を削除 |
+| 2026年6月12日 | 全角スペース区切り項目が空 | `extractData2` の `\s*` が全角スペースにマッチしない | `[\s　]*` に変更 |
+| 2026年6月24日 | コメントが取得できない（再発） | `split('HOME4Uログアウト')[1]` が元メールのパートを返していた（Gmailパートは古い順） | `split()[-1]`（最後のパート）を使うよう変更 |
+| 2026年6月24日 | コメントが取得できない（再発） | メール送信直後はGmailパートが揃っておらずコメントなしでINSERTされる | コメントが取れない場合は処理済みにせず次回10秒チェックに委ねる |
+| 2026年6月24日 | 重複スキップ時のコメント補完が動かない | `startsWith('\n【以下自動転記')` 条件が誤り（memoありの場合は先頭が違う） | `includes(memo)` で判定するよう変更 |
 
 ---
 
-**最終更新日**: 2026年6月12日
-**作成理由**: HOME4Uメール転記の繰り返しトラブルの全経緯を記録し、毎回最初から説明しなくて済むようにするため
+**最終更新日**: 2026年6月24日
