@@ -467,7 +467,29 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
       // ■ご住所の行自体に値がある場合（旧フォーマット）
       const sameLineMatch = lines2[idx].match(/■ご住所[^：:]*[：:]\s*(.+)/);
       if (sameLineMatch && sameLineMatch[1].trim()) {
-        return sameLineMatch[1].trim();
+        const firstLineVal = sameLineMatch[1].trim();
+        // 郵便番号のみ（〒XXX-XXXX or XXX-XXXX）の場合は次行の住所も結合する
+        const isZipOnly = /^〒?\d{3}-?\d{4}$/.test(firstLineVal);
+        if (isZipOnly) {
+          // 次行以降に実際の住所があるか確認して結合
+          const addrParts2: string[] = [firstLineVal];
+          for (let ni = idx + 1; ni < Math.min(idx + 5, lines2.length); ni++) {
+            const l = lines2[ni].replace(/^>\s*/g, '').trim();
+            if (!l) continue;
+            if (l.startsWith('■')) break;
+            const m = l.match(/^[：:]\s*(.+)/);
+            if (m) {
+              const val = m[1].split('査定依頼者建物名号室')[0].split(/>|■/)[0].trim();
+              if (val) addrParts2.push(val);
+            } else {
+              const val = l.split('査定依頼者建物名号室')[0].split(/>|■/)[0].trim();
+              if (val && val !== ':' && val !== '：') addrParts2.push(val);
+              break;
+            }
+          }
+          return addrParts2.join(' ');
+        }
+        return firstLineVal;
       }
       // 次行以降の「：」で始まる行から住所を取得（新フォーマット）
       // 住所が複数行に分かれている場合は結合する（郵便番号 + 住所本体）
