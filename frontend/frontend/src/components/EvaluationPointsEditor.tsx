@@ -232,30 +232,25 @@ function generateEvaluationPrintHtml(
       padding-top: 2px;
       line-height: 1.5;
     }
-    /* フッター */
-    .footer {
-      position: fixed;
-      bottom: 12mm;
-      left: 15mm;
-      right: 15mm;
-      border-top: 2px solid #FF8C00;
-      padding-top: 8px;
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
+    /* ヘッダー内の会社情報（右上配置） */
+    .header-area {
+      position: relative;
     }
-    .footer-content {
+    .header-company {
+      position: absolute;
+      top: 10px;
+      right: 16px;
       text-align: right;
     }
-    .footer-company {
-      font-size: 10pt;
+    .header-company-name {
+      font-size: 9pt;
       font-weight: bold;
       color: #333;
     }
-    .footer-detail {
-      font-size: 8pt;
-      color: #666;
-      margin-top: 2px;
+    .header-company-detail {
+      font-size: 7.5pt;
+      color: #555;
+      margin-top: 1px;
     }
   </style>
 </head>
@@ -264,6 +259,11 @@ function generateEvaluationPrintHtml(
     <div class="header-area">
       <div class="header-title">物件の評価ポイント！おすすめポイント！</div>
       <div class="header-subtitle">＊下記内容を中心に物件の特長や魅力についてお伝えいたします</div>
+      <div class="header-company">
+        <div class="header-company-name">${companyName}</div>
+        <div class="header-company-detail">${companyAddress}</div>
+        <div class="header-company-detail">${companyTel} ${companyMail}</div>
+      </div>
     </div>
 
     <div class="property-info">
@@ -289,12 +289,6 @@ function generateEvaluationPrintHtml(
     </div>
     ` : ''}
 
-    <div class="footer">
-      <div class="footer-content">
-        <div class="footer-company">${companyName}</div>
-        <div class="footer-detail">${companyAddress}<br>${companyTel} ${companyMail}</div>
-      </div>
-    </div>
   </div>
   <script>window.onload = function() { window.print(); }</script>
 </body>
