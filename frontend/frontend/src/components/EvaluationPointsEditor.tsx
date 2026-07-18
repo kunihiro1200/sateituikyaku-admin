@@ -61,11 +61,11 @@ function generateEvaluationPrintHtml(
     }
     /* ヘッダー */
     .header-area {
-      background: linear-gradient(135deg, #FF8C00, #FFD700);
+      background: linear-gradient(135deg, #E65100, #FF8C00);
       border-radius: 8px;
       padding: 14px 24px;
       margin-bottom: 14px;
-      box-shadow: 0 3px 8px rgba(255, 140, 0, 0.3);
+      border: 2px solid #E65100;
     }
     .header-title {
       font-size: 20pt;
