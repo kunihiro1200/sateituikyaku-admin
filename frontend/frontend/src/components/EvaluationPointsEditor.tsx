@@ -149,7 +149,7 @@ function generateEvaluationPrintHtml(
       font-family: 'Hiragino Kaku Gothic Pro', 'Yu Gothic', 'MS Gothic', sans-serif;
       margin: 0;
       padding: 0;
-      color: #333;
+      color: #2C2C2C;
       line-height: 1.5;
     }
     .page-wrapper {
@@ -157,28 +157,28 @@ function generateEvaluationPrintHtml(
     }
     /* ヘッダー */
     .header-area {
-      background: linear-gradient(135deg, #E65100, #FF8C00) !important;
+      background: linear-gradient(135deg, #1B2A4A, #2C3E6B) !important;
       border-radius: 8px;
       padding: 14px 24px;
       margin-bottom: 14px;
-      border: 2px solid #E65100;
+      border: 2px solid #B8860B;
     }
     .header-title {
       font-size: 20pt;
       font-weight: bold;
-      color: #fff !important;
+      color: #DAA520 !important;
       margin: 0;
     }
     .header-subtitle {
       font-size: 9pt;
-      color: #fff !important;
+      color: #E8D5A3 !important;
       margin-top: 2px;
       font-weight: bold;
     }
     /* 物件情報 */
     .property-info {
-      background: #f8f9fa;
-      border-left: 4px solid #FF8C00;
+      background: #F7F5F0 !important;
+      border-left: 4px solid #B8860B;
       padding: 10px 16px;
       margin-bottom: 12px;
       border-radius: 0 6px 6px 0;
@@ -191,7 +191,7 @@ function generateEvaluationPrintHtml(
     .property-address {
       font-size: 12pt;
       font-weight: bold;
-      color: #222;
+      color: #1B2A4A;
     }
     .description {
       font-size: 10pt;
@@ -209,24 +209,24 @@ function generateEvaluationPrintHtml(
       gap: 8px;
       margin-bottom: 10px;
       padding-bottom: 6px;
-      border-bottom: 2px solid #FF8C00;
+      border-bottom: 2px solid #B8860B;
     }
     .section-header-icon {
       width: 24px;
       height: 24px;
-      background: #FF8C00 !important;
+      background: #1B2A4A !important;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff !important;
+      color: #DAA520 !important;
       font-size: 14px;
       font-weight: bold;
     }
     .section-header-text {
       font-size: 12pt;
       font-weight: bold;
-      color: #333;
+      color: #1B2A4A;
     }
     .point-row {
       display: flex;
@@ -234,17 +234,17 @@ function generateEvaluationPrintHtml(
       padding: 8px 8px;
       margin-bottom: 4px;
       border-radius: 6px;
-      background: #FFFDE7 !important;
-      border-left: 4px solid #FFB300;
+      background: #FAFAF7 !important;
+      border-left: 4px solid #B8860B;
     }
     .point-row:nth-child(even) {
-      background: #FFF8E1 !important;
+      background: #F5F3ED !important;
     }
     .point-number {
       min-width: 28px;
       height: 28px;
-      background: linear-gradient(135deg, #FF8C00, #FFA726) !important;
-      color: #fff !important;
+      background: linear-gradient(135deg, #1B2A4A, #2C3E6B) !important;
+      color: #DAA520 !important;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -256,7 +256,7 @@ function generateEvaluationPrintHtml(
     }
     .point-text {
       font-size: 10.5pt;
-      color: #333;
+      color: #2C2C2C;
       padding-top: 4px;
       line-height: 1.6;
     }
@@ -270,12 +270,12 @@ function generateEvaluationPrintHtml(
       gap: 8px;
       margin-bottom: 10px;
       padding-bottom: 6px;
-      border-bottom: 2px solid #F57C00;
+      border-bottom: 2px solid #8B4513;
     }
     .caution-header-icon {
       width: 24px;
       height: 24px;
-      background: #F57C00 !important;
+      background: #8B4513 !important;
       border-radius: 4px;
       display: flex;
       align-items: center;
@@ -287,7 +287,7 @@ function generateEvaluationPrintHtml(
     .caution-header-text {
       font-size: 11pt;
       font-weight: bold;
-      color: #E65100;
+      color: #8B4513;
     }
     .caution-row {
       display: flex;
@@ -295,16 +295,16 @@ function generateEvaluationPrintHtml(
       padding: 7px 8px;
       margin-bottom: 4px;
       border-radius: 6px;
-      background: #FFF3E0 !important;
-      border-left: 4px solid #F57C00;
+      background: #FDF8F3 !important;
+      border-left: 4px solid #8B4513;
     }
     .caution-row:nth-child(even) {
-      background: #FFE0B2 !important;
+      background: #F9F0E7 !important;
     }
     .caution-number {
       min-width: 24px;
       height: 24px;
-      background: #F57C00 !important;
+      background: #8B4513 !important;
       color: #fff !important;
       border-radius: 4px;
       display: flex;
@@ -317,7 +317,7 @@ function generateEvaluationPrintHtml(
     }
     .caution-text {
       font-size: 10pt;
-      color: #4E342E;
+      color: #3E2723;
       padding-top: 2px;
       line-height: 1.5;
     }
@@ -331,7 +331,7 @@ function generateEvaluationPrintHtml(
     .header-company-name {
       font-size: 9pt;
       font-weight: bold;
-      color: #fff !important;
+      color: #E8D5A3 !important;
     }
   </style>
 </head>
