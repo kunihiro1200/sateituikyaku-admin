@@ -384,8 +384,23 @@ export const replacePlaceholders = (
       result = result.replace(/株式会社\s?いふう/g, '株式会社くじら不動産');
       // ステップ4: 「㈱いふう」→「㈱くじら不動産」
       result = result.replace(/㈱いふう/g, '㈱くじら不動産');
+      // ステップ4.5: 件名パターン「（株いふう）」「(㈱いふう)」など括弧付き会社名
+      result = result.replace(/[（(][㈱株式会社　 ]*いふう[）)]/g, '（株くじら不動産）');
       // ステップ5: 万が一残った「不動産会社の株式会社くじら不動産」「不動産会社の㈱くじら不動産」の後処理
       result = result.replace(/不動産会社の(?:株式会社|㈱)くじら不動産/g, '株式会社くじら不動産');
+
+      // ── 署名ブロック: 住所・TEL・HP のEmail用変換（\n区切り）─────────
+      // 大分住所 → 福岡住所
+      result = result.replace(/〒870-0044大分市舞鶴町1丁目3-30/g, '〒810-0073\n福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
+      result = result.replace(/〒870-0044\n?大分市舞鶴町1丁目3-30/g, '〒810-0073\n福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
+      // MAIL → 福岡用
+      result = result.replace(/MAIL[：:]\s*tenant@ifoo-oita\.com/g, 'MAIL：info@kujira-fudosan.com');
+      // 「株式会社 いふう」（スペース入り、署名ブロック内）
+      result = result.replace(/株式会社 いふう/g, '株式会社くじら不動産（株式会社いふう）');
+      // 実績リンクの大分版 → 福岡版 or 削除
+      result = result.replace(/実績はこちら[：:]bit\.ly\/4l8lWFF/g, '');
+      result = result.replace(/（実績はこちら[：:]bit\.ly\/4l8lWFF[　 ]*）/g, '');
+      result = result.replace(/（実績はこちら：bit\.ly\/4l8lWFF）/g, '');
     }
     
     return result;
