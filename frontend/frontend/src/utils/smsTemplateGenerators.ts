@@ -394,9 +394,7 @@ export const replacePlaceholders = (
       const kujiraSignature =
         `***************************\n` +
         `株式会社くじら不動産（株式会社いふう）\n` +
-        `〒810-0073\n` +
-        `福岡市中央区舞鶴3-1-10\n` +
-        `オフィスニューガイアセレス赤坂門No.19 -201\n` +
+        `〒810-0073　福岡市中央区舞鶴3－1－10\n` +
         `TEL：092-401-5331\n` +
         `FAX：092-401-5332\n` +
         `HP：https://kujira-fudosan.com/\n` +

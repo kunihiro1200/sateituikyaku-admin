@@ -55,9 +55,7 @@ function applyFIBranding(subject: string, body: string): { subject: string; body
   const kujiraSignature =
     `***************************\n` +
     `株式会社くじら不動産（株式会社いふう）\n` +
-    `〒810-0073\n` +
-    `福岡市中央区舞鶴3-1-10\n` +
-    `オフィスニューガイアセレス赤坂門No.19 -201\n` +
+    `〒810-0073　福岡市中央区舞鶴3－1－10\n` +
     `TEL：092-401-5331\n` +
     `FAX：092-401-5332\n` +
     `HP：https://kujira-fudosan.com/\n` +
@@ -69,9 +67,9 @@ function applyFIBranding(subject: string, body: string): { subject: string; body
   body = body.replace(/\*{3,}\n〒870-0044[\s\S]*?\*{3,}/g, kujiraSignature);
 
   // ── 本文: 個別の住所・TEL置換（署名ブロック外に残ったもの） ────────
-  body = body.replace(/〒870-0044\n?大分市舞鶴町1丁目3-30/g, '〒810-0073\n福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
-  body = body.replace(/大分市舞鶴町1-3-30/g, '〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
-  body = body.replace(/大分市舞鶴町1丁目3-30/g, '福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201');
+  body = body.replace(/〒870-0044\n?大分市舞鶴町1丁目3-30/g, '〒810-0073　福岡市中央区舞鶴3－1－10');
+  body = body.replace(/大分市舞鶴町1-3-30/g, '〒810-0073　福岡市中央区舞鶴3－1－10');
+  body = body.replace(/大分市舞鶴町1丁目3-30/g, '福岡市中央区舞鶴3－1－10');
   body = body.replace(/TEL：097-533-2022/g, 'TEL：092-401-5331');
   body = body.replace(/TEL:097-533-2022/g, 'TEL:092-401-5331');
   body = body.replace(/FAX：097-529-7160/g, 'FAX：092-401-5332');
