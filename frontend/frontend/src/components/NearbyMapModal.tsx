@@ -607,9 +607,22 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     const curData = tab === 0 ? data1 : data2;
     const tabLabel = tab === 0 ? '半径1km圏内の施設' : '半径2km圏内の施設';
 
+    // 校区のHTML生成
+    const schoolDistrictHtml = (schoolDistrict?.found && schoolDistrict?.district)
+      ? `<div class="cat-block" style="border-left:3px solid #1565c0">
+          <div class="cat-header">
+            <span>🏫</span>
+            <span class="cat-label" style="color:#1565c0">校区</span>
+          </div>
+          <div class="place-item">
+            <span class="place-name" style="font-weight:bold">${schoolDistrict.district.name}</span>
+          </div>
+        </div>`
+      : '';
+
     // 施設リストのHTML生成
     const facilityHtml = curData
-      ? curData.categories
+      ? schoolDistrictHtml + curData.categories
           .filter(cat => DISPLAY_CATS.has(cat.type))
           .map(cat => {
             const places = curData.places[cat.type] || [];
