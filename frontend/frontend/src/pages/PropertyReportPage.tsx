@@ -356,7 +356,7 @@ export default function PropertyReportPage() {
       await api.put(`/api/property-listings/${propertyNumber}`, {
         report_date: reportData.report_date || null,
         report_completed: reportData.report_completed || 'N',
-        report_assignee: reportData.report_assignee || null,
+        report_assignee: reportData.report_assignee || reportData.sales_assignee || null,
         suumo_url: reportData.suumo_url || null,
         report_memo: reportData.report_memo || null,
       });
@@ -1201,6 +1201,7 @@ export default function PropertyReportPage() {
                 value={editReplyTo}
                 onChange={(e) => setEditReplyTo(e.target.value)}
                 displayEmpty
+                MenuProps={{ disablePortal: true }}
               >
                 {/* 未選択状態のプレースホルダー */}
                 <MenuItem value="">
