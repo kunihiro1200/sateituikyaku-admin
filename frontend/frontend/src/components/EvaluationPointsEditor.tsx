@@ -151,6 +151,8 @@ function generateEvaluationPrintHtml(
       padding: 0;
       color: #333;
       line-height: 1.5;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     .page-wrapper {
       padding: 10px 20px;
@@ -166,15 +168,14 @@ function generateEvaluationPrintHtml(
     .header-title {
       font-size: 20pt;
       font-weight: bold;
-      color: #fff;
-      text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+      color: #333;
       margin: 0;
     }
     .header-subtitle {
       font-size: 9pt;
-      color: #fff;
+      color: #555;
       margin-top: 2px;
-      opacity: 0.9;
+      font-weight: bold;
     }
     /* 物件情報 */
     .property-info {
@@ -338,7 +339,7 @@ function generateEvaluationPrintHtml(
     .header-company-name {
       font-size: 9pt;
       font-weight: bold;
-      color: #fff;
+      color: #333;
     }
   </style>
 </head>
