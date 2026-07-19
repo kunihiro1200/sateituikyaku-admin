@@ -370,17 +370,25 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
     //   査定依頼 株式会社威風...
     //   → "林5/26　不通・留守×" を返す
     const extractMemo = (text: string): string => {
-      // HOME4Uログアウトは本文中に複数回出現する場合があるので最後の出現を使う
+      // HOME4Uログアウトは本文中に複数回出現する場合がある
+      // 各出現箇所の後を走査し、「査定依頼」の前にメモテキストが存在するものを採用する
       const parts = text.split('HOME4Uログアウト');
       if (parts.length < 2) {
         console.log('[home4u-transfer] extractMemo: HOME4Uログアウトが見つからない');
         return '';
       }
-      const afterLogout = parts[parts.length - 1];
-      console.log(`[home4u-transfer] extractMemo afterLogout先頭100文字: "${afterLogout.substring(0, 100).replace(/\n/g, '\\n')}"`);
-      // 「査定依頼」が現れる手前までを取得
-      const beforeSateiIrai = afterLogout.split(/査定依頼/)[0];
-      return beforeSateiIrai.trim();
+      // 各パート（1回目以降）をチェックし、実質的なメモを含むものを探す
+      let bestMemo = '';
+      for (let i = 1; i < parts.length; i++) {
+        const afterLogout = parts[i];
+        const beforeSateiIrai = afterLogout.split(/査定依頼/)[0].trim();
+        // メモとして有効か判定（空でなく、改行やスペースだけでもない）
+        if (beforeSateiIrai && beforeSateiIrai.length > bestMemo.length) {
+          bestMemo = beforeSateiIrai;
+        }
+      }
+      console.log(`[home4u-transfer] extractMemo結果 (parts数=${parts.length}): "${bestMemo.substring(0, 150).replace(/\n/g, '\\n')}"`);
+      return bestMemo;
     };
     const memo = extractMemo(cleanedBody);
     console.log(`[home4u-transfer] memo抽出結果: "${memo}"`);
@@ -597,8 +605,15 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
                     .replace(/^>\s*/gm, '');
                   const parts = cleaned.split('HOME4Uログアウト');
                   if (parts.length < 2) return '';
-                  const afterLogout = parts[parts.length - 1];
-                  return afterLogout.split(/査定依頼/)[0].trim();
+                  // 各パートを走査し、最も長いメモテキストを採用
+                  let bestMemo = '';
+                  for (let i = 1; i < parts.length; i++) {
+                    const candidate = parts[i].split(/査定依頼/)[0].trim();
+                    if (candidate && candidate.length > bestMemo.length) {
+                      bestMemo = candidate;
+                    }
+                  }
+                  return bestMemo;
                 })();
                 if (memoForUpdate) {
                   // 既存レコードのcommentsの先頭にmemoを追加（自動転記情報は保持）
