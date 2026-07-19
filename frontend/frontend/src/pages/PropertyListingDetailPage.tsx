@@ -609,6 +609,8 @@ export default function PropertyListingDetailPage() {
         message: 'サマリー情報を保存しました',
         severity: 'success',
       });
+      // 物件リスト一覧のキャッシュを無効化（ATBB状況等の変更を一覧に反映するため）
+      pageDataCache.invalidate(CACHE_KEYS.PROPERTY_LISTINGS);
       await fetchPropertyData(true);
       setEditedData({});
       setIsHeaderEditMode(false);
