@@ -13,8 +13,104 @@ import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
+
+/** ドラッグ可能な行コンポーネント */
+interface SortableItemProps {
+  id: string;
+  index: number;
+  value: string;
+  onChange: (index: number, value: string) => void;
+  onRemove: (index: number) => void;
+  readOnly: boolean;
+  canRemove: boolean;
+  placeholder: string;
+  bgColor: string;
+}
+
+const SortableItem: React.FC<SortableItemProps> = ({
+  id,
+  index,
+  value,
+  onChange,
+  onRemove,
+  readOnly,
+  canRemove,
+  placeholder,
+  bgColor,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <Box
+      ref={setNodeRef}
+      style={style}
+      sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 0.5 }}
+    >
+      {!readOnly && (
+        <IconButton
+          size="small"
+          {...attributes}
+          {...listeners}
+          sx={{ cursor: 'grab', color: 'text.secondary', '&:active': { cursor: 'grabbing' } }}
+        >
+          <DragIndicatorIcon fontSize="small" />
+        </IconButton>
+      )}
+      <Typography sx={{ minWidth: 28, fontWeight: 'bold', fontSize: '0.9rem' }}>
+        {index + 1}
+      </Typography>
+      <TextField
+        fullWidth
+        size="small"
+        value={value}
+        onChange={(e) => onChange(index, e.target.value)}
+        disabled={readOnly}
+        placeholder={placeholder}
+        sx={{
+          '& .MuiOutlinedInput-root': {
+            bgcolor: bgColor,
+          }
+        }}
+      />
+      {!readOnly && canRemove && (
+        <IconButton size="small" onClick={() => onRemove(index)} sx={{ color: 'text.secondary' }}>
+          <RemoveCircleOutlineIcon fontSize="small" />
+        </IconButton>
+      )}
+    </Box>
+  );
+};
 
 /**
  * おすすめポイント印刷用HTML生成（お客様提出用・カラーデザイン版）
@@ -393,6 +489,32 @@ export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
     setIsDirty(true);
   };
 
+  // ドラッグ&ドロップ
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  const pointIds = points.map((_, i) => `point-${i}`);
+  const cautionIds = cautions.map((_, i) => `caution-${i}`);
+
+  const handlePointDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = pointIds.indexOf(active.id as string);
+    const newIndex = pointIds.indexOf(over.id as string);
+    setPoints(prev => arrayMove(prev, oldIndex, newIndex));
+    setIsDirty(true);
+  };
+
+  const handleCautionDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = cautionIds.indexOf(active.id as string);
+    const newIndex = cautionIds.indexOf(over.id as string);
+    setCautions(prev => arrayMove(prev, oldIndex, newIndex));
+    setIsDirty(true);
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -484,31 +606,24 @@ export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
 
       {/* おすすめポイント */}
       <Box sx={{ mb: 2 }}>
-        {points.map((value, index) => (
-          <Box key={`point-${index}`} sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 0.5 }}>
-            <Typography sx={{ minWidth: 28, fontWeight: 'bold', fontSize: '0.9rem' }}>
-              {index + 1}
-            </Typography>
-            <TextField
-              fullWidth
-              size="small"
-              value={value}
-              onChange={(e) => handlePointChange(index, e.target.value)}
-              disabled={readOnly}
-              placeholder={`おすすめポイント${index + 1}`}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  bgcolor: '#FFF8E1',
-                }
-              }}
-            />
-            {!readOnly && points.length > 1 && (
-              <IconButton size="small" onClick={() => removePoint(index)} sx={{ color: 'text.secondary' }}>
-                <RemoveCircleOutlineIcon fontSize="small" />
-              </IconButton>
-            )}
-          </Box>
-        ))}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handlePointDragEnd}>
+          <SortableContext items={pointIds} strategy={verticalListSortingStrategy}>
+            {points.map((value, index) => (
+              <SortableItem
+                key={pointIds[index]}
+                id={pointIds[index]}
+                index={index}
+                value={value}
+                onChange={handlePointChange}
+                onRemove={removePoint}
+                readOnly={readOnly}
+                canRemove={points.length > 1}
+                placeholder={`おすすめポイント${index + 1}`}
+                bgColor="#FFF8E1"
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
         {!readOnly && (
           <Button
             size="small"
@@ -528,31 +643,24 @@ export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
       </Typography>
 
       <Box sx={{ mb: 2 }}>
-        {cautions.map((value, index) => (
-          <Box key={`caution-${index}`} sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 0.5 }}>
-            <Typography sx={{ minWidth: 28, fontWeight: 'bold', fontSize: '0.9rem' }}>
-              {index + 1}
-            </Typography>
-            <TextField
-              fullWidth
-              size="small"
-              value={value}
-              onChange={(e) => handleCautionChange(index, e.target.value)}
-              disabled={readOnly}
-              placeholder={`注意点${index + 1}`}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  bgcolor: '#FFECB3',
-                }
-              }}
-            />
-            {!readOnly && cautions.length > 1 && (
-              <IconButton size="small" onClick={() => removeCaution(index)} sx={{ color: 'text.secondary' }}>
-                <RemoveCircleOutlineIcon fontSize="small" />
-              </IconButton>
-            )}
-          </Box>
-        ))}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCautionDragEnd}>
+          <SortableContext items={cautionIds} strategy={verticalListSortingStrategy}>
+            {cautions.map((value, index) => (
+              <SortableItem
+                key={cautionIds[index]}
+                id={cautionIds[index]}
+                index={index}
+                value={value}
+                onChange={handleCautionChange}
+                onRemove={removeCaution}
+                readOnly={readOnly}
+                canRemove={cautions.length > 1}
+                placeholder={`注意点${index + 1}`}
+                bgColor="#FFECB3"
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
         {!readOnly && (
           <Button
             size="small"
