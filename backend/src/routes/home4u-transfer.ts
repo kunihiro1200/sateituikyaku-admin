@@ -378,10 +378,11 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
         return '';
       }
       // 各パート（1回目以降）をチェックし、実質的なメモを含むものを探す
+      // 「査定依頼者」（査定依頼者郵便番号、査定依頼者住所等）にはマッチさせない
       let bestMemo = '';
       for (let i = 1; i < parts.length; i++) {
         const afterLogout = parts[i];
-        const beforeSateiIrai = afterLogout.split(/査定依頼/)[0].trim();
+        const beforeSateiIrai = afterLogout.split(/査定依頼(?!者)/)[0].trim();
         // メモとして有効か判定（空でなく、改行やスペースだけでもない）
         if (beforeSateiIrai && beforeSateiIrai.length > bestMemo.length) {
           bestMemo = beforeSateiIrai;
@@ -606,9 +607,10 @@ router.post('/home4u-transfer', async (req: Request, res: Response) => {
                   const parts = cleaned.split('HOME4Uログアウト');
                   if (parts.length < 2) return '';
                   // 各パートを走査し、最も長いメモテキストを採用
+                  // 「査定依頼者」にはマッチさせない（査定依頼者郵便番号等を除外）
                   let bestMemo = '';
                   for (let i = 1; i < parts.length; i++) {
-                    const candidate = parts[i].split(/査定依頼/)[0].trim();
+                    const candidate = parts[i].split(/査定依頼(?!者)/)[0].trim();
                     if (candidate && candidate.length > bestMemo.length) {
                       bestMemo = candidate;
                     }
