@@ -333,7 +333,7 @@ function generateEvaluationPrintHtml(
     .header-subtitle {
       font-size: 9pt;
       color: #fff;
-      opacity: 0.9;
+      font-weight: bold;
     }
     .header-company-name {
       font-size: 9pt;
