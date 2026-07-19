@@ -144,22 +144,20 @@ function generateEvaluationPrintHtml(
   <title>おすすめポイント - ${propertyAddress}</title>
   <style>
     @page { margin: 12mm 15mm 20mm 15mm; size: A4; }
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
     body {
       font-family: 'Hiragino Kaku Gothic Pro', 'Yu Gothic', 'MS Gothic', sans-serif;
       margin: 0;
       padding: 0;
       color: #333;
       line-height: 1.5;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
     }
     .page-wrapper {
       padding: 10px 20px;
     }
     /* ヘッダー */
     .header-area {
-      background: linear-gradient(135deg, #E65100, #FF8C00);
+      background: linear-gradient(135deg, #E65100, #FF8C00) !important;
       border-radius: 8px;
       padding: 14px 24px;
       margin-bottom: 14px;
@@ -168,12 +166,12 @@ function generateEvaluationPrintHtml(
     .header-title {
       font-size: 20pt;
       font-weight: bold;
-      color: #333;
+      color: #fff !important;
       margin: 0;
     }
     .header-subtitle {
       font-size: 9pt;
-      color: #222;
+      color: #fff !important;
       margin-top: 2px;
       font-weight: bold;
     }
@@ -216,12 +214,12 @@ function generateEvaluationPrintHtml(
     .section-header-icon {
       width: 24px;
       height: 24px;
-      background: #FF8C00;
+      background: #FF8C00 !important;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
+      color: #fff !important;
       font-size: 14px;
       font-weight: bold;
     }
@@ -236,17 +234,17 @@ function generateEvaluationPrintHtml(
       padding: 8px 8px;
       margin-bottom: 4px;
       border-radius: 6px;
-      background: #FFFDE7;
+      background: #FFFDE7 !important;
       border-left: 4px solid #FFB300;
     }
     .point-row:nth-child(even) {
-      background: #FFF8E1;
+      background: #FFF8E1 !important;
     }
     .point-number {
       min-width: 28px;
       height: 28px;
-      background: linear-gradient(135deg, #FF8C00, #FFA726);
-      color: #fff;
+      background: linear-gradient(135deg, #FF8C00, #FFA726) !important;
+      color: #fff !important;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -255,7 +253,6 @@ function generateEvaluationPrintHtml(
       font-size: 11pt;
       margin-right: 12px;
       flex-shrink: 0;
-      box-shadow: 0 2px 4px rgba(255, 140, 0, 0.3);
     }
     .point-text {
       font-size: 10.5pt;
@@ -278,12 +275,12 @@ function generateEvaluationPrintHtml(
     .caution-header-icon {
       width: 24px;
       height: 24px;
-      background: #F57C00;
+      background: #F57C00 !important;
       border-radius: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
+      color: #fff !important;
       font-size: 14px;
       font-weight: bold;
     }
@@ -298,17 +295,17 @@ function generateEvaluationPrintHtml(
       padding: 7px 8px;
       margin-bottom: 4px;
       border-radius: 6px;
-      background: #FFF3E0;
+      background: #FFF3E0 !important;
       border-left: 4px solid #F57C00;
     }
     .caution-row:nth-child(even) {
-      background: #FFE0B2;
+      background: #FFE0B2 !important;
     }
     .caution-number {
       min-width: 24px;
       height: 24px;
-      background: #F57C00;
-      color: #fff;
+      background: #F57C00 !important;
+      color: #fff !important;
       border-radius: 4px;
       display: flex;
       align-items: center;
@@ -334,7 +331,7 @@ function generateEvaluationPrintHtml(
     .header-company-name {
       font-size: 9pt;
       font-weight: bold;
-      color: #222;
+      color: #fff !important;
     }
   </style>
 </head>
