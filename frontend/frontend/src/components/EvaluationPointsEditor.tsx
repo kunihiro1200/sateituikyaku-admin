@@ -173,7 +173,7 @@ function generateEvaluationPrintHtml(
     }
     .header-subtitle {
       font-size: 9pt;
-      color: #555;
+      color: #222;
       margin-top: 2px;
       font-weight: bold;
     }
@@ -331,15 +331,10 @@ function generateEvaluationPrintHtml(
       align-items: center;
       margin-top: 2px;
     }
-    .header-subtitle {
-      font-size: 9pt;
-      color: #fff;
-      font-weight: bold;
-    }
     .header-company-name {
       font-size: 9pt;
       font-weight: bold;
-      color: #333;
+      color: #222;
     }
   </style>
 </head>
