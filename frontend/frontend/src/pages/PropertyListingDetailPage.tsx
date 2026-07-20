@@ -275,6 +275,7 @@ export default function PropertyListingDetailPage() {
   const [isOfferEditMode, setIsOfferEditMode] = useState(false);
   const [atbbWarningDialog, setAtbbWarningDialog] = useState(false);
   const [eLabelWarningDialog, setELabelWarningDialog] = useState(false);
+  const [preViewingNotesWarningDialog, setPreViewingNotesWarningDialog] = useState(false);
   const offerSectionRef = useRef<HTMLDivElement>(null);
   // 買付情報バリデーションエラー状態
   const [offerErrors, setOfferErrors] = useState<{
@@ -705,6 +706,10 @@ export default function PropertyListingDetailPage() {
         message: 'よく聞かれる項目を保存しました',
         severity: 'success',
       });
+      // 内覧前伝達事項が変更された場合、DN列確認ポップアップを表示
+      if (editedData.pre_viewing_notes !== undefined) {
+        setPreViewingNotesWarningDialog(true);
+      }
       await fetchPropertyData(true);
       setEditedData({});
     } catch (error) {
@@ -3616,6 +3621,31 @@ export default function PropertyListingDetailPage() {
             }}
           >
             「買付情報」セクションへ移動
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 内覧前伝達事項変更時 DN列確認ダイアログ */}
+      <Dialog open={preViewingNotesWarningDialog} onClose={() => setPreViewingNotesWarningDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold', fontSize: '1.1rem' }}>
+          ⚠️ 確認
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3, pb: 2 }}>
+          <Typography variant="body1" sx={{ lineHeight: 1.8 }}>
+            物件リストの DN列の変更は必要ではないですか？業者向けに自動案内メールが行くので確認お願いします。
+          </Typography>
+          <Link
+            href="https://docs.google.com/spreadsheets/d/1tI_iXaiLuWBggs5y0RH7qzkbHs9wnLLdRekAmjkhcLY/edit?gid=290420661#gid=290420661"
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ mt: 1, display: 'inline-block' }}
+          >
+            物件リスト（スプレッドシート）を開く
+          </Link>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setPreViewingNotesWarningDialog(false)} variant="contained" color="primary">
+            OK
           </Button>
         </DialogActions>
       </Dialog>
