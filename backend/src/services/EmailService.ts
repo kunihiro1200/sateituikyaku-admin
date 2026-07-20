@@ -192,12 +192,14 @@ export class EmailService extends BaseRepository {
 
         for (const file of files) {
           const encodedFilename = `=?UTF-8?B?${Buffer.from(file.originalname, 'utf-8').toString('base64')}?=`;
+          // RFC 5987形式：filename*パラメータでUTF-8エンコード（文字化け防止）
+          const utf8EncodedFilename = encodeURIComponent(file.originalname);
           // 添付ファイルも76文字改行
           const fileBase64 = file.buffer.toString('base64').replace(/(.{76})/g, '$1\r\n');
           parts.push(
             `--${boundary}`,
-            `Content-Type: ${file.mimetype || 'application/octet-stream'}`,
-            `Content-Disposition: attachment; filename="${encodedFilename}"`,
+            `Content-Type: ${file.mimetype || 'application/octet-stream'}; name="${encodedFilename}"`,
+            `Content-Disposition: attachment; filename="${encodedFilename}"; filename*=UTF-8''${utf8EncodedFilename}`,
             'Content-Transfer-Encoding: base64',
             '',
             fileBase64,
