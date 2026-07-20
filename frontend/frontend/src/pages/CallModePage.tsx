@@ -9453,19 +9453,6 @@ HP：https://ifoo-oita.com/
           open={documentModalOpen}
           onClose={() => setDocumentModalOpen(false)}
           sellerNumber={seller.sellerNumber || ''}
-          onSalesCasesExtracted={(cases) => {
-            // 抽出された売買事例をAI査定フォームに反映
-            const rows = cases.slice(0, 10).map((c, i) => ({
-              id: String(Date.now() + i),
-              floor: c.floor != null ? String(c.floor) : '',
-              exclusiveArea: c.exclusiveArea != null ? String(c.exclusiveArea) : '',
-              price: c.price != null ? String(c.price) : '',
-              yearMonth: c.yearMonth || '',
-            }));
-            setSalesCaseRows(rows.length > 0 ? rows : [{ id: '1', floor: '', exclusiveArea: '', price: '', yearMonth: '' }]);
-            setAiValuation(null);
-            setAiValuationError(null);
-          }}
         />
       )}
 
