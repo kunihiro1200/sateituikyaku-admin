@@ -48,13 +48,13 @@ export class BuyerLinkageService {
     }
 
     try {
-      // 各物件番号に対して getBuyersForProperty と同じロジックで直接カウント
+      // 各物件番号に対して部分一致で検索（property_numberはカンマ区切りで複数物件を含む）
       await Promise.all(
         propertyNumbers.map(async (propNum) => {
           const { count, error } = await this.supabase
             .from('buyers')
             .select('*', { count: 'exact', head: true })
-            .eq('property_number', propNum)
+            .ilike('property_number', `%${propNum}%`)
             .is('deleted_at', null);
 
           if (error) {
@@ -107,7 +107,7 @@ export class BuyerLinkageService {
           viewing_insight_executor,
           viewing_insight_companion
         `)
-        .eq('property_number', propertyNumber)
+        .ilike('property_number', `%${propertyNumber}%`)
         .is('deleted_at', null)
         .order(sortBy, { ascending: sortOrder === 'asc' });
 
@@ -177,7 +177,7 @@ export class BuyerLinkageService {
       const { count, error } = await this.supabase
         .from('buyers')
         .select('*', { count: 'exact', head: true })
-        .eq('property_number', propertyNumber)
+        .ilike('property_number', `%${propertyNumber}%`)
         .is('deleted_at', null);  // 削除済み買主を除外
 
       if (error) {
@@ -199,7 +199,7 @@ export class BuyerLinkageService {
       const { count, error } = await this.supabase
         .from('buyers')
         .select('*', { count: 'exact', head: true })
-        .eq('property_number', propertyNumber)
+        .ilike('property_number', `%${propertyNumber}%`)
         .in('inquiry_confidence', ['A', 'S', 'A+', 'S+'])
         .is('deleted_at', null);  // 削除済み買主を除外
 
