@@ -29,6 +29,7 @@ const PLACES_API_TYPE_MAP: Record<string, string> = {
   middle_school: 'school',
   high_school: 'school',
   cram_school: 'school',
+  bus_station: 'transit_station',
 };
 
 // カテゴリごとのkeywordパラメータ（APIレベルで絞り込む）
@@ -48,6 +49,8 @@ const CATEGORY_NAME_FILTERS: Record<string, RegExp> = {
   cram_school: /塾|学習塾|進学塾|予備校|学院(?!.*小学|.*中学|.*高校|.*大学)/,
   // 幼稚園・保育園：関連キーワードが含まれるものだけ通す（ホワイトリスト）
   kindergarten: /幼稚園|保育園|保育所|こども園|認定こども園|託児所|ナーサリー|nursery|kindergarten/i,
+  // バス停：「バス」「bus」を含むもののみ（駅を除外）
+  bus_station: /バス|bus|BUS/i,
 };
 
 // カテゴリごとの除外フィルタ（明らかに無関係な施設を除外するブラックリスト方式）
