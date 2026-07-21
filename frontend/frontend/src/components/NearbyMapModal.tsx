@@ -333,6 +333,21 @@ function makeParkMarker(): { url: string; w: number; h: number } {
   catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h }; }
 }
 
+// ---- バス停マーカー ----
+function makeBusStopMarker(): { url: string; w: number; h: number } {
+  const w = 30; const h = 36;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 30 36">
+    <circle cx="15" cy="13" r="12" fill="#4a148c" stroke="white" stroke-width="2"/>
+    <rect x="9" y="7" width="12" height="10" rx="2" fill="white" opacity="0.95"/>
+    <rect x="10" y="8" width="10" height="5" rx="1" fill="#4a148c" opacity="0.8"/>
+    <circle cx="11" cy="15" r="1.2" fill="#4a148c"/>
+    <circle cx="19" cy="15" r="1.2" fill="#4a148c"/>
+    <polygon points="12,26 18,26 15,36" fill="#4a148c"/>
+  </svg>`;
+  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h }; }
+  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h }; }
+}
+
 // ---- フォーク＆ナイフSVGマーカー（飲食店） ----
 function makeRestaurantMarker(): { url: string; w: number; h: number } {
   const w = 32; const h = 38;
@@ -396,6 +411,38 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
         return;
       }
 
+      // バス停：バスアイコン＋テキストラベル吹き出し
+      if (cat.type === 'bus_station') {
+        const bm = makeBusStopMarker();
+        // テキストラベル吹き出しも表示する
+        const maxChars2 = 10;
+        const rawName2 = p.name.length > maxChars2 ? p.name.slice(0, maxChars2) + '…' : p.name;
+        const displayText2 = `バス停 ${rawName2}`;
+        let textW2 = 0;
+        for (const ch of displayText2) { textW2 += ch.charCodeAt(0) > 127 ? 10 : 7; }
+        const labelW2 = Math.max(60, textW2 + 24);
+        const labelH2 = 22;
+
+        const { dx, dy } = findBestOffset(ppx.x, ppx.y, labelW2, labelH2, placedLabels);
+        const ic2 = makeTextMarker(p.name, color, 'バス停', dx, dy);
+
+        const lx2 = ppx.x - ic2.anchorX;
+        const ly2 = ppx.y - ic2.anchorY;
+        placedLabels.push({ lx: lx2, ly: ly2, lw: ic2.w, lh: ic2.h });
+
+        const mk = new google.maps.Marker({
+          position: { lat: p.lat, lng: p.lng }, map,
+          title: `${p.name} (${p.distance}m)`, zIndex: 600 - globalIdx,
+          icon: { url: ic2.url, anchor: new google.maps.Point(ic2.anchorX, ic2.anchorY), scaledSize: new google.maps.Size(ic2.w, ic2.h) },
+        });
+        mk.addListener('click', () => {
+          iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;"><b>🚌 ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span></div>`);
+          iw.open(map, mk);
+        });
+        ref.current.push(mk);
+        return;
+      }
+
       // 飲食店：フォーク＆ナイフアイコン
       if (cat.type === 'restaurant') {
         const rm = makeRestaurantMarker();
@@ -445,12 +492,12 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
 }
 
 // ---- 施設リストコンポーネント（印刷・通常共用） ----
-function FacilityList({ data, label, color }: { data: NearbyData | null; label: string; color: string }) {
+function FacilityList({ data, label, color, excludeTypes }: { data: NearbyData | null; label: string; color: string; excludeTypes?: Set<string> }) {
   if (!data) return <Typography variant="caption" color="text.secondary">データなし</Typography>;
   return (
     <Box>
       <Typography variant="subtitle2" fontWeight="bold" sx={{ color, mb: 0.5, fontSize: '11px' }}>{label}</Typography>
-      {data.categories.filter(cat => DISPLAY_CATS.has(cat.type)).map((cat) => {
+      {data.categories.filter(cat => DISPLAY_CATS.has(cat.type) && !(excludeTypes?.has(cat.type))).map((cat) => {
         const places = data.places[cat.type] || [];
         if (!places.length) return null;
         const c = COLORS[cat.type] || '#757575';
@@ -620,10 +667,27 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
         </div>`
       : '';
 
+    // バス停のHTML生成（校区の下に表示）
+    const busStopHtml = curData && (curData.places['bus_station']?.length > 0)
+      ? `<div class="cat-block" style="border-left:3px solid #4a148c">
+          <div class="cat-header">
+            <span>🚌</span>
+            <span class="cat-label" style="color:#4a148c">近いバス停</span>
+            <span class="cat-count">${curData.places['bus_station'].length}</span>
+          </div>
+          ${curData.places['bus_station'].map((p, i) =>
+            `<div class="place-item">
+              <span class="place-name" style="font-weight:${i === 0 ? 'bold' : 'normal'}">${p.name}</span>
+              <span class="place-dist">約${p.distance}m</span>
+            </div>`
+          ).join('')}
+        </div>`
+      : '';
+
     // 施設リストのHTML生成
     const facilityHtml = curData
-      ? schoolDistrictHtml + curData.categories
-          .filter(cat => DISPLAY_CATS.has(cat.type))
+      ? schoolDistrictHtml + busStopHtml + curData.categories
+          .filter(cat => DISPLAY_CATS.has(cat.type) && cat.type !== 'bus_station')
           .map(cat => {
             const places = curData.places[cat.type] || [];
             if (!places.length) return '';
@@ -871,10 +935,31 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
                         </Typography>
                       </Paper>
                     )}
+                    {/* 校区の下にバス停を専用セクションとして表示 */}
+                    {cur.places['bus_station']?.length > 0 && (
+                      <Paper variant="outlined" sx={{ p: 0.75, borderLeft: '3px solid #4a148c', mb: 0.75, flexShrink: 0 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.25 }}>
+                          <Typography fontSize={12}>🚌</Typography>
+                          <Typography variant="caption" fontWeight="bold" sx={{ color: '#4a148c', fontSize: '10px' }}>近いバス停</Typography>
+                          <Chip label={cur.places['bus_station'].length} size="small" sx={{ ml: 'auto', height: 14, fontSize: '9px' }} />
+                        </Box>
+                        <List dense disablePadding>
+                          {cur.places['bus_station'].map((p, i) => (
+                            <ListItem key={i} disablePadding sx={{ py: 0 }}>
+                              <ListItemText
+                                primary={<Typography variant="caption" sx={{ fontWeight: i === 0 ? 'bold' : 'normal', display: 'block', fontSize: '10px' }}>{p.name}</Typography>}
+                                secondary={<Typography variant="caption" color="text.secondary" sx={{ fontSize: '9px' }}>約{p.distance}m</Typography>}
+                              />
+                            </ListItem>
+                          ))}
+                        </List>
+                      </Paper>
+                    )}
                     <FacilityList
                       data={cur}
                       label={tab === 0 ? '🔵 半径1km圏内の施設' : '🟢 半径2km圏内の施設'}
                       color={tab === 0 ? '#1565c0' : '#2e7d32'}
+                      excludeTypes={new Set(['bus_station'])}
                     />
                   </>
                 )}
@@ -892,6 +977,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
                     data={tab === 0 ? data1 : data2}
                     label={tab === 0 ? '🔵 半径1km圏内の施設' : '🟢 半径2km圏内の施設'}
                     color={tab === 0 ? '#1565c0' : '#2e7d32'}
+                    excludeTypes={new Set(['bus_station'])}
                   />
                 </Box>
               </Box>
