@@ -5957,8 +5957,23 @@ ${pageUrl}`;
                   { label: 'A103 構造', value: tokiKodateResult.extractResult?.structure },
                   { label: 'C103 屋根', value: tokiKodateResult.extractResult?.roofType },
                   { label: 'D103 階数', value: tokiKodateResult.extractResult?.floors },
+                  { label: 'A105 延床面積', value: (() => {
+                    const fa = tokiKodateResult.extractResult?.floorAreas;
+                    if (fa && fa.length > 0) {
+                      const total = fa.reduce((sum: number, f: any) => sum + (parseFloat(String(f.area).replace(/[^\d.]/g, '')) || 0), 0);
+                      return total > 0 ? total.toFixed(2) : null;
+                    }
+                    const f1 = parseFloat(tokiKodateResult.extractResult?.floor1Area || '');
+                    const f2 = parseFloat(tokiKodateResult.extractResult?.floor2Area || '');
+                    const total = (isNaN(f1) ? 0 : f1) + (isNaN(f2) ? 0 : f2);
+                    return total > 0 ? total.toFixed(2) : null;
+                  })() },
                   { label: 'C105 1階床面積', value: tokiKodateResult.extractResult?.floor1Area },
                   { label: 'D105 2階床面積', value: tokiKodateResult.extractResult?.floor2Area },
+                  ...(tokiKodateResult.extractResult?.floorAreas?.filter((f: any) => f.floor >= 3).map((f: any) => ({
+                    label: `${f.floor}階床面積`,
+                    value: f.area,
+                  })) || []),
                   { label: 'A107 登記日', value: tokiKodateResult.extractResult?.registrationDate },
                   { label: 'C107 増築日', value: tokiKodateResult.extractResult?.extensionDate },
                   { label: 'D107 改築日', value: tokiKodateResult.extractResult?.renovationDate },
