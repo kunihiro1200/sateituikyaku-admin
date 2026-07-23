@@ -906,12 +906,9 @@ export class TokiExtractService {
 重要：建物が何階建てかに関わらず、記載されている全ての階の床面積を取得すること。
 - floor1_area: 1階の床面積（「：」→「.」変換）
 - floor2_area: 2階の床面積（「：」→「.」変換）。2階がない場合は null
-- floor_areas: 【必須】全階の床面積を配列で返す（1階〜最上階まで、記載されている全ての階）。
-  各要素は { "floor": 階数(数値), "area": "面積(文字列)" } 形式。
-  ※ 2階建てでも3階建てでも4階建てでも、必ず全階分を配列に含めること。
-  ※ 空配列 [] は不可。必ず1階以上の要素を含めること。
-  例：2階建ての場合 [{"floor":1,"area":"52.00"},{"floor":2,"area":"48.00"}]
-  例：3階建ての場合 [{"floor":1,"area":"28.15"},{"floor":2,"area":"41.91"},{"floor":3,"area":"20.50"}]
+- floor3_area: 3階の床面積（「：」→「.」変換）。3階がない場合は null
+- floor4_area: 4階の床面積（「：」→「.」変換）。4階がない場合は null
+- floor5_area: 5階の床面積（「：」→「.」変換）。5階がない場合は null
 
 【日付（表題部（主である建物の表示）の「原因及びその日付」から取得）】
 - registration_date: 1行目の日付（和暦→西暦変換）（例：平成21年2月26日新築 → "2009-02-26"）
@@ -943,7 +940,9 @@ export class TokiExtractService {
   "floors": null,
   "floor1_area": null,
   "floor2_area": null,
-  "floor_areas": [],
+  "floor3_area": null,
+  "floor4_area": null,
+  "floor5_area": null,
   "registration_date": null,
   "extension_date": null,
   "renovation_date": null
@@ -1016,9 +1015,15 @@ export class TokiExtractService {
       floors: raw.floors ?? null,
       floor1Area: raw.floor1_area ?? null,
       floor2Area: raw.floor2_area ?? null,
-      floorAreas: Array.isArray(raw.floor_areas)
-        ? raw.floor_areas.map((f: any) => ({ floor: Number(f.floor), area: String(f.area) }))
-        : [],
+      floorAreas: (() => {
+        const areas: Array<{ floor: number; area: string }> = [];
+        if (raw.floor1_area) areas.push({ floor: 1, area: String(raw.floor1_area) });
+        if (raw.floor2_area) areas.push({ floor: 2, area: String(raw.floor2_area) });
+        if (raw.floor3_area) areas.push({ floor: 3, area: String(raw.floor3_area) });
+        if (raw.floor4_area) areas.push({ floor: 4, area: String(raw.floor4_area) });
+        if (raw.floor5_area) areas.push({ floor: 5, area: String(raw.floor5_area) });
+        return areas;
+      })(),
       registrationDate: raw.registration_date ?? null,
       extensionDate: raw.extension_date ?? null,
       renovationDate: raw.renovation_date ?? null,
