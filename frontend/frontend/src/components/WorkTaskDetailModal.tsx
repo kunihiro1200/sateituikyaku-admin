@@ -2655,6 +2655,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         floors: buildingSource.floors,
         floor1Area: buildingSource.floor1Area,
         floor2Area: buildingSource.floor2Area,
+        floorAreas: buildingSource.floorAreas,
         registrationDate: buildingSource.registrationDate,
         extensionDate: buildingSource.extensionDate,
         renovationDate: buildingSource.renovationDate,
