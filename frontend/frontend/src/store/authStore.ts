@@ -181,7 +181,7 @@ export const useAuthStore = create<AuthState>()(
       if (currentState.isAuthenticated && currentState.employee) {
         console.log('🔍 Already authenticated (cached), verifying in background...');
         set({ isLoading: false });
-        // バックグラウンドで検証（失敗したらログアウト）
+        // バックグラウンドで検証（失敗しても即座にログアウトしない）
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
@@ -190,14 +190,32 @@ export const useAuthStore = create<AuthState>()(
               localStorage.setItem('refresh_token', session.refresh_token);
             }
           } else {
-            // セッション切れ → ログアウト
-            localStorage.removeItem('session_token');
-            localStorage.removeItem('refresh_token');
-            localStorage.removeItem('auth-storage');
-            set({ employee: null, isAuthenticated: false });
+            // セッションがnullの場合、refresh_tokenでの復元を試みる
+            const storedRefreshToken = localStorage.getItem('refresh_token');
+            if (storedRefreshToken) {
+              console.log('🔄 Background: session null, trying refresh...');
+              const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
+                refresh_token: storedRefreshToken,
+              });
+              if (!refreshError && refreshData.session) {
+                console.log('✅ Background: session refreshed');
+                localStorage.setItem('session_token', refreshData.session.access_token);
+                if (refreshData.session.refresh_token) {
+                  localStorage.setItem('refresh_token', refreshData.session.refresh_token);
+                }
+              } else {
+                // リフレッシュも失敗 → ただしここでは即座にログアウトしない
+                // 次回のAPI呼び出しで401が返り、その時点でユーザーに通知される
+                console.warn('⚠️ Background: refresh failed, will handle on next API call');
+              }
+            } else {
+              // refresh_tokenもない → 次回のAPI呼び出しに任せる
+              console.warn('⚠️ Background: no session and no refresh_token');
+            }
           }
         } catch {
           // バックグラウンド検証失敗は無視（次回のAPI呼び出しで401が返る）
+          console.warn('⚠️ Background auth verification failed, ignoring');
         }
         return;
       }

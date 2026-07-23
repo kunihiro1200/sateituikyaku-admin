@@ -65,6 +65,7 @@ import YoutoChiikiExplanationPage from './pages/YoutoChiikiExplanationPage';
 // FloorPlanComparePage は遅延読み込み（他ページへの影響を完全に分離）
 const FloorPlanComparePage = lazy(() => import('./pages/FloorPlanComparePage'));
 import ProtectedRoute from './components/ProtectedRoute';
+import SessionExpiredDialog from './components/SessionExpiredDialog';
 import { GoogleMapsProvider } from './contexts/GoogleMapsContext';
 
 // 認証不要の公開ページパス（checkAuth・warmupApiをスキップ）
@@ -94,6 +95,7 @@ function App() {
   
   return (
     <GoogleMapsProvider>
+      <SessionExpiredDialog />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />

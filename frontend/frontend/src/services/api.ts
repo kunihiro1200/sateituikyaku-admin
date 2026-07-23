@@ -12,6 +12,37 @@ console.log('🔍 [api] Environment:', {
   API_BASE_URL: API_BASE_URL
 });
 
+// セッション切れ通知（即座にリダイレクトせず、ユーザーに警告を表示する）
+let sessionExpiredNotified = false;
+
+export const onSessionExpired = (() => {
+  const listeners: Array<() => void> = [];
+  return {
+    subscribe: (listener: () => void) => {
+      listeners.push(listener);
+      return () => {
+        const idx = listeners.indexOf(listener);
+        if (idx >= 0) listeners.splice(idx, 1);
+      };
+    },
+    notify: () => {
+      if (sessionExpiredNotified) return; // 二重通知防止
+      sessionExpiredNotified = true;
+      listeners.forEach((l) => l());
+      // 通知後、フラグを30秒後にリセット（再ログイン試行を許可）
+      setTimeout(() => { sessionExpiredNotified = false; }, 30000);
+    },
+  };
+})();
+
+/** セッション切れで強制リダイレクト（ユーザーが確認後に呼ぶ用） */
+export const forceLogoutRedirect = () => {
+  localStorage.removeItem('session_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('auth-storage');
+  window.location.href = '/login';
+};
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -44,11 +75,10 @@ api.interceptors.response.use(
 
     // 認証エラーの場合
     if (error.response?.status === 401) {
-      // リトライ済みの場合はログイン画面へ
+      // リトライ済みの場合 → 即座にリダイレクトせず警告を表示
       if (originalRequest._retry) {
-        localStorage.removeItem('session_token');
-        localStorage.removeItem('refresh_token');
-        window.location.href = '/login';
+        console.warn('⚠️ Token refresh failed - notifying user instead of redirecting');
+        onSessionExpired.notify();
         return Promise.reject(error);
       }
 
@@ -78,15 +108,14 @@ api.interceptors.response.use(
           return api(originalRequest);
         } catch (refreshError) {
           console.error('Token refresh failed:', refreshError);
-          localStorage.removeItem('session_token');
-          localStorage.removeItem('refresh_token');
-          window.location.href = '/login';
+          // 即座にリダイレクトせず、ユーザーに警告を表示
+          onSessionExpired.notify();
           return Promise.reject(refreshError);
         }
       } else {
-        localStorage.removeItem('session_token');
-        localStorage.removeItem('refresh_token');
-        window.location.href = '/login';
+        // リフレッシュトークンなし → 警告を表示
+        console.warn('⚠️ No refresh token available - notifying user');
+        onSessionExpired.notify();
       }
     }
 
