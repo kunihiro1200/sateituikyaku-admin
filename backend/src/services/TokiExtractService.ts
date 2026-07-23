@@ -167,6 +167,7 @@ export interface TokiKodateExtractResult {
   // 床面積
   floor1Area: string | null;         // C105（1階）
   floor2Area: string | null;         // D105（2階）
+  floorAreas: Array<{ floor: number; area: string }>;  // 全階床面積（3階以上対応）
 
   // 日付
   registrationDate: string | null;   // A107（登記日）
@@ -904,6 +905,8 @@ export class TokiExtractService {
 【床面積（表題部（主である建物の表示）の「③ 床面積 ㎡」から取得）】
 - floor1_area: 1階の床面積（「：」→「.」変換）
 - floor2_area: 2階の床面積（「：」→「.」変換）。2階がない場合は null
+- floor_areas: 全階の床面積を配列で返す（1階〜最上階まですべて）。各要素は { "floor": 階数(数値), "area": "面積(文字列)" } 形式。
+  例：3階建ての場合 [{"floor":1,"area":"52.00"},{"floor":2,"area":"48.00"},{"floor":3,"area":"30.00"}]
 
 【日付（表題部（主である建物の表示）の「原因及びその日付」から取得）】
 - registration_date: 1行目の日付（和暦→西暦変換）（例：平成21年2月26日新築 → "2009-02-26"）
@@ -935,6 +938,7 @@ export class TokiExtractService {
   "floors": null,
   "floor1_area": null,
   "floor2_area": null,
+  "floor_areas": [],
   "registration_date": null,
   "extension_date": null,
   "renovation_date": null
@@ -1007,6 +1011,9 @@ export class TokiExtractService {
       floors: raw.floors ?? null,
       floor1Area: raw.floor1_area ?? null,
       floor2Area: raw.floor2_area ?? null,
+      floorAreas: Array.isArray(raw.floor_areas)
+        ? raw.floor_areas.map((f: any) => ({ floor: Number(f.floor), area: String(f.area) }))
+        : [],
       registrationDate: raw.registration_date ?? null,
       extensionDate: raw.extension_date ?? null,
       renovationDate: raw.renovation_date ?? null,
@@ -1081,6 +1088,23 @@ export class TokiExtractService {
     // 床面積
     add('C105', extractResult.floor1Area);
     add('D105', extractResult.floor2Area);
+
+    // A105: 延床面積（全階合計）
+    const allFloorAreas = extractResult.floorAreas && extractResult.floorAreas.length > 0
+      ? extractResult.floorAreas
+      : [
+          ...(extractResult.floor1Area ? [{ floor: 1, area: extractResult.floor1Area }] : []),
+          ...(extractResult.floor2Area ? [{ floor: 2, area: extractResult.floor2Area }] : []),
+        ];
+    if (allFloorAreas.length > 0) {
+      const totalArea = allFloorAreas.reduce((sum, f) => {
+        const val = parseFloat(String(f.area).replace(/[^\d.]/g, ''));
+        return sum + (isNaN(val) ? 0 : val);
+      }, 0);
+      if (totalArea > 0) {
+        add('A105', totalArea.toFixed(2));
+      }
+    }
 
     // 日付
     add('A107', extractResult.registrationDate);
@@ -1702,6 +1726,7 @@ export class TokiExtractService {
       floors: buildingSource.floors,
       floor1Area: buildingSource.floor1Area,
       floor2Area: buildingSource.floor2Area,
+      floorAreas: buildingSource.floorAreas,
       registrationDate: buildingSource.registrationDate,
       extensionDate: buildingSource.extensionDate,
       renovationDate: buildingSource.renovationDate,
