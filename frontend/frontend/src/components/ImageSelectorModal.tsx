@@ -50,6 +50,8 @@ interface ImageSelectorModalProps {
   onSelect?: (images: ImageFile[]) => void;
   sellerNumber?: string;
   initialSelected?: ImageFile[];
+  /** 親ダイアログより前面に表示するためのz-index指定 */
+  zIndex?: number;
 }
 
 // 統一された画像ファイル型
@@ -93,6 +95,7 @@ const ImageSelectorModal = ({
   onClose,
   onSelect,
   initialSelected,
+  zIndex,
 }: ImageSelectorModalProps) => {
   // onCancel / onClose どちらでも閉じられるように統一
   const handleCancel = () => {
@@ -499,7 +502,7 @@ const ImageSelectorModal = ({
 
   return (
     <>
-      <Dialog open={open} onClose={handleCancel} maxWidth="lg" fullWidth>
+      <Dialog open={open} onClose={handleCancel} maxWidth="lg" fullWidth sx={zIndex ? { zIndex } : undefined}>
         <DialogTitle>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

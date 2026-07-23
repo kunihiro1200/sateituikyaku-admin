@@ -1298,6 +1298,7 @@ export default function PropertyReportPage() {
         open={imageSelectorOpen}
         onConfirm={handleImageSelectionConfirm}
         onCancel={handleImageSelectionCancel}
+        zIndex={1600}
       />
 
       {/* 送信履歴詳細ダイアログ */}
