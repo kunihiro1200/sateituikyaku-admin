@@ -68,44 +68,57 @@ async function extractCoords(url: string, apiBase: string): Promise<{ lat: numbe
     const direct = tryExtractFromUrl(url);
     if (direct) return direct;
 
-    // 短縮URLの場合、バックエンドで展開
+    // 短縮URLの場合、バックエンドで展開（リトライ付き）
     if (url.includes('goo.gl') || url.includes('maps.app.goo.gl')) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 12000);
-        const r = await fetch(
-          `${apiBase}/api/url-redirect/resolve?url=${encodeURIComponent(url)}`,
-          { signal: controller.signal }
-        );
-        clearTimeout(timeoutId);
-        if (r.ok) {
-          const d = await r.json();
-          const resolved = d.redirectedUrl;
-          console.log('[NearbyMap] Resolved URL:', resolved?.substring(0, 150));
-          if (resolved) {
-            // 展開後URLから座標抽出
-            const coords = tryExtractFromUrl(resolved);
-            if (coords) return coords;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), attempt === 0 ? 12000 : 15000);
+          const r = await fetch(
+            `${apiBase}/api/url-redirect/resolve?url=${encodeURIComponent(url)}`,
+            { signal: controller.signal }
+          );
+          clearTimeout(timeoutId);
+          if (r.ok) {
+            const d = await r.json();
+            const resolved = d.redirectedUrl;
+            console.log(`[NearbyMap] Resolved URL (attempt ${attempt + 1}):`, resolved?.substring(0, 150));
+            if (resolved) {
+              // 展開後URLから座標抽出
+              const coords = tryExtractFromUrl(resolved);
+              if (coords) return coords;
 
-            // consent.google.com の continue パラメータから座標を試みる
-            try {
-              const resolvedUrl = new URL(resolved);
-              if (resolvedUrl.hostname.includes('consent.google.com')) {
-                const continueParam = resolvedUrl.searchParams.get('continue');
-                if (continueParam) {
-                  const decoded = decodeURIComponent(continueParam);
-                  console.log('[NearbyMap] Trying consent continue URL:', decoded.substring(0, 150));
-                  const continueCoords = tryExtractFromUrl(decoded);
-                  if (continueCoords) return continueCoords;
+              // consent.google.com の continue パラメータから座標を試みる
+              try {
+                const resolvedUrl = new URL(resolved);
+                if (resolvedUrl.hostname.includes('consent.google.com')) {
+                  const continueParam = resolvedUrl.searchParams.get('continue');
+                  if (continueParam) {
+                    const decoded = decodeURIComponent(continueParam);
+                    console.log('[NearbyMap] Trying consent continue URL:', decoded.substring(0, 150));
+                    const continueCoords = tryExtractFromUrl(decoded);
+                    if (continueCoords) return continueCoords;
+                  }
                 }
-              }
-            } catch {}
+              } catch {}
+
+              // 展開後URLの/place/部分から住所テキストを抽出してジオコーディングに使う
+              // これは呼び出し側のフォールバックに任せる
+              console.warn('[NearbyMap] Resolved URL has no extractable coords:', resolved.substring(0, 200));
+            }
+            break; // レスポンスは成功したがマッチしなかった場合はリトライしない
+          } else {
+            console.warn(`[NearbyMap] URL resolve failed (attempt ${attempt + 1}):`, r.status);
+            if (attempt === 0) {
+              await new Promise(resolve => setTimeout(resolve, 1000)); // 1秒待ってリトライ
+            }
           }
-        } else {
-          console.warn('[NearbyMap] URL resolve failed:', r.status, await r.text().catch(() => ''));
+        } catch (fetchErr: any) {
+          console.warn(`[NearbyMap] URL resolve error (attempt ${attempt + 1}):`, fetchErr.name, fetchErr.message);
+          if (attempt === 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
-      } catch (fetchErr: any) {
-        console.warn('[NearbyMap] URL resolve error:', fetchErr.name, fetchErr.message);
       }
     }
 
@@ -554,34 +567,28 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     setCoords(null); setData1(null); setData2(null); setError(null);
     setLoading(true);
 
-    if (googleMapUrl) {
-      extractCoords(googleMapUrl, apiBase).then((c) => {
-        if (c) {
-          setCoords(c);
-          setLoading(false);
-        } else if (address && isLoaded) {
-          // URL座標抽出失敗時、住所からジオコーディングでフォールバック
-          console.log('[NearbyMap] URL extraction failed, trying geocode for:', address);
-          const geocoder = new google.maps.Geocoder();
-          geocoder.geocode({ address }, (results, status) => {
-            if (status === 'OK' && results && results[0]) {
-              const loc = results[0].geometry.location;
-              console.log('[NearbyMap] Geocode success:', loc.lat(), loc.lng());
-              setCoords({ lat: loc.lat(), lng: loc.lng() });
-            } else {
-              console.warn('[NearbyMap] Geocode failed:', status);
-            }
-            setLoading(false);
-          });
-        } else {
-          setLoading(false);
+    // Google Maps URLから住所テキストを抽出する補助関数
+    const extractAddressFromUrl = (url: string): string | null => {
+      try {
+        // /place/住所名/@ パターンから住所を抽出
+        const placeMatch = url.match(/\/place\/([^/@]+)/);
+        if (placeMatch) {
+          const decoded = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
+          // 座標っぽい値は除外
+          if (!/^-?\d+\.\d+,-?\d+\.\d+$/.test(decoded)) {
+            return decoded;
+          }
         }
-      });
-    } else if (address && isLoaded) {
-      // googleMapUrlがない場合、住所から直接ジオコーディング
-      console.log('[NearbyMap] No URL provided, geocoding address:', address);
+      } catch {}
+      return null;
+    };
+
+    // ジオコーディングを実行する補助関数
+    const doGeocode = (geocodeAddress: string) => {
+      if (!isLoaded) { setLoading(false); return; }
+      console.log('[NearbyMap] Trying geocode for:', geocodeAddress);
       const geocoder = new google.maps.Geocoder();
-      geocoder.geocode({ address }, (results, status) => {
+      geocoder.geocode({ address: geocodeAddress }, (results, status) => {
         if (status === 'OK' && results && results[0]) {
           const loc = results[0].geometry.location;
           console.log('[NearbyMap] Geocode success:', loc.lat(), loc.lng());
@@ -591,6 +598,28 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
         }
         setLoading(false);
       });
+    };
+
+    if (googleMapUrl) {
+      extractCoords(googleMapUrl, apiBase).then((c) => {
+        if (c) {
+          setCoords(c);
+          setLoading(false);
+        } else if (isLoaded) {
+          // URL座標抽出失敗時、住所からジオコーディングでフォールバック
+          const geocodeTarget = address || extractAddressFromUrl(googleMapUrl);
+          if (geocodeTarget) {
+            doGeocode(geocodeTarget);
+          } else {
+            setLoading(false);
+          }
+        } else {
+          setLoading(false);
+        }
+      });
+    } else if (address && isLoaded) {
+      // googleMapUrlがない場合、住所から直接ジオコーディング
+      doGeocode(address);
     } else {
       setLoading(false);
     }
