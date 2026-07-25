@@ -787,6 +787,15 @@ export default function BuyerDetailPage() {
     try {
       setLoading(true);
       const res = await api.get(`/api/buyers/${buyer_number}`);
+      // 法人名が空で氏名・会社名に法人キーワードが含まれる場合、自動コピー＆保存
+      if (isCompanyNameRequired(res.data.name) && (!res.data.company_name || !String(res.data.company_name).trim())) {
+        const autoCompanyName = String(res.data.name).trim();
+        res.data.company_name = autoCompanyName;
+        // DBにも保存（非同期で行い、画面表示はブロックしない）
+        buyerApi.update(buyer_number!, { company_name: autoCompanyName }, { sync: true, force: true }).catch((err: any) => {
+          console.error('Failed to auto-save company_name:', err);
+        });
+      }
       setBuyer(res.data);
       // ヒアリング項目の初期値をセット（HTML形式で保存されている場合はそのまま）
       setHearingEditValue(res.data.inquiry_hearing || '');
@@ -3433,19 +3442,29 @@ TEL：097-533-2022`;
                                   onClick={async () => {
                                     const newValue = isSelected ? '' : option;
                                     // 業者問合せ選択時は配信メールを「不要」に自動セット（UI即時反映）
+                                    // また、法人名が空の場合は氏名・会社名を法人名に自動コピー
                                     setBuyer((prev: any) => {
                                       if (!prev) return prev;
                                       const updated: any = { ...prev, [field.key]: newValue };
-                                      if (newValue === '業者問合せ') {
+                                      if (newValue === '業者問合せ' || newValue === '業者（両手）') {
                                         updated.distribution_type = '不要';
+                                        // 法人名が空の場合、氏名・会社名を自動コピー
+                                        if ((!prev.company_name || !prev.company_name.trim()) && prev.name && prev.name.trim()) {
+                                          updated.company_name = prev.name.trim();
+                                        }
                                       }
                                       return updated;
                                     });
                                     handleFieldChange(section.title, field.key, newValue);
                                     // 業者問合せ選択時は distribution_type も即時保存
-                                    if (newValue === '業者問合せ') {
+                                    if (newValue === '業者問合せ' || newValue === '業者（両手）') {
                                       handleFieldChange('問合せ内容', 'distribution_type', '不要');
                                       await handleInlineFieldSave('distribution_type', '不要');
+                                      // 法人名が空の場合、氏名・会社名を法人名に自動コピー＆保存
+                                      if ((!buyer.company_name || !buyer.company_name.trim()) && buyer.name && buyer.name.trim()) {
+                                        handleFieldChange(section.title, 'company_name', buyer.name.trim());
+                                        await handleInlineFieldSave('company_name', buyer.name.trim());
+                                      }
                                     }
                                     // SAVE_BUTTON_FIELDS に含まれるため broker_inquiry 自体の handleInlineFieldSave は呼ばない
                                   }}
