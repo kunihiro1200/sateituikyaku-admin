@@ -122,6 +122,11 @@ const SITE_REG_BASE_DATE = new Date('2025-10-30');
 
 // ステータス計算関数
 export const calculateTaskStatus = (task: WorkTask): string => {
+  // 非表示（保留から削除されたもの）→ どのカテゴリにも入れない
+  if (task.on_hold === '非表示') {
+    return '';
+  }
+
   // 0a. 契約後司法書士連絡未
   // property_listingsのsales_contract_completedが"契約完了～"で始まり、
   // judicial_scrivener_email_after_contractが空で、決済日が2026/4/30以降の場合

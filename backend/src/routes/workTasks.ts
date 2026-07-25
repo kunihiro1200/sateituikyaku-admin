@@ -326,6 +326,26 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
 });
 
 /**
+ * DELETE /api/work-tasks/:propertyNumber
+ * 物件番号で業務依頼データを削除
+ */
+router.delete('/:propertyNumber', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+
+    await workTaskService.deleteByPropertyNumber(propertyNumber);
+
+    return res.json({
+      message: '削除が完了しました',
+      propertyNumber,
+    });
+  } catch (error: any) {
+    console.error('業務依頼データ削除エラー:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST /api/work-tasks/manual-sync
  * 手動転記実行：①コード.gs（スプシ→業務依頼集計表）→ ②GyomuWorkTaskSync.gs（集計表→DB）を順番に実行
  */

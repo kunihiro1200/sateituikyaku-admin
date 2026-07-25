@@ -30,7 +30,7 @@ import {
   useTheme,
   useMediaQuery,
 } from '@mui/material';
-import { Search as SearchIcon, ExpandMore as ExpandMoreIcon, Clear as ClearIcon, Sync as SyncIcon, RecordVoiceOver as RecordVoiceOverIcon } from '@mui/icons-material';
+import { Search as SearchIcon, ExpandMore as ExpandMoreIcon, Clear as ClearIcon, Sync as SyncIcon, RecordVoiceOver as RecordVoiceOverIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import IconButton from '@mui/material/IconButton';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import api from '../services/api';
@@ -113,6 +113,55 @@ export default function WorkTasksPage() {
       console.error('クリップボードへのコピーに失敗しました:', error);
     }
   };
+
+  // 保留解除（on_holdを空にする）
+  const handleReleaseOnHold = async (task: WorkTask, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (!task.property_number) return;
+    if (!window.confirm(`${task.property_number} の保留を解除しますか？\n（本来のステータスに戻ります）`)) return;
+
+    try {
+      await api.put(`/api/work-tasks/${task.property_number}`, { on_hold: '' });
+      setSnackbarMessage(`${task.property_number} の保留を解除しました`);
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+      // ローカルデータを更新
+      setAllWorkTasks(prev =>
+        prev.map(t => t.property_number === task.property_number ? { ...t, on_hold: '' } : t)
+      );
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || '保留解除に失敗しました';
+      setSnackbarMessage(msg);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  };
+
+  // 業務依頼データ削除（on_holdを「非表示」にしてカテゴリから外す。Allには残る）
+  const handleDeleteTask = async (task: WorkTask, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (!task.property_number) return;
+    if (!window.confirm(`${task.property_number} を保留リストから削除しますか？\n（Allには表示されますが、どのカテゴリにも表示されなくなります）`)) return;
+
+    try {
+      await api.put(`/api/work-tasks/${task.property_number}`, { on_hold: '非表示' });
+      setSnackbarMessage(`${task.property_number} を保留から削除しました`);
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+      // ローカルデータを更新
+      setAllWorkTasks(prev =>
+        prev.map(t => t.property_number === task.property_number ? { ...t, on_hold: '非表示' } : t)
+      );
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || '削除に失敗しました';
+      setSnackbarMessage(msg);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  };
+
+  // 保留カテゴリが選択されているかどうか
+  const isOnHoldCategory = selectedCategory === 'status:保留';
 
   const handleRowClick = (task: WorkTask) => {
     setSelectedPropertyNumber(task.property_number);
@@ -515,16 +564,17 @@ export default function WorkTasksPage() {
                     <TableCell>媒介完了</TableCell>
                     <TableCell>媒介備考</TableCell>
                     <TableCell>ステータス</TableCell>
+                    {isOnHoldCategory && <TableCell>操作</TableCell>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={10} align="center">読み込み中...</TableCell>
+                      <TableCell colSpan={isOnHoldCategory ? 11 : 10} align="center">読み込み中...</TableCell>
                     </TableRow>
                   ) : paginatedTasks.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} align="center">業務データが見つかりませんでした</TableCell>
+                      <TableCell colSpan={isOnHoldCategory ? 11 : 10} align="center">業務データが見つかりませんでした</TableCell>
                     </TableRow>
                   ) : (
                     paginatedTasks.map((task) => {
@@ -580,6 +630,31 @@ export default function WorkTasksPage() {
                               />
                             )}
                           </TableCell>
+                          {isOnHoldCategory && (
+                            <TableCell>
+                              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                <Button
+                                  variant="outlined"
+                                  color="warning"
+                                  size="small"
+                                  onClick={(e) => handleReleaseOnHold(task, e)}
+                                  sx={{ whiteSpace: 'nowrap', fontSize: '11px', minWidth: 0, px: 1 }}
+                                >
+                                  保留解除
+                                </Button>
+                                <Button
+                                  variant="outlined"
+                                  color="error"
+                                  size="small"
+                                  startIcon={<DeleteIcon />}
+                                  onClick={(e) => handleDeleteTask(task, e)}
+                                  sx={{ whiteSpace: 'nowrap', fontSize: '11px', minWidth: 0, px: 1 }}
+                                >
+                                  削除
+                                </Button>
+                              </Box>
+                            </TableCell>
+                          )}
                         </TableRow>
                       );
                     })

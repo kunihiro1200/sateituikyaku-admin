@@ -270,4 +270,21 @@ export class WorkTaskService {
 
     return data as WorkTaskData;
   }
+
+  /**
+   * 物件番号でデータを削除
+   */
+  async deleteByPropertyNumber(propertyNumber: string): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('work_tasks')
+      .delete()
+      .eq('property_number', propertyNumber);
+
+    if (error) {
+      console.error('業務依頼データ削除エラー:', error);
+      throw new Error(`削除に失敗しました: ${error.message}`);
+    }
+
+    return true;
+  }
 }
