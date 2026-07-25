@@ -76,6 +76,7 @@ export interface CategoryCounts {
   fi_todayCallNotStarted?: number;
   fi_todayCallWithInfo?: number;
   fi_unvaluated?: number;
+  fi_mailingPending?: number;
   fi_todayCallWithInfoLabelCounts?: Record<string, number>;
 }
 

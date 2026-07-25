@@ -451,6 +451,17 @@ export class SellerSidebarCountsUpdateService {
 
       const mailingPendingCount = mailingPendingCountResult.count || 0;
 
+      // FI査定（郵送）カウント
+      const fi_mailingPendingCountResult = await this.supabase
+        .from('sellers')
+        .select('*', { count: 'exact', head: true })
+        .is('deleted_at', null)
+        .in('status', ['追客中', '除外後追客中', '他決→追客'])
+        .eq('valuation_method', '机上査定（郵送）')
+        .eq('mailing_status', '未')
+        .ilike('seller_number', 'FI%');
+      const fi_mailingPendingCount = fi_mailingPendingCountResult.count || 0;
+
       // FI（福岡）専用カウント計算（共通関数を使用）
       const fi_todayCallWithInfoSellers = filteredTodayCallFI.filter(s => sharedIsTodayCallWithInfo(s, todayJST));
       const fi_todayCallWithInfoCount = fi_todayCallWithInfoSellers.length;
@@ -573,6 +584,7 @@ export class SellerSidebarCountsUpdateService {
         { category: 'fi_todayCallWithInfo', count: fi_todayCallWithInfoCount, label: null, assignee: null },
         { category: 'fi_todayCallNotStarted', count: fi_todayCallNotStartedCount, label: null, assignee: null },
         { category: 'fi_unvaluated', count: fi_unvaluatedCount, label: null, assignee: null },
+        { category: 'fi_mailingPending', count: fi_mailingPendingCount, label: null, assignee: null },
       ];
 
       // todayCallWithInfoLabels
@@ -939,6 +951,16 @@ export class SellerSidebarCountsUpdateService {
     // mailingPending
     if (needsMailingPending) {
       upsertRows.push({ category: 'mailingPending', count: resultMap.mailingPending?.count || 0, label: null, assignee: null });
+      // FI査定（郵送）カウント
+      const fi_mailingResult = await this.supabase
+        .from('sellers')
+        .select('*', { count: 'exact', head: true })
+        .is('deleted_at', null)
+        .in('status', ['追客中', '除外後追客中', '他決→追客'])
+        .eq('valuation_method', '机上査定（郵送）')
+        .eq('mailing_status', '未')
+        .ilike('seller_number', 'FI%');
+      upsertRows.push({ category: 'fi_mailingPending', count: fi_mailingResult.count || 0, label: null, assignee: null });
     }
 
     // exclusive

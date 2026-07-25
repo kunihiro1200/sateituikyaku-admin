@@ -1572,6 +1572,13 @@ export class SellerService extends BaseRepository {
                 .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
                 .ilike('status', '%追客中%')
                 .gte('inquiry_date', '2025-12-08');
+            } else if (fiSubCatForQuery === 'mailingPending') {
+              // 査定（郵送）：FI + 追客中/除外後追客中/他決→追客 + 机上査定（郵送） + 郵送ステータス「未」
+              query = query
+                .ilike('seller_number', 'FI%')
+                .in('status', ['追客中', '除外後追客中', '他決→追客'])
+                .eq('valuation_method', '机上査定（郵送）')
+                .eq('mailing_status', '未');
             } else {
               // その他のFIカテゴリ：FI売主のみ絞り込み（フォールバック）
               query = query.ilike('seller_number', 'FI%');
@@ -1856,6 +1863,9 @@ export class SellerService extends BaseRepository {
           return true;
         } else if (fiSubCat === 'unvaluated') {
           return sharedIsUnvaluated(normalized, todayJSTStr);
+        } else if (fiSubCat === 'mailingPending') {
+          // 査定（郵送）：DBクエリで既に絞り込み済みなのでそのまま返す
+          return true;
         }
 
         return true;
@@ -2647,6 +2657,7 @@ export class SellerService extends BaseRepository {
     fi_todayCallNotStarted: number;
     fi_todayCallWithInfo: number;
     fi_unvaluated: number;
+    fi_mailingPending: number;
     fi_todayCallWithInfoLabelCounts: Record<string, number>;
     visitThankYouPendingCounts: Record<string, number>;
   }> {
@@ -2745,6 +2756,7 @@ export class SellerService extends BaseRepository {
       fi_todayCallNotStarted: getCount('fi_todayCallNotStarted'),
       fi_todayCallWithInfo: getCount('fi_todayCallWithInfo'),
       fi_unvaluated: getCount('fi_unvaluated'),
+      fi_mailingPending: getCount('fi_mailingPending'),
       fi_todayCallWithInfoLabelCounts,
       visitThankYouPendingCounts,
     };
@@ -2777,6 +2789,7 @@ export class SellerService extends BaseRepository {
     fi_todayCallNotStarted: number;
     fi_todayCallWithInfo: number;
     fi_unvaluated: number;
+    fi_mailingPending: number;
     fi_todayCallWithInfoLabelCounts: Record<string, number>;
     visitThankYouPendingCounts: Record<string, number>;
   }> {
@@ -3063,6 +3076,16 @@ export class SellerService extends BaseRepository {
     // 7. 査定（郵送）カウント
     const mailingPendingCount = mailingPendingCountResult.count || 0;
 
+    // 7-2. FI査定（郵送）カウント
+    const fi_mailingPendingCountResult = await this.table('sellers')
+      .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .in('status', ['追客中', '除外後追客中', '他決→追客'])
+      .eq('valuation_method', '机上査定（郵送）')
+      .eq('mailing_status', '未')
+      .ilike('seller_number', 'FI%');
+    const fi_mailingPendingCount = fi_mailingPendingCountResult.count || 0;
+
     // 8. 当日TEL_未着手
     const todayCallNotStartedCount = filteredTodayCallNormal.filter(s => sharedIsTodayCallNotStarted(s, todayJST)).length;
 
@@ -3190,6 +3213,7 @@ export class SellerService extends BaseRepository {
       fi_todayCallNotStarted: fi_todayCallNotStartedCount || 0,
       fi_todayCallWithInfo: fi_todayCallWithInfoCount || 0,
       fi_unvaluated: fi_unvaluatedCount || 0,
+      fi_mailingPending: fi_mailingPendingCount || 0,
       fi_todayCallWithInfoLabelCounts: fi_labelCountMap,
       visitThankYouPendingCounts: {},  // フォールバック時は空（seller_sidebar_countsテーブルから取得）
     };

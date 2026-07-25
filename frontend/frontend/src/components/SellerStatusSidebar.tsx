@@ -98,6 +98,7 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
     if (subCat === 'todayCall') return fiSellers.filter(isTodayCall);
     if (subCat === 'todayCallNotStarted') return fiSellers.filter(isTodayCallNotStarted);
     if (subCat === 'unvaluated') return fiSellers.filter(isUnvaluated);
+    if (subCat === 'mailingPending') return fiSellers.filter(isMailingPending);
     if (subCat === 'todayCallWithInfo') return fiSellers.filter(isTodayCallWithInfo);
     if (typeof subCat === 'string' && subCat.startsWith('todayCallWithInfo:')) {
       const targetLabel = subCat.replace('todayCallWithInfo:', '');
@@ -216,6 +217,7 @@ const getCategoryLabel = (category: StatusCategory): string => {
         if (sub === 'todayCallWithInfo') return '当日TEL（内容）';
         if (sub.startsWith('todayCallWithInfo:')) return sub.replace('todayCallWithInfo:', '');
         if (sub === 'unvaluated') return '未査定';
+        if (sub === 'mailingPending') return '査定（郵送）';
       }
       return category as string;
   }
@@ -275,6 +277,7 @@ const getCategoryColor = (category: StatusCategory): string => {
         if (sub === 'todayCall' || sub.startsWith('todayCall')) return '#d32f2f';
         if (sub === 'todayCallNotStarted') return '#ff9800';
         if (sub === 'unvaluated') return '#ed6c02';
+        if (sub === 'mailingPending') return '#0288d1';
         if (sub.startsWith('todayCallWithInfo')) return '#9c27b0';
       }
       return '#555555';
@@ -597,8 +600,9 @@ function SellerStatusSidebarComponent({
     const fiTodayCallNotStarted = categoryCounts?.fi_todayCallNotStarted ?? 0;
     const fiTodayCallWithInfo = categoryCounts?.fi_todayCallWithInfo ?? 0;
     const fiUnvaluated = categoryCounts?.fi_unvaluated ?? 0;
+    const fiMailingPending = categoryCounts?.fi_mailingPending ?? 0;
     const fiLabelCounts = categoryCounts?.fi_todayCallWithInfoLabelCounts ?? {};
-    const fiTotal = fiTodayCall + fiTodayCallNotStarted + fiTodayCallWithInfo + fiUnvaluated;
+    const fiTotal = fiTodayCall + fiTodayCallNotStarted + fiTodayCallWithInfo + fiUnvaluated + fiMailingPending;
 
     // FI売主が1件もない場合は表示しない
     if (fiTotal === 0 && Object.keys(fiLabelCounts).length === 0) return null;
@@ -669,6 +673,9 @@ function SellerStatusSidebarComponent({
 
         {/* 未査定（FI） */}
         {renderFiButton(`${FI_PREFIX}unvaluated` as StatusCategory, '未査定', fiUnvaluated, '#ed6c02')}
+
+        {/* 査定（郵送）（FI） */}
+        {renderFiButton(`${FI_PREFIX}mailingPending` as StatusCategory, '査定（郵送）', fiMailingPending, '#0288d1')}
 
         {/* 当日TEL（内容）ラベル別（FI） */}
         {Object.keys(fiLabelCounts).length > 0
