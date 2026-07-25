@@ -39,12 +39,14 @@ const COLORS: Record<string, string> = {
 // 優先順位：!3d!4d（ピン座標）> ?q=（検索クエリ座標）> その他（表示中心座標）
 const COORD_PATTERNS = [
   /!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/,          // 最優先：ピン座標（例: !3d33.55!4d130.34）
+  /!3d(-?\d+\.?\d*)![^!]*!4d(-?\d+\.?\d*)/,    // ピン座標（間に他パラメータがある場合）
   /[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/,          // 検索クエリ座標
   /\/search\/(-?\d+\.?\d*),\+?(-?\d+\.?\d*)/,
   /\/place\/[^/]*\/@(-?\d+\.?\d*),(-?\d+\.?\d*)/,
   /\/place\/(-?\d+\.?\d*),(-?\d+\.?\d*)/,
-  /\/@(-?\d+\.?\d*),(-?\d+\.?\d*),/,            // 表示中心座標（最後の手段）
+  /\/@(-?\d+\.?\d*),(-?\d+\.?\d*)/,             // 表示中心座標（最後の手段）
   /ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
+  /center=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
 ];
 
 function tryExtractFromUrl(url: string): { lat: number; lng: number } | null {
@@ -547,10 +549,52 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
   const polygonRef = useRef<google.maps.Polygon[]>([]);
 
   useEffect(() => {
-    if (!open || !googleMapUrl) return;
+    if (!open) return;
+    if (!googleMapUrl && !address) return;
     setCoords(null); setData1(null); setData2(null); setError(null);
-    extractCoords(googleMapUrl, apiBase).then((c) => { if (c) setCoords(c); });
-  }, [open, googleMapUrl, apiBase]);
+    setLoading(true);
+
+    if (googleMapUrl) {
+      extractCoords(googleMapUrl, apiBase).then((c) => {
+        if (c) {
+          setCoords(c);
+          setLoading(false);
+        } else if (address && isLoaded) {
+          // URL座標抽出失敗時、住所からジオコーディングでフォールバック
+          console.log('[NearbyMap] URL extraction failed, trying geocode for:', address);
+          const geocoder = new google.maps.Geocoder();
+          geocoder.geocode({ address }, (results, status) => {
+            if (status === 'OK' && results && results[0]) {
+              const loc = results[0].geometry.location;
+              console.log('[NearbyMap] Geocode success:', loc.lat(), loc.lng());
+              setCoords({ lat: loc.lat(), lng: loc.lng() });
+            } else {
+              console.warn('[NearbyMap] Geocode failed:', status);
+            }
+            setLoading(false);
+          });
+        } else {
+          setLoading(false);
+        }
+      });
+    } else if (address && isLoaded) {
+      // googleMapUrlがない場合、住所から直接ジオコーディング
+      console.log('[NearbyMap] No URL provided, geocoding address:', address);
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({ address }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+          const loc = results[0].geometry.location;
+          console.log('[NearbyMap] Geocode success:', loc.lat(), loc.lng());
+          setCoords({ lat: loc.lat(), lng: loc.lng() });
+        } else {
+          console.warn('[NearbyMap] Geocode failed:', status);
+        }
+        setLoading(false);
+      });
+    } else {
+      setLoading(false);
+    }
+  }, [open, googleMapUrl, apiBase, address, isLoaded]);
 
   const doFetch = useCallback(async (c: { lat: number; lng: number }) => {
     setLoading(true); setError(null);
