@@ -1404,11 +1404,12 @@ export class SellerService extends BaseRepository {
           break;
         }
         case 'mailingPending':
-          // 査定（郵送）: SellerSidebarCountsUpdateServiceと同じ条件
+          // 査定（郵送）: SellerSidebarCountsUpdateServiceと同じ条件（FI売主は除外→fi:mailingPendingで表示）
           query = query
             .in('status', ['追客中', '除外後追客中', '他決→追客'])
             .eq('valuation_method', '机上査定（郵送）')
-            .eq('mailing_status', '未');
+            .eq('mailing_status', '未')
+            .not('seller_number', 'ilike', 'FI%');
           break;
         case 'todayCallNotStarted': {
           // 当日TEL_未着手 - sellerCategoryFilters.tsのsharedIsTodayCallNotStarted()と完全同一ロジック
@@ -2890,13 +2891,14 @@ export class SellerService extends BaseRepository {
         .ilike('status', '%追客中%')
         .gte('inquiry_date', cutoffDate)
         .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す'),
-      // 7. 査定（郵送）カウント（条件: SellerSidebarCountsUpdateServiceと同じ）
+      // 7. 査定（郵送）カウント（FI売主は除外→fi_mailingPendingで別計算）
       this.table('sellers')
         .select('*', { count: 'exact', head: true })
         .is('deleted_at', null)
         .in('status', ['追客中', '除外後追客中', '他決→追客'])
         .eq('valuation_method', '机上査定（郵送）')
-        .eq('mailing_status', '未'),
+        .eq('mailing_status', '未')
+        .not('seller_number', 'ilike', 'FI%'),
       // 8. 専任カテゴリー用データ
       this.table('sellers')
         .select('exclusive_other_decision_meeting, next_call_date')

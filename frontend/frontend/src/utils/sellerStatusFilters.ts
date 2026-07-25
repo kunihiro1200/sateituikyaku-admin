@@ -1266,7 +1266,8 @@ export const filterSellersByCategory = (
       // FI売主は福岡専用カテゴリー（fi:unvaluated）に表示するため除外
       return sellers.filter(s => !isFiSeller(s) && isUnvaluated(s));
     case 'mailingPending':
-      return sellers.filter(isMailingPending);
+      // FI売主は福岡専用カテゴリー（fi:mailingPending）に表示するため除外
+      return sellers.filter(s => !isFiSeller(s) && isMailingPending(s));
     case 'todayCallNotStarted':
       // FI売主は福岡専用カテゴリー（fi:todayCallNotStarted）に表示するため除外
       return sellers.filter(s => !isFiSeller(s) && isTodayCallNotStarted(s));

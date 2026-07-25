@@ -171,14 +171,15 @@ export class SellerSidebarCountsUpdateService {
           .ilike('status', '%追客中%')
           .gte('inquiry_date', cutoffDate)
           .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す'),
-        // 7. 査定（郵送）カウント
+        // 7. 査定（郵送）カウント（FI売主は除外→fi_mailingPendingで別計算）
         this.supabase
           .from('sellers')
           .select('*', { count: 'exact', head: true })
           .is('deleted_at', null)
           .in('status', ['追客中', '除外後追客中', '他決→追客'])
           .eq('valuation_method', '机上査定（郵送）')
-          .eq('mailing_status', '未'),
+          .eq('mailing_status', '未')
+          .not('seller_number', 'ilike', 'FI%'),
         // 8. 専任カテゴリー用データ
         this.supabase
           .from('sellers')
@@ -751,7 +752,8 @@ export class SellerSidebarCountsUpdateService {
         .is('deleted_at', null)
         .in('status', ['追客中', '除外後追客中', '他決→追客'])
         .eq('valuation_method', '机上査定（郵送）')
-        .eq('mailing_status', '未');
+        .eq('mailing_status', '未')
+        .not('seller_number', 'ilike', 'FI%');
     }
     if (needsExclusive) {
       queries.exclusive = this.supabase
