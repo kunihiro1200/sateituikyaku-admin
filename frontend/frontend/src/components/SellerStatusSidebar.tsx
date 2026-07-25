@@ -1236,74 +1236,102 @@ function SellerStatusSidebarComponent({
       {/* 📊 すまいステップ集計セクション */}
       {sumaiStepMonthlySummary.length > 0 && (
         <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: '#4db6ac', bgcolor: '#e0f2f1', borderRadius: 1, px: 0.5 }}>
-          {sumaiStepMonthlySummary.map(({ yearMonth, label, total, exclusive, general }) => {
-            const isExpanded = sumaiStepExpandedMonth === yearMonth;
-            return (
-              <Box key={yearMonth}>
-                <Button
-                  fullWidth
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSumaiStepExpandedMonth(isExpanded ? null : yearMonth);
-                  }}
-                  sx={{
-                    justifyContent: 'space-between',
-                    textAlign: 'left',
-                    fontSize: '0.85rem',
-                    py: 1,
-                    px: 1.5,
-                    color: isExpanded ? 'white' : '#00695c',
-                    bgcolor: isExpanded ? '#00897b' : 'transparent',
-                    borderRadius: isExpanded ? '4px 4px 0 0' : 1,
-                    '&:hover': { bgcolor: isExpanded ? '#00897b' : '#b2dfdb' },
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <span>【すまいステップ集計】{label}</span>
-                    <Chip
-                      label={`${total}件`}
-                      size="small"
-                      sx={{
-                        height: 20, fontSize: '0.7rem',
-                        bgcolor: isExpanded ? 'rgba(255,255,255,0.3)' : '#b2dfdb',
-                        color: isExpanded ? 'white' : '#00695c',
-                        fontWeight: 'bold',
+          {/* 親アコーディオン：すまいステップ集計 */}
+          <Button
+            fullWidth
+            onClick={(e) => {
+              e.stopPropagation();
+              setSumaiStepExpandedMonth(sumaiStepExpandedMonth === '__open__' || sumaiStepExpandedMonth ? null : '__open__');
+            }}
+            sx={{
+              justifyContent: 'space-between',
+              textAlign: 'left',
+              fontSize: '0.85rem',
+              py: 1,
+              px: 1.5,
+              color: sumaiStepExpandedMonth ? 'white' : '#00695c',
+              bgcolor: sumaiStepExpandedMonth ? '#00897b' : 'transparent',
+              borderRadius: sumaiStepExpandedMonth ? '4px 4px 0 0' : 1,
+              '&:hover': { bgcolor: sumaiStepExpandedMonth ? '#00897b' : '#b2dfdb' },
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <span>すまいステップ集計</span>
+            </Box>
+            {sumaiStepExpandedMonth ? <ExpandLess /> : <ExpandMore />}
+          </Button>
+          <Collapse in={!!sumaiStepExpandedMonth}>
+            <Box sx={{ bgcolor: '#e0f2f1', border: 1, borderColor: '#4db6ac', borderTop: 0, borderRadius: '0 0 4px 4px' }}>
+              {sumaiStepMonthlySummary.map(({ yearMonth, label, total, exclusive, general }) => {
+                const isMonthExpanded = sumaiStepExpandedMonth === yearMonth;
+                return (
+                  <Box key={yearMonth}>
+                    <Button
+                      fullWidth
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSumaiStepExpandedMonth(isMonthExpanded ? '__open__' : yearMonth);
                       }}
-                    />
+                      sx={{
+                        justifyContent: 'space-between',
+                        textAlign: 'left',
+                        fontSize: '0.82rem',
+                        py: 0.75,
+                        pl: 3,
+                        pr: 1.5,
+                        color: isMonthExpanded ? '#004d40' : '#00695c',
+                        bgcolor: isMonthExpanded ? '#b2dfdb' : 'transparent',
+                        '&:hover': { bgcolor: '#b2dfdb' },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <span>{label}</span>
+                        <Chip
+                          label={`${total}件`}
+                          size="small"
+                          sx={{
+                            height: 20, fontSize: '0.7rem',
+                            bgcolor: isMonthExpanded ? '#4db6ac' : '#b2dfdb',
+                            color: isMonthExpanded ? 'white' : '#00695c',
+                            fontWeight: 'bold',
+                          }}
+                        />
+                      </Box>
+                      {isMonthExpanded ? <ExpandLess /> : <ExpandMore />}
+                    </Button>
+                    <Collapse in={isMonthExpanded}>
+                      <Box sx={{ px: 3, py: 1, bgcolor: '#f1f8f6' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#004d40' }}>
+                            依頼数（総数）
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#004d40' }}>
+                            {total}件
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#e65100' }}>
+                            → 専任媒介
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#e65100' }}>
+                            {exclusive}件
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#1565c0' }}>
+                            → 一般媒介
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#1565c0' }}>
+                            {general}件
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Collapse>
                   </Box>
-                  {isExpanded ? <ExpandLess /> : <ExpandMore />}
-                </Button>
-                <Collapse in={isExpanded}>
-                  <Box sx={{ bgcolor: '#e0f2f1', border: 1, borderColor: '#4db6ac', borderTop: 0, borderRadius: '0 0 4px 4px', px: 2, py: 1 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-                      <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#004d40' }}>
-                        依頼数（総数）
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#004d40' }}>
-                        {total}件
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-                      <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#e65100' }}>
-                        → 専任媒介
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#e65100' }}>
-                        {exclusive}件
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-                      <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#1565c0' }}>
-                        → 一般媒介
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#1565c0' }}>
-                        {general}件
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Collapse>
-              </Box>
-            );
-          })}
+                );
+              })}
+            </Box>
+          </Collapse>
         </Box>
       )}
     </Box>
