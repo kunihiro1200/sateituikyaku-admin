@@ -1236,9 +1236,6 @@ function SellerStatusSidebarComponent({
       {/* 📊 すまいステップ集計セクション */}
       {sumaiStepMonthlySummary.length > 0 && (
         <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: '#4db6ac', bgcolor: '#e0f2f1', borderRadius: 1, px: 0.5 }}>
-          <Typography variant="caption" sx={{ px: 1.5, py: 0.5, display: 'block', color: '#00695c', fontWeight: 'bold', fontSize: '0.75rem' }}>
-            ── すまいステップ集計 ──
-          </Typography>
           {sumaiStepMonthlySummary.map(({ yearMonth, label, total, exclusive, general }) => {
             const isExpanded = sumaiStepExpandedMonth === yearMonth;
             return (
@@ -1262,7 +1259,7 @@ function SellerStatusSidebarComponent({
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <span>{label}</span>
+                    <span>【すまいステップ集計】{label}</span>
                     <Chip
                       label={`${total}件`}
                       size="small"
