@@ -60,7 +60,7 @@ function followRedirects(url: string, maxRedirects: number = 10): Promise<string
             }
 
             // 座標が含まれるURLが見つかったらそこで終了（パフォーマンス最適化）
-            if (nextUrl.includes('/@') || nextUrl.includes('?q=') || nextUrl.includes('!3d')) {
+            if (nextUrl.includes('/@') || nextUrl.includes('?q=') || nextUrl.includes('!3d') || nextUrl.match(/\/search\/[\d.-]+,/)) {
               resolve(nextUrl);
             } else {
               followRedirects(nextUrl, maxRedirects - 1).then(resolve).catch(reject);
@@ -82,7 +82,7 @@ function followRedirects(url: string, maxRedirects: number = 10): Promise<string
               if (metaRefresh) {
                 const refreshUrl = metaRefresh[1];
                 console.log('  ↪️ Meta refresh found:', refreshUrl.substring(0, 120));
-                if (refreshUrl.includes('/@') || refreshUrl.includes('?q=') || refreshUrl.includes('!3d')) {
+                if (refreshUrl.includes('/@') || refreshUrl.includes('?q=') || refreshUrl.includes('!3d') || refreshUrl.match(/\/search\/[\d.-]+,/)) {
                   resolve(refreshUrl);
                   return;
                 }
