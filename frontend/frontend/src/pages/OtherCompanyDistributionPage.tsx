@@ -1568,7 +1568,8 @@ export default function OtherCompanyDistributionPage() {
       {showPrintSheet && previewData && (
         <PropertyPrintSheet 
           data={previewData} 
-          onClose={() => setShowPrintSheet(false)} 
+          onClose={() => setShowPrintSheet(false)}
+          slug={previewUrl ? previewUrl.split('/property-preview/')[1]?.split('?')[0] : undefined}
         />
       )}
     </Container>
