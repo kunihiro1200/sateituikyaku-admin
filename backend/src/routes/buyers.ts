@@ -1904,7 +1904,6 @@ router.post('/scrape-property', authenticate, async (req: Request, res: Response
       features: result.features,
       remarks: result.remarks,
       images: result.images,
-      image_categories: result.image_categories,
       lat: result.lat,
       lng: result.lng,
       details: result.details,
