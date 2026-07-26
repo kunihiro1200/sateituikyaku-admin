@@ -2331,17 +2331,19 @@ JSON形式で返答（他テキスト不要）：
     const message = await anthropic.messages.create({
       model: 'claude-opus-4-5',
       max_tokens: 800,
+      thinking: { type: 'disabled' },
       messages: [{ role: 'user', content: prompt }],
-    });
+    } as any);
 
-    const content = message.content[0];
-    if (content.type !== 'text') {
+    // thinking blockを含む場合があるので、textブロックを探す
+    const textBlock = message.content.find((c: any) => c.type === 'text');
+    if (!textBlock || textBlock.type !== 'text') {
       return res.status(500).json({ error: 'AI応答が不正です' });
     }
 
     let result: any;
     try {
-      const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+      const jsonMatch = (textBlock as any).text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         result = JSON.parse(jsonMatch[0]);
       }
