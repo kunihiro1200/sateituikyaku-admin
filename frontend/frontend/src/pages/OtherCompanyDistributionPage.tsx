@@ -1001,6 +1001,81 @@ export default function OtherCompanyDistributionPage() {
               </Button>
             </Box>
           )}
+
+          {/* メール添付画像を選択 */}
+          {previewData.images && previewData.images.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1, color: SECTION_COLORS.buyer.main }}>
+                📷 メール添付画像を選択（{selectedImages.length}枚選択中）
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+                メールに添付する画像をクリックして選択してください
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {previewData.images.map((imgUrl: string, index: number) => {
+                  const isSelected = selectedImages.some(img => img.url === imgUrl || img.previewUrl === imgUrl);
+                  return (
+                    <Box
+                      key={index}
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedImages(prev => prev.filter(img => img.url !== imgUrl && img.previewUrl !== imgUrl));
+                        } else {
+                          setSelectedImages(prev => [...prev, {
+                            id: `scraped-${Date.now()}-${index}`,
+                            name: `物件画像${index + 1}.jpg`,
+                            source: 'url' as const,
+                            size: 0,
+                            mimeType: 'image/jpeg',
+                            previewUrl: imgUrl,
+                            url: imgUrl,
+                          }]);
+                        }
+                      }}
+                      sx={{
+                        position: 'relative',
+                        width: 100,
+                        height: 75,
+                        borderRadius: 1,
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        border: isSelected ? '3px solid' : '2px solid transparent',
+                        borderColor: isSelected ? SECTION_COLORS.buyer.main : 'transparent',
+                        opacity: isSelected ? 1 : 0.6,
+                        transition: 'all 0.2s',
+                        '&:hover': { opacity: 1 },
+                      }}
+                    >
+                      <img
+                        src={imgUrl}
+                        alt={`物件画像${index + 1}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                      {isSelected && (
+                        <Box sx={{
+                          position: 'absolute',
+                          top: 2,
+                          right: 2,
+                          backgroundColor: SECTION_COLORS.buyer.main,
+                          color: '#fff',
+                          borderRadius: '50%',
+                          width: 20,
+                          height: 20,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 12,
+                          fontWeight: 'bold',
+                        }}>
+                          ✓
+                        </Box>
+                      )}
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Box>
+          )}
         </Paper>
       )}
 
