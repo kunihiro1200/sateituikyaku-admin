@@ -1788,7 +1788,7 @@ router.get('/unvisited-other-decision-monthly-summary', async (req: Request, res
   try {
     const { decrypt } = await import('../utils/encryption');
     const withAi = req.query.ai === 'true';
-    const aiMonth = req.query.month as string | undefined; // 特定月のみAI分析
+    const aiSellerNumber = req.query.sellerNumber as string | undefined;
     const supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_KEY!
@@ -1799,7 +1799,7 @@ router.get('/unvisited-other-decision-monthly-summary', async (req: Request, res
     // 営担が空欄 or '外す' のものを取得
     const { data, error } = await supabase
       .from('sellers')
-      .select('id, seller_number, name, property_address, address, status, contract_year_month, comments, competitor_name, competitor_name_and_reason, next_call_date, other_decision_countermeasure')
+      .select('id, seller_number, name, property_address, address, status, contract_year_month, comments, competitor_name, competitor_name_and_reason, next_call_date, other_decision_countermeasure, unvisited_other_decision_ai_analysis')
       .in('status', UNVISITED_OTHER_DECISION_STATUSES)
       .gte('contract_year_month', '2026-05-01')
       .is('deleted_at', null)
@@ -1826,6 +1826,7 @@ router.get('/unvisited-other-decision-monthly-summary', async (req: Request, res
         nextCallDate: string | null;
         contractYearMonth: string | null;
         otherDecisionCountermeasure: string;
+        aiAnalysis: { summary: string; whyLost: string; countermeasure: string } | null;
       }[];
     }> = {};
 
@@ -1844,6 +1845,12 @@ router.get('/unvisited-other-decision-monthly-summary', async (req: Request, res
       let decryptedName = '';
       try { decryptedName = row.name ? decrypt(row.name) : ''; } catch { decryptedName = ''; }
 
+      // DB保存済みのAI分析結果を読み込み
+      let aiAnalysis = null;
+      if (row.unvisited_other_decision_ai_analysis) {
+        try { aiAnalysis = JSON.parse(row.unvisited_other_decision_ai_analysis); } catch { /* ignore */ }
+      }
+
       monthlyGroups[ym].count++;
       monthlyGroups[ym].sellers.push({
         id: row.id,
@@ -1856,98 +1863,95 @@ router.get('/unvisited-other-decision-monthly-summary', async (req: Request, res
         nextCallDate: row.next_call_date,
         contractYearMonth: row.contract_year_month,
         otherDecisionCountermeasure: row.other_decision_countermeasure || '',
+        aiAnalysis,
       });
     }
 
     // 月の新しい順にソート
     const summary = Object.values(monthlyGroups).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
 
-    // AI分析（オプション）
-    let aiAnalyses: any[] = [];
-    if (withAi) {
+    // AI分析リクエスト（特定売主のみ）→ DB保存
+    let aiResult: any = null;
+    if (withAi && aiSellerNumber) {
       try {
         const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-        const aiSellerNumber = req.query.sellerNumber as string | undefined;
-        if (anthropicApiKey) {
-          // 特定売主のみ or 特定月の全件
-          let targetSellers: typeof summary[0]['sellers'] = [];
-          if (aiSellerNumber) {
-            // 特定の売主番号のみ
-            for (const g of summary) {
-              const found = g.sellers.find(s => s.sellerNumber === aiSellerNumber);
-              if (found) { targetSellers = [found]; break; }
-            }
-          } else if (aiMonth) {
-            targetSellers = summary.find(g => g.yearMonth === aiMonth)?.sellers || [];
-          } else {
-            targetSellers = summary[0]?.sellers || [];
-          }
+        if (!anthropicApiKey) {
+          return res.json({ summary, aiResult: null, error: 'ANTHROPIC_API_KEY未設定' });
+        }
 
-          if (targetSellers.length > 0) {
-            const { default: Anthropic } = await import('@anthropic-ai/sdk');
-            const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+        // 対象売主を取得
+        let targetSeller: any = null;
+        let targetSellerId: string = '';
+        for (const g of summary) {
+          const found = g.sellers.find(s => s.sellerNumber === aiSellerNumber);
+          if (found) { targetSeller = found; targetSellerId = found.id; break; }
+        }
 
-            const caseSummaries = targetSellers.map((s) => (
-              `【${s.sellerNumber}】
-物件: ${s.propertyAddress || '不明'}
-売主名: ${s.name || '不明'}
-ステータス: ${s.status}
-他決日: ${s.contractYearMonth || '不明'}
-競合名・理由: ${s.competitorNameAndReason || '記載なし'}
-コメント: ${(s.comments || 'なし').substring(0, 400)}
-次電日: ${s.nextCallDate || 'なし'}`
-            )).join('\n\n---\n\n');
+        if (!targetSeller) {
+          return res.json({ summary, aiResult: null });
+        }
 
-            const prompt = `あなたは不動産仲介会社の営業マネージャーです。
+        const { default: Anthropic } = await import('@anthropic-ai/sdk');
+        const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+
+        const prompt = `あなたは不動産仲介会社の営業マネージャーです。
 
 以下は「未訪問他決」案件です。「未訪問他決」とは営業担当がつかず訪問査定に至らないまま他社に取られた案件です。
 
-${caseSummaries}
+【${targetSeller.sellerNumber}】
+物件: ${targetSeller.propertyAddress || '不明'}
+売主名: ${targetSeller.name || '不明'}
+ステータス: ${targetSeller.status}
+他決日: ${targetSeller.contractYearMonth || '不明'}
+競合名・理由: ${targetSeller.competitorNameAndReason || '記載なし'}
+コメント: ${(targetSeller.comments || 'なし').substring(0, 600)}
+次電日: ${targetSeller.nextCallDate || 'なし'}
 
-各案件について以下を分析してください。必ずJSON配列形式で返してください。他のテキストは不要です。
+この案件について以下を分析してください。必ずJSON形式で返してください。他のテキストは不要です。
 
-[
-  {
-    "sellerNumber": "売主番号",
-    "summary": "この案件の状況を1行で要約",
-    "whyLost": "訪問に至らず他決になった原因（1〜2行）",
-    "countermeasure": "今後の対策案（具体的に1〜2行）"
-  }
-]
+{
+  "summary": "この案件の状況を1行で要約（30文字以内）",
+  "whyLost": "訪問に至らず他決になった原因（50文字以内）",
+  "countermeasure": "今後の対策案（具体的に50文字以内）"
+}
 
 注意:
-- 各項目は日本語で簡潔に書く
+- 日本語で簡潔に書く
 - コメント欄の情報を活用して分析する
 - summaryは「○○が△△のため他決」のように端的にまとめる
-- whyLostは「初回TELで△△が遅かった」「競合が先に査定提案した」等の具体的原因
+- whyLostは「競合が先に査定提案した」「初回TEL後のフォロー不足」等の具体的原因
 - countermeasureは「反響後○時間以内にTEL」「訪問提案を早期に」等の実務的対策`;
 
-            const message = await anthropic.messages.create({
-              model: 'claude-sonnet-4-20250514',
-              max_tokens: 3000,
-              messages: [{ role: 'user', content: prompt }],
-            });
+        const message = await anthropic.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 500,
+          messages: [{ role: 'user', content: prompt }],
+        });
 
-            const content = message.content[0];
-            const responseText = content.type === 'text' ? content.text : '';
+        const content = message.content[0];
+        const responseText = content.type === 'text' ? content.text : '';
 
-            try {
-              const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-              if (jsonMatch) {
-                aiAnalyses = JSON.parse(jsonMatch[0]);
-              }
-            } catch {
-              console.error('[unvisited-other-decision] AI JSON parse failed');
-            }
+        try {
+          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            aiResult = JSON.parse(jsonMatch[0]);
+            aiResult.sellerNumber = aiSellerNumber;
+
+            // DBに保存
+            await supabase
+              .from('sellers')
+              .update({ unvisited_other_decision_ai_analysis: JSON.stringify(aiResult) })
+              .eq('id', targetSellerId);
           }
+        } catch {
+          console.error('[unvisited-other-decision] AI JSON parse failed:', responseText.substring(0, 200));
         }
       } catch (aiErr) {
         console.error('[unvisited-other-decision] AI analysis error:', aiErr);
-        // AI失敗時もデータ自体は返す
       }
     }
 
-    return res.json({ summary, aiAnalyses });
+    return res.json({ summary, aiResult });
   } catch (error) {
     console.error('[unvisited-other-decision-monthly-summary] Error:', error);
     return res.status(500).json({ error: 'Failed to get unvisited other decision monthly summary' });
@@ -1984,90 +1988,6 @@ router.put('/:id/unvisited-other-decision-countermeasure', authenticate, async (
   } catch (error) {
     console.error('[unvisited-other-decision-countermeasure] Error:', error);
     return res.status(500).json({ error: 'Failed to update countermeasure' });
-  }
-});
-
-/**
- * POST /api/sellers/unvisited-other-decision-ai-analysis
- * 未訪問他決の各案件を個別にAI分析し、売主番号ごとに要約+敗因+対策を返す
- * body: { sellers: [...] }
- */
-router.post('/unvisited-other-decision-ai-analysis', async (req: Request, res: Response) => {
-  try {
-    const { sellers } = req.body;
-
-    if (!sellers || sellers.length === 0) {
-      return res.status(400).json({ error: '分析対象データがありません' });
-    }
-
-    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-    if (!anthropicApiKey) {
-      return res.status(500).json({ error: 'ANTHROPIC_API_KEYが設定されていません' });
-    }
-
-    const { default: Anthropic } = await import('@anthropic-ai/sdk');
-    const anthropic = new Anthropic({ apiKey: anthropicApiKey });
-
-    // 全案件を一つのプロンプトにまとめて、各案件ごとに分析結果をJSON配列で返させる
-    const caseSummaries = sellers.map((s: any, i: number) => (
-      `【${s.sellerNumber}】
-物件: ${s.propertyAddress || '不明'}
-売主名: ${s.name || '不明'}
-ステータス: ${s.status}
-他決日: ${s.contractYearMonth || '不明'}
-競合名・理由: ${s.competitorNameAndReason || '記載なし'}
-コメント: ${(s.comments || 'なし').substring(0, 500)}
-次電日: ${s.nextCallDate || 'なし'}`
-    )).join('\n\n---\n\n');
-
-    const prompt = `あなたは不動産仲介会社の営業マネージャーです。
-
-以下は「未訪問他決」案件です。「未訪問他決」とは営業担当がつかず訪問査定に至らないまま他社に取られた案件です。
-
-${caseSummaries}
-
-各案件について以下を分析してください。必ずJSON配列形式で返してください。他のテキストは不要です。
-
-[
-  {
-    "sellerNumber": "売主番号",
-    "summary": "この案件の状況を1行で要約",
-    "whyLost": "訪問に至らず他決になった原因（1〜2行）",
-    "countermeasure": "今後の対策案（具体的に1〜2行）"
-  }
-]
-
-注意:
-- 各項目は日本語で簡潔に書く
-- コメント欄の情報を活用して分析する
-- summaryは「○○が△△のため他決」のように端的にまとめる
-- whyLostは「初回TELで△△が遅かった」「競合が先に査定提案した」等の具体的原因
-- countermeasureは「反響後○時間以内にTEL」「訪問提案を早期に」等の実務的対策`;
-
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 3000,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const content = message.content[0];
-    const responseText = content.type === 'text' ? content.text : '';
-
-    // JSONを抽出
-    let analyses: any[] = [];
-    try {
-      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        analyses = JSON.parse(jsonMatch[0]);
-      }
-    } catch {
-      console.error('[unvisited-other-decision-ai-analysis] JSON parse failed:', responseText.substring(0, 300));
-    }
-
-    return res.json({ analyses });
-  } catch (error) {
-    console.error('[unvisited-other-decision-ai-analysis] Error:', error);
-    return res.status(500).json({ error: 'AI分析に失敗しました' });
   }
 });
 

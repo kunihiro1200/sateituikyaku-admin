@@ -69,12 +69,18 @@ export default function UnvisitedOtherDecisionListPage() {
         setMonthlyData(summary);
 
         const cm: Record<string, string> = {};
+        const savedAi: Record<string, AiResult> = {};
         for (const group of summary) {
           for (const seller of group.sellers) {
             cm[seller.id] = seller.otherDecisionCountermeasure || '';
+            // DB保存済みのAI分析結果を読み込み
+            if ((seller as any).aiAnalysis) {
+              savedAi[seller.sellerNumber] = (seller as any).aiAnalysis;
+            }
           }
         }
         setCountermeasures(cm);
+        setAiResults(savedAi);
       } catch (err: any) {
         setError(err?.response?.data?.error || 'データ取得に失敗しました');
       } finally {
@@ -84,21 +90,19 @@ export default function UnvisitedOtherDecisionListPage() {
     fetchData();
   }, []);
 
-  // 個別の売主に対してAI分析を実行
+  // 個別の売主に対してAI分析を実行（GETで）
   const fetchAiForSeller = async (seller: UnvisitedSeller) => {
     const key = seller.sellerNumber;
     setAiLoadingIds(prev => new Set(prev).add(key));
     try {
-      const month = seller.contractYearMonth
-        ? `${new Date(seller.contractYearMonth).getFullYear()}-${String(new Date(seller.contractYearMonth).getMonth() + 1).padStart(2, '0')}`
-        : undefined;
       const res = await api.get('/api/sellers/unvisited-other-decision-monthly-summary', {
-        params: { ai: 'true', month, sellerNumber: seller.sellerNumber },
+        params: { ai: 'true', sellerNumber: seller.sellerNumber },
       });
-      const analyses: AiResult[] = res.data?.aiAnalyses || [];
-      const found = analyses.find(a => a.sellerNumber === seller.sellerNumber);
-      if (found) {
-        setAiResults(prev => ({ ...prev, [key]: found }));
+      const aiResult = res.data?.aiResult;
+      if (aiResult) {
+        setAiResults(prev => ({ ...prev, [key]: aiResult }));
+      } else {
+        setSnackbar({ open: true, message: 'AI分析結果を取得できませんでした' });
       }
     } catch (err: any) {
       console.error('AI analysis error for', key, err?.response?.status);
