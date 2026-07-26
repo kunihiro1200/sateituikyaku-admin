@@ -2300,10 +2300,10 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
 
     const supabase = (buyerService as any).supabase;
 
-    // 指定日付までの気づきデータを全件取得（limit なし）
+    // 指定日付までの気づきデータを全件取得（limit なし）+ ヒアリング項目も含む
     const { data: insights, error } = await supabase
       .from('buyers')
-      .select('buyer_number, name, property_number, property_address, viewing_date, follow_up_assignee, viewing_insight_executor, viewing_insight_companion')
+      .select('buyer_number, name, property_number, property_address, viewing_date, follow_up_assignee, viewing_insight_executor, viewing_insight_companion, viewing_result_follow_up')
       .is('deleted_at', null)
       .or('viewing_insight_executor.neq.,viewing_insight_companion.neq.')
       .lte('viewing_date', endDate)
@@ -2329,14 +2329,19 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
       byAssignee[assignee].push(b);
     }
 
-    // テキスト化（AIに渡すデータ：各担当者8件まで、買主番号・物件住所を含める）
+    // テキスト化（AIに渡すデータ：各担当者8件まで、買主番号・物件住所・ヒアリング項目を含める）
     const assigneeTexts = Object.entries(byAssignee).map(([assignee, items]) => {
       const itemTexts = items.slice(0, 8).map((b: any) => {
         const executor = stripHtml(b.viewing_insight_executor || '').slice(0, 150);
         const companion = stripHtml(b.viewing_insight_companion || '').slice(0, 150);
+        const hearing = stripHtml(b.viewing_result_follow_up || '').slice(0, 200);
         const addr = (b.property_address || '').slice(0, 30);
         const buyerNum = b.buyer_number || '';
-        return `  [買主${buyerNum}/${b.viewing_date?.split('T')[0] || ''}/${addr}] 実行者:${executor || 'なし'} / 随行者:${companion || 'なし'}`;
+        let text = `  [買主${buyerNum}/${b.viewing_date?.split('T')[0] || ''}/${addr}]`;
+        if (hearing) text += `\n    ヒアリング:${hearing}`;
+        if (executor) text += `\n    気づき(実行者):${executor}`;
+        if (companion) text += `\n    気づき(随行者):${companion}`;
+        return text;
       }).join('\n');
       return `■${assignee}（全${items.length}件）\n${itemTexts}`;
     }).join('\n\n');
@@ -2352,7 +2357,9 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
 内覧時にお客様に「この物件を買いたい」と思っていただくための営業トーク力を向上させる質問を作成します。
 必ずJSON形式で返答してください。`;
 
-    const userPrompt = `以下は不動産内覧時の「気づき」データです。担当者が内覧後に記録した、お客様の反応や自分の対応についてのメモです。
+    const userPrompt = `以下は不動産内覧時の「気づき」と「ヒアリング項目」のデータです。担当者が内覧後に記録した、お客様の反応・希望条件・自分の対応についてのメモです。
+- ヒアリング：内覧理由、家族構成、購入の譲れない点、物件の良い点・悪い点、購入障害、予算、時期など
+- 気づき：内覧中に担当者が感じた反省点や成功体験
 
 ${assigneeTexts}
 
