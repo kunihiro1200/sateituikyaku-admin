@@ -2275,7 +2275,7 @@ router.get('/insights', async (req: Request, res: Response) => {
     const supabase = (buyerService as any).supabase;
     const { data, error } = await supabase
       .from('buyers')
-      .select('buyer_number, name, property_number, property_address, viewing_date, follow_up_assignee, viewing_insight_executor, viewing_insight_companion, viewing_result_follow_up, viewing_insight_action, viewing_insight_completed')
+      .select('buyer_number, name, property_number, property_address, viewing_date, follow_up_assignee, viewing_insight_executor, viewing_insight_companion, viewing_result_follow_up, viewing_insight_action, viewing_insight_completed, viewing_insight_ai_analysis')
       .is('deleted_at', null)
       .or('viewing_insight_executor.neq.,viewing_insight_companion.neq.')
       .order('viewing_date', { ascending: false });
@@ -2331,6 +2331,18 @@ router.post('/insights/analyze', authenticate, async (req: Request, res: Respons
     );
 
     const analysis = completion.data?.choices?.[0]?.message?.content || '';
+
+    // DBに保存
+    try {
+      const supabase = (buyerService as any).supabase;
+      await supabase
+        .from('buyers')
+        .update({ viewing_insight_ai_analysis: analysis, updated_at: new Date().toISOString() })
+        .eq('buyer_number', buyerNumber);
+    } catch (dbErr: any) {
+      console.warn('[insights/analyze] DB save failed:', dbErr.message);
+    }
+
     return res.json({ analysis });
   } catch (error: any) {
     console.error('[POST /buyers/insights/analyze] Error:', error?.response?.data || error.message);

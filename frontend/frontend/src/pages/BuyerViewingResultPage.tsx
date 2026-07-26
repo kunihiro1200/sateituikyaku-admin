@@ -474,6 +474,16 @@ export default function BuyerViewingResultPage() {
     try {
       const res = await api.get('/api/buyers/insights');
       setAllInsightBuyers(res.data || []);
+      // 保存済みAI解析を読み込み
+      const aiMap: Record<string, string> = {};
+      for (const b of res.data || []) {
+        if (b.viewing_insight_ai_analysis) {
+          aiMap[b.buyer_number] = b.viewing_insight_ai_analysis;
+        }
+      }
+      if (Object.keys(aiMap).length > 0) {
+        setInsightAiAnalysis(prev => ({ ...prev, ...aiMap }));
+      }
     } catch (error) {
       console.error('Failed to fetch insight buyers:', error);
     }
@@ -2604,7 +2614,7 @@ export default function BuyerViewingResultPage() {
                         {insightAiLoading === b.buyer_number ? <CircularProgress size={14} /> : '✨ AI解析'}
                       </Button>
                       {insightAiAnalysis[b.buyer_number] && (
-                        <Box sx={{ bgcolor: '#f3e5f5', p: 1, borderRadius: 1, mb: 1, fontSize: '0.7rem', lineHeight: 1.5, color: '#4a148c' }}>
+                        <Box sx={{ bgcolor: '#f3e5f5', p: 1, borderRadius: 1, mb: 1, fontSize: '0.7rem', lineHeight: 1.8, color: '#4a148c', whiteSpace: 'pre-wrap' }}>
                           {insightAiAnalysis[b.buyer_number]}
                         </Box>
                       )}
