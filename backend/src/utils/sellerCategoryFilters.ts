@@ -85,13 +85,14 @@ export const isFiSeller = (s: SellerRow): boolean => {
 
 /**
  * 当日TELのベース条件（営担チェックなし）
- * - status に「追客中」が含まれる（部分一致）
+ * - status に「追客」が含まれる（部分一致）
+ *   → 「追客中」「除外後追客中」「他決→追客」等すべて対象
  * - 「追客不要」「専任媒介」「一般媒介」は除外
  * - next_call_date が todayJST 以前
  */
 export const isTodayCallBase = (s: SellerRow, todayJST: string): boolean => {
   const status = s.status || '';
-  if (!status.includes('追客中')) return false;
+  if (!status.includes('追客')) return false;
   if (status.includes('追客不要') || status.includes('専任媒介') || status.includes('一般媒介')) return false;
   if (!s.next_call_date) return false;
   return s.next_call_date <= todayJST;
