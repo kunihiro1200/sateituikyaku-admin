@@ -233,6 +233,15 @@ export default function BuyerViewingResultPage() {
   const [insightRequiredDialog, setInsightRequiredDialog] = useState<{ open: boolean; targetUrl: string }>({ open: false, targetUrl: '' });
   // 全買主の気づき一覧
   const [allInsightBuyers, setAllInsightBuyers] = useState<any[]>([]);
+  // 気づき一覧まとめ（質問形式）
+  const [insightSummaryDate, setInsightSummaryDate] = useState<string>('');
+  const [insightSummaryLoading, setInsightSummaryLoading] = useState(false);
+  const [insightSummaryResult, setInsightSummaryResult] = useState<{
+    summary: string;
+    questions: { id: string; question: string; context: string }[];
+    insightCount: number;
+    endDate: string;
+  } | null>(null);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' }>({
     open: false,
     message: '',
@@ -471,6 +480,20 @@ export default function BuyerViewingResultPage() {
       setAllInsightBuyers(res.data || []);
     } catch (error) {
       console.error('Failed to fetch insight buyers:', error);
+    }
+  };
+
+  const handleGenerateInsightSummary = async () => {
+    if (!insightSummaryDate) return;
+    try {
+      setInsightSummaryLoading(true);
+      setInsightSummaryResult(null);
+      const res = await api.post('/api/buyers/insights/summary', { endDate: insightSummaryDate });
+      setInsightSummaryResult(res.data);
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error?.response?.data?.error || '気づきまとめの生成に失敗しました', severity: 'error' });
+    } finally {
+      setInsightSummaryLoading(false);
     }
   };
 
@@ -2486,6 +2509,65 @@ export default function BuyerViewingResultPage() {
           </Paper>
         );
       })()}
+
+      {/* 気づき一覧まとめ（質問形式） */}
+      {allInsightBuyers.length > 0 && (
+        <Paper sx={{ p: 3, mt: 3, bgcolor: '#e8f5e9', border: '1px solid #81c784' }}>
+          <Typography variant="h6" gutterBottom sx={{ color: '#2e7d32', display: 'flex', alignItems: 'center', gap: 1 }}>
+            📋 気づき一覧まとめ（質問形式）
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+            日付を指定して、その日までの気づきをAIが質問形式でまとめます。過去にまとめた期間以降の日付を入力してください。
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+            <TextField
+              type="date"
+              size="small"
+              label="まとめ対象日（この日まで）"
+              value={insightSummaryDate}
+              onChange={(e) => setInsightSummaryDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ width: 220 }}
+            />
+            <Button
+              variant="contained"
+              onClick={handleGenerateInsightSummary}
+              disabled={!insightSummaryDate || insightSummaryLoading}
+              sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}
+            >
+              {insightSummaryLoading ? <CircularProgress size={20} color="inherit" /> : 'まとめを生成'}
+            </Button>
+          </Box>
+
+          {insightSummaryResult && (
+            <Box sx={{ mt: 2 }}>
+              <Box sx={{ bgcolor: '#c8e6c9', p: 2, borderRadius: 1, mb: 2 }}>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1b5e20', mb: 0.5 }}>
+                  📊 概要（{insightSummaryResult.endDate}まで・{insightSummaryResult.insightCount}件の気づき）
+                </Typography>
+                <Typography variant="body2">{insightSummaryResult.summary}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {insightSummaryResult.questions.map((q, idx) => (
+                  <Box key={q.id} sx={{ bgcolor: '#fff', p: 2, borderRadius: 1, border: '1px solid #a5d6a7' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1 }}>
+                      <Box sx={{ bgcolor: '#43a047', color: '#fff', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold', flexShrink: 0 }}>
+                        Q{idx + 1}
+                      </Box>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1b5e20', lineHeight: 1.6 }}>
+                        {q.question}
+                      </Typography>
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ pl: 4.5, display: 'block' }}>
+                      背景: {q.context}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
+        </Paper>
+      )}
 
 
       {/* 物件の買主リストセクション */}

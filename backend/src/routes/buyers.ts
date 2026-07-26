@@ -2253,6 +2253,117 @@ router.get('/insights', async (req: Request, res: Response) => {
   }
 });
 
+// 気づき一覧のAI質問形式まとめを生成
+// POST /api/buyers/insights/summary
+router.post('/insights/summary', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { endDate } = req.body;
+    if (!endDate) {
+      return res.status(400).json({ error: 'endDate は必須です（YYYY-MM-DD形式）' });
+    }
+
+    const supabase = (buyerService as any).supabase;
+
+    // 指定日付までの気づきデータを取得
+    const { data: insights, error } = await supabase
+      .from('buyers')
+      .select('buyer_number, name, property_number, property_address, viewing_date, follow_up_assignee, viewing_insight_executor, viewing_insight_companion')
+      .is('deleted_at', null)
+      .or('viewing_insight_executor.neq.,viewing_insight_companion.neq.')
+      .lte('viewing_date', endDate)
+      .order('viewing_date', { ascending: false });
+
+    if (error) throw error;
+
+    if (!insights || insights.length === 0) {
+      return res.status(400).json({ error: '指定期間内に気づきデータがありません' });
+    }
+
+    // HTMLタグを除去するヘルパー
+    const stripHtml = (html: string) => {
+      if (!html) return '';
+      return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+    };
+
+    // 気づきデータをテキスト化
+    const insightTexts = insights.slice(0, 30).map((b: any) => {
+      const executor = stripHtml(b.viewing_insight_executor || '');
+      const companion = stripHtml(b.viewing_insight_companion || '');
+      const date = b.viewing_date ? String(b.viewing_date).split('T')[0] : '日付不明';
+      return `【${b.buyer_number}】${date} ${b.property_address || ''}\n担当: ${b.follow_up_assignee || '不明'}\n実行者コメント: ${executor || 'なし'}\n随行者コメント: ${companion || 'なし'}`;
+    }).join('\n\n');
+
+    // Claude APIで質問形式のまとめを生成
+    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicApiKey) {
+      return res.status(500).json({ error: 'ANTHROPIC_API_KEY が設定されていません' });
+    }
+
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+
+    const prompt = `あなたは不動産会社の内覧同行の研修コーチです。
+以下は買主の内覧時に記録された「気づき」（内覧実行者と随行者のコメント）一覧です。
+
+【気づきデータ（${endDate}まで）】
+${insightTexts}
+
+この気づきデータを分析して、営業スタッフの内覧対応力を向上させるための**質問形式のまとめ**を作成してください。
+
+以下の条件で質問を5つ作成してください：
+
+条件：
+- 気づきデータから読み取れる「良かった対応」「改善すべき対応」「お客様の反応パターン」に焦点を当てる
+- 具体的な気づきの内容を引用しながら、「この場面ではどう対応すべきか？」「なぜこの対応が効果的だったか？」という形式にする
+- 「はい/いいえ」で終わらない、具体的な対応方法を考えさせる質問
+- 内覧時のお客様への声かけ、物件説明の工夫、クロージングのタイミングなど実践的な内容
+- 気づきの中で繰り返し出てくるパターン（お客様が気にするポイント、よくある障害など）を質問に反映する
+
+以下のJSON形式で返してください（他のテキストは不要）：
+{
+  "summary": "全体の傾向を1〜2文でまとめた要約",
+  "questions": [
+    {"id": "q1", "question": "質問文", "context": "この質問の背景となった気づきの要約"},
+    {"id": "q2", "question": "質問文", "context": "この質問の背景となった気づきの要約"},
+    {"id": "q3", "question": "質問文", "context": "この質問の背景となった気づきの要約"},
+    {"id": "q4", "question": "質問文", "context": "この質問の背景となった気づきの要約"},
+    {"id": "q5", "question": "質問文", "context": "この質問の背景となった気づきの要約"}
+  ]
+}`;
+
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const content = message.content[0];
+    if (content.type !== 'text') {
+      return res.status(500).json({ error: 'AI応答が不正です' });
+    }
+
+    let result: any;
+    try {
+      const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        result = JSON.parse(jsonMatch[0]);
+      }
+    } catch {
+      return res.status(500).json({ error: 'AI応答のパースに失敗しました' });
+    }
+
+    return res.json({
+      endDate,
+      insightCount: insights.length,
+      summary: result?.summary || '',
+      questions: result?.questions || [],
+    });
+  } catch (error: any) {
+    console.error('[POST /buyers/insights/summary] Error:', error);
+    return res.status(500).json({ error: error.message || '気づきまとめの生成に失敗しました' });
+  }
+});
+
 // 個別取得（ID）
 router.get('/:id', async (req: Request, res: Response) => {
   const t0 = Date.now();
