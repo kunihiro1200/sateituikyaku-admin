@@ -2,14 +2,14 @@
  * UnvisitedOtherDecisionListPage - 未訪問他決 月別一覧ページ
  * 
  * 営業担当が空欄（外す含む）でステータスが他決→追客 or 他決→追客不要の売主を月別に表示
- * 売主ごとにAI敗因分析＆対策提案を表示
+ * 売主ごとにAI敗因分析ボタンあり
  * 対策欄が編集可能でDB保存できる
  */
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Paper, Chip, CircularProgress, Alert, Button, TextField,
-  Snackbar, IconButton, Divider, LinearProgress,
+  Snackbar, IconButton, Divider,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
@@ -58,7 +58,7 @@ export default function UnvisitedOtherDecisionListPage() {
 
   // AI分析（売主番号→結果）
   const [aiResults, setAiResults] = useState<Record<string, AiResult>>({});
-  const [aiLoading, setAiLoading] = useState(false);
+  const [aiLoadingIds, setAiLoadingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchData = async () => {
@@ -75,13 +75,6 @@ export default function UnvisitedOtherDecisionListPage() {
           }
         }
         setCountermeasures(cm);
-
-        // 表示対象の月のAI分析を自動実行
-        const targetGroups = targetMonth ? summary.filter(g => g.yearMonth === targetMonth) : summary;
-        const allSellers = targetGroups.flatMap(g => g.sellers);
-        if (allSellers.length > 0) {
-          fetchAiAnalysis(allSellers);
-        }
       } catch (err: any) {
         setError(err?.response?.data?.error || 'データ取得に失敗しました');
       } finally {
@@ -91,21 +84,31 @@ export default function UnvisitedOtherDecisionListPage() {
     fetchData();
   }, []);
 
-  const fetchAiAnalysis = async (sellers: UnvisitedSeller[]) => {
-    setAiLoading(true);
+  // 個別の売主に対してAI分析を実行
+  const fetchAiForSeller = async (seller: UnvisitedSeller) => {
+    const key = seller.sellerNumber;
+    setAiLoadingIds(prev => new Set(prev).add(key));
     try {
-      const res = await api.post('/api/sellers/unvisited-other-decision-ai-analysis', { sellers });
-      const analyses: AiResult[] = res.data?.analyses || [];
-      const map: Record<string, AiResult> = {};
-      for (const a of analyses) {
-        map[a.sellerNumber] = a;
+      const month = seller.contractYearMonth
+        ? `${new Date(seller.contractYearMonth).getFullYear()}-${String(new Date(seller.contractYearMonth).getMonth() + 1).padStart(2, '0')}`
+        : undefined;
+      const res = await api.get('/api/sellers/unvisited-other-decision-monthly-summary', {
+        params: { ai: 'true', month, sellerNumber: seller.sellerNumber },
+      });
+      const analyses: AiResult[] = res.data?.aiAnalyses || [];
+      const found = analyses.find(a => a.sellerNumber === seller.sellerNumber);
+      if (found) {
+        setAiResults(prev => ({ ...prev, [key]: found }));
       }
-      setAiResults(map);
     } catch (err: any) {
-      console.error('AI analysis error:', err?.response?.status, err?.response?.data);
-      // エラー時は何も表示しない（ボタンで再試行可能）
+      console.error('AI analysis error for', key, err?.response?.status);
+      setSnackbar({ open: true, message: 'AI分析に失敗しました。再度お試しください。' });
     } finally {
-      setAiLoading(false);
+      setAiLoadingIds(prev => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
     }
   };
 
@@ -180,35 +183,9 @@ export default function UnvisitedOtherDecisionListPage() {
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           営業担当が未設定（外す含む）で、他決→追客 または 他決→追客不要 の売主を月別に表示。
-          各案件ごとにAIが敗因と対策を分析します。
+          各売主の「AI分析」ボタンで敗因と対策を分析できます。
         </Typography>
       </Paper>
-
-      {aiLoading && (
-        <Box sx={{ mb: 2 }}>
-          <LinearProgress color="secondary" sx={{ borderRadius: 1, height: 3 }} />
-          <Typography variant="caption" sx={{ color: '#7b1fa2', mt: 0.5, display: 'block' }}>
-            AI分析中...（数秒かかります）
-          </Typography>
-        </Box>
-      )}
-
-      {!aiLoading && Object.keys(aiResults).length === 0 && displayData.length > 0 && (
-        <Box sx={{ mb: 2 }}>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<AutoAwesomeIcon />}
-            onClick={() => {
-              const allSellers = displayData.flatMap(g => g.sellers);
-              if (allSellers.length > 0) fetchAiAnalysis(allSellers);
-            }}
-            sx={{ color: '#7b1fa2', borderColor: '#ce93d8' }}
-          >
-            AI敗因分析を実行
-          </Button>
-        </Box>
-      )}
 
       {displayData.length === 0 ? (
         <Alert severity="info">該当するデータがありません</Alert>
@@ -231,6 +208,7 @@ export default function UnvisitedOtherDecisionListPage() {
             <Paper sx={{ borderRadius: '0 0 4px 4px', overflow: 'hidden' }}>
               {group.sellers.map((seller, idx) => {
                 const ai = aiResults[seller.sellerNumber];
+                const isAiLoading = aiLoadingIds.has(seller.sellerNumber);
                 return (
                   <Box key={seller.id}>
                     {idx > 0 && <Divider sx={{ borderColor: '#ffccbc' }} />}
@@ -287,31 +265,43 @@ export default function UnvisitedOtherDecisionListPage() {
                         </Typography>
                       )}
 
-                      {/* AI分析（売主番号ごと） */}
-                      {ai && (
-                        <Box sx={{ mt: 1, p: 1, bgcolor: '#f3e5f5', borderRadius: 1, border: '1px solid #e1bee7' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                            <AutoAwesomeIcon sx={{ fontSize: '0.9rem', color: '#7b1fa2' }} />
-                            <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#4a148c' }}>
-                              AI分析
+                      {/* AI分析ボタン & 結果（売主ごと） */}
+                      <Box sx={{ mt: 1, pl: 0.5 }}>
+                        {!ai && !isAiLoading && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<AutoAwesomeIcon sx={{ fontSize: '0.9rem !important' }} />}
+                            onClick={() => fetchAiForSeller(seller)}
+                            sx={{ fontSize: '0.75rem', color: '#7b1fa2', borderColor: '#ce93d8', py: 0.3 }}
+                          >
+                            AI分析
+                          </Button>
+                        )}
+                        {isAiLoading && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <CircularProgress size={14} sx={{ color: '#7b1fa2' }} />
+                            <Typography variant="caption" sx={{ color: '#7b1fa2' }}>分析中...</Typography>
+                          </Box>
+                        )}
+                        {ai && (
+                          <Box sx={{ p: 1, bgcolor: '#f3e5f5', borderRadius: 1, border: '1px solid #e1bee7' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                              <AutoAwesomeIcon sx={{ fontSize: '0.85rem', color: '#7b1fa2' }} />
+                              <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#4a148c' }}>AI分析</Typography>
+                            </Box>
+                            <Typography variant="body2" sx={{ fontSize: '0.78rem', color: '#333', mb: 0.3 }}>
+                              <strong>要約:</strong> {ai.summary}
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontSize: '0.78rem', color: '#c62828', mb: 0.3 }}>
+                              <strong>敗因:</strong> {ai.whyLost}
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontSize: '0.78rem', color: '#1b5e20' }}>
+                              <strong>対策:</strong> {ai.countermeasure}
                             </Typography>
                           </Box>
-                          <Typography variant="body2" sx={{ fontSize: '0.78rem', color: '#333', mb: 0.3 }}>
-                            <strong>要約:</strong> {ai.summary}
-                          </Typography>
-                          <Typography variant="body2" sx={{ fontSize: '0.78rem', color: '#c62828', mb: 0.3 }}>
-                            <strong>敗因:</strong> {ai.whyLost}
-                          </Typography>
-                          <Typography variant="body2" sx={{ fontSize: '0.78rem', color: '#1b5e20' }}>
-                            <strong>対策:</strong> {ai.countermeasure}
-                          </Typography>
-                        </Box>
-                      )}
-                      {aiLoading && !ai && (
-                        <Box sx={{ mt: 1, p: 0.5 }}>
-                          <Typography variant="caption" sx={{ color: '#9e9e9e' }}>AI分析中...</Typography>
-                        </Box>
-                      )}
+                        )}
+                      </Box>
 
                       {/* 対策欄（手動入力） */}
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mt: 1, pl: 0.5 }}>
