@@ -1786,6 +1786,7 @@ router.get('/other-decision-monthly-summary', async (req: Request, res: Response
  */
 router.get('/unvisited-other-decision-monthly-summary', async (req: Request, res: Response) => {
   try {
+    const { decrypt } = await import('../utils/encryption');
     const supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_KEY!
@@ -1836,12 +1837,17 @@ router.get('/unvisited-other-decision-monthly-summary', async (req: Request, res
       if (!monthlyGroups[ym]) {
         monthlyGroups[ym] = { yearMonth: ym, label, count: 0, sellers: [] };
       }
+
+      // 売主名を復号化
+      let decryptedName = '';
+      try { decryptedName = row.name ? decrypt(row.name) : ''; } catch { decryptedName = ''; }
+
       monthlyGroups[ym].count++;
       monthlyGroups[ym].sellers.push({
         id: row.id,
         sellerNumber: row.seller_number,
         propertyAddress: row.property_address || row.address || '',
-        name: row.name || '',
+        name: decryptedName,
         comments: row.comments || '',
         status: row.status,
         competitorNameAndReason: row.competitor_name_and_reason || row.competitor_name || '',
