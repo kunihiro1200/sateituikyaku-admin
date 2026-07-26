@@ -2,6 +2,8 @@
  * UnvisitedOtherDecisionListPage - 未訪問他決 月別一覧ページ
  * 
  * 営業担当が空欄（外す含む）でステータスが他決→追客 or 他決→追客不要の売主を月別に表示
+ * コメントは「【以下自動転記」の前まで表示
+ * 売主追客ログを全件表示
  * 売主ごとにAI敗因分析ボタンあり
  * 対策欄が編集可能でDB保存できる
  */
@@ -28,6 +30,7 @@ interface UnvisitedSeller {
   nextCallDate: string | null;
   contractYearMonth: string | null;
   otherDecisionCountermeasure: string;
+  aiAnalysis?: { summary: string; whyLost: string; countermeasure: string } | null;
 }
 
 interface MonthlyGroup {
@@ -38,10 +41,16 @@ interface MonthlyGroup {
 }
 
 interface AiResult {
-  sellerNumber: string;
   summary: string;
   whyLost: string;
   countermeasure: string;
+}
+
+interface FollowUpLog {
+  date: string;
+  comment: string;
+  assigneeFirstHalf: string;
+  assigneeSecondHalf: string;
 }
 
 export default function UnvisitedOtherDecisionListPage() {
@@ -60,6 +69,10 @@ export default function UnvisitedOtherDecisionListPage() {
   const [aiResults, setAiResults] = useState<Record<string, AiResult>>({});
   const [aiLoadingIds, setAiLoadingIds] = useState<Set<string>>(new Set());
 
+  // 追客ログ（売主番号→ログ配列）
+  const [followUpLogs, setFollowUpLogs] = useState<Record<string, FollowUpLog[]>>({});
+  const [logsLoadingIds, setLogsLoadingIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -73,14 +86,21 @@ export default function UnvisitedOtherDecisionListPage() {
         for (const group of summary) {
           for (const seller of group.sellers) {
             cm[seller.id] = seller.otherDecisionCountermeasure || '';
-            // DB保存済みのAI分析結果を読み込み
-            if ((seller as any).aiAnalysis) {
-              savedAi[seller.sellerNumber] = (seller as any).aiAnalysis;
+            if (seller.aiAnalysis) {
+              savedAi[seller.sellerNumber] = seller.aiAnalysis;
             }
           }
         }
         setCountermeasures(cm);
         setAiResults(savedAi);
+
+        // 表示対象の売主全員の追客ログを取得
+        const targetGroups = targetMonth ? summary.filter(g => g.yearMonth === targetMonth) : summary;
+        for (const group of targetGroups) {
+          for (const seller of group.sellers) {
+            fetchFollowUpLogs(seller.sellerNumber);
+          }
+        }
       } catch (err: any) {
         setError(err?.response?.data?.error || 'データ取得に失敗しました');
       } finally {
@@ -90,7 +110,30 @@ export default function UnvisitedOtherDecisionListPage() {
     fetchData();
   }, []);
 
-  // 個別の売主に対してAI分析を実行（GETで）
+  // 追客ログを取得
+  const fetchFollowUpLogs = async (sellerNumber: string) => {
+    setLogsLoadingIds(prev => new Set(prev).add(sellerNumber));
+    try {
+      const res = await api.get(`/api/sellers/${sellerNumber}/follow-up-logs/history`);
+      const logs: FollowUpLog[] = (res.data?.data || []).map((log: any) => ({
+        date: log.date,
+        comment: log.comment || '',
+        assigneeFirstHalf: log.assigneeFirstHalf || '',
+        assigneeSecondHalf: log.assigneeSecondHalf || '',
+      }));
+      setFollowUpLogs(prev => ({ ...prev, [sellerNumber]: logs }));
+    } catch {
+      // 追客ログ取得失敗は無視
+    } finally {
+      setLogsLoadingIds(prev => {
+        const next = new Set(prev);
+        next.delete(sellerNumber);
+        return next;
+      });
+    }
+  };
+
+  // AI分析を実行
   const fetchAiForSeller = async (seller: UnvisitedSeller) => {
     const key = seller.sellerNumber;
     setAiLoadingIds(prev => new Set(prev).add(key));
@@ -104,8 +147,7 @@ export default function UnvisitedOtherDecisionListPage() {
       } else {
         setSnackbar({ open: true, message: 'AI分析結果を取得できませんでした' });
       }
-    } catch (err: any) {
-      console.error('AI analysis error for', key, err?.response?.status);
+    } catch {
       setSnackbar({ open: true, message: 'AI分析に失敗しました。再度お試しください。' });
     } finally {
       setAiLoadingIds(prev => {
@@ -141,9 +183,13 @@ export default function UnvisitedOtherDecisionListPage() {
     return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
   };
 
-  const stripHtml = (html: string) => {
+  // コメントからHTMLタグ除去し「【以下自動転記」の前まで表示
+  const truncateComment = (html: string) => {
     if (!html) return '';
-    return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    const plain = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&').trim();
+    const cutIdx = plain.indexOf('【以下自動転記');
+    if (cutIdx > 0) return plain.substring(0, cutIdx).trim();
+    return plain;
   };
 
   const displayData = targetMonth
@@ -187,7 +233,6 @@ export default function UnvisitedOtherDecisionListPage() {
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           営業担当が未設定（外す含む）で、他決→追客 または 他決→追客不要 の売主を月別に表示。
-          各売主の「AI分析」ボタンで敗因と対策を分析できます。
         </Typography>
       </Paper>
 
@@ -196,28 +241,26 @@ export default function UnvisitedOtherDecisionListPage() {
       ) : (
         displayData.map((group) => (
           <Box key={group.yearMonth} sx={{ mb: 4 }}>
-            {/* 月ヘッダー */}
             <Box sx={{ bgcolor: '#ff5722', color: 'white', px: 2, py: 1, borderRadius: '4px 4px 0 0', display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
                 【未訪問他決】{group.label}
               </Typography>
-              <Chip
-                label={`${group.count}件`}
-                size="small"
-                sx={{ bgcolor: 'rgba(255,255,255,0.3)', color: 'white', fontWeight: 'bold' }}
-              />
+              <Chip label={`${group.count}件`} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.3)', color: 'white', fontWeight: 'bold' }} />
             </Box>
 
-            {/* 案件一覧 */}
             <Paper sx={{ borderRadius: '0 0 4px 4px', overflow: 'hidden' }}>
               {group.sellers.map((seller, idx) => {
                 const ai = aiResults[seller.sellerNumber];
                 const isAiLoading = aiLoadingIds.has(seller.sellerNumber);
+                const logs = followUpLogs[seller.sellerNumber] || [];
+                const isLogsLoading = logsLoadingIds.has(seller.sellerNumber);
+                const commentText = truncateComment(seller.comments);
+
                 return (
                   <Box key={seller.id}>
                     {idx > 0 && <Divider sx={{ borderColor: '#ffccbc' }} />}
                     <Box sx={{ p: 1.5, '&:hover': { bgcolor: '#fafafa' } }}>
-                      {/* 1行目: 売主番号 / 売主名 / ステータス / 日付 */}
+                      {/* ヘッダー行 */}
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
                         <Button
                           size="small"
@@ -228,26 +271,11 @@ export default function UnvisitedOtherDecisionListPage() {
                           {seller.sellerNumber}
                         </Button>
                         {seller.name && (
-                          <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
-                            {seller.name}
-                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{seller.name}</Typography>
                         )}
-                        <Chip
-                          label={seller.status}
-                          size="small"
-                          sx={{
-                            height: 20,
-                            fontSize: '0.7rem',
-                            bgcolor: seller.status === '他決→追客' ? '#ef5350' : '#b71c1c',
-                            color: 'white',
-                          }}
-                        />
-                        <Typography variant="caption" sx={{ color: '#666', ml: 'auto' }}>
-                          他決日: {formatDate(seller.contractYearMonth)}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: '#666' }}>
-                          次電日: {formatDate(seller.nextCallDate)}
-                        </Typography>
+                        <Chip label={seller.status} size="small" sx={{ height: 20, fontSize: '0.7rem', bgcolor: seller.status === '他決→追客' ? '#ef5350' : '#b71c1c', color: 'white' }} />
+                        <Typography variant="caption" sx={{ color: '#666', ml: 'auto' }}>他決日: {formatDate(seller.contractYearMonth)}</Typography>
+                        <Typography variant="caption" sx={{ color: '#666' }}>次電日: {formatDate(seller.nextCallDate)}</Typography>
                       </Box>
 
                       {/* 物件住所 */}
@@ -262,14 +290,40 @@ export default function UnvisitedOtherDecisionListPage() {
                         </Typography>
                       )}
 
-                      {/* コメント */}
-                      {seller.comments && (
+                      {/* コメント（【以下自動転記】の前まで） */}
+                      {commentText && (
                         <Typography variant="body2" sx={{ fontSize: '0.78rem', color: '#555', mb: 0.5, pl: 0.5, whiteSpace: 'pre-wrap' }}>
-                          💬 {stripHtml(seller.comments)}
+                          💬 {commentText}
                         </Typography>
                       )}
 
-                      {/* AI分析ボタン & 結果（売主ごと） */}
+                      {/* 売主追客ログ */}
+                      {isLogsLoading ? (
+                        <Box sx={{ pl: 0.5, mb: 0.5 }}>
+                          <Typography variant="caption" sx={{ color: '#9e9e9e' }}>追客ログ読込中...</Typography>
+                        </Box>
+                      ) : logs.length > 0 && (
+                        <Box sx={{ mt: 0.5, pl: 0.5, mb: 0.5 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#1565c0', display: 'block', mb: 0.3 }}>
+                            📞 追客ログ（{logs.length}件）
+                          </Typography>
+                          <Box sx={{ pl: 1, borderLeft: '2px solid #bbdefb', maxHeight: 200, overflow: 'auto' }}>
+                            {logs.map((log, i) => (
+                              <Box key={i} sx={{ mb: 0.3 }}>
+                                <Typography variant="caption" sx={{ color: '#333', fontSize: '0.72rem' }}>
+                                  <strong>{formatDate(log.date)}</strong>
+                                  {(log.assigneeFirstHalf || log.assigneeSecondHalf) && (
+                                    <span style={{ color: '#1565c0' }}> [{log.assigneeFirstHalf}{log.assigneeSecondHalf && `/${log.assigneeSecondHalf}`}]</span>
+                                  )}
+                                  {log.comment && ` ${log.comment}`}
+                                </Typography>
+                              </Box>
+                            ))}
+                          </Box>
+                        </Box>
+                      )}
+
+                      {/* AI分析ボタン & 結果 */}
                       <Box sx={{ mt: 1, pl: 0.5 }}>
                         {!ai && !isAiLoading && (
                           <Button
@@ -307,11 +361,9 @@ export default function UnvisitedOtherDecisionListPage() {
                         )}
                       </Box>
 
-                      {/* 対策欄（手動入力） */}
+                      {/* 対策メモ */}
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mt: 1, pl: 0.5 }}>
-                        <Typography variant="caption" sx={{ color: '#bf360c', fontWeight: 'bold', mt: 0.8, whiteSpace: 'nowrap' }}>
-                          対策メモ:
-                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#bf360c', fontWeight: 'bold', mt: 0.8, whiteSpace: 'nowrap' }}>対策メモ:</Typography>
                         <TextField
                           size="small"
                           multiline
@@ -319,24 +371,10 @@ export default function UnvisitedOtherDecisionListPage() {
                           value={countermeasures[seller.id] || ''}
                           onChange={(e) => setCountermeasures(prev => ({ ...prev, [seller.id]: e.target.value }))}
                           placeholder="対策を入力..."
-                          sx={{
-                            flex: 1,
-                            '& .MuiInputBase-input': { fontSize: '0.8rem', py: 0.5 },
-                            '& .MuiOutlinedInput-root': { bgcolor: '#fff8e1' },
-                          }}
+                          sx={{ flex: 1, '& .MuiInputBase-input': { fontSize: '0.8rem', py: 0.5 }, '& .MuiOutlinedInput-root': { bgcolor: '#fff8e1' } }}
                         />
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => handleSave(seller.id)}
-                          disabled={savingIds.has(seller.id)}
-                          sx={{ mt: 0.3 }}
-                        >
-                          {savingIds.has(seller.id) ? (
-                            <CircularProgress size={16} />
-                          ) : (
-                            <SaveIcon fontSize="small" />
-                          )}
+                        <IconButton size="small" color="primary" onClick={() => handleSave(seller.id)} disabled={savingIds.has(seller.id)} sx={{ mt: 0.3 }}>
+                          {savingIds.has(seller.id) ? <CircularProgress size={16} /> : <SaveIcon fontSize="small" />}
                         </IconButton>
                       </Box>
                     </Box>
@@ -348,12 +386,7 @@ export default function UnvisitedOtherDecisionListPage() {
         ))
       )}
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar({ open: false, message: '' })}
-        message={snackbar.message}
-      />
+      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ open: false, message: '' })} message={snackbar.message} />
     </Box>
   );
 }
