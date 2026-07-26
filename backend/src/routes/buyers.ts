@@ -2329,13 +2329,14 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
       byAssignee[assignee].push(b);
     }
 
-    // テキスト化（AIに渡すデータ：各担当者8件まで、物件住所も含める）
+    // テキスト化（AIに渡すデータ：各担当者8件まで、買主番号・物件住所を含める）
     const assigneeTexts = Object.entries(byAssignee).map(([assignee, items]) => {
       const itemTexts = items.slice(0, 8).map((b: any) => {
         const executor = stripHtml(b.viewing_insight_executor || '').slice(0, 150);
         const companion = stripHtml(b.viewing_insight_companion || '').slice(0, 150);
         const addr = (b.property_address || '').slice(0, 30);
-        return `  [${b.viewing_date?.split('T')[0] || ''}/${addr}] 実行者:${executor || 'なし'} / 随行者:${companion || 'なし'}`;
+        const buyerNum = b.buyer_number || '';
+        return `  [買主${buyerNum}/${b.viewing_date?.split('T')[0] || ''}/${addr}] 実行者:${executor || 'なし'} / 随行者:${companion || 'なし'}`;
       }).join('\n');
       return `■${assignee}（全${items.length}件）\n${itemTexts}`;
     }).join('\n\n');
@@ -2364,17 +2365,17 @@ ${assigneeTexts}
 - 気づきの内容をオウム返しにしない。気づきは前提として、**その先のアクション・改善策・具体的トーク**を引き出す
 
 【質問の作り方】
-- 質問には必ず**物件住所（または物件の特徴）と日付**を含めること（例:「7/25の○○町の物件で」）
+- 質問には必ず**買主番号と物件住所**を含めること（例:「買主7691（大分市岩田町2-9-17）の内覧で」）
 - 失敗・反省系の気づき → 「今後、同じ状況になった時にどう対応しますか？事前にどんな準備をしますか？」
-  例：「バス停がわからなかった」→「○○の物件で近くのバス停を聞かれて答えられなかったとのことですが、今後内覧前に周辺交通情報をどう準備しますか？」
+  例：「バス停がわからなかった」→「買主8197（大分市尼ヶ瀬）の内覧で近くのバス停を聞かれて答えられなかったとのことですが、今後内覧前に周辺交通情報をどう準備しますか？」
 - 成功系の気づき → 「具体的にどんな言葉で伝えましたか？お客様の反応はどうでしたか？」
-  例：「坪数の情報が役立った」→「○○の物件で各階の坪数をお伝えしたとのことですが、お客様にどう説明して、反応はどうでしたか？」
+  例：「坪数の情報が役立った」→「買主6990（大分市王子町1-20）の内覧で各階の坪数をお伝えしたとのことですが、お客様にどう説明して、反応はどうでしたか？」
 - 「リフォーム会社の紹介」「書類の説明」など事務手続きの質問は絶対に作らない
 - 「お客様が探している理由は？」のような推測質問も不要
 - 担当者ごとに2〜3問
 
 以下のJSON形式で返答：
-{"assignees":[{"name":"担当者名","insightCount":件数,"questions":[{"id":"q1","question":"質問文","context":"この質問が基づいている内覧の物件・日付・状況の要約"}]}]}
+{"assignees":[{"name":"担当者名","insightCount":件数,"questions":[{"id":"q1","question":"質問文","context":"この質問が基づいている内覧の状況要約","buyerNumber":"該当する買主番号"}]}]}
 
 担当者: ${assigneeNames.join('、')}`;
 

@@ -239,7 +239,7 @@ export default function BuyerViewingResultPage() {
   const [insightSummaryError, setInsightSummaryError] = useState<string>('');
   const [insightSummaryResult, setInsightSummaryResult] = useState<{
     summary: string;
-    assignees: { name: string; insightCount: number; questions: { id: string; question: string; context: string }[] }[];
+    assignees: { name: string; insightCount: number; questions: { id: string; question: string; context: string; buyerNumber?: string }[] }[];
     insightCount: number;
     endDate: string;
   } | null>(null);
@@ -2612,7 +2612,15 @@ export default function BuyerViewingResultPage() {
                           </Typography>
                         </Box>
                         <Typography variant="caption" color="text.secondary" sx={{ pl: 4.5, display: 'block', mb: 1.5 }}>
-                          背景: {q.context}
+                          {q.buyerNumber && (
+                            <span
+                              style={{ color: '#1976d2', cursor: 'pointer', textDecoration: 'underline', fontWeight: 'bold', marginRight: 8 }}
+                              onClick={() => window.open(`/buyers/${q.buyerNumber}/viewing-result`, '_blank')}
+                            >
+                              買主{q.buyerNumber}
+                            </span>
+                          )}
+                          {q.context}
                         </Typography>
                         <TextField
                           fullWidth
