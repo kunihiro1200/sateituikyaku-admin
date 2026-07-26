@@ -2531,10 +2531,9 @@ export default function BuyerViewingResultPage() {
               <thead>
                 <tr style={{ backgroundColor: '#bbdefb' }}>
                   <th style={{ padding: '8px 10px', textAlign: 'left', borderBottom: '2px solid #90caf9', color: '#1565c0', width: '110px' }}>物件情報</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'left', borderBottom: '2px solid #90caf9', color: '#1565c0', width: '22%' }}>ヒアリング項目</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'left', borderBottom: '2px solid #90caf9', color: '#1565c0', width: '22%' }}>気づき（実行者）</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'left', borderBottom: '2px solid #90caf9', color: '#1565c0', width: '18%' }}>気づき（随行者）</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'left', borderBottom: '2px solid #90caf9', color: '#1565c0', width: '22%' }}>対策（備考）</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'left', borderBottom: '2px solid #90caf9', color: '#1565c0', width: '30%' }}>ヒアリング項目</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'left', borderBottom: '2px solid #90caf9', color: '#1565c0', width: '30%' }}>気づき</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'left', borderBottom: '2px solid #90caf9', color: '#1565c0', width: '25%' }}>対策（備考）</th>
                   <th style={{ padding: '8px 10px', textAlign: 'center', borderBottom: '2px solid #90caf9', color: '#1565c0', width: '50px' }}></th>
                 </tr>
               </thead>
@@ -2560,14 +2559,19 @@ export default function BuyerViewingResultPage() {
                         : '-'}
                     </td>
                     <td style={{ padding: '8px 10px', borderBottom: '1px solid #90caf9', verticalAlign: 'top', wordBreak: 'break-word' }}>
-                      {b.viewing_insight_executor
-                        ? <span dangerouslySetInnerHTML={{ __html: b.viewing_insight_executor }} />
-                        : '-'}
-                    </td>
-                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #90caf9', verticalAlign: 'top', wordBreak: 'break-word' }}>
-                      {b.viewing_insight_companion
-                        ? <span dangerouslySetInnerHTML={{ __html: b.viewing_insight_companion }} />
-                        : '-'}
+                      {b.viewing_insight_executor && (
+                        <div style={{ marginBottom: b.viewing_insight_companion ? 8 : 0 }}>
+                          <span style={{ fontSize: '0.7rem', color: '#1565c0', fontWeight: 'bold' }}>実行者：</span>
+                          <span dangerouslySetInnerHTML={{ __html: b.viewing_insight_executor }} />
+                        </div>
+                      )}
+                      {b.viewing_insight_companion && (
+                        <div>
+                          <span style={{ fontSize: '0.7rem', color: '#1565c0', fontWeight: 'bold' }}>随行者：</span>
+                          <span dangerouslySetInnerHTML={{ __html: b.viewing_insight_companion }} />
+                        </div>
+                      )}
+                      {!b.viewing_insight_executor && !b.viewing_insight_companion && '-'}
                     </td>
                     <td style={{ padding: '8px 10px', borderBottom: '1px solid #90caf9', verticalAlign: 'top' }}>
                       <TextField
