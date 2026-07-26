@@ -2275,7 +2275,7 @@ router.get('/insights', async (req: Request, res: Response) => {
     const supabase = (buyerService as any).supabase;
     const { data, error } = await supabase
       .from('buyers')
-      .select('buyer_number, name, property_number, property_address, viewing_date, follow_up_assignee, viewing_insight_executor, viewing_insight_companion')
+      .select('buyer_number, name, property_number, property_address, viewing_date, follow_up_assignee, viewing_insight_executor, viewing_insight_companion, viewing_result_follow_up, viewing_insight_action, viewing_insight_completed')
       .is('deleted_at', null)
       .or('viewing_insight_executor.neq.,viewing_insight_companion.neq.')
       .order('viewing_date', { ascending: false });
@@ -2284,6 +2284,34 @@ router.get('/insights', async (req: Request, res: Response) => {
     res.json(data || []);
   } catch (error: any) {
     console.error('[GET /buyers/insights] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 気づき対策・完了を保存
+// PUT /api/buyers/insights/:buyerNumber/action
+router.put('/insights/:buyerNumber/action', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { buyerNumber } = req.params;
+    const { action, completed } = req.body;
+
+    const supabase = (buyerService as any).supabase;
+    const updateData: any = {};
+    if (action !== undefined) updateData.viewing_insight_action = action;
+    if (completed !== undefined) updateData.viewing_insight_completed = completed;
+    updateData.updated_at = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('buyers')
+      .update(updateData)
+      .eq('buyer_number', buyerNumber)
+      .select('buyer_number, viewing_insight_action, viewing_insight_completed')
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error: any) {
+    console.error('[PUT /buyers/insights/:buyerNumber/action] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
