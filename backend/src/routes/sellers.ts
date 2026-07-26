@@ -1901,6 +1901,78 @@ router.put('/:id/unvisited-other-decision-countermeasure', authenticate, async (
 });
 
 /**
+ * POST /api/sellers/unvisited-other-decision-ai-analysis
+ * 未訪問他決の月別データをAIで分析し、要約+敗因分析+対策案を返す
+ * body: { yearMonth, sellers: [...] }
+ */
+router.post('/unvisited-other-decision-ai-analysis', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { yearMonth, sellers } = req.body;
+
+    if (!sellers || sellers.length === 0) {
+      return res.status(400).json({ error: '分析対象データがありません' });
+    }
+
+    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicApiKey) {
+      return res.status(500).json({ error: 'ANTHROPIC_API_KEYが設定されていません' });
+    }
+
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+
+    // 各案件の情報をまとめる
+    const caseSummaries = sellers.map((s: any, i: number) => (
+      `【案件${i + 1}】${s.sellerNumber}
+物件: ${s.propertyAddress || '不明'}
+売主名: ${s.name || '不明'}
+ステータス: ${s.status}
+他決日: ${s.contractYearMonth || '不明'}
+競合名・理由: ${s.competitorNameAndReason || '記載なし'}
+コメント: ${s.comments || 'なし'}
+次電日: ${s.nextCallDate || 'なし'}`
+    )).join('\n\n');
+
+    const prompt = `あなたは不動産仲介会社の営業戦略コンサルタントです。
+
+以下は${yearMonth}の「未訪問他決」案件の一覧です。
+「未訪問他決」とは、営業担当がつかないまま（訪問査定に至らず）他社に決まってしまった案件です。
+
+【未訪問他決 ${sellers.length}件】
+${caseSummaries}
+
+以下の形式で分析してください。日本語で、簡潔かつ具体的に書いてください。
+
+■ 要約（3行以内）
+この月の未訪問他決の傾向を簡潔にまとめてください。
+
+■ なぜ訪問査定に至らなかったか（敗因分析）
+各案件のコメントや競合情報から、訪問に至らなかった原因パターンを分析してください。
+
+■ 競合の動き
+どの競合に取られているか、競合の強み・アプローチの傾向を分析してください。
+
+■ 対策案（具体的なアクション）
+今後同様の案件を取りこぼさないための具体的な対策を3〜5つ提案してください。
+初回TELのタイミング、アプローチ方法、査定提案のタイミングなど実務レベルの提案をしてください。`;
+
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const content = message.content[0];
+    const analysis = content.type === 'text' ? content.text : '';
+
+    return res.json({ analysis });
+  } catch (error) {
+    console.error('[unvisited-other-decision-ai-analysis] Error:', error);
+    return res.status(500).json({ error: 'AI分析に失敗しました' });
+  }
+});
+
+/**
  * GET /api/sellers/sumai-step-monthly-summary
  * すまいステップ（サイト＝「す」）からの依頼を月別に集計
  * 各月の総数・一般媒介数・専任媒介数を返す（2026年5月以降）
