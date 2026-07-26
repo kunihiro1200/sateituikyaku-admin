@@ -2264,14 +2264,15 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
 
     const supabase = (buyerService as any).supabase;
 
-    // 指定日付までの気づきデータを取得
+    // 指定日付までの気づきデータを取得（最新20件に制限）
     const { data: insights, error } = await supabase
       .from('buyers')
       .select('buyer_number, name, property_number, property_address, viewing_date, follow_up_assignee, viewing_insight_executor, viewing_insight_companion')
       .is('deleted_at', null)
       .or('viewing_insight_executor.neq.,viewing_insight_companion.neq.')
       .lte('viewing_date', endDate)
-      .order('viewing_date', { ascending: false });
+      .order('viewing_date', { ascending: false })
+      .limit(20);
 
     if (error) throw error;
 
@@ -2293,18 +2294,18 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
       byAssignee[assignee].push(b);
     }
 
-    // 各担当者の気づきをテキスト化
+    // 各担当者の気づきをテキスト化（各担当者5件まで、コメントは100文字に制限）
     const assigneeTexts = Object.entries(byAssignee).map(([assignee, items]) => {
-      const itemTexts = items.slice(0, 10).map((b: any) => {
-        const executor = stripHtml(b.viewing_insight_executor || '');
-        const companion = stripHtml(b.viewing_insight_companion || '');
-        const date = b.viewing_date ? String(b.viewing_date).split('T')[0] : '日付不明';
-        return `  ・${date} ${b.property_address || ''}\n    実行者: ${executor || 'なし'}\n    随行者: ${companion || 'なし'}`;
+      const itemTexts = items.slice(0, 5).map((b: any) => {
+        const executor = stripHtml(b.viewing_insight_executor || '').slice(0, 100);
+        const companion = stripHtml(b.viewing_insight_companion || '').slice(0, 100);
+        const date = b.viewing_date ? String(b.viewing_date).split('T')[0] : '不明';
+        return `  ・${date} ${(b.property_address || '').slice(0, 20)}\n    実行者: ${executor || 'なし'}\n    随行者: ${companion || 'なし'}`;
       }).join('\n');
-      return `【担当: ${assignee}（${items.length}件）】\n${itemTexts}`;
+      return `【${assignee}（${items.length}件）】\n${itemTexts}`;
     }).join('\n\n');
 
-    // Claude APIで担当者ごとの質問形式まとめを生成
+    // Claude API（軽量モデル）で担当者ごとの質問形式まとめを生成
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
     if (!anthropicApiKey) {
       return res.status(500).json({ error: 'ANTHROPIC_API_KEY が設定されていません' });
@@ -2315,43 +2316,21 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
 
     const assigneeNames = Object.keys(byAssignee).filter(n => n !== '不明');
 
-    const prompt = `あなたは不動産会社の内覧同行の研修コーチです。
-以下は買主の内覧時に記録された「気づき」（内覧実行者と随行者のコメント）を**担当者ごと**にまとめたものです。
+    const prompt = `不動産内覧の気づきデータから担当者ごとの質問を作成してください。
 
-【気づきデータ（${endDate}まで）】
+【データ（${endDate}まで）】
 ${assigneeTexts}
 
-この気づきデータを分析して、**各担当者へ向けた個別の質問**を作成してください。
-売主リストの専任媒介取得分析や他決分析と同じように、担当者ごとに「改善・学び」を深掘りする質問形式にしてください。
+担当者ごとに2つの質問を作成。具体的な改善点を引き出す質問にすること。
 
-以下の条件で作成してください：
+JSON形式で返答（他テキスト不要）：
+{"summary":"全体要約1文","assignees":[{"name":"担当者名","insightCount":件数,"questions":[{"id":"q1","question":"質問文","context":"背景"}]}]}
 
-条件：
-- 担当者ごとに2〜3つの質問を作成する（担当者名を明記）
-- その担当者の気づきデータから見える「良い対応」「課題」「パターン」に基づく質問にする
-- 「はい/いいえ」で終わらない、具体的エピソードや改善策を引き出す質問
-- 内覧時のお客様対応（声かけ、物件説明、ヒアリング、クロージング）に焦点を当てる
-- お客様が気にしていたポイント、リフォーム・価格・立地の説明方法などに踏み込む
-
-以下のJSON形式で返してください（他のテキストは不要）：
-{
-  "summary": "全体の傾向を1〜2文でまとめた要約",
-  "assignees": [
-    {
-      "name": "担当者名",
-      "insightCount": 件数,
-      "questions": [
-        {"id": "q1", "question": "質問文", "context": "この質問の背景"}
-      ]
-    }
-  ]
-}
-
-担当者一覧: ${assigneeNames.join('、')}`;
+担当者: ${assigneeNames.join('、')}`;
 
     const message = await anthropic.messages.create({
-      model: 'claude-opus-4-5',
-      max_tokens: 2000,
+      model: 'claude-sonnet-4-5',
+      max_tokens: 1200,
       messages: [{ role: 'user', content: prompt }],
     });
 
