@@ -1902,12 +1902,12 @@ router.put('/:id/unvisited-other-decision-countermeasure', authenticate, async (
 
 /**
  * POST /api/sellers/unvisited-other-decision-ai-analysis
- * 未訪問他決の月別データをAIで分析し、要約+敗因分析+対策案を返す
- * body: { yearMonth, sellers: [...] }
+ * 未訪問他決の各案件を個別にAI分析し、売主番号ごとに要約+敗因+対策を返す
+ * body: { sellers: [...] }
  */
 router.post('/unvisited-other-decision-ai-analysis', authenticate, async (req: Request, res: Response) => {
   try {
-    const { yearMonth, sellers } = req.body;
+    const { sellers } = req.body;
 
     if (!sellers || sellers.length === 0) {
       return res.status(400).json({ error: '分析対象データがありません' });
@@ -1921,51 +1921,63 @@ router.post('/unvisited-other-decision-ai-analysis', authenticate, async (req: R
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey: anthropicApiKey });
 
-    // 各案件の情報をまとめる
+    // 全案件を一つのプロンプトにまとめて、各案件ごとに分析結果をJSON配列で返させる
     const caseSummaries = sellers.map((s: any, i: number) => (
-      `【案件${i + 1}】${s.sellerNumber}
+      `【${s.sellerNumber}】
 物件: ${s.propertyAddress || '不明'}
 売主名: ${s.name || '不明'}
 ステータス: ${s.status}
 他決日: ${s.contractYearMonth || '不明'}
 競合名・理由: ${s.competitorNameAndReason || '記載なし'}
-コメント: ${s.comments || 'なし'}
+コメント: ${(s.comments || 'なし').substring(0, 500)}
 次電日: ${s.nextCallDate || 'なし'}`
-    )).join('\n\n');
+    )).join('\n\n---\n\n');
 
-    const prompt = `あなたは不動産仲介会社の営業戦略コンサルタントです。
+    const prompt = `あなたは不動産仲介会社の営業マネージャーです。
 
-以下は${yearMonth}の「未訪問他決」案件の一覧です。
-「未訪問他決」とは、営業担当がつかないまま（訪問査定に至らず）他社に決まってしまった案件です。
+以下は「未訪問他決」案件です。「未訪問他決」とは営業担当がつかず訪問査定に至らないまま他社に取られた案件です。
 
-【未訪問他決 ${sellers.length}件】
 ${caseSummaries}
 
-以下の形式で分析してください。日本語で、簡潔かつ具体的に書いてください。
+各案件について以下を分析してください。必ずJSON配列形式で返してください。他のテキストは不要です。
 
-■ 要約（3行以内）
-この月の未訪問他決の傾向を簡潔にまとめてください。
+[
+  {
+    "sellerNumber": "売主番号",
+    "summary": "この案件の状況を1行で要約",
+    "whyLost": "訪問に至らず他決になった原因（1〜2行）",
+    "countermeasure": "今後の対策案（具体的に1〜2行）"
+  }
+]
 
-■ なぜ訪問査定に至らなかったか（敗因分析）
-各案件のコメントや競合情報から、訪問に至らなかった原因パターンを分析してください。
-
-■ 競合の動き
-どの競合に取られているか、競合の強み・アプローチの傾向を分析してください。
-
-■ 対策案（具体的なアクション）
-今後同様の案件を取りこぼさないための具体的な対策を3〜5つ提案してください。
-初回TELのタイミング、アプローチ方法、査定提案のタイミングなど実務レベルの提案をしてください。`;
+注意:
+- 各項目は日本語で簡潔に書く
+- コメント欄の情報を活用して分析する
+- summaryは「○○が△△のため他決」のように端的にまとめる
+- whyLostは「初回TELで△△が遅かった」「競合が先に査定提案した」等の具体的原因
+- countermeasureは「反響後○時間以内にTEL」「訪問提案を早期に」等の実務的対策`;
 
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 1500,
+      max_tokens: 3000,
       messages: [{ role: 'user', content: prompt }],
     });
 
     const content = message.content[0];
-    const analysis = content.type === 'text' ? content.text : '';
+    const responseText = content.type === 'text' ? content.text : '';
 
-    return res.json({ analysis });
+    // JSONを抽出
+    let analyses: any[] = [];
+    try {
+      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        analyses = JSON.parse(jsonMatch[0]);
+      }
+    } catch {
+      console.error('[unvisited-other-decision-ai-analysis] JSON parse failed:', responseText.substring(0, 300));
+    }
+
+    return res.json({ analyses });
   } catch (error) {
     console.error('[unvisited-other-decision-ai-analysis] Error:', error);
     return res.status(500).json({ error: 'AI分析に失敗しました' });
