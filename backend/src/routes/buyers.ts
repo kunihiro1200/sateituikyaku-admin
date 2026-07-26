@@ -2288,6 +2288,56 @@ router.get('/insights', async (req: Request, res: Response) => {
   }
 });
 
+// 気づきAI解析（物件ごと）
+// POST /api/buyers/insights/analyze
+router.post('/insights/analyze', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { buyerNumber, propertyAddress, hearing, insightExecutor, insightCompanion } = req.body;
+
+    const stripHtml = (html: string) => {
+      if (!html) return '';
+      return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    };
+
+    const hearingText = stripHtml(hearing || '');
+    const executorText = stripHtml(insightExecutor || '');
+    const companionText = stripHtml(insightCompanion || '');
+
+    if (!executorText && !companionText) {
+      return res.status(400).json({ error: '気づきデータがありません' });
+    }
+
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+    if (!openaiApiKey) {
+      return res.status(500).json({ error: 'OPENAI_API_KEY が未設定です' });
+    }
+
+    const axios = (await import('axios')).default;
+    const completion = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: '不動産内覧のコーチとして、ヒアリング内容と気づきを分析し、他のスタッフが学べるポイントを3行以内で簡潔にまとめてください。箇条書きで。' },
+          { role: 'user', content: `買主${buyerNumber}（${propertyAddress || ''}）の内覧データ：\n\nヒアリング：${hearingText || 'なし'}\n\n気づき（実行者）：${executorText || 'なし'}\n\n気づき（随行者）：${companionText || 'なし'}\n\n上記から他スタッフが学べる具体的なポイント（トーク術・対策・注意点）を3つ以内で箇条書きにしてください。データに書かれていないことは書かないこと。` },
+        ],
+        temperature: 0.2,
+        max_tokens: 300,
+      },
+      {
+        headers: { 'Authorization': `Bearer ${openaiApiKey}`, 'Content-Type': 'application/json' },
+        timeout: 15000,
+      }
+    );
+
+    const analysis = completion.data?.choices?.[0]?.message?.content || '';
+    return res.json({ analysis });
+  } catch (error: any) {
+    console.error('[POST /buyers/insights/analyze] Error:', error?.response?.data || error.message);
+    return res.status(500).json({ error: 'AI解析に失敗しました' });
+  }
+});
+
 // 気づき対策・完了を保存
 // PUT /api/buyers/insights/:buyerNumber/action
 router.put('/insights/:buyerNumber/action', authenticate, async (req: Request, res: Response) => {

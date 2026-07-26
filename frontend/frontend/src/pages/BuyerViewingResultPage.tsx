@@ -236,6 +236,8 @@ export default function BuyerViewingResultPage() {
   // 気づき対策入力
   const [insightActions, setInsightActions] = useState<Record<string, string>>({});
   const [insightActionSaving, setInsightActionSaving] = useState<string>('');
+  const [insightAiAnalysis, setInsightAiAnalysis] = useState<Record<string, string>>({});
+  const [insightAiLoading, setInsightAiLoading] = useState<string>('');
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' }>({
     open: false,
     message: '',
@@ -504,6 +506,24 @@ export default function BuyerViewingResultPage() {
       setSnackbar({ open: true, message: '保存に失敗しました', severity: 'error' });
     } finally {
       setInsightActionSaving('');
+    }
+  };
+
+  const handleInsightAiAnalyze = async (b: any) => {
+    try {
+      setInsightAiLoading(b.buyer_number);
+      const res = await api.post('/api/buyers/insights/analyze', {
+        buyerNumber: b.buyer_number,
+        propertyAddress: b.property_address,
+        hearing: b.viewing_result_follow_up,
+        insightExecutor: b.viewing_insight_executor,
+        insightCompanion: b.viewing_insight_companion,
+      });
+      setInsightAiAnalysis(prev => ({ ...prev, [b.buyer_number]: res.data.analysis }));
+    } catch {
+      setSnackbar({ open: true, message: 'AI解析に失敗しました', severity: 'error' });
+    } finally {
+      setInsightAiLoading('');
     }
   };
 
@@ -2574,6 +2594,20 @@ export default function BuyerViewingResultPage() {
                       {!b.viewing_insight_executor && !b.viewing_insight_companion && '-'}
                     </td>
                     <td style={{ padding: '8px 10px', borderBottom: '1px solid #90caf9', verticalAlign: 'top' }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        disabled={insightAiLoading === b.buyer_number}
+                        onClick={() => handleInsightAiAnalyze(b)}
+                        sx={{ fontSize: '0.65rem', mb: 1, color: '#7b1fa2', borderColor: '#7b1fa2' }}
+                      >
+                        {insightAiLoading === b.buyer_number ? <CircularProgress size={14} /> : '✨ AI解析'}
+                      </Button>
+                      {insightAiAnalysis[b.buyer_number] && (
+                        <Box sx={{ bgcolor: '#f3e5f5', p: 1, borderRadius: 1, mb: 1, fontSize: '0.7rem', lineHeight: 1.5, color: '#4a148c' }}>
+                          {insightAiAnalysis[b.buyer_number]}
+                        </Box>
+                      )}
                       <TextField
                         size="small"
                         multiline
