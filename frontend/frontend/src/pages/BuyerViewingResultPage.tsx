@@ -238,7 +238,7 @@ export default function BuyerViewingResultPage() {
   const [insightSummaryLoading, setInsightSummaryLoading] = useState(false);
   const [insightSummaryResult, setInsightSummaryResult] = useState<{
     summary: string;
-    questions: { id: string; question: string; context: string }[];
+    assignees: { name: string; insightCount: number; questions: { id: string; question: string; context: string }[] }[];
     insightCount: number;
     endDate: string;
   } | null>(null);
@@ -2547,23 +2547,35 @@ export default function BuyerViewingResultPage() {
                 </Typography>
                 <Typography variant="body2">{insightSummaryResult.summary}</Typography>
               </Box>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {insightSummaryResult.questions.map((q, idx) => (
-                  <Box key={q.id} sx={{ bgcolor: '#fff', p: 2, borderRadius: 1, border: '1px solid #a5d6a7' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1 }}>
-                      <Box sx={{ bgcolor: '#43a047', color: '#fff', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold', flexShrink: 0 }}>
-                        Q{idx + 1}
-                      </Box>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1b5e20', lineHeight: 1.6 }}>
-                        {q.question}
-                      </Typography>
+              {insightSummaryResult.assignees.map((assignee) => (
+                <Box key={assignee.name} sx={{ mb: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                    <Box sx={{ bgcolor: '#1b5e20', color: '#fff', px: 1.5, py: 0.5, borderRadius: 1, fontSize: '0.85rem', fontWeight: 'bold' }}>
+                      {assignee.name}
                     </Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ pl: 4.5, display: 'block' }}>
-                      背景: {q.context}
+                    <Typography variant="caption" color="text.secondary">
+                      （{assignee.insightCount}件の気づき）
                     </Typography>
                   </Box>
-                ))}
-              </Box>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pl: 1 }}>
+                    {assignee.questions.map((q, idx) => (
+                      <Box key={q.id} sx={{ bgcolor: '#fff', p: 2, borderRadius: 1, border: '1px solid #a5d6a7' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1 }}>
+                          <Box sx={{ bgcolor: '#43a047', color: '#fff', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold', flexShrink: 0 }}>
+                            Q{idx + 1}
+                          </Box>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1b5e20', lineHeight: 1.6 }}>
+                            {q.question}
+                          </Typography>
+                        </Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ pl: 4.5, display: 'block' }}>
+                          背景: {q.context}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+              ))}
             </Box>
           )}
         </Paper>

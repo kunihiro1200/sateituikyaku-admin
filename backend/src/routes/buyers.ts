@@ -2253,7 +2253,7 @@ router.get('/insights', async (req: Request, res: Response) => {
   }
 });
 
-// 気づき一覧のAI質問形式まとめを生成
+// 気づき一覧のAI質問形式まとめを生成（担当者ごと）
 // POST /api/buyers/insights/summary
 router.post('/insights/summary', authenticate, async (req: Request, res: Response) => {
   try {
@@ -2285,15 +2285,26 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
       return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
     };
 
-    // 気づきデータをテキスト化
-    const insightTexts = insights.slice(0, 30).map((b: any) => {
-      const executor = stripHtml(b.viewing_insight_executor || '');
-      const companion = stripHtml(b.viewing_insight_companion || '');
-      const date = b.viewing_date ? String(b.viewing_date).split('T')[0] : '日付不明';
-      return `【${b.buyer_number}】${date} ${b.property_address || ''}\n担当: ${b.follow_up_assignee || '不明'}\n実行者コメント: ${executor || 'なし'}\n随行者コメント: ${companion || 'なし'}`;
+    // 担当者ごとにグループ化
+    const byAssignee: Record<string, any[]> = {};
+    for (const b of insights) {
+      const assignee = b.follow_up_assignee || '不明';
+      if (!byAssignee[assignee]) byAssignee[assignee] = [];
+      byAssignee[assignee].push(b);
+    }
+
+    // 各担当者の気づきをテキスト化
+    const assigneeTexts = Object.entries(byAssignee).map(([assignee, items]) => {
+      const itemTexts = items.slice(0, 10).map((b: any) => {
+        const executor = stripHtml(b.viewing_insight_executor || '');
+        const companion = stripHtml(b.viewing_insight_companion || '');
+        const date = b.viewing_date ? String(b.viewing_date).split('T')[0] : '日付不明';
+        return `  ・${date} ${b.property_address || ''}\n    実行者: ${executor || 'なし'}\n    随行者: ${companion || 'なし'}`;
+      }).join('\n');
+      return `【担当: ${assignee}（${items.length}件）】\n${itemTexts}`;
     }).join('\n\n');
 
-    // Claude APIで質問形式のまとめを生成
+    // Claude APIで担当者ごとの質問形式まとめを生成
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
     if (!anthropicApiKey) {
       return res.status(500).json({ error: 'ANTHROPIC_API_KEY が設定されていません' });
@@ -2302,38 +2313,45 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey: anthropicApiKey });
 
+    const assigneeNames = Object.keys(byAssignee).filter(n => n !== '不明');
+
     const prompt = `あなたは不動産会社の内覧同行の研修コーチです。
-以下は買主の内覧時に記録された「気づき」（内覧実行者と随行者のコメント）一覧です。
+以下は買主の内覧時に記録された「気づき」（内覧実行者と随行者のコメント）を**担当者ごと**にまとめたものです。
 
 【気づきデータ（${endDate}まで）】
-${insightTexts}
+${assigneeTexts}
 
-この気づきデータを分析して、営業スタッフの内覧対応力を向上させるための**質問形式のまとめ**を作成してください。
+この気づきデータを分析して、**各担当者へ向けた個別の質問**を作成してください。
+売主リストの専任媒介取得分析や他決分析と同じように、担当者ごとに「改善・学び」を深掘りする質問形式にしてください。
 
-以下の条件で質問を5つ作成してください：
+以下の条件で作成してください：
 
 条件：
-- 気づきデータから読み取れる「良かった対応」「改善すべき対応」「お客様の反応パターン」に焦点を当てる
-- 具体的な気づきの内容を引用しながら、「この場面ではどう対応すべきか？」「なぜこの対応が効果的だったか？」という形式にする
-- 「はい/いいえ」で終わらない、具体的な対応方法を考えさせる質問
-- 内覧時のお客様への声かけ、物件説明の工夫、クロージングのタイミングなど実践的な内容
-- 気づきの中で繰り返し出てくるパターン（お客様が気にするポイント、よくある障害など）を質問に反映する
+- 担当者ごとに2〜3つの質問を作成する（担当者名を明記）
+- その担当者の気づきデータから見える「良い対応」「課題」「パターン」に基づく質問にする
+- 「はい/いいえ」で終わらない、具体的エピソードや改善策を引き出す質問
+- 内覧時のお客様対応（声かけ、物件説明、ヒアリング、クロージング）に焦点を当てる
+- お客様が気にしていたポイント、リフォーム・価格・立地の説明方法などに踏み込む
 
 以下のJSON形式で返してください（他のテキストは不要）：
 {
   "summary": "全体の傾向を1〜2文でまとめた要約",
-  "questions": [
-    {"id": "q1", "question": "質問文", "context": "この質問の背景となった気づきの要約"},
-    {"id": "q2", "question": "質問文", "context": "この質問の背景となった気づきの要約"},
-    {"id": "q3", "question": "質問文", "context": "この質問の背景となった気づきの要約"},
-    {"id": "q4", "question": "質問文", "context": "この質問の背景となった気づきの要約"},
-    {"id": "q5", "question": "質問文", "context": "この質問の背景となった気づきの要約"}
+  "assignees": [
+    {
+      "name": "担当者名",
+      "insightCount": 件数,
+      "questions": [
+        {"id": "q1", "question": "質問文", "context": "この質問の背景"}
+      ]
+    }
   ]
-}`;
+}
+
+担当者一覧: ${assigneeNames.join('、')}`;
 
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250514',
-      max_tokens: 1500,
+      max_tokens: 2000,
       messages: [{ role: 'user', content: prompt }],
     });
 
@@ -2356,7 +2374,7 @@ ${insightTexts}
       endDate,
       insightCount: insights.length,
       summary: result?.summary || '',
-      questions: result?.questions || [],
+      assignees: result?.assignees || [],
     });
   } catch (error: any) {
     console.error('[POST /buyers/insights/summary] Error:', error);
