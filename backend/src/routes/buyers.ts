@@ -2255,6 +2255,7 @@ router.get('/insights', async (req: Request, res: Response) => {
 
 // 気づき一覧のAI質問形式まとめを生成（担当者ごと）
 // POST /api/buyers/insights/summary
+// v2: 反省→今後どうする / 成功→具体的トーク を使い分け
 router.post('/insights/summary', authenticate, async (req: Request, res: Response) => {
   try {
     const { endDate } = req.body;
