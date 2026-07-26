@@ -220,4 +220,33 @@ function escapeHtml(str: string): string {
     .replace(/>/g, '&gt;');
 }
 
+// PUT /api/property-preview/:slug/images - プレビューの画像リストを更新（認証必要）
+router.put('/:slug/images', async (req: Request, res: Response) => {
+  try {
+    const { slug } = req.params;
+    const { images } = req.body;
+
+    if (!Array.isArray(images)) {
+      return res.status(400).json({ error: 'images must be an array' });
+    }
+
+    const supabase = getSupabase();
+
+    const { error } = await supabase
+      .from('property_previews')
+      .update({ images })
+      .eq('slug', slug);
+
+    if (error) {
+      console.error('[propertyPreview] PUT images error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error('[propertyPreview] PUT images error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

@@ -160,6 +160,9 @@ export default function OtherCompanyDistributionPage() {
   // 配信履歴
   const [distributionHistory, setDistributionHistory] = useState<any[]>([]);
   const [duplicateWarning, setDuplicateWarning] = useState<{ isDuplicate: boolean; history: any; source?: string; warning?: string } | null>(null);
+  // プレビュー写真選択
+  const [previewSelectedImages, setPreviewSelectedImages] = useState<Set<string>>(new Set());
+  const [savingImages, setSavingImages] = useState(false);
 
   // 配信履歴を取得
   useEffect(() => {
@@ -334,6 +337,11 @@ export default function OtherCompanyDistributionPage() {
       setPreviewUrl(result.preview_url);
       setShowProviderInfo(false); // 新しいスクレイピング時は販売元情報を非表示に
       
+      // プレビュー写真を全選択で初期化
+      if (result.data.images && result.data.images.length > 0) {
+        setPreviewSelectedImages(new Set(result.data.images));
+      }
+      
       // 自動入力を実行
       autoFillFromScrapedData(result.data);
       
@@ -408,6 +416,11 @@ export default function OtherCompanyDistributionPage() {
       // バックエンドがDB保存してpreview_urlを返す
       setPreviewUrl(result.preview_url || suumoUrl.trim());
       setShowProviderInfo(false);
+
+      // プレビュー写真を全選択で初期化
+      if (result.data.images && result.data.images.length > 0) {
+        setPreviewSelectedImages(new Set(result.data.images));
+      }
 
       // 自動入力を実行
       autoFillFromScrapedData(result.data);
@@ -999,6 +1012,112 @@ export default function OtherCompanyDistributionPage() {
               >
                 印刷
               </Button>
+            </Box>
+          )}
+
+          {/* お客様に表示する写真を選択 */}
+          {previewData?.images && previewData.images.length > 0 && previewUrl && (
+            <Box sx={{ mt: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Typography variant="subtitle1" fontWeight="bold" sx={{ color: SECTION_COLORS.buyer.main }}>
+                  📷 お客様に表示する写真を選択（{previewSelectedImages.size}/{previewData.images.length}枚）
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setPreviewSelectedImages(new Set(previewData.images))}
+                  sx={{ fontSize: 11 }}
+                >
+                  全選択
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setPreviewSelectedImages(new Set())}
+                  sx={{ fontSize: 11 }}
+                >
+                  全解除
+                </Button>
+                <Button
+                  size="small"
+                  variant="contained"
+                  disabled={savingImages || previewSelectedImages.size === 0}
+                  onClick={async () => {
+                    const slugMatch = previewUrl.match(/property-preview\/([a-f0-9]+)/);
+                    if (!slugMatch) return;
+                    setSavingImages(true);
+                    try {
+                      const selectedImagesArray = previewData.images.filter((img: string) => previewSelectedImages.has(img));
+                      await api.put(`/api/property-preview/${slugMatch[1]}/images`, { images: selectedImagesArray });
+                      setSnackbar({ open: true, message: `${selectedImagesArray.length}枚の写真を保存しました`, severity: 'success' });
+                    } catch (err: any) {
+                      setSnackbar({ open: true, message: `保存失敗: ${err.message}`, severity: 'error' });
+                    } finally {
+                      setSavingImages(false);
+                    }
+                  }}
+                  sx={{ fontSize: 11, backgroundColor: SECTION_COLORS.buyer.main, '&:hover': { backgroundColor: SECTION_COLORS.buyer.dark } }}
+                >
+                  {savingImages ? '保存中...' : '保存'}
+                </Button>
+              </Box>
+              <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+                クリックで選択/解除。保存するとプレビューページに反映されます。
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                {previewData.images.map((imgUrl: string, index: number) => {
+                  const isSelected = previewSelectedImages.has(imgUrl);
+                  return (
+                    <Box
+                      key={index}
+                      onClick={() => {
+                        setPreviewSelectedImages(prev => {
+                          const next = new Set(prev);
+                          if (next.has(imgUrl)) {
+                            next.delete(imgUrl);
+                          } else {
+                            next.add(imgUrl);
+                          }
+                          return next;
+                        });
+                      }}
+                      sx={{
+                        position: 'relative',
+                        width: 80,
+                        height: 60,
+                        borderRadius: 1,
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        border: isSelected ? '3px solid' : '2px solid #ddd',
+                        borderColor: isSelected ? SECTION_COLORS.buyer.main : '#ddd',
+                        opacity: isSelected ? 1 : 0.4,
+                        transition: 'all 0.15s',
+                        '&:hover': { opacity: isSelected ? 1 : 0.7 },
+                      }}
+                    >
+                      <img
+                        src={imgUrl}
+                        alt={`${index + 1}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                      {!isSelected && (
+                        <Box sx={{
+                          position: 'absolute',
+                          inset: 0,
+                          backgroundColor: 'rgba(255,255,255,0.5)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 18,
+                          color: '#c00',
+                        }}>
+                          ✕
+                        </Box>
+                      )}
+                    </Box>
+                  );
+                })}
+              </Box>
             </Box>
           )}
         </Paper>
