@@ -2614,9 +2614,9 @@ export default function BuyerViewingResultPage() {
                         {insightAiLoading === b.buyer_number ? <CircularProgress size={14} /> : '✨ AI解析'}
                       </Button>
                       {insightAiAnalysis[b.buyer_number] && (
-                        <Box sx={{ bgcolor: '#f3e5f5', p: 1, borderRadius: 1, mb: 1, fontSize: '0.7rem', lineHeight: 1.8, color: '#4a148c', whiteSpace: 'pre-wrap' }}>
-                          {insightAiAnalysis[b.buyer_number]}
-                        </Box>
+                        <Box sx={{ bgcolor: '#f3e5f5', p: 1, borderRadius: 1, mb: 1, fontSize: '0.75rem', lineHeight: 1.8, color: '#4a148c', whiteSpace: 'pre-wrap' }}
+                          dangerouslySetInnerHTML={{ __html: insightAiAnalysis[b.buyer_number] }}
+                        />
                       )}
                       <TextField
                         size="small"

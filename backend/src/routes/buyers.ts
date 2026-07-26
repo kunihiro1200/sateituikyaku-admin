@@ -2318,7 +2318,7 @@ router.post('/insights/analyze', authenticate, async (req: Request, res: Respons
       {
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: '不動産内覧のコーチとして、ヒアリング内容と気づきを分析し、他のスタッフが学べるポイントを3行以内で簡潔にまとめてください。箇条書きで。' },
+          { role: 'system', content: '不動産内覧のコーチとして、ヒアリング内容と気づきを分析し、他のスタッフが学べるポイントを3つ以内でまとめてください。各ポイントは「<b>テーマ（何に対して）</b>：具体的な対策・ポイント」の形式で書いてください。HTMLのbタグを使ってテーマ部分を太字にしてください。' },
           { role: 'user', content: `買主${buyerNumber}（${propertyAddress || ''}）の内覧データ：\n\nヒアリング：${hearingText || 'なし'}\n\n気づき（実行者）：${executorText || 'なし'}\n\n気づき（随行者）：${companionText || 'なし'}\n\n上記から他スタッフが学べる具体的なポイント（トーク術・対策・注意点）を3つ以内で箇条書きにしてください。データに書かれていないことは書かないこと。` },
         ],
         temperature: 0.2,
