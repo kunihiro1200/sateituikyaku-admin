@@ -236,6 +236,7 @@ export default function BuyerViewingResultPage() {
   // 気づき一覧まとめ（質問形式）
   const [insightSummaryDate, setInsightSummaryDate] = useState<string>('');
   const [insightSummaryLoading, setInsightSummaryLoading] = useState(false);
+  const [insightSummaryError, setInsightSummaryError] = useState<string>('');
   const [insightSummaryResult, setInsightSummaryResult] = useState<{
     summary: string;
     assignees: { name: string; insightCount: number; questions: { id: string; question: string; context: string }[] }[];
@@ -488,10 +489,13 @@ export default function BuyerViewingResultPage() {
     try {
       setInsightSummaryLoading(true);
       setInsightSummaryResult(null);
+      setInsightSummaryError('');
       const res = await api.post('/api/buyers/insights/summary', { endDate: insightSummaryDate });
       setInsightSummaryResult(res.data);
     } catch (error: any) {
-      setSnackbar({ open: true, message: error?.response?.data?.error || '気づきまとめの生成に失敗しました', severity: 'error' });
+      const msg = error?.response?.data?.error || '気づきまとめの生成に失敗しました';
+      setInsightSummaryError(msg);
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setInsightSummaryLoading(false);
     }
@@ -2538,6 +2542,10 @@ export default function BuyerViewingResultPage() {
               {insightSummaryLoading ? <CircularProgress size={20} color="inherit" /> : 'まとめを生成'}
             </Button>
           </Box>
+
+          {insightSummaryError && (
+            <Alert severity="error" sx={{ mb: 2 }}>{insightSummaryError}</Alert>
+          )}
 
           {insightSummaryResult && (
             <Box sx={{ mt: 2 }}>

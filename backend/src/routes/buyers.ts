@@ -2306,7 +2306,7 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
 
     const openaiApiKey = process.env.OPENAI_API_KEY;
     if (!openaiApiKey) {
-      return res.status(500).json({ error: 'OPENAI_API_KEY が設定されていません' });
+      return res.status(500).json({ error: 'OPENAI_API_KEY が設定されていません。環境変数を確認してください。' });
     }
 
     const assigneeNames = Object.keys(byAssignee).filter(n => n !== '不明');
@@ -2323,33 +2323,40 @@ ${assigneeTexts}
 {"assignees":[{"name":"担当者名","insightCount":件数,"questions":[{"id":"q1","question":"質問文","context":"背景"}]}]}`;
 
     const axios = (await import('axios')).default;
-    const completion = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.3,
-        max_tokens: 1000,
-        response_format: { type: 'json_object' },
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
-          'Content-Type': 'application/json',
+    let completion: any;
+    try {
+      completion = await axios.post(
+        'https://api.openai.com/v1/chat/completions',
+        {
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: 0.3,
+          max_tokens: 1000,
+          response_format: { type: 'json_object' },
         },
-        timeout: 25000,
-      }
-    );
+        {
+          headers: {
+            'Authorization': `Bearer ${openaiApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 25000,
+        }
+      );
+    } catch (apiErr: any) {
+      console.error('[insights/summary] OpenAI API error:', apiErr?.response?.status, apiErr?.response?.data);
+      return res.status(500).json({ error: `OpenAI APIエラー: ${apiErr?.response?.status || 'unknown'} - ${apiErr?.response?.data?.error?.message || apiErr.message}` });
+    }
 
     const raw = completion.data?.choices?.[0]?.message?.content || '{}';
     let result: any = {};
     try {
       result = JSON.parse(raw);
-    } catch {
-      return res.status(500).json({ error: 'AI応答のパースに失敗しました' });
+    } catch (parseErr: any) {
+      console.error('[insights/summary] JSON parse error. Raw:', raw);
+      return res.status(500).json({ error: `AI応答のパースに失敗: ${raw.slice(0, 100)}` });
     }
 
     return res.json({
