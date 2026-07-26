@@ -1923,7 +1923,7 @@ router.get('/unvisited-other-decision-monthly-summary', async (req: Request, res
 - countermeasureは「反響後○時間以内にTEL」「訪問提案を早期に」等の実務的対策`;
 
         const message = await anthropic.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-5',
           max_tokens: 500,
           messages: [{ role: 'user', content: prompt }],
         });
