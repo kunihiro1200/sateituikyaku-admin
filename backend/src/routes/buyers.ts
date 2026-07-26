@@ -2305,7 +2305,7 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
       return `【${assignee}（${items.length}件）】\n${itemTexts}`;
     }).join('\n\n');
 
-    // Claude API（軽量モデル）で担当者ごとの質問形式まとめを生成
+    // Claude API（sellers.tsのQA生成と同じパターン）
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
     if (!anthropicApiKey) {
       return res.status(500).json({ error: 'ANTHROPIC_API_KEY が設定されていません' });
@@ -2329,8 +2329,8 @@ JSON形式で返答（他テキスト不要）：
 担当者: ${assigneeNames.join('、')}`;
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 1200,
+      model: 'claude-opus-4-5',
+      max_tokens: 800,
       messages: [{ role: 'user', content: prompt }],
     });
 
