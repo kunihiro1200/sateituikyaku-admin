@@ -2264,15 +2264,14 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
 
     const supabase = (buyerService as any).supabase;
 
-    // 指定日付までの気づきデータを取得（最新15件）
+    // 指定日付までの気づきデータを全件取得（limit なし）
     const { data: insights, error } = await supabase
       .from('buyers')
       .select('buyer_number, name, property_number, property_address, viewing_date, follow_up_assignee, viewing_insight_executor, viewing_insight_companion')
       .is('deleted_at', null)
       .or('viewing_insight_executor.neq.,viewing_insight_companion.neq.')
       .lte('viewing_date', endDate)
-      .order('viewing_date', { ascending: false })
-      .limit(15);
+      .order('viewing_date', { ascending: false });
 
     if (error) throw error;
 
@@ -2294,15 +2293,16 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
       byAssignee[assignee].push(b);
     }
 
-    // テキスト化
+    // テキスト化（AIに渡すデータ：各担当者8件まで、物件住所も含める）
     const assigneeTexts = Object.entries(byAssignee).map(([assignee, items]) => {
-      const itemTexts = items.slice(0, 5).map((b: any) => {
-        const executor = stripHtml(b.viewing_insight_executor || '').slice(0, 80);
-        const companion = stripHtml(b.viewing_insight_companion || '').slice(0, 80);
-        return `${b.viewing_date?.split('T')[0] || ''}: 実行者「${executor}」随行者「${companion}」`;
+      const itemTexts = items.slice(0, 8).map((b: any) => {
+        const executor = stripHtml(b.viewing_insight_executor || '').slice(0, 150);
+        const companion = stripHtml(b.viewing_insight_companion || '').slice(0, 150);
+        const addr = (b.property_address || '').slice(0, 30);
+        return `  [${b.viewing_date?.split('T')[0] || ''}/${addr}] 実行者:${executor || 'なし'} / 随行者:${companion || 'なし'}`;
       }).join('\n');
-      return `■${assignee}（${items.length}件）\n${itemTexts}`;
-    }).join('\n');
+      return `■${assignee}（全${items.length}件）\n${itemTexts}`;
+    }).join('\n\n');
 
     const openaiApiKey = process.env.OPENAI_API_KEY;
     if (!openaiApiKey) {
@@ -2311,16 +2311,29 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
 
     const assigneeNames = Object.keys(byAssignee).filter(n => n !== '不明');
 
-    const systemPrompt = `あなたは不動産内覧の研修コーチです。気づきデータを分析して担当者ごとに質問を作成します。必ずJSON形式で返答してください。`;
+    const systemPrompt = `あなたは不動産営業の内覧トーク研修コーチです。
+内覧時にお客様に「この物件を買いたい」と思っていただくための営業トーク力を向上させる質問を作成します。
+必ずJSON形式で返答してください。`;
 
-    const userPrompt = `以下の気づきデータから担当者ごとに質問を2つ作成してください。
+    const userPrompt = `以下は不動産内覧時の「気づき」データです。担当者が内覧後に記録した、お客様の反応や自分の対応についてのメモです。
 
 ${assigneeTexts}
 
-担当者: ${assigneeNames.join('、')}
+このデータを分析して、**各担当者への質問**を作成してください。
+
+【重要な条件】
+- 質問の目的：他のスタッフがこの回答を読んで「内覧時のトーク術」を学べること
+- 内覧中にお客様が気にされたポイント（価格・立地・間取り・築年数など）に対してどう切り返したか
+- お客様の懸念（ヒビ・リフォーム費用・騒音など）に対してどう説明して安心させたか
+- 購入の後押しになるトーク（「この物件のここが他にない強み」など）をどう伝えたか
+- 内覧中の具体的な場面（物件名・日付も記載）に基づく質問にすること
+- 「リフォーム会社の紹介方法」のような事務的な質問は不要
+- 担当者ごとに2〜3問
 
 以下のJSON形式で返答：
-{"assignees":[{"name":"担当者名","insightCount":件数,"questions":[{"id":"q1","question":"質問文","context":"背景"}]}]}`;
+{"assignees":[{"name":"担当者名","insightCount":件数,"questions":[{"id":"q1","question":"質問文","context":"この質問が基づいている具体的な内覧場面の要約"}]}]}
+
+担当者: ${assigneeNames.join('、')}`;
 
     const axios = (await import('axios')).default;
     let completion: any;
@@ -2334,7 +2347,7 @@ ${assigneeTexts}
             { role: 'user', content: userPrompt },
           ],
           temperature: 0.3,
-          max_tokens: 1000,
+          max_tokens: 1500,
           response_format: { type: 'json_object' },
         },
         {
@@ -2342,7 +2355,7 @@ ${assigneeTexts}
             'Authorization': `Bearer ${openaiApiKey}`,
             'Content-Type': 'application/json',
           },
-          timeout: 25000,
+          timeout: 30000,
         }
       );
     } catch (apiErr: any) {
@@ -2359,6 +2372,23 @@ ${assigneeTexts}
       return res.status(500).json({ error: `AI応答のパースに失敗: ${raw.slice(0, 100)}` });
     }
 
+    // DB保存（buyer_insight_qa テーブル、テーブル未作成でもエラーにしない）
+    try {
+      for (const a of (result?.assignees || [])) {
+        await supabase
+          .from('buyer_insight_qa')
+          .upsert({
+            end_date: endDate,
+            assignee: a.name,
+            ai_questions: a.questions || [],
+            answers: [],
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'assignee,end_date' });
+      }
+    } catch (dbErr: any) {
+      console.warn('[insights/summary] DB save skipped:', dbErr.message);
+    }
+
     return res.json({
       endDate,
       insightCount: insights.length,
@@ -2368,6 +2398,40 @@ ${assigneeTexts}
   } catch (error: any) {
     console.error('[POST /buyers/insights/summary] Error:', error);
     return res.status(500).json({ error: error.message || '気づきまとめの生成に失敗しました' });
+  }
+});
+
+// 気づきQA回答を保存
+// PUT /api/buyers/insights/summary/answer
+router.put('/insights/summary/answer', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { endDate, assignee, answers } = req.body;
+    if (!endDate || !assignee) {
+      return res.status(400).json({ error: 'endDate と assignee は必須です' });
+    }
+
+    const supabase = (buyerService as any).supabase;
+
+    const { data, error } = await supabase
+      .from('buyer_insight_qa')
+      .upsert({
+        end_date: endDate,
+        assignee,
+        answers: answers || [],
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'assignee,end_date' })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[insights/summary/answer] DB error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json({ success: true, data });
+  } catch (error: any) {
+    console.error('[PUT /buyers/insights/summary/answer] Error:', error);
+    return res.status(500).json({ error: error.message });
   }
 });
 

@@ -243,6 +243,8 @@ export default function BuyerViewingResultPage() {
     insightCount: number;
     endDate: string;
   } | null>(null);
+  const [insightAnswers, setInsightAnswers] = useState<Record<string, string>>({});
+  const [insightAnswerSaving, setInsightAnswerSaving] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' }>({
     open: false,
     message: '',
@@ -490,6 +492,7 @@ export default function BuyerViewingResultPage() {
       setInsightSummaryLoading(true);
       setInsightSummaryResult(null);
       setInsightSummaryError('');
+      setInsightAnswers({});
       const res = await api.post('/api/buyers/insights/summary', { endDate: insightSummaryDate });
       setInsightSummaryResult(res.data);
     } catch (error: any) {
@@ -498,6 +501,29 @@ export default function BuyerViewingResultPage() {
       setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setInsightSummaryLoading(false);
+    }
+  };
+
+  const handleSaveInsightAnswers = async (assigneeName: string) => {
+    if (!insightSummaryResult) return;
+    try {
+      setInsightAnswerSaving(true);
+      const assignee = insightSummaryResult.assignees.find(a => a.name === assigneeName);
+      if (!assignee) return;
+      const answersArray = assignee.questions.map(q => ({
+        questionId: q.id,
+        answer: insightAnswers[`${assigneeName}_${q.id}`] || '',
+      }));
+      await api.put('/api/buyers/insights/summary/answer', {
+        endDate: insightSummaryResult.endDate,
+        assignee: assigneeName,
+        answers: answersArray,
+      });
+      setSnackbar({ open: true, message: `${assigneeName}の回答を保存しました`, severity: 'success' });
+    } catch (error: any) {
+      setSnackbar({ open: true, message: '回答の保存に失敗しました', severity: 'error' });
+    } finally {
+      setInsightAnswerSaving(false);
     }
   };
 
@@ -2559,13 +2585,22 @@ export default function BuyerViewingResultPage() {
                 <Box key={assignee.name} sx={{ mb: 3 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
                     <Box sx={{ bgcolor: '#1b5e20', color: '#fff', px: 1.5, py: 0.5, borderRadius: 1, fontSize: '0.85rem', fontWeight: 'bold' }}>
-                      {assignee.name}
+                      {assignee.name}への質問
                     </Box>
                     <Typography variant="caption" color="text.secondary">
                       （{assignee.insightCount}件の気づき）
                     </Typography>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => handleSaveInsightAnswers(assignee.name)}
+                      disabled={insightAnswerSaving}
+                      sx={{ ml: 'auto', borderColor: '#2e7d32', color: '#2e7d32', fontSize: '0.75rem' }}
+                    >
+                      {insightAnswerSaving ? '保存中...' : '回答を保存'}
+                    </Button>
                   </Box>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pl: 1 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pl: 1 }}>
                     {assignee.questions.map((q, idx) => (
                       <Box key={q.id} sx={{ bgcolor: '#fff', p: 2, borderRadius: 1, border: '1px solid #a5d6a7' }}>
                         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1 }}>
@@ -2576,9 +2611,20 @@ export default function BuyerViewingResultPage() {
                             {q.question}
                           </Typography>
                         </Box>
-                        <Typography variant="caption" color="text.secondary" sx={{ pl: 4.5, display: 'block' }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ pl: 4.5, display: 'block', mb: 1.5 }}>
                           背景: {q.context}
                         </Typography>
+                        <TextField
+                          fullWidth
+                          multiline
+                          minRows={2}
+                          maxRows={5}
+                          size="small"
+                          placeholder={`${assignee.name}さんの回答を入力...`}
+                          value={insightAnswers[`${assignee.name}_${q.id}`] || ''}
+                          onChange={(e) => setInsightAnswers(prev => ({ ...prev, [`${assignee.name}_${q.id}`]: e.target.value }))}
+                          sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#fafafa' } }}
+                        />
                       </Box>
                     ))}
                   </Box>
