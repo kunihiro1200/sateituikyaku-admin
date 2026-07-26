@@ -1714,31 +1714,65 @@ router.post('/scrape-property', authenticate, async (req: Request, res: Response
         .trim();
     }
 
-    // --- 画像取得 ---
+    // --- 画像取得（カテゴリ分類付き）---
     const seen = new Set<string>();
     const images: string[] = [];
+    const imageWithLabels: Array<{ url: string; label: string }> = [];
+
+    // カテゴリ分類用キーワード
+    const exteriorKeywords = ['外観', '室内', 'リビング', 'キッチン', 'バス', 'トイレ', '洗面', '玄関', 'バルコニー', '眺望', '収納', '和室', '洋室', '寝室', 'ベッドルーム', 'ダイニング', '浴室', '居室'];
+    const layoutKeywords = ['間取', '区画', '配置', 'プラン', '図面'];
+    const surroundingKeywords = ['周辺', '前面道路', '道路', '環境', '公園', '学校', '病院', 'スーパー', 'コンビニ', '駅', '地図'];
     
     // スライダー画像
     $("[class*='slide'] img").each((_, el) => {
       let src = $(el).attr('src') || $(el).attr('data-src') || '';
+      const alt = $(el).attr('alt') || '';
       if (src && (src.includes('image_files/path') || src.includes('data_images'))) {
         if (src.endsWith('.svg')) return;
         if (src.startsWith('/')) src = `https://www.athome.co.jp${src}`;
         src = src.replace(/width=\d+/, 'width=800').replace(/height=\d+/, 'height=600');
-        if (!seen.has(src)) { seen.add(src); images.push(src); }
+        if (!seen.has(src)) { seen.add(src); images.push(src); imageWithLabels.push({ url: src, label: alt }); }
       }
     });
     
     // その他の物件画像
     $('img').each((_, el) => {
       let src = $(el).attr('src') || $(el).attr('data-src') || '';
+      const alt = $(el).attr('alt') || '';
       if (src && (src.includes('image_files/path') || src.includes('data_images'))) {
         if (src.endsWith('.svg')) return;
         if (src.startsWith('/')) src = `https://www.athome.co.jp${src}`;
         src = src.replace(/width=\d+/, 'width=800').replace(/height=\d+/, 'height=600');
-        if (!seen.has(src)) { seen.add(src); images.push(src); }
+        if (!seen.has(src)) { seen.add(src); images.push(src); imageWithLabels.push({ url: src, label: alt }); }
       }
     });
+
+    // --- 画像カテゴリ分類 ---
+    const imageCategories: Record<string, string[]> = {};
+    const exteriorImages: string[] = [];
+    const layoutImages: string[] = [];
+    const surroundingImages: string[] = [];
+
+    for (const { url: imgUrl, label } of imageWithLabels) {
+      const isExterior = exteriorKeywords.some(kw => label.includes(kw));
+      const isLayout = layoutKeywords.some(kw => label.includes(kw));
+      const isSurrounding = surroundingKeywords.some(kw => label.includes(kw));
+
+      if (isExterior) {
+        exteriorImages.push(imgUrl);
+      } else if (isLayout) {
+        layoutImages.push(imgUrl);
+      } else if (isSurrounding) {
+        surroundingImages.push(imgUrl);
+      }
+    }
+
+    if (exteriorImages.length > 0) imageCategories['外観・室内'] = exteriorImages;
+    if (layoutImages.length > 0) imageCategories['区画・間取り'] = layoutImages;
+    if (surroundingImages.length > 0) imageCategories['周辺環境'] = surroundingImages;
+
+    console.log(`[buyers/scrape-property] 画像カテゴリ: 外観・室内${exteriorImages.length}枚, 区画・間取り${layoutImages.length}枚, 周辺環境${surroundingImages.length}枚, 未分類${images.length - exteriorImages.length - layoutImages.length - surroundingImages.length}枚`);
 
     // --- 緯度経度 ---
     let lat: number | null = null;
@@ -1828,6 +1862,7 @@ router.post('/scrape-property', authenticate, async (req: Request, res: Response
       features: null,
       remarks: null,
       images,
+      image_categories: imageCategories,
       lat,
       lng,
       details,
@@ -1869,6 +1904,7 @@ router.post('/scrape-property', authenticate, async (req: Request, res: Response
       features: result.features,
       remarks: result.remarks,
       images: result.images,
+      image_categories: result.image_categories,
       lat: result.lat,
       lng: result.lng,
       details: result.details,

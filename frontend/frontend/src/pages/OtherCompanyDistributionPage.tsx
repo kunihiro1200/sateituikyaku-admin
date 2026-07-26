@@ -337,9 +337,20 @@ export default function OtherCompanyDistributionPage() {
       // 自動入力を実行
       autoFillFromScrapedData(result.data);
       
-      // 画像を自動選択（人物写真を除外して最初の3枚）
+      // 画像を自動選択（物件写真を優先：外観・室内 + 間取りカテゴリ → 人物写真除外して最初の3枚）
       if (result.data.images && result.data.images.length > 0) {
-        const filteredImages = await filterOutPortraitImages(result.data.images);
+        // 外観・室内 + 区画・間取りカテゴリがあれば、そこから優先的に選択（周辺環境を除外）
+        let candidateImages: string[] = result.data.images;
+        if (result.data.image_categories) {
+          const exterior = result.data.image_categories['外観・室内'] || [];
+          const layout = result.data.image_categories['区画・間取り'] || [];
+          const propertyImages = [...exterior, ...layout];
+          if (propertyImages.length > 0) {
+            candidateImages = propertyImages;
+            console.log(`[画像選択] 物件写真カテゴリから${candidateImages.length}枚を優先選択（外観・室内${exterior.length}枚 + 間取り${layout.length}枚）`);
+          }
+        }
+        const filteredImages = await filterOutPortraitImages(candidateImages);
         const firstThreeImages: ImageFile[] = filteredImages.slice(0, 3).map((imgUrl: string, index: number) => ({
           id: `scraped-${Date.now()}-${index}`,
           name: `物件画像${index + 1}.jpg`,
@@ -401,9 +412,20 @@ export default function OtherCompanyDistributionPage() {
       // 自動入力を実行
       autoFillFromScrapedData(result.data);
 
-      // 画像を自動選択（人物写真を除外して最初の3枚）
+      // 画像を自動選択（物件写真を優先：外観・室内 + 間取りカテゴリ → 人物写真除外して最初の3枚）
       if (result.data.images && result.data.images.length > 0) {
-        const filteredImages = await filterOutPortraitImages(result.data.images);
+        // 外観・室内 + 区画・間取りカテゴリがあれば、そこから優先的に選択（周辺環境を除外）
+        let candidateImages: string[] = result.data.images;
+        if (result.data.image_categories) {
+          const exterior = result.data.image_categories['外観・室内'] || [];
+          const layout = result.data.image_categories['区画・間取り'] || [];
+          const propertyImages = [...exterior, ...layout];
+          if (propertyImages.length > 0) {
+            candidateImages = propertyImages;
+            console.log(`[画像選択] 物件写真カテゴリから${candidateImages.length}枚を優先選択（外観・室内${exterior.length}枚 + 間取り${layout.length}枚）`);
+          }
+        }
+        const filteredImages = await filterOutPortraitImages(candidateImages);
         const firstThreeImages: ImageFile[] = filteredImages.slice(0, 3).map((imgUrl: string, index: number) => ({
           id: `scraped-suumo-${Date.now()}-${index}`,
           name: `物件画像${index + 1}.jpg`,
