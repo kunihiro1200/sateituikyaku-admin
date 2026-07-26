@@ -2527,57 +2527,54 @@ export default function BuyerViewingResultPage() {
             気づき一覧（対策管理）
           </Typography>
           <Box sx={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', tableLayout: 'fixed' }}>
               <thead>
                 <tr style={{ backgroundColor: '#bbdefb' }}>
-                  {['買主番号', '物件住所', '内覧日', '内覧者', 'ヒアリング項目', '気づき（実行者）', '気づき（随行者）', '対策（備考）', ''].map((h) => (
-                    <th key={h} style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '2px solid #90caf9', whiteSpace: 'nowrap', color: '#1565c0' }}>
-                      {h}
-                    </th>
-                  ))}
+                  <th style={{ padding: '8px 10px', textAlign: 'left', borderBottom: '2px solid #90caf9', color: '#1565c0', width: '110px' }}>物件情報</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'left', borderBottom: '2px solid #90caf9', color: '#1565c0', width: '22%' }}>ヒアリング項目</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'left', borderBottom: '2px solid #90caf9', color: '#1565c0', width: '22%' }}>気づき（実行者）</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'left', borderBottom: '2px solid #90caf9', color: '#1565c0', width: '18%' }}>気づき（随行者）</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'left', borderBottom: '2px solid #90caf9', color: '#1565c0', width: '22%' }}>対策（備考）</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'center', borderBottom: '2px solid #90caf9', color: '#1565c0', width: '50px' }}></th>
                 </tr>
               </thead>
               <tbody>
                 {allInsightBuyers.filter(b => !b.viewing_insight_completed).map((b: any, idx: number) => (
                   <tr key={b.buyer_number} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#e3f2fd' }}>
-                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #90caf9', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #90caf9', verticalAlign: 'top' }}>
                       <span
-                        style={{ color: '#1976d2', cursor: 'pointer', textDecoration: 'underline', fontWeight: 'bold' }}
+                        style={{ color: '#1976d2', cursor: 'pointer', textDecoration: 'underline', fontWeight: 'bold', fontSize: '0.85rem' }}
                         onClick={() => window.open(`/buyers/${b.buyer_number}/viewing-result`, '_blank')}
                       >
                         {b.buyer_number}
                       </span>
+                      <br />
+                      <span style={{ fontSize: '0.7rem', color: '#555', lineHeight: 1.4, display: 'block', marginTop: 2 }}>{b.property_address || '-'}</span>
+                      <span style={{ fontSize: '0.7rem', color: '#888' }}>
+                        {b.viewing_date ? String(b.viewing_date).split('T')[0] : ''}　{b.follow_up_assignee || ''}
+                      </span>
                     </td>
-                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #90caf9', verticalAlign: 'top', maxWidth: '120px' }}>
-                      {b.property_address || '-'}
-                    </td>
-                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #90caf9', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                      {b.viewing_date ? String(b.viewing_date).split('T')[0] : '-'}
-                    </td>
-                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #90caf9', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                      {b.follow_up_assignee || '-'}
-                    </td>
-                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #90caf9', verticalAlign: 'top', maxWidth: '180px', fontSize: '0.75rem' }}>
+                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #90caf9', verticalAlign: 'top', fontSize: '0.75rem', wordBreak: 'break-word' }}>
                       {b.viewing_result_follow_up
-                        ? <span dangerouslySetInnerHTML={{ __html: b.viewing_result_follow_up.slice(0, 200) }} />
+                        ? <span dangerouslySetInnerHTML={{ __html: b.viewing_result_follow_up }} />
                         : '-'}
                     </td>
-                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #90caf9', verticalAlign: 'top', maxWidth: '180px' }}>
+                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #90caf9', verticalAlign: 'top', wordBreak: 'break-word' }}>
                       {b.viewing_insight_executor
                         ? <span dangerouslySetInnerHTML={{ __html: b.viewing_insight_executor }} />
                         : '-'}
                     </td>
-                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #90caf9', verticalAlign: 'top', maxWidth: '180px' }}>
+                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #90caf9', verticalAlign: 'top', wordBreak: 'break-word' }}>
                       {b.viewing_insight_companion
                         ? <span dangerouslySetInnerHTML={{ __html: b.viewing_insight_companion }} />
                         : '-'}
                     </td>
-                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #90caf9', verticalAlign: 'top', minWidth: '150px' }}>
+                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #90caf9', verticalAlign: 'top' }}>
                       <TextField
                         size="small"
                         multiline
-                        minRows={1}
-                        maxRows={3}
+                        minRows={4}
+                        maxRows={10}
                         fullWidth
                         placeholder="対策・備考を入力"
                         value={insightActions[b.buyer_number] ?? (b.viewing_insight_action || '')}
@@ -2591,7 +2588,7 @@ export default function BuyerViewingResultPage() {
                         sx={{ '& .MuiOutlinedInput-root': { fontSize: '0.8rem' } }}
                       />
                     </td>
-                    <td style={{ padding: '6px 8px', borderBottom: '1px solid #90caf9', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #90caf9', verticalAlign: 'top', textAlign: 'center' }}>
                       <Button
                         size="small"
                         variant="contained"
