@@ -101,8 +101,9 @@ export default function UnvisitedOtherDecisionListPage() {
         map[a.sellerNumber] = a;
       }
       setAiResults(map);
-    } catch {
-      // エラーは無視（UIにはAI欄が空で表示されるだけ）
+    } catch (err: any) {
+      console.error('AI analysis error:', err?.response?.status, err?.response?.data);
+      // エラー時は何も表示しない（ボタンで再試行可能）
     } finally {
       setAiLoading(false);
     }
@@ -187,8 +188,25 @@ export default function UnvisitedOtherDecisionListPage() {
         <Box sx={{ mb: 2 }}>
           <LinearProgress color="secondary" sx={{ borderRadius: 1, height: 3 }} />
           <Typography variant="caption" sx={{ color: '#7b1fa2', mt: 0.5, display: 'block' }}>
-            AI分析中...
+            AI分析中...（数秒かかります）
           </Typography>
+        </Box>
+      )}
+
+      {!aiLoading && Object.keys(aiResults).length === 0 && displayData.length > 0 && (
+        <Box sx={{ mb: 2 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AutoAwesomeIcon />}
+            onClick={() => {
+              const allSellers = displayData.flatMap(g => g.sellers);
+              if (allSellers.length > 0) fetchAiAnalysis(allSellers);
+            }}
+            sx={{ color: '#7b1fa2', borderColor: '#ce93d8' }}
+          >
+            AI敗因分析を実行
+          </Button>
         </Box>
       )}
 

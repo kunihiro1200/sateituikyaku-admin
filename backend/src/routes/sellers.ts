@@ -1905,7 +1905,7 @@ router.put('/:id/unvisited-other-decision-countermeasure', authenticate, async (
  * 未訪問他決の各案件を個別にAI分析し、売主番号ごとに要約+敗因+対策を返す
  * body: { sellers: [...] }
  */
-router.post('/unvisited-other-decision-ai-analysis', authenticate, async (req: Request, res: Response) => {
+router.post('/unvisited-other-decision-ai-analysis', async (req: Request, res: Response) => {
   try {
     const { sellers } = req.body;
 
