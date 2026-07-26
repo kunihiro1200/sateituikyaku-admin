@@ -2391,7 +2391,7 @@ ${assigneeTexts}
             { role: 'user', content: userPrompt },
           ],
           temperature: 0.3,
-          max_tokens: 1500,
+          max_tokens: 2500,
           response_format: { type: 'json_object' },
         },
         {
@@ -2412,8 +2412,15 @@ ${assigneeTexts}
     try {
       result = JSON.parse(raw);
     } catch (parseErr: any) {
-      console.error('[insights/summary] JSON parse error. Raw:', raw);
-      return res.status(500).json({ error: `AI応答のパースに失敗: ${raw.slice(0, 100)}` });
+      // JSONが途中で切れている場合、修復を試みる
+      console.error('[insights/summary] JSON parse error. Raw length:', raw.length);
+      try {
+        // 末尾の不完全な部分を除去して再パース
+        const fixed = raw.replace(/,?\s*\{[^}]*$/, '') + ']}]}';
+        result = JSON.parse(fixed);
+      } catch {
+        return res.status(500).json({ error: 'AIの応答が長すぎて途中で切れました。担当者数を減らすか、再度お試しください。' });
+      }
     }
 
     // DB保存（buyer_insight_qa テーブル、テーブル未作成でもエラーにしない）
