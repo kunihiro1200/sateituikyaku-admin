@@ -2264,7 +2264,7 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
 
     const supabase = (buyerService as any).supabase;
 
-    // 指定日付までの気づきデータを取得（最新20件に制限）
+    // 指定日付までの気づきデータを取得（最新15件に制限）
     const { data: insights, error } = await supabase
       .from('buyers')
       .select('buyer_number, name, property_number, property_address, viewing_date, follow_up_assignee, viewing_insight_executor, viewing_insight_companion')
@@ -2272,7 +2272,7 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
       .or('viewing_insight_executor.neq.,viewing_insight_companion.neq.')
       .lte('viewing_date', endDate)
       .order('viewing_date', { ascending: false })
-      .limit(20);
+      .limit(15);
 
     if (error) throw error;
 
@@ -2280,10 +2280,10 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
       return res.status(400).json({ error: '指定期間内に気づきデータがありません' });
     }
 
-    // HTMLタグを除去するヘルパー
+    // HTMLタグを除去
     const stripHtml = (html: string) => {
       if (!html) return '';
-      return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+      return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
     };
 
     // 担当者ごとにグループ化
@@ -2294,18 +2294,16 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
       byAssignee[assignee].push(b);
     }
 
-    // 各担当者の気づきをテキスト化（各担当者5件まで、コメントは100文字に制限）
+    // テキスト化
     const assigneeTexts = Object.entries(byAssignee).map(([assignee, items]) => {
       const itemTexts = items.slice(0, 5).map((b: any) => {
-        const executor = stripHtml(b.viewing_insight_executor || '').slice(0, 100);
-        const companion = stripHtml(b.viewing_insight_companion || '').slice(0, 100);
-        const date = b.viewing_date ? String(b.viewing_date).split('T')[0] : '不明';
-        return `  ・${date} ${(b.property_address || '').slice(0, 20)}\n    実行者: ${executor || 'なし'}\n    随行者: ${companion || 'なし'}`;
+        const executor = stripHtml(b.viewing_insight_executor || '').slice(0, 80);
+        const companion = stripHtml(b.viewing_insight_companion || '').slice(0, 80);
+        return `${b.viewing_date?.split('T')[0] || ''}: 実行者「${executor}」随行者「${companion}」`;
       }).join('\n');
-      return `【${assignee}（${items.length}件）】\n${itemTexts}`;
-    }).join('\n\n');
+      return `■${assignee}（${items.length}件）\n${itemTexts}`;
+    }).join('\n');
 
-    // Claude API（sellers.tsのQA生成と同じパターン）
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
     if (!anthropicApiKey) {
       return res.status(500).json({ error: 'ANTHROPIC_API_KEY が設定されていません' });
@@ -2316,36 +2314,33 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
 
     const assigneeNames = Object.keys(byAssignee).filter(n => n !== '不明');
 
-    const prompt = `不動産内覧の気づきデータから担当者ごとの質問を作成してください。
+    const prompt = `以下は不動産内覧の気づきデータです。担当者ごとに質問を2つ作成してください。
 
-【データ（${endDate}まで）】
 ${assigneeTexts}
 
-担当者ごとに2つの質問を作成。具体的な改善点を引き出す質問にすること。
+担当者: ${assigneeNames.join('、')}
 
-JSON形式で返答（他テキスト不要）：
-{"summary":"全体要約1文","assignees":[{"name":"担当者名","insightCount":件数,"questions":[{"id":"q1","question":"質問文","context":"背景"}]}]}
-
-担当者: ${assigneeNames.join('、')}`;
+JSON配列形式で返してください（他のテキストは不要）：
+[
+  {"name": "担当者名", "insightCount": 件数, "questions": [{"id": "q1", "question": "質問文", "context": "背景"}]}
+]`;
 
     const message = await anthropic.messages.create({
       model: 'claude-opus-4-5',
       max_tokens: 800,
-      thinking: { type: 'disabled' },
       messages: [{ role: 'user', content: prompt }],
-    } as any);
+    });
 
-    // thinking blockを含む場合があるので、textブロックを探す
-    const textBlock = message.content.find((c: any) => c.type === 'text');
-    if (!textBlock || textBlock.type !== 'text') {
+    const content = message.content[0];
+    if (content.type !== 'text') {
       return res.status(500).json({ error: 'AI応答が不正です' });
     }
 
-    let result: any;
+    let assignees: any[] = [];
     try {
-      const jsonMatch = (textBlock as any).text.match(/\{[\s\S]*\}/);
+      const jsonMatch = content.text.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
-        result = JSON.parse(jsonMatch[0]);
+        assignees = JSON.parse(jsonMatch[0]);
       }
     } catch {
       return res.status(500).json({ error: 'AI応答のパースに失敗しました' });
@@ -2354,8 +2349,8 @@ JSON形式で返答（他テキスト不要）：
     return res.json({
       endDate,
       insightCount: insights.length,
-      summary: result?.summary || '',
-      assignees: result?.assignees || [],
+      summary: `${endDate}までの気づき${insights.length}件を${assigneeNames.length}名の担当者別にまとめました`,
+      assignees,
     });
   } catch (error: any) {
     console.error('[POST /buyers/insights/summary] Error:', error);
