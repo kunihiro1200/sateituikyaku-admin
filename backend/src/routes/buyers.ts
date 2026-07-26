@@ -2264,7 +2264,7 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
 
     const supabase = (buyerService as any).supabase;
 
-    // 指定日付までの気づきデータを取得（最新15件に制限）
+    // 指定日付までの気づきデータを取得（最新15件）
     const { data: insights, error } = await supabase
       .from('buyers')
       .select('buyer_number, name, property_number, property_address, viewing_date, follow_up_assignee, viewing_insight_executor, viewing_insight_companion')
@@ -2304,44 +2304,50 @@ router.post('/insights/summary', authenticate, async (req: Request, res: Respons
       return `■${assignee}（${items.length}件）\n${itemTexts}`;
     }).join('\n');
 
-    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-    if (!anthropicApiKey) {
-      return res.status(500).json({ error: 'ANTHROPIC_API_KEY が設定されていません' });
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+    if (!openaiApiKey) {
+      return res.status(500).json({ error: 'OPENAI_API_KEY が設定されていません' });
     }
-
-    const { default: Anthropic } = await import('@anthropic-ai/sdk');
-    const anthropic = new Anthropic({ apiKey: anthropicApiKey });
 
     const assigneeNames = Object.keys(byAssignee).filter(n => n !== '不明');
 
-    const prompt = `以下は不動産内覧の気づきデータです。担当者ごとに質問を2つ作成してください。
+    const systemPrompt = `あなたは不動産内覧の研修コーチです。気づきデータを分析して担当者ごとに質問を作成します。必ずJSON形式で返答してください。`;
+
+    const userPrompt = `以下の気づきデータから担当者ごとに質問を2つ作成してください。
 
 ${assigneeTexts}
 
 担当者: ${assigneeNames.join('、')}
 
-JSON配列形式で返してください（他のテキストは不要）：
-[
-  {"name": "担当者名", "insightCount": 件数, "questions": [{"id": "q1", "question": "質問文", "context": "背景"}]}
-]`;
+以下のJSON形式で返答：
+{"assignees":[{"name":"担当者名","insightCount":件数,"questions":[{"id":"q1","question":"質問文","context":"背景"}]}]}`;
 
-    const message = await anthropic.messages.create({
-      model: 'claude-opus-4-5',
-      max_tokens: 800,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const content = message.content[0];
-    if (content.type !== 'text') {
-      return res.status(500).json({ error: 'AI応答が不正です' });
-    }
-
-    let assignees: any[] = [];
-    try {
-      const jsonMatch = content.text.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        assignees = JSON.parse(jsonMatch[0]);
+    const axios = (await import('axios')).default;
+    const completion = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.3,
+        max_tokens: 1000,
+        response_format: { type: 'json_object' },
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 25000,
       }
+    );
+
+    const raw = completion.data?.choices?.[0]?.message?.content || '{}';
+    let result: any = {};
+    try {
+      result = JSON.parse(raw);
     } catch {
       return res.status(500).json({ error: 'AI応答のパースに失敗しました' });
     }
@@ -2350,7 +2356,7 @@ JSON配列形式で返してください（他のテキストは不要）：
       endDate,
       insightCount: insights.length,
       summary: `${endDate}までの気づき${insights.length}件を${assigneeNames.length}名の担当者別にまとめました`,
-      assignees,
+      assignees: result?.assignees || [],
     });
   } catch (error: any) {
     console.error('[POST /buyers/insights/summary] Error:', error);
