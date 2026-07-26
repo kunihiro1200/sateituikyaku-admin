@@ -1779,6 +1779,122 @@ router.get('/other-decision-monthly-summary', async (req: Request, res: Response
 });
 
 /**
+ * GET /api/sellers/unvisited-other-decision-monthly-summary
+ * 未訪問他決の月別サマリーを返す（2026年5月以降）
+ * 条件：営業担当（visit_assignee）が空欄（「外す」含む）かつステータスが他決→追客 or 他決→追客不要
+ * ⚠️ /:id より前に定義必須
+ */
+router.get('/unvisited-other-decision-monthly-summary', async (req: Request, res: Response) => {
+  try {
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    const UNVISITED_OTHER_DECISION_STATUSES = ['他決→追客', '他決→追客不要'];
+
+    // 営担が空欄 or '外す' のものを取得
+    const { data, error } = await supabase
+      .from('sellers')
+      .select('id, seller_number, name, property_address, address, status, contract_year_month, comments, competitor_name, competitor_name_and_reason, next_call_date, other_decision_countermeasure')
+      .in('status', UNVISITED_OTHER_DECISION_STATUSES)
+      .gte('contract_year_month', '2026-05-01')
+      .is('deleted_at', null)
+      .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+      .order('contract_year_month', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    // 月別にグループ化
+    const monthlyGroups: Record<string, {
+      yearMonth: string;
+      label: string;
+      count: number;
+      sellers: {
+        id: string;
+        sellerNumber: string;
+        propertyAddress: string;
+        name: string;
+        comments: string;
+        status: string;
+        competitorNameAndReason: string;
+        nextCallDate: string | null;
+        contractYearMonth: string | null;
+        otherDecisionCountermeasure: string;
+      }[];
+    }> = {};
+
+    for (const row of (data || [])) {
+      const d = new Date(row.contract_year_month);
+      if (isNaN(d.getTime())) continue;
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const [y, m] = ym.split('-');
+      const label = `${y}年${parseInt(m)}月`;
+
+      if (!monthlyGroups[ym]) {
+        monthlyGroups[ym] = { yearMonth: ym, label, count: 0, sellers: [] };
+      }
+      monthlyGroups[ym].count++;
+      monthlyGroups[ym].sellers.push({
+        id: row.id,
+        sellerNumber: row.seller_number,
+        propertyAddress: row.property_address || row.address || '',
+        name: row.name || '',
+        comments: row.comments || '',
+        status: row.status,
+        competitorNameAndReason: row.competitor_name_and_reason || row.competitor_name || '',
+        nextCallDate: row.next_call_date,
+        contractYearMonth: row.contract_year_month,
+        otherDecisionCountermeasure: row.other_decision_countermeasure || '',
+      });
+    }
+
+    // 月の新しい順にソート
+    const summary = Object.values(monthlyGroups).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+
+    return res.json({ summary });
+  } catch (error) {
+    console.error('[unvisited-other-decision-monthly-summary] Error:', error);
+    return res.status(500).json({ error: 'Failed to get unvisited other decision monthly summary' });
+  }
+});
+
+/**
+ * PUT /api/sellers/:id/unvisited-other-decision-countermeasure
+ * 未訪問他決の対策欄を更新する
+ */
+router.put('/:id/unvisited-other-decision-countermeasure', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { countermeasure } = req.body;
+
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    const { data, error } = await supabase
+      .from('sellers')
+      .update({ other_decision_countermeasure: countermeasure || '' })
+      .eq('id', id)
+      .is('deleted_at', null)
+      .select('id, other_decision_countermeasure')
+      .single();
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('[unvisited-other-decision-countermeasure] Error:', error);
+    return res.status(500).json({ error: 'Failed to update countermeasure' });
+  }
+});
+
+/**
  * GET /api/sellers/sumai-step-monthly-summary
  * すまいステップ（サイト＝「す」）からの依頼を月別に集計
  * 各月の総数・一般媒介数・専任媒介数を返す（2026年5月以降）

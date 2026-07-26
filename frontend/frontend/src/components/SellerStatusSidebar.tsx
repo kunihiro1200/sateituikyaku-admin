@@ -8,7 +8,7 @@
 import { useState, useEffect, memo } from 'react';
 import { Paper, Typography, Box, Button, Chip, Collapse, IconButton, List, ListItem, Divider, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { ExpandMore, ExpandLess, Edit, Email, Phone, Chat, LocationOn } from '@mui/icons-material';
+import { ExpandMore, ExpandLess, Edit, Email, Phone, Chat, LocationOn, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import api from '../services/api';
 import {
   StatusCategory,
@@ -316,10 +316,18 @@ function SellerStatusSidebarComponent({
     Record<string, { yearMonth: string; label: string; count: number; sellerIds: string[] }[]>
   >({});
 
+  // 未訪問他決・月別サマリー
+  const [unvisitedOtherDecisionMonthlySummary, setUnvisitedOtherDecisionMonthlySummary] = useState<
+    { yearMonth: string; label: string; count: number }[]
+  >([]);
+
   // 専任月別セクション専用の展開state（売主リストのexpandedCategoryと完全に分離）
   const [exclusiveExpandedMonth, setExclusiveExpandedMonth] = useState<string | null>(null);
   // 他決月別セクション専用の展開state
   const [otherDecisionExpandedMonth, setOtherDecisionExpandedMonth] = useState<string | null>(null);
+
+  // 未訪問他決月別セクション専用の展開state
+  const [unvisitedOtherDecisionExpandedMonth, setUnvisitedOtherDecisionExpandedMonth] = useState<string | null>(null);
 
   // すまいステップ月別サマリー
   const [sumaiStepMonthlySummary, setSumaiStepMonthlySummary] = useState<
@@ -355,6 +363,21 @@ function SellerStatusSidebarComponent({
       }
     };
     fetchOtherDecisionSummary();
+    return () => { cancelled = true; };
+  }, []);
+
+  // 未訪問他決月別サマリーを取得（初回のみ）
+  useEffect(() => {
+    let cancelled = false;
+    const fetchUnvisitedOtherDecisionSummary = async () => {
+      try {
+        const res = await api.get('/api/sellers/unvisited-other-decision-monthly-summary');
+        if (!cancelled) setUnvisitedOtherDecisionMonthlySummary(res.data?.summary || []);
+      } catch (e) {
+        // エラーは無視
+      }
+    };
+    fetchUnvisitedOtherDecisionSummary();
     return () => { cancelled = true; };
   }, []);
 
@@ -1213,6 +1236,61 @@ function SellerStatusSidebarComponent({
           </Box>
         );
       })()}
+
+      {/* 【未訪問他決】月別セクション（2026年5月以降） */}
+      {unvisitedOtherDecisionMonthlySummary.length > 0 && (
+        <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: '#ff8a65', bgcolor: '#fff3e0', borderRadius: 1, px: 0.5 }}>
+          <Typography variant="caption" sx={{ px: 1.5, py: 0.5, display: 'block', color: '#bf360c', fontWeight: 'bold', fontSize: '0.75rem' }}>
+            ── 未訪問他決 ──
+          </Typography>
+          {unvisitedOtherDecisionMonthlySummary.map(({ yearMonth, label, count }) => {
+            const isExpanded = unvisitedOtherDecisionExpandedMonth === yearMonth;
+            return (
+              <Box key={yearMonth}>
+                <Button
+                  fullWidth
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isExpanded) {
+                      setUnvisitedOtherDecisionExpandedMonth(null);
+                    } else {
+                      setUnvisitedOtherDecisionExpandedMonth(yearMonth);
+                      // 一覧ページに遷移
+                      window.open(`/unvisited-other-decision-list?month=${yearMonth}`, '_blank', 'noopener,noreferrer');
+                    }
+                  }}
+                  sx={{
+                    justifyContent: 'space-between',
+                    textAlign: 'left',
+                    fontSize: '0.85rem',
+                    py: 1,
+                    px: 1.5,
+                    color: '#bf360c',
+                    bgcolor: 'transparent',
+                    borderRadius: 1,
+                    '&:hover': { bgcolor: '#ffe0b2' },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <span>【未訪問他決】{label}</span>
+                    <Chip
+                      label={count}
+                      size="small"
+                      sx={{
+                        height: 20, fontSize: '0.7rem',
+                        bgcolor: '#fff3e0',
+                        color: '#bf360c',
+                        fontWeight: 'bold',
+                      }}
+                    />
+                  </Box>
+                  <OpenInNewIcon sx={{ fontSize: '0.9rem', color: '#bf360c' }} />
+                </Button>
+              </Box>
+            );
+          })}
+        </Box>
+      )}
 
       {/* 📚 学習ライブラリボタン */}
       <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid', borderColor: '#ce93d8' }}>

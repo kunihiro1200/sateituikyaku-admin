@@ -53,6 +53,7 @@ import KoteiKazeiComparePage from './pages/KoteiKazeiComparePage';
 import SalesHistoryPage from './pages/SalesHistoryPage';
 import SellerExclusiveAnalysisPage from './pages/SellerExclusiveAnalysisPage';
 import SellerOtherDecisionAnalysisPage from './pages/SellerOtherDecisionAnalysisPage';
+import UnvisitedOtherDecisionListPage from './pages/UnvisitedOtherDecisionListPage';
 import AnalysisSummaryPage from './pages/AnalysisSummaryPage';
 import SalesLearningLibraryPage from './pages/SalesLearningLibraryPage';
 import PropertyPreviewPage from './pages/PropertyPreviewPage';
@@ -464,6 +465,14 @@ function App() {
         element={
           <ProtectedRoute>
             <SalesLearningLibraryPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/unvisited-other-decision-list"
+        element={
+          <ProtectedRoute>
+            <UnvisitedOtherDecisionListPage />
           </ProtectedRoute>
         }
       />
