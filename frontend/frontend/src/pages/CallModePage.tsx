@@ -805,7 +805,9 @@ const CallModePage = () => {
   // 除外ステータス表示判定ロジック
   const isExcluded = editedStatus?.includes('除外') ?? false;
   const showBanner = !isExcluded && !!exclusionAction;
-  const showStatusDisplay = isExcluded;
+  // ステータスが変わった場合（除外系 or 遷移系「→」含む）は赤字で表示
+  const isStatusChanged = editedStatus?.includes('→') ?? false;
+  const showStatusDisplay = isExcluded || isStatusChanged;
   const nextCallDateRef = useRef<HTMLInputElement>(null); // 次電日フィールドのref
   const confidenceRef = useRef<HTMLDivElement>(null); // 確度フィールドのref
   const [confidenceHighlight, setConfidenceHighlight] = useState(false); // 確度フィールドのハイライト
