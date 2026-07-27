@@ -1398,6 +1398,11 @@ function SellerStatusSidebarComponent({
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <span>すまいステップ集計</span>
+              <Chip
+                label={`取得${sumaiStepMonthlySummary.reduce((sum, m) => sum + m.exclusive + m.general, 0)}件`}
+                size="small"
+                sx={{ height: 18, fontSize: '0.65rem', bgcolor: '#4db6ac', color: 'white', fontWeight: 'bold' }}
+              />
             </Box>
             {sumaiStepExpandedMonth ? <ExpandLess /> : <ExpandMore />}
           </Button>
@@ -1450,6 +1455,14 @@ function SellerStatusSidebarComponent({
                             {total}件
                           </Typography>
                         </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderBottom: '1px dashed #4db6ac' }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#00897b', fontWeight: 'bold' }}>
+                            → 媒介取得
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#00897b' }}>
+                            {exclusive + general}件
+                          </Typography>
+                        </Box>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
                           <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#e65100' }}>
                             → 専任媒介
@@ -1499,6 +1512,11 @@ function SellerStatusSidebarComponent({
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <span>イエウール集計</span>
+              <Chip
+                label={`取得${ieulMonthlySummary.reduce((sum, m) => sum + m.exclusive + m.general, 0)}件`}
+                size="small"
+                sx={{ height: 18, fontSize: '0.65rem', bgcolor: '#ff8a65', color: 'white', fontWeight: 'bold' }}
+              />
             </Box>
             {ieulExpandedMonth ? <ExpandLess /> : <ExpandMore />}
           </Button>
@@ -1551,6 +1569,14 @@ function SellerStatusSidebarComponent({
                             {total}件
                           </Typography>
                         </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderBottom: '1px dashed #ff8a65' }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#f4511e', fontWeight: 'bold' }}>
+                            → 媒介取得
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#f4511e' }}>
+                            {exclusive + general}件
+                          </Typography>
+                        </Box>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
                           <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#e65100' }}>
                             → 専任媒介
@@ -1600,6 +1626,11 @@ function SellerStatusSidebarComponent({
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <span>LIFULL集計</span>
+              <Chip
+                label={`取得${lifullMonthlySummary.reduce((sum, m) => sum + m.exclusive + m.general, 0)}件`}
+                size="small"
+                sx={{ height: 18, fontSize: '0.65rem', bgcolor: '#90caf9', color: 'white', fontWeight: 'bold' }}
+              />
             </Box>
             {lifullExpandedMonth ? <ExpandLess /> : <ExpandMore />}
           </Button>
@@ -1652,6 +1683,14 @@ function SellerStatusSidebarComponent({
                             {total}件
                           </Typography>
                         </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderBottom: '1px dashed #90caf9' }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#1976d2', fontWeight: 'bold' }}>
+                            → 媒介取得
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#1976d2' }}>
+                            {exclusive + general}件
+                          </Typography>
+                        </Box>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
                           <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#e65100' }}>
                             → 専任媒介
@@ -1701,6 +1740,11 @@ function SellerStatusSidebarComponent({
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <span>HOME4U集計</span>
+              <Chip
+                label={`取得${home4uMonthlySummary.reduce((sum, m) => sum + m.exclusive + m.general, 0)}件`}
+                size="small"
+                sx={{ height: 18, fontSize: '0.65rem', bgcolor: '#ce93d8', color: 'white', fontWeight: 'bold' }}
+              />
             </Box>
             {home4uExpandedMonth ? <ExpandLess /> : <ExpandMore />}
           </Button>
@@ -1751,6 +1795,14 @@ function SellerStatusSidebarComponent({
                           </Typography>
                           <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#4a148c' }}>
                             {total}件
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderBottom: '1px dashed #ce93d8' }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#8e24aa', fontWeight: 'bold' }}>
+                            → 媒介取得
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#8e24aa' }}>
+                            {exclusive + general}件
                           </Typography>
                         </Box>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
