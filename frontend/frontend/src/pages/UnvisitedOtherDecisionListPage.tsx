@@ -31,6 +31,9 @@ interface UnvisitedSeller {
   contractYearMonth: string | null;
   otherDecisionCountermeasure: string;
   inquiryDate: string | null;
+  valuationAmount1: number | null;
+  valuationAmount2: number | null;
+  valuationAmount3: number | null;
   aiAnalysis?: { summary: string; whyLost: string; countermeasure: string } | null;
 }
 
@@ -284,6 +287,16 @@ export default function UnvisitedOtherDecisionListPage() {
                       <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#333', mb: 0.5, pl: 0.5 }}>
                         📍 {seller.propertyAddress || '住所なし'}
                       </Typography>
+
+                      {/* 査定額 */}
+                      {(seller.valuationAmount1 || seller.valuationAmount2 || seller.valuationAmount3) && (
+                        <Typography variant="body2" sx={{ fontSize: '0.78rem', color: '#2e7d32', mb: 0.5, pl: 0.5 }}>
+                          💰 査定額: {[seller.valuationAmount1, seller.valuationAmount2, seller.valuationAmount3]
+                            .filter(v => v)
+                            .map(v => `${Math.round(v! / 10000)}万円`)
+                            .join(' / ')}
+                        </Typography>
+                      )}
 
                       {/* 競合名、理由 */}
                       {seller.competitorNameAndReason && (
