@@ -30,6 +30,7 @@ interface UnvisitedSeller {
   nextCallDate: string | null;
   contractYearMonth: string | null;
   otherDecisionCountermeasure: string;
+  inquiryDate: string | null;
   aiAnalysis?: { summary: string; whyLost: string; countermeasure: string } | null;
 }
 
@@ -274,7 +275,8 @@ export default function UnvisitedOtherDecisionListPage() {
                           <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{seller.name}</Typography>
                         )}
                         <Chip label={seller.status} size="small" sx={{ height: 20, fontSize: '0.7rem', bgcolor: seller.status === '他決→追客' ? '#ef5350' : '#b71c1c', color: 'white' }} />
-                        <Typography variant="caption" sx={{ color: '#666', ml: 'auto' }}>他決日: {formatDate(seller.contractYearMonth)}</Typography>
+                        <Typography variant="caption" sx={{ color: '#666', ml: 'auto' }}>反響日: {formatDate(seller.inquiryDate)}</Typography>
+                        <Typography variant="caption" sx={{ color: '#666' }}>他決日: {formatDate(seller.contractYearMonth)}</Typography>
                         <Typography variant="caption" sx={{ color: '#666' }}>次電日: {formatDate(seller.nextCallDate)}</Typography>
                       </Box>
 
