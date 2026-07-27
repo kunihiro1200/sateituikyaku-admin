@@ -207,6 +207,38 @@ const SellerDetailPage = () => {
     loadEmployees();
   }, [id]);
 
+  // ドラフト復元チェック：セッション切れ時にローカル保存されたデータがあれば通知
+  useEffect(() => {
+    if (!id) return;
+    const draftJson = localStorage.getItem(`seller_draft_${id}`);
+    if (draftJson) {
+      try {
+        const draft = JSON.parse(draftJson);
+        const savedAt = draft.savedAt ? new Date(draft.savedAt).toLocaleString('ja-JP') : '';
+        setSuccessMessage(`⚠️ 前回セッション切れ時に一時保存されたデータがあります（${savedAt}）。保存ボタンを押すとサーバーに反映されます。`);
+        // ドラフトデータをフォームに復元
+        if (draft.status) setEditedStatus(draft.status);
+        if (draft.confidence) setEditedConfidence(draft.confidence);
+        if (draft.nextCallDate !== undefined) setEditedNextCallDate(draft.nextCallDate || '');
+        if (draft.assignedTo !== undefined) setEditedAssignedTo(draft.assignedTo || '');
+        if (draft.email !== undefined) setEditedEmail(draft.email || '');
+        if (draft.competitorName !== undefined) setEditedCompetitorName(draft.competitorName || '');
+        if (draft.exclusiveOtherDecisionFactors) setEditedExclusiveOtherDecisionFactors(draft.exclusiveOtherDecisionFactors);
+        if (draft.otherDecisionCountermeasure !== undefined) setEditedOtherDecisionCountermeasure(draft.otherDecisionCountermeasure || '');
+        if (draft.contractYearMonth !== undefined) setEditedContractYearMonth(draft.contractYearMonth || '');
+        if (draft.exclusiveOtherDecisionMeeting !== undefined) setEditedExclusiveOtherDecisionMeeting(draft.exclusiveOtherDecisionMeeting || '');
+        if (draft.viewingNotes !== undefined) setEditedViewingNotes(draft.viewingNotes || '');
+        if (draft.latestStatus !== undefined) setEditedLatestStatus(draft.latestStatus || '');
+        if (draft.name !== undefined) setEditedName(draft.name);
+        if (draft.address !== undefined) setEditedAddress(draft.address);
+        if (draft.phoneNumber !== undefined) setEditedPhoneNumber(draft.phoneNumber);
+      } catch {
+        // ドラフトのパースに失敗した場合は無視
+        localStorage.removeItem(`seller_draft_${id}`);
+      }
+    }
+  }, [id]);
+
   // 初回ロード時の自動計算は行わない（ユーザーが入力したときのみ計算）
 
   const loadEmployees = async () => {
@@ -505,8 +537,23 @@ const SellerDetailPage = () => {
       await loadSellerData();
       setEditingBasicInfo(false);
       setSuccessMessage('売主情報を更新しました');
+      // 保存成功時にドラフトがあれば削除
+      localStorage.removeItem(`seller_draft_${id}`);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || '更新に失敗しました');
+      // セッション切れ（401）の場合、ローカルにドラフト保存する
+      if (err.response?.status === 401) {
+        try {
+          localStorage.setItem(`seller_draft_${id}`, JSON.stringify({
+            ...updateData,
+            savedAt: new Date().toISOString(),
+          }));
+          setError('セッション切れのためサーバー保存に失敗しましたが、入力内容をローカルに一時保存しました。再ログイン後にもう一度保存してください。');
+        } catch {
+          setError('セッション切れのためサーバー保存に失敗しました。入力内容をコピーして再ログイン後にもう一度保存してください。');
+        }
+      } else {
+        setError(err.response?.data?.error?.message || '更新に失敗しました');
+      }
     } finally {
       setSaving(false);
     }

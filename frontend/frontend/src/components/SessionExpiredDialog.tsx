@@ -15,7 +15,12 @@ import { onSessionExpired, forceLogoutRedirect } from '../services/api';
  * 
  * 即座にログイン画面にリダイレクトせず、
  * ユーザーに「入力中のデータを保存してからログインし直してください」と警告する。
- * ユーザーが「ログイン画面へ」を押した時点でリダイレクトする。
+ * 
+ * 「戻って保存する」ボタンでダイアログを閉じ、元の画面で保存操作を行える。
+ * 「ログイン画面へ」を押した時点でリダイレクトする。
+ * 
+ * ※セッション切れ後はAPIリクエストは失敗するが、
+ *   ローカル保存やコピー操作は可能。再ログイン後にデータを貼り付けて保存できる。
  */
 export default function SessionExpiredDialog() {
   const [open, setOpen] = useState(false);
@@ -32,11 +37,14 @@ export default function SessionExpiredDialog() {
     forceLogoutRedirect();
   };
 
+  const handleClose = () => {
+    setOpen(false);
+  };
+
   return (
     <Dialog
       open={open}
-      onClose={() => {}} // 背景クリックで閉じない
-      disableEscapeKeyDown // Escで閉じない
+      onClose={handleClose}
       maxWidth="sm"
       fullWidth
     >
@@ -48,13 +56,24 @@ export default function SessionExpiredDialog() {
           ログインの有効期限が切れました。
         </Alert>
         <Typography variant="body1" sx={{ mb: 1 }}>
-          入力中のデータがある場合は、<strong>先にコピーや保存をしてから</strong>ログインし直してください。
+          入力中のデータがある場合は、<strong>「戻って保存する」を押して画面に戻り、保存ボタンを押してください。</strong>
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          ※ セッション切れ後もローカル保存は可能です。保存後に再ログインしてください。
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          「ログイン画面へ」を押すと、現在のページから移動します。
+          「ログイン画面へ」を押すと、現在のページから移動します（入力中のデータは失われます）。
         </Typography>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      <DialogActions sx={{ px: 3, pb: 2, justifyContent: 'space-between' }}>
+        <Button
+          variant="outlined"
+          color="inherit"
+          onClick={handleClose}
+          size="large"
+        >
+          戻って保存する
+        </Button>
         <Button
           variant="contained"
           color="primary"
