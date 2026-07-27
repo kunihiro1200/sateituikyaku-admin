@@ -187,13 +187,26 @@ export default function UnvisitedOtherDecisionListPage() {
     return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
   };
 
-  // コメントからHTMLタグ除去し「【以下自動転記」の前まで表示
+  // コメントからHTMLタグ除去し「【以下自動転記」の前まで表示（改行は保持）
   const truncateComment = (html: string) => {
     if (!html) return '';
-    const plain = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&').trim();
-    const cutIdx = plain.indexOf('【以下自動転記');
-    if (cutIdx > 0) return plain.substring(0, cutIdx).trim();
-    return plain;
+    // <div>, <br>, <p> を改行に変換してからタグ除去
+    const withLineBreaks = html
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/div>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<div[^>]*>/gi, '')
+      .replace(/<p[^>]*>/gi, '')
+      .replace(/<[^>]*>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&gt;/g, '>')
+      .replace(/&lt;/g, '<')
+      .replace(/&amp;/g, '&')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+    const cutIdx = withLineBreaks.indexOf('【以下自動転記');
+    if (cutIdx > 0) return withLineBreaks.substring(0, cutIdx).trim();
+    return withLineBreaks;
   };
 
   const displayData = targetMonth
