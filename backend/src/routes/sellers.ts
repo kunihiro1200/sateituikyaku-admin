@@ -2072,6 +2072,90 @@ router.get('/sumai-step-monthly-summary', async (req: Request, res: Response) =>
 });
 
 /**
+ * GET /api/sellers/site-monthly-summary/:siteCode
+ * 指定サイトからの依頼を月別に集計（イエウール/LIFULL/HOME4U用汎用エンドポイント）
+ * 各月の総数・一般媒介数・専任媒介数を返す（2026年5月以降）
+ * ⚠️ /:id より前に定義必須
+ */
+router.get('/site-monthly-summary/:siteCode', async (req: Request, res: Response) => {
+  try {
+    const { siteCode } = req.params;
+
+    // 許可するサイトコード
+    const ALLOWED_SITES: Record<string, string> = {
+      'ウ': 'イエウール',
+      'L': 'LIFULL',
+      'H': 'HOME4U',
+    };
+
+    if (!ALLOWED_SITES[siteCode]) {
+      return res.status(400).json({ error: `Invalid site code: ${siteCode}` });
+    }
+
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    const { data, error } = await supabase
+      .from('sellers')
+      .select('id, seller_number, inquiry_site, inquiry_date, status, contract_year_month')
+      .eq('inquiry_site', siteCode)
+      .gte('inquiry_date', '2026-05-01')
+      .is('deleted_at', null)
+      .order('inquiry_date', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    // 専任媒介に該当するステータス
+    const EXCLUSIVE_STATUSES = ['専任媒介', '他決→専任', 'リースバック（専任）'];
+    // 一般媒介に該当するステータス
+    const GENERAL_STATUSES = ['一般媒介', '一般→他決'];
+
+    // 月別に集計
+    const monthlySummary: Record<string, { total: number; exclusive: number; general: number }> = {};
+
+    for (const row of (data || [])) {
+      const d = new Date(row.inquiry_date);
+      if (isNaN(d.getTime())) continue;
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+      if (!monthlySummary[ym]) {
+        monthlySummary[ym] = { total: 0, exclusive: 0, general: 0 };
+      }
+      monthlySummary[ym].total++;
+
+      if (EXCLUSIVE_STATUSES.includes(row.status)) {
+        monthlySummary[ym].exclusive++;
+      } else if (GENERAL_STATUSES.includes(row.status)) {
+        monthlySummary[ym].general++;
+      }
+    }
+
+    // 結果を整形（月の新しい順）
+    const result = Object.entries(monthlySummary)
+      .map(([ym, counts]) => {
+        const [y, m] = ym.split('-');
+        return {
+          yearMonth: ym,
+          label: `${y}年${parseInt(m)}月`,
+          total: counts.total,
+          exclusive: counts.exclusive,
+          general: counts.general,
+        };
+      })
+      .sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+
+    return res.json({ summary: result });
+  } catch (error) {
+    console.error('[site-monthly-summary] Error:', error);
+    return res.status(500).json({ error: 'Failed to get site monthly summary' });
+  }
+});
+
+/**
  * 売主情報を取得
  */
 router.get('/:id', async (req: Request, res: Response) => {

@@ -336,6 +336,24 @@ function SellerStatusSidebarComponent({
   // すまいステップセクション専用の展開state
   const [sumaiStepExpandedMonth, setSumaiStepExpandedMonth] = useState<string | null>(null);
 
+  // イエウール月別サマリー
+  const [ieulMonthlySummary, setIeulMonthlySummary] = useState<
+    { yearMonth: string; label: string; total: number; exclusive: number; general: number }[]
+  >([]);
+  const [ieulExpandedMonth, setIeulExpandedMonth] = useState<string | null>(null);
+
+  // LIFULL月別サマリー
+  const [lifullMonthlySummary, setLifullMonthlySummary] = useState<
+    { yearMonth: string; label: string; total: number; exclusive: number; general: number }[]
+  >([]);
+  const [lifullExpandedMonth, setLifullExpandedMonth] = useState<string | null>(null);
+
+  // HOME4U月別サマリー
+  const [home4uMonthlySummary, setHome4uMonthlySummary] = useState<
+    { yearMonth: string; label: string; total: number; exclusive: number; general: number }[]
+  >([]);
+  const [home4uExpandedMonth, setHome4uExpandedMonth] = useState<string | null>(null);
+
   // 専任月別サマリーを取得（初回のみ）
   useEffect(() => {
     let cancelled = false;
@@ -393,6 +411,51 @@ function SellerStatusSidebarComponent({
       }
     };
     fetchSumaiStepSummary();
+    return () => { cancelled = true; };
+  }, []);
+
+  // イエウール月別サマリーを取得（初回のみ）
+  useEffect(() => {
+    let cancelled = false;
+    const fetchIeulSummary = async () => {
+      try {
+        const res = await api.get('/api/sellers/site-monthly-summary/%E3%82%A6');
+        if (!cancelled) setIeulMonthlySummary(res.data?.summary || []);
+      } catch (e) {
+        // エラーは無視
+      }
+    };
+    fetchIeulSummary();
+    return () => { cancelled = true; };
+  }, []);
+
+  // LIFULL月別サマリーを取得（初回のみ）
+  useEffect(() => {
+    let cancelled = false;
+    const fetchLifullSummary = async () => {
+      try {
+        const res = await api.get('/api/sellers/site-monthly-summary/L');
+        if (!cancelled) setLifullMonthlySummary(res.data?.summary || []);
+      } catch (e) {
+        // エラーは無視
+      }
+    };
+    fetchLifullSummary();
+    return () => { cancelled = true; };
+  }, []);
+
+  // HOME4U月別サマリーを取得（初回のみ）
+  useEffect(() => {
+    let cancelled = false;
+    const fetchHome4uSummary = async () => {
+      try {
+        const res = await api.get('/api/sellers/site-monthly-summary/H');
+        if (!cancelled) setHome4uMonthlySummary(res.data?.summary || []);
+      } catch (e) {
+        // エラーは無視
+      }
+    };
+    fetchHome4uSummary();
     return () => { cancelled = true; };
   }, []);
   
@@ -1384,6 +1447,309 @@ function SellerStatusSidebarComponent({
                             依頼数（総数）
                           </Typography>
                           <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#004d40' }}>
+                            {total}件
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#e65100' }}>
+                            → 専任媒介
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#e65100' }}>
+                            {exclusive}件
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#1565c0' }}>
+                            → 一般媒介
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#1565c0' }}>
+                            {general}件
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Collapse>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Collapse>
+        </Box>
+      )}
+
+      {/* 📊 イエウール集計セクション */}
+      {ieulMonthlySummary.length > 0 && (
+        <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: '#ff8a65', bgcolor: '#fff3e0', borderRadius: 1, px: 0.5 }}>
+          <Button
+            fullWidth
+            onClick={(e) => {
+              e.stopPropagation();
+              setIeulExpandedMonth(ieulExpandedMonth === '__open__' || ieulExpandedMonth ? null : '__open__');
+            }}
+            sx={{
+              justifyContent: 'space-between',
+              textAlign: 'left',
+              fontSize: '0.85rem',
+              py: 1,
+              px: 1.5,
+              color: ieulExpandedMonth ? 'white' : '#e65100',
+              bgcolor: ieulExpandedMonth ? '#f4511e' : 'transparent',
+              borderRadius: ieulExpandedMonth ? '4px 4px 0 0' : 1,
+              '&:hover': { bgcolor: ieulExpandedMonth ? '#f4511e' : '#ffccbc' },
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <span>イエウール集計</span>
+            </Box>
+            {ieulExpandedMonth ? <ExpandLess /> : <ExpandMore />}
+          </Button>
+          <Collapse in={!!ieulExpandedMonth}>
+            <Box sx={{ bgcolor: '#fff3e0', border: 1, borderColor: '#ff8a65', borderTop: 0, borderRadius: '0 0 4px 4px' }}>
+              {ieulMonthlySummary.map(({ yearMonth, label, total, exclusive, general }) => {
+                const isMonthExpanded = ieulExpandedMonth === yearMonth;
+                return (
+                  <Box key={yearMonth}>
+                    <Button
+                      fullWidth
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIeulExpandedMonth(isMonthExpanded ? '__open__' : yearMonth);
+                      }}
+                      sx={{
+                        justifyContent: 'space-between',
+                        textAlign: 'left',
+                        fontSize: '0.82rem',
+                        py: 0.75,
+                        pl: 3,
+                        pr: 1.5,
+                        color: isMonthExpanded ? '#bf360c' : '#e65100',
+                        bgcolor: isMonthExpanded ? '#ffccbc' : 'transparent',
+                        '&:hover': { bgcolor: '#ffccbc' },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <span>{label}</span>
+                        <Chip
+                          label={`${total}件`}
+                          size="small"
+                          sx={{
+                            height: 20, fontSize: '0.7rem',
+                            bgcolor: isMonthExpanded ? '#ff8a65' : '#ffccbc',
+                            color: isMonthExpanded ? 'white' : '#e65100',
+                            fontWeight: 'bold',
+                          }}
+                        />
+                      </Box>
+                      {isMonthExpanded ? <ExpandLess /> : <ExpandMore />}
+                    </Button>
+                    <Collapse in={isMonthExpanded}>
+                      <Box sx={{ px: 3, py: 1, bgcolor: '#fbe9e7' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#bf360c' }}>
+                            依頼数（総数）
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#bf360c' }}>
+                            {total}件
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#e65100' }}>
+                            → 専任媒介
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#e65100' }}>
+                            {exclusive}件
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#1565c0' }}>
+                            → 一般媒介
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#1565c0' }}>
+                            {general}件
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Collapse>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Collapse>
+        </Box>
+      )}
+
+      {/* 📊 LIFULL集計セクション */}
+      {lifullMonthlySummary.length > 0 && (
+        <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: '#90caf9', bgcolor: '#e3f2fd', borderRadius: 1, px: 0.5 }}>
+          <Button
+            fullWidth
+            onClick={(e) => {
+              e.stopPropagation();
+              setLifullExpandedMonth(lifullExpandedMonth === '__open__' || lifullExpandedMonth ? null : '__open__');
+            }}
+            sx={{
+              justifyContent: 'space-between',
+              textAlign: 'left',
+              fontSize: '0.85rem',
+              py: 1,
+              px: 1.5,
+              color: lifullExpandedMonth ? 'white' : '#1565c0',
+              bgcolor: lifullExpandedMonth ? '#1976d2' : 'transparent',
+              borderRadius: lifullExpandedMonth ? '4px 4px 0 0' : 1,
+              '&:hover': { bgcolor: lifullExpandedMonth ? '#1976d2' : '#bbdefb' },
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <span>LIFULL集計</span>
+            </Box>
+            {lifullExpandedMonth ? <ExpandLess /> : <ExpandMore />}
+          </Button>
+          <Collapse in={!!lifullExpandedMonth}>
+            <Box sx={{ bgcolor: '#e3f2fd', border: 1, borderColor: '#90caf9', borderTop: 0, borderRadius: '0 0 4px 4px' }}>
+              {lifullMonthlySummary.map(({ yearMonth, label, total, exclusive, general }) => {
+                const isMonthExpanded = lifullExpandedMonth === yearMonth;
+                return (
+                  <Box key={yearMonth}>
+                    <Button
+                      fullWidth
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLifullExpandedMonth(isMonthExpanded ? '__open__' : yearMonth);
+                      }}
+                      sx={{
+                        justifyContent: 'space-between',
+                        textAlign: 'left',
+                        fontSize: '0.82rem',
+                        py: 0.75,
+                        pl: 3,
+                        pr: 1.5,
+                        color: isMonthExpanded ? '#0d47a1' : '#1565c0',
+                        bgcolor: isMonthExpanded ? '#bbdefb' : 'transparent',
+                        '&:hover': { bgcolor: '#bbdefb' },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <span>{label}</span>
+                        <Chip
+                          label={`${total}件`}
+                          size="small"
+                          sx={{
+                            height: 20, fontSize: '0.7rem',
+                            bgcolor: isMonthExpanded ? '#90caf9' : '#bbdefb',
+                            color: isMonthExpanded ? 'white' : '#1565c0',
+                            fontWeight: 'bold',
+                          }}
+                        />
+                      </Box>
+                      {isMonthExpanded ? <ExpandLess /> : <ExpandMore />}
+                    </Button>
+                    <Collapse in={isMonthExpanded}>
+                      <Box sx={{ px: 3, py: 1, bgcolor: '#e8f4fd' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#0d47a1' }}>
+                            依頼数（総数）
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#0d47a1' }}>
+                            {total}件
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#e65100' }}>
+                            → 専任媒介
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#e65100' }}>
+                            {exclusive}件
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#1565c0' }}>
+                            → 一般媒介
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#1565c0' }}>
+                            {general}件
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Collapse>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Collapse>
+        </Box>
+      )}
+
+      {/* 📊 HOME4U集計セクション */}
+      {home4uMonthlySummary.length > 0 && (
+        <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: '#ce93d8', bgcolor: '#f3e5f5', borderRadius: 1, px: 0.5 }}>
+          <Button
+            fullWidth
+            onClick={(e) => {
+              e.stopPropagation();
+              setHome4uExpandedMonth(home4uExpandedMonth === '__open__' || home4uExpandedMonth ? null : '__open__');
+            }}
+            sx={{
+              justifyContent: 'space-between',
+              textAlign: 'left',
+              fontSize: '0.85rem',
+              py: 1,
+              px: 1.5,
+              color: home4uExpandedMonth ? 'white' : '#6a1b9a',
+              bgcolor: home4uExpandedMonth ? '#8e24aa' : 'transparent',
+              borderRadius: home4uExpandedMonth ? '4px 4px 0 0' : 1,
+              '&:hover': { bgcolor: home4uExpandedMonth ? '#8e24aa' : '#e1bee7' },
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <span>HOME4U集計</span>
+            </Box>
+            {home4uExpandedMonth ? <ExpandLess /> : <ExpandMore />}
+          </Button>
+          <Collapse in={!!home4uExpandedMonth}>
+            <Box sx={{ bgcolor: '#f3e5f5', border: 1, borderColor: '#ce93d8', borderTop: 0, borderRadius: '0 0 4px 4px' }}>
+              {home4uMonthlySummary.map(({ yearMonth, label, total, exclusive, general }) => {
+                const isMonthExpanded = home4uExpandedMonth === yearMonth;
+                return (
+                  <Box key={yearMonth}>
+                    <Button
+                      fullWidth
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setHome4uExpandedMonth(isMonthExpanded ? '__open__' : yearMonth);
+                      }}
+                      sx={{
+                        justifyContent: 'space-between',
+                        textAlign: 'left',
+                        fontSize: '0.82rem',
+                        py: 0.75,
+                        pl: 3,
+                        pr: 1.5,
+                        color: isMonthExpanded ? '#4a148c' : '#6a1b9a',
+                        bgcolor: isMonthExpanded ? '#e1bee7' : 'transparent',
+                        '&:hover': { bgcolor: '#e1bee7' },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <span>{label}</span>
+                        <Chip
+                          label={`${total}件`}
+                          size="small"
+                          sx={{
+                            height: 20, fontSize: '0.7rem',
+                            bgcolor: isMonthExpanded ? '#ce93d8' : '#e1bee7',
+                            color: isMonthExpanded ? 'white' : '#6a1b9a',
+                            fontWeight: 'bold',
+                          }}
+                        />
+                      </Box>
+                      {isMonthExpanded ? <ExpandLess /> : <ExpandMore />}
+                    </Button>
+                    <Collapse in={isMonthExpanded}>
+                      <Box sx={{ px: 3, py: 1, bgcolor: '#fce4ec' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#4a148c' }}>
+                            依頼数（総数）
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#4a148c' }}>
                             {total}件
                           </Typography>
                         </Box>
