@@ -1383,18 +1383,31 @@ export default function SellersPage() {
                     <TableCell>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
                         <Typography variant="body2">{seller.name}</Typography>
-                        {formatExclusionAction(seller.exclusionAction) && !(seller.status || '').includes('除外後追客中') && (
-                          <Chip
-                            label={formatExclusionAction(seller.exclusionAction)}
-                            size="small"
+                        {(seller.status || '').includes('→') ? (
+                          <Typography
+                            variant="body2"
                             sx={{
-                              fontSize: '0.65rem',
-                              height: 18,
-                              bgcolor: (seller.exclusionAction || '').includes('不通') ? '#ff9800' : '#e53935',
-                              color: 'white',
-                              '& .MuiChip-label': { px: 0.8 },
+                              fontSize: '0.75rem',
+                              color: 'error.main',
+                              fontWeight: 'bold',
                             }}
-                          />
+                          >
+                            {seller.status}
+                          </Typography>
+                        ) : (
+                          formatExclusionAction(seller.exclusionAction) && !(seller.status || '').includes('除外後追客中') && (
+                            <Chip
+                              label={formatExclusionAction(seller.exclusionAction)}
+                              size="small"
+                              sx={{
+                                fontSize: '0.65rem',
+                                height: 18,
+                                bgcolor: (seller.exclusionAction || '').includes('不通') ? '#ff9800' : '#e53935',
+                                color: 'white',
+                                '& .MuiChip-label': { px: 0.8 },
+                              }}
+                            />
+                          )
                         )}
                       </Box>
                     </TableCell>
