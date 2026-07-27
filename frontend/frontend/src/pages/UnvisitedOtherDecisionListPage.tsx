@@ -34,6 +34,7 @@ interface UnvisitedSeller {
   valuationAmount1: number | null;
   valuationAmount2: number | null;
   valuationAmount3: number | null;
+  valuationAssignee: string;
   aiAnalysis?: { summary: string; whyLost: string; countermeasure: string } | null;
 }
 
@@ -308,6 +309,7 @@ export default function UnvisitedOtherDecisionListPage() {
                             .filter(v => v)
                             .map(v => `${Math.round(v! / 10000)}万円`)
                             .join(' / ')}
+                          {seller.valuationAssignee && <span style={{ color: '#666', marginLeft: 8 }}>（{seller.valuationAssignee}）</span>}
                         </Typography>
                       )}
 

@@ -1799,7 +1799,7 @@ router.get('/unvisited-other-decision-monthly-summary', async (req: Request, res
     // 営担が空欄 or '外す' のものを取得
     const { data, error } = await supabase
       .from('sellers')
-      .select('id, seller_number, name, property_address, address, status, contract_year_month, comments, competitor_name, competitor_name_and_reason, next_call_date, other_decision_countermeasure, unvisited_other_decision_ai_analysis, inquiry_date, valuation_amount_1, valuation_amount_2, valuation_amount_3')
+      .select('id, seller_number, name, property_address, address, status, contract_year_month, comments, competitor_name, competitor_name_and_reason, next_call_date, other_decision_countermeasure, unvisited_other_decision_ai_analysis, inquiry_date, valuation_amount_1, valuation_amount_2, valuation_amount_3, valuation_assignee')
       .in('status', UNVISITED_OTHER_DECISION_STATUSES)
       .gte('contract_year_month', '2026-05-01')
       .is('deleted_at', null)
@@ -1830,6 +1830,7 @@ router.get('/unvisited-other-decision-monthly-summary', async (req: Request, res
         valuationAmount1: number | null;
         valuationAmount2: number | null;
         valuationAmount3: number | null;
+        valuationAssignee: string;
         aiAnalysis: { summary: string; whyLost: string; countermeasure: string } | null;
       }[];
     }> = {};
@@ -1871,6 +1872,7 @@ router.get('/unvisited-other-decision-monthly-summary', async (req: Request, res
         valuationAmount1: row.valuation_amount_1,
         valuationAmount2: row.valuation_amount_2,
         valuationAmount3: row.valuation_amount_3,
+        valuationAssignee: row.valuation_assignee || '',
         aiAnalysis,
       });
     }
