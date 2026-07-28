@@ -3369,11 +3369,13 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 variant={getValue('site_registration_ok_sent') === '浅' ? 'contained' : 'outlined'}
                 color={getValue('site_registration_ok_sent') === '浅' ? 'primary' : 'inherit'}
                 onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('site_registration_ok_sent', getValue('site_registration_ok_sent') === '浅' ? null : '浅'); }}
+                sx={!getValue('site_registration_ok_sent') && !(getValue('cw_person') || '').includes('山崎') ? { fontWeight: 700, borderColor: 'primary.main', borderWidth: 2, color: 'primary.main', backgroundColor: 'rgba(25, 118, 210, 0.08)' } : undefined}
               >浅</Button>
               <Button
                 variant={getValue('site_registration_ok_sent') === '山' ? 'contained' : 'outlined'}
                 color={getValue('site_registration_ok_sent') === '山' ? 'primary' : 'inherit'}
                 onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('site_registration_ok_sent', getValue('site_registration_ok_sent') === '山' ? null : '山'); }}
+                sx={!getValue('site_registration_ok_sent') && (getValue('cw_person') || '').includes('山崎') ? { fontWeight: 700, borderColor: 'primary.main', borderWidth: 2, color: 'primary.main', backgroundColor: 'rgba(25, 118, 210, 0.08)' } : undefined}
               >山</Button>
             </ButtonGroup>
           </Grid>
