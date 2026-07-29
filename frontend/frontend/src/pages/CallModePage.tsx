@@ -8389,6 +8389,38 @@ HP：https://ifoo-oita.com/
                   </a>
                 )}
               </Box>
+              {(seller.emailSendDisabled || seller.smsSendDisabled || seller.phoneCallDisabled) && (
+                <Box
+                  role="alert"
+                  sx={{
+                    mb: 1,
+                    px: 1.5,
+                    py: 1,
+                    backgroundColor: '#ffebee',
+                    border: '2px solid',
+                    borderColor: 'error.main',
+                    borderRadius: 2,
+                  }}
+                >
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ color: 'error.dark', fontWeight: 800, mb: 0.75 }}
+                  >
+                    ⚠️ 連絡制限あり
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                    {seller.emailSendDisabled && (
+                      <Chip label="メール送信不可" color="error" size="small" sx={{ fontWeight: 700 }} />
+                    )}
+                    {seller.smsSendDisabled && (
+                      <Chip label="SMS送信不可" color="error" size="small" sx={{ fontWeight: 700 }} />
+                    )}
+                    {seller.phoneCallDisabled && (
+                      <Chip label="電話使用不可" color="error" size="small" sx={{ fontWeight: 700 }} />
+                    )}
+                  </Box>
+                </Box>
+              )}
               {/* 査定書郵送アラート：売主番号にFIまたはAAが含まれ、状況（売主）に「空」が含まれ、郵送が「済」でない場合に表示 */}
               {((seller.sellerNumber || '').toUpperCase().includes('FI') || (seller.sellerNumber || '').toUpperCase().includes('AA')) &&
                 (propInfo.currentStatus || seller.currentStatus || '').includes('空') &&
