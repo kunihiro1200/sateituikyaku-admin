@@ -3897,8 +3897,33 @@ HP：https://ifoo-oita.com/
     return result;
   };
 
+  const updateContactRestriction = async (
+    field: 'emailSendDisabled' | 'smsSendDisabled' | 'phoneCallDisabled',
+    checked: boolean,
+    label: string,
+  ) => {
+    const previousValue = Boolean(seller?.[field]);
+    setSeller((prev) => prev ? { ...prev, [field]: checked } : prev);
+
+    try {
+      const response = await api.put(`/api/sellers/${id}`, { [field]: checked });
+      const savedValue = response.data?.[field] ?? checked;
+      setSeller((prev) => prev ? { ...prev, [field]: savedValue } : prev);
+      setSnackbarMessage(checked ? `${label}をNGにしました` : `${label}のNGを解除しました`);
+      setSnackbarOpen(true);
+    } catch (err) {
+      setSeller((prev) => prev ? { ...prev, [field]: previousValue } : prev);
+      setError(`${label}のNG設定を保存できませんでした`);
+      console.error(`${label}のNG設定保存エラー:`, err);
+    }
+  };
+
   const handleEmailTemplateSelect = async (templateId: string) => {
     if (!templateId) return;
+    if (seller?.emailSendDisabled) {
+      setError('Email送信不可に設定されています');
+      return;
+    }
 
     // employeesが未取得の場合は先に取得する（担当者情報の置換に必要）
     let currentEmployees: any[] = employees;
@@ -4006,6 +4031,10 @@ HP：https://ifoo-oita.com/
 
   const handleSmsTemplateSelect = async (templateId: string) => {
     if (!templateId) return;
+    if (seller?.smsSendDisabled) {
+      setError('SMS送信不可に設定されています');
+      return;
+    }
 
     const template = smsTemplates.find(t => t.id === templateId);
     if (!template) return;
@@ -5130,122 +5159,217 @@ HP：https://ifoo-oita.com/
             {/* エリア情勢・売買実績ボタンは訪問準備ボタン内に移動済みのため非表示 */}
 
             {/* Emailテンプレート選択 */}
-            <FormControl size="small" sx={{ minWidth: 200 }}>
-              <InputLabel>Email送信</InputLabel>
-              <Select
-                value=""
-                label="Email送信"
-                onChange={(e) => handleEmailTemplateSelect(e.target.value)}
-                disabled={!seller?.email || sendingTemplate || sellerEmailTemplatesLoading}
-                MenuProps={{
-                  PaperProps: {
-                    sx: { maxWidth: 500 }
-                  }
+            <Box sx={{ minWidth: 200, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+              <Box
+                component="label"
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  alignSelf: 'flex-start',
+                  gap: 0.25,
+                  color: seller.emailSendDisabled ? 'error.main' : 'text.secondary',
+                  cursor: 'pointer',
+                  userSelect: 'none',
                 }}
               >
-                {filteredSellerEmailTemplates.map((template) => (
-                  <MenuItem
-                    key={template.id}
-                    value={template.id}
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'flex-start',
-                      py: 1.5,
-                      whiteSpace: 'normal'
-                    }}
-                  >
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                      {template.name}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                      件名: {template.subject}
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
+                <input
+                  type="checkbox"
+                  checked={Boolean(seller.emailSendDisabled)}
+                  onChange={(event) => void updateContactRestriction('emailSendDisabled', event.target.checked, 'Email送信')}
+                  aria-label="Email送信 NG"
+                  style={{ width: 15, height: 15, margin: 0, accentColor: '#d32f2f', cursor: 'pointer' }}
+                />
+                <Typography variant="caption" sx={{ fontWeight: 700, lineHeight: 1.4 }}>
+                  NG
+                </Typography>
+              </Box>
+              <FormControl size="small" fullWidth>
+                <InputLabel>Email送信</InputLabel>
+                <Select
+                  value=""
+                  label="Email送信"
+                  onChange={(e) => handleEmailTemplateSelect(e.target.value)}
+                  disabled={!seller.email || seller.emailSendDisabled || sendingTemplate || sellerEmailTemplatesLoading}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: { maxWidth: 500 }
+                    }
+                  }}
+                >
+                  {filteredSellerEmailTemplates.map((template) => (
+                    <MenuItem
+                      key={template.id}
+                      value={template.id}
                       sx={{
-                        fontSize: '0.7rem',
-                        mt: 0.5,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        py: 1.5,
+                        whiteSpace: 'normal'
                       }}
                     >
-                      {template.body}
-                    </Typography>
-                  </MenuItem>
-                ))}
-              </Select>
-              {!seller?.email && (
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
-                  Emailがないため送信不可
-                </Typography>
-              )}
-            </FormControl>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                        {template.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                        件名: {template.subject}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{
+                          fontSize: '0.7rem',
+                          mt: 0.5,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        {template.body}
+                      </Typography>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Typography
+                variant="caption"
+                color={seller.emailSendDisabled ? 'error.main' : 'text.secondary'}
+                sx={{ minHeight: 18, fontWeight: seller.emailSendDisabled ? 700 : 400 }}
+              >
+                {seller.emailSendDisabled ? 'Email送信不可' : !seller.email ? 'Emailがないため送信不可' : '\u00a0'}
+              </Typography>
+            </Box>
 
             {/* SMSテンプレート選択 */}
-            <FormControl size="small" sx={{ minWidth: 200 }}>
-              <InputLabel>SMS送信</InputLabel>
-              <Select
-                value=""
-                label="SMS送信"
-                onChange={(e) => handleSmsTemplateSelect(e.target.value)}
-                disabled={sendingTemplate || !isMobilePhone(seller?.phoneNumber)}
-                MenuProps={{
-                  PaperProps: {
-                    sx: { maxWidth: 500 }
+            <Box sx={{ minWidth: 200, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+              <Box
+                component="label"
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  alignSelf: 'flex-start',
+                  gap: 0.25,
+                  color: seller.smsSendDisabled ? 'error.main' : 'text.secondary',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={Boolean(seller.smsSendDisabled)}
+                  onChange={(event) => void updateContactRestriction('smsSendDisabled', event.target.checked, 'SMS送信')}
+                  aria-label="SMS送信 NG"
+                  style={{ width: 15, height: 15, margin: 0, accentColor: '#d32f2f', cursor: 'pointer' }}
+                />
+                <Typography variant="caption" sx={{ fontWeight: 700, lineHeight: 1.4 }}>
+                  NG
+                </Typography>
+              </Box>
+              <FormControl size="small" fullWidth>
+                <InputLabel>SMS送信</InputLabel>
+                <Select
+                  value=""
+                  label="SMS送信"
+                  onChange={(e) => handleSmsTemplateSelect(e.target.value)}
+                  disabled={seller.smsSendDisabled || sendingTemplate || !isMobilePhone(seller.phoneNumber)}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: { maxWidth: 500 }
+                    }
+                  }}
+                >
+                  {smsTemplates.map((template) => (
+                    <MenuItem key={template.id} value={template.id}>
+                      <Typography variant="body2">
+                        {template.label}
+                      </Typography>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Typography
+                variant="caption"
+                color={seller.smsSendDisabled ? 'error.main' : 'text.secondary'}
+                sx={{ minHeight: 18, fontWeight: seller.smsSendDisabled ? 700 : 400 }}
+              >
+                {seller.smsSendDisabled
+                  ? 'SMS送信不可'
+                  : seller.phoneNumber && !isMobilePhone(seller.phoneNumber)
+                    ? '固定電話のためSMS送信不可'
+                    : '\u00a0'}
+              </Typography>
+            </Box>
+
+            {/* 電話番号ボタン */}
+            <Box sx={{ minWidth: 200, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+              <Box
+                component="label"
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  alignSelf: 'flex-start',
+                  gap: 0.25,
+                  color: seller.phoneCallDisabled ? 'error.main' : 'text.secondary',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={Boolean(seller.phoneCallDisabled)}
+                  onChange={(event) => void updateContactRestriction('phoneCallDisabled', event.target.checked, '電話')}
+                  aria-label="電話 NG"
+                  style={{ width: 15, height: 15, margin: 0, accentColor: '#d32f2f', cursor: 'pointer' }}
+                />
+                <Typography variant="caption" sx={{ fontWeight: 700, lineHeight: 1.4 }}>
+                  NG
+                </Typography>
+              </Box>
+              <Button
+                variant="contained"
+                startIcon={<Phone />}
+                component="a"
+                href={!seller.phoneCallDisabled && seller.phoneNumber ? `tel:${seller.phoneNumber}` : undefined}
+                disabled={seller.phoneCallDisabled || !seller.phoneNumber}
+                onClick={async (event) => {
+                  if (seller.phoneCallDisabled || !seller.phoneNumber) {
+                    event.preventDefault();
+                    return;
+                  }
+                  try {
+                    await api.post(`/api/sellers/${id}/activities`, {
+                      type: 'phone_call',
+                      content: `${seller.phoneNumber} に電話`,
+                    });
+                    // 少し待ってからログを更新（DB書き込み完了を待つ）
+                    setTimeout(() => {
+                      callLogRef.current?.reload();
+                    }, 500);
+                  } catch (err) {
+                    console.error('追客ログ記録エラー:', err);
+                  }
+                }}
+                sx={{
+                  fontWeight: 'bold',
+                  backgroundColor: SECTION_COLORS.seller.main,
+                  color: SECTION_COLORS.seller.contrastText,
+                  '&:hover': {
+                    backgroundColor: SECTION_COLORS.seller.dark,
                   }
                 }}
               >
-                {smsTemplates.map((template) => (
-                  <MenuItem key={template.id} value={template.id}>
-                    <Typography variant="body2">
-                      {template.label}
-                    </Typography>
-                  </MenuItem>
-                ))}
-              </Select>
-              {seller?.phoneNumber && !isMobilePhone(seller.phoneNumber) && (
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
-                  固定電話のためSMS送信不可
-                </Typography>
-              )}
-            </FormControl>
-
-            {/* 電話番号ボタン */}
-            {seller?.phoneNumber && <Button
-              variant="contained"
-              startIcon={<Phone />}
-              component="a"
-              href={`tel:${seller.phoneNumber}`}
-              onClick={async () => {
-                try {
-                  await api.post(`/api/sellers/${id}/activities`, {
-                    type: 'phone_call',
-                    content: `${seller.phoneNumber} に電話`,
-                  });
-                  // 少し待ってからログを更新（DB書き込み完了を待つ）
-                  setTimeout(() => {
-                    callLogRef.current?.reload();
-                  }, 500);
-                } catch (err) {
-                  console.error('追客ログ記録エラー:', err);
-                }
-              }}
-              sx={{ 
-                fontWeight: 'bold',
-                backgroundColor: SECTION_COLORS.seller.main,
-                color: SECTION_COLORS.seller.contrastText,
-                '&:hover': {
-                  backgroundColor: SECTION_COLORS.seller.dark,
-                }
-              }}
-            >
-              {seller.phoneNumber}
-            </Button>}
+                {seller.phoneNumber || '電話番号なし'}
+              </Button>
+              <Typography
+                variant="caption"
+                color={seller.phoneCallDisabled ? 'error.main' : 'text.secondary'}
+                sx={{ minHeight: 18, fontWeight: seller.phoneCallDisabled ? 700 : 400 }}
+              >
+                {seller.phoneCallDisabled ? '電話使えません' : !seller.phoneNumber ? '電話番号がありません' : '\u00a0'}
+              </Typography>
+            </Box>
           </Box>
         )}
       </Box>
@@ -6922,7 +7046,7 @@ HP：https://ifoo-oita.com/
                           value=""
                           label="査定メール送信"
                           onChange={(e) => handleEmailTemplateSelect(e.target.value as string)}
-                          disabled={!seller?.email || sellerEmailTemplatesLoading}
+                          disabled={!seller?.email || seller?.emailSendDisabled || sellerEmailTemplatesLoading}
                           startAdornment={<Email sx={{ mr: 0.5, fontSize: 18 }} />}
                         >
                           {getValuationEmailTemplates().map((template: any) => (

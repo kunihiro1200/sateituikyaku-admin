@@ -56,6 +56,9 @@ export interface Seller {
   name: string;
   phoneNumber: string;
   email?: string;
+  emailSendDisabled?: boolean; // Email送信不可
+  smsSendDisabled?: boolean; // SMS送信不可
+  phoneCallDisabled?: boolean; // 電話使用不可
   requestorAddress?: string; // 依頼者住所
   
   // 反響情報
@@ -421,6 +424,9 @@ export interface UpdateSellerRequest {
   address?: string;
   phoneNumber?: string;
   email?: string;
+  emailSendDisabled?: boolean;
+  smsSendDisabled?: boolean;
+  phoneCallDisabled?: boolean;
   status?: SellerStatus;
   assignedTo?: string;
   nextCallDate?: Date;

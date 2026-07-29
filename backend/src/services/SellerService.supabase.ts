@@ -718,6 +718,15 @@ export class SellerService extends BaseRepository {
     if ((data as any).contactMethod !== undefined) {
       updates.contact_method = (data as any).contactMethod;
     }
+    if (data.emailSendDisabled !== undefined) {
+      updates.email_send_disabled = data.emailSendDisabled;
+    }
+    if (data.smsSendDisabled !== undefined) {
+      updates.sms_send_disabled = data.smsSendDisabled;
+    }
+    if (data.phoneCallDisabled !== undefined) {
+      updates.phone_call_disabled = data.phoneCallDisabled;
+    }
 
     // 除外日を計算（inquiryDateまたはsiteが更新される場合）
     if (data.inquiryDate !== undefined || data.site !== undefined) {
@@ -2186,6 +2195,9 @@ export class SellerService extends BaseRepository {
         address: seller.address ? decrypt(seller.address) : '',
         phoneNumber: seller.phone_number ? decrypt(seller.phone_number) : '',
         email: seller.email ? decrypt(seller.email) : undefined,
+        emailSendDisabled: seller.email_send_disabled || false,
+        smsSendDisabled: seller.sms_send_disabled || false,
+        phoneCallDisabled: seller.phone_call_disabled || false,
         status: seller.status,
         confidence: seller.confidence_level,
         assignedTo: seller.assigned_to,

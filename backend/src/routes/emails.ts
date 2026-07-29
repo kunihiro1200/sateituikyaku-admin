@@ -35,6 +35,15 @@ router.post(
           },
         });
       }
+      if (seller.emailSendDisabled) {
+        return res.status(409).json({
+          error: {
+            code: 'EMAIL_SEND_DISABLED',
+            message: 'Email送信不可に設定されています',
+            retryable: false,
+          },
+        });
+      }
 
       // 査定額が計算されているか確認
       if (!seller.valuationAmount1 || !seller.valuationAmount2 || !seller.valuationAmount3) {
@@ -132,6 +141,16 @@ router.post(
         });
       }
 
+      if (seller.emailSendDisabled) {
+        return res.status(409).json({
+          error: {
+            code: 'EMAIL_SEND_DISABLED',
+            message: 'Email送信不可に設定されています',
+            retryable: false,
+          },
+        });
+      }
+
       // メールを送信
       const result = await emailService.sendFollowUpEmail(
         seller,
@@ -222,6 +241,15 @@ router.post(
           error: {
             code: 'NOT_FOUND',
             message: 'Seller not found',
+            retryable: false,
+          },
+        });
+      }
+      if (seller.emailSendDisabled) {
+        return res.status(409).json({
+          error: {
+            code: 'EMAIL_SEND_DISABLED',
+            message: 'Email送信不可に設定されています',
             retryable: false,
           },
         });
@@ -977,6 +1005,16 @@ router.post(
       } else {
         // sellerServiceのdecryptSellerを使って復号
         seller = await (sellerService as any).decryptSeller(sellerRow);
+      }
+
+      if (seller.emailSendDisabled) {
+        return res.status(409).json({
+          error: {
+            code: 'EMAIL_SEND_DISABLED',
+            message: 'Email送信不可に設定されています',
+            retryable: false,
+          },
+        });
       }
 
       const recipientEmail = to || seller.email;

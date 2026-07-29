@@ -2362,6 +2362,23 @@ router.put('/:id', async (req: Request, res: Response) => {
       body: req.body,
     });
     
+    const contactRestrictionFields = [
+      'emailSendDisabled',
+      'smsSendDisabled',
+      'phoneCallDisabled',
+    ] as const;
+    for (const field of contactRestrictionFields) {
+      if (req.body[field] !== undefined && typeof req.body[field] !== 'boolean') {
+        return res.status(400).json({
+          error: {
+            code: 'INVALID_CONTACT_RESTRICTION',
+            message: `${field} must be a boolean`,
+            retryable: false,
+          },
+        });
+      }
+    }
+
     // Validate site field if provided
     if (req.body.site !== undefined && req.body.site !== null) {
       if (!VALID_SITE_OPTIONS.includes(req.body.site)) {
