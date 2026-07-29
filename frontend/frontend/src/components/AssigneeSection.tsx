@@ -13,9 +13,10 @@ import { Seller } from '../types';
 // SMSテンプレートID → 対応するsellerKeyのマッピング
 export const SMS_TEMPLATE_ASSIGNEE_MAP: Partial<Record<string, keyof Seller>> = {
   initial_cancellation: 'unreachableSmsAssignee',
-  cancellation:         'cancelNoticeAssignee',
-  valuation:            'valuationSmsAssignee',
-  long_term_customer:   'longTermEmailAssignee',
+  cancellation:             'cancelNoticeAssignee',
+  valuation:                'valuationSmsAssignee',
+  valuation_net_proceeds:   'valuationSmsAssignee',
+  long_term_customer:       'longTermEmailAssignee',
   call_reminder:        'callReminderEmailAssignee',
   visit_reminder:       'visitReminderAssignee',
 };

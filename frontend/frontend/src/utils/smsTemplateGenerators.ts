@@ -115,6 +115,71 @@ export const generateValuationSMS = (
   return message;
 };
 
+/** 売買価格に応じた売買契約書の印紙代 */
+const calculateSaleContractStampDuty = (price: number): number => {
+  if (price <= 1_000_000) return 500;
+  if (price <= 5_000_000) return 1_000;
+  if (price <= 10_000_000) return 5_000;
+  if (price <= 50_000_000) return 10_000;
+  return 30_000;
+};
+
+/** 売却時の通常仲介手数料（税込） */
+const calculateBrokerageFee = (price: number): number => {
+  if (price <= 8_000_000) return 330_000;
+  return Math.round((price * 0.03 + 60_000) * 1.1);
+};
+
+/**
+ * 査定Sメール（手残り）
+ * 最高査定額から最低査定額まで200万円刻みで、仲介手数料と印紙代を
+ * 差し引いた概算手残り額を通知する。
+ */
+export const generateNetProceedsValuationSMS = (
+  seller: Seller,
+  property: PropertyInfo | null
+): string => {
+  const name = seller.name || '';
+  const propertyAddress = property?.address || seller.propertyAddress || '';
+  const valuationAmounts = [
+    seller.valuationAmount1,
+    seller.valuationAmount2,
+    seller.valuationAmount3,
+  ].filter((amount): amount is number => typeof amount === 'number' && amount > 0);
+
+  let proceedsText = '査定額：未設定';
+
+  if (valuationAmounts.length > 0) {
+    const minimumAmount = Math.min(...valuationAmounts);
+    const maximumAmount = Math.max(...valuationAmounts);
+    const priceStep = 2_000_000;
+    const prices: number[] = [];
+
+    for (let price = maximumAmount; price >= minimumAmount; price -= priceStep) {
+      prices.push(price);
+    }
+
+    // 最低査定額が200万円刻みに一致しない場合も、最後の候補として必ず表示する。
+    if (prices[prices.length - 1] !== minimumAmount) {
+      prices.push(minimumAmount);
+    }
+
+    proceedsText = prices.map((price) => {
+      const netProceeds = price
+        - calculateBrokerageFee(price)
+        - calculateSaleContractStampDuty(price);
+      const priceInTenThousands = Math.round(price / 10_000);
+      const netProceedsInTenThousands = Math.round(netProceeds / 10_000);
+      return `${priceInTenThousands}万円 手残り金額→${netProceedsInTenThousands}万円`;
+    }).join('[改行]');
+  }
+
+  let message = `${name}様[改行][改行]お世話になっております。大分市舞鶴町にございます不動産会社のいふうです。[改行][改行]${propertyAddress}の査定をさせていただきました。[改行][改行]【机上査定による手残り金額】[改行]${proceedsText}[改行][改行]当社のお客様で${propertyAddress}周辺の物件を探されている方がいらっしゃいます。[改行][改行]詳しいお話をさせていただきたく、訪問査定のご予約を承っております。[改行]下記リンクよりご都合の良い日時をお選びください。[改行]http://bit.ly/44U9pjl[改行][改行]ご不明な点がございましたら、お気軽にお問い合わせください。[改行][改行]㈱いふう[改行]<<当社住所>>[改行]TEL: 097-533-2022`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
+
 /**
  * 4. 訪問事前通知メール
  * 訪問予定日の前日に送信（木曜日の場合は明後日表記）

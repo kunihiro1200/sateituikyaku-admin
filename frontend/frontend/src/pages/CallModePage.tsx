@@ -57,6 +57,7 @@ import {
   generateInitialCancellationGuidance,
   generateCancellationGuidance,
   generateValuationSMS,
+  generateNetProceedsValuationSMS,
   generateVisitReminderSMS,
   generatePostVisitThankYouSMS,
   generateLongTermCustomerSMS,
@@ -1202,6 +1203,11 @@ const CallModePage = () => {
       id: 'valuation',
       label: '査定Sメール',
       generator: generateValuationSMS,
+    },
+    {
+      id: 'valuation_net_proceeds',
+      label: '査定Sメール（手残り）',
+      generator: generateNetProceedsValuationSMS,
     },
     {
       id: 'visit_reminder',
