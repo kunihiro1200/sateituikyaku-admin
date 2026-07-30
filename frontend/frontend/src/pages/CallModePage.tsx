@@ -3805,7 +3805,7 @@ HP：https://ifoo-oita.com/
     ]);
     result = result.replace(/<<手残り金額一覧>>/g, netProceedsEmailSection);
     result = result.replace(
-      /[｛{]\s*手残り金額の表示[\s　]*仲介手数料[、,]\s*印紙代の説明[\s　]*抵当権抹消費用や譲渡所得税は含まれていない旨の説明\s*[｝}]/g,
+      /[｛{][^｝}]*手残り金額の表示[^｝}]*[｝}]/g,
       netProceedsEmailSection
     );
     
