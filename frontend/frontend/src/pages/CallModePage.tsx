@@ -65,6 +65,7 @@ import {
   convertLineBreaks,
   replacePlaceholders,
 } from '../utils/smsTemplateGenerators';
+import { formatNetProceedsEmailSection } from '../utils/netProceedsCalculator';
 import { emailTemplates } from '../utils/emailTemplates';
 import SenderAddressSelector from '../components/SenderAddressSelector';
 import { getActiveEmployees, Employee } from '../services/employeeService';
@@ -983,6 +984,7 @@ const CallModePage = () => {
     const isInheritance = seller?.valuationReason?.includes('相続') ?? false;
     return siteFiltered.filter(t => {
       if (!t.name?.includes('査定額案内メール')) return true; // 対象外テンプレートはそのまま表示
+      if (t.name.includes('手残り')) return true; // 手残りテンプレートは相続区分に関係なく表示
       if (isInheritance) {
         // 相続の場合：「相続」を含み「相続以外」を含まないテンプレートのみ表示
         return t.name.includes('相続') && !t.name.includes('相続以外');
@@ -1425,18 +1427,26 @@ const CallModePage = () => {
       return sellerEmailTemplates;
     }
 
+    // 手残りテンプレートは査定理由に関係なく常に表示する
+    const netProceedsTemplates = valuationTemplates.filter((t: any) =>
+      t.name?.includes('手残り')
+    );
+    const inheritanceTemplates = valuationTemplates.filter((t: any) =>
+      !t.name?.includes('手残り')
+    );
+
     if (isInheritance) {
       // 「相続」を含み「相続以外」を含まないテンプレート
-      const filtered = valuationTemplates.filter((t: any) =>
+      const filtered = inheritanceTemplates.filter((t: any) =>
         t.name?.includes('相続') && !t.name?.includes('相続以外')
       );
-      return filtered.length > 0 ? filtered : valuationTemplates;
+      return [...netProceedsTemplates, ...(filtered.length > 0 ? filtered : inheritanceTemplates)];
     } else {
       // 「相続以外」を含むテンプレート
-      const filtered = valuationTemplates.filter((t: any) =>
+      const filtered = inheritanceTemplates.filter((t: any) =>
         t.name?.includes('相続以外')
       );
-      return filtered.length > 0 ? filtered : valuationTemplates;
+      return [...netProceedsTemplates, ...(filtered.length > 0 ? filtered : inheritanceTemplates)];
     }
   }, [seller?.valuationReason, sellerEmailTemplates]);
 
@@ -3786,6 +3796,18 @@ HP：https://ifoo-oita.com/
     result = result.replace(/<<査定額1>>/g, amount1.toString());
     result = result.replace(/<<査定額2>>/g, amount2.toString());
     result = result.replace(/<<査定額3>>/g, amount3.toString());
+
+    // 査定額案内メール（手残り）用の内訳
+    const netProceedsEmailSection = formatNetProceedsEmailSection([
+      editedValuationAmount1 ? parseInt(editedValuationAmount1) : seller.valuationAmount1,
+      editedValuationAmount2 ? parseInt(editedValuationAmount2) : seller.valuationAmount2,
+      editedValuationAmount3 ? parseInt(editedValuationAmount3) : seller.valuationAmount3,
+    ]);
+    result = result.replace(/<<手残り金額一覧>>/g, netProceedsEmailSection);
+    result = result.replace(
+      /[｛{]\s*手残り金額の表示[\s　]*仲介手数料[、,]\s*印紙代の説明[\s　]*抵当権抹消費用や譲渡所得税は含まれていない旨の説明\s*[｝}]/g,
+      netProceedsEmailSection
+    );
     
     // 土地・建物面積（「当社調べ」があれば優先）
     const _landAreaForTemplate = editedLandAreaVerified || editedLandArea || property?.landArea?.toString() || '';
