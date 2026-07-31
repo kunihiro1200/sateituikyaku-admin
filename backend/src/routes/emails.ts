@@ -4,6 +4,7 @@ import { EmailService } from '../services/EmailService.supabase';
 import { SellerService } from '../services/SellerService.supabase';
 import { ValuationEngine } from '../services/ValuationEngine.supabase';
 import { ActivityLogService } from '../services/ActivityLogService';
+import { invalidateActivitiesCache } from './followUps';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
@@ -459,6 +460,7 @@ router.post(
           metadata: {
             subject,
             body: htmlBody || content || '',
+            templateId: templateId || '',
             templateName: reqTemplateName || templateId || '',
             recipient_email: recipientEmail,
             sender_email: from || req.employee?.email || '',
@@ -479,14 +481,16 @@ router.post(
           ? `【${actTemplateName}】を送信`
           : `メール送信: ${subject}`;
         console.log(`📧 [send-template-email] activityContent: "${activityContent}"`);
-        await supabase.from('activities').insert({
-          seller_id: sellerId,
+        // seller.id は getSeller() でUUIDへ正規化済み（FI838などの売主番号でも正しいUUIDになる）
+        const { error: activityInsertError } = await supabase.from('activities').insert({
+          seller_id: seller.id,
           employee_id: employeeId,
           type: 'email',
           content: activityContent,
           result: '送信成功',
           metadata: {
             subject,
+            templateId: templateId || '',
             templateName: actTemplateName || '',
             body: htmlBody || content || '',
             recipient_email: recipientEmail,
@@ -494,6 +498,9 @@ router.post(
             sent_at: new Date().toISOString(),
           },
         });
+        if (activityInsertError) throw activityInsertError;
+        // 送信直後の再取得で最新履歴を返し、コメント右側の一覧から即座に消す
+        invalidateActivitiesCache(seller.id);
       } catch (actErr) {
         console.warn('📧 [send-template-email] Failed to save to activities:', actErr);
       }
