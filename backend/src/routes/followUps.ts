@@ -26,8 +26,12 @@ function setActivitiesCache(sellerId: string, data: any[]): void {
   activitiesCache.set(sellerId, { data, expiresAt: Date.now() + ACTIVITIES_CACHE_TTL_MS });
 }
 
-function invalidateActivitiesCache(sellerId: string): void {
-  activitiesCache.delete(sellerId);
+export function invalidateActivitiesCache(sellerId: string): void {
+  for (const key of activitiesCache.keys()) {
+    if (key === sellerId || key.startsWith(`${sellerId}:`)) {
+      activitiesCache.delete(key);
+    }
+  }
 }
 
 // 全てのルートに認証を適用
@@ -95,6 +99,71 @@ router.post(
     }
   }
 );
+
+/**
+ * SMS履歴を削除
+ */
+router.delete('/:sellerId/activities/:activityId', async (req: Request, res: Response) => {
+  try {
+    let { sellerId } = req.params;
+    const { activityId } = req.params;
+
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(activityId)) {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid activity ID',
+          retryable: false,
+        },
+      });
+    }
+
+    // URLが売主番号の場合は、activities.seller_idとの照合用にUUIDへ変換する
+    if (/^[A-Z]{2}\d+$/.test(sellerId)) {
+      const supabase = (await import('../config/supabase')).default;
+      const { data: seller } = await supabase
+        .from('sellers')
+        .select('id')
+        .eq('seller_number', sellerId)
+        .is('deleted_at', null)
+        .single();
+
+      if (!seller) {
+        return res.status(404).json({
+          error: {
+            code: 'SELLER_NOT_FOUND',
+            message: 'Seller not found',
+            retryable: false,
+          },
+        });
+      }
+      sellerId = seller.id;
+    }
+
+    const deleted = await followUpService.deleteSmsActivity(sellerId, activityId);
+    if (!deleted) {
+      return res.status(404).json({
+        error: {
+          code: 'ACTIVITY_NOT_FOUND',
+          message: 'SMS履歴が見つかりません',
+          retryable: false,
+        },
+      });
+    }
+
+    invalidateActivitiesCache(sellerId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete SMS activity error:', error);
+    res.status(500).json({
+      error: {
+        code: 'DELETE_ACTIVITY_ERROR',
+        message: 'SMS履歴の削除に失敗しました',
+        retryable: true,
+      },
+    });
+  }
+});
 
 /**
  * 追客履歴を取得

@@ -91,6 +91,25 @@ export class FollowUpService extends BaseRepository {
   }
 
   /**
+   * SMS履歴を削除
+   */
+  async deleteSmsActivity(sellerId: string, activityId: string): Promise<boolean> {
+    const { data: activity, error } = await this.table('activities')
+      .delete()
+      .eq('id', activityId)
+      .eq('seller_id', sellerId)
+      .eq('type', ActivityType.SMS)
+      .select('id')
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to delete SMS activity: ${error.message}`);
+    }
+
+    return activity !== null;
+  }
+
+  /**
    * ヒアリング内容を記録
    */
   async recordHearing(params: RecordHearingParams): Promise<Activity> {

@@ -101,7 +101,17 @@ export function convertBrToNewline(text: string | null | undefined): string {
   return text.replace(/<BR>/gi, '\n');
 }
 
-/** 通話モードのEmailテンプレート表示順。 */
+interface SellerEmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+}
+
+/**
+ * 通話モードで案内するEmailテンプレートの優先順位。
+ * 999は「残りのメール」として優先メール一覧には表示しない。
+ */
 function getSellerEmailTemplatePriority(name: string): number {
   if (name.includes('不通で電話時間確認')) return 0;
   if (name.includes('キャンセル案内のみ')) return 1;
@@ -114,6 +124,28 @@ function getSellerEmailTemplatePriority(name: string): number {
   if (name.includes('今後の不動産価格について')) return 8;
   if (name.includes('除外前') || name.includes('長期客')) return 9;
   return 999;
+}
+
+/** 表記揺れ（全角・半角、空白）を吸収して既存の送信履歴と照合する。 */
+function normalizeEmailTemplateName(value: unknown): string {
+  return String(value || '').normalize('NFKC').replace(/\s+/g, '').toLowerCase();
+}
+
+/** 未送信テンプレートを順番ごとに見分けやすくする淡い背景色。 */
+function getSellerEmailTemplateBackgroundColor(name: string): string {
+  const colors = [
+    '#fff3e0', // 不通確認＆キャンセル
+    '#fff8e1', // キャンセルのみ
+    '#e8f5e9', // 査定額案内
+    '#fffde7', // 今が売却のチャンス
+    '#f1f8e9', // 査定理由別
+    '#e0f2f1', // 査定額案内（手残り）
+    '#e3f2fd', // WEB打合せ
+    '#f3e5f5', // 税制優遇
+    '#e0f7fa', // 今後の不動産価格
+    '#fce4ec', // 除外前・長期客
+  ];
+  return colors[getSellerEmailTemplatePriority(name)] || '#ffffff';
 }
 
 // ============================================================
@@ -305,6 +337,7 @@ function calcInquiryDatePlusDays(
 interface SMSTemplate {
   id: string;
   label: string;
+  legacyLabels?: string[];
   generator: (seller: Seller, property: PropertyInfo | null, thirdArg?: any) => string;
 }
 
@@ -699,6 +732,7 @@ const CallModePage = () => {
   const isLandType = propInfo.propertyType === 'land';
 
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [activitiesLoaded, setActivitiesLoaded] = useState(false);
   const [callSummary, setCallSummary] = useState<string>('');
   
   // サイドバー用の売主リスト
@@ -871,7 +905,7 @@ const CallModePage = () => {
   const [sendingTemplate, setSendingTemplate] = useState(false);
 
   // スプレッドシートから取得した売主用Emailテンプレート
-  const [sellerEmailTemplates, setSellerEmailTemplates] = useState<Array<{id: string; name: string; subject: string; body: string}>>([]);
+  const [sellerEmailTemplates, setSellerEmailTemplates] = useState<SellerEmailTemplate[]>([]);
   const [sellerEmailTemplatesLoading, setSellerEmailTemplatesLoading] = useState(false);
 
   // 確認ダイアログ用の状態
@@ -1003,13 +1037,12 @@ const CallModePage = () => {
       if (isInheritance) {
         // 相続の場合：「相続」を含み「相続以外」を含まないテンプレートのみ表示
         return t.name.includes('相続') && !t.name.includes('相続以外');
-      } else {
-        // 相続以外の場合：「相続以外」を含むテンプレートのみ表示
-        return t.name.includes('相続以外');
       }
+      // 相続以外の場合：「相続以外」を含むテンプレートのみ表示
+      return t.name.includes('相続以外');
     });
 
-    // 指定順で並べ、同じ優先度のテンプレートはスプレッドシート順を維持する
+    // 指定された優先順で並べ、同じグループと残りのメールはスプレッドシート順を維持
     return valuationReasonFiltered
       .map((template, originalIndex) => ({ template, originalIndex }))
       .sort((a, b) =>
@@ -1018,6 +1051,54 @@ const CallModePage = () => {
       )
       .map(({ template }) => template);
   }, [sellerEmailTemplates, seller?.site, editedSite, seller?.valuationReason]);
+
+  // Email送信履歴。新しい履歴はID、既存履歴は正規化したテンプレート名で照合する。
+  const sentEmailTemplateKeys = useMemo(() => {
+    const keys = new Set<string>();
+
+    activities.forEach((activity) => {
+      if (activity.type !== 'email') return;
+      const templateId = activity.metadata?.templateId;
+      const metadataName = activity.metadata?.templateName;
+      const contentName = activity.content?.match(/^【(.+?)】/)?.[1];
+      if (templateId) keys.add(`id:${String(templateId)}`);
+      if (metadataName) keys.add(`name:${normalizeEmailTemplateName(metadataName)}`);
+      if (contentName) keys.add(`name:${normalizeEmailTemplateName(contentName)}`);
+    });
+
+    return keys;
+  }, [activities]);
+
+  const isSellerEmailTemplateSent = useCallback((template: SellerEmailTemplate): boolean => {
+    if (!activitiesLoaded) return false;
+    return sentEmailTemplateKeys.has(`id:${template.id}`)
+      || sentEmailTemplateKeys.has(`name:${normalizeEmailTemplateName(template.name)}`);
+  }, [activitiesLoaded, sentEmailTemplateKeys]);
+
+  // SMS送信履歴。新しい履歴はID、既存履歴は表示名で照合する。
+  const sentSmsTemplateKeys = useMemo(() => {
+    const keys = new Set<string>();
+
+    activities.forEach((activity) => {
+      if (activity.type !== 'sms') return;
+      const templateId = activity.metadata?.templateId;
+      const metadataName = activity.metadata?.templateName;
+      const contentName = activity.content?.match(/^【(.+?)】/)?.[1];
+      if (templateId) keys.add(`id:${String(templateId)}`);
+      if (metadataName) keys.add(`name:${normalizeEmailTemplateName(metadataName)}`);
+      if (contentName) keys.add(`name:${normalizeEmailTemplateName(contentName)}`);
+    });
+
+    return keys;
+  }, [activities]);
+
+  const isSmsTemplateSent = useCallback((template: SMSTemplate): boolean => {
+    if (!activitiesLoaded) return false;
+    if (sentSmsTemplateKeys.has(`id:${template.id}`)) return true;
+
+    return [template.label, ...(template.legacyLabels || [])]
+      .some((label) => sentSmsTemplateKeys.has(`name:${normalizeEmailTemplateName(label)}`));
+  }, [activitiesLoaded, sentSmsTemplateKeys]);
 
   // 査定計算用の状態
   const [editingValuation, setEditingValuation] = useState(false);
@@ -1213,11 +1294,12 @@ const CallModePage = () => {
     '㉗熱意',
   ];
 
-  // SMSテンプレート定義（新しい7つのテンプレート）
+  // SMSテンプレート定義（優先テンプレートの後に残りを表示）
   const smsTemplates: SMSTemplate[] = [
     {
       id: 'initial_cancellation',
-      label: '不通時Sメール',
+      label: '不通時SMSメール',
+      legacyLabels: ['不通時Sメール'],
       generator: generateInitialCancellationGuidance,
     },
     {
@@ -1236,6 +1318,11 @@ const CallModePage = () => {
       generator: generateNetProceedsValuationSMS,
     },
     {
+      id: 'long_term_customer',
+      label: '除外前・長期客Sメール',
+      generator: generateLongTermCustomerSMS,
+    },
+    {
       id: 'visit_reminder',
       label: '訪問事前通知メール',
       generator: generateVisitReminderSMS,
@@ -1244,11 +1331,6 @@ const CallModePage = () => {
       id: 'post_visit_thank_you',
       label: '訪問後御礼メール',
       generator: generatePostVisitThankYouSMS,
-    },
-    {
-      id: 'long_term_customer',
-      label: '除外前・長期客Sメール',
-      generator: generateLongTermCustomerSMS,
     },
     {
       id: 'call_reminder',
@@ -1464,17 +1546,20 @@ const CallModePage = () => {
       const filtered = inheritanceTemplates.filter((t: any) =>
         t.name?.includes('相続') && !t.name?.includes('相続以外')
       );
-      return [...netProceedsTemplates, ...(filtered.length > 0 ? filtered : inheritanceTemplates)];
+      return [...(filtered.length > 0 ? filtered : inheritanceTemplates), ...netProceedsTemplates];
     } else {
       // 「相続以外」を含むテンプレート
       const filtered = inheritanceTemplates.filter((t: any) =>
         t.name?.includes('相続以外')
       );
-      return [...netProceedsTemplates, ...(filtered.length > 0 ? filtered : inheritanceTemplates)];
+      return [...(filtered.length > 0 ? filtered : inheritanceTemplates), ...netProceedsTemplates];
     }
   }, [seller?.valuationReason, sellerEmailTemplates]);
 
   useEffect(() => {
+    // 売主切替直後に前の売主の送信履歴を表示しない
+    setActivities([]);
+    setActivitiesLoaded(false);
     loadAllData();
     // 売主が切り替わったら選択画像をリセット（前の売主の添付が残らないようにする）
     setSelectedImages([]);
@@ -2242,6 +2327,9 @@ const CallModePage = () => {
         })
         .catch((err) => {
           console.error('Failed to load activities:', err);
+        })
+        .finally(() => {
+          setActivitiesLoaded(true);
         });
 
       // 重複検出を非同期で実行（画面表示後にバックグラウンドで実行）
@@ -3942,9 +4030,9 @@ HP：https://ifoo-oita.com/
     }
     result = result.replace(/<<お客様紹介文言>>/g, customerIntroText);
 
-    // 🚨 重要: 条件付きプレースホルダー（<<当社住所>>、<<売買実績ｖ>>）を置換
-    // replacePlaceholders()を使用して、売主番号に応じた値に置換
-    result = replacePlaceholders(result, seller);
+    // 売主番号に応じて、担当者あいさつ・会社名・住所・電話・HP・署名を一括変換する
+    // FIを含む売主番号には、既存メールと同じくじら不動産版を適用する
+    result = replacePlaceholders(result, seller, myLastName);
 
     return result;
   };
@@ -4132,7 +4220,11 @@ HP：https://ifoo-oita.com/
         type: 'sms',
         content: `【${template.label}】を送信`,
         result: 'sent',
-        metadata: { body: messageContent },
+        metadata: {
+          body: messageContent,
+          templateId: template.id,
+          templateName: template.label,
+        },
       }).then(() => {
         // 活動履歴を再読み込み
         return api.get(`/api/sellers/${id}/activities`);
@@ -5243,46 +5335,87 @@ HP：https://ifoo-oita.com/
                   onChange={(e) => handleEmailTemplateSelect(e.target.value)}
                   disabled={!seller.email || seller.emailSendDisabled || sendingTemplate || sellerEmailTemplatesLoading}
                   MenuProps={{
+                    disableAutoFocusItem: true,
                     PaperProps: {
                       sx: { maxWidth: 500 }
                     }
                   }}
                 >
-                  {filteredSellerEmailTemplates.map((template) => (
-                    <MenuItem
-                      key={template.id}
-                      value={template.id}
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'flex-start',
-                        py: 1.5,
-                        whiteSpace: 'normal'
-                      }}
-                    >
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                        {template.name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                        件名: {template.subject}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
+                  {filteredSellerEmailTemplates.map((template) => {
+                    const isSent = isSellerEmailTemplateSent(template);
+                    const backgroundColor = isSent
+                      ? '#e0e0e0'
+                      : getSellerEmailTemplateBackgroundColor(template.name);
+
+                    return (
+                      <MenuItem
+                        key={template.id}
+                        value={template.id}
                         sx={{
-                          fontSize: '0.7rem',
-                          mt: 0.5,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          py: 1.5,
+                          whiteSpace: 'normal',
+                          backgroundColor,
+                          borderBottom: '1px solid',
+                          borderColor: 'divider',
+                          '&:hover': {
+                            backgroundColor: isSent ? '#d6d6d6' : backgroundColor,
+                            filter: 'brightness(0.97)',
+                          },
+                          // MUIが開いた直後に先頭項目へ付けるフォーカス色で
+                          // 未送信テンプレートがグレーに見えないよう、種別色を維持する。
+                          '&&.Mui-focusVisible, &&:focus': {
+                            backgroundColor,
+                            outline: '2px solid',
+                            outlineColor: 'primary.main',
+                            outlineOffset: '-2px',
+                          },
+                          '&&.Mui-selected, &&.Mui-selected:hover, &&.Mui-selected.Mui-focusVisible': {
+                            backgroundColor,
+                          },
                         }}
                       >
-                        {template.body}
-                      </Typography>
-                    </MenuItem>
-                  ))}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', mb: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold', flex: 1 }}>
+                            {template.name}
+                          </Typography>
+                          {isSent && (
+                            <Chip
+                              label="送信済み"
+                              size="small"
+                              sx={{
+                                height: 20,
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                backgroundColor: '#757575',
+                                color: '#fff',
+                              }}
+                            />
+                          )}
+                        </Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                          件名: {template.subject}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{
+                            fontSize: '0.7rem',
+                            mt: 0.5,
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
+                        >
+                          {template.body}
+                        </Typography>
+                      </MenuItem>
+                    );
+                  })}
                 </Select>
               </FormControl>
               <Typography
@@ -5332,13 +5465,41 @@ HP：https://ifoo-oita.com/
                     }
                   }}
                 >
-                  {smsTemplates.map((template) => (
-                    <MenuItem key={template.id} value={template.id}>
-                      <Typography variant="body2">
-                        {template.label}
-                      </Typography>
-                    </MenuItem>
-                  ))}
+                  {smsTemplates.map((template) => {
+                    const isSent = isSmsTemplateSent(template);
+
+                    return (
+                      <MenuItem
+                        key={template.id}
+                        value={template.id}
+                        sx={{
+                          backgroundColor: isSent ? '#e0e0e0' : '#ffffff',
+                          '&:hover': {
+                            backgroundColor: isSent ? '#d6d6d6' : 'action.hover',
+                          },
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                          <Typography variant="body2" sx={{ flex: 1 }}>
+                            {template.label}
+                          </Typography>
+                          {isSent && (
+                            <Chip
+                              label="送信済み"
+                              size="small"
+                              sx={{
+                                height: 20,
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                backgroundColor: '#757575',
+                                color: '#fff',
+                              }}
+                            />
+                          )}
+                        </Box>
+                      </MenuItem>
+                    );
+                  })}
                 </Select>
               </FormControl>
               <Typography
@@ -5487,7 +5648,7 @@ HP：https://ifoo-oita.com/
               {activities
                 .filter((activity) => activity.type === 'sms' || activity.type === 'email')
                 .slice(0, 10)
-                .map((activity, index) => {
+                .map((activity) => {
                   const displayName = getDisplayName(activity.employee);
                   const formattedDate = formatDateTime(activity.createdAt);
                   let typeIcon = '📧';
@@ -5501,7 +5662,7 @@ HP：https://ifoo-oita.com/
                     borderColor = '4px solid #2e7d32';
                   }
                   return (
-                    <Box key={index}>
+                    <Box key={activity.id}>
                       <Paper
                         sx={{ p: 1, mb: 0.5, bgcolor, borderLeft: borderColor, cursor: 'pointer' }}
                         onClick={() => handleActivityClick(activity)}
@@ -5513,6 +5674,37 @@ HP：https://ifoo-oita.com/
                           <Typography variant="caption" color="text.secondary" sx={{ flex: 1 }}>
                             {displayName} {formattedDate}
                           </Typography>
+                          {activity.type === 'sms' && (
+                            <Tooltip title="このSMS履歴を削除">
+                              <IconButton
+                                size="small"
+                                aria-label="SMS履歴を削除"
+                                onClick={async (event) => {
+                                  event.stopPropagation();
+                                  if (!window.confirm('このSMS履歴を一覧から削除しますか？\nこの操作は取り消せません。')) return;
+
+                                  try {
+                                    setError(null);
+                                    await api.delete(`/api/sellers/${id}/activities/${activity.id}`);
+                                    setActivities((current) => current.filter((item) => item.id !== activity.id));
+                                    setSelectedActivity((current) => current?.id === activity.id ? null : current);
+                                    setSnackbarMessage('SMS履歴を削除しました');
+                                    setSnackbarOpen(true);
+                                  } catch (err: any) {
+                                    console.error('SMS履歴の削除に失敗しました:', err);
+                                    setError(err.response?.data?.error?.message || 'SMS履歴の削除に失敗しました');
+                                  }
+                                }}
+                                sx={{
+                                  p: 0.25,
+                                  color: 'text.secondary',
+                                  '&:hover': { color: 'error.main', bgcolor: 'error.lighter' },
+                                }}
+                              >
+                                <ClearIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Tooltip>
+                          )}
                         </Box>
                         <Typography variant="caption" sx={{ display: 'block' }}>
                           {activity.content}
