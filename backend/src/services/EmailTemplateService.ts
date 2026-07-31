@@ -4,9 +4,31 @@ import { GoogleSheetsClient } from './GoogleSheetsClient';
 const TEMPLATE_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_TEMPLATE_SPREADSHEET_ID || '1sIBMhrarUSMcVWlTVVyaNNKaDxmfrxyHJLWv6U-MZxE';
 const TEMPLATE_SHEET_NAME = 'テンプレート';
 
-// インメモリキャッシュ（24時間TTL）
+// インメモリキャッシュ（5分TTL）
+// スプレッドシートで追加・編集したテンプレートを通話モードへ速やかに反映する
 let _templatesCache: { data: EmailTemplate[]; expiresAt: number } | null = null;
-const TEMPLATES_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24時間
+const TEMPLATES_CACHE_TTL_MS = 5 * 60 * 1000; // 5分
+
+/** 売主Emailテンプレートの表示優先順位（999は残りのメール） */
+function getSellerTemplateOrder(name: string): number {
+  if (name.includes('不通で電話時間確認')) return 0;
+  if (name.includes('キャンセル案内のみ')) return 1;
+  if (name.includes('査定額案内メール') && !name.includes('手残り')) return 2;
+  if (name.includes('今が売却のチャンス')) return 3;
+  if (name.normalize('NFKC').trim().startsWith('(査定理由別)')) return 4;
+  if (name.includes('査定額案内メール') && name.includes('手残り')) return 5;
+  if (name.includes('WEB打合せどうですか') || name.includes('WEB打合せ')) return 6;
+  if (name.includes('税制優遇の期限')) return 7;
+  if (name.includes('今後の不動産価格について')) return 8;
+  if (name.includes('除外前') || name.includes('長期客')) return 9;
+  return 999;
+}
+
+function sortSellerTemplates(templates: EmailTemplate[]): EmailTemplate[] {
+  return [...templates].sort((a, b) =>
+    getSellerTemplateOrder(a.name) - getSellerTemplateOrder(b.name)
+  );
+}
 
 /**
  * Service for managing email templates and merging them with data
@@ -44,7 +66,7 @@ export class EmailTemplateService {
     // キャッシュチェック
     if (_templatesCache && Date.now() < _templatesCache.expiresAt) {
       console.log('[EmailTemplateService] キャッシュから売主テンプレートを返します');
-      return _templatesCache.data.filter(t => t.id.startsWith('seller_'));
+      return sortSellerTemplates(_templatesCache.data.filter(t => t.id.startsWith('seller_')));
     }
 
     try {
@@ -93,35 +115,8 @@ export class EmailTemplateService {
       const sellerTemplates = allTemplates.filter(t => t.id.startsWith('seller_'));
       console.log(`[EmailTemplateService] 売主テンプレート ${sellerTemplates.length}件取得（キャッシュ更新）`);
 
-      // 指定順序でソート
-      const SELLER_TEMPLATE_ORDER = [
-        '査定額案内メール',
-        '不通で電話時間確認',
-        'キャンセル案内のみ',
-        '住替え先',
-        '相続（３日後',
-        '離婚',
-        'ローン厳しい',
-        '除外前',
-        'リマインド',
-        'WEB打合せ',
-        '訪問前日',
-        '訪問査定後御礼',
-        '相続登記',
-        '他決になった理由',
-        '他決→追客（3ヶ月',
-        '他決→追客（6ヶ月',
-      ];
-
-      sellerTemplates.sort((a, b) => {
-        const aIdx = SELLER_TEMPLATE_ORDER.findIndex(keyword => a.name.includes(keyword));
-        const bIdx = SELLER_TEMPLATE_ORDER.findIndex(keyword => b.name.includes(keyword));
-        const aOrder = aIdx === -1 ? 999 : aIdx;
-        const bOrder = bIdx === -1 ? 999 : bIdx;
-        return aOrder - bOrder;
-      });
-
-      return sellerTemplates;
+      // 指定順序でソート（同じグループ内はスプレッドシート上の行順を維持）
+      return sortSellerTemplates(sellerTemplates);
     } catch (error: any) {
       console.error('[EmailTemplateService] 売主テンプレート取得失敗:', error.message);
       throw error;
