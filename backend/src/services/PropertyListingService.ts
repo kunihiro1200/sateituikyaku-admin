@@ -116,6 +116,7 @@ export class PropertyListingService {
         single_listing,
         suumo_url,
         suumo_registered,
+        reins_certificate_email,
         display_address,
         offer_status,
         price_reduction_scheduled_date,
@@ -293,6 +294,7 @@ export class PropertyListingService {
             // suumo_url は更新後の値を使用
             'Suumo URL': updates.suumo_url,
             'Suumo登録': current.suumo_registered ?? null,
+            'レインズ証明書メール済み': ('reins_certificate_email' in updates) ? updates.reins_certificate_email : (current as any).reins_certificate_email ?? null,
             '買付': current.offer_status ?? null,
             '担当名（営業）': current.sales_assignee ?? null,
           };
@@ -308,8 +310,42 @@ export class PropertyListingService {
       }
     }
 
+    // reins_certificate_email が更新される場合、sidebar_status を再計算
+    if ('reins_certificate_email' in updates && !('suumo_url' in updates)) {
+      try {
+        const current = await this.getByPropertyNumber(propertyNumber);
+        if (current) {
+          const syncService = new PropertyListingSyncService();
+          const gyomuListData = await syncService.fetchGyomuListDataFromWorkTasks();
+
+          const row: Record<string, any> = {
+            '物件番号': current.property_number ?? '',
+            'atbb成約済み/非公開': current.atbb_status ?? '',
+            '報告日': current.report_date ?? null,
+            '報告担当_override': current.report_assignee ?? null,
+            '報告担当': current.report_assignee ?? null,
+            '確認': current.confirmation ?? null,
+            '一般媒介非公開（仮）': current.general_mediation_private ?? null,
+            '１社掲載': current.single_listing ?? null,
+            'Suumo URL': current.suumo_url ?? null,
+            'Suumo登録': current.suumo_registered ?? null,
+            // reins_certificate_email は更新後の値を使用
+            'レインズ証明書メール済み': updates.reins_certificate_email,
+            '買付': current.offer_status ?? null,
+            '担当名（営業）': current.sales_assignee ?? null,
+          };
+
+          const newSidebarStatus = syncService.calculateSidebarStatus(row, gyomuListData);
+          updates.sidebar_status = newSidebarStatus;
+          console.log(`[PropertyListingService] Recalculated sidebar_status for ${propertyNumber} (reins_certificate_email update): ${newSidebarStatus}`);
+        }
+      } catch (e) {
+        console.warn(`[PropertyListingService] Failed to recalculate sidebar_status for reins_certificate_email update:`, e);
+      }
+    }
+
     // suumo_registered が更新される場合、sidebar_status を再計算
-    if ('suumo_registered' in updates && !('suumo_url' in updates)) {
+    if ('suumo_registered' in updates && !('suumo_url' in updates) && !('reins_certificate_email' in updates)) {
       try {
         const current = await this.getByPropertyNumber(propertyNumber);
         if (current) {
@@ -328,6 +364,7 @@ export class PropertyListingService {
             'Suumo URL': current.suumo_url ?? null,
             // suumo_registered は更新後の値を使用
             'Suumo登録': updates.suumo_registered,
+            'レインズ証明書メール済み': (current as any).reins_certificate_email ?? null,
             '買付': current.offer_status ?? null,
             '担当名（営業）': current.sales_assignee ?? null,
           };
@@ -343,7 +380,7 @@ export class PropertyListingService {
 
     // atbb_status が更新される場合、sidebar_status を再計算
     // （公開前→公開中に変わった場合、「本日公開予定」が残り続けるバグを防止）
-    if ('atbb_status' in updates && !('suumo_url' in updates) && !('suumo_registered' in updates)) {
+    if ('atbb_status' in updates && !('suumo_url' in updates) && !('suumo_registered' in updates) && !('reins_certificate_email' in updates)) {
       try {
         const current = await this.getByPropertyNumber(propertyNumber);
         if (current) {
@@ -363,6 +400,7 @@ export class PropertyListingService {
             '１社掲載': current.single_listing ?? null,
             'Suumo URL': current.suumo_url ?? null,
             'Suumo登録': current.suumo_registered ?? null,
+            'レインズ証明書メール済み': (current as any).reins_certificate_email ?? null,
             '買付': current.offer_status ?? null,
             '担当名（営業）': current.sales_assignee ?? null,
           };
