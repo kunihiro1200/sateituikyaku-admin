@@ -991,7 +991,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     open: boolean;
     title: string;
     emptyFields: string[];
-    onConfirmAction: 'site' | 'floor' | 'mandatory' | 'cadastral' | 'binding_completed' | 'sales_assignee' | 'publish_scheduled_date' | 'storage_url' | 'distribution_date_required' | null;
+    onConfirmAction: 'site' | 'floor' | 'mandatory' | 'cadastral' | 'binding_completed' | 'sales_assignee' | 'publish_scheduled_date' | 'storage_url' | 'distribution_date_required' | 'cw_request_email_site' | null;
   }>({ open: false, title: '', emptyFields: [], onConfirmAction: null });
 
   // 謄本読み取り関連のstate
@@ -1296,14 +1296,14 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       return;
     }
 
-    // CWの方へ依頼メール（サイト登録）が未選択の場合はブロック
+    // CWの方へ依頼メール（サイト登録）が未選択の場合は警告（保存は可能）
     const cwRequestEmailSiteVal = getValue('cw_request_email_site');
     if (!cwRequestEmailSiteVal) {
       setValidationWarningDialog({
         open: true,
-        title: '「CWの方へ依頼メール（サイト登録）」が未選択です。必須項目です。',
+        title: '「CWの方へ依頼メール（サイト登録）」が未選択です。',
         emptyFields: ['CWの方へ依頼メール（サイト登録）'],
-        onConfirmAction: 'mandatory',
+        onConfirmAction: 'cw_request_email_site',
       });
       return;
     }
