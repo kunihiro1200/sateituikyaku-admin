@@ -517,6 +517,11 @@ export class PropertyListingSyncService {
         row['確認'] = dbProperty.confirmation;
       }
 
+      // レインズ証明書メール済みはDBの値を優先（管理画面から直接設定されるため）
+      if (dbProperty.reins_certificate_email) {
+        row['レインズ証明書メール済み'] = dbProperty.reins_certificate_email;
+      }
+
       // sidebar_statusの再計算結果が現在のDB値と異なる場合も変更として検出
       const newSidebarStatus = this.calculateSidebarStatus(row, gyomuListData);
       const currentSidebarStatus = dbProperty.sidebar_status || '';
@@ -705,7 +710,7 @@ export class PropertyListingSyncService {
               // DBのatbb_statusを優先（管理画面から手動設定されるため、スプレッドシートの値は古い可能性がある）
               const { data: dbRecord2 } = await this.supabase
                 .from('property_listings')
-                .select('report_completed, atbb_status, confirmation')
+                .select('report_completed, atbb_status, confirmation, reins_certificate_email')
                 .eq('property_number', update.property_number)
                 .single();
               update.spreadsheet_data['報告完了_override'] = dbRecord2?.report_completed || '';
@@ -716,6 +721,10 @@ export class PropertyListingSyncService {
               // confirmationはDBの値を優先（管理画面から手動設定されるため、スプレッドシートの値は古い可能性がある）
               if (dbRecord2?.confirmation) {
                 update.spreadsheet_data['確認'] = dbRecord2.confirmation;
+              }
+              // レインズ証明書メール済みはDBの値を優先（管理画面から直接設定されるため）
+              if (dbRecord2?.reins_certificate_email) {
+                update.spreadsheet_data['レインズ証明書メール済み'] = dbRecord2.reins_certificate_email;
               }
               const sidebarStatus = this.calculateSidebarStatus(update.spreadsheet_data, gyomuListData);
               changedFieldsOnly.sidebar_status = sidebarStatus;
@@ -1405,17 +1414,25 @@ export class PropertyListingSyncService {
       const scheduledDate = this.lookupGyomuList(propertyNumber, gyomuListData, '公開予定日');
       const suumoUrl = row['Suumo URL'];
       const suumoRegistration = row['Suumo登録'];
+      const reinsCertificateEmail = row['レインズ証明書メール済み'];
 
       // 🚨 修正: SUUMO URLが空であることを厳密にチェック
       const isSuumoUrlEmpty = !suumoUrl || (typeof suumoUrl === 'string' && suumoUrl.trim() === '');
 
+      // レインズ証明書メールが未済（「連絡済み」以外はすべて未済扱い）
+      const isReinsCertificateNotDone = reinsCertificateEmail !== '連絡済み';
+
       if (scheduledDate &&
           this.isDateBeforeYesterday(scheduledDate) &&
-          isSuumoUrlEmpty &&
           suumoRegistration !== 'S不要') {
-        return atbbStatus === '一般・公開中'
-          ? 'SUUMO URL　要登録'
-          : 'レインズ登録＋SUUMO URL 要登録';
+        // 一般・公開中: SUUMO URLが空なら「SUUMO URL 要登録」
+        if (atbbStatus === '一般・公開中' && isSuumoUrlEmpty) {
+          return 'SUUMO URL　要登録';
+        }
+        // 専任・公開中: SUUMO URLが空 OR レインズ証明書メールが未済なら「レインズ登録＋SUUMO URL 要登録」
+        if (atbbStatus === '専任・公開中' && (isSuumoUrlEmpty || isReinsCertificateNotDone)) {
+          return 'レインズ登録＋SUUMO URL 要登録';
+        }
       }
     }
 
