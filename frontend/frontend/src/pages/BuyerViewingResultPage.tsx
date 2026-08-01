@@ -816,61 +816,10 @@ export default function BuyerViewingResultPage() {
       buyer.inquiry_hearing
     );
 
-    // 後続担当のメールアドレスを取得（CallModePageと同じ仕組み）
-    const followUpAssignee = buyer.follow_up_assignee;
-    console.log('=== カレンダー後続担当デバッグ ===');
-    console.log('follow_up_assignee:', followUpAssignee);
-    console.log('employees配列:', employees);
-    
-    const TENANT_EMAIL = 'tenant@ifoo-oita.com';
-    let assignedEmail = '';
-    if (followUpAssignee) {
-      // 「業者」の場合はテナントメールアドレスを使用
-      if (followUpAssignee === '業者') {
-        assignedEmail = TENANT_EMAIL;
-      } else {
-        // イニシャルまたは名前で従業員マスタを検索
-        const matchedEmployees = employees.filter(e => {
-          const initialsMatch = e.initials === followUpAssignee;
-          const nameMatch = e.name === followUpAssignee;
-          console.log(`従業員チェック: ${e.name} (initials: ${e.initials}, email: ${e.email})`);
-          console.log(`  - initialsMatch: ${initialsMatch}, nameMatch: ${nameMatch}`);
-          return initialsMatch || nameMatch;
-        });
-        
-        console.log('マッチした社員数:', matchedEmployees.length);
-        console.log('マッチした社員:', matchedEmployees);
-        
-        if (matchedEmployees.length > 1) {
-          // 重複イニシャルの場合、エラーメッセージを表示
-          const names = matchedEmployees.map(e => e.name).join(', ');
-          setSnackbar({
-            open: true,
-            message: `後続担当（${followUpAssignee}）が複数の社員に一致します: ${names}`,
-            severity: 'error',
-          });
-          return;
-        }
-        
-        const assignedEmployee = matchedEmployees[0];
-        console.log('見つかった社員:', assignedEmployee?.name);
-        console.log('メールアドレス:', assignedEmployee?.email);
-        
-        if (assignedEmployee?.email) {
-          assignedEmail = assignedEmployee.email;
-        } else {
-          // 後続担当が従業員マスタに存在しない場合、エラーメッセージを表示
-          setSnackbar({
-            open: true,
-            message: `後続担当（${followUpAssignee}）が従業員マスタに見つかりません`,
-            severity: 'error',
-          });
-          return;
-        }
-      }
-    }
-
     // バックエンドAPIを呼び出してカレンダー登録とメール送信を実行
+    // 注意: 従業員のメールアドレス解決はバックエンド側で行う（employeeUtils.getEmployeeByInitials）
+    // フロントエンドの employees ステートに依存すると、ロード完了前にボタンが押された場合に
+    // 「従業員マスタに見つかりません」エラーが出て登録に失敗するため、バックエンドに委譲する
     try {
       const viewingDate = new Date(startDateStr.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6'));
       const endDate = new Date(endDateStr.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6'));

@@ -512,6 +512,11 @@ export class PropertyListingSyncService {
         row['atbb成約済み/非公開'] = dbProperty.atbb_status;
       }
 
+      // confirmationはDBの値を優先（管理画面から手動設定されるため、スプレッドシートの値は古い可能性がある）
+      if (dbProperty.confirmation) {
+        row['確認'] = dbProperty.confirmation;
+      }
+
       // sidebar_statusの再計算結果が現在のDB値と異なる場合も変更として検出
       const newSidebarStatus = this.calculateSidebarStatus(row, gyomuListData);
       const currentSidebarStatus = dbProperty.sidebar_status || '';
@@ -700,13 +705,17 @@ export class PropertyListingSyncService {
               // DBのatbb_statusを優先（管理画面から手動設定されるため、スプレッドシートの値は古い可能性がある）
               const { data: dbRecord2 } = await this.supabase
                 .from('property_listings')
-                .select('report_completed, atbb_status')
+                .select('report_completed, atbb_status, confirmation')
                 .eq('property_number', update.property_number)
                 .single();
               update.spreadsheet_data['報告完了_override'] = dbRecord2?.report_completed || '';
               // atbb_statusはDBの値を優先（スプレッドシート同期から保護されているフィールド）
               if (dbRecord2?.atbb_status) {
                 update.spreadsheet_data['atbb成約済み/非公開'] = dbRecord2.atbb_status;
+              }
+              // confirmationはDBの値を優先（管理画面から手動設定されるため、スプレッドシートの値は古い可能性がある）
+              if (dbRecord2?.confirmation) {
+                update.spreadsheet_data['確認'] = dbRecord2.confirmation;
               }
               const sidebarStatus = this.calculateSidebarStatus(update.spreadsheet_data, gyomuListData);
               changedFieldsOnly.sidebar_status = sidebarStatus;
@@ -959,6 +968,16 @@ export class PropertyListingSyncService {
       // 管理画面で更新時はsyncToSpreadsheet()でスプレッドシートにも書き戻されるため、
       // スプレッドシート側の変更は管理画面経由で反映する運用とする。
       if (dbField === 'atbb_status') {
+        continue;
+      }
+
+      // ⚠️ 重要: confirmationは管理画面から手動で設定されるため、
+      // スプレッドシートからの上書きを防止する。
+      // 管理画面で「済」に変更した後、スプレッドシートへの同期が失敗すると
+      // 定期同期でスプレッドシートの古い「未」値でDBが上書きされ、
+      // 「未完了」カテゴリに戻ってしまうバグを防止。
+      // 管理画面で更新時はsyncConfirmationToSpreadsheet()でスプレッドシートにも書き戻される。
+      if (dbField === 'confirmation') {
         continue;
       }
 

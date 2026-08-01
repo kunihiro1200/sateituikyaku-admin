@@ -62,22 +62,34 @@ router.post(
       // 後続担当イニシャルから従業員情報を取得
       console.log('[BuyerAppointments] Looking up assigned employee by initials:', assignedTo);
       
+      // 「業者」の場合はテナントメールアドレスを直接使用
+      const TENANT_EMAIL = 'tenant@ifoo-oita.com';
       let assignedEmployee;
-      try {
-        assignedEmployee = await employeeUtils.getEmployeeByInitials(assignedTo);
-      } catch (error: any) {
-        // 重複イニシャルエラーをキャッチ
-        if (error.message && error.message.includes('複数の社員に一致します')) {
-          console.error('[BuyerAppointments] Ambiguous initials detected:', error.message);
-          return res.status(400).json({
-            error: {
-              code: 'AMBIGUOUS_INITIALS',
-              message: error.message,
-              retryable: false,
-            },
-          });
+      if (assignedTo === '業者') {
+        assignedEmployee = {
+          id: 'tenant',
+          name: '業者',
+          email: TENANT_EMAIL,
+          initials: '業者',
+        };
+        console.log('[BuyerAppointments] 業者 detected, using tenant email:', TENANT_EMAIL);
+      } else {
+        try {
+          assignedEmployee = await employeeUtils.getEmployeeByInitials(assignedTo);
+        } catch (error: any) {
+          // 重複イニシャルエラーをキャッチ
+          if (error.message && error.message.includes('複数の社員に一致します')) {
+            console.error('[BuyerAppointments] Ambiguous initials detected:', error.message);
+            return res.status(400).json({
+              error: {
+                code: 'AMBIGUOUS_INITIALS',
+                message: error.message,
+                retryable: false,
+              },
+            });
+          }
+          throw error;
         }
-        throw error;
       }
       
       if (!assignedEmployee) {

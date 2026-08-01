@@ -1,6 +1,7 @@
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { EmailTemplateService } from '../services/EmailTemplateService';
+import { clearTemplatesCache } from '../services/EmailTemplateService';
 import { BuyerTemplateService } from '../services/BuyerTemplateService';
 import { StaffManagementService } from '../services/StaffManagementService';
 import { SellerService } from '../services/SellerService.supabase';
@@ -84,6 +85,15 @@ function applyFIBranding(subject: string, body: string): { subject: string; body
 
   return { subject, body };
 }
+
+/**
+ * テンプレートキャッシュをクリア
+ * POST /api/email-templates/clear-cache
+ */
+router.post('/clear-cache', async (_req, res) => {
+  clearTemplatesCache();
+  res.json({ success: true, message: 'テンプレートキャッシュをクリアしました' });
+});
 
 /**
  * Debug endpoint - Google Sheets認証テスト

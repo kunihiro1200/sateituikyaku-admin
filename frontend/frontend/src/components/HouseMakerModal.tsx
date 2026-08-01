@@ -184,6 +184,8 @@ const ALIASES: [RegExp, string][] = [
   [/GIJ|エシカルハウス|デザインハウス大分東/, 'GIJ株式会社'],
   [/三越商事|三越大分|みつこし/, '三越商事'],
   [/オーヴィジョン|O-VISION|o-vision|エストラスト/, 'オーヴィジョン'],
+  [/JET|ジェットコーポレーション|ジェット/, 'ジェットコーポレーション'],
+  [/ヘーベルハウス|へーベルハウス/, 'ヘーベルハウス'],
 ];
 
 function detectMaker(text: string): HouseMakerContent | null {
@@ -195,6 +197,15 @@ function detectMaker(text: string): HouseMakerContent | null {
   // 次に略称・通称で検索
   for (const [pattern, key] of ALIASES) {
     if (pattern.test(plain)) return DATA[key] ?? null;
+  }
+  return null;
+}
+
+/** ALIASESから正式メーカー名を解決する（AI APIへの問い合わせ用） */
+function resolveMakerName(text: string): string | null {
+  const plain = text.replace(/<[^>]+>/g, '');
+  for (const [pattern, key] of ALIASES) {
+    if (pattern.test(plain)) return key;
   }
   return null;
 }
@@ -218,7 +229,11 @@ const HouseMakerModal: React.FC<HouseMakerModalProps> = ({ open, onClose, commen
     setAiError(null);
     setAiContent(null);
 
-    api.post('/summarize/house-maker-info', { commentText: commentHtml })
+    // ALIASESでメーカー名を解決してからAPIに渡す（「JET」→「ジェットコーポレーション」等）
+    const resolvedName = resolveMakerName(commentHtml);
+    const apiText = resolvedName ? `ハウスメーカー：${resolvedName}` : commentHtml;
+
+    api.post('/summarize/house-maker-info', { commentText: apiText })
       .then((res) => {
         const c = res.data?.content;
         if (c && c.makerName) {

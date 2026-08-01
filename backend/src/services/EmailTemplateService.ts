@@ -31,6 +31,14 @@ function sortSellerTemplates(templates: EmailTemplate[]): EmailTemplate[] {
 }
 
 /**
+ * テンプレートキャッシュをクリアする（外部から呼び出し可能）
+ */
+export function clearTemplatesCache(): void {
+  _templatesCache = null;
+  console.log('[EmailTemplateService] テンプレートキャッシュをクリアしました');
+}
+
+/**
  * Service for managing email templates and merging them with data
  * テンプレートはスプレッドシートから動的に取得する
  * C列=区分, D列=種別（タイトル）, E列=件名, F列=本文
