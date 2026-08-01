@@ -1,4 +1,4 @@
-﻿import Anthropic from '@anthropic-ai/sdk';
+import Anthropic from '@anthropic-ai/sdk';
 import { GoogleDriveService } from './GoogleDriveService';
 import { GoogleSheetsClient } from './GoogleSheetsClient';
 
@@ -435,6 +435,9 @@ export class TokiExtractService {
 - 【住所の取得】「付記」で「登記名義人住所変更」「氏名変更」等がある場合は、最新の付記（下線なし）の住所を owner_address として使用すること。所有権保存・移転時の元の住所ではなく、住所変更後の最新住所を優先すること
 - 「所有者」または「共有者」のラベルの直後に記載されている氏名のみを owner_name に使用すること
 - 住所と氏名が連続して記載されている場合、住所の後に続く人名部分のみを氏名として取得する
+- 【重要】owner_address には住所のみを入れること。住所の後に人名が続いている場合、人名部分は owner_address に含めず owner_name に入れること
+  例：「山口市葵二丁目7番40号（シャーメゾンATTENDERⅡ棟201号）　安平賢太郎」→ owner_address: "山口市葵二丁目7番40号（シャーメゾンATTENDERⅡ棟201号）", owner_name: "安平賢太郎"
+- 【重要】owner_name には人名のみを入れること。「権利部」「甲区」「乙区」「所有権に関する事項」等のセクション見出し・ヘッダー文字列が氏名に混入しないよう注意すること。これらは登記簿のセクション区切りであり人名ではない
 - 「共有者」と書かれている場合は1番目の共有者の情報のみ owner_address・owner_name に入れる
 - 2番目以降の共有者は co_owners にまとめて出力する（氏名・住所・持分を改行区切りで）
 - 共有者がいない場合は co_owners は null
@@ -532,9 +535,12 @@ export class TokiExtractService {
     // floor_areasがない場合はbuilding_areaを使用（フォールバック）
     if (!buildingArea) buildingArea = raw.building_area ?? null;
 
+    // 所有者情報のサニタイズ（セクション見出しの混入除去、住所/氏名分離）
+    const sanitized = this.sanitizeOwnerInfo(raw.owner_address, raw.owner_name);
+
     return {
-      ownerAddress: raw.owner_address ?? null,
-      ownerName: raw.owner_name ?? null,
+      ownerAddress: sanitized.ownerAddress,
+      ownerName: sanitized.ownerName,
       coOwners: raw.co_owners ?? null,
       lands: Array.isArray(raw.lands)
         ? raw.lands.map((l: any) => ({
@@ -589,6 +595,9 @@ export class TokiExtractService {
 - 【住所の取得】「付記」で「登記名義人住所変更」「氏名変更」等がある場合は、最新の付記（下線なし）の住所を owner_address として使用すること。所有権保存・移転時の元の住所ではなく、住所変更後の最新住所を優先すること
 - 「所有者」または「共有者」のラベルの直後に記載されている氏名のみを owner_name に使用すること
 - 住所と氏名が連続して記載されている場合、住所の後に続く人名部分のみを氏名として取得する
+- 【重要】owner_address には住所のみを入れること。住所の後に人名が続いている場合、人名部分は owner_address に含めず owner_name に入れること
+  例：「山口市葵二丁目7番40号（シャーメゾンATTENDERⅡ棟201号）　安平賢太郎」→ owner_address: "山口市葵二丁目7番40号（シャーメゾンATTENDERⅡ棟201号）", owner_name: "安平賢太郎"
+- 【重要】owner_name には人名のみを入れること。「権利部」「甲区」「乙区」「所有権に関する事項」等のセクション見出し・ヘッダー文字列が氏名に混入しないよう注意すること。これらは登記簿のセクション区切りであり人名ではない
 - 「共有者」と書かれている場合は1番目の共有者の情報のみ owner_address・owner_name に入れる
 - 2番目以降の共有者は co_owners にまとめて出力する（氏名・住所・持分を改行区切りで）
 - 共有者がいない場合は co_owners は null
@@ -717,9 +726,12 @@ export class TokiExtractService {
       console.log(`[TokiExtract] 延べ床面積計算: ${raw.building_floor_areas.length}階分 → ${buildingArea}`);
     }
 
+    // 所有者情報のサニタイズ（セクション見出しの混入除去、住所/氏名分離）
+    const sanitized = this.sanitizeOwnerInfo(raw.owner_address, raw.owner_name);
+
     return {
-      ownerAddress: raw.owner_address ?? null,
-      ownerName: raw.owner_name ?? null,
+      ownerAddress: sanitized.ownerAddress,
+      ownerName: sanitized.ownerName,
       coOwners: raw.co_owners ?? null,
       lands: Array.isArray(raw.lands)
         ? raw.lands.map((l: any) => ({
@@ -740,6 +752,65 @@ export class TokiExtractService {
       exclusiveArea: raw.exclusive_area ?? null,
       constructionDate: raw.construction_date ?? null,
     };
+  }
+
+  /**
+   * 所有者情報のサニタイズ
+   * - 「権利部」「甲区」「乙区」等のセクション見出しを除去
+   * - owner_address に氏名が混入している場合に分離
+   * - owner_name が明らかにおかしい場合（1文字、記号のみ等）にowner_addressから氏名を抽出
+   */
+  private sanitizeOwnerInfo(rawAddress: string | null, rawName: string | null): { ownerAddress: string | null; ownerName: string | null } {
+    // セクション見出しパターン（登記簿のヘッダー文字列）
+    const sectionHeaders = [
+      '権利部', '甲区', '乙区', '表題部',
+      '所有権に関する事項', '所有権以外の権利に関する事項',
+      '敷地権の目的である土地の表示', '一棟の建物の表示',
+      '専有部分の建物の表示',
+    ];
+    const headerRegex = new RegExp(`(${sectionHeaders.join('|')}).*$`, 'g');
+
+    let ownerAddress = rawAddress ?? null;
+    let ownerName = rawName ?? null;
+
+    // owner_name からセクション見出しを除去
+    if (ownerName) {
+      ownerName = ownerName.replace(headerRegex, '').trim();
+    }
+
+    // owner_address からセクション見出しを除去
+    if (ownerAddress) {
+      ownerAddress = ownerAddress.replace(headerRegex, '').trim();
+    }
+
+    // owner_name が空、1文字、記号のみの場合 → owner_address から氏名を分離
+    const isNameInvalid = !ownerName || ownerName.length <= 1 || /^[（()）\s　]+$/.test(ownerName);
+
+    if (isNameInvalid && ownerAddress) {
+      // 住所の末尾に氏名が付いているパターンを検出
+      // パターン1: 「〇号）　氏名」（マンション名の閉じ括弧の後に氏名）
+      const mansionNameMatch = ownerAddress.match(/^(.+[）\)])\s*(.{2,})$/);
+      // パターン2: 「〇番〇号　氏名」（番号の後にスペースを挟んで氏名）
+      const addressNameMatch = ownerAddress.match(/^(.+\d+号?)\s+(.{2,})$/);
+      // パターン3: 「〇番地〇　氏名」
+      const banchiNameMatch = ownerAddress.match(/^(.+番地?\d*)\s+(.{2,})$/);
+
+      const match = mansionNameMatch || addressNameMatch || banchiNameMatch;
+      if (match) {
+        ownerAddress = match[1].trim();
+        ownerName = match[2].trim();
+        // 分離した氏名からもセクション見出しを除去
+        ownerName = ownerName.replace(headerRegex, '').trim();
+        console.log(`[TokiExtract] 住所から氏名を分離: address="${ownerAddress}", name="${ownerName}"`);
+      }
+    }
+
+    // 最終チェック: ownerName がまだ無効ならnull
+    if (ownerName && (ownerName.length <= 1 || /^[（()）\s　]+$/.test(ownerName))) {
+      ownerName = null;
+    }
+
+    return { ownerAddress, ownerName };
   }
 
   /**
@@ -877,6 +948,9 @@ export class TokiExtractService {
 - 【住所の取得】「付記」で「登記名義人住所変更」「氏名変更」等がある場合は、最新の付記（下線なし）の住所を owner_address として使用すること。所有権保存・移転時の元の住所ではなく、住所変更後の最新住所を優先すること
 - 「所有者」または「共有者」のラベルの直後に記載されている氏名のみを owner_name に使用すること
 - 住所と氏名が連続して記載されている場合、住所の後に続く人名部分のみを氏名として取得する
+- 【重要】owner_address には住所のみを入れること。住所の後に人名が続いている場合、人名部分は owner_address に含めず owner_name に入れること
+  例：「山口市葵二丁目7番40号（シャーメゾンATTENDERⅡ棟201号）　安平賢太郎」→ owner_address: "山口市葵二丁目7番40号（シャーメゾンATTENDERⅡ棟201号）", owner_name: "安平賢太郎"
+- 【重要】owner_name には人名のみを入れること。「権利部」「甲区」「乙区」「所有権に関する事項」等のセクション見出し・ヘッダー文字列が氏名に混入しないよう注意すること。これらは登記簿のセクション区切りであり人名ではない
 - 「権利者その他の事項」欄から住所・氏名を取得する
 - 「共有者」と書かれている場合は1番目の共有者の情報のみ owner_address・owner_name に入れる
 - 2番目以降の共有者は co_owners にまとめて出力する（氏名・住所・持分を改行区切りで）
@@ -1005,9 +1079,12 @@ export class TokiExtractService {
       throw new Error(`JSONパースエラー: ${jsonStr.substring(0, 200)}`);
     }
 
+    // 所有者情報のサニタイズ（セクション見出しの混入除去、住所/氏名分離）
+    const sanitizedKodate = this.sanitizeOwnerInfo(raw.owner_address, raw.owner_name);
+
     return {
-      ownerAddress: raw.owner_address ?? null,
-      ownerName: raw.owner_name ?? null,
+      ownerAddress: sanitizedKodate.ownerAddress,
+      ownerName: sanitizedKodate.ownerName,
       coOwners: raw.co_owners ?? null,
       lands: Array.isArray(raw.lands)
         ? raw.lands.map((l: any) => ({
@@ -1834,6 +1911,9 @@ export class TokiExtractService {
 - 下線付きの抹消事項は除外
 - 「所有者」または「共有者」のラベルの直後に記載されている氏名のみを使用すること
 - 住所と氏名が連続して記載されている場合、住所の後に続く人名部分のみを氏名として取得する
+- 【重要】owner_address には住所のみを入れること。住所の後に人名が続いている場合、人名部分は owner_address に含めず owner_name に入れること
+  例：「山口市葵二丁目7番40号（シャーメゾンATTENDERⅡ棟201号）　安平賢太郎」→ owner_address: "山口市葵二丁目7番40号（シャーメゾンATTENDERⅡ棟201号）", owner_name: "安平賢太郎"
+- 【重要】owner_name には人名のみを入れること。「権利部」「甲区」「乙区」「所有権に関する事項」等のセクション見出し・ヘッダー文字列が氏名に混入しないよう注意すること。これらは登記簿のセクション区切りであり人名ではない
 - 「共有者」と書かれている場合は共有者全員を所有者として扱う
 
 出力ルール：
@@ -2231,6 +2311,9 @@ export class TokiExtractService {
 - 【住所の取得】「付記」で「登記名義人住所変更」「氏名変更」等がある場合は、最新の付記（下線なし）の住所を owner_address として使用すること。所有権保存・移転時の元の住所ではなく、住所変更後の最新住所を優先すること
 - 「所有者」または「共有者」のラベルの直後に記載されている氏名のみを owner_name に使用すること
 - 住所と氏名が連続して記載されている場合、住所の後に続く人名部分のみを氏名として取得する
+- 【重要】owner_address には住所のみを入れること。住所の後に人名が続いている場合、人名部分は owner_address に含めず owner_name に入れること
+  例：「山口市葵二丁目7番40号（シャーメゾンATTENDERⅡ棟201号）　安平賢太郎」→ owner_address: "山口市葵二丁目7番40号（シャーメゾンATTENDERⅡ棟201号）", owner_name: "安平賢太郎"
+- 【重要】owner_name には人名のみを入れること。「権利部」「甲区」「乙区」「所有権に関する事項」等のセクション見出し・ヘッダー文字列が氏名に混入しないよう注意すること。これらは登記簿のセクション区切りであり人名ではない
 - 「権利者その他の事項」欄から住所・氏名を取得する
 - 「共有者」と書かれている場合は1番目の共有者の情報のみ owner_address・owner_name に入れる
 - 2番目以降の共有者は co_owners にまとめて出力する（氏名・住所・持分を改行区切りで）
@@ -2326,9 +2409,12 @@ export class TokiExtractService {
         })
       : [];
 
+    // 所有者情報のサニタイズ（セクション見出しの混入除去、住所/氏名分離）
+    const sanitizedTochi = this.sanitizeOwnerInfo(raw.owner_address, raw.owner_name);
+
     return {
-      ownerAddress: raw.owner_address ?? null,
-      ownerName: raw.owner_name ?? null,
+      ownerAddress: sanitizedTochi.ownerAddress,
+      ownerName: sanitizedTochi.ownerName,
       coOwners: raw.co_owners ?? null,
       lands,
       isSharedOwnership: raw.is_shared_ownership === true,
