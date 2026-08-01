@@ -1303,7 +1303,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         open: true,
         title: '「CWの方へ依頼メール（サイト登録）」が未選択です。必須項目です。',
         emptyFields: ['CWの方へ依頼メール（サイト登録）'],
-        onConfirmAction: 'cw_request_email_site',
+        onConfirmAction: 'mandatory',
       });
       return;
     }
