@@ -920,6 +920,24 @@ export default function BuyerDetailPage() {
   const handleInlineFieldSave = async (fieldName: string, newValue: any) => {
     if (!buyer) return;
 
+    // ★最新状況が必須かつ空の場合、latest_status 以外のフィールド保存をブロック
+    if (fieldName !== 'latest_status') {
+      const currentLatestStatus = buyer.latest_status;
+      if (isLatestStatusRequired(buyer) && (!currentLatestStatus || !String(currentLatestStatus).trim())) {
+        setMissingRequiredFields(prev => {
+          const next = new Set(prev);
+          next.add('latest_status');
+          return next;
+        });
+        setSnackbar({
+          open: true,
+          message: '★最新状況を先に入力してください（必須項目）',
+          severity: 'error',
+        });
+        return { success: false, error: '★最新状況が未入力です' };
+      }
+    }
+
     try {
       const result = await buyerApi.update(
         buyer_number!,
@@ -975,6 +993,22 @@ export default function BuyerDetailPage() {
   const handleSectionSave = async (sectionTitle: string) => {
     const changedFields = sectionChangedFields[sectionTitle] || {};
     if (Object.keys(changedFields).length === 0) return;
+
+    // ★最新状況が必須かつ空の場合、保存をブロック（latest_status自体の変更は除く）
+    if (!('latest_status' in changedFields)) {
+      const currentLatestStatus = buyer?.latest_status;
+      if (buyer && isLatestStatusRequired(buyer) && (!currentLatestStatus || !String(currentLatestStatus).trim())) {
+        setMissingRequiredFields(prev => {
+          const next = new Set(prev);
+          next.add('latest_status');
+          return next;
+        });
+        setPendingMissingLabels(['★最新状況']);
+        setBlockNavigation(true);
+        setValidationDialogOpen(true);
+        return; // 保存中断
+      }
+    }
 
     // 他社物件バリデーション：building_name_priceに値があればother_company_propertyは必須
     const buildingNamePrice = 'building_name_price' in changedFields
