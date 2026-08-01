@@ -879,8 +879,8 @@ export default function BuyerDetailPage() {
   const handleSaveHearing = async () => {
     if (!buyer) return;
 
-    // ★最新状況が必須かつ空の場合、保存をブロック
-    if (isLatestStatusRequired(buyer) && (!buyer.latest_status || !String(buyer.latest_status).trim())) {
+    // ★最新状況が空の場合、ヒアリング保存をブロック（条件に関わらず常に必須）
+    if (!buyer.latest_status || !String(buyer.latest_status).trim()) {
       setMissingRequiredFields(prev => {
         const next = new Set(prev);
         next.add('latest_status');
