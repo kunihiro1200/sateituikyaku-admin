@@ -677,11 +677,18 @@ export class PropertyListingSyncService {
 
               // Only include changed fields
               // ⚠️ 重要: mappedUpdatesに存在しないフィールド（スプレッドシートが空欄）はnullとして更新する
+              // ただし、FAQフィールドはスプレッドシートが空の場合DBの値を保持する
+              const FAQ_PROTECTED_FIELDS = ['pre_viewing_notes', 'property_tax', 'management_fee', 'reserve_fund', 'parking', 'delivery'];
               const changedFieldsOnly: any = {};
               for (const dbField of Object.keys(update.changed_fields)) {
-                changedFieldsOnly[dbField] = mappedUpdates.hasOwnProperty(dbField)
+                const newValue = mappedUpdates.hasOwnProperty(dbField)
                   ? mappedUpdates[dbField]
                   : null;
+                // FAQフィールドでnull→上書きの場合はスキップ
+                if (FAQ_PROTECTED_FIELDS.includes(dbField) && newValue === null) {
+                  continue;
+                }
+                changedFieldsOnly[dbField] = newValue;
               }
 
               // seller_nameのフォールバック保護:
@@ -988,6 +995,18 @@ export class PropertyListingSyncService {
       // 管理画面で更新時はsyncConfirmationToSpreadsheet()でスプレッドシートにも書き戻される。
       if (dbField === 'confirmation') {
         continue;
+      }
+
+      // ⚠️ 重要: 「よく聞かれる項目」フィールドは管理画面から手動入力されることがあるため、
+      // スプレッドシートが空欄の場合にDBの既存値をnullで上書きしない。
+      // スプレッドシートに値がある場合のみ同期する（片方向保護）。
+      const FAQ_FIELDS = ['pre_viewing_notes', 'property_tax', 'management_fee', 'reserve_fund', 'parking', 'delivery'];
+      if (FAQ_FIELDS.includes(dbField)) {
+        const normalizedSheetVal = this.normalizeValue(spreadsheetValue);
+        if (normalizedSheetVal === null) {
+          // スプレッドシートが空欄の場合はDBの値を保持（上書きしない）
+          continue;
+        }
       }
 
       const dbValue = dbProperty[dbField];
