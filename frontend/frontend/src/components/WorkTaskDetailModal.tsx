@@ -2343,73 +2343,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     fetchRevisionHistories();
   }, [open]);
 
-  /**
-   * PDFテキストから甲区の所有者情報を確実に抽出する（正規表現ベース）
-   * Claude画像認識の誤読を回避するため、テキストレイヤーを直接パースする
-   */
-  const extractOwnerFromPdfText = (rawItems: Array<{ str: string; transform: number[] }>): { ownerName: string | null; ownerAddress: string | null } => {
-    // 全itemのstrを結合して1つのテキストストリームにする（順序はPDF内の出現順）
-    const allText = rawItems
-      .map(item => item.str)
-      .map(s => s.replace(/[\u2500-\u257F\u2580-\u259F]/g, ''))
-      .join('');
-
-    // 甲区ブロックを乙区の前で切り取る
-    const koukuMatch = allText.match(/甲\s*区[\s\S]*?所\s*有\s*権\s*に\s*関([\s\S]*?)(?:乙\s*区|$)/);
-    const koukuText = koukuMatch ? koukuMatch[1] : allText;
-
-    let ownerName: string | null = null;
-    let ownerAddress: string | null = null;
-
-    // 「所有者」の後に続くテキストブロックを取得（最後のマッチ＝最新所有者）
-    // 例: "所有者 福岡市城南区片江二丁目１４番１９－　８０４号　南 里 哲"
-    const ownerBlocks = [...koukuText.matchAll(/所有者\s+([\s\S]*?)(?=所有者|付記|順位\s*\d|登記の目的|抵当|$)/g)];
-    if (ownerBlocks.length > 0) {
-      const block = ownerBlocks[ownerBlocks.length - 1][1]
-        .replace(/[\u2500-\u257F\u2580-\u259F]/g, '') // 残存罫線除去
-        .replace(/順位\s*[\d１-９０]+\s*番の登記を移記/g, '')   // 「順位N番の登記を移記」を除去（全角数字対応）
-        .replace(/[　\s]+/g, ' ')                      // スペース正規化
-        .trim();
-
-      console.log('[TokiExtract] 所有者ブロック:', block);
-
-      // 住所と氏名を分離
-      // 氏名は末尾の漢字1〜6文字（スペース区切りでも可）
-      // 例1: "福岡市城南区片江二丁目１４番１９－ ８０４号 南 里 哲"
-      // 例2: "東京都杉並区和田一丁目６８番１３号 南里哲"
-      // → 末尾から「漢字のみのトークン」をつなげて氏名、残りを住所とする
-      const tokens = block.split(' ').filter(t => t.length > 0);
-
-      // 末尾から漢字のみのトークンを集める（氏名部分）
-      const nameTokens: string[] = [];
-      let addrEndIdx = tokens.length;
-      for (let i = tokens.length - 1; i >= 0; i--) {
-        const t = tokens[i];
-        // 漢字・ひらがな・カタカナのみで構成される短いトークン（1〜4文字）→ 氏名
-        if (/^[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]{1,4}$/.test(t)) {
-          nameTokens.unshift(t);
-          addrEndIdx = i;
-        } else {
-          break;
-        }
-      }
-
-      if (nameTokens.length > 0) {
-        ownerName = nameTokens.join('') || null;
-        ownerAddress = tokens.slice(0, addrEndIdx).join('').replace(/\s+/g, '') || null;
-      } else {
-        // 分離できない場合：最後のスペース区切りトークンを氏名とする
-        if (tokens.length >= 2) {
-          ownerName = tokens[tokens.length - 1] || null;
-          ownerAddress = tokens.slice(0, -1).join('') || null;
-        }
-      }
-    }
-
-    console.log('[TokiExtract] テキスト抽出 ownerName:', ownerName, 'ownerAddress:', ownerAddress);
-    return { ownerName, ownerAddress };
-  };
-
   // 謄本読み取りハンドラー（マンション用・管理規約と同じ画像変換方式）
   const handleTokiExtract = async () => {
     if (!propertyNumber) return;
@@ -2436,8 +2369,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         const b64Res = await api.get(`/api/drive/files/${pdf.fileId}/base64`);
         const { base64: pdfBase64 } = b64Res.data;
 
-        // PDF → テキスト抽出（所有者情報の確実な取得のため）＋ 画像変換（その他の項目用）
-        setSnackbar({ open: true, message: `テキスト・画像変換中... ${pdf.fileName}`, severity: 'info' });
+        // PDF → 画像変換 ＋ テキスト抽出
+        setSnackbar({ open: true, message: `画像変換中... ${pdf.fileName}`, severity: 'info' });
         const pdfjsLib = await import('pdfjs-dist');
         pdfjsLib.GlobalWorkerOptions.workerSrc =
           'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
@@ -2446,20 +2379,13 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         const pdfDoc = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
         const totalPages = pdfDoc.numPages;
 
-        // PDFテキスト全ページを抽出（rawItemsを収集）
-        const allRawItems: Array<{ str: string; transform: number[] }> = [];
+        // PDFテキストを全ページ抽出（所有者情報のClaude判別用）
+        let pdfRawText = '';
         for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
           const page = await pdfDoc.getPage(pageNum);
           const textContent = await page.getTextContent();
-          for (const item of textContent.items as any[]) {
-            if (item.str !== undefined && item.transform) {
-              allRawItems.push({ str: item.str, transform: item.transform });
-            }
-          }
+          pdfRawText += (textContent.items as any[]).map((item: any) => item.str).join(' ') + '\n';
         }
-
-        // テキストから所有者情報を正規表現で抽出（Claude誤読を回避）
-        const textOwner = extractOwnerFromPdfText(allRawItems);
 
         const pages: Array<{ name: string; mimeType: string; base64: string }> = [];
         for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
@@ -2523,12 +2449,18 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           }
         }
 
-        // テキスト抽出した所有者情報でClaudeの誤認識を上書き（甲区のみから取得した確実な値を優先）
-        if (mergedResult && textOwner.ownerName) {
-          mergedResult.ownerName = textOwner.ownerName;
-        }
-        if (mergedResult && textOwner.ownerAddress) {
-          mergedResult.ownerAddress = textOwner.ownerAddress;
+        // テキストからClaudeで所有者情報を確実に抽出して上書き（画像認識の誤読を補正）
+        setSnackbar({ open: true, message: `所有者情報をテキストから確認中...`, severity: 'info' });
+        try {
+          const ownerRes = await api.post(`/api/toki-extract/${propertyNumber}/extract-owner-from-text`, {
+            pdfText: pdfRawText,
+          });
+          // 氏名のみテキスト抽出結果で上書き（住所は画像解析＋プロンプトで対応）
+          if (ownerRes.data?.ownerName && mergedResult) {
+            mergedResult.ownerName = ownerRes.data.ownerName;
+          }
+        } catch (e) {
+          console.warn('[TokiExtract] テキストベース所有者抽出失敗（画像解析結果を使用）:', e);
         }
 
         fileNames.push(pdf.fileName);
