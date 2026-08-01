@@ -2367,7 +2367,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     if (ownerBlocks.length > 0) {
       const block = ownerBlocks[ownerBlocks.length - 1][1]
         .replace(/[\u2500-\u257F\u2580-\u259F]/g, '') // 残存罫線除去
-        .replace(/順位\s*\d+\s*番の登記を移記/g, '')   // 「順位N番の登記を移記」を除去
+        .replace(/順位\s*[\d１-９０]+\s*番の登記を移記/g, '')   // 「順位N番の登記を移記」を除去（全角数字対応）
         .replace(/[　\s]+/g, ' ')                      // スペース正規化
         .trim();
 
