@@ -1987,10 +1987,10 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
           // 履歴保存失敗でもチャット送信は成功しているのでエラーにしない
         }
         
-        // 確認フィールドを「未」に自動設定
+        // 確認フィールドを「未」に自動設定（sidebar_statusも連動して更新）
         await supabase
           .from('property_listings')
-          .update({ confirmation: '未' })
+          .update({ confirmation: '未', sidebar_status: '未完了' })
           .eq('property_number', propertyNumber);
         
         // スプレッドシートへ直接同期（キューを使わず即座に実行）
@@ -2054,10 +2054,10 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
       // 履歴保存失敗でもチャット送信は成功しているのでエラーにしない
     }
 
-    // 確認フィールドを「未」に自動設定
+    // 確認フィールドを「未」に自動設定（sidebar_statusも連動して更新）
     await supabase
       .from('property_listings')
-      .update({ confirmation: '未' })
+      .update({ confirmation: '未', sidebar_status: '未完了' })
       .eq('property_number', propertyNumber);
 
     // スプレッドシートへ直接同期（キューを使わず即座に実行）
