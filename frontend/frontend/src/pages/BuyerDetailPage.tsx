@@ -677,6 +677,8 @@ export default function BuyerDetailPage() {
   // ヒアリング項目のローカル編集値（HTML）
   const [hearingEditValue, setHearingEditValue] = useState<string>('');
   const [hearingSaving, setHearingSaving] = useState(false);
+  // ヒアリング保存時の★最新状況確認ダイアログ用
+  const [hearingLatestStatusDialogOpen, setHearingLatestStatusDialogOpen] = useState(false);
   // 担当への伝言/質問事項用RichTextEditorのref
   const messageToAssigneeEditorRef = useRef<RichTextCommentEditorHandle>(null);
   // 担当への伝言/質問事項のローカル編集値（HTML）
@@ -875,20 +877,39 @@ export default function BuyerDetailPage() {
     }
   };
 
-  // ヒアリング項目の保存ハンドラー
+  // ヒアリング項目の保存ボタン押下ハンドラー（★最新状況確認ダイアログを表示）
   const handleSaveHearing = async () => {
     if (!buyer) return;
 
-    // ★最新状況が空の場合、ヒアリング保存をブロック（条件に関わらず常に必須）
+    // ★最新状況が空の場合はハイライト表示
     if (!buyer.latest_status || !String(buyer.latest_status).trim()) {
       setMissingRequiredFields(prev => {
         const next = new Set(prev);
         next.add('latest_status');
         return next;
       });
-      setPendingMissingLabels(['★最新状況']);
-      setBlockNavigation(true);
-      setValidationDialogOpen(true);
+    }
+
+    // 常に確認ダイアログを表示（★最新状況が入力済みでも確認を求める）
+    setHearingLatestStatusDialogOpen(true);
+  };
+
+  // ヒアリング項目の保存ハンドラー（★最新状況確認後に実行される実体）
+  const executeHearingSave = async () => {
+    if (!buyer) return;
+
+    // ★最新状況が空の場合は保存をブロック
+    if (!buyer.latest_status || !String(buyer.latest_status).trim()) {
+      setMissingRequiredFields(prev => {
+        const next = new Set(prev);
+        next.add('latest_status');
+        return next;
+      });
+      setSnackbar({
+        open: true,
+        message: '★最新状況を先に入力してください（必須項目）',
+        severity: 'error',
+      });
       return; // 保存中断
     }
 
@@ -4359,6 +4380,50 @@ TEL：097-533-2022`;
           navigate(`/buyers/${buyer_number}/desired-conditions`);
         }}
       />
+
+      {/* ヒアリング保存時の★最新状況確認ダイアログ */}
+      <Dialog
+        open={hearingLatestStatusDialogOpen}
+        onClose={() => setHearingLatestStatusDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ color: 'warning.main', fontWeight: 'bold' }}>
+          ★最新状況の確認
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            ヒアリング項目を保存する前に、★最新状況が正しいか確認してください。
+          </Typography>
+          <Typography variant="body1" sx={{ fontWeight: 'bold', bgcolor: 'grey.100', p: 1.5, borderRadius: 1 }}>
+            現在の★最新状況: {buyer?.latest_status || '（未入力）'}
+          </Typography>
+          {(!buyer?.latest_status || !String(buyer?.latest_status).trim()) && (
+            <Typography variant="body2" color="error" sx={{ mt: 1, fontWeight: 'bold' }}>
+              ★最新状況が未入力です。先に入力してからヒアリングを保存してください。
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setHearingLatestStatusDialogOpen(false)}
+            color="inherit"
+          >
+            戻る
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => {
+              setHearingLatestStatusDialogOpen(false);
+              executeHearingSave();
+            }}
+            disabled={!buyer?.latest_status || !String(buyer?.latest_status).trim()}
+          >
+            確認済み・保存する
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={snackbar.open}
