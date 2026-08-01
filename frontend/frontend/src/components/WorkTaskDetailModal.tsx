@@ -2332,6 +2332,70 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     fetchRevisionHistories();
   }, [open]);
 
+  /**
+   * PDFテキストから甲区の所有者情報を確実に抽出する（正規表現ベース）
+   * Claude画像認識の誤読を回避するため、テキストレイヤーを直接パースする
+   */
+  const extractOwnerFromPdfText = (pdfText: string): { ownerName: string | null; ownerAddress: string | null } => {
+    // 甲区ブロックを抽出（乙区が始まる前まで）
+    const koukuMatch = pdfText.match(/権\s*利\s*部\s*[（(]\s*甲\s*区\s*[）)]([\s\S]*?)(?:権\s*利\s*部\s*[（(]\s*乙\s*区|$)/);
+    const koukuText = koukuMatch ? koukuMatch[1] : pdfText;
+
+    // 「所有権保存」または「所有権移転」の行から所有者を取得
+    // 下線あり（抹消）は除外：テキストレイヤーでは抹消行の検出が難しいため
+    // 最後に出てくる「所有者」「所有権保存」「所有権移転」付近の氏名・住所を取得する
+
+    // 全スペースを正規化して1行にまとめる
+    const normalized = koukuText.replace(/[\u3000\s]+/g, ' ').trim();
+
+    let ownerName: string | null = null;
+    let ownerAddress: string | null = null;
+
+    // 「所有者 住所 氏名」パターンを探す（最後のマッチを使用）
+    // 謄本テキストの典型パターン: 所有者　〒xxx 住所　氏名
+    const ownerBlockPattern = /所有者\s+([\s\S]*?)(?=所有者|共有者|順位|付記|登記の目的|$)/g;
+    const ownerMatches = [...normalized.matchAll(ownerBlockPattern)];
+
+    if (ownerMatches.length > 0) {
+      // 最後の「所有者」ブロックを使用（最新の所有者）
+      const lastBlock = ownerMatches[ownerMatches.length - 1][1].trim();
+
+      // 住所と氏名を分離
+      // 典型パターン: "東京都○○区○○ 田中 太郎" または "〒123-4567 東京都○○ 田中太郎"
+      // 都道府県で始まる住所 → その後が氏名
+      const addrNameMatch = lastBlock.match(/^((?:[^ ]*(?:都|道|府|県)[^ ]*(?:市|区|町|村)[^ ]*?(?:\d+番\d*号?|[0-9０-９]+丁目[0-9０-９-－]+|[0-9０-９]+番地[0-9０-９]*|号)*\s*(?:[^ ]*(?:棟|号|室))?)\s*)(.+)$/);
+      if (addrNameMatch) {
+        ownerAddress = addrNameMatch[1].trim().replace(/\s+/g, '') || null;
+        ownerName = addrNameMatch[2].trim().replace(/\s+/g, '') || null;
+      } else {
+        // 住所が分離できない場合は最後のトークンを氏名とする
+        const tokens = lastBlock.split(/\s+/).filter(Boolean);
+        if (tokens.length >= 2) {
+          ownerName = tokens[tokens.length - 1] || null;
+          ownerAddress = tokens.slice(0, -1).join('') || null;
+        } else if (tokens.length === 1) {
+          ownerName = tokens[0] || null;
+        }
+      }
+    }
+
+    // 「共有者」パターンも確認（所有者が共有者表記の場合）
+    if (!ownerName) {
+      const coOwnerMatch = normalized.match(/共有者\s+([\s\S]*?)(?=共有者|順位|付記|登記の目的|$)/);
+      if (coOwnerMatch) {
+        const block = coOwnerMatch[1].trim();
+        const tokens = block.split(/\s+/).filter(Boolean);
+        if (tokens.length >= 1) {
+          ownerName = tokens[tokens.length - 1] || null;
+          if (tokens.length >= 2) ownerAddress = tokens.slice(0, -1).join('') || null;
+        }
+      }
+    }
+
+    console.log('[TokiExtract] テキスト抽出 ownerName:', ownerName, 'ownerAddress:', ownerAddress);
+    return { ownerName, ownerAddress };
+  };
+
   // 謄本読み取りハンドラー（マンション用・管理規約と同じ画像変換方式）
   const handleTokiExtract = async () => {
     if (!propertyNumber) return;
@@ -2358,8 +2422,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         const b64Res = await api.get(`/api/drive/files/${pdf.fileId}/base64`);
         const { base64: pdfBase64 } = b64Res.data;
 
-        // PDF → 画像変換（pdfjs-dist使用）
-        setSnackbar({ open: true, message: `画像変換中... ${pdf.fileName}`, severity: 'info' });
+        // PDF → テキスト抽出（所有者情報の確実な取得のため）＋ 画像変換（その他の項目用）
+        setSnackbar({ open: true, message: `テキスト・画像変換中... ${pdf.fileName}`, severity: 'info' });
         const pdfjsLib = await import('pdfjs-dist');
         pdfjsLib.GlobalWorkerOptions.workerSrc =
           'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
@@ -2367,6 +2431,20 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         const pdfBytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
         const pdfDoc = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
         const totalPages = pdfDoc.numPages;
+
+        // PDFテキスト全ページを抽出
+        let fullPdfText = '';
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+          const page = await pdfDoc.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items
+            .map((item: any) => item.str)
+            .join('');
+          fullPdfText += pageText + '\n';
+        }
+
+        // テキストから所有者情報を正規表現で抽出（Claude誤読を回避）
+        const textOwner = extractOwnerFromPdfText(fullPdfText);
 
         const pages: Array<{ name: string; mimeType: string; base64: string }> = [];
         for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
@@ -2428,6 +2506,14 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               mergedResult.lands = chunkResult.lands;
             }
           }
+        }
+
+        // テキスト抽出した所有者情報でClaudeの誤認識を上書き（甲区のみから取得した確実な値を優先）
+        if (mergedResult && textOwner.ownerName) {
+          mergedResult.ownerName = textOwner.ownerName;
+        }
+        if (mergedResult && textOwner.ownerAddress) {
+          mergedResult.ownerAddress = textOwner.ownerAddress;
         }
 
         fileNames.push(pdf.fileName);
