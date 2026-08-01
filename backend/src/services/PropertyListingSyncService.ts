@@ -1438,8 +1438,8 @@ export class PropertyListingSyncService {
       // 🚨 修正: SUUMO URLが空であることを厳密にチェック
       const isSuumoUrlEmpty = !suumoUrl || (typeof suumoUrl === 'string' && suumoUrl.trim() === '');
 
-      // レインズ証明書メールが未済: null、空、「未」の場合のみ未済とする（それ以外は担当者イニシャルや「連絡済み」など済み扱い）
-      const isReinsCertificateNotDone = !reinsCertificateEmail || (typeof reinsCertificateEmail === 'string' && (reinsCertificateEmail.trim() === '' || reinsCertificateEmail === '未'));
+      // レインズ証明書メールが未済: 「未」の場合のみ未済とする（null/空/担当者イニシャル/連絡済みは全て済み扱い）
+      const isReinsCertificateNotDone = (typeof reinsCertificateEmail === 'string' && reinsCertificateEmail === '未');
 
       if (scheduledDate &&
           this.isDateBeforeYesterday(scheduledDate) &&

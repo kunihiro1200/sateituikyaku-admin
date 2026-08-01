@@ -200,9 +200,9 @@ export const calculatePropertyStatus = (
   if (isPublic && workTaskMap) {
     const pubDate = workTaskMap.get(listing.property_number);
     const isSuumoUrlEmpty = !listing.suumo_url;
-    // レインズ証明書メールが未済: null、空、「未」の場合のみ未済とする（それ以外は担当者イニシャルや「連絡済み」など済み扱い）
+    // レインズ証明書メールが未済: 「未」の場合のみ未済とする（null/空/担当者イニシャル/連絡済みは全て済み扱い）
     const reinsCertValue = listing.reins_certificate_email;
-    const isReinsCertificateNotDone = !reinsCertValue || reinsCertValue === '未';
+    const isReinsCertificateNotDone = reinsCertValue === '未';
 
     if (pubDate && pubDate <= yesterday && listing.suumo_registered !== 'S不要') {
       // 一般・公開中: SUUMO URLが空なら「SUUMO URL 要登録」
