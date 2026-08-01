@@ -2336,59 +2336,60 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
    * PDFテキストから甲区の所有者情報を確実に抽出する（正規表現ベース）
    * Claude画像認識の誤読を回避するため、テキストレイヤーを直接パースする
    */
-  const extractOwnerFromPdfText = (pdfText: string): { ownerName: string | null; ownerAddress: string | null } => {
-    // 甲区ブロックを抽出（乙区が始まる前まで）
-    const koukuMatch = pdfText.match(/権\s*利\s*部\s*[（(]\s*甲\s*区\s*[）)]([\s\S]*?)(?:権\s*利\s*部\s*[（(]\s*乙\s*区|$)/);
-    const koukuText = koukuMatch ? koukuMatch[1] : pdfText;
+  const extractOwnerFromPdfText = (rawItems: Array<{ str: string; transform: number[] }>): { ownerName: string | null; ownerAddress: string | null } => {
+    // 罫線文字・ボックス描画文字のみの要素を除外し、テキスト要素だけを抽出
+    const BOX_CHARS = /^[\u2500-\u257F\u2580-\u259F┃│┌┐└┘├┤┬┴┼━┏┓┗┛┠┨┯┷┿┝┥┰┸╂\s　*]+$/;
+    const textItems = rawItems
+      .map(item => ({ str: item.str.replace(/[\u2500-\u257F\u2580-\u259F┃│┌┐└┘├┤┬┴┼━┏┓┗┛┠┨┯┷┿┝┥┰┸╂]/g, '').trim(), y: item.transform[5] }))
+      .filter(item => item.str.length > 0 && !BOX_CHARS.test(item.str));
 
-    // 「所有権保存」または「所有権移転」の行から所有者を取得
-    // 下線あり（抹消）は除外：テキストレイヤーでは抹消行の検出が難しいため
-    // 最後に出てくる「所有者」「所有権保存」「所有権移転」付近の氏名・住所を取得する
+    // Y座標でグループ化して行ごとのテキストを復元（上から順）
+    const lineMap = new Map<number, string[]>();
+    for (const item of textItems) {
+      const roundedY = Math.round(item.y / 3) * 3; // 3px以内を同一行とみなす
+      if (!lineMap.has(roundedY)) lineMap.set(roundedY, []);
+      lineMap.get(roundedY)!.push(item.str);
+    }
+    const lines = [...lineMap.entries()]
+      .sort((a, b) => b[0] - a[0]) // Y座標降順（上から下）
+      .map(([, strs]) => strs.join(' ').replace(/\s+/g, ' ').trim())
+      .filter(l => l.length > 0);
 
-    // 全スペースを正規化して1行にまとめる
-    const normalized = koukuText.replace(/[\u3000\s]+/g, ' ').trim();
+    const fullText = lines.join('\n');
+    console.log('[TokiExtract] PDFテキスト行(先頭50行):', lines.slice(0, 50));
+
+    // 甲区ブロックを抽出（乙区の前まで）
+    const koukuMatch = fullText.match(/甲\s*区([\s\S]*?)(?:乙\s*区|$)/);
+    const koukuText = koukuMatch ? koukuMatch[1] : fullText;
 
     let ownerName: string | null = null;
     let ownerAddress: string | null = null;
 
-    // 「所有者 住所 氏名」パターンを探す（最後のマッチを使用）
-    // 謄本テキストの典型パターン: 所有者　〒xxx 住所　氏名
-    const ownerBlockPattern = /所有者\s+([\s\S]*?)(?=所有者|共有者|順位|付記|登記の目的|$)/g;
-    const ownerMatches = [...normalized.matchAll(ownerBlockPattern)];
+    // 「所有者」の後の行から住所・氏名を取得
+    const koukuLines = koukuText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    for (let i = 0; i < koukuLines.length; i++) {
+      if (koukuLines[i].includes('所有者')) {
+        // 「所有者」と同じ行 or 次の行に住所・氏名が続く
+        const candidate = koukuLines[i].replace(/.*所有者\s*/, '').trim();
+        const nextLine = koukuLines[i + 1] || '';
 
-    if (ownerMatches.length > 0) {
-      // 最後の「所有者」ブロックを使用（最新の所有者）
-      const lastBlock = ownerMatches[ownerMatches.length - 1][1].trim();
-
-      // 住所と氏名を分離
-      // 典型パターン: "東京都○○区○○ 田中 太郎" または "〒123-4567 東京都○○ 田中太郎"
-      // 都道府県で始まる住所 → その後が氏名
-      const addrNameMatch = lastBlock.match(/^((?:[^ ]*(?:都|道|府|県)[^ ]*(?:市|区|町|村)[^ ]*?(?:\d+番\d*号?|[0-9０-９]+丁目[0-9０-９-－]+|[0-9０-９]+番地[0-9０-９]*|号)*\s*(?:[^ ]*(?:棟|号|室))?)\s*)(.+)$/);
-      if (addrNameMatch) {
-        ownerAddress = addrNameMatch[1].trim().replace(/\s+/g, '') || null;
-        ownerName = addrNameMatch[2].trim().replace(/\s+/g, '') || null;
-      } else {
-        // 住所が分離できない場合は最後のトークンを氏名とする
-        const tokens = lastBlock.split(/\s+/).filter(Boolean);
-        if (tokens.length >= 2) {
-          ownerName = tokens[tokens.length - 1] || null;
-          ownerAddress = tokens.slice(0, -1).join('') || null;
-        } else if (tokens.length === 1) {
-          ownerName = tokens[0] || null;
+        // 都道府県を含む行を住所、その次を氏名とみなす
+        if (candidate && /都|道|府|県/.test(candidate)) {
+          ownerAddress = candidate.replace(/\s+/g, '').trim() || null;
+          // 次行が住所の続きか氏名か判定（数字・番地なら続き、漢字のみなら氏名）
+          if (nextLine && !/所有者|付記|順位|登記の目的|抹消/.test(nextLine)) {
+            if (/^[一-龥ぁ-ん]{1,5}$/.test(nextLine.replace(/\s/g, ''))) {
+              ownerName = nextLine.replace(/\s+/g, '').trim() || null;
+            }
+          }
+        } else if (nextLine && /都|道|府|県/.test(nextLine)) {
+          ownerAddress = nextLine.replace(/\s+/g, '').trim() || null;
+          const afterNext = koukuLines[i + 2] || '';
+          if (afterNext && /^[一-龥ぁ-ん]{1,5}$/.test(afterNext.replace(/\s/g, '')) && !/所有者|付記|順位|登記の目的/.test(afterNext)) {
+            ownerName = afterNext.replace(/\s+/g, '').trim() || null;
+          }
         }
-      }
-    }
-
-    // 「共有者」パターンも確認（所有者が共有者表記の場合）
-    if (!ownerName) {
-      const coOwnerMatch = normalized.match(/共有者\s+([\s\S]*?)(?=共有者|順位|付記|登記の目的|$)/);
-      if (coOwnerMatch) {
-        const block = coOwnerMatch[1].trim();
-        const tokens = block.split(/\s+/).filter(Boolean);
-        if (tokens.length >= 1) {
-          ownerName = tokens[tokens.length - 1] || null;
-          if (tokens.length >= 2) ownerAddress = tokens.slice(0, -1).join('') || null;
-        }
+        // 最後の「所有者」ブロックを使いたいので continue せず上書き
       }
     }
 
@@ -2432,19 +2433,20 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         const pdfDoc = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
         const totalPages = pdfDoc.numPages;
 
-        // PDFテキスト全ページを抽出
-        let fullPdfText = '';
+        // PDFテキスト全ページを抽出（rawItemsを収集）
+        const allRawItems: Array<{ str: string; transform: number[] }> = [];
         for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
           const page = await pdfDoc.getPage(pageNum);
           const textContent = await page.getTextContent();
-          const pageText = textContent.items
-            .map((item: any) => item.str)
-            .join('');
-          fullPdfText += pageText + '\n';
+          for (const item of textContent.items as any[]) {
+            if (item.str !== undefined && item.transform) {
+              allRawItems.push({ str: item.str, transform: item.transform });
+            }
+          }
         }
 
         // テキストから所有者情報を正規表現で抽出（Claude誤読を回避）
-        const textOwner = extractOwnerFromPdfText(fullPdfText);
+        const textOwner = extractOwnerFromPdfText(allRawItems);
 
         const pages: Array<{ name: string; mimeType: string; base64: string }> = [];
         for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
