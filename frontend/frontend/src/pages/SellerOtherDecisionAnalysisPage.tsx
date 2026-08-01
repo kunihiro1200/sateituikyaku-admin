@@ -270,12 +270,14 @@ export default function SellerOtherDecisionAnalysisPage() {
             📋 {assigneeStats?.monthLabel}　{seller?.visitAssignee}の他決案件一覧（{sameMonthCases.length}件）
           </Typography>
           <TableContainer component={Paper} sx={{ boxShadow: 2 }}>
-            <Table size="small">
+            <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#e53935' }}>
-                  {['売主番号','物件住所','他決日','ステータス／競合／他決要因','競合名・理由詳細'].map(h => (
-                    <TableCell key={h} sx={{ color: '#fff', fontWeight: 'bold' }}>{h}</TableCell>
-                  ))}
+                  <TableCell sx={{ color: '#fff', fontWeight: 'bold', width: 90 }}>売主番号</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 'bold', width: 130 }}>物件住所</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 'bold', width: 90 }}>他決日</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 'bold', width: 200 }}>ステータス／競合／他決要因</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>競合名・理由詳細</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -283,14 +285,14 @@ export default function SellerOtherDecisionAnalysisPage() {
                   <TableRow key={row.id}
                     sx={{ bgcolor: row.isCurrentSeller ? '#ffcdd2' : idx % 2 === 0 ? '#fff' : '#fafafa', '&:hover': { bgcolor: '#fce4ec' }, cursor: 'pointer' }}
                     onClick={() => navigate(`/sellers/${row.id}/call`)}>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <TableCell sx={{ verticalAlign: 'top' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
                         <Typography variant="body2" sx={{ fontWeight: row.isCurrentSeller ? 'bold' : 'normal', fontSize: '0.8rem' }}>{row.sellerNumber}</Typography>
                         {row.isCurrentSeller && <Chip label="この案件" size="small" sx={{ height: 16, fontSize: '0.6rem', bgcolor: '#e53935', color: '#fff' }} />}
                       </Box>
                     </TableCell>
-                    <TableCell sx={{ fontSize: '0.8rem', maxWidth: 180 }}>{row.propertyAddress || '未登録'}</TableCell>
-                    <TableCell sx={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{fmt(row.decisionDate)}</TableCell>
+                    <TableCell sx={{ fontSize: '0.8rem', verticalAlign: 'top', wordBreak: 'break-all' }}>{row.propertyAddress || '未登録'}</TableCell>
+                    <TableCell sx={{ fontSize: '0.8rem', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{fmt(row.decisionDate)}</TableCell>
                     <TableCell sx={{ verticalAlign: 'top' }}>
                       {/* ステータス */}
                       <Chip label={row.status} size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: STATUS_COLORS[row.status] || '#757575', color: '#fff' }} />
@@ -307,7 +309,9 @@ export default function SellerOtherDecisionAnalysisPage() {
                           : <Typography variant="caption" color="text.secondary">要因：－</Typography>}
                       </Box>
                     </TableCell>
-                    <TableCell sx={{ fontSize: '0.8rem', verticalAlign: 'top' }}>{row.reason || <Typography variant="caption" color="text.secondary">－</Typography>}</TableCell>
+                    <TableCell sx={{ fontSize: '0.8rem', verticalAlign: 'top', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6 }}>
+                      {row.reason || <Typography variant="caption" color="text.secondary">－</Typography>}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
