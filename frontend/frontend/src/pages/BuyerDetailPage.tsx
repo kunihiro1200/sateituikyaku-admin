@@ -879,6 +879,19 @@ export default function BuyerDetailPage() {
   const handleSaveHearing = async () => {
     if (!buyer) return;
 
+    // ★最新状況が必須かつ空の場合、保存をブロック
+    if (isLatestStatusRequired(buyer) && (!buyer.latest_status || !String(buyer.latest_status).trim())) {
+      setMissingRequiredFields(prev => {
+        const next = new Set(prev);
+        next.add('latest_status');
+        return next;
+      });
+      setPendingMissingLabels(['★最新状況']);
+      setBlockNavigation(true);
+      setValidationDialogOpen(true);
+      return; // 保存中断
+    }
+
     // 近隣物件送付メール必須バリデーション（受付日が2026/4/1以降、業者問合せの場合は不要）
     if (buyer.reception_date && buyer.broker_inquiry !== '業者問合せ') {
       const receptionDate = new Date(buyer.reception_date as string);
@@ -1188,6 +1201,20 @@ export default function BuyerDetailPage() {
   // 担当への伝言/質問事項の保存ハンドラー
   const handleSaveMessageToAssignee = async () => {
     if (!buyer) return;
+
+    // ★最新状況が必須かつ空の場合、保存をブロック
+    if (isLatestStatusRequired(buyer) && (!buyer.latest_status || !String(buyer.latest_status).trim())) {
+      setMissingRequiredFields(prev => {
+        const next = new Set(prev);
+        next.add('latest_status');
+        return next;
+      });
+      setPendingMissingLabels(['★最新状況']);
+      setBlockNavigation(true);
+      setValidationDialogOpen(true);
+      return; // 保存中断
+    }
+
     setMessageToAssigneeSaving(true);
     try {
       const result = await buyerApi.update(
