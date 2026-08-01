@@ -2340,39 +2340,57 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     // 全itemのstrを結合して1つのテキストストリームにする（順序はPDF内の出現順）
     const allText = rawItems
       .map(item => item.str)
-      // 罫線文字を除去
       .map(s => s.replace(/[\u2500-\u257F\u2580-\u259F]/g, ''))
       .join('');
-
-    console.log('[TokiExtract] 結合テキスト(先頭500文字):', allText.substring(0, 500));
-    console.log('[TokiExtract] 結合テキスト(500-1500文字):', allText.substring(500, 1500));
-    console.log('[TokiExtract] 結合テキスト(1500-2500文字):', allText.substring(1500, 2500));
 
     // 甲区ブロックを乙区の前で切り取る
     const koukuMatch = allText.match(/甲\s*区[\s\S]*?所\s*有\s*権\s*に\s*関([\s\S]*?)(?:乙\s*区|$)/);
     const koukuText = koukuMatch ? koukuMatch[1] : allText;
 
-    console.log('[TokiExtract] 甲区テキスト:', koukuText.substring(0, 500));
-
     let ownerName: string | null = null;
     let ownerAddress: string | null = null;
 
-    // 「所有者」の直後にある住所（都道府県含む）と氏名を取得
-    // パターン: 所有者[空白/記号]*住所[空白/記号]*氏名
-    // 最後の「所有者」ブロックを使う（最新の所有者）
-    const ownerPattern = /所有者\s*((?:福岡|東京|大阪|京都|神奈川|北海道|青森|岩手|宮城|秋田|山形|福島|茨城|栃木|群馬|埼玉|千葉|新潟|富山|石川|福井|山梨|長野|静岡|愛知|三重|滋賀|兵庫|奈良|和歌山|鳥取|島根|岡山|広島|山口|徳島|香川|愛媛|高知|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄)[^\s]*(?:\s[^\s]+)*?)\s+([一-龥ぁ-ゔァ-ヴー\u4E00-\u9FFF]{1,10})\s/g;
-    const matches = [...koukuText.matchAll(ownerPattern)];
-    console.log('[TokiExtract] 所有者パターンマッチ数:', matches.length);
+    // 「所有者」の後に続くテキストブロックを取得（最後のマッチ＝最新所有者）
+    // 例: "所有者 福岡市城南区片江二丁目１４番１９－　８０４号　南 里 哲"
+    const ownerBlocks = [...koukuText.matchAll(/所有者\s+([\s\S]*?)(?=所有者|付記|順位\s*\d|登記の目的|抵当|$)/g)];
+    if (ownerBlocks.length > 0) {
+      const block = ownerBlocks[ownerBlocks.length - 1][1]
+        .replace(/[\u2500-\u257F\u2580-\u259F]/g, '') // 残存罫線除去
+        .replace(/[　\s]+/g, ' ')                      // スペース正規化
+        .trim();
 
-    if (matches.length > 0) {
-      const last = matches[matches.length - 1];
-      ownerAddress = last[1].replace(/\s+/g, '').trim() || null;
-      ownerName = last[2].replace(/\s+/g, '').trim() || null;
-    } else {
-      // フォールバック: 「所有者」の後のテキストをそのまま取得してClaudeに任せる
-      const simpleMatch = koukuText.match(/所有者\s+(.{5,60}?)(?=所有者|付記|順位|登記の目的|抵当|$)/s);
-      if (simpleMatch) {
-        console.log('[TokiExtract] フォールバックテキスト:', simpleMatch[1]);
+      console.log('[TokiExtract] 所有者ブロック:', block);
+
+      // 住所と氏名を分離
+      // 氏名は末尾の漢字1〜6文字（スペース区切りでも可）
+      // 例1: "福岡市城南区片江二丁目１４番１９－ ８０４号 南 里 哲"
+      // 例2: "東京都杉並区和田一丁目６８番１３号 南里哲"
+      // → 末尾から「漢字のみのトークン」をつなげて氏名、残りを住所とする
+      const tokens = block.split(' ').filter(t => t.length > 0);
+
+      // 末尾から漢字のみのトークンを集める（氏名部分）
+      const nameTokens: string[] = [];
+      let addrEndIdx = tokens.length;
+      for (let i = tokens.length - 1; i >= 0; i--) {
+        const t = tokens[i];
+        // 漢字・ひらがな・カタカナのみで構成される短いトークン（1〜4文字）→ 氏名
+        if (/^[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]{1,4}$/.test(t)) {
+          nameTokens.unshift(t);
+          addrEndIdx = i;
+        } else {
+          break;
+        }
+      }
+
+      if (nameTokens.length > 0) {
+        ownerName = nameTokens.join('') || null;
+        ownerAddress = tokens.slice(0, addrEndIdx).join('').replace(/\s+/g, '') || null;
+      } else {
+        // 分離できない場合：最後のスペース区切りトークンを氏名とする
+        if (tokens.length >= 2) {
+          ownerName = tokens[tokens.length - 1] || null;
+          ownerAddress = tokens.slice(0, -1).join('') || null;
+        }
       }
     }
 
