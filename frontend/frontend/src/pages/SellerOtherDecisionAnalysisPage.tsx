@@ -47,6 +47,7 @@ export default function SellerOtherDecisionAnalysisPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
+  const [editingQuestions, setEditingQuestions] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!id) return;
@@ -99,6 +100,7 @@ export default function SellerOtherDecisionAnalysisPage() {
       const answersArray = (qa.ai_questions || []).map(q => ({ questionId: q.id, answer: answers[q.id] || '' }));
       const res = await api.put(`/api/sellers/${id}/other-decision-analysis/qa/answer`, { answers: answersArray });
       setQa(res.data.qa);
+      setEditingQuestions(new Set());
       setSnackbar({ open: true, message: '回答を保存しました' });
     } catch { setSnackbar({ open: true, message: '保存に失敗しました' }); }
     finally { setSaving(false); }
@@ -213,20 +215,39 @@ export default function SellerOtherDecisionAnalysisPage() {
             ) : (
               <Box>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  {qa.ai_questions.map((q, idx) => (
+                  {qa.ai_questions.map((q, idx) => {
+                    const savedAnswer = qa.answers?.find((a: QaAnswer) => a.questionId === q.id)?.answer || '';
+                    const isSaved = savedAnswer.trim() !== '';
+                    const isEditing = editingQuestions.has(q.id);
+                    return (
                     <Box key={q.id}>
                       <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
                         <Chip label={`Q${idx+1}`} size="small" sx={{ bgcolor: '#e53935', color: '#fff', fontWeight: 'bold', minWidth: 36 }} />
                         <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#7f0000', lineHeight: 1.5 }}>{q.question}</Typography>
                       </Box>
-                      <TextField fullWidth multiline minRows={2} maxRows={6} size="small"
-                        placeholder={`${seller.visitAssignee}さんの回答を入力...`}
-                        value={answers[q.id] || ''}
-                        onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
-                        sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#fff', '&:hover fieldset': { borderColor: '#e53935' }, '&.Mui-focused fieldset': { borderColor: '#c62828' } } }}
-                      />
+                      {isSaved && !isEditing ? (
+                        <Box sx={{ bgcolor: '#fff', border: '1px solid #ef9a9a', borderRadius: 1, p: 1.5 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.5 }}>
+                            <Button size="small" variant="text" sx={{ fontSize: '0.7rem', color: '#c62828', minWidth: 0, p: '0 4px' }}
+                              onClick={() => setEditingQuestions(prev => { const s = new Set(prev); s.add(q.id); return s; })}>
+                              編集
+                            </Button>
+                          </Box>
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, color: '#333' }}>
+                            {answers[q.id] || savedAnswer}
+                          </Typography>
+                        </Box>
+                      ) : (
+                        <TextField fullWidth multiline minRows={2} size="small"
+                          placeholder={`${seller.visitAssignee}さんの回答を入力...`}
+                          value={answers[q.id] || ''}
+                          onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                          sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#fff', '&:hover fieldset': { borderColor: '#e53935' }, '&.Mui-focused fieldset': { borderColor: '#c62828' } } }}
+                        />
+                      )}
                     </Box>
-                  ))}
+                    );
+                  })}
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 3, flexWrap: 'wrap' }}>
                   <Button variant="contained" startIcon={saving ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
