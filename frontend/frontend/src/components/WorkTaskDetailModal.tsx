@@ -2337,61 +2337,42 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
    * Claude画像認識の誤読を回避するため、テキストレイヤーを直接パースする
    */
   const extractOwnerFromPdfText = (rawItems: Array<{ str: string; transform: number[] }>): { ownerName: string | null; ownerAddress: string | null } => {
-    // 罫線文字・ボックス描画文字のみの要素を除外し、テキスト要素だけを抽出
-    const BOX_CHARS = /^[\u2500-\u257F\u2580-\u259F┃│┌┐└┘├┤┬┴┼━┏┓┗┛┠┨┯┷┿┝┥┰┸╂\s　*]+$/;
-    const textItems = rawItems
-      .map(item => ({ str: item.str.replace(/[\u2500-\u257F\u2580-\u259F┃│┌┐└┘├┤┬┴┼━┏┓┗┛┠┨┯┷┿┝┥┰┸╂]/g, '').trim(), y: item.transform[5] }))
-      .filter(item => item.str.length > 0 && !BOX_CHARS.test(item.str));
+    // 全itemのstrを結合して1つのテキストストリームにする（順序はPDF内の出現順）
+    const allText = rawItems
+      .map(item => item.str)
+      // 罫線文字を除去
+      .map(s => s.replace(/[\u2500-\u257F\u2580-\u259F]/g, ''))
+      .join('');
 
-    // Y座標でグループ化して行ごとのテキストを復元（上から順）
-    const lineMap = new Map<number, string[]>();
-    for (const item of textItems) {
-      const roundedY = Math.round(item.y / 3) * 3; // 3px以内を同一行とみなす
-      if (!lineMap.has(roundedY)) lineMap.set(roundedY, []);
-      lineMap.get(roundedY)!.push(item.str);
-    }
-    const lines = [...lineMap.entries()]
-      .sort((a, b) => b[0] - a[0]) // Y座標降順（上から下）
-      .map(([, strs]) => strs.join(' ').replace(/\s+/g, ' ').trim())
-      .filter(l => l.length > 0);
+    console.log('[TokiExtract] 結合テキスト(先頭500文字):', allText.substring(0, 500));
+    console.log('[TokiExtract] 結合テキスト(500-1500文字):', allText.substring(500, 1500));
+    console.log('[TokiExtract] 結合テキスト(1500-2500文字):', allText.substring(1500, 2500));
 
-    const fullText = lines.join('\n');
-    console.log('[TokiExtract] PDFテキスト行(先頭50行):', lines.slice(0, 50));
-    console.log('[TokiExtract] PDFテキスト全行数:', lines.length);
-    console.log('[TokiExtract] 全行テキスト:\n' + lines.join('\n'));
+    // 甲区ブロックを乙区の前で切り取る
+    const koukuMatch = allText.match(/甲\s*区[\s\S]*?所\s*有\s*権\s*に\s*関([\s\S]*?)(?:乙\s*区|$)/);
+    const koukuText = koukuMatch ? koukuMatch[1] : allText;
 
-    // 甲区ブロックを抽出（乙区の前まで）
-    const koukuMatch = fullText.match(/甲\s*区([\s\S]*?)(?:乙\s*区|$)/);
-    const koukuText = koukuMatch ? koukuMatch[1] : fullText;
+    console.log('[TokiExtract] 甲区テキスト:', koukuText.substring(0, 500));
 
     let ownerName: string | null = null;
     let ownerAddress: string | null = null;
 
-    // 「所有者」の後の行から住所・氏名を取得
-    const koukuLines = koukuText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    for (let i = 0; i < koukuLines.length; i++) {
-      if (koukuLines[i].includes('所有者')) {
-        // 「所有者」と同じ行 or 次の行に住所・氏名が続く
-        const candidate = koukuLines[i].replace(/.*所有者\s*/, '').trim();
-        const nextLine = koukuLines[i + 1] || '';
+    // 「所有者」の直後にある住所（都道府県含む）と氏名を取得
+    // パターン: 所有者[空白/記号]*住所[空白/記号]*氏名
+    // 最後の「所有者」ブロックを使う（最新の所有者）
+    const ownerPattern = /所有者\s*((?:福岡|東京|大阪|京都|神奈川|北海道|青森|岩手|宮城|秋田|山形|福島|茨城|栃木|群馬|埼玉|千葉|新潟|富山|石川|福井|山梨|長野|静岡|愛知|三重|滋賀|兵庫|奈良|和歌山|鳥取|島根|岡山|広島|山口|徳島|香川|愛媛|高知|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄)[^\s]*(?:\s[^\s]+)*?)\s+([一-龥ぁ-ゔァ-ヴー\u4E00-\u9FFF]{1,10})\s/g;
+    const matches = [...koukuText.matchAll(ownerPattern)];
+    console.log('[TokiExtract] 所有者パターンマッチ数:', matches.length);
 
-        // 都道府県を含む行を住所、その次を氏名とみなす
-        if (candidate && /都|道|府|県/.test(candidate)) {
-          ownerAddress = candidate.replace(/\s+/g, '').trim() || null;
-          // 次行が住所の続きか氏名か判定（数字・番地なら続き、漢字のみなら氏名）
-          if (nextLine && !/所有者|付記|順位|登記の目的|抹消/.test(nextLine)) {
-            if (/^[一-龥ぁ-ん]{1,5}$/.test(nextLine.replace(/\s/g, ''))) {
-              ownerName = nextLine.replace(/\s+/g, '').trim() || null;
-            }
-          }
-        } else if (nextLine && /都|道|府|県/.test(nextLine)) {
-          ownerAddress = nextLine.replace(/\s+/g, '').trim() || null;
-          const afterNext = koukuLines[i + 2] || '';
-          if (afterNext && /^[一-龥ぁ-ん]{1,5}$/.test(afterNext.replace(/\s/g, '')) && !/所有者|付記|順位|登記の目的/.test(afterNext)) {
-            ownerName = afterNext.replace(/\s+/g, '').trim() || null;
-          }
-        }
-        // 最後の「所有者」ブロックを使いたいので continue せず上書き
+    if (matches.length > 0) {
+      const last = matches[matches.length - 1];
+      ownerAddress = last[1].replace(/\s+/g, '').trim() || null;
+      ownerName = last[2].replace(/\s+/g, '').trim() || null;
+    } else {
+      // フォールバック: 「所有者」の後のテキストをそのまま取得してClaudeに任せる
+      const simpleMatch = koukuText.match(/所有者\s+(.{5,60}?)(?=所有者|付記|順位|登記の目的|抵当|$)/s);
+      if (simpleMatch) {
+        console.log('[TokiExtract] フォールバックテキスト:', simpleMatch[1]);
       }
     }
 
