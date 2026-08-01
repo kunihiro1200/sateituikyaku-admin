@@ -892,6 +892,17 @@ export default function BuyerDetailPage() {
       return; // 保存中断
     }
 
+    // ヒアリング項目（問い合わせ内容）が空の場合、保存をブロック
+    const hearingText = hearingEditValue ? hearingEditValue.replace(/<[^>]*>/g, '').trim() : '';
+    if (!hearingText) {
+      setSnackbar({
+        open: true,
+        message: '問い合わせ内容（ヒアリング項目）を入力してください（必須項目）',
+        severity: 'error',
+      });
+      return; // 保存中断
+    }
+
     // 近隣物件送付メール必須バリデーション（受付日が2026/4/1以降、業者問合せの場合は不要）
     if (buyer.reception_date && buyer.broker_inquiry !== '業者問合せ') {
       const receptionDate = new Date(buyer.reception_date as string);
