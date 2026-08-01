@@ -1296,9 +1296,20 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       return;
     }
 
+    // CWの方へ依頼メール（サイト登録）が未選択の場合はブロック
+    const cwRequestEmailSiteVal = getValue('cw_request_email_site');
+    if (!cwRequestEmailSiteVal) {
+      setValidationWarningDialog({
+        open: true,
+        title: '「CWの方へ依頼メール（サイト登録）」が未選択です。必須項目です。',
+        emptyFields: ['CWの方へ依頼メール（サイト登録）'],
+        onConfirmAction: 'cw_request_email_site',
+      });
+      return;
+    }
+
     // 格納先URLが空欄で、CWの方へ依頼メール（サイト登録）または間取図 に値が入っている場合はブロック
     const storageUrl = getValue('storage_url');
-    const cwRequestEmailSiteVal = getValue('cw_request_email_site');
     const floorPlanVal = getValue('floor_plan');
     if (!storageUrl && (cwRequestEmailSiteVal || floorPlanVal)) {
       setValidationWarningDialog({
@@ -3170,7 +3181,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <Box ref={storageUrlRef}>
           <EditableField label="格納先URL" field="storage_url" type="url" />
         </Box>
-        <EditableYesNo label="CWの方へ依頼メール（サイト登録）" field="cw_request_email_site" />
+        <EditableYesNo
+          label={!getValue('cw_request_email_site') ? 'CWの方へ依頼メール（サイト登録）*（必須）' : 'CWの方へ依頼メール（サイト登録）*'}
+          field="cw_request_email_site"
+          labelColor={!getValue('cw_request_email_site') ? 'error' : undefined}
+        />
         <EditableButtonSelect label="CWの方*" field="cw_person" options={['浅沼様（土日OK, 平日は中１日あけて納期）', '山崎様']} />
         <EditableField label="メール配信" field="email_distribution" />
         <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>

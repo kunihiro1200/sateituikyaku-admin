@@ -2248,6 +2248,7 @@ export class SellerService extends BaseRepository {
         comments: seller.comments,
         // Visit appointment fields
         visitDate: seller.visit_date || undefined, // TIMESTAMP型（ISO 8601形式: YYYY-MM-DDTHH:mm:ss.sssZ）
+        visitTime: seller.visit_time || undefined, // HH:mm形式（visit_dateがDATE型の場合のフォールバック用）
         visitAcquisitionDate: seller.visit_acquisition_date || undefined, // 文字列のまま返す（YYYY-MM-DD形式、タイムゾーン変換なし）
         // イニシャルをフルネームに変換（フォールバック付き）
         visitAssignee: visitAssigneeFullName || seller.visit_assignee || undefined,

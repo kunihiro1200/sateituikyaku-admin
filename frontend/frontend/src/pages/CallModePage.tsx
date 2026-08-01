@@ -2150,9 +2150,16 @@ const CallModePage = () => {
       // 訪問予約情報の初期化
       // TIMESTAMP型対応: visit_dateから日時を抽出してdatetime-local形式に変換 (YYYY-MM-DDTHH:mm)
       // タイムゾーン変換なし: 文字列を直接パースして "YYYY-MM-DDTHH:mm" 形式に変換
-      const appointmentDateLocal = sellerData.visitDate
+      let appointmentDateLocal = sellerData.visitDate
         ? parseVisitDateToLocal(sellerData.visitDate)
         : '';
+      // visit_dateの時刻が00:00かつvisitTimeが存在する場合はvisitTimeを使用（DATE型フォールバック）
+      if (appointmentDateLocal && appointmentDateLocal.endsWith('T00:00') && sellerData.visitTime) {
+        const timeStr = String(sellerData.visitTime).substring(0, 5); // "HH:mm"
+        if (timeStr && timeStr !== '00:00') {
+          appointmentDateLocal = appointmentDateLocal.replace('T00:00', `T${timeStr}`);
+        }
+      }
       setEditedAppointmentDate(appointmentDateLocal);
       // visitAssignee（営業担当イニシャル）を優先して初期化
       // assignedTo はメールアドレスフィールドのため使用しない
@@ -3257,9 +3264,16 @@ const CallModePage = () => {
         if (updatedSeller) {
           setSeller(updatedSeller);
           // 訪問日関連フィールドを更新
-          const appointmentDateLocal = updatedSeller.visitDate
+          let appointmentDateLocal = updatedSeller.visitDate
             ? parseVisitDateToLocal(updatedSeller.visitDate)
             : '';
+          // visit_dateの時刻が00:00かつvisitTimeが存在する場合はvisitTimeを使用（DATE型フォールバック）
+          if (appointmentDateLocal && appointmentDateLocal.endsWith('T00:00') && updatedSeller.visitTime) {
+            const timeStr = String(updatedSeller.visitTime).substring(0, 5);
+            if (timeStr && timeStr !== '00:00') {
+              appointmentDateLocal = appointmentDateLocal.replace('T00:00', `T${timeStr}`);
+            }
+          }
           setEditedAppointmentDate(appointmentDateLocal);
           setEditedAssignedTo(updatedSeller.visitAssignee || updatedSeller.visitAssigneeInitials || '');
           setEditedVisitValuationAcquirer(updatedSeller.visitValuationAcquirer || '');
@@ -6530,6 +6544,13 @@ HP：https://ifoo-oita.com/
                         if (seller?.visitDate) {
                           // タイムゾーン変換なし: 文字列を直接パースして "YYYY-MM-DDTHH:mm" 形式に変換
                           cancelDateLocal = parseVisitDateToLocal(seller.visitDate);
+                          // visit_dateの時刻が00:00かつvisitTimeが存在する場合はvisitTimeを使用
+                          if (cancelDateLocal.endsWith('T00:00') && seller.visitTime) {
+                            const timeStr = String(seller.visitTime).substring(0, 5);
+                            if (timeStr && timeStr !== '00:00') {
+                              cancelDateLocal = cancelDateLocal.replace('T00:00', `T${timeStr}`);
+                            }
+                          }
                         } else if (seller?.appointmentDate) {
                           const d = new Date(seller.appointmentDate);
                           const pad = (n: number) => String(n).padStart(2, '0');
@@ -6590,14 +6611,20 @@ HP：https://ifoo-oita.com/
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Typography variant="body1" sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
                             {seller.visitDate ? (
-                              // visit_date (TIMESTAMP型) から日時を抽出して表示
+                              // visit_date から日時を抽出して表示
+                              // タイムゾーン変換を回避するため parseVisitDateToLocal で文字列パース
                               (() => {
-                                const visitDateTime = new Date(seller.visitDate);
-                                const year = visitDateTime.getFullYear();
-                                const month = String(visitDateTime.getMonth() + 1).padStart(2, '0');
-                                const day = String(visitDateTime.getDate()).padStart(2, '0');
-                                const hours = String(visitDateTime.getHours()).padStart(2, '0');
-                                const minutes = String(visitDateTime.getMinutes()).padStart(2, '0');
+                                const localStr = parseVisitDateToLocal(String(seller.visitDate)); // "YYYY-MM-DDTHH:mm"
+                                const [datePart, timePart = '00:00'] = localStr.split('T');
+                                const [year, month, day] = datePart.split('-');
+                                let hours = timePart.split(':')[0];
+                                let minutes = timePart.split(':')[1];
+                                // visit_dateの時刻が00:00かつvisitTimeが存在する場合はvisitTimeを使用
+                                if (hours === '00' && minutes === '00' && seller.visitTime) {
+                                  const timeParts = String(seller.visitTime).split(':');
+                                  hours = timeParts[0]?.padStart(2, '0') || '00';
+                                  minutes = timeParts[1]?.padStart(2, '0') || '00';
+                                }
                                 return `${year}/${month}/${day} ${hours}:${minutes}`;
                               })()
                             ) : (
@@ -6617,7 +6644,19 @@ HP：https://ifoo-oita.com/
                             startIcon={<CalendarToday />}
                             onClick={() => {
                               // Googleカレンダーに飛ぶ
-                              const date = seller.visitDate ? new Date(seller.visitDate) : new Date(seller.appointmentDate!);
+                              // タイムゾーン変換を回避するため parseVisitDateToLocal で文字列からパース
+                              let date: Date;
+                              if (seller.visitDate) {
+                                const localStr = parseVisitDateToLocal(String(seller.visitDate));
+                                let [dPart, tPart = '00:00'] = localStr.split('T');
+                                // visit_dateの時刻が00:00かつvisitTimeが存在する場合はvisitTimeを使用
+                                if (tPart === '00:00' && seller.visitTime) {
+                                  tPart = String(seller.visitTime).substring(0, 5);
+                                }
+                                date = new Date(`${dPart}T${tPart}`);
+                              } else {
+                                date = new Date(seller.appointmentDate!);
+                              }
                               const startDateStr = date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
                               
                               // 終了時刻を開始時刻の60分後に設定
