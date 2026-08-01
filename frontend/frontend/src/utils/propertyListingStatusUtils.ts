@@ -196,21 +196,14 @@ export const calculatePropertyStatus = (
     }
   }
 
-  // 6. 公開中で、公開予定日が昨日以前、SUUMO URLが空またはレインズ証明書メール未済、Suumo登録が「S不要」でない
+  // 6. 公開中で、公開予定日が昨日以前、SUUMO URLが空、Suumo登録が「S不要」でない
   if (isPublic && workTaskMap) {
     const pubDate = workTaskMap.get(listing.property_number);
-    const isSuumoUrlEmpty = !listing.suumo_url;
-    // レインズ証明書メールが未済: 「未」の場合のみ未済とする（null/空/担当者イニシャル/連絡済みは全て済み扱い）
-    const reinsCertValue = listing.reins_certificate_email;
-    const isReinsCertificateNotDone = reinsCertValue === '未';
 
-    if (pubDate && pubDate <= yesterday && listing.suumo_registered !== 'S不要') {
-      // 一般・公開中: SUUMO URLが空なら「SUUMO URL 要登録」
-      if (isGeneralPublic && isSuumoUrlEmpty) {
+    if (pubDate && pubDate <= yesterday && !listing.suumo_url && listing.suumo_registered !== 'S不要') {
+      if (isGeneralPublic) {
         return PROPERTY_STATUS_DEFINITIONS.find(s => s.key === 'suumo_required')!;
-      }
-      // 専任・公開中: SUUMO URLが空 OR レインズ証明書メールが未済なら「レインズ登録＋SUUMO URL 要登録」
-      if (isExclusivePublic && (isSuumoUrlEmpty || isReinsCertificateNotDone)) {
+      } else {
         return PROPERTY_STATUS_DEFINITIONS.find(s => s.key === 'reins_suumo_required')!;
       }
     }

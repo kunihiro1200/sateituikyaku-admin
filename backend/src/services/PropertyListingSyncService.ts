@@ -1433,25 +1433,17 @@ export class PropertyListingSyncService {
       const scheduledDate = this.lookupGyomuList(propertyNumber, gyomuListData, '公開予定日');
       const suumoUrl = row['Suumo URL'];
       const suumoRegistration = row['Suumo登録'];
-      const reinsCertificateEmail = row['レインズ証明書メール済み'];
 
       // 🚨 修正: SUUMO URLが空であることを厳密にチェック
       const isSuumoUrlEmpty = !suumoUrl || (typeof suumoUrl === 'string' && suumoUrl.trim() === '');
 
-      // レインズ証明書メールが未済: 「未」の場合のみ未済とする（null/空/担当者イニシャル/連絡済みは全て済み扱い）
-      const isReinsCertificateNotDone = (typeof reinsCertificateEmail === 'string' && reinsCertificateEmail === '未');
-
       if (scheduledDate &&
           this.isDateBeforeYesterday(scheduledDate) &&
+          isSuumoUrlEmpty &&
           suumoRegistration !== 'S不要') {
-        // 一般・公開中: SUUMO URLが空なら「SUUMO URL 要登録」
-        if (atbbStatus === '一般・公開中' && isSuumoUrlEmpty) {
-          return 'SUUMO URL　要登録';
-        }
-        // 専任・公開中: SUUMO URLが空 OR レインズ証明書メールが未済なら「レインズ登録＋SUUMO URL 要登録」
-        if (atbbStatus === '専任・公開中' && (isSuumoUrlEmpty || isReinsCertificateNotDone)) {
-          return 'レインズ登録＋SUUMO URL 要登録';
-        }
+        return atbbStatus === '一般・公開中'
+          ? 'SUUMO URL　要登録'
+          : 'レインズ登録＋SUUMO URL 要登録';
       }
     }
 
