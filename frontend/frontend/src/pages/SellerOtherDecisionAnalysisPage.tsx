@@ -13,6 +13,25 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import SaveIcon from '@mui/icons-material/Save';
 import api from '../services/api';
 
+/** テキスト内のURLをクリッカブルリンクに変換して表示するコンポーネント */
+const TextWithLinks = ({ text, sx }: { text: string; sx?: object }) => {
+  const URL_REGEX = /(https?:\/\/[^\s\u3000　、。！？「」【】『』〔〕]+)/g;
+  const parts = text.split(URL_REGEX);
+  return (
+    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, color: '#333', wordBreak: 'break-all', ...sx }}>
+      {parts.map((part, i) =>
+        URL_REGEX.test(part) ? (
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+            style={{ color: '#1565c0', textDecorationLine: 'underline' }}
+            onClick={(e) => e.stopPropagation()}>
+            {part}
+          </a>
+        ) : part
+      )}
+    </Typography>
+  );
+};
+
 interface OtherDecisionCase {
   id: string; sellerNumber: string; propertyAddress: string; status: string;
   decisionDate: string | null; competitors: string[]; factors: string[];
@@ -233,9 +252,7 @@ export default function SellerOtherDecisionAnalysisPage() {
                               編集
                             </Button>
                           </Box>
-                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, color: '#333' }}>
-                            {answers[q.id] || savedAnswer}
-                          </Typography>
+                          <TextWithLinks text={answers[q.id] || savedAnswer} />
                         </Box>
                       ) : (
                         <TextField fullWidth multiline minRows={2} size="small"
