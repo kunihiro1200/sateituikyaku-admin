@@ -2357,6 +2357,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
     const fullText = lines.join('\n');
     console.log('[TokiExtract] PDFテキスト行(先頭50行):', lines.slice(0, 50));
+    console.log('[TokiExtract] PDFテキスト全行数:', lines.length);
+    console.log('[TokiExtract] 全行テキスト:\n' + lines.join('\n'));
 
     // 甲区ブロックを抽出（乙区の前まで）
     const koukuMatch = fullText.match(/甲\s*区([\s\S]*?)(?:乙\s*区|$)/);
