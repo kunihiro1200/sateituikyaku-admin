@@ -43,6 +43,24 @@ export const THREE_CALLS_CONFIRMED_OPTIONS: FieldOption[] = [
 ];
 
 /**
+ * 1週間架電確認済みの選択肢
+ */
+export const ONE_WEEK_CALL_CONFIRMED_OPTIONS: FieldOption[] = [
+  { value: '1週間架電OK', label: '1週間架電OK' },
+  { value: '1週間架電未', label: '1週間架電未' },
+  { value: '他', label: '他' },
+];
+
+/**
+ * 1か月後架電確認済みの選択肢
+ */
+export const ONE_MONTH_CALL_CONFIRMED_OPTIONS: FieldOption[] = [
+  { value: '1か月架電OK', label: '1か月架電OK' },
+  { value: '1か月架電未', label: '1か月架電未' },
+  { value: '他', label: '他' },
+];
+
+/**
  * メール種別の選択肢
  */
 export const EMAIL_TYPE_OPTIONS: FieldOption[] = [

@@ -431,6 +431,32 @@ function syncUpdatesToSupabase_(sheetRows) {
         needsUpdate = true;
       }
     }
+
+    // 1週間架電確認済み
+    var sheetOneWeekCallConfirmed = getRowValue_(row, '1週間架電確認済み') ? String(getRowValue_(row, '1週間架電確認済み')) : null;
+    var normalizedSheetOneWeekCallConfirmed = normalizeValue(sheetOneWeekCallConfirmed);
+    var normalizedDbOneWeekCallConfirmed = normalizeValue(dbBuyer.one_week_call_confirmed);
+    if (normalizedSheetOneWeekCallConfirmed !== normalizedDbOneWeekCallConfirmed) {
+      if (normalizedSheetOneWeekCallConfirmed === null && normalizedDbOneWeekCallConfirmed !== null) {
+        Logger.log('  🛡️ ' + buyerNumber + ': 1週間架電確認済みはDBに値があるためスキップ (DB値: ' + normalizedDbOneWeekCallConfirmed + ')');
+      } else {
+        updateData.one_week_call_confirmed = normalizedSheetOneWeekCallConfirmed;
+        needsUpdate = true;
+      }
+    }
+
+    // 1か月後架電確認済み
+    var sheetOneMonthCallConfirmed = getRowValue_(row, '1か月後架電確認済み') ? String(getRowValue_(row, '1か月後架電確認済み')) : null;
+    var normalizedSheetOneMonthCallConfirmed = normalizeValue(sheetOneMonthCallConfirmed);
+    var normalizedDbOneMonthCallConfirmed = normalizeValue(dbBuyer.one_month_call_confirmed);
+    if (normalizedSheetOneMonthCallConfirmed !== normalizedDbOneMonthCallConfirmed) {
+      if (normalizedSheetOneMonthCallConfirmed === null && normalizedDbOneMonthCallConfirmed !== null) {
+        Logger.log('  🛡️ ' + buyerNumber + ': 1か月後架電確認済みはDBに値があるためスキップ (DB値: ' + normalizedDbOneMonthCallConfirmed + ')');
+      } else {
+        updateData.one_month_call_confirmed = normalizedSheetOneMonthCallConfirmed;
+        needsUpdate = true;
+      }
+    }
     
     // 受付日
     var sheetReceptionDate = formatDateToISO_(getRowValue_(row, '受付日'));

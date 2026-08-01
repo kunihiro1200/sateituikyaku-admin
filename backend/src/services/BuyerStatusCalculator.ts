@@ -45,6 +45,8 @@ export interface BuyerData {
   inquiry_email_phone?: string | null;
   inquiry_email_reply?: string | null;
   three_calls_confirmed?: string | null;
+  one_week_call_confirmed?: string | null;
+  one_month_call_confirmed?: string | null;
   broker_inquiry?: string | null;
   inquiry_source?: string | null;
   viewing_result_follow_up?: string | null;
@@ -311,6 +313,36 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
     ) {
       const status = '3回架電未';
       return { status, priority: 7, matchedCondition: '3回架電が未完了', color: getStatusColor(status) };
+    }
+
+    // Priority 7.1: 1週間架電未
+    // 条件: [1週間架電確認済み] = "1週間架電未" AND ([【問合メール】電話対応] = "不通" OR "未")
+    if (
+      and(
+        equals(buyer.one_week_call_confirmed, '1週間架電未'),
+        or(
+          equals(buyer.inquiry_email_phone, '不通'),
+          equals(buyer.inquiry_email_phone, '未')
+        )
+      )
+    ) {
+      const status = '1週間架電未';
+      return { status, priority: 7.1, matchedCondition: '1週間架電が未完了', color: getStatusColor(status) };
+    }
+
+    // Priority 7.2: 1か月後架電未
+    // 条件: [1か月後架電確認済み] = "1か月架電未" AND ([【問合メール】電話対応] = "不通" OR "未")
+    if (
+      and(
+        equals(buyer.one_month_call_confirmed, '1か月架電未'),
+        or(
+          equals(buyer.inquiry_email_phone, '不通'),
+          equals(buyer.inquiry_email_phone, '未')
+        )
+      )
+    ) {
+      const status = '1か月後架電未';
+      return { status, priority: 7.2, matchedCondition: '1か月後架電が未完了', color: getStatusColor(status) };
     }
 
     return calculateBuyerStatusComplete(buyer);

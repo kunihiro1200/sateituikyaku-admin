@@ -18,6 +18,8 @@ interface CategoryCounts {
   todayCallWithInfo?: number;  // 🆕 当日TEL（内容）- コミュニケーション情報あり
   todayCallWithInfoLabels?: Record<string, number>;  // 🆕 ラベル別カウント
   threeCallUnchecked?: number;  // ３回架電未カテゴリ（新規）
+  oneWeekCallUnchecked?: number;  // 1週間架電未カテゴリ
+  oneMonthCallUnchecked?: number;  // 1か月後架電未カテゴリ
   assignedCounts?: Record<string, number>;
   todayCallAssignedCounts?: Record<string, number>;
   projectAssigneeOnlyTodayCallCounts?: Record<string, number>;  // 🆕 案件担当のみの当日TEL（当日TEL直下に表示）
@@ -87,6 +89,10 @@ function getCategoryColor(category: string): string {
       return '#555555'; // グレー
     case 'threeCallUnchecked':
       return '#d32f2f'; // 赤
+    case 'oneWeekCallUnchecked':
+      return '#d32f2f'; // 赤
+    case 'oneMonthCallUnchecked':
+      return '#d32f2f'; // 赤
     case 'todayCallAssigned':
       return '#ff5722'; // オレンジ
     // 新規追加（2026年4月）- 全て赤字
@@ -133,6 +139,10 @@ function getCategoryLabel(category: string): string {
       return '⑯当日TEL';
     case 'threeCallUnchecked':
       return '３回架電未';
+    case 'oneWeekCallUnchecked':
+      return '1週間架電未';
+    case 'oneMonthCallUnchecked':
+      return '1か月後架電未';
     case 'todayCallAssigned':
       return '当日TEL（担当）';
     // 新規追加（2026年4月）
@@ -264,6 +274,28 @@ export default function BuyerStatusSidebar({
       label: '３回架電未',
       count: threeCallUncheckedCount,
       color: getCategoryColor('threeCallUnchecked'),
+    });
+  }
+
+  // 1週間架電未カテゴリ - 独立したカテゴリ
+  const oneWeekCallUncheckedCount = categoryCounts.oneWeekCallUnchecked ?? 0;
+  if (oneWeekCallUncheckedCount > 0) {
+    categoryList.push({
+      key: 'oneWeekCallUnchecked',
+      label: '1週間架電未',
+      count: oneWeekCallUncheckedCount,
+      color: getCategoryColor('oneWeekCallUnchecked'),
+    });
+  }
+
+  // 1か月後架電未カテゴリ - 独立したカテゴリ
+  const oneMonthCallUncheckedCount = categoryCounts.oneMonthCallUnchecked ?? 0;
+  if (oneMonthCallUncheckedCount > 0) {
+    categoryList.push({
+      key: 'oneMonthCallUnchecked',
+      label: '1か月後架電未',
+      count: oneMonthCallUncheckedCount,
+      color: getCategoryColor('oneMonthCallUnchecked'),
     });
   }
   

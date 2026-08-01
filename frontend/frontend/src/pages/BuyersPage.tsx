@@ -95,6 +95,8 @@ export default function BuyersPage() {
     'todayCall': '当日TEL',
     'todayCallWithInfo': '当日TEL（内容）',
     'threeCallUnchecked': '3回架電未',
+    'oneWeekCallUnchecked': '1週間架電未',
+    'oneMonthCallUnchecked': '1か月後架電未',
     'inquiryEmailUnanswered': '問合メール未対応',
     'brokerInquiry': '業者問合せあり',
     'generalViewingSellerContactPending': '一般媒介_内覧後売主連絡未',

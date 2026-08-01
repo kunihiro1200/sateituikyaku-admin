@@ -69,7 +69,7 @@ export interface BuyerQueryOptions {
   dateTo?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
-  statusCategory?: 'all' | 'todayCall' | 'threeCallUnchecked' | 'viewingDayBefore' | 'assigned' | 'todayCallAssigned';
+  statusCategory?: 'all' | 'todayCall' | 'threeCallUnchecked' | 'oneWeekCallUnchecked' | 'oneMonthCallUnchecked' | 'viewingDayBefore' | 'assigned' | 'todayCallAssigned';
   viewingMonth?: string; // YYYY-MM形式（内覧月フィルタ）
   followUpAssignee?: string; // 後続担当者フィルタ（完全一致）
 }
@@ -233,6 +233,22 @@ export class BuyerService {
           // ３回架電未: ３回架電確認済み = "3回架電未" AND (【問合メール】電話対応 = "不通" OR "未")
           query = query
             .eq('three_calls_confirmed', '3回架電未')
+            .or('inquiry_email_phone.eq.不通,inquiry_email_phone.eq.未');
+          break;
+        }
+
+        case 'oneWeekCallUnchecked': {
+          // 1週間架電未: 1週間架電確認済み = "1週間架電未" AND (【問合メール】電話対応 = "不通" OR "未")
+          query = query
+            .eq('one_week_call_confirmed', '1週間架電未')
+            .or('inquiry_email_phone.eq.不通,inquiry_email_phone.eq.未');
+          break;
+        }
+
+        case 'oneMonthCallUnchecked': {
+          // 1か月後架電未: 1か月後架電確認済み = "1か月架電未" AND (【問合メール】電話対応 = "不通" OR "未")
+          query = query
+            .eq('one_month_call_confirmed', '1か月架電未')
             .or('inquiry_email_phone.eq.不通,inquiry_email_phone.eq.未');
           break;
         }
@@ -802,7 +818,7 @@ export class BuyerService {
    */
   private shouldUpdateBuyerSidebarCounts(updateData: Partial<any>): boolean {
     // サイドバーカテゴリーに影響するフィールド
-    const sidebarFields = ['next_call_date', 'follow_up_assignee', 'project_assignee', 'viewing_date', 'notification_sender', 'inquiry_email_phone', 'pinrich', 'inquiry_source', 'latest_status', 'broker_inquiry', 'pinrich_500man_registration', 'viewing_survey_result', 'viewing_survey_confirmed', 'vendor_survey', 'viewing_type_general', 'post_viewing_seller_contact', 'atbb_status', 'viewing_promotion_not_needed', 'viewing_promotion_sender', 'inquiry_confidence', 'inquiry_email_reply', 'three_call_unchecked', 'seller_viewing_date_contact', 'other_company_property'];
+    const sidebarFields = ['next_call_date', 'follow_up_assignee', 'project_assignee', 'viewing_date', 'notification_sender', 'inquiry_email_phone', 'pinrich', 'inquiry_source', 'latest_status', 'broker_inquiry', 'pinrich_500man_registration', 'viewing_survey_result', 'viewing_survey_confirmed', 'vendor_survey', 'viewing_type_general', 'post_viewing_seller_contact', 'atbb_status', 'viewing_promotion_not_needed', 'viewing_promotion_sender', 'inquiry_confidence', 'inquiry_email_reply', 'three_call_unchecked', 'seller_viewing_date_contact', 'other_company_property', 'one_week_call_confirmed', 'one_month_call_confirmed'];
     return sidebarFields.some(field => field in updateData);
   }
 
@@ -2103,7 +2119,7 @@ export class BuyerService {
       'reception_date', 'latest_viewing_date', 'viewing_date', 'next_call_date',
       'follow_up_assignee', 'project_assignee', 'initial_assignee', 'latest_status',
       'inquiry_confidence', 'inquiry_email_phone', 'inquiry_email_reply',
-      'three_calls_confirmed', 'broker_inquiry', 'inquiry_source',
+      'three_calls_confirmed', 'one_week_call_confirmed', 'one_month_call_confirmed', 'broker_inquiry', 'inquiry_source',
       'viewing_result_follow_up', 'viewing_unconfirmed', 'viewing_type_general',
       'post_viewing_seller_contact', 'notification_sender',
       'valuation_survey', 'valuation_survey_confirmed', 'broker_survey', 'vendor_survey',
@@ -2393,6 +2409,8 @@ export class BuyerService {
       todayCallWithInfo: 0,
       todayCallWithInfoLabels: {} as Record<string, number>,
       threeCallUnchecked: 0,
+      oneWeekCallUnchecked: 0,
+      oneMonthCallUnchecked: 0,
       assignedCounts: {} as Record<string, number>,
       todayCallAssignedCounts: {} as Record<string, number>,
       projectAssigneeOnlyTodayCallCounts: {} as Record<string, number>,
@@ -2432,6 +2450,8 @@ export class BuyerService {
       if (status === '内覧日前日') result.viewingDayBefore++;
       else if (status === '当日TEL') result.todayCall++;
       else if (status === '3回架電未') result.threeCallUnchecked++;
+      else if (status === '1週間架電未') result.oneWeekCallUnchecked++;
+      else if (status === '1か月後架電未') result.oneMonthCallUnchecked++;
       else if (status === '問合メール未対応') result.inquiryEmailUnanswered++;
       else if (status === '業者問合せあり') result.brokerInquiry++;
       else if (status === '一般媒介_内覧後売主連絡未') result.generalViewingSellerContactPending++;
@@ -2574,6 +2594,8 @@ export class BuyerService {
       'inquiry_email_phone',
       'inquiry_email_reply',
       'three_calls_confirmed',
+      'one_week_call_confirmed',
+      'one_month_call_confirmed',
       'broker_inquiry',
       'inquiry_source',
       'viewing_result_follow_up',
