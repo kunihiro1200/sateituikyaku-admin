@@ -621,6 +621,7 @@ const CallModePage = () => {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [smsError, setSmsError] = useState<string | null>(null);
 
   // データ状態
   const [seller, setSeller] = useState<Seller | null>(null);
@@ -4185,8 +4186,9 @@ HP：https://ifoo-oita.com/
 
   const handleSmsTemplateSelect = async (templateId: string) => {
     if (!templateId) return;
+    setSmsError(null);
     if (seller?.smsSendDisabled) {
-      setError('SMS送信不可に設定されています');
+      setSmsError('SMS送信不可に設定されています');
       return;
     }
 
@@ -4196,7 +4198,7 @@ HP：https://ifoo-oita.com/
     try {
       // エラーチェック1: 電話番号が空
       if (!seller?.phoneNumber) {
-        setError('電話番号が設定されていません');
+        setSmsError('電話番号が設定されていません');
         return;
       }
 
@@ -4212,7 +4214,7 @@ HP：https://ifoo-oita.com/
       // エラーチェック2: メッセージ長の検証（日本語SMS制限: 670文字）
       const messageLength = convertLineBreaks(generatedContent).length;
       if (messageLength > 670) {
-        setError(`メッセージが長すぎます（${messageLength}文字 / 670文字制限）`);
+        setSmsError(`メッセージが長すぎます（${messageLength}文字 / 670文字制限）`);
         return;
       }
       
@@ -5605,6 +5607,13 @@ HP：https://ifoo-oita.com/
       {error && (
         <Alert severity="error" sx={{ m: 2 }} onClose={() => setError(null)}>
           {error}
+        </Alert>
+      )}
+
+      {/* SMS専用エラー表示 */}
+      {smsError && (
+        <Alert severity="error" sx={{ m: 2 }} onClose={() => setSmsError(null)}>
+          {smsError}
         </Alert>
       )}
 
