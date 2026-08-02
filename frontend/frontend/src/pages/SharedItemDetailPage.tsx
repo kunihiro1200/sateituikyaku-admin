@@ -514,9 +514,9 @@ export default function SharedItemDetailPage() {
             </Grid>
           )}
 
-          {/* 共有日（編集可能） */}
+          {/* 完了（編集可能） */}
           <Grid item xs={6}>
-            <Typography variant="caption" color="text.secondary">共有日</Typography>
+            <Typography variant="caption" color="text.secondary">完了</Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
               <TextField
                 fullWidth
