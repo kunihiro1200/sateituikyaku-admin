@@ -303,70 +303,73 @@ router.post('/:id/mark-confirmed', async (req: Request, res: Response) => {
 
 /**
  * GET /api/shared-items/:id/team-answers - チームアンサー取得
- * 「契約率チーム」「物件数チーム」専用：問い・各人回答・まとめをDBから取得
  */
 router.get('/:id/team-answers', async (req: Request, res: Response) => {
   try {
-    const result = await pool.query(
-      `SELECT * FROM shared_item_team_answers WHERE shared_item_id = $1 LIMIT 1`,
-      [req.params.id]
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
     );
-    res.json({ data: result.rows[0] || null });
+    const { data, error } = await supabase
+      .from('shared_item_team_answers')
+      .select('*')
+      .eq('shared_item_id', req.params.id)
+      .maybeSingle();
+    if (error) throw error;
+    res.json({ data: data || null });
   } catch (error: any) {
     console.error('Failed to fetch team answers:', error);
-    res.status(500).json({
-      error: 'チームアンサーの取得に失敗しました',
-      details: error.message
-    });
+    res.status(500).json({ error: 'チームアンサーの取得に失敗しました', details: error.message });
   }
 });
 
 /**
- * PUT /api/shared-items/:id/team-answers - チームアンサー保存（upsert）
- * 「契約率チーム」「物件数チーム」専用：問い・各人回答・まとめをDBに保存
- * スプレッドシートには保存しない
+ * PUT /api/shared-items/:id/team-answers - チームアンサー保存
  */
 router.put('/:id/team-answers', async (req: Request, res: Response) => {
   try {
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
+    );
     const sharedItemId = req.params.id;
     const { question, answer_kuniHiro, answer_yamamoto, answer_ura, answer_kadoi, answer_hayashida, answer_aso, summary } = req.body;
-
-    // 既存チェック
-    const existing = await pool.query(
-      `SELECT id FROM shared_item_team_answers WHERE shared_item_id = $1 LIMIT 1`,
-      [sharedItemId]
-    );
-
-    let result;
-    if (existing.rows.length > 0) {
-      result = await pool.query(
-        `UPDATE shared_item_team_answers
-         SET question=$1, answer_kuniHiro=$2, answer_yamamoto=$3, answer_ura=$4,
-             answer_kadoi=$5, answer_hayashida=$6, answer_aso=$7, summary=$8, updated_at=NOW()
-         WHERE shared_item_id=$9
-         RETURNING *`,
-        [question ?? null, answer_kuniHiro ?? null, answer_yamamoto ?? null, answer_ura ?? null,
-         answer_kadoi ?? null, answer_hayashida ?? null, answer_aso ?? null, summary ?? null,
-         sharedItemId]
-      );
+    const fields = {
+      question: question ?? null,
+      answer_kuniHiro: answer_kuniHiro ?? null,
+      answer_yamamoto: answer_yamamoto ?? null,
+      answer_ura: answer_ura ?? null,
+      answer_kadoi: answer_kadoi ?? null,
+      answer_hayashida: answer_hayashida ?? null,
+      answer_aso: answer_aso ?? null,
+      summary: summary ?? null,
+      updated_at: new Date().toISOString(),
+    };
+    const { data: existing } = await supabase
+      .from('shared_item_team_answers')
+      .select('id')
+      .eq('shared_item_id', sharedItemId)
+      .maybeSingle();
+    let data, error;
+    if (existing?.id) {
+      ({ data, error } = await supabase
+        .from('shared_item_team_answers')
+        .update(fields)
+        .eq('id', existing.id)
+        .select()
+        .single());
     } else {
-      result = await pool.query(
-        `INSERT INTO shared_item_team_answers
-         (shared_item_id, question, answer_kuniHiro, answer_yamamoto, answer_ura, answer_kadoi, answer_hayashida, answer_aso, summary)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-         RETURNING *`,
-        [sharedItemId, question ?? null, answer_kuniHiro ?? null, answer_yamamoto ?? null,
-         answer_ura ?? null, answer_kadoi ?? null, answer_hayashida ?? null, answer_aso ?? null, summary ?? null]
-      );
+      ({ data, error } = await supabase
+        .from('shared_item_team_answers')
+        .insert({ shared_item_id: sharedItemId, ...fields })
+        .select()
+        .single());
     }
-
-    res.json({ data: result.rows[0] });
+    if (error) throw error;
+    res.json({ data });
   } catch (error: any) {
     console.error('Failed to save team answers:', error);
-    res.status(500).json({
-      error: 'チームアンサーの保存に失敗しました',
-      details: error.message
-    });
+    res.status(500).json({ error: 'チームアンサーの保存に失敗しました', details: error.message });
   }
 });
 
