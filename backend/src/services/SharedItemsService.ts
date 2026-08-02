@@ -156,6 +156,24 @@ export class SharedItemsService {
   }
 
   /**
+   * 削除（deleteRow使用）
+   */
+  async delete(id: string): Promise<void> {
+    try {
+      const rowIndex = await this.sheetsClient.findRowByColumn('ID', id);
+
+      if (!rowIndex) {
+        throw new Error(`ID ${id} が見つかりません`);
+      }
+
+      await this.sheetsClient.deleteRow(rowIndex);
+    } catch (error: any) {
+      console.error('Failed to delete shared item:', error);
+      throw new Error('共有データの削除に失敗しました');
+    }
+  }
+
+  /**
    * カテゴリー計算ロジック
    * D列「共有場」からカテゴリーを計算
    */

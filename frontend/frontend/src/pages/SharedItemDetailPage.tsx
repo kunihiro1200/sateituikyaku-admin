@@ -4,6 +4,7 @@ import {
   ArrowBack as ArrowBackIcon,
   AttachFile as AttachFileIcon,
   Close as CloseIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import {
   Container,
@@ -18,6 +19,10 @@ import {
   Chip,
   IconButton,
   Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
@@ -103,6 +108,11 @@ export default function SharedItemDetailPage() {
   const [teamAnswerSaving, setTeamAnswerSaving] = useState(false);
   const [teamAnswerSuccess, setTeamAnswerSuccess] = useState(false);
   const [teamAnswerError, setTeamAnswerError] = useState('');
+
+  // 削除確認ダイアログ（契約率チーム・物件数チーム専用）
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   // 初期値（変更検知用）
   const [initialContent, setInitialContent] = useState('');
@@ -208,6 +218,23 @@ export default function SharedItemDetailPage() {
       setStaff(response.data.data || []);
     } catch (error) {
       console.error('Failed to fetch staff:', error);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!item) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await api.delete(`/api/shared-items/${item.id}`);
+      pageDataCache.invalidate(CACHE_KEYS.SHARED_ITEMS);
+      setDeleteDialogOpen(false);
+      handleBack();
+    } catch (error: any) {
+      console.error('Delete error:', error);
+      setDeleteError(error.response?.data?.error || '削除に失敗しました。もう一度お試しください。');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -369,7 +396,16 @@ export default function SharedItemDetailPage() {
             共有詳細
           </Typography>
         </Box>
-        {!isTeamMode && (
+        {isTeamMode ? (
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={() => setDeleteDialogOpen(true)}
+            startIcon={<DeleteIcon />}
+          >
+            削除
+          </Button>
+        ) : (
           <Button
             variant="contained"
             onClick={handleSave}
@@ -388,6 +424,30 @@ export default function SharedItemDetailPage() {
       {saveSuccess && (
         <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSaveSuccess(false)}>保存しました</Alert>
       )}
+      {deleteError && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setDeleteError('')}>{deleteError}</Alert>
+      )}
+
+      <Dialog open={deleteDialogOpen} onClose={() => !deleting && setDeleteDialogOpen(false)}>
+        <DialogTitle>この共有アイテムを削除しますか？</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            この操作は取り消せません。よろしいですか？
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>キャンセル</Button>
+          <Button
+            onClick={handleDelete}
+            color="error"
+            variant="contained"
+            disabled={deleting}
+            startIcon={deleting ? <CircularProgress size={16} color="inherit" /> : <DeleteIcon />}
+          >
+            {deleting ? '削除中...' : '削除する'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Paper sx={{ p: 3 }}>
         <Grid container spacing={3}>

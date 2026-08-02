@@ -409,6 +409,21 @@ export default function SharedItemsPage() {
               />
               <OpenInNewIcon sx={{ fontSize: '0.9rem', color: '#8e24aa', ml: 0.5 }} />
             </ListItemButton>
+            <ListItemButton
+              onClick={() => navigate('/shared-items/sales-meeting-agenda')}
+              sx={{
+                py: 1,
+                pl: 3,
+                borderRadius: 1,
+                '&:hover': { backgroundColor: '#e1bee7' },
+              }}
+            >
+              <ListItemText
+                primary="議題"
+                primaryTypographyProps={{ variant: 'body2', color: '#6a1b9a' }}
+                sx={{ flex: 1, minWidth: 0 }}
+              />
+            </ListItemButton>
             {locationCategories
               .filter(({ label }) => label === '契約率チーム' || label === '物件数チーム')
               .map(({ label, count }) => (

@@ -256,6 +256,33 @@ router.put('/:id', async (req: Request, res: Response) => {
 });
 
 /**
+ * DELETE /api/shared-items/:id - 削除
+ */
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    await ensureInitialized();
+    await sharedItemsService.delete(req.params.id);
+    // チームアンサーも削除（存在する場合）
+    try {
+      const supabase = createClient(
+        process.env.SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
+      );
+      await supabase.from('shared_item_team_answers').delete().eq('shared_item_id', req.params.id);
+    } catch (e) {
+      // チームアンサー削除失敗は無視
+    }
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Failed to delete shared item:', error);
+    res.status(500).json({
+      error: '共有データの削除に失敗しました',
+      details: error.message
+    });
+  }
+});
+
+/**
  * POST /api/shared-items/:id/staff-confirmation - スタッフ確認追加
  */
 router.post('/:id/staff-confirmation', async (req: Request, res: Response) => {
