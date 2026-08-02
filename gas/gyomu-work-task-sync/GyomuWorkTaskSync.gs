@@ -327,7 +327,10 @@ function mapRowToRecord(headers, row) {
     'cw_request_email_2f_above',
     'site_registration_confirmed',
     'site_registration_confirm_request_date',
-    'site_registration_ok_sent'
+    'site_registration_ok_sent',
+    'mediation_deadline',
+    'mediation_completed',
+    'mediation_creator'
   ];
   for (var p = 0; p < PRESERVE_IF_EMPTY.length; p++) {
     var field = PRESERVE_IF_EMPTY[p];
