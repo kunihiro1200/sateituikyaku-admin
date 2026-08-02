@@ -272,13 +272,15 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
           </TextField>
         </Grid>
 
-        {/* タイトル（必須） */}
+        {/* タイトル／問い（必須） */}
         <Grid item xs={12}>
-          <Typography variant="caption" color="text.secondary">タイトル *</Typography>
+          <Typography variant="caption" color="text.secondary">
+            {['契約率チーム', '物件数チーム'].includes(sharingLocation) ? '問い *' : 'タイトル *'}
+          </Typography>
           <TextField
             fullWidth
             multiline
-            rows={2}
+            rows={['契約率チーム', '物件数チーム'].includes(sharingLocation) ? 3 : 2}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             size="small"
@@ -288,19 +290,21 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
           />
         </Grid>
 
-        {/* 内容 */}
-        <Grid item xs={12}>
-          <Typography variant="caption" color="text.secondary">内容</Typography>
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            size="small"
-            sx={{ mt: 0.5 }}
-          />
-        </Grid>
+        {/* 内容（チームモードでは非表示） */}
+        {!['契約率チーム', '物件数チーム'].includes(sharingLocation) && (
+          <Grid item xs={12}>
+            <Typography variant="caption" color="text.secondary">内容</Typography>
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              size="small"
+              sx={{ mt: 0.5 }}
+            />
+          </Grid>
+        )}
 
         {/* 確認日 */}
         <Grid item xs={6}>

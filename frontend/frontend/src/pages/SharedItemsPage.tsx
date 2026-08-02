@@ -367,7 +367,7 @@ export default function SharedItemsPage() {
           {/* 口コミ集計リンク */}
           <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
             <Typography variant="caption" color="text.secondary" fontWeight="bold">
-              集計
+              集計・分析
             </Typography>
           </Box>
           <ListItemButton
@@ -375,13 +375,53 @@ export default function SharedItemsPage() {
             sx={{
               py: 1,
               borderLeft: '4px solid #4caf50',
-              '&:hover': {
-                backgroundColor: '#4caf5010',
-              },
+              '&:hover': { backgroundColor: '#4caf5010' },
             }}
           >
             <ListItemText
               primary="口コミ集計"
+              primaryTypographyProps={{ variant: 'body2' }}
+              sx={{ flex: 1, minWidth: 0 }}
+            />
+          </ListItemButton>
+          <ListItemButton
+            onClick={() => navigate('/buyers/purchase-rate-statistics')}
+            sx={{
+              py: 1,
+              borderLeft: '4px solid #4caf50',
+              '&:hover': { backgroundColor: '#4caf5010' },
+            }}
+          >
+            <ListItemText
+              primary="契約率統計"
+              primaryTypographyProps={{ variant: 'body2' }}
+              sx={{ flex: 1, minWidth: 0 }}
+            />
+          </ListItemButton>
+          <ListItemButton
+            onClick={() => navigate('/unvisited-other-decision-list')}
+            sx={{
+              py: 1,
+              borderLeft: '4px solid #4caf50',
+              '&:hover': { backgroundColor: '#4caf5010' },
+            }}
+          >
+            <ListItemText
+              primary="他決分析"
+              primaryTypographyProps={{ variant: 'body2' }}
+              sx={{ flex: 1, minWidth: 0 }}
+            />
+          </ListItemButton>
+          <ListItemButton
+            onClick={() => navigate('/sales-learning-library')}
+            sx={{
+              py: 1,
+              borderLeft: '4px solid #4caf50',
+              '&:hover': { backgroundColor: '#4caf5010' },
+            }}
+          >
+            <ListItemText
+              primary="営業学習ライブラリ"
               primaryTypographyProps={{ variant: 'body2' }}
               sx={{ flex: 1, minWidth: 0 }}
             />
