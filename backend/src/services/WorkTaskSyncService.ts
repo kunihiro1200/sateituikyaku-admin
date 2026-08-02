@@ -216,6 +216,7 @@ export class WorkTaskSyncService {
             'site_registration_confirmed',
             'site_registration_confirm_request_date',
             'site_registration_ok_sent',
+            'mediation_deadline',
             'mediation_completed',
             'mediation_creator',
           ];
@@ -338,6 +339,7 @@ export class WorkTaskSyncService {
         'site_registration_confirmed',
         'site_registration_confirm_request_date',
         'site_registration_ok_sent',
+        'mediation_deadline',
         'mediation_completed',
         'mediation_creator',
       ];
