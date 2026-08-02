@@ -15,12 +15,10 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemIcon,
-  Checkbox,
   IconButton,
   Divider,
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon, Add as AddIcon, Delete as DeleteIcon, CheckCircle as CheckCircleIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon } from '@mui/icons-material';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { SECTION_COLORS } from '../theme/sectionColors';
@@ -31,10 +29,17 @@ interface Todo {
   content: string;
   assignee: string | null;
   due_date: string | null;
+  remarks: string | null;
   completed: boolean;
   completed_at: string | null;
   created_by: string | null;
   created_at: string;
+}
+
+interface Staff {
+  name: string;
+  initials: string;
+  is_active: boolean;
 }
 
 // 月選択肢を生成（過去12ヵ月〜未来3ヵ月の範囲＋DBにある月）
@@ -68,6 +73,7 @@ export default function SalesMeetingAgendaPage() {
   const [agendaText, setAgendaText] = useState('');
   const [initialAgendaText, setInitialAgendaText] = useState('');
   const [todos, setTodos] = useState<Todo[]>([]);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -78,10 +84,12 @@ export default function SalesMeetingAgendaPage() {
   const [newTodoContent, setNewTodoContent] = useState('');
   const [newTodoAssignee, setNewTodoAssignee] = useState('');
   const [newTodoDueDate, setNewTodoDueDate] = useState('');
+  const [newTodoRemarks, setNewTodoRemarks] = useState('');
   const [addingTodo, setAddingTodo] = useState(false);
 
   useEffect(() => {
     fetchMonths();
+    fetchStaff();
   }, []);
 
   useEffect(() => {
@@ -97,17 +105,27 @@ export default function SalesMeetingAgendaPage() {
     }
   };
 
+  const fetchStaff = async () => {
+    try {
+      const response = await api.get('/api/shared-items/staff');
+      setStaffList(response.data.data || []);
+    } catch (error) {
+      console.error('Failed to fetch staff:', error);
+    }
+  };
+
   const fetchMonthData = useCallback(async (ym: string) => {
     try {
       setLoading(true);
+      setApiError('');
       const response = await api.get(`/api/sales-meeting-agenda/${ym}`);
       const data = response.data.data;
       setAgendaText(data.agenda_text || '');
       setInitialAgendaText(data.agenda_text || '');
       setTodos(data.todos || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch month data:', error);
-      setApiError('議題の取得に失敗しました');
+      setApiError(error.response?.data?.error || error.message || '議題の取得に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -123,7 +141,7 @@ export default function SalesMeetingAgendaPage() {
       setSaveSuccess(true);
       fetchMonths();
     } catch (error: any) {
-      setApiError(error.response?.data?.error || '議題の保存に失敗しました');
+      setApiError(error.response?.data?.error || error.message || '議題の保存に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -138,37 +156,42 @@ export default function SalesMeetingAgendaPage() {
         content: newTodoContent,
         assignee: newTodoAssignee,
         due_date: newTodoDueDate || null,
+        remarks: newTodoRemarks,
         created_by: employee?.name || '',
       });
       setTodos((prev) => [...prev, response.data.data]);
       setNewTodoContent('');
       setNewTodoAssignee('');
       setNewTodoDueDate('');
+      setNewTodoRemarks('');
       fetchMonths();
     } catch (error: any) {
-      setApiError(error.response?.data?.error || 'TODOの追加に失敗しました');
+      console.error('Failed to add todo:', error);
+      setApiError(error.response?.data?.error || error.message || 'TODOの追加に失敗しました');
     } finally {
       setAddingTodo(false);
     }
   };
 
   const handleToggleTodo = async (todo: Todo) => {
+    setApiError('');
     try {
       const response = await api.post(`/api/sales-meeting-agenda/todos/${todo.id}/complete`, {
         completed: !todo.completed,
       });
       setTodos((prev) => prev.map((t) => (t.id === todo.id ? response.data.data : t)));
     } catch (error: any) {
-      setApiError(error.response?.data?.error || '完了状態の更新に失敗しました');
+      setApiError(error.response?.data?.error || error.message || '完了状態の更新に失敗しました');
     }
   };
 
   const handleDeleteTodo = async (id: string) => {
+    setApiError('');
     try {
       await api.delete(`/api/sales-meeting-agenda/todos/${id}`);
       setTodos((prev) => prev.filter((t) => t.id !== id));
     } catch (error: any) {
-      setApiError(error.response?.data?.error || 'TODOの削除に失敗しました');
+      setApiError(error.response?.data?.error || error.message || 'TODOの削除に失敗しました');
     }
   };
 
@@ -176,6 +199,47 @@ export default function SalesMeetingAgendaPage() {
   const hasAgendaChanges = agendaText !== initialAgendaText;
   const activeTodos = todos.filter((t) => !t.completed);
   const completedTodos = todos.filter((t) => t.completed);
+
+  const renderTodoItem = (todo: Todo) => (
+    <ListItem
+      key={todo.id}
+      alignItems="flex-start"
+      sx={{ opacity: todo.completed ? 0.6 : 1 }}
+      secondaryAction={
+        <IconButton edge="end" size="small" onClick={() => handleDeleteTodo(todo.id)} title="削除">
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      }
+    >
+      <IconButton
+        size="small"
+        onClick={() => handleToggleTodo(todo)}
+        sx={{ mr: 1, mt: 0.5, color: todo.completed ? '#4caf50' : color.main }}
+        title={todo.completed ? '未完了に戻す' : '完了にする'}
+      >
+        {todo.completed ? <CheckCircleIcon /> : <RadioButtonUncheckedIcon />}
+      </IconButton>
+      <ListItemText
+        primary={
+          <Typography sx={{ textDecoration: todo.completed ? 'line-through' : 'none' }}>
+            {todo.content}
+          </Typography>
+        }
+        secondary={
+          <>
+            {todo.assignee && `担当: ${todo.assignee}　`}
+            {todo.due_date && `期限: ${todo.due_date}　`}
+            {todo.remarks && (
+              <Typography component="span" variant="caption" color="text.secondary" display="block">
+                備考: {todo.remarks}
+              </Typography>
+            )}
+          </>
+        }
+      />
+      {todo.completed && <Chip label="完了" size="small" color="success" sx={{ mr: 5 }} />}
+    </ListItem>
+  );
 
   return (
     <Container maxWidth="md" sx={{ py: 3 }}>
@@ -250,8 +314,9 @@ export default function SalesMeetingAgendaPage() {
             <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>TODO</Typography>
 
             {/* 新規TODO入力 */}
-            <Grid container spacing={1} sx={{ mb: 2 }}>
+            <Grid container spacing={1} sx={{ mb: 1 }}>
               <Grid item xs={12} sm={5}>
+                <Typography variant="caption" color="text.secondary">TODO内容</Typography>
                 <TextField
                   fullWidth
                   size="small"
@@ -259,18 +324,28 @@ export default function SalesMeetingAgendaPage() {
                   value={newTodoContent}
                   onChange={(e) => setNewTodoContent(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleAddTodo(); }}
+                  sx={{ mt: 0.5 }}
                 />
               </Grid>
               <Grid item xs={6} sm={3}>
+                <Typography variant="caption" color="text.secondary">誰が</Typography>
                 <TextField
+                  select
                   fullWidth
                   size="small"
-                  placeholder="誰が"
                   value={newTodoAssignee}
                   onChange={(e) => setNewTodoAssignee(e.target.value)}
-                />
+                  sx={{ mt: 0.5 }}
+                  SelectProps={{ displayEmpty: true }}
+                >
+                  <MenuItem value=""><em>未指定</em></MenuItem>
+                  {staffList.map((s) => (
+                    <MenuItem key={s.name} value={s.name}>{s.name}</MenuItem>
+                  ))}
+                </TextField>
               </Grid>
               <Grid item xs={6} sm={3}>
+                <Typography variant="caption" color="text.secondary">いつまで</Typography>
                 <TextField
                   fullWidth
                   size="small"
@@ -278,22 +353,34 @@ export default function SalesMeetingAgendaPage() {
                   value={newTodoDueDate}
                   onChange={(e) => setNewTodoDueDate(e.target.value)}
                   InputLabelProps={{ shrink: true }}
+                  sx={{ mt: 0.5 }}
                 />
               </Grid>
-              <Grid item xs={12} sm={1}>
+              <Grid item xs={12} sm={1} sx={{ display: 'flex', alignItems: 'flex-end' }}>
                 <Button
                   fullWidth
                   variant="contained"
                   onClick={handleAddTodo}
                   disabled={addingTodo || !newTodoContent.trim()}
-                  sx={{ bgcolor: color.main, '&:hover': { bgcolor: color.dark }, height: '100%' }}
+                  sx={{ bgcolor: color.main, '&:hover': { bgcolor: color.dark }, height: 40 }}
                 >
-                  <AddIcon />
+                  {addingTodo ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}
                 </Button>
+              </Grid>
+              <Grid item xs={12}>
+                <Typography variant="caption" color="text.secondary">備考</Typography>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="備考（任意）"
+                  value={newTodoRemarks}
+                  onChange={(e) => setNewTodoRemarks(e.target.value)}
+                  sx={{ mt: 0.5 }}
+                />
               </Grid>
             </Grid>
 
-            <Divider sx={{ mb: 1 }} />
+            <Divider sx={{ mt: 2, mb: 1 }} />
 
             {/* 未完了TODO */}
             <List disablePadding>
@@ -302,33 +389,7 @@ export default function SalesMeetingAgendaPage() {
                   TODOはありません
                 </Typography>
               ) : (
-                activeTodos.map((todo) => (
-                  <ListItem
-                    key={todo.id}
-                    secondaryAction={
-                      <IconButton edge="end" size="small" onClick={() => handleDeleteTodo(todo.id)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    }
-                  >
-                    <ListItemIcon sx={{ minWidth: 36 }}>
-                      <Checkbox
-                        edge="start"
-                        checked={false}
-                        onChange={() => handleToggleTodo(todo)}
-                      />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={todo.content}
-                      secondary={
-                        <>
-                          {todo.assignee && `担当: ${todo.assignee}　`}
-                          {todo.due_date && `期限: ${todo.due_date}`}
-                        </>
-                      }
-                    />
-                  </ListItem>
-                ))
+                activeTodos.map(renderTodoItem)
               )}
             </List>
 
@@ -341,34 +402,7 @@ export default function SalesMeetingAgendaPage() {
                   </Typography>
                 </Box>
                 <List disablePadding>
-                  {completedTodos.map((todo) => (
-                    <ListItem
-                      key={todo.id}
-                      secondaryAction={
-                        <IconButton edge="end" size="small" onClick={() => handleDeleteTodo(todo.id)}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      }
-                    >
-                      <ListItemIcon sx={{ minWidth: 36 }}>
-                        <Checkbox
-                          edge="start"
-                          checked={true}
-                          onChange={() => handleToggleTodo(todo)}
-                        />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={todo.content}
-                        secondary={
-                          <>
-                            {todo.assignee && `担当: ${todo.assignee}　`}
-                            {todo.due_date && `期限: ${todo.due_date}`}
-                          </>
-                        }
-                        sx={{ textDecoration: 'line-through', color: 'text.disabled' }}
-                      />
-                    </ListItem>
-                  ))}
+                  {completedTodos.map(renderTodoItem)}
                 </List>
               </>
             )}

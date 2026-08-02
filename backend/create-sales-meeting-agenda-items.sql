@@ -44,3 +44,8 @@ CREATE POLICY "service_role_all" ON sales_meeting_todos
 DROP TABLE IF EXISTS sales_meeting_agenda_items;
 
 SELECT pg_notify('pgrst', 'reload schema');
+
+-- 備考カラム追加
+ALTER TABLE sales_meeting_todos ADD COLUMN IF NOT EXISTS remarks TEXT;
+
+SELECT pg_notify('pgrst', 'reload schema');

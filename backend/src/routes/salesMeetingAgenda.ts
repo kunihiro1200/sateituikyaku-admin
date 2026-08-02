@@ -123,7 +123,7 @@ router.post('/:yearMonth/todos', async (req: Request, res: Response) => {
   try {
     const supabase = getSupabase();
     const yearMonth = req.params.yearMonth;
-    const { content, assignee, due_date, created_by } = req.body;
+    const { content, assignee, due_date, remarks, created_by } = req.body;
 
     if (!content || !content.trim()) {
       return res.status(400).json({ error: 'TODO内容を入力してください' });
@@ -136,6 +136,7 @@ router.post('/:yearMonth/todos', async (req: Request, res: Response) => {
         content: content.trim(),
         assignee: assignee ?? null,
         due_date: due_date || null,
+        remarks: remarks ?? null,
         created_by: created_by ?? null,
         completed: false,
       })
@@ -157,12 +158,13 @@ router.post('/:yearMonth/todos', async (req: Request, res: Response) => {
 router.put('/todos/:id', async (req: Request, res: Response) => {
   try {
     const supabase = getSupabase();
-    const { content, assignee, due_date } = req.body;
+    const { content, assignee, due_date, remarks } = req.body;
 
     const fields: Record<string, any> = { updated_at: new Date().toISOString() };
     if (content !== undefined) fields.content = content;
     if (assignee !== undefined) fields.assignee = assignee;
     if (due_date !== undefined) fields.due_date = due_date || null;
+    if (remarks !== undefined) fields.remarks = remarks;
 
     const { data, error } = await supabase
       .from('sales_meeting_todos')
