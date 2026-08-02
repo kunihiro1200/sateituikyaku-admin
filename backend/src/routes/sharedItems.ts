@@ -306,17 +306,15 @@ router.post('/:id/mark-confirmed', async (req: Request, res: Response) => {
  */
 router.get('/:id/team-answers', async (req: Request, res: Response) => {
   try {
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
+    const supabaseUrl = process.env.SUPABASE_URL!;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!;
+    const axios = (await import('axios')).default;
+    const response = await axios.get(
+      `${supabaseUrl}/rest/v1/shared_item_team_answers?shared_item_id=eq.${encodeURIComponent(req.params.id)}&limit=1`,
+      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, Accept: 'application/json' } }
     );
-    const { data, error } = await supabase
-      .from('shared_item_team_answers')
-      .select('*')
-      .eq('shared_item_id', req.params.id)
-      .maybeSingle();
-    if (error) throw error;
-    res.json({ data: data || null });
+    const rows = response.data;
+    res.json({ data: rows.length > 0 ? rows[0] : null });
   } catch (error: any) {
     console.error('Failed to fetch team answers:', error);
     res.status(500).json({ error: 'チームアンサーの取得に失敗しました', details: error.message });
@@ -328,13 +326,13 @@ router.get('/:id/team-answers', async (req: Request, res: Response) => {
  */
 router.put('/:id/team-answers', async (req: Request, res: Response) => {
   try {
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
-    );
+    const supabaseUrl = process.env.SUPABASE_URL!;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!;
+    const axios = (await import('axios')).default;
     const sharedItemId = req.params.id;
     const { question, answer_kuniHiro, answer_yamamoto, answer_ura, answer_kadoi, answer_hayashida, answer_aso, summary } = req.body;
     const fields = {
+      shared_item_id: sharedItemId,
       question: question ?? null,
       answer_kuniHiro: answer_kuniHiro ?? null,
       answer_yamamoto: answer_yamamoto ?? null,
@@ -345,31 +343,22 @@ router.put('/:id/team-answers', async (req: Request, res: Response) => {
       summary: summary ?? null,
       updated_at: new Date().toISOString(),
     };
-    const { data: existing } = await supabase
-      .from('shared_item_team_answers')
-      .select('id')
-      .eq('shared_item_id', sharedItemId)
-      .maybeSingle();
-    let data, error;
-    if (existing?.id) {
-      ({ data, error } = await supabase
-        .from('shared_item_team_answers')
-        .update(fields)
-        .eq('id', existing.id)
-        .select()
-        .single());
-    } else {
-      ({ data, error } = await supabase
-        .from('shared_item_team_answers')
-        .insert({ shared_item_id: sharedItemId, ...fields })
-        .select()
-        .single());
-    }
-    if (error) throw error;
-    res.json({ data });
+    const headers = {
+      apikey: supabaseKey,
+      Authorization: `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json',
+      Prefer: 'resolution=merge-duplicates,return=representation',
+    };
+    // upsert via POST with on_conflict
+    const upsertResp = await axios.post(
+      `${supabaseUrl}/rest/v1/shared_item_team_answers?on_conflict=shared_item_id`,
+      fields,
+      { headers }
+    );
+    res.json({ data: Array.isArray(upsertResp.data) ? upsertResp.data[0] : upsertResp.data });
   } catch (error: any) {
     console.error('Failed to save team answers:', error);
-    res.status(500).json({ error: 'チームアンサーの保存に失敗しました', details: error.message });
+    res.status(500).json({ error: 'チームアンサーの保存に失敗しました', details: error.response?.data || error.message });
   }
 });
 
