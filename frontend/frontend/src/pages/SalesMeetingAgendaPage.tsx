@@ -243,48 +243,49 @@ export default function SalesMeetingAgendaPage() {
   const renderTodoItem = (todo: Todo) => {
     const isExpanded = expandedTodoId === todo.id;
     return (
-      <Box key={todo.id} sx={{ border: '1px solid #eee', borderRadius: 1, mb: 1, opacity: todo.completed ? 0.7 : 1 }}>
-        <ListItem
-          alignItems="flex-start"
-          secondaryAction={
-            <Box sx={{ display: 'flex', gap: 0.5 }}>
-              <IconButton edge="end" size="small" onClick={() => handleExpandTodo(todo)} title="編集">
-                {isExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-              </IconButton>
-              <IconButton edge="end" size="small" onClick={() => handleDeleteTodo(todo.id)} title="削除">
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </Box>
-          }
+      <Box key={todo.id} sx={{ border: '1px solid #eee', borderRadius: 1, mb: 1, opacity: todo.completed ? 0.7 : 1, overflow: 'hidden' }}>
+        <Box
+          onClick={() => handleExpandTodo(todo)}
+          sx={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            p: 1.5,
+            cursor: 'pointer',
+            '&:hover': { bgcolor: '#fafafa' },
+          }}
         >
           <IconButton
             size="small"
-            onClick={() => handleToggleTodo(todo)}
-            sx={{ mr: 1, mt: 0.5, color: todo.completed ? '#4caf50' : color.main }}
+            onClick={(e) => { e.stopPropagation(); handleToggleTodo(todo); }}
+            sx={{ mr: 1, mt: 0.25, color: todo.completed ? '#4caf50' : color.main, flexShrink: 0 }}
             title={todo.completed ? '未完了に戻す' : '完了にする'}
           >
             {todo.completed ? <CheckCircleIcon /> : <RadioButtonUncheckedIcon />}
           </IconButton>
-          <ListItemText
-            primary={
-              <Typography sx={{ textDecoration: todo.completed ? 'line-through' : 'none', whiteSpace: 'pre-wrap' }}>
-                {todo.content}
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography sx={{ textDecoration: todo.completed ? 'line-through' : 'none', whiteSpace: 'pre-wrap' }}>
+              {todo.content}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" display="block">
+              {todo.assignee && `担当: ${todo.assignee}　`}
+              {todo.due_date && `期限: ${todo.due_date}`}
+            </Typography>
+            {todo.remarks && (
+              <Typography variant="caption" color="text.secondary" display="block">
+                備考: {todo.remarks}
               </Typography>
-            }
-            secondary={
-              <>
-                {todo.assignee && `担当: ${todo.assignee}　`}
-                {todo.due_date && `期限: ${todo.due_date}　`}
-                {todo.remarks && (
-                  <Typography component="span" variant="caption" color="text.secondary" display="block">
-                    備考: {todo.remarks}
-                  </Typography>
-                )}
-              </>
-            }
-          />
-          {todo.completed && <Chip label="完了" size="small" color="success" sx={{ mr: 9 }} />}
-        </ListItem>
+            )}
+          </Box>
+          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexShrink: 0, ml: 1 }}>
+            {todo.completed && <Chip label="完了" size="small" color="success" />}
+            <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleExpandTodo(todo); }} title="編集">
+              {isExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+            </IconButton>
+            <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleDeleteTodo(todo.id); }} title="削除">
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        </Box>
 
         <Collapse in={isExpanded}>
           <Box sx={{ p: 2, pt: 0 }}>
@@ -341,18 +342,29 @@ export default function SalesMeetingAgendaPage() {
                   sx={{ mt: 0.5 }}
                 />
               </Grid>
-              <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                <Button size="small" onClick={() => setExpandedTodoId(null)}>キャンセル</Button>
+              <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
                 <Button
                   size="small"
-                  variant="contained"
-                  onClick={() => handleSaveTodoEdit(todo.id)}
-                  disabled={savingTodoId === todo.id || !editContent.trim()}
-                  sx={{ bgcolor: color.main, '&:hover': { bgcolor: color.dark } }}
-                  startIcon={savingTodoId === todo.id ? <CircularProgress size={14} color="inherit" /> : undefined}
+                  variant={todo.completed ? 'outlined' : 'contained'}
+                  color={todo.completed ? 'inherit' : 'success'}
+                  onClick={() => handleToggleTodo(todo)}
+                  startIcon={todo.completed ? <RadioButtonUncheckedIcon /> : <CheckCircleIcon />}
                 >
-                  {savingTodoId === todo.id ? '保存中...' : '保存'}
+                  {todo.completed ? '未完了に戻す' : '完了にする'}
                 </Button>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button size="small" onClick={() => setExpandedTodoId(null)}>キャンセル</Button>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => handleSaveTodoEdit(todo.id)}
+                    disabled={savingTodoId === todo.id || !editContent.trim()}
+                    sx={{ bgcolor: color.main, '&:hover': { bgcolor: color.dark } }}
+                    startIcon={savingTodoId === todo.id ? <CircularProgress size={14} color="inherit" /> : undefined}
+                  >
+                    {savingTodoId === todo.id ? '保存中...' : '保存'}
+                  </Button>
+                </Box>
               </Grid>
             </Grid>
           </Box>
