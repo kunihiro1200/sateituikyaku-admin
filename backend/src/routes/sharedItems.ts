@@ -3,6 +3,7 @@ import { SharedItemsService } from '../services/SharedItemsService';
 import { EmailService } from '../services/EmailService';
 import multer from 'multer';
 import { createClient } from '@supabase/supabase-js';
+import pool from '../config/database';
 
 const router = Router();
 const sharedItemsService = new SharedItemsService();
@@ -295,6 +296,75 @@ router.post('/:id/mark-confirmed', async (req: Request, res: Response) => {
     console.error('Failed to mark staff confirmed:', error);
     res.status(500).json({
       error: 'スタッフ確認完了の設定に失敗しました',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/shared-items/:id/team-answers - チームアンサー取得
+ * 「契約率チーム」「物件数チーム」専用：問い・各人回答・まとめをDBから取得
+ */
+router.get('/:id/team-answers', async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM shared_item_team_answers WHERE shared_item_id = $1 LIMIT 1`,
+      [req.params.id]
+    );
+    res.json({ data: result.rows[0] || null });
+  } catch (error: any) {
+    console.error('Failed to fetch team answers:', error);
+    res.status(500).json({
+      error: 'チームアンサーの取得に失敗しました',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * PUT /api/shared-items/:id/team-answers - チームアンサー保存（upsert）
+ * 「契約率チーム」「物件数チーム」専用：問い・各人回答・まとめをDBに保存
+ * スプレッドシートには保存しない
+ */
+router.put('/:id/team-answers', async (req: Request, res: Response) => {
+  try {
+    const sharedItemId = req.params.id;
+    const { question, answer_kuniHiro, answer_yamamoto, answer_ura, answer_kadoi, answer_hayashida, answer_aso, summary } = req.body;
+
+    // 既存チェック
+    const existing = await pool.query(
+      `SELECT id FROM shared_item_team_answers WHERE shared_item_id = $1 LIMIT 1`,
+      [sharedItemId]
+    );
+
+    let result;
+    if (existing.rows.length > 0) {
+      result = await pool.query(
+        `UPDATE shared_item_team_answers
+         SET question=$1, answer_kuniHiro=$2, answer_yamamoto=$3, answer_ura=$4,
+             answer_kadoi=$5, answer_hayashida=$6, answer_aso=$7, summary=$8, updated_at=NOW()
+         WHERE shared_item_id=$9
+         RETURNING *`,
+        [question ?? null, answer_kuniHiro ?? null, answer_yamamoto ?? null, answer_ura ?? null,
+         answer_kadoi ?? null, answer_hayashida ?? null, answer_aso ?? null, summary ?? null,
+         sharedItemId]
+      );
+    } else {
+      result = await pool.query(
+        `INSERT INTO shared_item_team_answers
+         (shared_item_id, question, answer_kuniHiro, answer_yamamoto, answer_ura, answer_kadoi, answer_hayashida, answer_aso, summary)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+         RETURNING *`,
+        [sharedItemId, question ?? null, answer_kuniHiro ?? null, answer_yamamoto ?? null,
+         answer_ura ?? null, answer_kadoi ?? null, answer_hayashida ?? null, answer_aso ?? null, summary ?? null]
+      );
+    }
+
+    res.json({ data: result.rows[0] });
+  } catch (error: any) {
+    console.error('Failed to save team answers:', error);
+    res.status(500).json({
+      error: 'チームアンサーの保存に失敗しました',
       details: error.message
     });
   }

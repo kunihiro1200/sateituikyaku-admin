@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowBack as ArrowBackIcon,
@@ -17,11 +17,46 @@ import {
   Alert,
   Chip,
   IconButton,
+  Divider,
 } from '@mui/material';
 import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 import { uploadFileToStorage, toggleStaff } from '../utils/sharedItemFormUtils';
+
+// チームアンサーの型（契約率チーム・物件数チーム専用）
+interface TeamAnswers {
+  question: string;
+  answer_kuniHiro: string;
+  answer_yamamoto: string;
+  answer_ura: string;
+  answer_kadoi: string;
+  answer_hayashida: string;
+  answer_aso: string;
+  summary: string;
+}
+
+const TEAM_ANSWER_MEMBERS: { key: keyof TeamAnswers; label: string }[] = [
+  { key: 'answer_kuniHiro', label: '国広' },
+  { key: 'answer_yamamoto', label: '山本' },
+  { key: 'answer_ura', label: '裏' },
+  { key: 'answer_kadoi', label: '角井' },
+  { key: 'answer_hayashida', label: '林田' },
+  { key: 'answer_aso', label: '麻生' },
+];
+
+const TEAM_MODES = ['契約率チーム', '物件数チーム'];
+
+const EMPTY_TEAM_ANSWERS: TeamAnswers = {
+  question: '',
+  answer_kuniHiro: '',
+  answer_yamamoto: '',
+  answer_ura: '',
+  answer_kadoi: '',
+  answer_hayashida: '',
+  answer_aso: '',
+  summary: '',
+};
 
 interface SharedItem {
   id: string;
@@ -62,6 +97,13 @@ export default function SharedItemDetailPage() {
   const [newPdfs, setNewPdfs] = useState<NewFile[]>([]);
   const [newImages, setNewImages] = useState<NewFile[]>([]);
 
+  // チームアンサー（契約率チーム・物件数チーム専用、DB保存）
+  const [teamAnswers, setTeamAnswers] = useState<TeamAnswers>(EMPTY_TEAM_ANSWERS);
+  const [initialTeamAnswers, setInitialTeamAnswers] = useState<TeamAnswers>(EMPTY_TEAM_ANSWERS);
+  const [teamAnswerSaving, setTeamAnswerSaving] = useState(false);
+  const [teamAnswerSuccess, setTeamAnswerSuccess] = useState(false);
+  const [teamAnswerError, setTeamAnswerError] = useState('');
+
   // 初期値（変更検知用）
   const [initialContent, setInitialContent] = useState('');
   const [initialSharingDate, setInitialSharingDate] = useState('');
@@ -77,6 +119,8 @@ export default function SharedItemDetailPage() {
     setStaffNotShared([]);
     setNewPdfs([]);
     setNewImages([]);
+    setTeamAnswers(EMPTY_TEAM_ANSWERS);
+    setInitialTeamAnswers(EMPTY_TEAM_ANSWERS);
     fetchItem();
     fetchStaff();
   }, [id]);
@@ -101,11 +145,60 @@ export default function SharedItemDetailPage() {
         setInitialConfirmationDate(cd);
         setInitialStaffNotShared(sns);
         setInitialContent(ct);
+
+        // 契約率チーム・物件数チームの場合はチームアンサーも取得
+        if (TEAM_MODES.includes(foundItem['共有場'])) {
+          fetchTeamAnswers(foundItem.id);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch shared item:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTeamAnswers = async (itemId: string) => {
+    try {
+      const response = await api.get(`/api/shared-items/${itemId}/team-answers`);
+      const data = response.data.data;
+      if (data) {
+        const answers: TeamAnswers = {
+          question: data.question || '',
+          answer_kuniHiro: data.answer_kuniHiro || '',
+          answer_yamamoto: data.answer_yamamoto || '',
+          answer_ura: data.answer_ura || '',
+          answer_kadoi: data.answer_kadoi || '',
+          answer_hayashida: data.answer_hayashida || '',
+          answer_aso: data.answer_aso || '',
+          summary: data.summary || '',
+        };
+        setTeamAnswers(answers);
+        setInitialTeamAnswers(answers);
+      }
+    } catch (error) {
+      console.error('Failed to fetch team answers:', error);
+    }
+  };
+
+  const handleTeamAnswerChange = useCallback((key: keyof TeamAnswers, value: string) => {
+    setTeamAnswers((prev) => ({ ...prev, [key]: value }));
+  }, []);
+
+  const handleTeamAnswerSave = async () => {
+    if (!item) return;
+    setTeamAnswerSaving(true);
+    setTeamAnswerError('');
+    setTeamAnswerSuccess(false);
+    try {
+      await api.put(`/api/shared-items/${item.id}/team-answers`, teamAnswers);
+      setInitialTeamAnswers({ ...teamAnswers });
+      setTeamAnswerSuccess(true);
+    } catch (error: any) {
+      console.error('Team answer save error:', error);
+      setTeamAnswerError(error.response?.data?.error || '保存に失敗しました');
+    } finally {
+      setTeamAnswerSaving(false);
     }
   };
 
@@ -256,6 +349,9 @@ export default function SharedItemDetailPage() {
     confirmationDate !== initialConfirmationDate ||
     staffNotShared.join(',') !== initialStaffNotShared;
 
+  const isTeamMode = TEAM_MODES.includes(item['共有場'] || '');
+  const hasTeamAnswerChanges = JSON.stringify(teamAnswers) !== JSON.stringify(initialTeamAnswers);
+
   return (
     <Container maxWidth="md" sx={{ py: 3 }}>
       {/* ヘッダー */}
@@ -317,25 +413,104 @@ export default function SharedItemDetailPage() {
               sx={{ mt: 1, '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: '#000' } }} />
           </Grid>
 
-          {/* タイトル */}
+          {/* タイトル／問い */}
           <Grid item xs={12}>
-            <Typography variant="caption" color="text.secondary">タイトル</Typography>
-            <TextField fullWidth value={item['タイトル'] || ''} disabled
-              sx={{ mt: 1,
-                '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: color.main, fontWeight: 'bold', fontSize: '1.1rem' },
-                '& .MuiOutlinedInput-root': { bgcolor: `${color.light}15` },
-              }} />
+            <Typography variant="caption" color="text.secondary">
+              {isTeamMode ? '問い' : 'タイトル'}
+            </Typography>
+            {isTeamMode ? (
+              <TextField
+                fullWidth
+                multiline
+                minRows={3}
+                value={teamAnswers.question}
+                onChange={(e) => handleTeamAnswerChange('question', e.target.value)}
+                placeholder="問いを入力"
+                sx={{ mt: 1, '& .MuiOutlinedInput-root': { bgcolor: `${color.light}15` } }}
+              />
+            ) : (
+              <TextField fullWidth value={item['タイトル'] || ''} disabled
+                sx={{ mt: 1,
+                  '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: color.main, fontWeight: 'bold', fontSize: '1.1rem' },
+                  '& .MuiOutlinedInput-root': { bgcolor: `${color.light}15` },
+                }} />
+            )}
           </Grid>
 
-          {/* 内容 */}
-          <Grid item xs={12}>
-            <Typography variant="caption" color="text.secondary">内容</Typography>
-            <TextField fullWidth multiline minRows={4} value={content}
-              onChange={(e) => setContent(e.target.value)}
-              sx={{ mt: 1,
-                '& .MuiOutlinedInput-root': { bgcolor: `${color.light}15` },
-              }} />
-          </Grid>
+          {/* 内容（通常モード）／各人回答＋まとめ（チームモード） */}
+          {isTeamMode ? (
+            <>
+              {/* チームアンサーセクション */}
+              <Grid item xs={12}>
+                <Divider sx={{ mb: 1 }} />
+                <Typography variant="subtitle2" fontWeight="bold" sx={{ color: color.main, mb: 2 }}>
+                  内容（各担当者の回答）
+                </Typography>
+                {teamAnswerError && (
+                  <Alert severity="error" sx={{ mb: 2 }} onClose={() => setTeamAnswerError('')}>{teamAnswerError}</Alert>
+                )}
+                {teamAnswerSuccess && (
+                  <Alert severity="success" sx={{ mb: 2 }} onClose={() => setTeamAnswerSuccess(false)}>保存しました</Alert>
+                )}
+                <Grid container spacing={2}>
+                  {TEAM_ANSWER_MEMBERS.map(({ key, label }) => (
+                    <Grid item xs={12} key={key}>
+                      <Typography variant="caption" color="text.secondary">{label}</Typography>
+                      <TextField
+                        fullWidth
+                        multiline
+                        minRows={3}
+                        value={teamAnswers[key]}
+                        onChange={(e) => handleTeamAnswerChange(key, e.target.value)}
+                        placeholder={`${label}の回答`}
+                        sx={{ mt: 0.5, '& .MuiOutlinedInput-root': { bgcolor: `${color.light}08` } }}
+                      />
+                    </Grid>
+                  ))}
+
+                  {/* まとめ */}
+                  <Grid item xs={12}>
+                    <Divider sx={{ my: 1 }} />
+                    <Typography variant="caption" color="text.secondary" fontWeight="bold">まとめ</Typography>
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={4}
+                      value={teamAnswers.summary}
+                      onChange={(e) => handleTeamAnswerChange('summary', e.target.value)}
+                      placeholder="まとめを入力"
+                      sx={{ mt: 0.5, '& .MuiOutlinedInput-root': { bgcolor: `${color.light}15` } }}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <Button
+                        variant="contained"
+                        onClick={handleTeamAnswerSave}
+                        disabled={teamAnswerSaving || !hasTeamAnswerChanges}
+                        sx={{ bgcolor: color.main, '&:hover': { bgcolor: color.dark } }}
+                        startIcon={teamAnswerSaving ? <CircularProgress size={16} color="inherit" /> : undefined}
+                      >
+                        {teamAnswerSaving ? '保存中...' : '内容を保存'}
+                      </Button>
+                    </Box>
+                  </Grid>
+                </Grid>
+                <Divider sx={{ mt: 2 }} />
+              </Grid>
+            </>
+          ) : (
+            /* 通常の内容フィールド */
+            <Grid item xs={12}>
+              <Typography variant="caption" color="text.secondary">内容</Typography>
+              <TextField fullWidth multiline minRows={4} value={content}
+                onChange={(e) => setContent(e.target.value)}
+                sx={{ mt: 1,
+                  '& .MuiOutlinedInput-root': { bgcolor: `${color.light}15` },
+                }} />
+            </Grid>
+          )}
 
           {/* 共有日（編集可能） */}
           <Grid item xs={6}>
