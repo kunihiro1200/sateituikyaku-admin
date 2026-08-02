@@ -30,7 +30,9 @@ import { SECTION_COLORS } from '../theme/sectionColors';
 
 // 営業会議スプレッドシートURL
 const SALES_MEETING_SPREADSHEET_URL =
-  'https://docs.google.com/spreadsheets/d/1i_fRAdBKnM3Mctb4g_jdpo1rFgRqH7pxUn9DPIF39eY/edit?gid=1354522391#gid=1354522391';
+  'https://docs.google.com/spreadsheets/d/1i_fRAdBKnM3Mctb4g_jdpo1rFgRqH7pxUn9DPIF39eY/edit?gid=738163181#gid=738163181';
+// 営業会議Chat URL
+const SALES_MEETING_CHAT_URL = 'https://mail.google.com/mail/u/0/#chat/space/AAQAouqL-7E';
 
 interface SharedItem {
   id: string;
@@ -387,6 +389,21 @@ export default function SharedItemsPage() {
               <ListItemText
                 primary="営業会議"
                 primaryTypographyProps={{ variant: 'body2', fontWeight: 'bold', color: '#6a1b9a' }}
+                sx={{ flex: 1, minWidth: 0 }}
+              />
+            </ListItemButton>
+            <ListItemButton
+              onClick={() => window.open(SALES_MEETING_CHAT_URL, '_blank', 'noopener,noreferrer')}
+              sx={{
+                py: 1,
+                pl: 3,
+                borderRadius: 1,
+                '&:hover': { backgroundColor: '#e1bee7' },
+              }}
+            >
+              <ListItemText
+                primary="営業会議Chat"
+                primaryTypographyProps={{ variant: 'body2', color: '#6a1b9a' }}
                 sx={{ flex: 1, minWidth: 0 }}
               />
             </ListItemButton>
