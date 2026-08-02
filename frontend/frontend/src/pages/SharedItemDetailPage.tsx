@@ -369,15 +369,17 @@ export default function SharedItemDetailPage() {
             共有詳細
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          onClick={handleSave}
-          disabled={saving || !hasChanges}
-          sx={{ bgcolor: color.main, '&:hover': { bgcolor: color.dark } }}
-          startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
-        >
-          {saving ? '保存中...' : '保存'}
-        </Button>
+        {!isTeamMode && (
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            disabled={saving || !hasChanges}
+            sx={{ bgcolor: color.main, '&:hover': { bgcolor: color.dark } }}
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
+          >
+            {saving ? '保存中...' : '保存'}
+          </Button>
+        )}
       </Box>
 
       {apiError && (
