@@ -11,45 +11,129 @@ function getSupabase() {
 }
 
 /**
- * GET /api/sales-meeting-agenda - 議題一覧取得
+ * GET /api/sales-meeting-agenda/months - 議題が存在する月一覧を取得
  */
-router.get('/', async (req: Request, res: Response) => {
+router.get('/months', async (req: Request, res: Response) => {
   try {
     const supabase = getSupabase();
-    const { data, error } = await supabase
-      .from('sales_meeting_agenda_items')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const { data: agendas } = await supabase
+      .from('sales_meeting_agendas')
+      .select('year_month');
+    const { data: todos } = await supabase
+      .from('sales_meeting_todos')
+      .select('year_month');
 
-    if (error) throw error;
+    const monthsSet = new Set<string>();
+    (agendas || []).forEach((a: any) => monthsSet.add(a.year_month));
+    (todos || []).forEach((t: any) => monthsSet.add(t.year_month));
 
-    res.json({ data: data || [] });
+    // 今月を必ず含める
+    const now = new Date();
+    const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    monthsSet.add(currentYm);
+
+    const months = Array.from(monthsSet).sort((a, b) => b.localeCompare(a));
+    res.json({ data: months });
   } catch (error: any) {
-    console.error('Failed to fetch sales meeting agenda items:', error);
-    res.status(500).json({
-      error: '議題の取得に失敗しました',
-      details: error.message,
-    });
+    console.error('Failed to fetch months:', error);
+    res.status(500).json({ error: '月一覧の取得に失敗しました', details: error.message });
   }
 });
 
 /**
- * POST /api/sales-meeting-agenda - 議題新規作成
+ * GET /api/sales-meeting-agenda/:yearMonth - 指定月の議題本文＋TODO一覧を取得
+ * yearMonth形式: '2026-07'
  */
-router.post('/', async (req: Request, res: Response) => {
+router.get('/:yearMonth', async (req: Request, res: Response) => {
   try {
     const supabase = getSupabase();
-    const { title, content, assignee, due_date, created_by } = req.body;
+    const yearMonth = req.params.yearMonth;
 
-    if (!title || !title.trim()) {
-      return res.status(400).json({ error: 'タイトルを入力してください' });
+    const { data: agenda, error: agendaError } = await supabase
+      .from('sales_meeting_agendas')
+      .select('*')
+      .eq('year_month', yearMonth)
+      .maybeSingle();
+    if (agendaError) throw agendaError;
+
+    const { data: todos, error: todosError } = await supabase
+      .from('sales_meeting_todos')
+      .select('*')
+      .eq('year_month', yearMonth)
+      .order('created_at', { ascending: true });
+    if (todosError) throw todosError;
+
+    res.json({
+      data: {
+        year_month: yearMonth,
+        agenda_text: agenda?.agenda_text || '',
+        todos: todos || [],
+      },
+    });
+  } catch (error: any) {
+    console.error('Failed to fetch agenda for month:', error);
+    res.status(500).json({ error: '議題の取得に失敗しました', details: error.message });
+  }
+});
+
+/**
+ * PUT /api/sales-meeting-agenda/:yearMonth - 指定月の議題本文を保存（upsert）
+ */
+router.put('/:yearMonth', async (req: Request, res: Response) => {
+  try {
+    const supabase = getSupabase();
+    const yearMonth = req.params.yearMonth;
+    const { agenda_text } = req.body;
+
+    const { data: existing } = await supabase
+      .from('sales_meeting_agendas')
+      .select('id')
+      .eq('year_month', yearMonth)
+      .maybeSingle();
+
+    let result;
+    if (existing?.id) {
+      result = await supabase
+        .from('sales_meeting_agendas')
+        .update({ agenda_text: agenda_text ?? null, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+        .select()
+        .single();
+    } else {
+      result = await supabase
+        .from('sales_meeting_agendas')
+        .insert({ year_month: yearMonth, agenda_text: agenda_text ?? null })
+        .select()
+        .single();
+    }
+
+    if (result.error) throw result.error;
+
+    res.json({ data: result.data });
+  } catch (error: any) {
+    console.error('Failed to save agenda:', error);
+    res.status(500).json({ error: '議題の保存に失敗しました', details: error.message });
+  }
+});
+
+/**
+ * POST /api/sales-meeting-agenda/:yearMonth/todos - TODO新規作成
+ */
+router.post('/:yearMonth/todos', async (req: Request, res: Response) => {
+  try {
+    const supabase = getSupabase();
+    const yearMonth = req.params.yearMonth;
+    const { content, assignee, due_date, created_by } = req.body;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: 'TODO内容を入力してください' });
     }
 
     const { data, error } = await supabase
-      .from('sales_meeting_agenda_items')
+      .from('sales_meeting_todos')
       .insert({
-        title: title.trim(),
-        content: content ?? null,
+        year_month: yearMonth,
+        content: content.trim(),
         assignee: assignee ?? null,
         due_date: due_date || null,
         created_by: created_by ?? null,
@@ -62,55 +146,26 @@ router.post('/', async (req: Request, res: Response) => {
 
     res.json({ data });
   } catch (error: any) {
-    console.error('Failed to create sales meeting agenda item:', error);
-    res.status(500).json({
-      error: '議題の作成に失敗しました',
-      details: error.message,
-    });
+    console.error('Failed to create todo:', error);
+    res.status(500).json({ error: 'TODOの作成に失敗しました', details: error.message });
   }
 });
 
 /**
- * GET /api/sales-meeting-agenda/:id - 議題詳細取得
+ * PUT /api/sales-meeting-agenda/todos/:id - TODO更新
  */
-router.get('/:id', async (req: Request, res: Response) => {
+router.put('/todos/:id', async (req: Request, res: Response) => {
   try {
     const supabase = getSupabase();
-    const { data, error } = await supabase
-      .from('sales_meeting_agenda_items')
-      .select('*')
-      .eq('id', req.params.id)
-      .maybeSingle();
-
-    if (error) throw error;
-    if (!data) return res.status(404).json({ error: '議題が見つかりません' });
-
-    res.json({ data });
-  } catch (error: any) {
-    console.error('Failed to fetch sales meeting agenda item:', error);
-    res.status(500).json({
-      error: '議題の取得に失敗しました',
-      details: error.message,
-    });
-  }
-});
-
-/**
- * PUT /api/sales-meeting-agenda/:id - 議題更新
- */
-router.put('/:id', async (req: Request, res: Response) => {
-  try {
-    const supabase = getSupabase();
-    const { title, content, assignee, due_date } = req.body;
+    const { content, assignee, due_date } = req.body;
 
     const fields: Record<string, any> = { updated_at: new Date().toISOString() };
-    if (title !== undefined) fields.title = title;
     if (content !== undefined) fields.content = content;
     if (assignee !== undefined) fields.assignee = assignee;
     if (due_date !== undefined) fields.due_date = due_date || null;
 
     const { data, error } = await supabase
-      .from('sales_meeting_agenda_items')
+      .from('sales_meeting_todos')
       .update(fields)
       .eq('id', req.params.id)
       .select()
@@ -120,18 +175,15 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     res.json({ data });
   } catch (error: any) {
-    console.error('Failed to update sales meeting agenda item:', error);
-    res.status(500).json({
-      error: '議題の更新に失敗しました',
-      details: error.message,
-    });
+    console.error('Failed to update todo:', error);
+    res.status(500).json({ error: 'TODOの更新に失敗しました', details: error.message });
   }
 });
 
 /**
- * POST /api/sales-meeting-agenda/:id/complete - 完了/未完了の切り替え
+ * POST /api/sales-meeting-agenda/todos/:id/complete - TODOの完了/未完了切り替え
  */
-router.post('/:id/complete', async (req: Request, res: Response) => {
+router.post('/todos/:id/complete', async (req: Request, res: Response) => {
   try {
     const supabase = getSupabase();
     const { completed } = req.body;
@@ -143,7 +195,7 @@ router.post('/:id/complete', async (req: Request, res: Response) => {
     };
 
     const { data, error } = await supabase
-      .from('sales_meeting_agenda_items')
+      .from('sales_meeting_todos')
       .update(fields)
       .eq('id', req.params.id)
       .select()
@@ -153,22 +205,19 @@ router.post('/:id/complete', async (req: Request, res: Response) => {
 
     res.json({ data });
   } catch (error: any) {
-    console.error('Failed to complete sales meeting agenda item:', error);
-    res.status(500).json({
-      error: '完了状態の更新に失敗しました',
-      details: error.message,
-    });
+    console.error('Failed to complete todo:', error);
+    res.status(500).json({ error: '完了状態の更新に失敗しました', details: error.message });
   }
 });
 
 /**
- * DELETE /api/sales-meeting-agenda/:id - 議題削除
+ * DELETE /api/sales-meeting-agenda/todos/:id - TODO削除
  */
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/todos/:id', async (req: Request, res: Response) => {
   try {
     const supabase = getSupabase();
     const { error } = await supabase
-      .from('sales_meeting_agenda_items')
+      .from('sales_meeting_todos')
       .delete()
       .eq('id', req.params.id);
 
@@ -176,11 +225,8 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Failed to delete sales meeting agenda item:', error);
-    res.status(500).json({
-      error: '議題の削除に失敗しました',
-      details: error.message,
-    });
+    console.error('Failed to delete todo:', error);
+    res.status(500).json({ error: 'TODOの削除に失敗しました', details: error.message });
   }
 });
 

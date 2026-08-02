@@ -169,7 +169,7 @@ export class SharedItemsService {
       await this.sheetsClient.deleteRow(rowIndex);
     } catch (error: any) {
       console.error('Failed to delete shared item:', error);
-      throw new Error('共有データの削除に失敗しました');
+      throw new Error(`共有データの削除に失敗しました: ${error.message}`);
     }
   }
 
