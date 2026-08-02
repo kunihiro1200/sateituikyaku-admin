@@ -292,7 +292,48 @@ export default function SharedItemsPage() {
             </>
           )}
           {/* 共有場カテゴリー */}
-          {locationCategories.map(({ label, count }) => (
+          {locationCategories
+            .filter(({ label }) => label !== '契約率チーム' && label !== '物件数チーム')
+            .map(({ label, count }) => (
+            <ListItemButton
+              key={label}
+              selected={selectedLocation === label && !selectedUnconfirmedStaff}
+              onClick={() => { setSelectedLocation(label); setSelectedUnconfirmedStaff(null); setPage(0); }}
+              sx={{
+                py: 1,
+                borderLeft: `4px solid ${sharedItemsColor.main}`,
+                '&.Mui-selected': {
+                  backgroundColor: `${sharedItemsColor.main}15`,
+                },
+                '&:hover': {
+                  backgroundColor: `${sharedItemsColor.main}10`,
+                },
+              }}
+            >
+              <ListItemText
+                primary={label}
+                primaryTypographyProps={{ variant: 'body2' }}
+                sx={{ flex: 1, minWidth: 0, mr: 1 }}
+              />
+              <Badge
+                badgeContent={count}
+                sx={{
+                  ml: 1,
+                  '& .MuiBadge-badge': { backgroundColor: sharedItemsColor.main, color: '#fff' }
+                }}
+                max={9999}
+              />
+            </ListItemButton>
+          ))}
+          {/* 営業会議グループ */}
+          <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
+            <Typography variant="caption" color="text.secondary" fontWeight="bold">
+              営業会議
+            </Typography>
+          </Box>
+          {locationCategories
+            .filter(({ label }) => label === '契約率チーム' || label === '物件数チーム')
+            .map(({ label, count }) => (
             <ListItemButton
               key={label}
               selected={selectedLocation === label && !selectedUnconfirmedStaff}
