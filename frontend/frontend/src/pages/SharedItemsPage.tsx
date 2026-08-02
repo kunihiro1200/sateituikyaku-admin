@@ -21,7 +21,7 @@ import {
   Collapse,
   Chip,
 } from '@mui/material';
-import { Search as SearchIcon, Clear as ClearIcon, Add as AddIcon, ExpandLess, ExpandMore } from '@mui/icons-material';
+import { Search as SearchIcon, Clear as ClearIcon, Add as AddIcon, ExpandLess, ExpandMore, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
@@ -391,6 +391,7 @@ export default function SharedItemsPage() {
                 primaryTypographyProps={{ variant: 'body2', fontWeight: 'bold', color: '#6a1b9a' }}
                 sx={{ flex: 1, minWidth: 0 }}
               />
+              <OpenInNewIcon sx={{ fontSize: '1rem', color: '#8e24aa', ml: 0.5 }} />
             </ListItemButton>
             <ListItemButton
               onClick={() => window.open(SALES_MEETING_CHAT_URL, '_blank', 'noopener,noreferrer')}
@@ -406,6 +407,7 @@ export default function SharedItemsPage() {
                 primaryTypographyProps={{ variant: 'body2', color: '#6a1b9a' }}
                 sx={{ flex: 1, minWidth: 0 }}
               />
+              <OpenInNewIcon sx={{ fontSize: '0.9rem', color: '#8e24aa', ml: 0.5 }} />
             </ListItemButton>
             {locationCategories
               .filter(({ label }) => label === '契約率チーム' || label === '物件数チーム')

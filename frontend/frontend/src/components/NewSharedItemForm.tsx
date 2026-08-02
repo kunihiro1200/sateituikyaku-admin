@@ -184,6 +184,17 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
       };
 
       await api.post('/api/shared-items', payload);
+
+      // 契約率チーム・物件数チームの場合、「問い」をDBのteam-answersにも保存
+      // （詳細ページの「問い」表示はDBの shared_item_team_answers.question を参照するため）
+      if (['契約率チーム', '物件数チーム'].includes(sharingLocation)) {
+        try {
+          await api.put(`/api/shared-items/${nextId}/team-answers`, { question: title });
+        } catch (teamAnswerError) {
+          console.error('問いの保存に失敗しました:', teamAnswerError);
+        }
+      }
+
       onSaved();
     } catch (error: any) {
       console.error('保存エラー:', error);
