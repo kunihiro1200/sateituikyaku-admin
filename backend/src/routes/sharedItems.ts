@@ -334,7 +334,7 @@ router.put('/:id/team-answers', async (req: Request, res: Response) => {
     const fields = {
       shared_item_id: sharedItemId,
       question: question ?? null,
-      answer_kuniHiro: answer_kuniHiro ?? null,
+      answer_kunihiro: answer_kuniHiro ?? null,
       answer_yamamoto: answer_yamamoto ?? null,
       answer_ura: answer_ura ?? null,
       answer_kadoi: answer_kadoi ?? null,

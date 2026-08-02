@@ -165,7 +165,7 @@ export default function SharedItemDetailPage() {
       if (data) {
         const answers: TeamAnswers = {
           question: data.question || '',
-          answer_kuniHiro: data.answer_kuniHiro || '',
+          answer_kuniHiro: data.answer_kunihiro || data.answer_kuniHiro || '',
           answer_yamamoto: data.answer_yamamoto || '',
           answer_ura: data.answer_ura || '',
           answer_kadoi: data.answer_kadoi || '',
