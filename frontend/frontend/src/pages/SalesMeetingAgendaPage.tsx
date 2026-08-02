@@ -17,8 +17,9 @@ import {
   ListItemText,
   IconButton,
   Divider,
+  Collapse,
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, Add as AddIcon, Delete as DeleteIcon, CheckCircle as CheckCircleIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon, Add as AddIcon, Delete as DeleteIcon, CheckCircle as CheckCircleIcon, RadioButtonUnchecked as RadioButtonUncheckedIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon } from '@mui/icons-material';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { SECTION_COLORS } from '../theme/sectionColors';
@@ -86,6 +87,14 @@ export default function SalesMeetingAgendaPage() {
   const [newTodoDueDate, setNewTodoDueDate] = useState('');
   const [newTodoRemarks, setNewTodoRemarks] = useState('');
   const [addingTodo, setAddingTodo] = useState(false);
+
+  // TODO編集（展開中のTODO ID、編集フィールド）
+  const [expandedTodoId, setExpandedTodoId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [editAssignee, setEditAssignee] = useState('');
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editRemarks, setEditRemarks] = useState('');
+  const [savingTodoId, setSavingTodoId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMonths();
@@ -195,51 +204,162 @@ export default function SalesMeetingAgendaPage() {
     }
   };
 
+  const handleExpandTodo = (todo: Todo) => {
+    if (expandedTodoId === todo.id) {
+      setExpandedTodoId(null);
+      return;
+    }
+    setExpandedTodoId(todo.id);
+    setEditContent(todo.content);
+    setEditAssignee(todo.assignee || '');
+    setEditDueDate(todo.due_date || '');
+    setEditRemarks(todo.remarks || '');
+  };
+
+  const handleSaveTodoEdit = async (id: string) => {
+    setSavingTodoId(id);
+    setApiError('');
+    try {
+      const response = await api.put(`/api/sales-meeting-agenda/todos/${id}`, {
+        content: editContent,
+        assignee: editAssignee,
+        due_date: editDueDate || null,
+        remarks: editRemarks,
+      });
+      setTodos((prev) => prev.map((t) => (t.id === id ? response.data.data : t)));
+      setExpandedTodoId(null);
+    } catch (error: any) {
+      setApiError(error.response?.data?.error || error.message || 'TODOの保存に失敗しました');
+    } finally {
+      setSavingTodoId(null);
+    }
+  };
+
   const monthOptions = generateMonthOptions(existingMonths);
   const hasAgendaChanges = agendaText !== initialAgendaText;
   const activeTodos = todos.filter((t) => !t.completed);
   const completedTodos = todos.filter((t) => t.completed);
 
-  const renderTodoItem = (todo: Todo) => (
-    <ListItem
-      key={todo.id}
-      alignItems="flex-start"
-      sx={{ opacity: todo.completed ? 0.6 : 1 }}
-      secondaryAction={
-        <IconButton edge="end" size="small" onClick={() => handleDeleteTodo(todo.id)} title="削除">
-          <DeleteIcon fontSize="small" />
-        </IconButton>
-      }
-    >
-      <IconButton
-        size="small"
-        onClick={() => handleToggleTodo(todo)}
-        sx={{ mr: 1, mt: 0.5, color: todo.completed ? '#4caf50' : color.main }}
-        title={todo.completed ? '未完了に戻す' : '完了にする'}
-      >
-        {todo.completed ? <CheckCircleIcon /> : <RadioButtonUncheckedIcon />}
-      </IconButton>
-      <ListItemText
-        primary={
-          <Typography sx={{ textDecoration: todo.completed ? 'line-through' : 'none' }}>
-            {todo.content}
-          </Typography>
-        }
-        secondary={
-          <>
-            {todo.assignee && `担当: ${todo.assignee}　`}
-            {todo.due_date && `期限: ${todo.due_date}　`}
-            {todo.remarks && (
-              <Typography component="span" variant="caption" color="text.secondary" display="block">
-                備考: {todo.remarks}
+  const renderTodoItem = (todo: Todo) => {
+    const isExpanded = expandedTodoId === todo.id;
+    return (
+      <Box key={todo.id} sx={{ border: '1px solid #eee', borderRadius: 1, mb: 1, opacity: todo.completed ? 0.7 : 1 }}>
+        <ListItem
+          alignItems="flex-start"
+          secondaryAction={
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              <IconButton edge="end" size="small" onClick={() => handleExpandTodo(todo)} title="編集">
+                {isExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+              </IconButton>
+              <IconButton edge="end" size="small" onClick={() => handleDeleteTodo(todo.id)} title="削除">
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          }
+        >
+          <IconButton
+            size="small"
+            onClick={() => handleToggleTodo(todo)}
+            sx={{ mr: 1, mt: 0.5, color: todo.completed ? '#4caf50' : color.main }}
+            title={todo.completed ? '未完了に戻す' : '完了にする'}
+          >
+            {todo.completed ? <CheckCircleIcon /> : <RadioButtonUncheckedIcon />}
+          </IconButton>
+          <ListItemText
+            primary={
+              <Typography sx={{ textDecoration: todo.completed ? 'line-through' : 'none', whiteSpace: 'pre-wrap' }}>
+                {todo.content}
               </Typography>
-            )}
-          </>
-        }
-      />
-      {todo.completed && <Chip label="完了" size="small" color="success" sx={{ mr: 5 }} />}
-    </ListItem>
-  );
+            }
+            secondary={
+              <>
+                {todo.assignee && `担当: ${todo.assignee}　`}
+                {todo.due_date && `期限: ${todo.due_date}　`}
+                {todo.remarks && (
+                  <Typography component="span" variant="caption" color="text.secondary" display="block">
+                    備考: {todo.remarks}
+                  </Typography>
+                )}
+              </>
+            }
+          />
+          {todo.completed && <Chip label="完了" size="small" color="success" sx={{ mr: 9 }} />}
+        </ListItem>
+
+        <Collapse in={isExpanded}>
+          <Box sx={{ p: 2, pt: 0 }}>
+            <Divider sx={{ mb: 2 }} />
+            <Grid container spacing={1}>
+              <Grid item xs={12}>
+                <Typography variant="caption" color="text.secondary">TODO内容</Typography>
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  size="small"
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  sx={{ mt: 0.5 }}
+                />
+              </Grid>
+              <Grid item xs={6} sm={4}>
+                <Typography variant="caption" color="text.secondary">誰が</Typography>
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  value={editAssignee}
+                  onChange={(e) => setEditAssignee(e.target.value)}
+                  sx={{ mt: 0.5 }}
+                  SelectProps={{ displayEmpty: true }}
+                >
+                  <MenuItem value=""><em>未指定</em></MenuItem>
+                  {staffList.map((s) => (
+                    <MenuItem key={s.name} value={s.name}>{s.name}</MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid item xs={6} sm={4}>
+                <Typography variant="caption" color="text.secondary">いつまで</Typography>
+                <TextField
+                  fullWidth
+                  size="small"
+                  type="date"
+                  value={editDueDate}
+                  onChange={(e) => setEditDueDate(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ mt: 0.5 }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <Typography variant="caption" color="text.secondary">備考</Typography>
+                <TextField
+                  fullWidth
+                  size="small"
+                  value={editRemarks}
+                  onChange={(e) => setEditRemarks(e.target.value)}
+                  sx={{ mt: 0.5 }}
+                />
+              </Grid>
+              <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                <Button size="small" onClick={() => setExpandedTodoId(null)}>キャンセル</Button>
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={() => handleSaveTodoEdit(todo.id)}
+                  disabled={savingTodoId === todo.id || !editContent.trim()}
+                  sx={{ bgcolor: color.main, '&:hover': { bgcolor: color.dark } }}
+                  startIcon={savingTodoId === todo.id ? <CircularProgress size={14} color="inherit" /> : undefined}
+                >
+                  {savingTodoId === todo.id ? '保存中...' : '保存'}
+                </Button>
+              </Grid>
+            </Grid>
+          </Box>
+        </Collapse>
+      </Box>
+    );
+  };
 
   return (
     <Container maxWidth="md" sx={{ py: 3 }}>
@@ -319,11 +439,12 @@ export default function SalesMeetingAgendaPage() {
                 <Typography variant="caption" color="text.secondary">TODO内容</Typography>
                 <TextField
                   fullWidth
+                  multiline
+                  minRows={2}
                   size="small"
                   placeholder="TODOを入力"
                   value={newTodoContent}
                   onChange={(e) => setNewTodoContent(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddTodo(); }}
                   sx={{ mt: 0.5 }}
                 />
               </Grid>
