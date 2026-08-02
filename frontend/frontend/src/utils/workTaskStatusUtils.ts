@@ -127,6 +127,11 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     return '';
   }
 
+  // 保留（最優先：on_holdに値がある場合は他のステータスより優先）
+  if (isNotBlank(task.on_hold)) {
+    return '保留';
+  }
+
   // 0a. 契約後司法書士連絡未
   // property_listingsのsales_contract_completedが"契約完了～"で始まり、
   // judicial_scrivener_email_after_contractが空で、決済日が2026/4/30以降の場合
@@ -306,11 +311,6 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     isBlank(task.on_hold)
   ) {
     return `媒介作成_締日（${formatDateMD(task.mediation_deadline)}`;
-  }
-
-  // 12. 保留
-  if (isNotBlank(task.on_hold)) {
-    return '保留';
   }
 
   // デフォルト: 空
