@@ -587,7 +587,9 @@ export class GoogleSheetsClient {
       s => s.properties?.title === this.config.sheetName
     );
 
-    if (!sheet || !sheet.properties?.sheetId) {
+    // 注意: sheetIdは0が正当な値（先頭シート）のため、undefined/nullチェックにする
+    // （falsyチェック `!sheet.properties?.sheetId` だとsheetId=0の場合に誤って「not found」になるバグがあった）
+    if (!sheet || sheet.properties?.sheetId === undefined || sheet.properties?.sheetId === null) {
       throw new Error(`Sheet "${this.config.sheetName}" not found`);
     }
 
