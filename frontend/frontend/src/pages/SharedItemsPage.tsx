@@ -18,13 +18,19 @@ import {
   ListItemButton,
   ListItemText,
   Badge,
+  Collapse,
+  Chip,
 } from '@mui/material';
-import { Search as SearchIcon, Clear as ClearIcon, Add as AddIcon } from '@mui/icons-material';
+import { Search as SearchIcon, Clear as ClearIcon, Add as AddIcon, ExpandLess, ExpandMore } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 import { SECTION_COLORS } from '../theme/sectionColors';
+
+// 営業会議スプレッドシートURL
+const SALES_MEETING_SPREADSHEET_URL =
+  'https://docs.google.com/spreadsheets/d/1i_fRAdBKnM3Mctb4g_jdpo1rFgRqH7pxUn9DPIF39eY/edit?gid=1354522391#gid=1354522391';
 
 interface SharedItem {
   id: string;
@@ -51,8 +57,51 @@ export default function SharedItemsPage() {
   // 未確認フィルター用スタッフ名（null = 未確認フィルターなし）
   const [selectedUnconfirmedStaff, setSelectedUnconfirmedStaff] = useState<string | null>(null);
 
+  // 専任媒介・月別サマリー（担当者別）
+  const [exclusiveMonthlySummary, setExclusiveMonthlySummary] = useState<
+    Record<string, { yearMonth: string; label: string; count: number; sellerIds: string[] }[]>
+  >({});
+  // 他決・月別サマリー（担当者別）
+  const [otherDecisionMonthlySummary, setOtherDecisionMonthlySummary] = useState<
+    Record<string, { yearMonth: string; label: string; count: number; sellerIds: string[] }[]>
+  >({});
+  // 専任月別セクション専用の展開state
+  const [exclusiveExpandedMonth, setExclusiveExpandedMonth] = useState<string | null>(null);
+  // 他決月別セクション専用の展開state
+  const [otherDecisionExpandedMonth, setOtherDecisionExpandedMonth] = useState<string | null>(null);
+
   useEffect(() => {
     fetchAllSharedItems();
+  }, []);
+
+  // 専任媒介・月別サマリーを取得（初回のみ）
+  useEffect(() => {
+    let cancelled = false;
+    const fetchSummary = async () => {
+      try {
+        const res = await api.get('/api/sellers/exclusive-monthly-summary');
+        if (!cancelled) setExclusiveMonthlySummary(res.data?.summary || {});
+      } catch (e) {
+        // サイドバーのオプション機能なのでエラーは無視
+      }
+    };
+    fetchSummary();
+    return () => { cancelled = true; };
+  }, []);
+
+  // 他決・月別サマリーを取得（初回のみ）
+  useEffect(() => {
+    let cancelled = false;
+    const fetchOtherDecisionSummary = async () => {
+      try {
+        const res = await api.get('/api/sellers/other-decision-monthly-summary');
+        if (!cancelled) setOtherDecisionMonthlySummary(res.data?.summary || {});
+      } catch (e) {
+        // エラーは無視
+      }
+    };
+    fetchOtherDecisionSummary();
+    return () => { cancelled = true; };
   }, []);
 
   const fetchAllSharedItems = async (forceRefresh = false) => {
@@ -325,107 +374,258 @@ export default function SharedItemsPage() {
               />
             </ListItemButton>
           ))}
-          {/* 営業会議グループ */}
-          <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
-            <Typography variant="caption" color="text.secondary" fontWeight="bold">
-              営業会議
-            </Typography>
-          </Box>
-          {locationCategories
-            .filter(({ label }) => label === '契約率チーム' || label === '物件数チーム')
-            .map(({ label, count }) => (
+          {/* 営業会議グループ（紫背景・クリックでスプレッドシートへ） */}
+          <Box sx={{ mt: 0.5, pt: 0.5, bgcolor: '#f3e5f5', borderRadius: 1, px: 0.5, pb: 0.5 }}>
             <ListItemButton
-              key={label}
-              selected={selectedLocation === label && !selectedUnconfirmedStaff}
-              onClick={() => { setSelectedLocation(label); setSelectedUnconfirmedStaff(null); setPage(0); }}
+              onClick={() => window.open(SALES_MEETING_SPREADSHEET_URL, '_blank', 'noopener,noreferrer')}
               sx={{
                 py: 1,
-                borderLeft: `4px solid ${sharedItemsColor.main}`,
-                '&.Mui-selected': {
-                  backgroundColor: `${sharedItemsColor.main}15`,
-                },
-                '&:hover': {
-                  backgroundColor: `${sharedItemsColor.main}10`,
-                },
+                borderRadius: 1,
+                '&:hover': { backgroundColor: '#e1bee7' },
               }}
             >
               <ListItemText
-                primary={label}
-                primaryTypographyProps={{ variant: 'body2' }}
-                sx={{ flex: 1, minWidth: 0, mr: 1 }}
-              />
-              <Badge
-                badgeContent={count}
-                sx={{
-                  ml: 1,
-                  '& .MuiBadge-badge': { backgroundColor: sharedItemsColor.main, color: '#fff' }
-                }}
-                max={9999}
+                primary="営業会議"
+                primaryTypographyProps={{ variant: 'body2', fontWeight: 'bold', color: '#6a1b9a' }}
+                sx={{ flex: 1, minWidth: 0 }}
               />
             </ListItemButton>
-          ))}
-          {/* 口コミ集計リンク */}
-          <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
-            <Typography variant="caption" color="text.secondary" fontWeight="bold">
-              集計・分析
-            </Typography>
+            {locationCategories
+              .filter(({ label }) => label === '契約率チーム' || label === '物件数チーム')
+              .map(({ label, count }) => (
+              <ListItemButton
+                key={label}
+                selected={selectedLocation === label && !selectedUnconfirmedStaff}
+                onClick={() => { setSelectedLocation(label); setSelectedUnconfirmedStaff(null); setPage(0); }}
+                sx={{
+                  py: 1,
+                  pl: 3,
+                  borderLeft: '4px solid #8e24aa',
+                  '&.Mui-selected': {
+                    backgroundColor: '#8e24aa15',
+                  },
+                  '&:hover': {
+                    backgroundColor: '#8e24aa10',
+                  },
+                }}
+              >
+                <ListItemText
+                  primary={label}
+                  primaryTypographyProps={{ variant: 'body2' }}
+                  sx={{ flex: 1, minWidth: 0, mr: 1 }}
+                />
+                <Badge
+                  badgeContent={count}
+                  sx={{
+                    ml: 1,
+                    '& .MuiBadge-badge': { backgroundColor: '#8e24aa', color: '#fff' }
+                  }}
+                  max={9999}
+                />
+              </ListItemButton>
+            ))}
           </Box>
-          <ListItemButton
-            onClick={() => navigate('/shared-items/review-stats')}
-            sx={{
-              py: 1,
-              borderLeft: '4px solid #4caf50',
-              '&:hover': { backgroundColor: '#4caf5010' },
-            }}
-          >
-            <ListItemText
-              primary="口コミ集計"
-              primaryTypographyProps={{ variant: 'body2' }}
-              sx={{ flex: 1, minWidth: 0 }}
-            />
-          </ListItemButton>
-          <ListItemButton
-            onClick={() => navigate('/buyers/purchase-rate-statistics')}
-            sx={{
-              py: 1,
-              borderLeft: '4px solid #4caf50',
-              '&:hover': { backgroundColor: '#4caf5010' },
-            }}
-          >
-            <ListItemText
-              primary="契約率統計"
-              primaryTypographyProps={{ variant: 'body2' }}
-              sx={{ flex: 1, minWidth: 0 }}
-            />
-          </ListItemButton>
-          <ListItemButton
-            onClick={() => navigate('/unvisited-other-decision-list')}
-            sx={{
-              py: 1,
-              borderLeft: '4px solid #4caf50',
-              '&:hover': { backgroundColor: '#4caf5010' },
-            }}
-          >
-            <ListItemText
-              primary="他決分析"
-              primaryTypographyProps={{ variant: 'body2' }}
-              sx={{ flex: 1, minWidth: 0 }}
-            />
-          </ListItemButton>
-          <ListItemButton
-            onClick={() => navigate('/sales-learning-library')}
-            sx={{
-              py: 1,
-              borderLeft: '4px solid #4caf50',
-              '&:hover': { backgroundColor: '#4caf5010' },
-            }}
-          >
-            <ListItemText
-              primary="営業学習ライブラリ"
-              primaryTypographyProps={{ variant: 'body2' }}
-              sx={{ flex: 1, minWidth: 0 }}
-            />
-          </ListItemButton>
+
+          {/* 【専任媒介】月別分析セクション（2026年5月以降） */}
+          {(() => {
+            const allMonths = new Map<string, { label: string; yearMonth: string; entries: { assignee: string; count: number; sellerIds: string[] }[] }>();
+            Object.entries(exclusiveMonthlySummary).forEach(([assignee, months]) => {
+              months.forEach(({ yearMonth, label, count, sellerIds }) => {
+                if (!allMonths.has(yearMonth)) {
+                  allMonths.set(yearMonth, { label, yearMonth, entries: [] });
+                }
+                allMonths.get(yearMonth)!.entries.push({ assignee, count, sellerIds });
+              });
+            });
+
+            if (allMonths.size === 0) return null;
+
+            const sortedMonths = Array.from(allMonths.values()).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+
+            return (
+              <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: 'orange', bgcolor: '#fff8f0', borderRadius: 1, px: 0.5 }}>
+                <Typography variant="caption" sx={{ px: 1.5, py: 0.5, display: 'block', color: '#e65100', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                  ── 専任媒介 取得分析 ──
+                </Typography>
+                {sortedMonths.map(({ yearMonth, label, entries }) => {
+                  const totalCount = entries.reduce((sum, e) => sum + e.count, 0);
+                  const isExpanded = exclusiveExpandedMonth === yearMonth;
+                  return (
+                    <Box key={yearMonth}>
+                      <Button
+                        fullWidth
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExclusiveExpandedMonth(isExpanded ? null : yearMonth);
+                        }}
+                        sx={{
+                          justifyContent: 'space-between',
+                          textAlign: 'left',
+                          fontSize: '0.85rem',
+                          py: 1,
+                          px: 1.5,
+                          color: isExpanded ? 'white' : '#e65100',
+                          bgcolor: isExpanded ? '#ff6d00' : 'transparent',
+                          borderRadius: isExpanded ? '4px 4px 0 0' : 1,
+                          '&:hover': { bgcolor: isExpanded ? '#ff6d00' : '#fff3e0' },
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <span>【専任媒介】{label}</span>
+                          <Chip
+                            label={totalCount}
+                            size="small"
+                            sx={{
+                              height: 20, fontSize: '0.7rem',
+                              bgcolor: isExpanded ? 'rgba(255,255,255,0.3)' : '#fff3e0',
+                              color: isExpanded ? 'white' : '#e65100',
+                              fontWeight: 'bold',
+                            }}
+                          />
+                        </Box>
+                        {isExpanded ? <ExpandLess /> : <ExpandMore />}
+                      </Button>
+                      <Collapse in={isExpanded}>
+                        <Box sx={{ bgcolor: '#fff8f0', border: 1, borderColor: '#ffb74d', borderTop: 0, borderRadius: '0 0 4px 4px' }}>
+                          {entries.map(({ assignee, count, sellerIds }) => (
+                            <Button
+                              key={assignee}
+                              fullWidth
+                              onClick={() => {
+                                if (sellerIds.length > 0) {
+                                  window.open(`/sellers/${sellerIds[0]}/exclusive-analysis`, '_blank', 'noopener,noreferrer');
+                                }
+                              }}
+                              sx={{
+                                justifyContent: 'space-between',
+                                textAlign: 'left',
+                                fontSize: '0.82rem',
+                                py: 0.75,
+                                pl: 3,
+                                pr: 1.5,
+                                color: '#bf360c',
+                                '&:hover': { bgcolor: '#ffe0b2' },
+                              }}
+                            >
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <span>📊 {assignee}（{count}件）</span>
+                              </Box>
+                              <Chip
+                                label="分析"
+                                size="small"
+                                sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#ff6d00', color: 'white' }}
+                              />
+                            </Button>
+                          ))}
+                        </Box>
+                      </Collapse>
+                    </Box>
+                  );
+                })}
+              </Box>
+            );
+          })()}
+
+          {/* 【他決】月別分析セクション（2026年5月以降） */}
+          {(() => {
+            const allMonths = new Map<string, { label: string; yearMonth: string; entries: { assignee: string; count: number; sellerIds: string[] }[] }>();
+            Object.entries(otherDecisionMonthlySummary).forEach(([assignee, months]) => {
+              months.forEach(({ yearMonth, label, count, sellerIds }) => {
+                if (!allMonths.has(yearMonth)) {
+                  allMonths.set(yearMonth, { label, yearMonth, entries: [] });
+                }
+                allMonths.get(yearMonth)!.entries.push({ assignee, count, sellerIds });
+              });
+            });
+
+            if (allMonths.size === 0) return null;
+
+            const sortedMonths = Array.from(allMonths.values()).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+
+            return (
+              <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: '#ef9a9a', bgcolor: '#fff5f5', borderRadius: 1, px: 0.5 }}>
+                <Typography variant="caption" sx={{ px: 1.5, py: 0.5, display: 'block', color: '#c62828', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                  ── 他決 分析 ──
+                </Typography>
+                {sortedMonths.map(({ yearMonth, label, entries }) => {
+                  const totalCount = entries.reduce((sum, e) => sum + e.count, 0);
+                  const isExpanded = otherDecisionExpandedMonth === yearMonth;
+                  return (
+                    <Box key={yearMonth}>
+                      <Button
+                        fullWidth
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOtherDecisionExpandedMonth(isExpanded ? null : yearMonth);
+                        }}
+                        sx={{
+                          justifyContent: 'space-between',
+                          textAlign: 'left',
+                          fontSize: '0.85rem',
+                          py: 1,
+                          px: 1.5,
+                          color: isExpanded ? 'white' : '#c62828',
+                          bgcolor: isExpanded ? '#e53935' : 'transparent',
+                          borderRadius: isExpanded ? '4px 4px 0 0' : 1,
+                          '&:hover': { bgcolor: isExpanded ? '#e53935' : '#ffebee' },
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <span>【他決】{label}</span>
+                          <Chip
+                            label={totalCount}
+                            size="small"
+                            sx={{
+                              height: 20, fontSize: '0.7rem',
+                              bgcolor: isExpanded ? 'rgba(255,255,255,0.3)' : '#ffebee',
+                              color: isExpanded ? 'white' : '#c62828',
+                              fontWeight: 'bold',
+                            }}
+                          />
+                        </Box>
+                        {isExpanded ? <ExpandLess /> : <ExpandMore />}
+                      </Button>
+                      <Collapse in={isExpanded}>
+                        <Box sx={{ bgcolor: '#fff5f5', border: 1, borderColor: '#ef9a9a', borderTop: 0, borderRadius: '0 0 4px 4px' }}>
+                          {entries.map(({ assignee, count, sellerIds }) => (
+                            <Button
+                              key={assignee}
+                              fullWidth
+                              onClick={() => {
+                                if (sellerIds.length > 0) {
+                                  window.open(`/sellers/${sellerIds[0]}/other-decision-analysis`, '_blank', 'noopener,noreferrer');
+                                }
+                              }}
+                              sx={{
+                                justifyContent: 'space-between',
+                                textAlign: 'left',
+                                fontSize: '0.82rem',
+                                py: 0.75,
+                                pl: 3,
+                                pr: 1.5,
+                                color: '#b71c1c',
+                                '&:hover': { bgcolor: '#ffcdd2' },
+                              }}
+                            >
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <span>📉 {assignee}（{count}件）</span>
+                              </Box>
+                              <Chip
+                                label="分析"
+                                size="small"
+                                sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#e53935', color: 'white' }}
+                              />
+                            </Button>
+                          ))}
+                        </Box>
+                      </Collapse>
+                    </Box>
+                  );
+                })}
+              </Box>
+            );
+          })()}
+
         </Paper>
 
         {/* メインコンテンツ */}
