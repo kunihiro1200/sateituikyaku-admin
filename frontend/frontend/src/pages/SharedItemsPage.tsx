@@ -527,7 +527,7 @@ export default function SharedItemsPage() {
                               fullWidth
                               onClick={() => {
                                 if (sellerIds.length > 0) {
-                                  window.open(`/sellers/${sellerIds[0]}/exclusive-analysis`, '_blank', 'noopener,noreferrer');
+                                  window.open(`/sellers/${sellerIds[0]}/exclusive-analysis?from=shared-items`, '_blank', 'noopener,noreferrer');
                                 }
                               }}
                               sx={{
@@ -627,7 +627,7 @@ export default function SharedItemsPage() {
                               fullWidth
                               onClick={() => {
                                 if (sellerIds.length > 0) {
-                                  window.open(`/sellers/${sellerIds[0]}/other-decision-analysis`, '_blank', 'noopener,noreferrer');
+                                  window.open(`/sellers/${sellerIds[0]}/other-decision-analysis?from=shared-items`, '_blank', 'noopener,noreferrer');
                                 }
                               }}
                               sx={{

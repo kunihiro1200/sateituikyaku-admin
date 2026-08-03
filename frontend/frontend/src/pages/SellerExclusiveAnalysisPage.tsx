@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -96,6 +96,10 @@ interface AnalysisData {
 export default function SellerExclusiveAnalysisPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const fromSharedItems = searchParams.get('from') === 'shared-items';
+  const backPath = fromSharedItems ? '/shared-items' : `/sellers/${id}/call`;
+  const backLabel = fromSharedItems ? '共有に戻る' : '通話モードに戻る';
 
   // 段階的ロード：データ取得とAI分析を分離
   const [dataLoading, setDataLoading] = useState(true);   // テーブル・ヘッダー用
@@ -207,8 +211,8 @@ export default function SellerExclusiveAnalysisPage() {
     return (
       <Box p={3}>
         <Alert severity="error">{error}</Alert>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(`/sellers/${id}/call`)} sx={{ mt: 2 }}>
-          通話モードに戻る
+        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(backPath)} sx={{ mt: 2 }}>
+          {backLabel}
         </Button>
       </Box>
     );
@@ -230,12 +234,12 @@ export default function SellerExclusiveAnalysisPage() {
 
       <Button
         startIcon={<ArrowBackIcon />}
-        onClick={() => navigate(`/sellers/${id}/call`)}
+        onClick={() => navigate(backPath)}
         sx={{ mb: 2 }}
         variant="outlined"
         size="small"
       >
-        通話モードに戻る
+        {backLabel}
       </Button>
 
       {/* ヘッダー：データ取得中はスケルトン表示 */}
@@ -383,7 +387,7 @@ export default function SellerExclusiveAnalysisPage() {
                     <Button
                       variant="contained"
                       size="small"
-                      onClick={() => navigate(`/sellers/${id}/exclusive-analysis/summary`)}
+                      onClick={() => navigate(`/sellers/${id}/exclusive-analysis/summary${fromSharedItems ? '?from=shared-items' : ''}`)}
                       sx={{ bgcolor: '#9c27b0', '&:hover': { bgcolor: '#6a1b9a' }, ml: 'auto' }}
                     >
                       ✨ 要約ページを見る

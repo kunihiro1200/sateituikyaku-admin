@@ -29,14 +29,15 @@ export default function AnalysisSummaryPage() {
   const location = useLocation();
 
   const isExclusive = location.pathname.includes('exclusive-analysis');
+  const fromSharedItems = new URLSearchParams(location.search).get('from') === 'shared-items';
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<SummaryData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const backPath = isExclusive
+  const backPath = (isExclusive
     ? `/sellers/${id}/exclusive-analysis`
-    : `/sellers/${id}/other-decision-analysis`;
+    : `/sellers/${id}/other-decision-analysis`) + (fromSharedItems ? '?from=shared-items' : '');
 
   const apiUrl = isExclusive
     ? `/api/sellers/${id}/exclusive-analysis/summary`

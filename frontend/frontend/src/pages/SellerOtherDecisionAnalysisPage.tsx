@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Chip, CircularProgress, Alert, Button, Divider,
@@ -52,6 +52,10 @@ const STATUS_COLORS: Record<string, string> = {
 export default function SellerOtherDecisionAnalysisPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const fromSharedItems = searchParams.get('from') === 'shared-items';
+  const backPath = fromSharedItems ? '/shared-items' : `/sellers/${id}/call`;
+  const backLabel = fromSharedItems ? '共有に戻る' : '通話モードに戻る';
 
   // 段階的ロード
   const [dataLoading, setDataLoading] = useState(true);
@@ -133,7 +137,7 @@ export default function SellerOtherDecisionAnalysisPage() {
 
   if (error) return (
     <Box p={3}><Alert severity="error">{error}</Alert>
-      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(`/sellers/${id}/call`)} sx={{ mt: 2 }}>通話モードに戻る</Button>
+      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(backPath)} sx={{ mt: 2 }}>{backLabel}</Button>
     </Box>
   );
 
@@ -145,8 +149,8 @@ export default function SellerOtherDecisionAnalysisPage() {
     <Box sx={{ maxWidth: 960, mx: 'auto', p: { xs: 2, sm: 3 } }}>
       {(dataLoading || aiLoading) && <LinearProgress sx={{ mb: 1, borderRadius: 1, height: 3 }} color="error" />}
 
-      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(`/sellers/${id}/call`)} sx={{ mb: 2 }} variant="outlined" size="small">
-        通話モードに戻る
+      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(backPath)} sx={{ mb: 2 }} variant="outlined" size="small">
+        {backLabel}
       </Button>
 
       {/* ヘッダー */}
@@ -279,7 +283,7 @@ export default function SellerOtherDecisionAnalysisPage() {
                     <Button
                       variant="contained"
                       size="small"
-                      onClick={() => navigate(`/sellers/${id}/other-decision-analysis/summary`)}
+                      onClick={() => navigate(`/sellers/${id}/other-decision-analysis/summary${fromSharedItems ? '?from=shared-items' : ''}`)}
                       sx={{ bgcolor: '#9c27b0', '&:hover': { bgcolor: '#6a1b9a' }, ml: 'auto' }}
                     >
                       ✨ 要約ページを見る
