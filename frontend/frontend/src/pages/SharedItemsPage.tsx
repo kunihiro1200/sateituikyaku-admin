@@ -34,6 +34,13 @@ const SALES_MEETING_SPREADSHEET_URL =
 // 営業会議Chat URL
 const SALES_MEETING_CHAT_URL = 'https://mail.google.com/mail/u/0/#chat/space/AAQAouqL-7E';
 
+// 営業_資料 Google Driveフォルダリンク
+const SALES_MATERIALS_LINKS = [
+  { label: 'いふう_定番', url: 'https://drive.google.com/drive/u/0/folders/169D4GRvkJd4S8AkwpfLqrGZU3NGiawDp' },
+  { label: 'くじら_定番', url: 'https://drive.google.com/drive/u/0/folders/1FwlNVedSK3s-S6lAj1Z7pUpkBT1RBNXy' },
+  { label: 'くじら_物件別', url: 'https://drive.google.com/drive/u/0/folders/1R9JOYuZfGMuwDI-t12rbcTmkIzyqeBEj' },
+];
+
 interface SharedItem {
   id: string;
   sharing_location: string;  // D列「共有場」
@@ -67,6 +74,8 @@ export default function SharedItemsPage() {
   const [otherDecisionMonthlySummary, setOtherDecisionMonthlySummary] = useState<
     Record<string, { yearMonth: string; label: string; count: number; sellerIds: string[] }[]>
   >({});
+  // 営業_資料セクションの展開state
+  const [salesMaterialsExpanded, setSalesMaterialsExpanded] = useState(false);
   // 専任月別セクション専用の展開state
   const [exclusiveExpandedMonth, setExclusiveExpandedMonth] = useState<string | null>(null);
   // 他決月別セクション専用の展開state
@@ -458,6 +467,55 @@ export default function SharedItemsPage() {
                 />
               </ListItemButton>
             ))}
+          </Box>
+
+          {/* 営業_資料グループ（緑背景・クリックでGoogle Driveへ） */}
+          <Box sx={{ mt: 0.5, pt: 0.5, bgcolor: '#e8f5e9', borderRadius: 1, px: 0.5, pb: salesMaterialsExpanded ? 0.5 : 0 }}>
+            <ListItemButton
+              onClick={() => setSalesMaterialsExpanded((prev) => !prev)}
+              sx={{
+                py: 1,
+                borderRadius: 1,
+                '&:hover': { backgroundColor: '#c8e6c9' },
+              }}
+            >
+              <ListItemText
+                primary="営業_資料"
+                primaryTypographyProps={{ variant: 'body2', fontWeight: 'bold', color: '#2e7d32' }}
+                sx={{ flex: 1, minWidth: 0 }}
+              />
+              {salesMaterialsExpanded ? (
+                <ExpandLess sx={{ color: '#2e7d32' }} />
+              ) : (
+                <ExpandMore sx={{ color: '#2e7d32' }} />
+              )}
+            </ListItemButton>
+            <Collapse in={salesMaterialsExpanded}>
+              {SALES_MATERIALS_LINKS.map(({ label, url }) => (
+                <ListItemButton
+                  key={label}
+                  disabled={!url}
+                  onClick={() => url && window.open(url, '_blank', 'noopener,noreferrer')}
+                  sx={{
+                    py: 1,
+                    pl: 3,
+                    borderRadius: 1,
+                    '&:hover': { backgroundColor: '#c8e6c9' },
+                  }}
+                >
+                  <ListItemText
+                    primary={label}
+                    primaryTypographyProps={{ variant: 'body2', color: url ? '#2e7d32' : 'text.disabled' }}
+                    sx={{ flex: 1, minWidth: 0 }}
+                  />
+                  {url ? (
+                    <OpenInNewIcon sx={{ fontSize: '0.9rem', color: '#43a047', ml: 0.5 }} />
+                  ) : (
+                    <Typography variant="caption" color="text.disabled">未設定</Typography>
+                  )}
+                </ListItemButton>
+              ))}
+            </Collapse>
           </Box>
 
           {/* 【専任媒介】月別分析セクション（2026年5月以降） */}
