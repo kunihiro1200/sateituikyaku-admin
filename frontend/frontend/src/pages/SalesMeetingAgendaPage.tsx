@@ -245,12 +245,19 @@ export default function SalesMeetingAgendaPage() {
     return (
       <Box key={todo.id} sx={{ border: '1px solid #eee', borderRadius: 1, mb: 1, opacity: todo.completed ? 0.7 : 1, overflow: 'hidden' }}>
         <Box
-          onClick={() => handleExpandTodo(todo)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleExpandTodo(todo);
+          }}
+          role="button"
+          tabIndex={0}
           sx={{
             display: 'flex',
             alignItems: 'flex-start',
             p: 1.5,
+            minHeight: 48,
             cursor: 'pointer',
+            userSelect: 'none',
             '&:hover': { bgcolor: '#fafafa' },
           }}
         >
