@@ -74,6 +74,8 @@ export default function SharedItemsPage() {
   const [otherDecisionMonthlySummary, setOtherDecisionMonthlySummary] = useState<
     Record<string, { yearMonth: string; label: string; count: number; sellerIds: string[] }[]>
   >({});
+  // 営業会議〜他決分析セクションの展開state（営業会議クリックで一括開閉）
+  const [salesMeetingSectionExpanded, setSalesMeetingSectionExpanded] = useState(true);
   // 営業_資料セクションの展開state
   const [salesMaterialsExpanded, setSalesMaterialsExpanded] = useState(false);
   // 専任月別セクション専用の展開state
@@ -385,10 +387,10 @@ export default function SharedItemsPage() {
               />
             </ListItemButton>
           ))}
-          {/* 営業会議グループ（紫背景・クリックでスプレッドシートへ） */}
+          {/* 営業会議ヘッダー（クリックで「他決分析」までの全体を開閉） */}
           <Box sx={{ mt: 0.5, pt: 0.5, bgcolor: '#f3e5f5', borderRadius: 1, px: 0.5, pb: 0.5 }}>
             <ListItemButton
-              onClick={() => window.open(SALES_MEETING_SPREADSHEET_URL, '_blank', 'noopener,noreferrer')}
+              onClick={() => setSalesMeetingSectionExpanded((prev) => !prev)}
               sx={{
                 py: 1,
                 borderRadius: 1,
@@ -400,8 +402,27 @@ export default function SharedItemsPage() {
                 primaryTypographyProps={{ variant: 'body2', fontWeight: 'bold', color: '#6a1b9a' }}
                 sx={{ flex: 1, minWidth: 0 }}
               />
-              <OpenInNewIcon sx={{ fontSize: '1rem', color: '#8e24aa', ml: 0.5 }} />
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(SALES_MEETING_SPREADSHEET_URL, '_blank', 'noopener,noreferrer');
+                }}
+                sx={{ p: 0.25, mr: 0.25 }}
+              >
+                <OpenInNewIcon sx={{ fontSize: '1rem', color: '#8e24aa' }} />
+              </IconButton>
+              {salesMeetingSectionExpanded ? (
+                <ExpandLess sx={{ color: '#8e24aa' }} />
+              ) : (
+                <ExpandMore sx={{ color: '#8e24aa' }} />
+              )}
             </ListItemButton>
+          </Box>
+
+          <Collapse in={salesMeetingSectionExpanded}>
+          {/* 営業会議グループ（紫背景・クリックでスプレッドシートへ） */}
+          <Box sx={{ mt: 0.5, pt: 0.5, bgcolor: '#f3e5f5', borderRadius: 1, px: 0.5, pb: 0.5 }}>
             <ListItemButton
               onClick={() => window.open(SALES_MEETING_CHAT_URL, '_blank', 'noopener,noreferrer')}
               sx={{
@@ -717,6 +738,7 @@ export default function SharedItemsPage() {
               </Box>
             );
           })()}
+          </Collapse>
 
         </Paper>
 
