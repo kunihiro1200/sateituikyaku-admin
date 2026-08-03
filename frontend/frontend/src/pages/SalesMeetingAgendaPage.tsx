@@ -332,10 +332,12 @@ export default function SalesMeetingAgendaPage() {
                   sx={{ mt: 0.5 }}
                 />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12}>
                 <Typography variant="caption" color="text.secondary">備考</Typography>
                 <TextField
                   fullWidth
+                  multiline
+                  minRows={2}
                   size="small"
                   value={editRemarks}
                   onChange={(e) => setEditRemarks(e.target.value)}
@@ -504,6 +506,8 @@ export default function SalesMeetingAgendaPage() {
                 <Typography variant="caption" color="text.secondary">備考</Typography>
                 <TextField
                   fullWidth
+                  multiline
+                  minRows={2}
                   size="small"
                   placeholder="備考（任意）"
                   value={newTodoRemarks}
