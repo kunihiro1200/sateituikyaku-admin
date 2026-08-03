@@ -99,10 +99,11 @@ export default function SalesMeetingAgendaPage() {
   useEffect(() => {
     fetchMonths();
     fetchStaff();
+    fetchAllTodos();
   }, []);
 
   useEffect(() => {
-    fetchMonthData(selectedMonth);
+    fetchAgendaText(selectedMonth);
   }, [selectedMonth]);
 
   const fetchMonths = async () => {
@@ -123,7 +124,19 @@ export default function SalesMeetingAgendaPage() {
     }
   };
 
-  const fetchMonthData = useCallback(async (ym: string) => {
+  // TODOは対象月に関係なく全件取得（要件：完了していないものは月に関わらず全て表示）
+  const fetchAllTodos = useCallback(async () => {
+    try {
+      const response = await api.get('/api/sales-meeting-agenda/todos/all');
+      setTodos(response.data.data || []);
+    } catch (error: any) {
+      console.error('Failed to fetch todos:', error);
+      setApiError(error.response?.data?.error || error.message || 'TODOの取得に失敗しました');
+    }
+  }, []);
+
+  // 議題本文のみ対象月で切り替える
+  const fetchAgendaText = useCallback(async (ym: string) => {
     try {
       setLoading(true);
       setApiError('');
@@ -131,9 +144,8 @@ export default function SalesMeetingAgendaPage() {
       const data = response.data.data;
       setAgendaText(data.agenda_text || '');
       setInitialAgendaText(data.agenda_text || '');
-      setTodos(data.todos || []);
     } catch (error: any) {
-      console.error('Failed to fetch month data:', error);
+      console.error('Failed to fetch agenda text:', error);
       setApiError(error.response?.data?.error || error.message || '議題の取得に失敗しました');
     } finally {
       setLoading(false);
@@ -419,15 +431,15 @@ export default function SalesMeetingAgendaPage() {
         </TextField>
       </Paper>
 
-      {loading ? (
-        <Typography>読み込み中...</Typography>
-      ) : (
-        <>
-          {/* 議題本文 */}
-          <Paper sx={{ p: 3, mb: 2 }}>
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1, color: color.main }}>
-              {monthOptions.find((o) => o.value === selectedMonth)?.label || selectedMonth} 議題
-            </Typography>
+      {/* 議題本文（対象月で切り替わる） */}
+      <Paper sx={{ p: 3, mb: 2 }}>
+        <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1, color: color.main }}>
+          {monthOptions.find((o) => o.value === selectedMonth)?.label || selectedMonth} 議題
+        </Typography>
+        {loading ? (
+          <Typography variant="body2" color="text.secondary">読み込み中...</Typography>
+        ) : (
+          <>
             <TextField
               fullWidth
               multiline
@@ -448,10 +460,12 @@ export default function SalesMeetingAgendaPage() {
                 {saving ? '保存中...' : '議題を保存'}
               </Button>
             </Box>
-          </Paper>
+          </>
+        )}
+      </Paper>
 
-          {/* TODOリスト */}
-          <Paper sx={{ p: 3 }}>
+      {/* TODOリスト（月に関係なく全件表示） */}
+      <Paper sx={{ p: 3 }}>
             <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>TODO</Typography>
 
             {/* 新規TODO入力 */}
@@ -550,9 +564,7 @@ export default function SalesMeetingAgendaPage() {
                 </List>
               </>
             )}
-          </Paper>
-        </>
-      )}
+      </Paper>
     </Container>
   );
 }

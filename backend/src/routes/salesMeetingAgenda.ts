@@ -41,6 +41,27 @@ router.get('/months', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/sales-meeting-agenda/todos/all - 全月のTODO一覧を取得
+ * TODOは対象月に関係なく全て表示するため使用
+ */
+router.get('/todos/all', async (req: Request, res: Response) => {
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('sales_meeting_todos')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    res.json({ data: data || [] });
+  } catch (error: any) {
+    console.error('Failed to fetch all todos:', error);
+    res.status(500).json({ error: 'TODO一覧の取得に失敗しました', details: error.message });
+  }
+});
+
+/**
  * GET /api/sales-meeting-agenda/:yearMonth - 指定月の議題本文＋TODO一覧を取得
  * yearMonth形式: '2026-07'
  */
