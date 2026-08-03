@@ -51,6 +51,10 @@
       "schedule": "0 15 * * *"
     },
     {
+      "path": "/api/cron/sales-meeting-notification",
+      "schedule": "0 0 * * *"
+    },
+    {
       "path": "/api/tateuri/cron/price-check",
       "schedule": "0 0 * * *"
     },

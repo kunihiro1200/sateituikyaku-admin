@@ -493,6 +493,31 @@ app.get('/api/cron/price-reduction-notification', async (req, res) => {
   }
 });
 
+// Cron Job: 営業会議（毎月第1月曜）の1週間前に、物件数/契約率チームへ「問い」完成・回答入力依頼を送信
+// （毎日 UTC 00:00 = JST 09:00 に実行。対象日以外は何もせず終了）
+app.get('/api/cron/sales-meeting-notification', async (req, res) => {
+  try {
+    console.log('[Cron SalesMeetingNotification] 営業会議事前通知ジョブ開始');
+
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      console.error('[Cron SalesMeetingNotification] 認証失敗: 不正なアクセス');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { SalesMeetingNotificationService } = await import('./services/SalesMeetingNotificationService');
+    const service = new SalesMeetingNotificationService();
+
+    const result = await service.sendIfScheduledDay();
+    console.log('[Cron SalesMeetingNotification] 完了:', result);
+
+    return res.status(200).json({ success: true, ...result });
+  } catch (error: any) {
+    console.error('[Cron SalesMeetingNotification] 予期しないエラーが発生:', error.message);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Cron Job: 毎月第2土曜日に非公開配信メールを「未」にリセット（毎日 UTC 00:00 = JST 09:00 に実行、第2土曜日のみ処理）
 app.get('/api/cron/reset-private-mail-delivery', async (req, res) => {
   try {
