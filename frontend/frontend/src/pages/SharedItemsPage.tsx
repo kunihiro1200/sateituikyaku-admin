@@ -74,8 +74,8 @@ export default function SharedItemsPage() {
   const [otherDecisionMonthlySummary, setOtherDecisionMonthlySummary] = useState<
     Record<string, { yearMonth: string; label: string; count: number; sellerIds: string[] }[]>
   >({});
-  // 営業会議〜他決分析セクションの展開state（営業会議クリックで一括開閉）
-  const [salesMeetingSectionExpanded, setSalesMeetingSectionExpanded] = useState(true);
+  // 営業会議〜他決分析セクションの展開state（営業会議クリックで一括開閉、デフォルトは閉じた状態）
+  const [salesMeetingSectionExpanded, setSalesMeetingSectionExpanded] = useState(false);
   // 営業_資料セクションの展開state
   const [salesMaterialsExpanded, setSalesMaterialsExpanded] = useState(false);
   // 専任月別セクション専用の展開state
