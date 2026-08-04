@@ -395,6 +395,16 @@ router.get(
     query('statusFilter').optional().isString().withMessage('Status filter must be a string'),
     // サイドバーカテゴリフィルター（visitAssigned:xxx, todayCallAssigned:xxx の動的カテゴリも許可）
     query('statusCategory').optional().isString().withMessage('Invalid status category'),
+    // 地域フィルター（大分/福岡）
+    query('region').optional().isIn(['oita', 'fukuoka']).withMessage('Region must be oita or fukuoka'),
+    // 日付フィルター（反響日付）
+    query('inquiryDateFrom').optional().isISO8601().withMessage('Inquiry date from must be a valid date'),
+    query('inquiryDateTo').optional().isISO8601().withMessage('Inquiry date to must be a valid date'),
+    // 状況（売主）フィルター
+    query('currentStatusFilter').optional().isString().withMessage('Current status filter must be a string'),
+    // 査定額フィルター（万円単位）
+    query('valuationAmountMin').optional().isFloat({ min: 0 }).withMessage('Valuation amount min must be a positive number'),
+    query('valuationAmountMax').optional().isFloat({ min: 0 }).withMessage('Valuation amount max must be a positive number'),
   ],
   async (req: Request, res: Response) => {
     try {
@@ -433,6 +443,16 @@ router.get(
         statusFilter: req.query.statusFilter as string,
         // サイドバーカテゴリフィルター
         statusCategory: req.query.statusCategory as any,
+        // 地域フィルター（大分/福岡）
+        region: req.query.region as any,
+        // 日付フィルター（反響日付）
+        inquiryDateFrom: req.query.inquiryDateFrom as string,
+        inquiryDateTo: req.query.inquiryDateTo as string,
+        // 状況（売主）フィルター
+        currentStatusFilter: req.query.currentStatusFilter as string,
+        // 査定額フィルター（万円単位）
+        valuationAmountMin: req.query.valuationAmountMin ? parseFloat(req.query.valuationAmountMin as string) : undefined,
+        valuationAmountMax: req.query.valuationAmountMax ? parseFloat(req.query.valuationAmountMax as string) : undefined,
       };
 
       const result = await sellerService.listSellers(params);

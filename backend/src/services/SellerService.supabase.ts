@@ -1179,6 +1179,12 @@ export class SellerService extends BaseRepository {
       inquirySite, // サイトフィルター
       propertyType: propertyTypeFilter, // 種別フィルター
       statusFilter, // 状況（当社）フィルター
+      region, // 地域フィルター（大分/福岡）
+      inquiryDateFrom, // 日付フィルター（反響日付）From
+      inquiryDateTo, // 日付フィルター（反響日付）To
+      currentStatusFilter, // 状況（売主）フィルター
+      valuationAmountMin, // 査定額フィルター下限（万円単位）
+      valuationAmountMax, // 査定額フィルター上限（万円単位）
     } = params;
 
     // JST今日の日付を取得
@@ -1199,7 +1205,16 @@ export class SellerService extends BaseRepository {
       sortBy,
       sortOrder,
       includeDeleted ? 'with-deleted' : 'active-only',
-      statusCategory || 'all'
+      statusCategory || 'all',
+      inquirySite || 'all',
+      propertyTypeFilter || 'all',
+      statusFilter || 'all',
+      region || 'all',
+      inquiryDateFrom || 'all',
+      inquiryDateTo || 'all',
+      currentStatusFilter || 'all',
+      valuationAmountMin ?? 'all',
+      valuationAmountMax ?? 'all'
     );
 
     // キャッシュをチェック（インメモリ優先、次にRedis）
@@ -1726,6 +1741,30 @@ export class SellerService extends BaseRepository {
       if (!statusCategory || statusCategory === 'all') {
         query = query.eq('status', statusFilter); // 修正: ilike → eq（完全一致）
       }
+    }
+    // 地域フィルター：福岡はseller_numberが「FI」で始まるもの、大分はそれ以外全て
+    if (region === 'fukuoka') {
+      query = query.ilike('seller_number', 'FI%');
+    } else if (region === 'oita') {
+      query = query.not('seller_number', 'ilike', 'FI%');
+    }
+    // 日付フィルター（反響日付）
+    if (inquiryDateFrom) {
+      query = query.gte('inquiry_date', inquiryDateFrom);
+    }
+    if (inquiryDateTo) {
+      query = query.lte('inquiry_date', inquiryDateTo);
+    }
+    // 状況（売主）フィルター
+    if (currentStatusFilter) {
+      query = query.eq('current_status', currentStatusFilter);
+    }
+    // 査定額フィルター（万円単位で受け取り、円単位に変換して比較）
+    if (valuationAmountMin !== undefined) {
+      query = query.gte('valuation_amount_1', valuationAmountMin * 10000);
+    }
+    if (valuationAmountMax !== undefined) {
+      query = query.lte('valuation_amount_1', valuationAmountMax * 10000);
     }
 
     // ソート（inquiry_dateがnullのものは最後に表示、同日の場合は売主番号が大きいほうを最新とする）

@@ -482,6 +482,12 @@ export interface ListSellersParams {
   inquirySite?: string;    // サイト
   propertyType?: string;   // 種別
   statusFilter?: string;   // 状況（当社）
+  region?: 'oita' | 'fukuoka'; // 地域（大分/福岡）：福岡はseller_numberがFIで始まるもの、大分はそれ以外
+  inquiryDateFrom?: string; // 日付フィルター（反響日付）From
+  inquiryDateTo?: string;   // 日付フィルター（反響日付）To
+  currentStatusFilter?: string; // 状況（売主）：居住中、空き家、賃貸中、古屋あり、更地
+  valuationAmountMin?: number; // 査定額フィルター（万円単位）下限
+  valuationAmountMax?: number; // 査定額フィルター（万円単位）上限
   // Deletion sync filter
   includeDeleted?: boolean; // Default: false (exclude deleted sellers)
   // サイドバーカテゴリフィルター

@@ -324,6 +324,16 @@ export default function SellersPage() {
   const [propertyTypeFilter, setPropertyTypeFilter] = useState('');
   const [statusFilterValue, setStatusFilterValue] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  // 地域フィルター（大分/福岡）：福岡はseller_numberがFIで始まるもの、大分はそれ以外全て
+  const [regionFilter, setRegionFilter] = useState<'' | 'oita' | 'fukuoka'>('');
+  // 日付フィルター（反響日付）
+  const [inquiryDateFromFilter, setInquiryDateFromFilter] = useState('');
+  const [inquiryDateToFilter, setInquiryDateToFilter] = useState('');
+  // 状況（売主）フィルター
+  const [currentStatusFilterValue, setCurrentStatusFilterValue] = useState('');
+  // 査定額フィルター（万円単位）
+  const [valuationAmountMinFilter, setValuationAmountMinFilter] = useState('');
+  const [valuationAmountMaxFilter, setValuationAmountMaxFilter] = useState('');
   
   // Status category filter
   const [selectedCategory, setSelectedCategory] = useState<StatusCategory>(() => {
@@ -429,6 +439,12 @@ export default function SellersPage() {
     setInquirySiteFilter('');
     setPropertyTypeFilter('');
     setStatusFilterValue('');
+    setRegionFilter('');
+    setInquiryDateFromFilter('');
+    setInquiryDateToFilter('');
+    setCurrentStatusFilterValue('');
+    setValuationAmountMinFilter('');
+    setValuationAmountMaxFilter('');
   }, []);
 
   // カテゴリ展開ハンドラー（useCallbackで最適化）
@@ -577,7 +593,7 @@ export default function SellersPage() {
 
   useEffect(() => {
     fetchSellers();
-  }, [page, rowsPerPage, confidenceLevelFilter, inquirySiteFilter, propertyTypeFilter, statusFilterValue, selectedCategory, sortBy, sortOrder]);
+  }, [page, rowsPerPage, confidenceLevelFilter, inquirySiteFilter, propertyTypeFilter, statusFilterValue, regionFilter, inquiryDateFromFilter, inquiryDateToFilter, currentStatusFilterValue, valuationAmountMinFilter, valuationAmountMaxFilter, selectedCategory, sortBy, sortOrder]);
 
   const fetchSellers = async () => {
     try {
@@ -600,6 +616,24 @@ export default function SellersPage() {
       }
       if (statusFilterValue) {
         params.statusFilter = statusFilterValue;
+      }
+      if (regionFilter) {
+        params.region = regionFilter;
+      }
+      if (inquiryDateFromFilter) {
+        params.inquiryDateFrom = inquiryDateFromFilter;
+      }
+      if (inquiryDateToFilter) {
+        params.inquiryDateTo = inquiryDateToFilter;
+      }
+      if (currentStatusFilterValue) {
+        params.currentStatusFilter = currentStatusFilterValue;
+      }
+      if (valuationAmountMinFilter) {
+        params.valuationAmountMin = parseFloat(valuationAmountMinFilter);
+      }
+      if (valuationAmountMaxFilter) {
+        params.valuationAmountMax = parseFloat(valuationAmountMaxFilter);
       }
       
       // サイドバーカテゴリフィルター
@@ -1032,6 +1066,20 @@ export default function SellersPage() {
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
               <TextField
                 select
+                label="地域"
+                value={regionFilter}
+                onChange={(e) => setRegionFilter(e.target.value as '' | 'oita' | 'fukuoka')}
+                sx={{ minWidth: 130 }}
+                size="small"
+                helperText="福岡＝FIから始まる売主番号"
+              >
+                <MenuItem value="">全て</MenuItem>
+                <MenuItem value="oita">大分</MenuItem>
+                <MenuItem value="fukuoka">福岡</MenuItem>
+              </TextField>
+
+              <TextField
+                select
                 label="確度"
                 value={confidenceLevelFilter}
                 onChange={(e) => setConfidenceLevelFilter(e.target.value)}
@@ -1119,6 +1167,60 @@ export default function SellersPage() {
                 <MenuItem value="他社買取">他社買取</MenuItem>
                 <MenuItem value="訪問後（担当付）追客不要">訪問後（担当付）追客不要</MenuItem>
               </TextField>
+
+              <TextField
+                select
+                label="状況（売主）"
+                value={currentStatusFilterValue}
+                onChange={(e) => setCurrentStatusFilterValue(e.target.value)}
+                sx={{ minWidth: 130 }}
+                size="small"
+              >
+                <MenuItem value="">全て</MenuItem>
+                <MenuItem value="居住中">居住中</MenuItem>
+                <MenuItem value="空き家">空き家</MenuItem>
+                <MenuItem value="賃貸中">賃貸中</MenuItem>
+                <MenuItem value="古屋あり">古屋あり</MenuItem>
+                <MenuItem value="更地">更地</MenuItem>
+              </TextField>
+
+              <TextField
+                label="反響日付（From）"
+                type="date"
+                value={inquiryDateFromFilter}
+                onChange={(e) => setInquiryDateFromFilter(e.target.value)}
+                sx={{ minWidth: 160 }}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+              />
+
+              <TextField
+                label="反響日付（To）"
+                type="date"
+                value={inquiryDateToFilter}
+                onChange={(e) => setInquiryDateToFilter(e.target.value)}
+                sx={{ minWidth: 160 }}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+              />
+
+              <TextField
+                label="査定額 下限（万円）"
+                type="number"
+                value={valuationAmountMinFilter}
+                onChange={(e) => setValuationAmountMinFilter(e.target.value)}
+                sx={{ minWidth: 150 }}
+                size="small"
+              />
+
+              <TextField
+                label="査定額 上限（万円）"
+                type="number"
+                value={valuationAmountMaxFilter}
+                onChange={(e) => setValuationAmountMaxFilter(e.target.value)}
+                sx={{ minWidth: 150 }}
+                size="small"
+              />
               
               <Button
                 variant="text"
@@ -1127,6 +1229,12 @@ export default function SellersPage() {
                   setInquirySiteFilter('');
                   setPropertyTypeFilter('');
                   setStatusFilterValue('');
+                  setRegionFilter('');
+                  setInquiryDateFromFilter('');
+                  setInquiryDateToFilter('');
+                  setCurrentStatusFilterValue('');
+                  setValuationAmountMinFilter('');
+                  setValuationAmountMaxFilter('');
                 }}
                 size="small"
               >

@@ -79,6 +79,14 @@ export const isFiSeller = (s: SellerRow): boolean => {
   return num.startsWith('FI');
 };
 
+/**
+ * AA（大分）売主かどうかを判定
+ */
+export const isAaSeller = (s: SellerRow): boolean => {
+  const num = (s.seller_number || '').toString();
+  return num.startsWith('AA');
+};
+
 // ============================================================
 // 当日TEL系 共通ベース条件
 // ============================================================
