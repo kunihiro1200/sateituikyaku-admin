@@ -1198,6 +1198,7 @@ export class SellerService extends BaseRepository {
       inquirySite, // サイトフィルター
       propertyType: propertyTypeFilter, // 種別フィルター
       statusFilter, // 状況（当社）フィルター
+      confidenceLevel: confidenceLevelFilter, // 確度フィルター
       region, // 地域フィルター（大分/福岡）
       inquiryDateFrom, // 日付フィルター（反響日付）From
       inquiryDateTo, // 日付フィルター（反響日付）To
@@ -1228,6 +1229,7 @@ export class SellerService extends BaseRepository {
       inquirySite || 'all',
       propertyTypeFilter || 'all',
       statusFilter || 'all',
+      confidenceLevelFilter || 'all',
       region || 'all',
       inquiryDateFrom || 'all',
       inquiryDateTo || 'all',
@@ -1768,6 +1770,10 @@ export class SellerService extends BaseRepository {
       if (!statusCategory || statusCategory === 'all') {
         query = query.eq('status', statusFilter); // 修正: ilike → eq（完全一致）
       }
+    }
+    // 確度フィルター（confidence_levelカラムに完全一致）
+    if (confidenceLevelFilter) {
+      query = query.eq('confidence_level', confidenceLevelFilter);
     }
     // 地域フィルター：福岡はseller_numberが「FI」で始まるもの、大分はそれ以外全て
     if (region === 'fukuoka') {

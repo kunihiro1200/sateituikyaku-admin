@@ -386,7 +386,7 @@ router.get(
     query('inquiryYearFrom').optional().isInt({ min: 2000 }).withMessage('Inquiry year from must be a valid year'),
     query('inquiryYearTo').optional().isInt({ min: 2000 }).withMessage('Inquiry year to must be a valid year'),
     query('isUnreachable').optional().isBoolean().withMessage('Is unreachable must be a boolean'),
-    query('confidenceLevel').optional().isIn(['high', 'medium', 'low']).withMessage('Invalid confidence level'),
+    query('confidenceLevel').optional().isString().withMessage('Invalid confidence level'),
     query('firstCaller').optional().isString().withMessage('First caller must be a string'),
     query('duplicateConfirmed').optional().isBoolean().withMessage('Duplicate confirmed must be a boolean'),
     query('valuationNotRequired').optional().isBoolean().withMessage('Valuation not required must be a boolean'),
