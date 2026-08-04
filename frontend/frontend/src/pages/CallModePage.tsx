@@ -7863,91 +7863,94 @@ HP：https://ifoo-oita.com/
                         </>
                       )}
 
-                      <Grid item xs={12} md={4}>
-                        <Box>
-                          <TextField
-                            fullWidth
-                            label="固定資産税路線価"
-                            type="number"
-                            value={editedFixedAssetTaxRoadPrice}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              console.log('🔄 固定資産税路線価が変更されました:', value);
-                              setEditedFixedAssetTaxRoadPrice(value);
-                              if (value && parseFloat(value) >= 1000) {
-                                console.log('✅ debouncedAutoCalculateを呼び出します');
-                                // 土地面積の警告チェック（確認済みの場合は表示しない）
-                                // 「当社調べ」がある場合はそちらを優先（査定計算と同じ優先順位）
-                                if (!landAreaWarningConfirmed) {
-                                  const landVerified = propInfo.landAreaVerified || property?.landAreaVerified || seller?.landAreaVerified;
-                                  const land = landVerified
-                                    || propInfo.landArea || property?.landArea || seller?.landArea || 0;
-                                  const building = propInfo.buildingAreaVerified || property?.buildingAreaVerified || seller?.buildingAreaVerified
-                                    || propInfo.buildingArea || property?.buildingArea || seller?.buildingArea || 0;
-                                  const landNum = parseFloat(String(land)) || 0;
-                                  const buildingNum = parseFloat(String(building)) || 0;
-                                  if (landNum > 0 && (landNum <= 99 || (buildingNum > 0 && landNum < buildingNum))) {
-                                    const landLabel = landVerified ? '土地面積（当社調べ）' : '土地面積';
-                                    setLandAreaWarning(`${landLabel}が${landNum}㎡（約${Math.round(landNum / 3.306)}坪）ですが確認大丈夫ですか？`);
+                      {/* 固定資産税路線価欄（種別に「マ」を含む場合は手入力査定額のみで計算するため非表示） */}
+                      {!isApartmentType && (
+                        <Grid item xs={12} md={4}>
+                          <Box>
+                            <TextField
+                              fullWidth
+                              label="固定資産税路線価"
+                              type="number"
+                              value={editedFixedAssetTaxRoadPrice}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                console.log('🔄 固定資産税路線価が変更されました:', value);
+                                setEditedFixedAssetTaxRoadPrice(value);
+                                if (value && parseFloat(value) >= 1000) {
+                                  console.log('✅ debouncedAutoCalculateを呼び出します');
+                                  // 土地面積の警告チェック（確認済みの場合は表示しない）
+                                  // 「当社調べ」がある場合はそちらを優先（査定計算と同じ優先順位）
+                                  if (!landAreaWarningConfirmed) {
+                                    const landVerified = propInfo.landAreaVerified || property?.landAreaVerified || seller?.landAreaVerified;
+                                    const land = landVerified
+                                      || propInfo.landArea || property?.landArea || seller?.landArea || 0;
+                                    const building = propInfo.buildingAreaVerified || property?.buildingAreaVerified || seller?.buildingAreaVerified
+                                      || propInfo.buildingArea || property?.buildingArea || seller?.buildingArea || 0;
+                                    const landNum = parseFloat(String(land)) || 0;
+                                    const buildingNum = parseFloat(String(building)) || 0;
+                                    if (landNum > 0 && (landNum <= 99 || (buildingNum > 0 && landNum < buildingNum))) {
+                                      const landLabel = landVerified ? '土地面積（当社調べ）' : '土地面積';
+                                      setLandAreaWarning(`${landLabel}が${landNum}㎡（約${Math.round(landNum / 3.306)}坪）ですが確認大丈夫ですか？`);
+                                    }
                                   }
+                                  debouncedAutoCalculate(value);
+                                } else {
+                                  console.log('❌ 値が空または0のため、debouncedAutoCalculateをスキップ');
                                 }
-                                debouncedAutoCalculate(value);
-                              } else {
-                                console.log('❌ 値が空または0のため、debouncedAutoCalculateをスキップ');
+                              }}
+                              disabled={autoCalculating}
+                              InputProps={{
+                                startAdornment: <Typography sx={{ mr: 1 }}>¥</Typography>,
+                              }}
+                              helperText={
+                                landAreaWarning
+                                  ? landAreaWarning
+                                  : autoCalculating ? '計算中...' : '値を入力すると1秒後に自動的に査定額が計算されます'
                               }
-                            }}
-                            disabled={autoCalculating}
-                            InputProps={{
-                              startAdornment: <Typography sx={{ mr: 1 }}>¥</Typography>,
-                            }}
-                            helperText={
-                              landAreaWarning
-                                ? landAreaWarning
-                                : autoCalculating ? '計算中...' : '値を入力すると1秒後に自動的に査定額が計算されます'
-                            }
-                            FormHelperTextProps={{
-                              sx: landAreaWarning ? { color: 'warning.dark', fontWeight: 'bold' } : {}
-                            }}
-                          />
-                          <Box sx={{ display: 'flex', gap: 1, mt: 0.5, alignItems: 'center' }}>
-                            {(property?.address || propInfo.address) && (
-                              <TextField
+                              FormHelperTextProps={{
+                                sx: landAreaWarning ? { color: 'warning.dark', fontWeight: 'bold' } : {}
+                              }}
+                            />
+                            <Box sx={{ display: 'flex', gap: 1, mt: 0.5, alignItems: 'center' }}>
+                              {(property?.address || propInfo.address) && (
+                                <TextField
+                                  size="small"
+                                  value={propInfo.address || property?.address || ''}
+                                  InputProps={{
+                                    readOnly: true,
+                                    endAdornment: (
+                                      <InputAdornment position="end">
+                                        <Tooltip title="住所をコピー">
+                                          <IconButton
+                                            size="small"
+                                            onClick={() => {
+                                              navigator.clipboard.writeText(propInfo.address || property?.address || '');
+                                              setSnackbarMessage('住所をコピーしました');
+                                              setSnackbarOpen(true);
+                                            }}
+                                          >
+                                            <ContentCopyIcon fontSize="small" />
+                                          </IconButton>
+                                        </Tooltip>
+                                      </InputAdornment>
+                                    ),
+                                  }}
+                                  sx={{ flex: 1, minWidth: '400px' }}
+                                  label="物件住所（コピー用）"
+                                />
+                              )}
+                              <Button
                                 size="small"
-                                value={propInfo.address || property?.address || ''}
-                                InputProps={{
-                                  readOnly: true,
-                                  endAdornment: (
-                                    <InputAdornment position="end">
-                                      <Tooltip title="住所をコピー">
-                                        <IconButton
-                                          size="small"
-                                          onClick={() => {
-                                            navigator.clipboard.writeText(propInfo.address || property?.address || '');
-                                            setSnackbarMessage('住所をコピーしました');
-                                            setSnackbarOpen(true);
-                                          }}
-                                        >
-                                          <ContentCopyIcon fontSize="small" />
-                                        </IconButton>
-                                      </Tooltip>
-                                    </InputAdornment>
-                                  ),
-                                }}
-                                sx={{ flex: 1, minWidth: '400px' }}
-                                label="物件住所（コピー用）"
-                              />
-                            )}
-                            <Button
-                              size="small"
-                              href="https://www.chikamap.jp/chikamap/Portal?mid=216"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              路線価を確認
-                            </Button>
+                                href="https://www.chikamap.jp/chikamap/Portal?mid=216"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                路線価を確認
+                              </Button>
+                            </Box>
                           </Box>
-                        </Box>
-                      </Grid>
+                        </Grid>
+                      )}
 
                       <Grid item xs={12} md={4}>
                         <TextField
