@@ -8,7 +8,7 @@
 import { useState, useEffect, memo } from 'react';
 import { Paper, Typography, Box, Button, Chip, Collapse, IconButton, List, ListItem, Divider, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { ExpandMore, ExpandLess, Edit, Email, Phone, Chat, LocationOn, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
+import { ExpandMore, ExpandLess, Edit, Email, Phone, Chat, LocationOn, OpenInNew as OpenInNewIcon, PushPin as PushPinIcon, Close as CloseIcon } from '@mui/icons-material';
 import api from '../services/api';
 import {
   StatusCategory,
@@ -60,6 +60,14 @@ interface SellerStatusSidebarProps {
   visitThankYouPendingCounts?: Record<string, number>;
   /** 売主クリック時のナビゲーションハンドラー（遷移ブロック対応用） */
   onSellerNavigate?: (sellerId: string) => void;
+  /** サイドバーに一時追加されたフィルター一覧（フィルタパネルから作成） */
+  tempFilters?: Array<{ id: string; label: string; createdBy: string; filters: Record<string, any> }>;
+  /** 選択中の一時追加フィルターID */
+  selectedTempFilterId?: string | null;
+  /** 一時追加フィルター選択時のコールバック */
+  onTempFilterSelect?: (tempFilter: { id: string; filters: Record<string, any> }) => void;
+  /** 一時追加フィルター削除時のコールバック */
+  onTempFilterDelete?: (id: string) => void;
 }
 
 /**
@@ -298,6 +306,10 @@ function SellerStatusSidebarComponent({
   assigneeInitials = [],
   visitThankYouPendingCounts = {},
   onSellerNavigate,
+  tempFilters = [],
+  selectedTempFilterId = null,
+  onTempFilterSelect,
+  onTempFilterDelete,
 }: SellerStatusSidebarProps) {
   const navigate = useNavigate();
   
@@ -964,6 +976,59 @@ function SellerStatusSidebarComponent({
     });
   };
 
+  // サイドバー一時追加フィルターセクションをレンダリング
+  // フィルタパネルから「サイドバーに一時追加」で作成されたカスタムカテゴリー。
+  // 誰が追加したか分かるようラベルに作成者名を含めることを推奨（例:「福岡・空家K」）。
+  const renderTempFiltersSection = () => {
+    if (!tempFilters || tempFilters.length === 0) return null;
+    return (
+      <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: '#ce93d8', bgcolor: '#faf3fb', borderRadius: 1, px: 0.5 }}>
+        <Typography variant="caption" sx={{ px: 1.5, py: 0.5, display: 'block', color: '#6a1b9a', fontWeight: 'bold', fontSize: '0.75rem' }}>
+          ── 一時追加 ──
+        </Typography>
+        {tempFilters.map((tf) => {
+          const active = selectedTempFilterId === tf.id;
+          return (
+            <Box key={tf.id} sx={{ display: 'flex', alignItems: 'center' }}>
+              <Button
+                fullWidth
+                onClick={() => onTempFilterSelect?.(tf)}
+                sx={{
+                  justifyContent: 'flex-start',
+                  textAlign: 'left',
+                  fontSize: '0.85rem',
+                  py: 1,
+                  px: 1.5,
+                  color: active ? 'white' : '#6a1b9a',
+                  bgcolor: active ? '#8e24aa' : 'transparent',
+                  borderRadius: 1,
+                  '&:hover': {
+                    bgcolor: active ? '#8e24aa' : '#6a1b9a15',
+                  },
+                }}
+              >
+                <PushPinIcon fontSize="small" sx={{ mr: 1 }} />
+                <span>{tf.label}</span>
+              </Button>
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.confirm(`「${tf.label}」を削除しますか？`)) {
+                    onTempFilterDelete?.(tf.id);
+                  }
+                }}
+                sx={{ ml: -4, color: active ? 'white' : '#6a1b9a' }}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          );
+        })}
+      </Box>
+    );
+  };
+
   // 大分セクション見出しをレンダリング
   // 既存のトップレベルカテゴリ（実質的に大分／AA売主の件数）をグルーピングするための見出しラベル。
   // 表示のみの変更であり、件数計算・フィルタリングロジックには影響しない。
@@ -1009,6 +1074,9 @@ function SellerStatusSidebarComponent({
           <Chip label={categoryCounts.all} size="small" sx={{ height: 20, fontSize: '0.7rem' }} />
         )}
       </Button>
+
+      {/* サイドバー一時追加フィルター（フィルタパネルから追加されたカスタムカテゴリー） */}
+      {renderTempFiltersSection()}
 
       {/* 大分セクション見出し（表示グルーピングのみ、データ構造は変更しない） */}
       {renderOitaSectionHeader()}

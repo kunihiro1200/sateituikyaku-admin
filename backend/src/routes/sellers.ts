@@ -318,6 +318,124 @@ router.post('/backfill-call-log', async (req: Request, res: Response) => {
 router.use(authenticate);
 
 /**
+ * サイドバー一時追加フィルターの一覧を取得
+ */
+router.get('/sidebar-temp-filters', async (req: Request, res: Response) => {
+  try {
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+    const { data, error } = await supabase
+      .from('seller_sidebar_temp_filters')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    res.json({
+      filters: (data || []).map((row: any) => ({
+        id: row.id,
+        label: row.label,
+        createdBy: row.created_by,
+        filters: row.filters,
+        createdAt: row.created_at,
+      })),
+    });
+  } catch (error: any) {
+    console.error('Failed to fetch sidebar temp filters:', error);
+    res.status(500).json({
+      error: {
+        code: 'FETCH_SIDEBAR_TEMP_FILTERS_ERROR',
+        message: 'Failed to fetch sidebar temp filters',
+        retryable: true,
+      },
+    });
+  }
+});
+
+/**
+ * サイドバー一時追加フィルターを作成
+ * label: サイドバーへの表示名（例: 「福岡・空家K」）。誰が追加したか分かるよう作成者名を含めることを推奨
+ * filters: SellersPageの現在のフィルター条件（region, confidenceLevel, inquirySite等）
+ */
+router.post(
+  '/sidebar-temp-filters',
+  [
+    body('label').isString().notEmpty().withMessage('Label is required'),
+    body('filters').isObject().withMessage('Filters must be an object'),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Validation failed',
+            details: errors.array(),
+            retryable: false,
+          },
+        });
+      }
+
+      const { label, filters } = req.body;
+      const createdBy = req.employee?.name || req.employee?.initials || '不明';
+
+      const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+      const { data, error } = await supabase
+        .from('seller_sidebar_temp_filters')
+        .insert({ label, created_by: createdBy, filters })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      res.status(201).json({
+        id: data.id,
+        label: data.label,
+        createdBy: data.created_by,
+        filters: data.filters,
+        createdAt: data.created_at,
+      });
+    } catch (error: any) {
+      console.error('Failed to create sidebar temp filter:', error);
+      res.status(500).json({
+        error: {
+          code: 'CREATE_SIDEBAR_TEMP_FILTER_ERROR',
+          message: 'Failed to create sidebar temp filter',
+          retryable: true,
+        },
+      });
+    }
+  }
+);
+
+/**
+ * サイドバー一時追加フィルターを削除
+ */
+router.delete('/sidebar-temp-filters/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+    const { error } = await supabase
+      .from('seller_sidebar_temp_filters')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Failed to delete sidebar temp filter:', error);
+    res.status(500).json({
+      error: {
+        code: 'DELETE_SIDEBAR_TEMP_FILTER_ERROR',
+        message: 'Failed to delete sidebar temp filter',
+        retryable: true,
+      },
+    });
+  }
+});
+
+/**
  * 売主を登録
  */
 router.post(
@@ -386,25 +504,29 @@ router.get(
     query('inquiryYearFrom').optional().isInt({ min: 2000 }).withMessage('Inquiry year from must be a valid year'),
     query('inquiryYearTo').optional().isInt({ min: 2000 }).withMessage('Inquiry year to must be a valid year'),
     query('isUnreachable').optional().isBoolean().withMessage('Is unreachable must be a boolean'),
-    query('confidenceLevel').optional().isString().withMessage('Invalid confidence level'),
+    // 以下のフィルターは複数選択（配列）に対応するため、型チェックのみ簡易的に行う（値の妥当性はサービス側で検証）
+    query('confidenceLevel').optional(),
     query('firstCaller').optional().isString().withMessage('First caller must be a string'),
     query('duplicateConfirmed').optional().isBoolean().withMessage('Duplicate confirmed must be a boolean'),
     query('valuationNotRequired').optional().isBoolean().withMessage('Valuation not required must be a boolean'),
-    query('inquirySite').optional().isString().withMessage('Inquiry site must be a string'),
-    query('propertyType').optional().isString().withMessage('Property type must be a string'),
-    query('statusFilter').optional().isString().withMessage('Status filter must be a string'),
+    query('inquirySite').optional(),
+    query('propertyType').optional(),
+    query('statusFilter').optional(),
     // サイドバーカテゴリフィルター（visitAssigned:xxx, todayCallAssigned:xxx の動的カテゴリも許可）
     query('statusCategory').optional().isString().withMessage('Invalid status category'),
-    // 地域フィルター（大分/福岡）
-    query('region').optional().isIn(['oita', 'fukuoka']).withMessage('Region must be oita or fukuoka'),
+    // 地域フィルター（大分/福岡）：複数選択対応
+    query('region').optional(),
     // 日付フィルター（反響日付）
     query('inquiryDateFrom').optional().isISO8601().withMessage('Inquiry date from must be a valid date'),
     query('inquiryDateTo').optional().isISO8601().withMessage('Inquiry date to must be a valid date'),
-    // 状況（売主）フィルター
-    query('currentStatusFilter').optional().isString().withMessage('Current status filter must be a string'),
+    // 状況（売主）フィルター：複数選択対応
+    query('currentStatusFilter').optional(),
     // 査定額フィルター（万円単位）
     query('valuationAmountMin').optional().isFloat({ min: 0 }).withMessage('Valuation amount min must be a positive number'),
     query('valuationAmountMax').optional().isFloat({ min: 0 }).withMessage('Valuation amount max must be a positive number'),
+    // 次電日フィルター
+    query('nextCallDateFrom').optional().isISO8601().withMessage('Next call date from must be a valid date'),
+    query('nextCallDateTo').optional().isISO8601().withMessage('Next call date to must be a valid date'),
   ],
   async (req: Request, res: Response) => {
     try {
@@ -420,13 +542,23 @@ router.get(
         });
       }
 
+      // クエリパラメータが単一値・配列（複数選択）のどちらでも配列に正規化するヘルパー
+      const toStringArray = (value: unknown): string[] | undefined => {
+        if (value === undefined || value === null || value === '') return undefined;
+        if (Array.isArray(value)) {
+          const arr = value.map((v) => String(v)).filter((v) => v !== '');
+          return arr.length > 0 ? arr : undefined;
+        }
+        return [String(value)];
+      };
+
       const params: ListSellersParams = {
         page: parseInt(req.query.page as string) || 1,
         pageSize: parseInt(req.query.pageSize as string) || 50,
         status: req.query.status as any,
         assignedTo: req.query.assignedTo as string,
-        nextCallDateFrom: req.query.nextCallDateFrom ? new Date(req.query.nextCallDateFrom as string) : undefined,
-        nextCallDateTo: req.query.nextCallDateTo ? new Date(req.query.nextCallDateTo as string) : undefined,
+        nextCallDateFrom: req.query.nextCallDateFrom as string,
+        nextCallDateTo: req.query.nextCallDateTo as string,
         sortBy: (req.query.sortBy as string) || 'created_at',
         sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
         // Phase 1 filters
@@ -434,22 +566,22 @@ router.get(
         inquiryYearFrom: req.query.inquiryYearFrom ? parseInt(req.query.inquiryYearFrom as string) : undefined,
         inquiryYearTo: req.query.inquiryYearTo ? parseInt(req.query.inquiryYearTo as string) : undefined,
         isUnreachable: req.query.isUnreachable === 'true' ? true : req.query.isUnreachable === 'false' ? false : undefined,
-        confidenceLevel: req.query.confidenceLevel as any,
+        confidenceLevel: toStringArray(req.query.confidenceLevel) as any,
         firstCaller: req.query.firstCaller as string,
         duplicateConfirmed: req.query.duplicateConfirmed === 'true' ? true : req.query.duplicateConfirmed === 'false' ? false : undefined,
         valuationNotRequired: req.query.valuationNotRequired === 'true' ? true : req.query.valuationNotRequired === 'false' ? false : undefined,
-        inquirySite: req.query.inquirySite as string,
-        propertyType: req.query.propertyType as string,
-        statusFilter: req.query.statusFilter as string,
+        inquirySite: toStringArray(req.query.inquirySite),
+        propertyType: toStringArray(req.query.propertyType),
+        statusFilter: toStringArray(req.query.statusFilter),
         // サイドバーカテゴリフィルター
         statusCategory: req.query.statusCategory as any,
-        // 地域フィルター（大分/福岡）
-        region: req.query.region as any,
+        // 地域フィルター（大分/福岡）：複数選択対応
+        region: toStringArray(req.query.region) as any,
         // 日付フィルター（反響日付）
         inquiryDateFrom: req.query.inquiryDateFrom as string,
         inquiryDateTo: req.query.inquiryDateTo as string,
-        // 状況（売主）フィルター
-        currentStatusFilter: req.query.currentStatusFilter as string,
+        // 状況（売主）フィルター：複数選択対応
+        currentStatusFilter: toStringArray(req.query.currentStatusFilter),
         // 査定額フィルター（万円単位）
         valuationAmountMin: req.query.valuationAmountMin ? parseFloat(req.query.valuationAmountMin as string) : undefined,
         valuationAmountMax: req.query.valuationAmountMax ? parseFloat(req.query.valuationAmountMax as string) : undefined,

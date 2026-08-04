@@ -1215,6 +1215,13 @@ export class SellerService extends BaseRepository {
     // 未査定の基準日
     const cutoffDate = '2025-12-08';
 
+    // キャッシュキー生成用：単一値・配列のどちらでも文字列化するヘルパー（複数選択フィルター対応）
+    const toCacheKeyPart = (value: unknown): string => {
+      if (value === undefined || value === null) return 'all';
+      if (Array.isArray(value)) return value.length > 0 ? JSON.stringify(value) : 'all';
+      return String(value);
+    };
+
     // キャッシュキーを生成
     const cacheKey = CacheHelper.generateKey(
       'sellers:list',
@@ -1226,16 +1233,18 @@ export class SellerService extends BaseRepository {
       sortOrder,
       includeDeleted ? 'with-deleted' : 'active-only',
       statusCategory || 'all',
-      inquirySite || 'all',
-      propertyTypeFilter || 'all',
-      statusFilter || 'all',
-      confidenceLevelFilter || 'all',
-      region || 'all',
+      toCacheKeyPart(inquirySite),
+      toCacheKeyPart(propertyTypeFilter),
+      toCacheKeyPart(statusFilter),
+      toCacheKeyPart(confidenceLevelFilter),
+      toCacheKeyPart(region),
       inquiryDateFrom || 'all',
       inquiryDateTo || 'all',
-      currentStatusFilter || 'all',
+      toCacheKeyPart(currentStatusFilter),
       valuationAmountMin ?? 'all',
-      valuationAmountMax ?? 'all'
+      valuationAmountMax ?? 'all',
+      nextCallDateFrom || 'all',
+      nextCallDateTo || 'all'
     );
 
     // キャッシュをチェック（インメモリ優先、次にRedis）
@@ -1750,10 +1759,19 @@ export class SellerService extends BaseRepository {
     if (valuationNotRequired === true) {
       query = query.eq('valuation_not_required', true);
     }
-    if (inquirySite) {
-      query = query.eq('inquiry_site', inquirySite); // 修正: site → inquiry_site（正しいカラム名）
+    // 単一値・配列のどちらでも配列に正規化するヘルパー（複数選択フィルター対応）
+    const toArray = <T,>(value: T | T[] | undefined): T[] | undefined => {
+      if (value === undefined || value === null) return undefined;
+      const arr = Array.isArray(value) ? value : [value];
+      return arr.length > 0 ? arr : undefined;
+    };
+
+    const inquirySiteList = toArray(inquirySite);
+    if (inquirySiteList) {
+      query = query.in('inquiry_site', inquirySiteList); // 修正: site → inquiry_site（正しいカラム名）
     }
-    if (propertyTypeFilter) {
+    const propertyTypeList = toArray(propertyTypeFilter);
+    if (propertyTypeList) {
       // 種別は「戸建て」「戸建」「戸」のように表記が混在しているため、代表キーワードで部分一致検索する
       const propertyTypeKeywordMap: Record<string, string> = {
         '土地': '土',
@@ -1761,25 +1779,34 @@ export class SellerService extends BaseRepository {
         'マンション': 'マ',
         '事業用': '事業',
       };
-      const propertyTypeKeyword = propertyTypeKeywordMap[propertyTypeFilter] || propertyTypeFilter;
-      query = query.ilike('property_type', `%${propertyTypeKeyword}%`);
+      // 複数選択時はOR条件（いずれかのキーワードを含む）で絞り込む
+      const orConditions = propertyTypeList
+        .map((t) => propertyTypeKeywordMap[t] || t)
+        .map((keyword) => `property_type.ilike.%${keyword}%`)
+        .join(',');
+      query = query.or(orConditions);
     }
-    if (statusFilter) {
+    const statusFilterList = toArray(statusFilter);
+    if (statusFilterList) {
       // サイドバーカテゴリが選択されている場合、statusFilterは適用しない
       // （カテゴリフィルタとstatusFilterの競合を防ぐ）
       if (!statusCategory || statusCategory === 'all') {
-        query = query.eq('status', statusFilter); // 修正: ilike → eq（完全一致）
+        query = query.in('status', statusFilterList); // 修正: ilike → in（複数選択・完全一致）
       }
     }
-    // 確度フィルター（confidence_levelカラムに完全一致）
-    if (confidenceLevelFilter) {
-      query = query.eq('confidence_level', confidenceLevelFilter);
+    // 確度フィルター（confidence_levelカラムに完全一致、複数選択対応）
+    const confidenceLevelList = toArray(confidenceLevelFilter as any);
+    if (confidenceLevelList) {
+      query = query.in('confidence_level', confidenceLevelList);
     }
-    // 地域フィルター：福岡はseller_numberが「FI」で始まるもの、大分はそれ以外全て
-    if (region === 'fukuoka') {
-      query = query.ilike('seller_number', 'FI%');
-    } else if (region === 'oita') {
-      query = query.not('seller_number', 'ilike', 'FI%');
+    // 地域フィルター：福岡はseller_numberが「FI」で始まるもの、大分はそれ以外全て（複数選択時は両方選ぶと絞り込みなしと同義）
+    const regionList = toArray(region as any) as ('oita' | 'fukuoka')[] | undefined;
+    if (regionList && regionList.length === 1) {
+      if (regionList[0] === 'fukuoka') {
+        query = query.ilike('seller_number', 'FI%');
+      } else if (regionList[0] === 'oita') {
+        query = query.not('seller_number', 'ilike', 'FI%');
+      }
     }
     // 日付フィルター（反響日付）
     if (inquiryDateFrom) {
@@ -1788,9 +1815,10 @@ export class SellerService extends BaseRepository {
     if (inquiryDateTo) {
       query = query.lte('inquiry_date', inquiryDateTo);
     }
-    // 状況（売主）フィルター
+    // 状況（売主）フィルター（複数選択対応）
     // DBには短縮形（居/空/賃/古有/更）で保存されているため、フルネームで選択された場合は短縮形に変換して部分一致検索する
-    if (currentStatusFilter) {
+    const currentStatusList = toArray(currentStatusFilter);
+    if (currentStatusList) {
       const currentStatusKeywordMap: Record<string, string> = {
         '居住中': '居',
         '空き家': '空',
@@ -1798,8 +1826,12 @@ export class SellerService extends BaseRepository {
         '古屋あり': '古有',
         '更地': '更',
       };
-      const currentStatusKeyword = currentStatusKeywordMap[currentStatusFilter] || currentStatusFilter;
-      query = query.ilike('current_status', `%${currentStatusKeyword}%`);
+      // 複数選択時はOR条件（いずれかのキーワードを含む）で絞り込む
+      const orConditions = currentStatusList
+        .map((s) => currentStatusKeywordMap[s] || s)
+        .map((keyword) => `current_status.ilike.%${keyword}%`)
+        .join(',');
+      query = query.or(orConditions);
     }
     // 査定額フィルター（万円単位で受け取り、円単位に変換して比較）
     if (valuationAmountMin !== undefined) {

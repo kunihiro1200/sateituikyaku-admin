@@ -28,6 +28,10 @@ import {
   Snackbar,
   Alert,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -36,6 +40,7 @@ import {
   Clear as ClearIcon,
   ExpandMore as ExpandMoreIcon,
   Sync as SyncIcon,
+  PushPin as PushPinIcon,
 } from '@mui/icons-material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -334,6 +339,20 @@ export default function SellersPage() {
   // 査定額フィルター（万円単位）
   const [valuationAmountMinFilter, setValuationAmountMinFilter] = useState('');
   const [valuationAmountMaxFilter, setValuationAmountMaxFilter] = useState('');
+  // 次電日フィルター：モード（以降/ぴったり/以前）と日付
+  const [nextCallDateMode, setNextCallDateMode] = useState<'' | 'onOrAfter' | 'exact' | 'onOrBefore'>('');
+  const [nextCallDateValue, setNextCallDateValue] = useState('');
+  // サイドバー一時追加フィルター
+  const [sidebarTempFilters, setSidebarTempFilters] = useState<Array<{
+    id: string;
+    label: string;
+    createdBy: string;
+    filters: Record<string, any>;
+  }>>([]);
+  const [tempFilterDialogOpen, setTempFilterDialogOpen] = useState(false);
+  const [tempFilterLabel, setTempFilterLabel] = useState('');
+  const [tempFilterSaving, setTempFilterSaving] = useState(false);
+  const [selectedTempFilterId, setSelectedTempFilterId] = useState<string | null>(null);
   
   // Status category filter
   const [selectedCategory, setSelectedCategory] = useState<StatusCategory>(() => {
@@ -445,6 +464,8 @@ export default function SellersPage() {
     setCurrentStatusFilterValue('');
     setValuationAmountMinFilter('');
     setValuationAmountMaxFilter('');
+    setNextCallDateMode('');
+    setNextCallDateValue('');
   }, []);
 
   // カテゴリ展開ハンドラー（useCallbackで最適化）
@@ -542,6 +563,122 @@ export default function SellersPage() {
     }
   };
 
+  // サイドバー一時追加フィルターの一覧を取得
+  const fetchSidebarTempFilters = async () => {
+    try {
+      const response = await api.get('/api/sellers/sidebar-temp-filters');
+      setSidebarTempFilters(response.data.filters || []);
+    } catch (error) {
+      console.error('Failed to fetch sidebar temp filters:', error);
+    }
+  };
+
+  // 現在のフィルター条件をサイドバーに一時追加として保存
+  const handleSaveTempFilter = async () => {
+    if (!tempFilterLabel.trim()) return;
+    setTempFilterSaving(true);
+    try {
+      const filtersToSave: Record<string, any> = {};
+      if (regionFilter) filtersToSave.region = regionFilter;
+      if (confidenceLevelFilter) filtersToSave.confidenceLevel = confidenceLevelFilter;
+      if (inquirySiteFilter) filtersToSave.inquirySite = inquirySiteFilter;
+      if (propertyTypeFilter) filtersToSave.propertyType = propertyTypeFilter;
+      if (statusFilterValue) filtersToSave.statusFilter = statusFilterValue;
+      if (currentStatusFilterValue) filtersToSave.currentStatusFilter = currentStatusFilterValue;
+      if (inquiryDateFromFilter) filtersToSave.inquiryDateFrom = inquiryDateFromFilter;
+      if (inquiryDateToFilter) filtersToSave.inquiryDateTo = inquiryDateToFilter;
+      if (valuationAmountMinFilter) filtersToSave.valuationAmountMin = parseFloat(valuationAmountMinFilter);
+      if (valuationAmountMaxFilter) filtersToSave.valuationAmountMax = parseFloat(valuationAmountMaxFilter);
+      if (nextCallDateMode && nextCallDateValue) {
+        if (nextCallDateMode === 'onOrAfter') filtersToSave.nextCallDateFrom = nextCallDateValue;
+        else if (nextCallDateMode === 'onOrBefore') filtersToSave.nextCallDateTo = nextCallDateValue;
+        else if (nextCallDateMode === 'exact') {
+          filtersToSave.nextCallDateFrom = nextCallDateValue;
+          filtersToSave.nextCallDateTo = nextCallDateValue;
+        }
+      }
+
+      const response = await api.post('/api/sellers/sidebar-temp-filters', {
+        label: tempFilterLabel.trim(),
+        filters: filtersToSave,
+      });
+      setSidebarTempFilters(prev => [...prev, response.data]);
+      setTempFilterDialogOpen(false);
+      setTempFilterLabel('');
+      setSnackbarMessage(`「${response.data.label}」をサイドバーに追加しました`);
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('Failed to save temp filter:', error);
+      setSnackbarMessage('サイドバーへの追加に失敗しました');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    } finally {
+      setTempFilterSaving(false);
+    }
+  };
+
+  // サイドバー一時追加フィルターを削除
+  const handleDeleteTempFilter = async (id: string) => {
+    try {
+      await api.delete(`/api/sellers/sidebar-temp-filters/${id}`);
+      setSidebarTempFilters(prev => prev.filter(f => f.id !== id));
+      if (selectedTempFilterId === id) {
+        setSelectedTempFilterId(null);
+        setSelectedCategory('all');
+      }
+    } catch (error) {
+      console.error('Failed to delete temp filter:', error);
+      setSnackbarMessage('削除に失敗しました');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  };
+
+  // サイドバーの一時追加フィルターを選択（対応するフィルター条件を適用）
+  const handleSelectTempFilter = useCallback((tempFilter: { id: string; filters: Record<string, any> }) => {
+    // 既存フィルターをリセット
+    setConfidenceLevelFilter('');
+    setInquirySiteFilter('');
+    setPropertyTypeFilter('');
+    setStatusFilterValue('');
+    setRegionFilter('');
+    setInquiryDateFromFilter('');
+    setInquiryDateToFilter('');
+    setCurrentStatusFilterValue('');
+    setValuationAmountMinFilter('');
+    setValuationAmountMaxFilter('');
+    setNextCallDateMode('');
+    setNextCallDateValue('');
+
+    const f = tempFilter.filters || {};
+    if (f.region) setRegionFilter(f.region);
+    if (f.confidenceLevel) setConfidenceLevelFilter(f.confidenceLevel);
+    if (f.inquirySite) setInquirySiteFilter(f.inquirySite);
+    if (f.propertyType) setPropertyTypeFilter(f.propertyType);
+    if (f.statusFilter) setStatusFilterValue(f.statusFilter);
+    if (f.currentStatusFilter) setCurrentStatusFilterValue(f.currentStatusFilter);
+    if (f.inquiryDateFrom) setInquiryDateFromFilter(f.inquiryDateFrom);
+    if (f.inquiryDateTo) setInquiryDateToFilter(f.inquiryDateTo);
+    if (f.valuationAmountMin !== undefined) setValuationAmountMinFilter(String(f.valuationAmountMin));
+    if (f.valuationAmountMax !== undefined) setValuationAmountMaxFilter(String(f.valuationAmountMax));
+    if (f.nextCallDateFrom && f.nextCallDateTo && f.nextCallDateFrom === f.nextCallDateTo) {
+      setNextCallDateMode('exact');
+      setNextCallDateValue(f.nextCallDateFrom);
+    } else if (f.nextCallDateFrom) {
+      setNextCallDateMode('onOrAfter');
+      setNextCallDateValue(f.nextCallDateFrom);
+    } else if (f.nextCallDateTo) {
+      setNextCallDateMode('onOrBefore');
+      setNextCallDateValue(f.nextCallDateTo);
+    }
+
+    setSelectedTempFilterId(tempFilter.id);
+    setSelectedCategory('all'); // サイドバーの固定カテゴリとは独立させる
+    setSearchQuery('');
+    setPage(0);
+  }, []);
+
   // 初回ロード時とキャッシュ無効化時にサイドバーカウントを即座に取得
   useEffect(() => {
     console.log('[SellersPage] Component mounted or cache invalidated');
@@ -554,6 +691,7 @@ export default function SellersPage() {
       setSidebarCounts(cached as any);
     }
     fetchAssigneeInitials();
+    fetchSidebarTempFilters();
   }, []);
 
   // ページに戻ってきた時にサイドバーカウントを再取得（常に最新を取得）
@@ -593,7 +731,7 @@ export default function SellersPage() {
 
   useEffect(() => {
     fetchSellers();
-  }, [page, rowsPerPage, confidenceLevelFilter, inquirySiteFilter, propertyTypeFilter, statusFilterValue, regionFilter, inquiryDateFromFilter, inquiryDateToFilter, currentStatusFilterValue, valuationAmountMinFilter, valuationAmountMaxFilter, selectedCategory, sortBy, sortOrder]);
+  }, [page, rowsPerPage, confidenceLevelFilter, inquirySiteFilter, propertyTypeFilter, statusFilterValue, regionFilter, inquiryDateFromFilter, inquiryDateToFilter, currentStatusFilterValue, valuationAmountMinFilter, valuationAmountMaxFilter, nextCallDateMode, nextCallDateValue, selectedCategory, sortBy, sortOrder]);
 
   const fetchSellers = async () => {
     try {
@@ -634,6 +772,17 @@ export default function SellersPage() {
       }
       if (valuationAmountMaxFilter) {
         params.valuationAmountMax = parseFloat(valuationAmountMaxFilter);
+      }
+      // 次電日フィルター：モードに応じてFrom/Toを設定（ぴったりの場合は同日をFrom/Toに設定）
+      if (nextCallDateMode && nextCallDateValue) {
+        if (nextCallDateMode === 'onOrAfter') {
+          params.nextCallDateFrom = nextCallDateValue;
+        } else if (nextCallDateMode === 'onOrBefore') {
+          params.nextCallDateTo = nextCallDateValue;
+        } else if (nextCallDateMode === 'exact') {
+          params.nextCallDateFrom = nextCallDateValue;
+          params.nextCallDateTo = nextCallDateValue;
+        }
       }
       
       // サイドバーカテゴリフィルター
@@ -938,6 +1087,10 @@ export default function SellersPage() {
                 loading={sidebarLoading}
                 assigneeInitials={assigneeInitials}
                 visitThankYouPendingCounts={sidebarCounts.visitThankYouPendingCounts}
+                tempFilters={sidebarTempFilters}
+                selectedTempFilterId={selectedTempFilterId}
+                onTempFilterSelect={handleSelectTempFilter}
+                onTempFilterDelete={handleDeleteTempFilter}
               />
             </AccordionDetails>
           </Accordion>
@@ -959,6 +1112,10 @@ export default function SellersPage() {
               loading={sidebarLoading}
               assigneeInitials={assigneeInitials}
               visitThankYouPendingCounts={sidebarCounts.visitThankYouPendingCounts}
+              tempFilters={sidebarTempFilters}
+              selectedTempFilterId={selectedTempFilterId}
+              onTempFilterSelect={handleSelectTempFilter}
+              onTempFilterDelete={handleDeleteTempFilter}
             />
           )}
 
@@ -998,6 +1155,39 @@ export default function SellersPage() {
                    typeof selectedCategory === 'string' && selectedCategory === 'fi:unvaluated' ? '福岡 未査定' :
                    typeof selectedCategory === 'string' && selectedCategory.startsWith('fi:todayCallWithInfo:') ? `福岡 ${selectedCategory.replace('fi:todayCallWithInfo:', '')}` :
                    selectedCategory}
+                </Typography>
+                <Chip label={`${total}件`} size="small" color="primary" />
+              </Box>
+            )}
+
+            {/* 一時追加フィルター選択中の場合、上部にラベルと戻るボタンを表示 */}
+            {selectedTempFilterId && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, p: 1.5, bgcolor: 'grey.100', borderRadius: 1 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    setSelectedTempFilterId(null);
+                    setConfidenceLevelFilter('');
+                    setInquirySiteFilter('');
+                    setPropertyTypeFilter('');
+                    setStatusFilterValue('');
+                    setRegionFilter('');
+                    setInquiryDateFromFilter('');
+                    setInquiryDateToFilter('');
+                    setCurrentStatusFilterValue('');
+                    setValuationAmountMinFilter('');
+                    setValuationAmountMaxFilter('');
+                    setNextCallDateMode('');
+                    setNextCallDateValue('');
+                    setPage(0);
+                  }}
+                >
+                  ← 全件表示
+                </Button>
+                <PushPinIcon fontSize="small" color="action" />
+                <Typography variant="body1" fontWeight="bold">
+                  {sidebarTempFilters.find(f => f.id === selectedTempFilterId)?.label}
                 </Typography>
                 <Chip label={`${total}件`} size="small" color="primary" />
               </Box>
@@ -1221,6 +1411,31 @@ export default function SellersPage() {
                 sx={{ minWidth: 150 }}
                 size="small"
               />
+
+              <TextField
+                select
+                label="次電日"
+                value={nextCallDateMode}
+                onChange={(e) => setNextCallDateMode(e.target.value as '' | 'onOrAfter' | 'exact' | 'onOrBefore')}
+                sx={{ minWidth: 130 }}
+                size="small"
+              >
+                <MenuItem value="">全て</MenuItem>
+                <MenuItem value="onOrAfter">以降</MenuItem>
+                <MenuItem value="exact">ぴったり</MenuItem>
+                <MenuItem value="onOrBefore">以前</MenuItem>
+              </TextField>
+
+              <TextField
+                label="次電日 日付"
+                type="date"
+                value={nextCallDateValue}
+                onChange={(e) => setNextCallDateValue(e.target.value)}
+                sx={{ minWidth: 160 }}
+                size="small"
+                disabled={!nextCallDateMode}
+                InputLabelProps={{ shrink: true }}
+              />
               
               <Button
                 variant="text"
@@ -1235,14 +1450,59 @@ export default function SellersPage() {
                   setCurrentStatusFilterValue('');
                   setValuationAmountMinFilter('');
                   setValuationAmountMaxFilter('');
+                  setNextCallDateMode('');
+                  setNextCallDateValue('');
+                  setSelectedTempFilterId(null);
                 }}
                 size="small"
               >
                 フィルタをクリア
               </Button>
+
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<PushPinIcon fontSize="small" />}
+                onClick={() => setTempFilterDialogOpen(true)}
+              >
+                サイドバーに一時追加
+              </Button>
             </Box>
           )}
         </Paper>
+
+        {/* サイドバー一時追加フィルター保存ダイアログ */}
+        <Dialog open={tempFilterDialogOpen} onClose={() => setTempFilterDialogOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>サイドバーに一時追加</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              現在設定中のフィルター条件をサイドバーにカテゴリーとして追加します。誰が追加したか分かるよう、名前を含めてください（例:「福岡・空家K」）。
+            </Typography>
+            <TextField
+              fullWidth
+              autoFocus
+              label="サイドバー表示名"
+              placeholder="例: 福岡・空家K"
+              value={tempFilterLabel}
+              onChange={(e) => setTempFilterLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && tempFilterLabel.trim() && !tempFilterSaving) {
+                  handleSaveTempFilter();
+                }
+              }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setTempFilterDialogOpen(false)}>キャンセル</Button>
+            <Button
+              variant="contained"
+              disabled={!tempFilterLabel.trim() || tempFilterSaving}
+              onClick={handleSaveTempFilter}
+            >
+              {tempFilterSaving ? '追加中...' : '追加する'}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {/* 上部ページネーション（デスクトップのみ） */}
         {!isMobile && (

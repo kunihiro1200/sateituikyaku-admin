@@ -478,8 +478,8 @@ export interface ListSellersParams {
   pageSize: number;
   status?: SellerStatus;
   assignedTo?: string;
-  nextCallDateFrom?: Date;
-  nextCallDateTo?: Date;
+  nextCallDateFrom?: string;
+  nextCallDateTo?: string;
   searchQuery?: string; // 名前、住所、電話番号、売主番号での検索
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
@@ -488,18 +488,18 @@ export interface ListSellersParams {
   inquiryYearFrom?: number;
   inquiryYearTo?: number;
   isUnreachable?: boolean;
-  confidenceLevel?: ConfidenceLevel;
+  confidenceLevel?: ConfidenceLevel | string | string[];
   firstCaller?: string;
   duplicateConfirmed?: boolean;
   valuationNotRequired?: boolean;
-  // 追加フィルター
-  inquirySite?: string;    // サイト
-  propertyType?: string;   // 種別
-  statusFilter?: string;   // 状況（当社）
-  region?: 'oita' | 'fukuoka'; // 地域（大分/福岡）：福岡はseller_numberがFIで始まるもの、大分はそれ以外
+  // 追加フィルター（複数選択対応：配列で複数値のOR検索、単一文字列も後方互換で許容）
+  inquirySite?: string | string[];    // サイト
+  propertyType?: string | string[];   // 種別
+  statusFilter?: string | string[];   // 状況（当社）
+  region?: ('oita' | 'fukuoka')[] | 'oita' | 'fukuoka'; // 地域（大分/福岡）：福岡はseller_numberがFIで始まるもの、大分はそれ以外
   inquiryDateFrom?: string; // 日付フィルター（反響日付）From
   inquiryDateTo?: string;   // 日付フィルター（反響日付）To
-  currentStatusFilter?: string; // 状況（売主）：居住中、空き家、賃貸中、古屋あり、更地
+  currentStatusFilter?: string | string[]; // 状況（売主）：居住中、空き家、賃貸中、古屋あり、更地
   valuationAmountMin?: number; // 査定額フィルター（万円単位）下限
   valuationAmountMax?: number; // 査定額フィルター（万円単位）上限
   // Deletion sync filter
