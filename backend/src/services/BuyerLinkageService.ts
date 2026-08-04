@@ -34,6 +34,24 @@ export class BuyerLinkageService {
   }
 
   /**
+   * property_number（カンマ区切りで複数物件を含む可能性がある）が
+   * 指定した物件番号を「トークンとして完全一致」で含むかどうかを判定する。
+   * ILIKE '%AA18%' のような部分一致だと "AA180" や "AA18-2" のような
+   * 別物件までマッチしてしまうため、カンマで分割した各トークンと
+   * 大文字小文字を無視した完全一致で比較する。
+   */
+  private static matchesPropertyNumber(rawPropertyNumber: string | null | undefined, propertyNumber: string): boolean {
+    if (!rawPropertyNumber) {
+      return false;
+    }
+    const target = propertyNumber.trim().toLowerCase();
+    return rawPropertyNumber
+      .split(',')
+      .map((n) => n.trim().toLowerCase())
+      .some((token) => token === target);
+  }
+
+  /**
    * 複数物件の買主カウントを一括取得
    */
   async getBuyerCountsForProperties(propertyNumbers: string[]): Promise<Map<string, number>> {
@@ -48,12 +66,14 @@ export class BuyerLinkageService {
     }
 
     try {
-      // 各物件番号に対して部分一致で検索（property_numberはカンマ区切りで複数物件を含む）
+      // property_numberはカンマ区切りで複数物件を含む可能性があるため、
+      // ILIKEで候補を絞り込んだ後、トークン単位の完全一致で件数を数える。
+      // （ILIKEのみだと"AA18"が"AA180"等の別物件にもマッチしてしまうため）
       await Promise.all(
         propertyNumbers.map(async (propNum) => {
-          const { count, error } = await this.supabase
+          const { data, error } = await this.supabase
             .from('buyers')
-            .select('*', { count: 'exact', head: true })
+            .select('property_number')
             .ilike('property_number', `%${propNum}%`)
             .is('deleted_at', null);
 
@@ -61,7 +81,10 @@ export class BuyerLinkageService {
             console.error(`Failed to count buyers for property ${propNum}:`, error);
             counts.set(propNum, 0);
           } else {
-            counts.set(propNum, count || 0);
+            const exactCount = (data || []).filter((row) =>
+              BuyerLinkageService.matchesPropertyNumber(row.property_number, propNum)
+            ).length;
+            counts.set(propNum, exactCount);
           }
         })
       );
@@ -87,6 +110,9 @@ export class BuyerLinkageService {
     } = options;
 
     try {
+      // property_numberはカンマ区切りで複数物件を含む可能性があるため、
+      // ILIKEで候補を絞り込んだ後、トークン単位の完全一致でフィルタする。
+      // （ILIKEのみだと"AA18"が"AA180"等の別物件にもマッチしてしまうため）
       let query = this.supabase
         .from('buyers')
         .select(`
@@ -104,6 +130,7 @@ export class BuyerLinkageService {
           next_call_date,
           follow_up_assignee,
           property_address,
+          property_number,
           viewing_insight_executor,
           viewing_insight_companion
         `)
@@ -111,23 +138,31 @@ export class BuyerLinkageService {
         .is('deleted_at', null)
         .order(sortBy, { ascending: sortOrder === 'asc' });
 
-      if (limit) {
-        query = query.limit(limit);
-      }
-
       const { data, error } = await query;
 
       if (error) {
         throw new Error(`Failed to fetch buyers for property: ${error.message}`);
       }
 
+      // トークン単位の完全一致に絞り込む
+      const exactMatches = (data || []).filter((buyer: any) =>
+        BuyerLinkageService.matchesPropertyNumber(buyer.property_number, propertyNumber)
+      );
+
+      // limitはDB側のILIKE件数ではなく、完全一致後の件数に適用する
+      const limited = limit ? exactMatches.slice(0, limit) : exactMatches;
+
       // buyer_idをidとしても返す（後方互換性のため）
       // viewing_date → latest_viewing_date にリネームしてフロントエンドに返す
-      const buyersWithId = (data || []).map((buyer: any) => ({
-        ...buyer,
-        id: buyer.buyer_id,
-        latest_viewing_date: buyer.viewing_date ?? null,
-      }));
+      // property_numberは内部フィルタ用のみなのでレスポンスからは除外する
+      const buyersWithId = limited.map((buyer: any) => {
+        const { property_number, ...rest } = buyer;
+        return {
+          ...rest,
+          id: buyer.buyer_id,
+          latest_viewing_date: buyer.viewing_date ?? null,
+        };
+      });
 
       return buyersWithId;
     } catch (error) {
@@ -174,9 +209,9 @@ export class BuyerLinkageService {
    */
   async getBuyerCountForProperty(propertyNumber: string): Promise<number> {
     try {
-      const { count, error } = await this.supabase
+      const { data, error } = await this.supabase
         .from('buyers')
-        .select('*', { count: 'exact', head: true })
+        .select('property_number')
         .ilike('property_number', `%${propertyNumber}%`)
         .is('deleted_at', null);  // 削除済み買主を除外
 
@@ -184,7 +219,9 @@ export class BuyerLinkageService {
         throw new Error(`Failed to count buyers: ${error.message}`);
       }
 
-      return count || 0;
+      return (data || []).filter((row) =>
+        BuyerLinkageService.matchesPropertyNumber(row.property_number, propertyNumber)
+      ).length;
     } catch (error) {
       console.error(`Failed to get buyer count for property ${propertyNumber}:`, error);
       return 0;
@@ -196,9 +233,9 @@ export class BuyerLinkageService {
    */
   async hasHighConfidenceBuyers(propertyNumber: string): Promise<boolean> {
     try {
-      const { count, error } = await this.supabase
+      const { data, error } = await this.supabase
         .from('buyers')
-        .select('*', { count: 'exact', head: true })
+        .select('property_number')
         .ilike('property_number', `%${propertyNumber}%`)
         .in('inquiry_confidence', ['A', 'S', 'A+', 'S+'])
         .is('deleted_at', null);  // 削除済み買主を除外
@@ -207,7 +244,9 @@ export class BuyerLinkageService {
         throw new Error(`Failed to check high confidence buyers: ${error.message}`);
       }
 
-      return (count || 0) > 0;
+      return (data || []).some((row) =>
+        BuyerLinkageService.matchesPropertyNumber(row.property_number, propertyNumber)
+      );
     } catch (error) {
       console.error(`Failed to check high confidence buyers for property ${propertyNumber}:`, error);
       return false;
