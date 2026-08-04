@@ -32,6 +32,7 @@ export enum ActivityType {
   PHONE_CALL = 'phone_call',
   EMAIL = 'email',
   SMS = 'sms',
+  FAX = 'fax',
   HEARING = 'hearing',
   APPOINTMENT = 'appointment',
 }

@@ -4684,6 +4684,38 @@ HP：https://ifoo-oita.com/
         printWindow.print();
       };
     }
+
+    // 活動履歴（FAX送信）を記録
+    if (id) {
+      api.post(`/api/sellers/${id}/activities`, {
+        type: 'fax',
+        content: `【${confirmDialog.template?.label || subject || 'FAX'}】を送信`,
+        result: 'sent',
+        metadata: {
+          subject,
+          body: bodyText,
+          templateId: confirmDialog.template?.id,
+          templateName: confirmDialog.template?.label,
+        },
+      }).then(() => {
+        return api.get(`/api/sellers/${id}/activities`);
+      }).then((activitiesResponse) => {
+        const convertedActivities = activitiesResponse.data.map((activity: any) => ({
+          id: activity.id,
+          sellerId: activity.seller_id || activity.sellerId,
+          employeeId: activity.employee_id || activity.employeeId,
+          type: activity.type,
+          content: activity.content,
+          result: activity.result,
+          metadata: activity.metadata,
+          createdAt: activity.created_at || activity.createdAt,
+          employee: activity.employee,
+        }));
+        setActivities(convertedActivities);
+      }).catch((err) => {
+        console.error('FAX送信履歴の記録/再読み込みに失敗しました:', err);
+      });
+    }
   };
 
   // 画像選択ボタンのハンドラー（新しい実装）
@@ -5669,7 +5701,7 @@ HP：https://ifoo-oita.com/
             </Typography>
             <Box sx={{ maxHeight: 240, overflow: 'auto' }}>
               {activities
-                .filter((activity) => activity.type === 'sms' || activity.type === 'email')
+                .filter((activity) => activity.type === 'sms' || activity.type === 'email' || activity.type === 'fax')
                 .slice(0, 10)
                 .map((activity) => {
                   const displayName = getDisplayName(activity.employee);
@@ -5683,6 +5715,11 @@ HP：https://ifoo-oita.com/
                     typeLabel = 'SMS';
                     bgcolor = '#e8f5e9';
                     borderColor = '4px solid #2e7d32';
+                  } else if (activity.type === 'fax') {
+                    typeIcon = '🖨️';
+                    typeLabel = 'FAX';
+                    bgcolor = '#fff3e0';
+                    borderColor = '4px solid #e65100';
                   }
                   return (
                     <Box key={activity.id}>
@@ -5736,7 +5773,7 @@ HP：https://ifoo-oita.com/
                     </Box>
                   );
                 })}
-              {activities.filter((a) => a.type === 'sms' || a.type === 'email').length === 0 && (
+              {activities.filter((a) => a.type === 'sms' || a.type === 'email' || a.type === 'fax').length === 0 && (
                 <Typography variant="caption" color="text.secondary">
                   メール・SMS履歴はありません
                 </Typography>
