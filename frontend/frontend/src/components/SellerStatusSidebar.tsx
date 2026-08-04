@@ -964,6 +964,18 @@ function SellerStatusSidebarComponent({
     });
   };
 
+  // 大分セクション見出しをレンダリング
+  // 既存のトップレベルカテゴリ（実質的に大分／AA売主の件数）をグルーピングするための見出しラベル。
+  // 表示のみの変更であり、件数計算・フィルタリングロジックには影響しない。
+  const renderOitaSectionHeader = () => (
+    <Typography
+      variant="caption"
+      sx={{ px: 1.5, py: 0.5, display: 'block', color: '#2e7d32', fontWeight: 'bold', fontSize: '0.75rem' }}
+    >
+      ── 大分 ──
+    </Typography>
+  );
+
   // 全カテゴリ表示モード
   const renderAllCategories = () => (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
@@ -998,7 +1010,10 @@ function SellerStatusSidebarComponent({
         )}
       </Button>
 
-      {/* 既存の固定カテゴリー */}
+      {/* 大分セクション見出し（表示グルーピングのみ、データ構造は変更しない） */}
+      {renderOitaSectionHeader()}
+
+      {/* 既存の固定カテゴリー（実質的に大分＝AA売主の件数） */}
       {renderCategoryButton('visitDayBefore', '①訪問日前日', '#2e7d32')}
       {renderCategoryButton('todayCallNotStarted', '当日TEL_未着手', '#ff9800')}
       {renderCategoryButton('todayCall', '当日TEL分', '#d32f2f')}
