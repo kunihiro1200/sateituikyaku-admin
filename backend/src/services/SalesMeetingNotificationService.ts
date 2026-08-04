@@ -108,7 +108,7 @@ export class SalesMeetingNotificationService {
       '',
       '■ 物件数チーム・契約率チームの「問い」を完成させてください',
       `　期限: ${this.formatJapanese(questionDeadline)}まで`,
-      '　※1人1つ以上の「問い」提出が必須です',
+      '　※1人各チーム毎の「問い」を1つ以上提出が必須です',
       '',
       '■ 各自の回答入力を完了させてください',
       `　期限: ${this.formatJapanese(answerDeadline)}まで`,
