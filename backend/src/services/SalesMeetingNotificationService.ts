@@ -193,4 +193,47 @@ export class SalesMeetingNotificationService {
 
     return { sent: true, meetingDate: this.formatDateOnly(meetingDate) };
   }
+
+  /** 指定日（日付のみのDate）が、その月の最終日かどうかを判定する（純粋関数） */
+  isLastDayOfMonth(dateOnly: Date): boolean {
+    const nextDay = this.addDays(dateOnly, 1);
+    return nextDay.getUTCMonth() !== dateOnly.getUTCMonth();
+  }
+
+  /**
+   * 月末リマインダーの本文を組み立てる
+   * 「本日、月末なので次の営業会議◎月◎日までに専任、他決分析の質問事項に回答お願い致します。」
+   */
+  buildMonthEndReminderMessage(meetingDate: Date): string {
+    const yyyy = meetingDate.getUTCFullYear();
+    const mm = meetingDate.getUTCMonth() + 1;
+    const dd = meetingDate.getUTCDate();
+    return `本日、月末なので次の営業会議${yyyy}年${mm}月${dd}日までに　専任、他決分析の質問事項に回答お願い致します。`;
+  }
+
+  /**
+   * 本日（JST）が月末であれば、Google Chatへ「専任・他決分析の質問事項回答依頼」を送信する。
+   * それ以外の日は何もせず終了する（Cron Jobから毎日呼び出される想定）。
+   */
+  async sendMonthEndReminderIfScheduledDay(now: Date = new Date()): Promise<SalesMeetingNotificationResult> {
+    const todayStr = this.getJSTDateString(now);
+    const todayDateOnly = this.parseDateOnly(todayStr);
+
+    if (!this.isLastDayOfMonth(todayDateOnly)) {
+      return {
+        sent: false,
+        reason: `本日は月末ではありません（本日: ${this.formatDateOnly(todayDateOnly)}）`,
+      };
+    }
+
+    const meetingDate = await this.getEffectiveMeetingDate(todayDateOnly);
+    const message = this.buildMonthEndReminderMessage(meetingDate);
+    const result = await this.chatService.sendMessage(SALES_MEETING_WEBHOOK_URL, message);
+
+    if (!result.success) {
+      throw new Error(result.error || 'Google Chatへの送信に失敗しました');
+    }
+
+    return { sent: true, meetingDate: this.formatDateOnly(meetingDate) };
+  }
 }
