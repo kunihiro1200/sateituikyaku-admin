@@ -81,6 +81,11 @@ export default function SalesMeetingAgendaPage() {
   const [apiError, setApiError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // 次回営業会議日（編集可能。変更するとその日の1週間前にChat通知が送信される）
+  const [nextMeetingDate, setNextMeetingDate] = useState('');
+  const [initialNextMeetingDate, setInitialNextMeetingDate] = useState('');
+  const [savingMeetingDate, setSavingMeetingDate] = useState(false);
+
   // 新規TODO入力
   const [newTodoContent, setNewTodoContent] = useState('');
   const [newTodoAssignee, setNewTodoAssignee] = useState('');
@@ -100,6 +105,7 @@ export default function SalesMeetingAgendaPage() {
     fetchMonths();
     fetchStaff();
     fetchAllTodos();
+    fetchNextMeetingDate();
   }, []);
 
   useEffect(() => {
@@ -121,6 +127,32 @@ export default function SalesMeetingAgendaPage() {
       setStaffList(response.data.data || []);
     } catch (error) {
       console.error('Failed to fetch staff:', error);
+    }
+  };
+
+  const fetchNextMeetingDate = async () => {
+    try {
+      const response = await api.get('/api/sales-meeting-agenda/next-meeting-date');
+      const date = response.data.data?.next_meeting_date || '';
+      setNextMeetingDate(date);
+      setInitialNextMeetingDate(date);
+    } catch (error) {
+      console.error('Failed to fetch next meeting date:', error);
+    }
+  };
+
+  const handleSaveNextMeetingDate = async () => {
+    if (!nextMeetingDate) return;
+    setSavingMeetingDate(true);
+    setApiError('');
+    try {
+      await api.put('/api/sales-meeting-agenda/next-meeting-date', { next_meeting_date: nextMeetingDate });
+      setInitialNextMeetingDate(nextMeetingDate);
+      setSaveSuccess(true);
+    } catch (error: any) {
+      setApiError(error.response?.data?.error || error.message || '次回営業会議日の保存に失敗しました');
+    } finally {
+      setSavingMeetingDate(false);
     }
   };
 
@@ -406,6 +438,34 @@ export default function SalesMeetingAgendaPage() {
           </Typography>
         </Box>
       </Box>
+
+      {/* 次回営業会議日（編集可能。変更するとその1週間前にChat通知が送信される） */}
+      <Paper sx={{ p: 2, mb: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <Typography variant="body2" fontWeight="bold" sx={{ color: color.main, whiteSpace: 'nowrap' }}>
+          次回営業会議
+        </Typography>
+        <TextField
+          size="small"
+          type="date"
+          value={nextMeetingDate}
+          onChange={(e) => setNextMeetingDate(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+          sx={{ width: 200 }}
+        />
+        <Button
+          size="small"
+          variant="contained"
+          onClick={handleSaveNextMeetingDate}
+          disabled={savingMeetingDate || !nextMeetingDate || nextMeetingDate === initialNextMeetingDate}
+          sx={{ bgcolor: color.main, '&:hover': { bgcolor: color.dark } }}
+          startIcon={savingMeetingDate ? <CircularProgress size={14} color="inherit" /> : undefined}
+        >
+          {savingMeetingDate ? '保存中...' : '保存'}
+        </Button>
+        <Typography variant="caption" color="text.secondary">
+          この日の1週間前に、物件数/契約率チームへ「問い」完成・回答入力の依頼がChatに自動送信されます
+        </Typography>
+      </Paper>
 
       {apiError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setApiError('')}>{apiError}</Alert>

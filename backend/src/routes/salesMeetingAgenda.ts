@@ -11,6 +11,86 @@ function getSupabase() {
 }
 
 /**
+ * GET /api/sales-meeting-agenda/next-meeting-date - 次回営業会議日を取得
+ * 手動設定がない場合は「次回の第1月曜」を自動計算して返す
+ */
+router.get('/next-meeting-date', async (req: Request, res: Response) => {
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('sales_meeting_settings')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    const { SalesMeetingNotificationService } = await import('../services/SalesMeetingNotificationService');
+    const service = new SalesMeetingNotificationService();
+
+    let nextMeetingDate = data?.next_meeting_date;
+
+    if (!nextMeetingDate) {
+      // 手動設定が無い場合は、次回の第1月曜を自動計算
+      const todayJST = service.getJSTDateString(new Date());
+      const todayDateOnly = new Date(`${todayJST}T00:00:00Z`);
+      const computed = service.getNextMeetingDate(todayDateOnly);
+      nextMeetingDate = computed.toISOString().slice(0, 10);
+    }
+
+    res.json({ data: { next_meeting_date: nextMeetingDate, is_manual: !!data?.next_meeting_date } });
+  } catch (error: any) {
+    console.error('Failed to fetch next meeting date:', error);
+    res.status(500).json({ error: '次回営業会議日の取得に失敗しました', details: error.message });
+  }
+});
+
+/**
+ * PUT /api/sales-meeting-agenda/next-meeting-date - 次回営業会議日を手動設定
+ */
+router.put('/next-meeting-date', async (req: Request, res: Response) => {
+  try {
+    const supabase = getSupabase();
+    const { next_meeting_date } = req.body;
+
+    if (!next_meeting_date || !/^\d{4}-\d{2}-\d{2}$/.test(next_meeting_date)) {
+      return res.status(400).json({ error: '次回営業会議日（YYYY-MM-DD）を指定してください' });
+    }
+
+    const { data: existing } = await supabase
+      .from('sales_meeting_settings')
+      .select('id')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    let result;
+    if (existing?.id) {
+      result = await supabase
+        .from('sales_meeting_settings')
+        .update({ next_meeting_date, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+        .select()
+        .single();
+    } else {
+      result = await supabase
+        .from('sales_meeting_settings')
+        .insert({ next_meeting_date })
+        .select()
+        .single();
+    }
+
+    if (result.error) throw result.error;
+
+    res.json({ data: result.data });
+  } catch (error: any) {
+    console.error('Failed to save next meeting date:', error);
+    res.status(500).json({ error: '次回営業会議日の保存に失敗しました', details: error.message });
+  }
+});
+
+/**
  * GET /api/sales-meeting-agenda/months - 議題が存在する月一覧を取得
  */
 router.get('/months', async (req: Request, res: Response) => {

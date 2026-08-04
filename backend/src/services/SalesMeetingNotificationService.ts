@@ -1,3 +1,4 @@
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { GoogleChatService } from './GoogleChatService';
 
 /**
@@ -22,9 +23,14 @@ export interface SalesMeetingNotificationResult {
  */
 export class SalesMeetingNotificationService {
   private chatService: GoogleChatService;
+  private supabase: SupabaseClient;
 
   constructor() {
     this.chatService = new GoogleChatService();
+    this.supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
+    );
   }
 
   /**
@@ -118,14 +124,57 @@ export class SalesMeetingNotificationService {
   }
 
   /**
+   * DBに保存された手動設定の次回営業会議日を取得する。
+   * 設定が無い、または設定日が本日より過去（会議が終わって古くなった）場合は null を返す。
+   */
+  private async getManualNextMeetingDate(todayDateOnly: Date): Promise<Date | null> {
+    const { data, error } = await this.supabase
+      .from('sales_meeting_settings')
+      .select('next_meeting_date')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('[SalesMeetingNotificationService] 手動設定の取得エラー:', error.message);
+      return null;
+    }
+
+    if (!data?.next_meeting_date) {
+      return null;
+    }
+
+    const manualDate = this.parseDateOnly(data.next_meeting_date);
+    // 設定日が本日より前（過去）なら無効とみなし、自動計算にフォールバックする
+    if (manualDate.getTime() < todayDateOnly.getTime()) {
+      return null;
+    }
+
+    return manualDate;
+  }
+
+  /**
+   * 次回営業会議日を決定する。
+   * DBに本日以降の手動設定があればそれを優先し、無ければ「次回の第1月曜」を自動計算する。
+   */
+  async getEffectiveMeetingDate(todayDateOnly: Date): Promise<Date> {
+    const manual = await this.getManualNextMeetingDate(todayDateOnly);
+    if (manual) {
+      return manual;
+    }
+    return this.getNextMeetingDate(todayDateOnly);
+  }
+
+  /**
    * 本日（JST）が「次回営業会議の1週間前」であれば、Google Chatへ通知を送信する。
    * それ以外の日は何もせず終了する（Cron Jobから毎日呼び出される想定）。
+   * 次回営業会議日は、DBに手動設定（議題ページのヘッダーで編集）があればそれを優先する。
    */
   async sendIfScheduledDay(now: Date = new Date()): Promise<SalesMeetingNotificationResult> {
     const todayStr = this.getJSTDateString(now);
     const todayDateOnly = this.parseDateOnly(todayStr);
 
-    const meetingDate = this.getNextMeetingDate(todayDateOnly);
+    const meetingDate = await this.getEffectiveMeetingDate(todayDateOnly);
     const notifyDate = this.addDays(meetingDate, -7);
 
     if (this.formatDateOnly(notifyDate) !== this.formatDateOnly(todayDateOnly)) {
