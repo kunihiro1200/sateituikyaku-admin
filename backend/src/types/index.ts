@@ -86,6 +86,13 @@ export interface Seller {
   valuationText?: string; // I列「査定額」テキスト形式（例: "1900～2200万円"）
   valuationPdfUrl?: string;
   fixedAssetTaxRoadPrice?: number;
+  // マンション査定用 平米単価欄（通話モードページ「手入力査定額」セクション用、DB保存のみ・スプシ同期なし）
+  manualUnitPrice1?: number;
+  manualUnitPrice2?: number;
+  manualUnitPrice3?: number;
+  manualUnitPriceAmount1?: number;
+  manualUnitPriceAmount2?: number;
+  manualUnitPriceAmount3?: number;
   
   // 追客・連絡情報
   nextCallDate?: Date;
@@ -439,6 +446,13 @@ export interface UpdateSellerRequest {
   valuationAmount2?: number;
   valuationAmount3?: number;
   valuationAssignedBy?: string;
+  // マンション査定用 平米単価欄（DB保存のみ・スプシ同期なし）
+  manualUnitPrice1?: number | null;
+  manualUnitPrice2?: number | null;
+  manualUnitPrice3?: number | null;
+  manualUnitPriceAmount1?: number | null;
+  manualUnitPriceAmount2?: number | null;
+  manualUnitPriceAmount3?: number | null;
   site?: string; // サイト（問い合わせ元）
   exclusionAction?: string; // 除外アクション
   viewingNotes?: string; // 内覧前伝達事項

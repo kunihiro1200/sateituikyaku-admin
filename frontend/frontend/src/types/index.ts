@@ -83,6 +83,13 @@ export interface Seller {
   valuation_text?: string | null; // I列「査定額」テキスト形式 - snake_case版
   valuationPdfUrl?: string;
   fixedAssetTaxRoadPrice?: number;
+  // マンション査定用 平米単価欄（通話モードページ「手入力査定額」セクション用、DB保存のみ・スプシ同期なし）
+  manualUnitPrice1?: number;
+  manualUnitPrice2?: number;
+  manualUnitPrice3?: number;
+  manualUnitPriceAmount1?: number;
+  manualUnitPriceAmount2?: number;
+  manualUnitPriceAmount3?: number;
   
   // 追客・連絡情報
   nextCallDate?: string | Date;

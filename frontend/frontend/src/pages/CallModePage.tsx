@@ -732,6 +732,9 @@ const CallModePage = () => {
   // 種別が「土地」かどうか（propInfo.propertyType は正規化済みなので 'land' のみ比較）
   const isLandType = propInfo.propertyType === 'land';
 
+  // 種別が「マンション」かどうか（propInfo.propertyType は正規化済みなので 'apartment' のみ比較）
+  const isApartmentType = propInfo.propertyType === 'apartment';
+
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activitiesLoaded, setActivitiesLoaded] = useState(false);
   const [callSummary, setCallSummary] = useState<string>('');
@@ -1130,6 +1133,14 @@ const CallModePage = () => {
   const [editedManualValuationAmount3, setEditedManualValuationAmount3] = useState<string>('');
   const [isManualValuation, setIsManualValuation] = useState<boolean>(false);
   const [savingManualValuation, setSavingManualValuation] = useState(false);
+
+  // マンション査定用 平米単価欄の状態（種別に「マ」を含む場合のみ表示）
+  // 平米単価（万円/㎡）を入力すると、建物面積（当社調べ優先）と乗算して査定額（万円）を自動計算する
+  const [editedUnitPrice1, setEditedUnitPrice1] = useState<string>('');
+  const [editedUnitPrice2, setEditedUnitPrice2] = useState<string>('');
+  const [editedUnitPrice3, setEditedUnitPrice3] = useState<string>('');
+  const [savingUnitPrice, setSavingUnitPrice] = useState(false);
+  const unitPriceSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // AI査定（売買事例）用の状態
   interface SalesCaseRow {
@@ -1949,6 +1960,9 @@ const CallModePage = () => {
       if (calculationTimerRef.current) {
         clearTimeout(calculationTimerRef.current);
       }
+      if (unitPriceSaveTimerRef.current) {
+        clearTimeout(unitPriceSaveTimerRef.current);
+      }
     };
   }, []);
 
@@ -2220,6 +2234,11 @@ const CallModePage = () => {
         setEditedManualValuationAmount3('');
         console.log('査定額を査定計算セクションに表示');
       }
+
+      // マンション査定用 平米単価欄の初期化（DB保存のみ・スプシ同期なし）
+      setEditedUnitPrice1(sellerData.manualUnitPrice1?.toString() || '');
+      setEditedUnitPrice2(sellerData.manualUnitPrice2?.toString() || '');
+      setEditedUnitPrice3(sellerData.manualUnitPrice3?.toString() || '');
 
       // 査定方法の初期化
       setEditedValuationMethod(sellerData.valuationMethod || '');
@@ -3679,6 +3698,48 @@ const CallModePage = () => {
       setSavingManualValuation(false);
     }
   };
+
+  // マンション査定用 平米単価×建物面積の自動計算結果（万円）
+  // 建物面積は「建物（当社調べ）」を優先、なければ「建物面積（㎡）」を使用
+  const unitPriceTargetArea = parseFloat(editedBuildingAreaVerified) || parseFloat(editedBuildingArea) ||
+    property?.buildingAreaVerified || property?.buildingArea || seller?.buildingArea || 0;
+
+  const calcUnitPriceAmount = (unitPrice: string): number | null => {
+    const price = parseFloat(unitPrice);
+    if (!price || price <= 0 || unitPriceTargetArea <= 0) return null;
+    return Math.round(price * unitPriceTargetArea);
+  };
+
+  const unitPriceAmount1 = calcUnitPriceAmount(editedUnitPrice1);
+  const unitPriceAmount2 = calcUnitPriceAmount(editedUnitPrice2);
+  const unitPriceAmount3 = calcUnitPriceAmount(editedUnitPrice3);
+
+  // 平米単価欄（マンション査定用）をDBに保存する関数（デバウンス付き、スプシ同期なし）
+  const saveUnitPricesToDb = useCallback((
+    price1: string, price2: string, price3: string,
+    amount1: number | null, amount2: number | null, amount3: number | null,
+  ) => {
+    if (unitPriceSaveTimerRef.current) {
+      clearTimeout(unitPriceSaveTimerRef.current);
+    }
+    unitPriceSaveTimerRef.current = setTimeout(async () => {
+      try {
+        setSavingUnitPrice(true);
+        await api.put(`/api/sellers/${id}`, {
+          manualUnitPrice1: price1 ? parseFloat(price1) : null,
+          manualUnitPrice2: price2 ? parseFloat(price2) : null,
+          manualUnitPrice3: price3 ? parseFloat(price3) : null,
+          manualUnitPriceAmount1: amount1,
+          manualUnitPriceAmount2: amount2,
+          manualUnitPriceAmount3: amount3,
+        });
+      } catch (err: any) {
+        console.error('平米単価の保存に失敗しました:', err);
+      } finally {
+        setSavingUnitPrice(false);
+      }
+    }, 800);
+  }, [id]);
 
   // 郵送先住所確認済みハンドラー（確認済みボタン押下時に住所をDBへ保存）
   const handleMailingAddressConfirm = async () => {
@@ -8001,6 +8062,122 @@ HP：https://ifoo-oita.com/
                           helperText="オプション（万円単位で入力）"
                         />
                       </Grid>
+
+                      {/* マンション査定用 平米単価欄（種別に「マ」を含む場合のみ表示） */}
+                      {isApartmentType && (
+                        <Grid item xs={12}>
+                          <Divider sx={{ my: 2 }} />
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                            <Typography variant="subtitle1">
+                              🏢 平米単価から計算（マンション用）
+                            </Typography>
+                            {savingUnitPrice && <CircularProgress size={16} />}
+                          </Box>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            平米単価（万円/㎡）を入力すると、建物面積（
+                            {editedBuildingAreaVerified ? '建物（当社調べ）' : '建物面積（㎡）'}
+                            を優先使用）と乗算して査定額を自動計算します。計算結果は上の「査定額」欄には反映されず、参考表示のみです。
+                            {unitPriceTargetArea > 0 && (
+                              <> 現在の建物面積: {unitPriceTargetArea}㎡</>
+                            )}
+                          </Typography>
+                          <Grid container spacing={2}>
+                            <Grid item xs={12} sm={6} md={3}>
+                              <TextField
+                                fullWidth
+                                label="平米単価1"
+                                type="number"
+                                value={editedUnitPrice1}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setEditedUnitPrice1(value);
+                                  saveUnitPricesToDb(
+                                    value, editedUnitPrice2, editedUnitPrice3,
+                                    calcUnitPriceAmount(value), unitPriceAmount2, unitPriceAmount3,
+                                  );
+                                }}
+                                InputProps={{
+                                  endAdornment: <Typography sx={{ ml: 1 }}>万円/㎡</Typography>,
+                                }}
+                              />
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                              <TextField
+                                fullWidth
+                                label="計算結果1"
+                                value={unitPriceAmount1 != null ? unitPriceAmount1.toLocaleString() : ''}
+                                InputProps={{
+                                  readOnly: true,
+                                  endAdornment: <Typography sx={{ ml: 1 }}>万円</Typography>,
+                                }}
+                                sx={{ bgcolor: 'grey.50' }}
+                              />
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                              <TextField
+                                fullWidth
+                                label="平米単価2"
+                                type="number"
+                                value={editedUnitPrice2}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setEditedUnitPrice2(value);
+                                  saveUnitPricesToDb(
+                                    editedUnitPrice1, value, editedUnitPrice3,
+                                    unitPriceAmount1, calcUnitPriceAmount(value), unitPriceAmount3,
+                                  );
+                                }}
+                                InputProps={{
+                                  endAdornment: <Typography sx={{ ml: 1 }}>万円/㎡</Typography>,
+                                }}
+                              />
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                              <TextField
+                                fullWidth
+                                label="計算結果2"
+                                value={unitPriceAmount2 != null ? unitPriceAmount2.toLocaleString() : ''}
+                                InputProps={{
+                                  readOnly: true,
+                                  endAdornment: <Typography sx={{ ml: 1 }}>万円</Typography>,
+                                }}
+                                sx={{ bgcolor: 'grey.50' }}
+                              />
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                              <TextField
+                                fullWidth
+                                label="平米単価3"
+                                type="number"
+                                value={editedUnitPrice3}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setEditedUnitPrice3(value);
+                                  saveUnitPricesToDb(
+                                    editedUnitPrice1, editedUnitPrice2, value,
+                                    unitPriceAmount1, unitPriceAmount2, calcUnitPriceAmount(value),
+                                  );
+                                }}
+                                InputProps={{
+                                  endAdornment: <Typography sx={{ ml: 1 }}>万円/㎡</Typography>,
+                                }}
+                              />
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                              <TextField
+                                fullWidth
+                                label="計算結果3"
+                                value={unitPriceAmount3 != null ? unitPriceAmount3.toLocaleString() : ''}
+                                InputProps={{
+                                  readOnly: true,
+                                  endAdornment: <Typography sx={{ ml: 1 }}>万円</Typography>,
+                                }}
+                                sx={{ bgcolor: 'grey.50' }}
+                              />
+                            </Grid>
+                          </Grid>
+                        </Grid>
+                      )}
 
                       <Grid item xs={12}>
                         <Box sx={{ display: 'flex', gap: 2 }}>
