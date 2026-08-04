@@ -572,6 +572,25 @@ export class SellerService extends BaseRepository {
     if (data.valuationAmount3 !== undefined) {
       updates.valuation_amount_3 = data.valuationAmount3;
     }
+    // マンション査定用 平米単価欄（DB保存のみ・スプシ同期なし）
+    if ((data as any).manualUnitPrice1 !== undefined) {
+      updates.manual_unit_price_1 = (data as any).manualUnitPrice1;
+    }
+    if ((data as any).manualUnitPrice2 !== undefined) {
+      updates.manual_unit_price_2 = (data as any).manualUnitPrice2;
+    }
+    if ((data as any).manualUnitPrice3 !== undefined) {
+      updates.manual_unit_price_3 = (data as any).manualUnitPrice3;
+    }
+    if ((data as any).manualUnitPriceAmount1 !== undefined) {
+      updates.manual_unit_price_amount_1 = (data as any).manualUnitPriceAmount1;
+    }
+    if ((data as any).manualUnitPriceAmount2 !== undefined) {
+      updates.manual_unit_price_amount_2 = (data as any).manualUnitPriceAmount2;
+    }
+    if ((data as any).manualUnitPriceAmount3 !== undefined) {
+      updates.manual_unit_price_amount_3 = (data as any).manualUnitPriceAmount3;
+    }
     if (data.valuationAssignedBy !== undefined) {
       updates.valuation_assigned_by = data.valuationAssignedBy;
     }
@@ -1733,7 +1752,15 @@ export class SellerService extends BaseRepository {
       query = query.eq('inquiry_site', inquirySite); // 修正: site → inquiry_site（正しいカラム名）
     }
     if (propertyTypeFilter) {
-      query = query.eq('property_type', propertyTypeFilter); // 修正: 種別 → property_type（正しいカラム名）
+      // 種別は「戸建て」「戸建」「戸」のように表記が混在しているため、代表キーワードで部分一致検索する
+      const propertyTypeKeywordMap: Record<string, string> = {
+        '土地': '土',
+        '戸建': '戸',
+        'マンション': 'マ',
+        '事業用': '事業',
+      };
+      const propertyTypeKeyword = propertyTypeKeywordMap[propertyTypeFilter] || propertyTypeFilter;
+      query = query.ilike('property_type', `%${propertyTypeKeyword}%`);
     }
     if (statusFilter) {
       // サイドバーカテゴリが選択されている場合、statusFilterは適用しない
@@ -1756,8 +1783,17 @@ export class SellerService extends BaseRepository {
       query = query.lte('inquiry_date', inquiryDateTo);
     }
     // 状況（売主）フィルター
+    // DBには短縮形（居/空/賃/古有/更）で保存されているため、フルネームで選択された場合は短縮形に変換して部分一致検索する
     if (currentStatusFilter) {
-      query = query.eq('current_status', currentStatusFilter);
+      const currentStatusKeywordMap: Record<string, string> = {
+        '居住中': '居',
+        '空き家': '空',
+        '賃貸中': '賃',
+        '古屋あり': '古有',
+        '更地': '更',
+      };
+      const currentStatusKeyword = currentStatusKeywordMap[currentStatusFilter] || currentStatusFilter;
+      query = query.ilike('current_status', `%${currentStatusKeyword}%`);
     }
     // 査定額フィルター（万円単位で受け取り、円単位に変換して比較）
     if (valuationAmountMin !== undefined) {
@@ -2266,6 +2302,13 @@ export class SellerService extends BaseRepository {
         valuationAmount2: seller.valuation_amount_2,
         valuationAmount3: seller.valuation_amount_3,
         valuationAssignedBy: seller.valuation_assigned_by,
+        // マンション査定用 平米単価欄（DB保存のみ・スプシ同期なし）
+        manualUnitPrice1: seller.manual_unit_price_1,
+        manualUnitPrice2: seller.manual_unit_price_2,
+        manualUnitPrice3: seller.manual_unit_price_3,
+        manualUnitPriceAmount1: seller.manual_unit_price_amount_1,
+        manualUnitPriceAmount2: seller.manual_unit_price_amount_2,
+        manualUnitPriceAmount3: seller.manual_unit_price_amount_3,
         // 競合情報フィールド
         competitorName: seller.competitor_name,
         competitorNameAndReason: seller.competitor_name_and_reason,
