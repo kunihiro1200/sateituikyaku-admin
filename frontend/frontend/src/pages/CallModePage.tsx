@@ -5233,6 +5233,29 @@ HP：https://ifoo-oita.com/
                   {copiedSellerNumber && (
                     <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold' }}>✓</Typography>
                   )}
+                  {/* 資料生成ボタン */}
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    endIcon={<span style={{ fontSize: 10 }}>▼</span>}
+                    onClick={(e) => setDocGenMenuAnchor(e.currentTarget)}
+                    sx={{ whiteSpace: 'nowrap', ml: 0.5 }}
+                  >
+                    資料生成
+                  </Button>
+                  <Menu
+                    anchorEl={docGenMenuAnchor}
+                    open={Boolean(docGenMenuAnchor)}
+                    onClose={() => setDocGenMenuAnchor(null)}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                  >
+                    <MenuItem onClick={() => { setDocGenMenuAnchor(null); setSaleScheduleModalOpen(true); }}>
+                      売却スケジュール
+                    </MenuItem>
+                    <MenuItem onClick={() => { setDocGenMenuAnchor(null); setNetProceedsModalOpen(true); }}>
+                      手残り金額
+                    </MenuItem>
+                  </Menu>
                 </>
               )}
             </Box>
@@ -5412,29 +5435,6 @@ HP：https://ifoo-oita.com/
               commentHtml={savedComments}
               propertyType={propInfo.propertyType}
             />
-            {/* 資料生成ボタン */}
-            <Button
-              variant="outlined"
-              size="small"
-              endIcon={<span style={{ fontSize: 10 }}>▼</span>}
-              onClick={(e) => setDocGenMenuAnchor(e.currentTarget)}
-              sx={{ whiteSpace: 'nowrap' }}
-            >
-              資料生成
-            </Button>
-            <Menu
-              anchorEl={docGenMenuAnchor}
-              open={Boolean(docGenMenuAnchor)}
-              onClose={() => setDocGenMenuAnchor(null)}
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-            >
-              <MenuItem onClick={() => { setDocGenMenuAnchor(null); setSaleScheduleModalOpen(true); }}>
-                売却スケジュール
-              </MenuItem>
-              <MenuItem onClick={() => { setDocGenMenuAnchor(null); setNetProceedsModalOpen(true); }}>
-                手残り金額
-              </MenuItem>
-            </Menu>
             {/* 画像ボタン */}
             <Badge
               badgeContent={driveImageCount && driveImageCount > 0 ? driveImageCount : null}
@@ -10184,8 +10184,15 @@ HP：https://ifoo-oita.com/
           onClose={() => setNetProceedsModalOpen(false)}
           initialOwnerName={seller.name || ''}
           initialPropertyAddress={propInfo.address || seller.propertyAddress || ''}
-          initialMaxPrice={seller.valuationAmount1 || undefined}
-          initialMinPrice={seller.valuationAmount3 || undefined}
+          initialMaxPrice={Math.max(
+            seller.valuationAmount1 || 0,
+            seller.valuationAmount2 || 0,
+            seller.valuationAmount3 || 0
+          ) || undefined}
+          initialMinPrice={Math.min(
+            ...[seller.valuationAmount1, seller.valuationAmount2, seller.valuationAmount3]
+              .filter((v): v is number => typeof v === 'number' && v > 0)
+          ) || undefined}
         />
       )}
 

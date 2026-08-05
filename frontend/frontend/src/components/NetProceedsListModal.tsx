@@ -172,6 +172,16 @@ export const NetProceedsListModal: React.FC<Props> = ({
 
   const previewRef = useRef<HTMLDivElement>(null);
 
+  // モーダルが開くたびに初期値を同期
+  React.useEffect(() => {
+    if (open) {
+      setOwnerName(initialOwnerName);
+      setPropertyAddress(initialPropertyAddress);
+      setMaxPriceMan(initialMaxPrice ? Math.round(initialMaxPrice / 10_000).toString() : '');
+      setMinPriceMan(initialMinPrice ? Math.round(initialMinPrice / 10_000).toString() : '');
+    }
+  }, [open, initialOwnerName, initialPropertyAddress, initialMaxPrice, initialMinPrice]);
+
   // ── 計算 ──
   const rows = useMemo((): NetProceedsRow[] => {
     const maxYen = parseFloat(maxPriceMan) * 10_000 || 0;
