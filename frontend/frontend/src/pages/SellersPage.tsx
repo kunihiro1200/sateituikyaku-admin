@@ -356,7 +356,15 @@ export default function SellersPage() {
   const [tempFilterDialogOpen, setTempFilterDialogOpen] = useState(false);
   const [tempFilterLabel, setTempFilterLabel] = useState('');
   const [tempFilterSaving, setTempFilterSaving] = useState(false);
-  const [selectedTempFilterId, setSelectedTempFilterId] = useState<string | null>(null);
+  const [selectedTempFilterId, setSelectedTempFilterId] = useState<string | null>(() => {
+    // 通話モードページから戻ってきた場合、sessionStorageから一時フィルターIDを復元
+    const savedTempFilterId = sessionStorage.getItem('selectedTempFilterId');
+    if (savedTempFilterId) {
+      sessionStorage.removeItem('selectedTempFilterId'); // 一度使ったら削除
+      return savedTempFilterId;
+    }
+    return null;
+  });
   
   // Status category filter
   const [selectedCategory, setSelectedCategory] = useState<StatusCategory>(() => {
@@ -703,6 +711,17 @@ export default function SellersPage() {
     fetchAssigneeInitials();
     fetchSidebarTempFilters();
   }, []);
+
+  // 一時フィルターIDが復元された場合、sidebarTempFiltersロード後にフィルター条件を適用
+  useEffect(() => {
+    if (selectedTempFilterId && sidebarTempFilters.length > 0) {
+      const tf = sidebarTempFilters.find(f => f.id === selectedTempFilterId);
+      if (tf) {
+        handleSelectTempFilter(tf);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sidebarTempFilters]);
 
   // ページに戻ってきた時にサイドバーカウントを再取得（常に最新を取得）
   useEffect(() => {

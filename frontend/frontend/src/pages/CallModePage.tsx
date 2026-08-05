@@ -5173,6 +5173,27 @@ HP：https://ifoo-oita.com/
               </Button>
             );
           })()}
+          {/* 一時追加フィルターから入った場合：そのカテゴリーに戻るボタンを表示 */}
+          {tempFilterId && tempFilterLabel && (
+            <Button
+              variant="outlined"
+              size="small"
+              sx={{ borderColor: '#8e24aa', color: '#8e24aa', '&:hover': { borderColor: '#6a1b9a', bgcolor: '#f3e5f5' } }}
+              onClick={() => {
+                navigateWithWarningCheck(() => {
+                  sessionStorage.removeItem('sellersScrollPosition');
+                  sessionStorage.removeItem('selectedSellerId');
+                  sessionStorage.removeItem('sellersPage');
+                  // 一時フィルターIDをsessionStorageに保存して、戻った時に再選択できるようにする
+                  sessionStorage.setItem('selectedTempFilterId', tempFilterId);
+                  pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
+                  navigate('/');
+                });
+              }}
+            >
+              📌 {tempFilterLabel}
+            </Button>
+          )}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography
