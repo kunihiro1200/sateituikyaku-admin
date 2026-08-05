@@ -72,7 +72,7 @@ export const Header: React.FC<Colors> = ({ navy, gold }) => (
   <div style={{
     background: navy, color: '#fff',
     padding: '0 10mm',
-    height: '22mm', flexShrink: 0,
+    height: '30mm', flexShrink: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     boxSizing: 'border-box',
   }}>
@@ -84,7 +84,7 @@ export const Header: React.FC<Colors> = ({ navy, gold }) => (
       <div style={{ fontSize: '22pt', fontWeight: 900, color: gold, letterSpacing: '0.04em', lineHeight: 1 }}>
         売却スケジュール
       </div>
-      <div style={{ fontSize: '6.5pt', color: 'rgba(255,255,255,0.7)', marginTop: 3, letterSpacing: '0.04em' }}>
+      <div style={{ fontSize: '7pt', color: 'rgba(255,255,255,0.7)', marginTop: 4, letterSpacing: '0.04em' }}>
         全力で販売活動を行い、最善の条件でのご売却をサポートします
       </div>
     </div>
@@ -139,7 +139,7 @@ export const PropertyInfoBox: React.FC<PropBoxProps> = ({ data, navy, bgLight })
       background: bgLight,
       overflow: 'hidden',
       flexShrink: 0,
-      height: '29mm',
+      height: '22mm',
       boxSizing: 'border-box',
     }}>
       {row('＃', '物件番号', data.propertyNo)}
@@ -211,7 +211,7 @@ export const Step1: React.FC<Step1Props> = ({ data, navy, gold, bgLight, fmt }) 
       display: 'flex', gap: '3mm',
       background: bgLight, border: `1.5px solid ${navy}22`,
       borderRadius: 4, padding: '3.5mm',
-      height: '38mm', flexShrink: 0, boxSizing: 'border-box', overflow: 'hidden',
+      height: '44mm', flexShrink: 0, boxSizing: 'border-box', overflow: 'hidden',
     }}>
       <StepLeft num="1" label="売り出し開始" yearMonth={yearMonth} navy={navy} gold={gold} showCalendar />
       <div style={{ flex: 1, overflow: 'hidden' }}>
@@ -266,7 +266,7 @@ export const Step2: React.FC<Step2Props> = ({ data, navy, gold }) => {
     <div style={{
       background: '#fff', border: `1.5px solid ${navy}22`,
       borderRadius: 4, padding: '3.5mm',
-      height: '48mm', flexShrink: 0, boxSizing: 'border-box', overflow: 'hidden',
+      height: '58mm', flexShrink: 0, boxSizing: 'border-box', overflow: 'hidden',
     }}>
       <div style={{ display: 'flex', gap: '3mm', height: '100%' }}>
         <StepLeft num="2" label="販売活動を強化" yearMonth={period.replace('〜', '\n〜')} navy={navy} gold={gold} />
@@ -323,7 +323,7 @@ export const Step3and4: React.FC<Step34Props> = ({ data, navy, gold, bgLight, fm
   );
 
   return (
-    <div style={{ display: 'flex', gap: '3mm', flexShrink: 0, height: '38mm', boxSizing: 'border-box' }}>
+    <div style={{ display: 'flex', gap: '3mm', flexShrink: 0, height: '56mm', boxSizing: 'border-box' }}>
       {/* STEP 3 */}
       <div style={{
         flex: 1, background: bgLight,
@@ -379,7 +379,7 @@ export const SupportSection: React.FC<SupportProps> = ({ navy, gold, bgLight }) 
     { src: IMG.procedure,      title: '手続きサポート',     desc: '売買契約から決済まで、各種手続きを丁寧にサポートします。' },
   ];
   return (
-    <div style={{ flexShrink: 0, height: '26mm', boxSizing: 'border-box' }}>
+    <div style={{ flexShrink: 0, height: '30mm', boxSizing: 'border-box' }}>
       <div style={{
         background: navy, color: '#fff',
         padding: '1.5mm 4mm', borderRadius: '4px 4px 0 0',
@@ -418,7 +418,7 @@ export const MessageSection: React.FC<MsgProps> = ({ navy, gold }) => (
     display: 'flex', alignItems: 'center',
     borderTop: `2px solid ${gold}`,
     padding: '2mm 0',
-    height: '16mm', flexShrink: 0, boxSizing: 'border-box', overflow: 'hidden',
+    height: '18mm', flexShrink: 0, boxSizing: 'border-box', overflow: 'hidden',
   }}>
     {/* 街並み画像（左側・固定） */}
     <div style={{ width: '18mm', height: '13mm', flexShrink: 0, display: 'flex', alignItems: 'flex-end' }}>
@@ -448,7 +448,7 @@ export const Footer: React.FC<FooterProps> = ({ navy, gold }) => (
   <div style={{
     background: navy, color: '#fff',
     padding: '0 10mm',
-    height: '14mm', flexShrink: 0,
+    height: '20mm', flexShrink: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     boxSizing: 'border-box',
   }}>

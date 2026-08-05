@@ -6,6 +6,7 @@
  * - A4縦テンプレート固定・デザイン不変
  */
 import React, { useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Dialog,
   DialogTitle,
@@ -213,22 +214,68 @@ export const SaleScheduleModal: React.FC<Props> = ({
 
   return (
     <>
-      {/* 印刷用スタイル */}
+      {/*
+        印刷CSS:
+        - .ss-print-portal がbody直下にあり、印刷時のみ表示
+        - 画面では scale(0.48) で縮小プレビュー
+        - 印刷時は transform:none で210mm×297mmの原寸に戻す
+        - モーダル内の他要素は印刷から除外
+      */}
       <style>{`
+        @media screen {
+          .ss-print-portal {
+            position: fixed;
+            /* 画面上での縮小プレビュー位置（モーダル右カラムに重ねる） */
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0;
+          }
+        }
         @media print {
-          body * { visibility: hidden !important; }
-          #sale-schedule-print, #sale-schedule-print * { visibility: visible !important; }
-          #sale-schedule-print {
-            position: fixed !important;
-            left: 0 !important; top: 0 !important;
-            width: 210mm !important;
+          html, body {
             margin: 0 !important;
             padding: 0 !important;
-            box-shadow: none !important;
+            width: 210mm !important;
+            height: 297mm !important;
           }
-          @page { size: A4 portrait; margin: 0; }
+          body > * { display: none !important; }
+          .ss-print-portal {
+            display: block !important;
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            z-index: 999999 !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            transform: none !important;
+            zoom: 1 !important;
+          }
+          .ss-a4-doc {
+            width: 210mm !important;
+            height: 297mm !important;
+            transform: none !important;
+            zoom: 1 !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 0;
+          }
         }
       `}</style>
+
+      {/* body直下にポータルでA4ドキュメントを配置（印刷時に原寸で出力） */}
+      {createPortal(
+        <div className="ss-print-portal">
+          <SaleScheduleA4 data={data} ref={previewRef} fmt={fmt} />
+        </div>,
+        document.body
+      )}
 
       <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth
         PaperProps={{ sx: { maxHeight: '95vh' } }}>
@@ -345,16 +392,37 @@ export const SaleScheduleModal: React.FC<Props> = ({
               </Grid>
             </Grid>
 
-            {/* 右カラム：A4プレビュー */}
+            {/* 右カラム：A4プレビュー（画面表示用・縮小表示） */}
             <Grid item xs={12} md={8}>
               <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, color: '#061D3B' }}>
                 プレビュー（A4）
               </Typography>
+              {/* 
+                画面プレビュー用のラッパー:
+                210mm を scale(0.48) で縮小 → 約101mm(=~380px)表示
+                transformOrigin: top left で左上基準に縮小
+              */}
               <Box sx={{
-                overflowY: 'auto', maxHeight: 680,
-                border: '1px solid #ccc', borderRadius: 1, background: '#e8e8e8', p: 1,
+                width: '100%',
+                height: 640,
+                overflow: 'hidden',
+                border: '1px solid #ccc',
+                borderRadius: 1,
+                background: '#e8e8e8',
+                position: 'relative',
               }}>
-                <SaleScheduleA4 data={data} ref={previewRef} fmt={fmt} />
+                <Box sx={{
+                  position: 'absolute',
+                  top: 8,
+                  left: 8,
+                  transformOrigin: 'top left',
+                  transform: 'scale(0.48)',
+                  width: '210mm',
+                  height: '297mm',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.18)',
+                }}>
+                  <SaleScheduleA4 data={data} fmt={fmt} />
+                </Box>
               </Box>
             </Grid>
           </Grid>
@@ -408,16 +476,16 @@ const SaleScheduleA4 = React.forwardRef<HTMLDivElement, A4Props>(({ data, fmt },
     position: 'relative',
   } as React.CSSProperties;
 
-  // Header=22mm Footer=14mm → 内側=261mm
-  // padding top+bottom=8mm+6mm=14mm → コンテンツ=247mm
-  // PropertyInfoBox=29mm Step1=38mm Step2=48mm Step3+4=38mm
-  // Support=26mm Message=16mm → 合計195mm < 247mm ✓
+  // Header=30mm Footer=20mm → 内側=247mm
+  // padding top+bottom=5mm+4mm=9mm → コンテンツ=238mm
+  // PropertyInfoBox=22 + Step1=44 + Step2=58 + Step3+4=56 + Support=30 + Message=18 = 228mm
+  // gap 5×2mm=10mm → 合計238mm ✓
   const padded: React.CSSProperties = {
-    padding: '6mm 10mm 4mm 10mm',
+    padding: '5mm 10mm 4mm 10mm',
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    gap: '3mm',
+    gap: '2mm',
     overflow: 'hidden',
   };
 
