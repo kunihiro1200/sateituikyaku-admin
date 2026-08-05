@@ -1555,7 +1555,10 @@ export default function SellersPage() {
                     sessionStorage.setItem('selectedSellerId', seller.id);
                     pageDataCache.set(sellerDetailCacheKey(seller.id), seller, 30 * 1000);
                     const categoryParam = selectedCategory && selectedCategory !== 'all' ? `?category=${encodeURIComponent(selectedCategory)}` : '';
-                    navigate(`/sellers/${seller.id}/call${categoryParam}`);
+                    const tempFilterParam = selectedTempFilterId
+                      ? (categoryParam ? '&' : '?') + `tempFilterId=${encodeURIComponent(selectedTempFilterId)}&tempFilterLabel=${encodeURIComponent(sidebarTempFilters.find(f => f.id === selectedTempFilterId)?.label || '')}`
+                      : '';
+                    navigate(`/sellers/${seller.id}/call${categoryParam}${tempFilterParam}`);
                   }}
                   sx={{
                     mb: 1,
@@ -1736,7 +1739,10 @@ export default function SellersPage() {
                       // CallModePage.tsx でこのキャッシュを使えば /api/sellers/:id の待ち時間をゼロにできる
                       pageDataCache.set(sellerDetailCacheKey(seller.id), seller, 30 * 1000); // 30秒TTL
                       const categoryParam = selectedCategory && selectedCategory !== 'all' ? `?category=${encodeURIComponent(selectedCategory)}` : '';
-                      navigate(`/sellers/${seller.id}/call${categoryParam}`);
+                      const tempFilterParam = selectedTempFilterId
+                        ? (categoryParam ? '&' : '?') + `tempFilterId=${encodeURIComponent(selectedTempFilterId)}&tempFilterLabel=${encodeURIComponent(sidebarTempFilters.find(f => f.id === selectedTempFilterId)?.label || '')}`
+                        : '';
+                      navigate(`/sellers/${seller.id}/call${categoryParam}${tempFilterParam}`);
                     }}
                     sx={{ cursor: 'pointer' }}
                     data-seller-id={seller.id}
