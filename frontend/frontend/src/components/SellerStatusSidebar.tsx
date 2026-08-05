@@ -1075,9 +1075,6 @@ function SellerStatusSidebarComponent({
         )}
       </Button>
 
-      {/* サイドバー一時追加フィルター（フィルタパネルから追加されたカスタムカテゴリー） */}
-      {renderTempFiltersSection()}
-
       {/* 大分セクション見出し（表示グルーピングのみ、データ構造は変更しない） */}
       {renderOitaSectionHeader()}
 
@@ -1164,6 +1161,9 @@ function SellerStatusSidebarComponent({
       {/* assigneeInitialsが空でもsellersから動的取得するため常に表示 */}
       {/* 福岡（FI）セクション：担当（）より上に表示 */}
       {renderFukuokaSection()}
+
+      {/* サイドバー一時追加フィルター（フィルタパネルから追加されたカスタムカテゴリー）：福岡の下・担当の上 */}
+      {renderTempFiltersSection()}
 
       <Box sx={{ mt: 0.5 }}>
         {renderAssigneeCategories()}
