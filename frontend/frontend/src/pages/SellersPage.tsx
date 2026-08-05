@@ -436,9 +436,9 @@ export default function SellersPage() {
           recordsDeleted: result.recordsDeleted,
           hasChanges: true,
         });
-        // 売主リストキャッシュを無効化してから再取得
+        // 売主リストキャッシュを無効化（次のfetchSellersで最新データを取得する）
+        // ⚠️ fetchSellers()を直接呼ぶとstaleなクロージャのフィルター値を使う可能性があるため呼ばない
         pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
-        fetchSellers();
         fetchSidebarCounts(true); // サイドバーカウントも更新（キャッシュ無効化）
       }
     },
