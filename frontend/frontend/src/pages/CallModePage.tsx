@@ -5249,24 +5249,7 @@ HP：https://ifoo-oita.com/
               </Box>
             )}
           </Box>
-          <Button
-            startIcon={<CalendarToday />}
-            onClick={scrollToAppointmentSection}
-            variant="outlined"
-            size={isMobile ? 'small' : 'medium'}
-            sx={{ 
-              ml: isMobile ? 0 : 2,
-              borderColor: SECTION_COLORS.seller.main,
-              color: SECTION_COLORS.seller.main,
-              '&:hover': {
-                borderColor: SECTION_COLORS.seller.dark,
-                backgroundColor: `${SECTION_COLORS.seller.main}15`,
-              }
-            }}
-            title="訪問セクションへ"
-          >
-            訪問
-          </Button>
+
           {seller?.id && (
             <Button
               type="button"
