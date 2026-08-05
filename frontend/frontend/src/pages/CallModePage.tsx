@@ -746,14 +746,21 @@ const CallModePage = () => {
   // サイドバー選択状態（通話モードページでも使用）
   const [selectedCategory, setSelectedCategory] = useState<StatusCategory>('all');
   const [selectedVisitAssignee, setSelectedVisitAssignee] = useState<string | undefined>(undefined);
+  // 一時追加フィルターのID・ラベル（URLパラメータから読み取る）
+  const [tempFilterId, setTempFilterId] = useState<string>('');
+  const [tempFilterLabel, setTempFilterLabel] = useState<string>('');
   
   // URLパラメータから状態を読み取る
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const category = params.get('category') as StatusCategory || 'all';
     const assignee = params.get('visitAssignee') || undefined;
+    const tfId = params.get('tempFilterId') || '';
+    const tfLabel = params.get('tempFilterLabel') || '';
     setSelectedCategory(category);
     setSelectedVisitAssignee(assignee);
+    setTempFilterId(tfId);
+    setTempFilterLabel(tfLabel);
   }, []);
   
   // カテゴリ選択ハンドラー（通話モードページ用）

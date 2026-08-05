@@ -32,6 +32,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Select,
+  FormControl,
+  OutlinedInput,
+  InputLabel,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -323,19 +327,19 @@ export default function SellersPage() {
   const [sortBy, setSortBy] = useState<string>('inquiry_date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  // Phase 1 filters
-  const [confidenceLevelFilter, setConfidenceLevelFilter] = useState('');
-  const [inquirySiteFilter, setInquirySiteFilter] = useState('');
-  const [propertyTypeFilter, setPropertyTypeFilter] = useState('');
-  const [statusFilterValue, setStatusFilterValue] = useState('');
+  // Phase 1 filters（複数選択対応：string[]）
+  const [confidenceLevelFilter, setConfidenceLevelFilter] = useState<string[]>([]);
+  const [inquirySiteFilter, setInquirySiteFilter] = useState<string[]>([]);
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState<string[]>([]);
+  const [statusFilterValue, setStatusFilterValue] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-  // 地域フィルター（大分/福岡）：福岡はseller_numberがFIで始まるもの、大分はそれ以外全て
-  const [regionFilter, setRegionFilter] = useState<'' | 'oita' | 'fukuoka'>('');
+  // 地域フィルター（大分/福岡）：複数選択対応
+  const [regionFilter, setRegionFilter] = useState<string[]>([]);
   // 日付フィルター（反響日付）
   const [inquiryDateFromFilter, setInquiryDateFromFilter] = useState('');
   const [inquiryDateToFilter, setInquiryDateToFilter] = useState('');
-  // 状況（売主）フィルター
-  const [currentStatusFilterValue, setCurrentStatusFilterValue] = useState('');
+  // 状況（売主）フィルター（複数選択対応）
+  const [currentStatusFilterValue, setCurrentStatusFilterValue] = useState<string[]>([]);
   // 査定額フィルター（万円単位）
   const [valuationAmountMinFilter, setValuationAmountMinFilter] = useState('');
   const [valuationAmountMaxFilter, setValuationAmountMaxFilter] = useState('');
@@ -454,14 +458,14 @@ export default function SellersPage() {
     setSearchQuery(''); // 検索クエリをクリア（後から操作したサイドバーを優先）
     setPage(0); // カテゴリが変わったらページを0にリセット
     // フィルタをリセット（カテゴリフィルタと追加フィルタの競合を防ぐ）
-    setConfidenceLevelFilter('');
-    setInquirySiteFilter('');
-    setPropertyTypeFilter('');
-    setStatusFilterValue('');
-    setRegionFilter('');
+    setConfidenceLevelFilter([]);
+    setInquirySiteFilter([]);
+    setPropertyTypeFilter([]);
+    setStatusFilterValue([]);
+    setRegionFilter([]);
     setInquiryDateFromFilter('');
     setInquiryDateToFilter('');
-    setCurrentStatusFilterValue('');
+    setCurrentStatusFilterValue([]);
     setValuationAmountMinFilter('');
     setValuationAmountMaxFilter('');
     setNextCallDateMode('');
@@ -579,12 +583,12 @@ export default function SellersPage() {
     setTempFilterSaving(true);
     try {
       const filtersToSave: Record<string, any> = {};
-      if (regionFilter) filtersToSave.region = regionFilter;
-      if (confidenceLevelFilter) filtersToSave.confidenceLevel = confidenceLevelFilter;
-      if (inquirySiteFilter) filtersToSave.inquirySite = inquirySiteFilter;
-      if (propertyTypeFilter) filtersToSave.propertyType = propertyTypeFilter;
-      if (statusFilterValue) filtersToSave.statusFilter = statusFilterValue;
-      if (currentStatusFilterValue) filtersToSave.currentStatusFilter = currentStatusFilterValue;
+      if (regionFilter.length > 0) filtersToSave.region = regionFilter;
+      if (confidenceLevelFilter.length > 0) filtersToSave.confidenceLevel = confidenceLevelFilter;
+      if (inquirySiteFilter.length > 0) filtersToSave.inquirySite = inquirySiteFilter;
+      if (propertyTypeFilter.length > 0) filtersToSave.propertyType = propertyTypeFilter;
+      if (statusFilterValue.length > 0) filtersToSave.statusFilter = statusFilterValue;
+      if (currentStatusFilterValue.length > 0) filtersToSave.currentStatusFilter = currentStatusFilterValue;
       if (inquiryDateFromFilter) filtersToSave.inquiryDateFrom = inquiryDateFromFilter;
       if (inquiryDateToFilter) filtersToSave.inquiryDateTo = inquiryDateToFilter;
       if (valuationAmountMinFilter) filtersToSave.valuationAmountMin = parseFloat(valuationAmountMinFilter);
@@ -638,26 +642,32 @@ export default function SellersPage() {
   // サイドバーの一時追加フィルターを選択（対応するフィルター条件を適用）
   const handleSelectTempFilter = useCallback((tempFilter: { id: string; filters: Record<string, any> }) => {
     // 既存フィルターをリセット
-    setConfidenceLevelFilter('');
-    setInquirySiteFilter('');
-    setPropertyTypeFilter('');
-    setStatusFilterValue('');
-    setRegionFilter('');
+    setConfidenceLevelFilter([]);
+    setInquirySiteFilter([]);
+    setPropertyTypeFilter([]);
+    setStatusFilterValue([]);
+    setRegionFilter([]);
     setInquiryDateFromFilter('');
     setInquiryDateToFilter('');
-    setCurrentStatusFilterValue('');
+    setCurrentStatusFilterValue([]);
     setValuationAmountMinFilter('');
     setValuationAmountMaxFilter('');
     setNextCallDateMode('');
     setNextCallDateValue('');
 
     const f = tempFilter.filters || {};
-    if (f.region) setRegionFilter(f.region);
-    if (f.confidenceLevel) setConfidenceLevelFilter(f.confidenceLevel);
-    if (f.inquirySite) setInquirySiteFilter(f.inquirySite);
-    if (f.propertyType) setPropertyTypeFilter(f.propertyType);
-    if (f.statusFilter) setStatusFilterValue(f.statusFilter);
-    if (f.currentStatusFilter) setCurrentStatusFilterValue(f.currentStatusFilter);
+    // フィルター値を配列に正規化（単一値も配列に変換）
+    const toArr = (v: any): string[] => {
+      if (!v) return [];
+      if (Array.isArray(v)) return v.filter(Boolean);
+      return [String(v)];
+    };
+    if (f.region) setRegionFilter(toArr(f.region));
+    if (f.confidenceLevel) setConfidenceLevelFilter(toArr(f.confidenceLevel));
+    if (f.inquirySite) setInquirySiteFilter(toArr(f.inquirySite));
+    if (f.propertyType) setPropertyTypeFilter(toArr(f.propertyType));
+    if (f.statusFilter) setStatusFilterValue(toArr(f.statusFilter));
+    if (f.currentStatusFilter) setCurrentStatusFilterValue(toArr(f.currentStatusFilter));
     if (f.inquiryDateFrom) setInquiryDateFromFilter(f.inquiryDateFrom);
     if (f.inquiryDateTo) setInquiryDateToFilter(f.inquiryDateTo);
     if (f.valuationAmountMin !== undefined) setValuationAmountMinFilter(String(f.valuationAmountMin));
@@ -743,19 +753,19 @@ export default function SellersPage() {
       };
       
       // Add Phase 1 filters
-      if (confidenceLevelFilter) {
+      if (confidenceLevelFilter.length > 0) {
         params.confidenceLevel = confidenceLevelFilter;
       }
-      if (inquirySiteFilter) {
+      if (inquirySiteFilter.length > 0) {
         params.inquirySite = inquirySiteFilter;
       }
-      if (propertyTypeFilter) {
+      if (propertyTypeFilter.length > 0) {
         params.propertyType = propertyTypeFilter;
       }
-      if (statusFilterValue) {
+      if (statusFilterValue.length > 0) {
         params.statusFilter = statusFilterValue;
       }
-      if (regionFilter) {
+      if (regionFilter.length > 0) {
         params.region = regionFilter;
       }
       if (inquiryDateFromFilter) {
@@ -764,7 +774,7 @@ export default function SellersPage() {
       if (inquiryDateToFilter) {
         params.inquiryDateTo = inquiryDateToFilter;
       }
-      if (currentStatusFilterValue) {
+      if (currentStatusFilterValue.length > 0) {
         params.currentStatusFilter = currentStatusFilterValue;
       }
       if (valuationAmountMinFilter) {
@@ -1168,14 +1178,14 @@ export default function SellersPage() {
                   size="small"
                   onClick={() => {
                     setSelectedTempFilterId(null);
-                    setConfidenceLevelFilter('');
-                    setInquirySiteFilter('');
-                    setPropertyTypeFilter('');
-                    setStatusFilterValue('');
-                    setRegionFilter('');
+                    setConfidenceLevelFilter([]);
+                    setInquirySiteFilter([]);
+                    setPropertyTypeFilter([]);
+                    setStatusFilterValue([]);
+                    setRegionFilter([]);
                     setInquiryDateFromFilter('');
                     setInquiryDateToFilter('');
-                    setCurrentStatusFilterValue('');
+                    setCurrentStatusFilterValue([]);
                     setValuationAmountMinFilter('');
                     setValuationAmountMaxFilter('');
                     setNextCallDateMode('');
@@ -1253,126 +1263,112 @@ export default function SellersPage() {
           </Box>
           
           {showFilters && (
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <TextField
-                select
-                label="地域"
-                value={regionFilter}
-                onChange={(e) => setRegionFilter(e.target.value as '' | 'oita' | 'fukuoka')}
-                sx={{ minWidth: 130 }}
-                size="small"
-                helperText="福岡＝FIから始まる売主番号"
-              >
-                <MenuItem value="">全て</MenuItem>
-                <MenuItem value="oita">大分</MenuItem>
-                <MenuItem value="fukuoka">福岡</MenuItem>
-              </TextField>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              {/* 地域（複数選択） */}
+              <FormControl size="small" sx={{ minWidth: 130 }}>
+                <InputLabel>地域</InputLabel>
+                <Select
+                  multiple
+                  value={regionFilter}
+                  onChange={(e) => setRegionFilter(typeof e.target.value === 'string' ? [e.target.value] : e.target.value as string[])}
+                  input={<OutlinedInput label="地域" />}
+                  renderValue={(selected) => selected.map((v) => v === 'oita' ? '大分' : '福岡').join(', ')}
+                >
+                  <MenuItem value="oita">大分</MenuItem>
+                  <MenuItem value="fukuoka">福岡</MenuItem>
+                </Select>
+              </FormControl>
 
-              <TextField
-                select
-                label="確度"
-                value={confidenceLevelFilter}
-                onChange={(e) => setConfidenceLevelFilter(e.target.value)}
-                sx={{ minWidth: 180 }}
-                size="small"
-              >
-                <MenuItem value="">全て</MenuItem>
-                <MenuItem value="A">A（売る気あり）</MenuItem>
-                <MenuItem value="B">B（売る気あるがまだ先の話）</MenuItem>
-                <MenuItem value="B'">B'（売る気は全く無い）</MenuItem>
-                <MenuItem value="C">C（電話が繋がらない）</MenuItem>
-                <MenuItem value="D">D（再建築不可）</MenuItem>
-                <MenuItem value="E">E（収益物件）</MenuItem>
-                <MenuItem value="ダブり">ダブり（重複している）</MenuItem>
-              </TextField>
-              
-              <TextField
-                select
-                label="サイト"
-                value={inquirySiteFilter}
-                onChange={(e) => setInquirySiteFilter(e.target.value)}
-                sx={{ minWidth: 130 }}
-                size="small"
-              >
-                <MenuItem value="">全て</MenuItem>
-                <MenuItem value="ウ">ウ</MenuItem>
-                <MenuItem value="ビ">ビ</MenuItem>
-                <MenuItem value="H">H</MenuItem>
-                <MenuItem value="お">お</MenuItem>
-                <MenuItem value="Y">Y</MenuItem>
-                <MenuItem value="す">す</MenuItem>
-                <MenuItem value="a">a</MenuItem>
-                <MenuItem value="L">L</MenuItem>
-                <MenuItem value="エ">エ</MenuItem>
-                <MenuItem value="近所">近所</MenuItem>
-                <MenuItem value="チ">チ</MenuItem>
-                <MenuItem value="P">P</MenuItem>
-                <MenuItem value="紹">紹</MenuItem>
-                <MenuItem value="リ">リ</MenuItem>
-                <MenuItem value="買">買</MenuItem>
-                <MenuItem value="HP">HP</MenuItem>
-                <MenuItem value="知合">知合</MenuItem>
-                <MenuItem value="at-homeの掲載を見て">at-homeの掲載を見て</MenuItem>
-                <MenuItem value="2件目以降査定">2件目以降査定</MenuItem>
-                <MenuItem value="ロープレ">ロープレ</MenuItem>
-              </TextField>
+              {/* 確度（複数選択） */}
+              <FormControl size="small" sx={{ minWidth: 130 }}>
+                <InputLabel>確度</InputLabel>
+                <Select
+                  multiple
+                  value={confidenceLevelFilter}
+                  onChange={(e) => setConfidenceLevelFilter(typeof e.target.value === 'string' ? [e.target.value] : e.target.value as string[])}
+                  input={<OutlinedInput label="確度" />}
+                  renderValue={(selected) => selected.join(', ')}
+                >
+                  <MenuItem value="A">A（売る気あり）</MenuItem>
+                  <MenuItem value="B">B（売る気あるがまだ先の話）</MenuItem>
+                  <MenuItem value="B'">B'（売る気は全く無い）</MenuItem>
+                  <MenuItem value="C">C（電話が繋がらない）</MenuItem>
+                  <MenuItem value="D">D（再建築不可）</MenuItem>
+                  <MenuItem value="E">E（収益物件）</MenuItem>
+                  <MenuItem value="ダブり">ダブり（重複している）</MenuItem>
+                </Select>
+              </FormControl>
 
-              <TextField
-                select
-                label="種別"
-                value={propertyTypeFilter}
-                onChange={(e) => setPropertyTypeFilter(e.target.value)}
-                sx={{ minWidth: 130 }}
-                size="small"
-              >
-                <MenuItem value="">全て</MenuItem>
-                <MenuItem value="土地">土地</MenuItem>
-                <MenuItem value="戸建">戸建</MenuItem>
-                <MenuItem value="マンション">マンション</MenuItem>
-                <MenuItem value="事業用">事業用</MenuItem>
-              </TextField>
+              {/* サイト（複数選択） */}
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>サイト</InputLabel>
+                <Select
+                  multiple
+                  value={inquirySiteFilter}
+                  onChange={(e) => setInquirySiteFilter(typeof e.target.value === 'string' ? [e.target.value] : e.target.value as string[])}
+                  input={<OutlinedInput label="サイト" />}
+                  renderValue={(selected) => selected.join(', ')}
+                >
+                  {['ウ','ビ','H','お','Y','す','a','L','エ','近所','チ','P','紹','リ','買','HP','知合','at-homeの掲載を見て','2件目以降査定','ロープレ','ア','ガ'].map((v) => (
+                    <MenuItem key={v} value={v}>{v}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
-              <TextField
-                select
-                label="状況（当社）"
-                value={statusFilterValue}
-                onChange={(e) => setStatusFilterValue(e.target.value)}
-                sx={{ minWidth: 160 }}
-                size="small"
-              >
-                <MenuItem value="">全て</MenuItem>
-                <MenuItem value="追客中">追客中</MenuItem>
-                <MenuItem value="追客不要(未訪問）">追客不要(未訪問）</MenuItem>
-                <MenuItem value="除外済追客不要">除外済追客不要</MenuItem>
-                <MenuItem value="除外後追客中">除外後追客中</MenuItem>
-                <MenuItem value="専任媒介">専任媒介</MenuItem>
-                <MenuItem value="一般媒介">一般媒介</MenuItem>
-                <MenuItem value="リースバック（専任）">リースバック（専任）</MenuItem>
-                <MenuItem value="他決→追客">他決→追客</MenuItem>
-                <MenuItem value="他決→追客不要">他決→追客不要</MenuItem>
-                <MenuItem value="他決→専任">他決→専任</MenuItem>
-                <MenuItem value="他決→一般">他決→一般</MenuItem>
-                <MenuItem value="専任→他社専任">専任→他社専任</MenuItem>
-                <MenuItem value="一般→他決">一般→他決</MenuItem>
-                <MenuItem value="他社買取">他社買取</MenuItem>
-                <MenuItem value="訪問後（担当付）追客不要">訪問後（担当付）追客不要</MenuItem>
-              </TextField>
+              {/* 種別（複数選択） */}
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>種別</InputLabel>
+                <Select
+                  multiple
+                  value={propertyTypeFilter}
+                  onChange={(e) => setPropertyTypeFilter(typeof e.target.value === 'string' ? [e.target.value] : e.target.value as string[])}
+                  input={<OutlinedInput label="種別" />}
+                  renderValue={(selected) => selected.join(', ')}
+                >
+                  <MenuItem value="土地">土地</MenuItem>
+                  <MenuItem value="戸建">戸建</MenuItem>
+                  <MenuItem value="マンション">マンション</MenuItem>
+                  <MenuItem value="事業用">事業用</MenuItem>
+                </Select>
+              </FormControl>
 
-              <TextField
-                select
-                label="状況（売主）"
-                value={currentStatusFilterValue}
-                onChange={(e) => setCurrentStatusFilterValue(e.target.value)}
-                sx={{ minWidth: 130 }}
-                size="small"
-              >
-                <MenuItem value="">全て</MenuItem>
-                <MenuItem value="居住中">居住中</MenuItem>
-                <MenuItem value="空き家">空き家</MenuItem>
-                <MenuItem value="賃貸中">賃貸中</MenuItem>
-                <MenuItem value="古屋あり">古屋あり</MenuItem>
-                <MenuItem value="更地">更地</MenuItem>
-              </TextField>
+              {/* 状況（当社）（複数選択） */}
+              <FormControl size="small" sx={{ minWidth: 160 }}>
+                <InputLabel>状況（当社）</InputLabel>
+                <Select
+                  multiple
+                  value={statusFilterValue}
+                  onChange={(e) => setStatusFilterValue(typeof e.target.value === 'string' ? [e.target.value] : e.target.value as string[])}
+                  input={<OutlinedInput label="状況（当社）" />}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map((v) => <Chip key={v} label={v} size="small" />)}
+                    </Box>
+                  )}
+                >
+                  {['追客中','追客不要(未訪問）','除外済追客不要','除外後追客中','専任媒介','一般媒介','リースバック（専任）','他決→追客','他決→追客不要','他決→専任','他決→一般','専任→他社専任','一般→他決','他社買取','訪問後（担当付）追客不要'].map((v) => (
+                    <MenuItem key={v} value={v}>{v}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {/* 状況（売主）（複数選択） */}
+              <FormControl size="small" sx={{ minWidth: 130 }}>
+                <InputLabel>状況（売主）</InputLabel>
+                <Select
+                  multiple
+                  value={currentStatusFilterValue}
+                  onChange={(e) => setCurrentStatusFilterValue(typeof e.target.value === 'string' ? [e.target.value] : e.target.value as string[])}
+                  input={<OutlinedInput label="状況（売主）" />}
+                  renderValue={(selected) => selected.join(', ')}
+                >
+                  <MenuItem value="居住中">居住中</MenuItem>
+                  <MenuItem value="空き家">空き家</MenuItem>
+                  <MenuItem value="賃貸中">賃貸中</MenuItem>
+                  <MenuItem value="古屋あり">古屋あり</MenuItem>
+                  <MenuItem value="更地">更地</MenuItem>
+                </Select>
+              </FormControl>
 
               <TextField
                 label="反響日付（From）"
@@ -1440,14 +1436,14 @@ export default function SellersPage() {
               <Button
                 variant="text"
                 onClick={() => {
-                  setConfidenceLevelFilter('');
-                  setInquirySiteFilter('');
-                  setPropertyTypeFilter('');
-                  setStatusFilterValue('');
-                  setRegionFilter('');
+                  setConfidenceLevelFilter([]);
+                  setInquirySiteFilter([]);
+                  setPropertyTypeFilter([]);
+                  setStatusFilterValue([]);
+                  setRegionFilter([]);
                   setInquiryDateFromFilter('');
                   setInquiryDateToFilter('');
-                  setCurrentStatusFilterValue('');
+                  setCurrentStatusFilterValue([]);
                   setValuationAmountMinFilter('');
                   setValuationAmountMaxFilter('');
                   setNextCallDateMode('');
