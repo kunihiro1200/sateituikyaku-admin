@@ -695,6 +695,8 @@ export default function SellersPage() {
     setSelectedCategory('all'); // サイドバーの固定カテゴリとは独立させる
     setSearchQuery('');
     setPage(0);
+    // 一時フィルターを選択したらキャッシュをクリアして確実に最新データを取得する
+    pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
   }, []);
 
   // 初回ロード時とキャッシュ無効化時にサイドバーカウントを即座に取得
