@@ -556,28 +556,35 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                                 continue
                         except Exception as e:
                             logging.info(f"  [警告] スレッド確認失敗（処理継続）: {e}")
+                        # コメント（HOME4Uログアウトと査定依頼の間）を事前確認する
+                        body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+                        # HOME4Uログアウトの最後の出現箇所を探す
+                        logout_indices = [i for i, l in enumerate(body_lines) if 'HOME4Uログアウト' in l]
+                        memo_found = False
+                        if logout_indices:
+                            last_logout_idx = logout_indices[-1]
+                            surrounding = body_lines[max(0, last_logout_idx-1):last_logout_idx+6]
+                            logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
+                            # HOME4Uログアウトの次の行から査定依頼までの間にコメントがあるか確認
+                            for line in body_lines[last_logout_idx+1:]:
+                                stripped = line.strip().lstrip('>').strip()
+                                if '査定依頼' in stripped:
+                                    break
+                                if stripped:
+                                    memo_found = True
+                                    break
+
                         # 同一スレッドを2回転記しない（同じRe:メールが複数IDで返ってくる場合の対策）
+                        # ただし、スレッドが処理済みでもコメントが含まれる場合はコメント補完転記を行う
                         if thread_id in home4u_processed_threads:
-                            logging.info(f"  [スキップ] HOME4U: スレッド {thread_id[:16]}... は既に処理済み")
+                            if memo_found:
+                                # スレッド処理済みだがコメントあり → コメント補完のため転記APIを呼ぶ
+                                # home4u-transfer側の重複チェックが同一電話+日時での二重INSERTを防ぐ
+                                logging.info(f"  [コメント補完転記] HOME4U: スレッド {thread_id[:16]}... は処理済みだがコメントあり → home4u-transferでコメント補完")
+                                trigger_home4u_transfer(body)
+                            else:
+                                logging.info(f"  [スキップ] HOME4U: スレッド {thread_id[:16]}... は既に処理済み（コメントなし）")
                         else:
-                            # コメント（HOME4Uログアウトと査定依頼の間）を事前確認する
-                            # コメントが取れていない場合はスレッドを処理済みにせず次回チェックに委ねる
-                            body_lines = body.replace('\r\n', '\n').replace('\r', '\n').split('\n')
-                            # HOME4Uログアウトの最後の出現箇所を探す
-                            logout_indices = [i for i, l in enumerate(body_lines) if 'HOME4Uログアウト' in l]
-                            memo_found = False
-                            if logout_indices:
-                                last_logout_idx = logout_indices[-1]
-                                surrounding = body_lines[max(0, last_logout_idx-1):last_logout_idx+6]
-                                logging.info(f"  [コメント確認] HOME4Uログアウト周辺: {surrounding}")
-                                # HOME4Uログアウトの次の行から査定依頼までの間にコメントがあるか確認
-                                for line in body_lines[last_logout_idx+1:]:
-                                    stripped = line.strip().lstrip('>')  .strip()
-                                    if '査定依頼' in stripped:
-                                        break
-                                    if stripped:
-                                        memo_found = True
-                                        break
                             if not memo_found:
                                 logging.info(f"  [待機] HOME4U: コメントが取れていないため処理済みにせず次回チェックに委ねます (thread={thread_id[:16]}...)")
                                 # notified_ids にも追加しない → 次回チェックで再処理される
