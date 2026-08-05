@@ -78,6 +78,7 @@ import PropertyMapSection from '../components/PropertyMapSection';
 import NearbyBuyersList from '../components/NearbyBuyersList';
 import { VisitPreparationButton } from '../components/VisitPreparationButton';
 import SaleScheduleModal from '../components/SaleScheduleModal';
+import NetProceedsListModal from '../components/NetProceedsListModal';
 import AreaReportModal from '../components/AreaReportModal';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CommentHighlightsPanel from '../components/CommentHighlightsPanel';
@@ -989,6 +990,7 @@ const CallModePage = () => {
   // 資料生成メニュー用の状態
   const [docGenMenuAnchor, setDocGenMenuAnchor] = useState<null | HTMLElement>(null);
   const [saleScheduleModalOpen, setSaleScheduleModalOpen] = useState(false);
+  const [netProceedsModalOpen, setNetProceedsModalOpen] = useState(false);
   // 画像数バッジ用の状態
   const [driveImageCount, setDriveImageCount] = useState<number | null>(null);
   // エリア情勢レポートモーダル用の状態
@@ -5429,7 +5431,7 @@ HP：https://ifoo-oita.com/
               <MenuItem onClick={() => { setDocGenMenuAnchor(null); setSaleScheduleModalOpen(true); }}>
                 売却スケジュール
               </MenuItem>
-              <MenuItem onClick={() => { setDocGenMenuAnchor(null); /* 手残り金額は後続実装 */ }}>
+              <MenuItem onClick={() => { setDocGenMenuAnchor(null); setNetProceedsModalOpen(true); }}>
                 手残り金額
               </MenuItem>
             </Menu>
@@ -10172,6 +10174,18 @@ HP：https://ifoo-oita.com/
           initialOwnerName={seller.name || ''}
           initialPropertyAddress={propInfo.address || seller.propertyAddress || ''}
           initialAssessPrice={seller.valuationAmount1 || undefined}
+        />
+      )}
+
+      {/* 手残りリスト資料生成モーダル */}
+      {seller && (
+        <NetProceedsListModal
+          open={netProceedsModalOpen}
+          onClose={() => setNetProceedsModalOpen(false)}
+          initialOwnerName={seller.name || ''}
+          initialPropertyAddress={propInfo.address || seller.propertyAddress || ''}
+          initialMaxPrice={seller.valuationAmount1 || undefined}
+          initialMinPrice={seller.valuationAmount3 || undefined}
         />
       )}
 
