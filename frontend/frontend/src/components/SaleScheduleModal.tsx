@@ -393,8 +393,7 @@ const SaleScheduleA4 = React.forwardRef<HTMLDivElement, A4Props>(({ data, fmt },
   // インラインスタイル（印刷時も再現）
   const a4: React.CSSProperties = {
     width: '210mm',
-    minHeight: '297mm',
-    maxHeight: '297mm',
+    height: '297mm',
     background: BG,
     fontFamily: "'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Meiryo', sans-serif",
     fontSize: '9pt',
@@ -406,14 +405,20 @@ const SaleScheduleA4 = React.forwardRef<HTMLDivElement, A4Props>(({ data, fmt },
     WebkitPrintColorAdjust: 'exact',
     display: 'flex',
     flexDirection: 'column',
+    position: 'relative',
   } as React.CSSProperties;
 
+  // Header=22mm Footer=14mm → 内側=261mm
+  // padding top+bottom=8mm+6mm=14mm → コンテンツ=247mm
+  // PropertyInfoBox=29mm Step1=38mm Step2=48mm Step3+4=38mm
+  // Support=26mm Message=16mm → 合計195mm < 247mm ✓
   const padded: React.CSSProperties = {
-    padding: '10mm 10mm 8mm 10mm',
+    padding: '6mm 10mm 4mm 10mm',
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    gap: '4mm',
+    gap: '3mm',
+    overflow: 'hidden',
   };
 
   return (
