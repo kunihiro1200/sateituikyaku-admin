@@ -30,6 +30,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   Badge,
+  Menu,
 } from '@mui/material';
 import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Sms as SmsIcon, OpenInNew as OpenInNewIcon, Print as PrintIcon } from '@mui/icons-material';
 import api, { emailImageApi } from '../services/api';
@@ -75,7 +76,7 @@ import { useCallModeQuickButtonState } from '../hooks/useCallModeQuickButtonStat
 import { pageDataCache, sellerDetailCacheKey, CACHE_KEYS } from '../store/pageDataCache';
 import PropertyMapSection from '../components/PropertyMapSection';
 import NearbyBuyersList from '../components/NearbyBuyersList';
-import { VisitPreparationButton } from '../components/VisitPreparationButton';
+import SaleScheduleModal from '../components/SaleScheduleModal';
 import AreaReportModal from '../components/AreaReportModal';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CommentHighlightsPanel from '../components/CommentHighlightsPanel';
@@ -983,6 +984,10 @@ const CallModePage = () => {
 
   // ドキュメントモーダル用の状態
   const [documentModalOpen, setDocumentModalOpen] = useState(false);
+
+  // 資料生成メニュー用の状態
+  const [docGenMenuAnchor, setDocGenMenuAnchor] = useState<null | HTMLElement>(null);
+  const [saleScheduleModalOpen, setSaleScheduleModalOpen] = useState(false);
   // 画像数バッジ用の状態
   const [driveImageCount, setDriveImageCount] = useState<number | null>(null);
   // エリア情勢レポートモーダル用の状態
@@ -5411,16 +5416,29 @@ HP：https://ifoo-oita.com/
         </Box>
         {seller && (
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            {/* 訪問準備ボタン */}
-            <VisitPreparationButton
-              sellerId={seller?.id}
-              inquiryUrl={inquiryUrl}
-              sellerNumber={seller?.sellerNumber}
-              sellerName={seller?.name}
-              propertyAddress={propInfo.address || seller?.propertyAddress}
-              commentHtml={savedComments}
-              propertyType={propInfo.propertyType}
-            />
+            {/* 資料生成ボタン */}
+            <Button
+              variant="outlined"
+              size="small"
+              endIcon={<span style={{ fontSize: 10 }}>▼</span>}
+              onClick={(e) => setDocGenMenuAnchor(e.currentTarget)}
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              資料生成
+            </Button>
+            <Menu
+              anchorEl={docGenMenuAnchor}
+              open={Boolean(docGenMenuAnchor)}
+              onClose={() => setDocGenMenuAnchor(null)}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+            >
+              <MenuItem onClick={() => { setDocGenMenuAnchor(null); setSaleScheduleModalOpen(true); }}>
+                売却スケジュール
+              </MenuItem>
+              <MenuItem onClick={() => { setDocGenMenuAnchor(null); /* 手残り金額は後続実装 */ }}>
+                手残り金額
+              </MenuItem>
+            </Menu>
             {/* 画像ボタン */}
             <Badge
               badgeContent={driveImageCount && driveImageCount > 0 ? driveImageCount : null}
@@ -10148,6 +10166,18 @@ HP：https://ifoo-oita.com/
           open={documentModalOpen}
           onClose={() => setDocumentModalOpen(false)}
           sellerNumber={seller.sellerNumber || ''}
+        />
+      )}
+
+      {/* 売却スケジュール資料生成モーダル */}
+      {seller && (
+        <SaleScheduleModal
+          open={saleScheduleModalOpen}
+          onClose={() => setSaleScheduleModalOpen(false)}
+          initialSellerNumber={seller.sellerNumber || ''}
+          initialOwnerName={seller.name || ''}
+          initialPropertyAddress={propInfo.address || seller.propertyAddress || ''}
+          initialAssessPrice={seller.valuationAmount1 || undefined}
         />
       )}
 
