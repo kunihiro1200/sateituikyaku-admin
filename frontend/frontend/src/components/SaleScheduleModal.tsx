@@ -58,8 +58,8 @@ const BOXES = {
   address:      { left: 56, top: 48.0, w: 130, h: 9.0 },
   // ③ 売出価格：上へ1mm（65→64）
   listPrice:    { left: 78, top: 64.0, w: 52,  h: 7.0 },
-  // ④ 最低価格：上へ1mm（174→173）、左へ5mm（81→76）
-  minPrice:     { left: 76, top: 173.0, w: 52,  h: 7.0 },
+  // ④ 最低価格
+  minPrice:     { left: 76, top: 173.0, w: 57,  h: 7.0 },
 
   // ── 年月（調整保留中）──
   step1Year:    { left: 19, top: 89.5, w: 36,  h: 5.5 },
@@ -81,8 +81,9 @@ export interface SaleScheduleData {
   ownerName: string;
   propertyAddress: string;
   assessPrice?: number;
-  listPrice?: number;
-  minimumPrice?: number;
+  listPrice?: number;      // 売出価格（査定額最高値）
+  minimumPrice?: number;   // 最低価格（下限値・内部用）
+  minPriceRange?: string;  // 最低価格範囲表示「5,890〜5,390」
   startYear?: number;
   startMonth?: number;
   marketingYear?: number;
@@ -127,16 +128,28 @@ function convertDb(seller: Record<string, unknown>, pl: Record<string, unknown> 
   const v2 = (seller?.valuationAmount2 as number|null) || (seller?.valuation_amount_2 as number|null) || null;
   const v3 = (seller?.valuationAmount3 as number|null) || (seller?.valuation_amount_3 as number|null) || null;
 
-  // 売出価格: property_listings優先 → なければ査定額最高値
+  // 売出価格: property_listings優先 → なければ査定額【最高値】
   const maxAssess = [v1, v2, v3].filter((v): v is number => v != null && v > 0);
-  const highestAssess = maxAssess.length > 0 ? Math.max(...maxAssess) : null;
+  const sortedDesc = [...maxAssess].sort((a, b) => b - a); // 高い順
+  const highestAssess = sortedDesc[0] ?? null;
   const listPriceMan = listRaw
     ? Math.round(listRaw / 10000)
     : highestAssess ? Math.round(highestAssess / 10000) : undefined;
 
-  // 最低価格: property_listings優先 → なければ査定額最低値
+  // 最低価格範囲: 最高値〜中間値（2段階あれば範囲、1段階なら単値）
+  // 例: 5890万・5390万・4890万 → 「5,890〜5,390」
   const lowestAssess = maxAssess.length > 0 ? Math.min(...maxAssess) : null;
   const minPriceMan = lowestAssess ? Math.round(lowestAssess / 10000) : undefined;
+
+  // 範囲文字列：最高値〜（最高値より低い最初の値）
+  let minPriceRange: string | undefined;
+  if (sortedDesc.length >= 2) {
+    const high = Math.round(sortedDesc[0] / 10000);
+    const mid  = Math.round(sortedDesc[1] / 10000);
+    minPriceRange = `${high.toLocaleString()}〜${mid.toLocaleString()}`;
+  } else if (sortedDesc.length === 1) {
+    minPriceRange = Math.round(sortedDesc[0] / 10000).toLocaleString();
+  }
 
   return {
     propertyNo: (seller?.sellerNumber as string) || (seller?.seller_number as string) || '',
@@ -145,6 +158,7 @@ function convertDb(seller: Record<string, unknown>, pl: Record<string, unknown> 
     assessPrice: highestAssess ? Math.round(highestAssess / 10000) : undefined,
     listPrice: listPriceMan,
     minimumPrice: minPriceMan,
+    minPriceRange,
     startYear:sy, startMonth:sm, marketingYear:my, marketingStartMonth:ms, marketingEndMonth:me,
     contractYear:cy, contractMonth:cm, settlementYear:sety, settlementMonth:setm,
   };
@@ -289,8 +303,8 @@ function buildA4Html(d: SaleScheduleData, debug = false): string {
     <!-- ③ 売出価格（数値のみ）fs:14→18pt ゴールド太字 -->
     ${makeBox(B.listPrice, fmtNum(d.listPrice), 18, 900, GOLD, debug)}
 
-    <!-- ④ 最低価格（数値のみ）fs:13→17pt ゴールド太字 -->
-    ${makeBox(B.minPrice, fmtNum(d.minimumPrice), 17, 900, GOLD, debug)}
+    <!-- ④ 最低価格（1行・ゴールド太字） -->
+    ${makeBox(B.minPrice, d.minPriceRange || fmtNum(d.minimumPrice), 15, 900, GOLD, debug)}
 
     <!-- 年月（調整保留中・非表示） -->
 
@@ -407,8 +421,10 @@ export const SaleScheduleModal: React.FC<Props> = ({
                   value={data.listPrice??''} onChange={setNum('listPrice')} />
               </Grid>
               <Grid item xs={12}>
-                <TextField fullWidth size="small" label="最低売却価格（万円）" type="number"
-                  value={data.minimumPrice??''} onChange={setNum('minimumPrice')} />
+                <TextField fullWidth size="small" label="最低価格（範囲表示）"
+                  value={data.minPriceRange ?? ''}
+                  onChange={e => setData(p => ({ ...p, minPriceRange: e.target.value }))}
+                  helperText="例: 5,890〜5,390（自動生成・手動修正可）" />
               </Grid>
             </Grid>
 
