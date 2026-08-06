@@ -50,34 +50,43 @@ import api from '../services/api';
 // BOX座標定数（ここだけ変更すればOK）
 // ─────────────────────────────────────────
 const BOXES = {
-  // 売主名（新テンプレート：物件番号欄なし → 1行目が売主様）
-  ownerName:    { left: 56, top: 28.5, w: 92,  h: 6.0 },
+  // ── 物件情報エリア ──
+  // 売主名：「売 主 様」行の右側空欄
+  ownerName:    { left: 56, top: 26.0, w: 140, h: 6.5 },
 
-  // 物件所在地（2行目）
-  address:      { left: 56, top: 36.5, w: 140, h: 9.0 },
+  // 物件所在地：「物件所在地」行の右側空欄（売主名の約8mm下）
+  address:      { left: 56, top: 34.5, w: 140, h: 9.0 },
 
-  // 売出価格（数値のみ・「万円」は背景画像）
-  listPrice:    { left: 81, top: 65.5, w: 48,  h: 7.0 },
+  // ── STEP1 ──
+  // 売出価格：「売出価格」右の空欄
+  listPrice:    { left: 80, top: 64.5, w: 50,  h: 7.0 },
 
-  // STEP1：左側濃紺BOX内
-  step1Year:    { left: 19, top: 81.0, w: 36,  h: 5.5 },
-  step1Month:   { left: 19, top: 87.5, w: 36,  h: 10.5 },
+  // STEP1 年：左側濃紺BOX内「年」の上の数字
+  step1Year:    { left: 19, top: 81.5, w: 36,  h: 5.5 },
 
-  // STEP2：左側濃紺BOX内
-  step2Year:    { left: 19, top: 128.5, w: 36, h: 5.5 },
-  step2StartM:  { left: 19, top: 135.0, w: 17, h: 9.5 },
-  step2EndM:    { left: 38, top: 135.0, w: 17, h: 9.5 },
+  // STEP1 月：年の下の大きい数字
+  step1Month:   { left: 19, top: 88.5, w: 36,  h: 10.0 },
 
-  // 最低価格（数値のみ・「万円で売買契約」は背景画像）
-  minPrice:     { left: 81, top: 160.0, w: 45, h: 7.0 },
+  // ── STEP2 ──
+  // STEP2 年：左側濃紺BOX内「年」の上の数字
+  step2Year:    { left: 19, top: 130.0, w: 36, h: 5.5 },
 
-  // STEP3：左側濃紺BOX内
-  step3Year:    { left: 19, top: 165.0, w: 36, h: 5.5 },
-  step3Month:   { left: 19, top: 171.5, w: 36, h: 9.5 },
+  // STEP2 開始月・終了月：「月〜月」の左月と右月
+  step2StartM:  { left: 19, top: 137.0, w: 17, h: 9.5 },
+  step2EndM:    { left: 38, top: 137.0, w: 17, h: 9.5 },
 
-  // STEP4：左側濃紺BOX内
-  step4Year:    { left: 19, top: 196.0, w: 36, h: 5.5 },
-  step4Month:   { left: 19, top: 202.5, w: 36, h: 8.0 },
+  // ── STEP3 ──
+  // 最低価格：「最低価格」右の空欄
+  minPrice:     { left: 80, top: 158.5, w: 45, h: 7.0 },
+
+  // STEP3 年・月：左側濃紺BOX内
+  step3Year:    { left: 19, top: 163.5, w: 36, h: 5.5 },
+  step3Month:   { left: 19, top: 170.5, w: 36, h: 9.5 },
+
+  // ── STEP4 ──
+  // STEP4 年・月：左側濃紺BOX内
+  step4Year:    { left: 19, top: 194.5, w: 36, h: 5.5 },
+  step4Month:   { left: 19, top: 201.5, w: 36, h: 8.0 },
 } as const;
 
 // ─────────────────────────────────────────
@@ -126,12 +135,27 @@ function convertDb(seller: Record<string, unknown>, pl: Record<string, unknown> 
   const { sy, sm, cy, cm, sety, setm, ms, me, my } = calcDates();
   const listRaw = (pl?.listing_price as number|null) || (pl?.sales_price as number|null) || null;
   const assessRaw = (seller?.valuation_amount_1 as number|null) || (seller?.valuation_amount_2 as number|null) || null;
+
+  // 売出価格: property_listingsにあればそちら優先、なければ査定額最高値を初期値に
+  // 最低価格: property_listingsにあればそちら優先、なければ査定額最低値を初期値に
+  const listPriceMan = listRaw
+    ? Math.round(listRaw / 10000)
+    : assessRaw ? Math.round(assessRaw / 10000) : undefined;
+
+  const assess1 = (seller?.valuation_amount_1 as number|null);
+  const assess2 = (seller?.valuation_amount_2 as number|null);
+  const assess3 = (seller?.valuation_amount_3 as number|null);
+  const vals = [assess1, assess2, assess3].filter((v): v is number => v != null && v > 0);
+  const minAssess = vals.length > 0 ? Math.min(...vals) : null;
+  const minPriceMan = minAssess ? Math.round(minAssess / 10000) : undefined;
+
   return {
     propertyNo: (seller?.seller_number as string)||'',
     ownerName: (seller?.name as string)||'',
     propertyAddress: (seller?.property_address as string)||'',
     assessPrice: assessRaw ? Math.round(assessRaw/10000) : undefined,
-    listPrice: listRaw ? Math.round(listRaw/10000) : undefined,
+    listPrice: listPriceMan,
+    minimumPrice: minPriceMan,
     startYear:sy, startMonth:sm, marketingYear:my, marketingStartMonth:ms, marketingEndMonth:me,
     contractYear:cy, contractMonth:cm, settlementYear:sety, settlementMonth:setm,
   };
@@ -150,16 +174,16 @@ function ownerNameOnly(name: string): string {
 function buildDebugGrid(): string {
   let html = '';
   for (let x = 0; x <= 210; x += 5) {
-    const c = x % 10 === 0 ? 'rgba(255,0,0,0.35)' : 'rgba(255,100,100,0.18)';
-    html += `<div style="position:absolute;left:${x}mm;top:0;width:0;height:297mm;border-left:1px solid ${c};pointer-events:none;"></div>`;
+    const c = x % 10 === 0 ? 'rgba(0,100,255,0.4)' : 'rgba(0,100,255,0.15)';
+    html += `<div style="position:absolute;left:${x}mm;top:0;width:0;height:297mm;border-left:1px solid ${c};pointer-events:none;z-index:20;"></div>`;
     if (x % 10 === 0 && x > 0)
-      html += `<div style="position:absolute;left:${x+0.3}mm;top:0.5mm;font-size:4.5pt;color:red;opacity:0.7;pointer-events:none;">${x}</div>`;
+      html += `<div style="position:absolute;left:${x+0.2}mm;top:0.5mm;font-size:4pt;color:blue;opacity:0.8;pointer-events:none;z-index:21;">${x}</div>`;
   }
   for (let y = 0; y <= 297; y += 5) {
-    const c = y % 10 === 0 ? 'rgba(255,0,0,0.35)' : 'rgba(255,100,100,0.18)';
-    html += `<div style="position:absolute;left:0;top:${y}mm;width:210mm;height:0;border-top:1px solid ${c};pointer-events:none;"></div>`;
+    const c = y % 10 === 0 ? 'rgba(0,100,255,0.4)' : 'rgba(0,100,255,0.15)';
+    html += `<div style="position:absolute;left:0;top:${y}mm;width:210mm;height:0;border-top:1px solid ${c};pointer-events:none;z-index:20;"></div>`;
     if (y % 10 === 0 && y > 0)
-      html += `<div style="position:absolute;left:0.3mm;top:${y+0.3}mm;font-size:4.5pt;color:red;opacity:0.7;pointer-events:none;">${y}</div>`;
+      html += `<div style="position:absolute;left:0.2mm;top:${y+0.3}mm;font-size:4pt;color:blue;opacity:0.8;pointer-events:none;z-index:21;">${y}</div>`;
   }
   return html;
 }
