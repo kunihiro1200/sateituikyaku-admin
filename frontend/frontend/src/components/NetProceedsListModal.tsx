@@ -505,7 +505,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
 </style>
 </head><body>
 <div class="a4">
-  <img class="bg" src="/sale-schedule/illustrations/template2.png?v=${Date.now()}" alt="" />
+  <img class="bg" src="/sale-schedule/illustrations/template2.png?v=20260807b" alt="" />
   <div class="layer">
     ${debug ? buildNpDebugGrid() : ''}
 
