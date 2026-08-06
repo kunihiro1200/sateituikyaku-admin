@@ -505,7 +505,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
 </style>
 </head><body>
 <div class="a4">
-  <img class="bg" src="/sale-schedule/illustrations/template2.png?v=20260807c" alt="" />
+  <img class="bg" src="/sale-schedule/illustrations/template2.png?v=20260807d" alt="" />
   <div class="layer">
     ${debug ? buildNpDebugGrid() : ''}
 
@@ -521,7 +521,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     <!-- 行1のY座標(仮): top≈122mm -->
     ${p.rows.length > 0 ? (() => {
       const row = p.rows[0];
-      const rowTop = 157;
+      const rowTop = 160;
       const rowH = 7;
       const fmtM = p.fmtMan;
       const acqCost = p.taxMode !== 'none' && p.taxDetail ? p.taxDetail.acquisitionCostUsed : 0;
