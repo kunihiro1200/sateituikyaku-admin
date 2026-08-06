@@ -492,6 +492,14 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
   // 売主名（「様」重複防止）
   const ownerDisplay = ownerName.trim().replace(/[\s　]*様\s*$/, '');
 
+  // テンプレート切り替え：
+  // taxMode='unknown'(取得費不明) → template2
+  // taxMode='none'(なし) → template3
+  // taxMode='known'(取得費明確) → template2
+  const templateFile = p.taxMode === 'none'
+    ? 'template3.png?v=20260807a'
+    : 'template2.png?v=20260807d';
+
   return `<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8"><title>手残りリスト</title>
 <style>
@@ -505,7 +513,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
 </style>
 </head><body>
 <div class="a4">
-  <img class="bg" src="/sale-schedule/illustrations/template2.png?v=20260807d" alt="" />
+  <img class="bg" src="/sale-schedule/illustrations/${templateFile}" alt="" />
   <div class="layer">
     ${debug ? buildNpDebugGrid() : ''}
 
