@@ -58,8 +58,8 @@ const BOXES = {
   address:      { left: 56, top: 48.0, w: 130, h: 9.0 },
   // ③ 売出価格：上へ1mm（65→64）
   listPrice:    { left: 78, top: 64.0, w: 52,  h: 7.0 },
-  // ④ 最低価格：上へ1mm（174→173）、右へ3mm（78→81）
-  minPrice:     { left: 81, top: 173.0, w: 52,  h: 7.0 },
+  // ④ 最低価格：上へ1mm（174→173）、左へ5mm（81→76）
+  minPrice:     { left: 76, top: 173.0, w: 52,  h: 7.0 },
 
   // ── 年月（調整保留中）──
   step1Year:    { left: 19, top: 89.5, w: 36,  h: 5.5 },
