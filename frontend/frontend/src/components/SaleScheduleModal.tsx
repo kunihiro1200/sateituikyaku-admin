@@ -65,9 +65,9 @@ const BOXES = {
   step1Year:    { left: 14, top: 84.5, w: 36,  h: 5.5 },
   // STEP1月（4mm上、5mm左）
   step1Month:   { left: 14, top: 92.5, w: 36,  h: 10.0 },
-  step2Year:    { left: 19, top: 139.0, w: 36, h: 5.5 },
-  step2StartM:  { left: 19, top: 146.0, w: 17, h: 9.5 },
-  step2EndM:    { left: 38, top: 146.0, w: 17, h: 9.5 },
+  step2Year:    { left: 14, top: 139.0, w: 36, h: 5.5 },
+  step2StartM:  { left: 14, top: 146.0, w: 17, h: 9.5 },
+  step2EndM:    { left: 33, top: 146.0, w: 17, h: 9.5 },
   step3Year:    { left: 19, top: 171.5, w: 36, h: 5.5 },
   step3Month:   { left: 19, top: 178.5, w: 36, h: 9.5 },
   step4Year:    { left: 19, top: 202.5, w: 36, h: 5.5 },
@@ -312,8 +312,13 @@ function buildA4Html(d: SaleScheduleData, debug = false): string {
 
     <!-- 年月（調整保留中・非表示） -->
     <!-- STEP1 年・月：表示開始 -->
-    ${makeBox(B.step1Year,  d.startYear  ? `${d.startYear}年`  : '', 10, 700, '#ffffff', debug)}
+    ${makeBox(B.step1Year,  d.startYear  ? `${d.startYear}年`  : '', 13, 700, '#ffffff', debug)}
     ${makeBox(B.step1Month, d.startMonth ? `${d.startMonth}月` : '', 16, 900, '#C99A3D', debug)}
+
+    <!-- STEP2 年・月〜月 -->
+    ${makeBox(B.step2Year,   d.marketingYear        ? `${d.marketingYear}年`        : '', 13, 700, '#ffffff', debug)}
+    ${makeBox(B.step2StartM, d.marketingStartMonth  ? `${d.marketingStartMonth}月`  : '', 16, 900, '#C99A3D', debug)}
+    ${makeBox(B.step2EndM,   d.marketingEndMonth    ? `${d.marketingEndMonth}月`    : '', 16, 900, '#C99A3D', debug)}
 
   </div>
 </div>
