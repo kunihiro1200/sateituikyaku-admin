@@ -519,7 +519,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     <!-- ③〜⑧ 表（行ごとにY座標固定・X座標共通） -->
     <!-- 行間: 7mm固定 / 列X座標確定済み -->
     ${p.rows.slice(0, 2).map((row, i) => {
-      const rowTop = 171 + i * 7;
+      const rowTop = 171 + i * 8;
       const rowH = 7;
       const fmtM = p.fmtMan;
       // 各行の取得費は売却価格×5%（taxMode=unknown）
