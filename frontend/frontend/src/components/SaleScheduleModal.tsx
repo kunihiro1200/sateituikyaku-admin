@@ -59,7 +59,7 @@ const BOXES = {
   // ③ 売出価格：上へ1mm（65→64）
   listPrice:    { left: 78, top: 64.0, w: 52,  h: 7.0 },
   // ④ 最低価格
-  minPrice:     { left: 68, top: 175.0, w: 57,  h: 7.0 },
+  minPrice:     { left: 68, top: 177.0, w: 57,  h: 7.0 },
 
   // ── 年月（調整保留中）──
   step1Year:    { left: 19, top: 89.5, w: 36,  h: 5.5 },
