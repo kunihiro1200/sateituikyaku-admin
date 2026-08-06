@@ -10174,6 +10174,7 @@ HP：https://ifoo-oita.com/
           initialOwnerName={seller.name || ''}
           initialPropertyAddress={propInfo.address || seller.propertyAddress || ''}
           initialAssessPrice={seller.valuationAmount1 || undefined}
+          initialMinPrice={seller.valuationAmount3 || seller.valuationAmount2 || seller.valuationAmount1 || undefined}
         />
       )}
 

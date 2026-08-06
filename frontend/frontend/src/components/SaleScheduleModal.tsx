@@ -51,9 +51,9 @@ import api from '../services/api';
 // ─────────────────────────────────────────
 const BOXES = {
   // 売主名
-  ownerName:    { left: 56, top: 22.0, w: 140, h: 6.5 },
+  ownerName:    { left: 56, top: 26.0, w: 140, h: 6.5 },
   // 物件所在地
-  address:      { left: 56, top: 30.5, w: 140, h: 9.0 },
+  address:      { left: 56, top: 34.0, w: 140, h: 9.0 },
   // 売出価格
   listPrice:    { left: 80, top: 64.5, w: 50,  h: 7.0 },
   // STEP1
@@ -103,7 +103,8 @@ interface Props {
   initialSellerNumber?: string;
   initialOwnerName?: string;
   initialPropertyAddress?: string;
-  initialAssessPrice?: number;
+  initialAssessPrice?: number;  // 円：売出価格の初期値
+  initialMinPrice?: number;     // 円：最低価格の初期値
 }
 
 function calcDates() {
@@ -330,7 +331,7 @@ function buildA4Html(d: SaleScheduleData, debug = false): string {
 // ─────────────────────────────────────────
 export const SaleScheduleModal: React.FC<Props> = ({
   open, onClose,
-  initialSellerNumber='', initialOwnerName='', initialPropertyAddress='', initialAssessPrice,
+  initialSellerNumber='', initialOwnerName='', initialPropertyAddress='', initialAssessPrice, initialMinPrice,
 }) => {
   const NAVY = '#061D3B';
   const { sy, sm, cy, cm, sety, setm, ms, me, my } = calcDates();
@@ -342,7 +343,9 @@ export const SaleScheduleModal: React.FC<Props> = ({
     propertyNo: initialSellerNumber,
     ownerName: initialOwnerName, propertyAddress: initialPropertyAddress,
     assessPrice: initialAssessPrice ? Math.round(initialAssessPrice/10000) : undefined,
-    listPrice: undefined, minimumPrice: undefined,
+    // 査定額を売出価格・最低価格の初期値として使用（後でフォームで変更可能）
+    listPrice: initialAssessPrice ? Math.round(initialAssessPrice/10000) : undefined,
+    minimumPrice: initialMinPrice ? Math.round(initialMinPrice/10000) : undefined,
     startYear:sy, startMonth:sm, marketingYear:my, marketingStartMonth:ms, marketingEndMonth:me,
     contractYear:cy, contractMonth:cm, settlementYear:sety, settlementMonth:setm,
   });
