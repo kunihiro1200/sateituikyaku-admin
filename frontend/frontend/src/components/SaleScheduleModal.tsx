@@ -68,10 +68,10 @@ const BOXES = {
   step2Year:    { left: 14, top: 139.0, w: 36, h: 5.5 },
   step2StartM:  { left: 21, top: 146.0, w: 20, h: 9.5 },
   step2EndM:    { left: 33, top: 154.0, w: 17, h: 9.5 },
-  step3Year:    { left: 14, top: 200.5, w: 36, h: 5.5 },
-  step3Month:   { left: 14, top: 207.5, w: 36, h: 9.5 },
-  step4Year:    { left: 14, top: 232.5, w: 36, h: 5.5 },
-  step4Month:   { left: 14, top: 239.5, w: 36, h: 8.0 },
+  step3Year:    { left: 14, top: 198.5, w: 36, h: 5.5 },
+  step3Month:   { left: 14, top: 204.5, w: 36, h: 9.5 },
+  step4Year:    { left: 14, top: 230.5, w: 36, h: 5.5 },
+  step4Month:   { left: 14, top: 237.5, w: 36, h: 8.0 },
 } as const;
 
 // ─────────────────────────────────────────
