@@ -54,8 +54,8 @@ import api from '../services/api';
 const BOXES = {
   // ① 売主名：上へ3mm（40→37）
   ownerName:    { left: 56, top: 37.0, w: 130, h: 6.5 },
-  // ② 物件所在地：変更なし
-  address:      { left: 56, top: 48.0, w: 130, h: 9.0 },
+  // ② 物件所在地（2mm下げ）
+  address:      { left: 56, top: 50.0, w: 130, h: 9.0 },
   // ③ 売出価格：上へ1mm（65→64）
   listPrice:    { left: 78, top: 64.0, w: 52,  h: 7.0 },
   // ④ 最低価格
@@ -310,6 +310,9 @@ function buildA4Html(d: SaleScheduleData, debug = false): string {
     ${makeBox(B.minPrice, d.minPriceRange || fmtNum(d.minimumPrice), 15, 900, GOLD, debug)}
 
     <!-- 年月（調整保留中・非表示） -->
+    <!-- STEP1 年・月：表示開始 -->
+    ${makeBox(B.step1Year,  d.startYear  ? String(d.startYear)  : '', 7,  700, '#ffffff', debug)}
+    ${makeBox(B.step1Month, d.startMonth ? String(d.startMonth) : '', 16, 900, '#C99A3D', debug)}
 
   </div>
 </div>
