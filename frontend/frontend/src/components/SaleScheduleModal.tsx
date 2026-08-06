@@ -59,7 +59,7 @@ const BOXES = {
   // ③ 売出価格：2mm下げ
   listPrice:    { left: 78, top: 68.0, w: 52,  h: 7.0 },
   // ④ 最低価格：左4mm・下3mm
-  minPrice:     { left: 54, top: 187.0, w: 57,  h: 7.0 },
+  minPrice:     { left: 54, top: 185.0, w: 57,  h: 7.0 },
 
   // STEP1年（5mm上、5mm左）
   step1Year:    { left: 14, top: 84.5, w: 36,  h: 5.5 },
@@ -68,10 +68,10 @@ const BOXES = {
   step2Year:    { left: 14, top: 139.0, w: 36, h: 5.5 },
   step2StartM:  { left: 21, top: 146.0, w: 20, h: 9.5 },
   step2EndM:    { left: 33, top: 154.0, w: 17, h: 9.5 },
-  step3Year:    { left: 14, top: 205.5, w: 36, h: 5.5 },
-  step3Month:   { left: 14, top: 212.5, w: 36, h: 9.5 },
-  step4Year:    { left: 14, top: 240.5, w: 36, h: 5.5 },
-  step4Month:   { left: 14, top: 247.5, w: 36, h: 8.0 },
+  step3Year:    { left: 14, top: 200.5, w: 36, h: 5.5 },
+  step3Month:   { left: 14, top: 207.5, w: 36, h: 9.5 },
+  step4Year:    { left: 14, top: 232.5, w: 36, h: 5.5 },
+  step4Month:   { left: 14, top: 239.5, w: 36, h: 8.0 },
 } as const;
 
 // ─────────────────────────────────────────
