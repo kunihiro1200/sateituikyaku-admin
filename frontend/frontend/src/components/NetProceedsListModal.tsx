@@ -298,7 +298,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
                 </Grid>
               </Grid>
 
-              {/* 抵当権抹消チェックボックス（非表示・false固定） */}
+              {/* 抵当権抹消チェックボックス：不要のため削除済み */}
 
               {/* 譲渡所得税 */}
               <FormControl component="fieldset">
