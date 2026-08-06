@@ -51,9 +51,9 @@ import api from '../services/api';
 // ─────────────────────────────────────────
 const BOXES = {
   // 売主名
-  ownerName:    { left: 56, top: 26.0, w: 140, h: 6.5 },
+  ownerName:    { left: 56, top: 16.5, w: 140, h: 6.5 },
   // 物件所在地
-  address:      { left: 56, top: 34.0, w: 140, h: 9.0 },
+  address:      { left: 56, top: 25.0, w: 140, h: 9.0 },
   // 売出価格
   listPrice:    { left: 80, top: 64.5, w: 50,  h: 7.0 },
   // STEP1
