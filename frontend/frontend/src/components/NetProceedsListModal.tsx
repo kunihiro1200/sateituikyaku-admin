@@ -531,7 +531,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         npBox( 40, rowTop, 32, rowH, fmtM(row.brokerageFee), 12, 600, '#1a1a1a', debug, i===0?'仲介手数料':''),
         npBox( 74, rowTop, 18, rowH, fmtM(row.stampDuty),    12, 600, '#1a1a1a', debug, i===0?'印紙代':''),
         npBox( 94, rowTop, 28, rowH, acqCost > 0 ? fmtM(acqCost) : '―', 12, 600, '#1a1a1a', debug, i===0?'取得費':''),
-        npBox(129, rowTop, 30, rowH, p.taxMode !== 'none' ? fmtM(row.transferTax, true) : '―', 12, 600, '#1a1a1a', debug, i===0?'譲渡所得税':''),
+        npBox(131, rowTop, 30, rowH, p.taxMode !== 'none' ? fmtM(row.transferTax, true) : '―', 12, 600, '#1a1a1a', debug, i===0?'譲渡所得税':''),
         npBox(161, rowTop, 42, rowH, fmtM(row.netProceeds),  13, 900, '#c0392b', debug, i===0?'手残り金額':''),
       ].join('');
     }).join('')}
