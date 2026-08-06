@@ -50,30 +50,29 @@ import api from '../services/api';
 // BOX座標定数（ここだけ変更すればOK）
 // ─────────────────────────────────────────
 const BOXES = {
-  // 売主名
-  ownerName:    { left: 56, top: 32.0, w: 140, h: 6.5 },
-  // 物件所在地
-  address:      { left: 56, top: 40.0, w: 140, h: 9.0 },
-  // 売出価格
-  listPrice:    { left: 80, top: 64.5, w: 50,  h: 7.0 },
-  // STEP1
-  step1Year:    { left: 19, top: 81.5, w: 36,  h: 5.5 },
-  step1Month:   { left: 19, top: 88.5, w: 36,  h: 10.0 },
-  // STEP2
-  step2Year:    { left: 19, top: 131.0, w: 36, h: 5.5 },
-  step2StartM:  { left: 19, top: 138.0, w: 17, h: 9.5 },
-  step2EndM:    { left: 38, top: 138.0, w: 17, h: 9.5 },
-  // 最低価格
-  minPrice:     { left: 80, top: 158.5, w: 45, h: 7.0 },
+  // 売主名（「売主様」文字=top:40mm基準 → 右空欄）
+  ownerName:    { left: 56, top: 40.0, w: 130, h: 6.5 },
+  // 物件所在地（売主名 +8mm）
+  address:      { left: 56, top: 48.0, w: 130, h: 9.0 },
+  // 売出価格（+8mm）
+  listPrice:    { left: 80, top: 72.5, w: 50,  h: 7.0 },
+  // STEP1（+8mm）
+  step1Year:    { left: 19, top: 89.5, w: 36,  h: 5.5 },
+  step1Month:   { left: 19, top: 96.5, w: 36,  h: 10.0 },
+  // STEP2（+8mm）
+  step2Year:    { left: 19, top: 139.0, w: 36, h: 5.5 },
+  step2StartM:  { left: 19, top: 146.0, w: 17, h: 9.5 },
+  step2EndM:    { left: 38, top: 146.0, w: 17, h: 9.5 },
+  // 最低価格（+8mm）
+  minPrice:     { left: 80, top: 166.5, w: 45, h: 7.0 },
 
-  // STEP3 年・月：左側濃紺BOX内
-  step3Year:    { left: 19, top: 163.5, w: 36, h: 5.5 },
-  step3Month:   { left: 19, top: 170.5, w: 36, h: 9.5 },
+  // STEP3（+8mm）
+  step3Year:    { left: 19, top: 171.5, w: 36, h: 5.5 },
+  step3Month:   { left: 19, top: 178.5, w: 36, h: 9.5 },
 
-  // ── STEP4 ──
-  // STEP4 年・月：左側濃紺BOX内
-  step4Year:    { left: 19, top: 194.5, w: 36, h: 5.5 },
-  step4Month:   { left: 19, top: 201.5, w: 36, h: 8.0 },
+  // STEP4（+8mm）
+  step4Year:    { left: 19, top: 202.5, w: 36, h: 5.5 },
+  step4Month:   { left: 19, top: 209.5, w: 36, h: 8.0 },
 } as const;
 
 // ─────────────────────────────────────────
