@@ -521,7 +521,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     <!-- 行1のY座標(仮): top≈122mm -->
     ${p.rows.length > 0 ? (() => {
       const row = p.rows[0];
-      const rowTop = 122;
+      const rowTop = 152;
       const rowH = 7;
       const fmtM = p.fmtMan;
       // 取得費（売買価格の5%）
