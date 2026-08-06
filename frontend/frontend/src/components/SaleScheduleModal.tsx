@@ -52,16 +52,17 @@ import api from '../services/api';
 // 単位: mm / A4左上=(0,0)
 // ─────────────────────────────────────────
 const BOXES = {
-  // 売主名：「売主様」ラベル右側の空欄
+  // ① 売主名：仮座標 ほぼOK・フォントサイズのみ変更
   ownerName:    { left: 56, top: 40.0, w: 130, h: 6.5 },
-  // 物件所在地：「物件所在地」ラベル右側の空欄
+  // ② 物件所在地：仮座標 ほぼOK・フォントサイズのみ変更
   address:      { left: 56, top: 48.0, w: 130, h: 9.0 },
-  // 売出価格：「売出価格」と「万円」の間の横線
-  listPrice:    { left: 78, top: 67.0, w: 52,  h: 7.0 },
-  // 最低価格：「最低価格」と「万円で売買契約」の間の横線
-  minPrice:     { left: 78, top: 162.0, w: 52,  h: 7.0 },
+  // ③ 売出価格：2mm上へ
+  listPrice:    { left: 78, top: 65.0, w: 52,  h: 7.0 },
+  // ④ 最低価格：STEP3「最低価格____万円で売買契約」の横線へ再配置
+  //    STEP2帯(~155mm)の下、STEP3エリア内
+  minPrice:     { left: 78, top: 174.0, w: 52,  h: 7.0 },
 
-  // ── 以下は調整保留（年月）──
+  // ── 年月（調整保留中）──
   step1Year:    { left: 19, top: 89.5, w: 36,  h: 5.5 },
   step1Month:   { left: 19, top: 96.5, w: 36,  h: 10.0 },
   step2Year:    { left: 19, top: 139.0, w: 36, h: 5.5 },
@@ -210,7 +211,8 @@ function makeBox(
 function makeAddressBox(addr: string, debug: boolean): string {
   const coord = BOXES.address;
   const len = addr.length;
-  const fs = len > 40 ? 6 : len > 28 ? 7 : 8.5;
+  // 1.3〜1.4倍に変更（元8.5pt → 11〜12pt）
+  const fs = len > 40 ? 8 : len > 28 ? 9.5 : 12;
   const lh = len > 28 ? 1.3 : 1.1;
   const wrapStyle = len > 28
     ? 'white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-all;text-align:left;align-items:flex-start;'
@@ -279,17 +281,17 @@ function buildA4Html(d: SaleScheduleData, debug = false): string {
   <div class="overlay-layer">
     ${debug ? buildDebugGrid() : ''}
 
-    <!-- ① 売主名（氏名のみ・「様」は背景画像） -->
-    ${makeBox(B.ownerName, ownerNameOnly(d.ownerName||''), 9, 600, '#1a1a1a', debug, 'justify-content:flex-start;padding-left:2mm;')}
+    <!-- ① 売主名（氏名のみ・「様」は背景画像） fs:9→12.5pt -->
+    ${makeBox(B.ownerName, ownerNameOnly(d.ownerName||''), 12.5, 600, '#1a1a1a', debug, 'justify-content:flex-start;padding-left:2mm;')}
 
-    <!-- ② 物件所在地 -->
+    <!-- ② 物件所在地 fs可変→大きめに -->
     ${makeAddressBox(d.propertyAddress||'', debug)}
 
-    <!-- ③ 売出価格（数値のみ） -->
-    ${makeBox(B.listPrice, fmtNum(d.listPrice), 14, 900, GOLD, debug)}
+    <!-- ③ 売出価格（数値のみ）fs:14→18pt ゴールド太字 -->
+    ${makeBox(B.listPrice, fmtNum(d.listPrice), 18, 900, GOLD, debug)}
 
-    <!-- ④ 最低価格（数値のみ） -->
-    ${makeBox(B.minPrice, fmtNum(d.minimumPrice), 13, 900, GOLD, debug)}
+    <!-- ④ 最低価格（数値のみ）fs:13→17pt ゴールド太字 -->
+    ${makeBox(B.minPrice, fmtNum(d.minimumPrice), 17, 900, GOLD, debug)}
 
     <!-- 年月（調整保留中・非表示） -->
 
