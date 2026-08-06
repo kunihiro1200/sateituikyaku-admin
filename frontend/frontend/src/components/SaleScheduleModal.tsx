@@ -56,10 +56,10 @@ const BOXES = {
   ownerName:    { left: 56, top: 37.0, w: 130, h: 6.5 },
   // ② 物件所在地（2mm下げ）
   address:      { left: 56, top: 50.0, w: 130, h: 9.0 },
-  // ③ 売出価格：上へ1mm（65→64）
-  listPrice:    { left: 78, top: 64.0, w: 52,  h: 7.0 },
-  // ④ 最低価格
-  minPrice:     { left: 66, top: 178.0, w: 57,  h: 7.0 },
+  // ③ 売出価格：2mm下げ
+  listPrice:    { left: 78, top: 66.0, w: 52,  h: 7.0 },
+  // ④ 最低価格：2mm下げ
+  minPrice:     { left: 66, top: 180.0, w: 57,  h: 7.0 },
 
   // STEP1年（5mm上、5mm左）
   step1Year:    { left: 14, top: 84.5, w: 36,  h: 5.5 },
@@ -68,10 +68,10 @@ const BOXES = {
   step2Year:    { left: 14, top: 139.0, w: 36, h: 5.5 },
   step2StartM:  { left: 21, top: 146.0, w: 20, h: 9.5 },
   step2EndM:    { left: 33, top: 154.0, w: 17, h: 9.5 },
-  step3Year:    { left: 19, top: 171.5, w: 36, h: 5.5 },
-  step3Month:   { left: 19, top: 178.5, w: 36, h: 9.5 },
-  step4Year:    { left: 19, top: 202.5, w: 36, h: 5.5 },
-  step4Month:   { left: 19, top: 209.5, w: 36, h: 8.0 },
+  step3Year:    { left: 14, top: 171.5, w: 36, h: 5.5 },
+  step3Month:   { left: 14, top: 178.5, w: 36, h: 9.5 },
+  step4Year:    { left: 14, top: 202.5, w: 36, h: 5.5 },
+  step4Month:   { left: 14, top: 209.5, w: 36, h: 8.0 },
 } as const;
 
 // ─────────────────────────────────────────
@@ -319,6 +319,14 @@ function buildA4Html(d: SaleScheduleData, debug = false): string {
     ${makeBox(B.step2Year,   d.marketingYear        ? `${d.marketingYear}年`        : '', 13, 700, '#ffffff', debug)}
     ${makeBox(B.step2StartM, d.marketingStartMonth  ? `${d.marketingStartMonth}月〜`  : '', 16, 900, '#C99A3D', debug)}
     ${makeBox(B.step2EndM,   d.marketingEndMonth    ? `${d.marketingEndMonth}月`    : '', 16, 900, '#C99A3D', debug)}
+
+    <!-- STEP3 年・月 -->
+    ${makeBox(B.step3Year,  d.contractYear  ? `${d.contractYear}年`  : '', 13, 700, '#ffffff', debug)}
+    ${makeBox(B.step3Month, d.contractMonth ? `${d.contractMonth}月` : '', 16, 900, '#C99A3D', debug)}
+
+    <!-- STEP4 年・月 -->
+    ${makeBox(B.step4Year,  d.settlementYear  ? `${d.settlementYear}年`  : '', 13, 700, '#ffffff', debug)}
+    ${makeBox(B.step4Month, d.settlementMonth ? `${d.settlementMonth}月` : '', 16, 900, '#C99A3D', debug)}
 
   </div>
 </div>
