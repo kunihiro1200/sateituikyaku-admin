@@ -47,30 +47,28 @@ import { Close as CloseIcon, Print as PrintIcon, Search as SearchIcon } from '@m
 import api from '../services/api';
 
 // ─────────────────────────────────────────
-// BOX座標定数（ここだけ変更すればOK）
+// ─────────────────────────────────────────
+// BOX座標定数（仮座標 - 個別調整中）
+// 単位: mm / A4左上=(0,0)
 // ─────────────────────────────────────────
 const BOXES = {
-  // 売主名（「売主様」文字=top:40mm基準 → 右空欄）
+  // 売主名：「売主様」ラベル右側の空欄
   ownerName:    { left: 56, top: 40.0, w: 130, h: 6.5 },
-  // 物件所在地（売主名 +8mm）
+  // 物件所在地：「物件所在地」ラベル右側の空欄
   address:      { left: 56, top: 48.0, w: 130, h: 9.0 },
-  // 売出価格（+8mm）
-  listPrice:    { left: 80, top: 72.5, w: 50,  h: 7.0 },
-  // STEP1（+8mm）
+  // 売出価格：「売出価格」と「万円」の間の横線
+  listPrice:    { left: 78, top: 67.0, w: 52,  h: 7.0 },
+  // 最低価格：「最低価格」と「万円で売買契約」の間の横線
+  minPrice:     { left: 78, top: 162.0, w: 52,  h: 7.0 },
+
+  // ── 以下は調整保留（年月）──
   step1Year:    { left: 19, top: 89.5, w: 36,  h: 5.5 },
   step1Month:   { left: 19, top: 96.5, w: 36,  h: 10.0 },
-  // STEP2（+8mm）
   step2Year:    { left: 19, top: 139.0, w: 36, h: 5.5 },
   step2StartM:  { left: 19, top: 146.0, w: 17, h: 9.5 },
   step2EndM:    { left: 38, top: 146.0, w: 17, h: 9.5 },
-  // 最低価格（+8mm）
-  minPrice:     { left: 80, top: 166.5, w: 45, h: 7.0 },
-
-  // STEP3（+8mm）
   step3Year:    { left: 19, top: 171.5, w: 36, h: 5.5 },
   step3Month:   { left: 19, top: 178.5, w: 36, h: 9.5 },
-
-  // STEP4（+8mm）
   step4Year:    { left: 19, top: 202.5, w: 36, h: 5.5 },
   step4Month:   { left: 19, top: 209.5, w: 36, h: 8.0 },
 } as const;
@@ -281,44 +279,19 @@ function buildA4Html(d: SaleScheduleData, debug = false): string {
   <div class="overlay-layer">
     ${debug ? buildDebugGrid() : ''}
 
-    <!-- 売主名（氏名のみ・「様」は背景画像） -->
+    <!-- ① 売主名（氏名のみ・「様」は背景画像） -->
     ${makeBox(B.ownerName, ownerNameOnly(d.ownerName||''), 9, 600, '#1a1a1a', debug, 'justify-content:flex-start;padding-left:2mm;')}
 
-    <!-- 物件所在地 -->
+    <!-- ② 物件所在地 -->
     ${makeAddressBox(d.propertyAddress||'', debug)}
 
-    <!-- 売出価格（数値のみ） -->
+    <!-- ③ 売出価格（数値のみ） -->
     ${makeBox(B.listPrice, fmtNum(d.listPrice), 14, 900, GOLD, debug)}
 
-    <!-- STEP1 年（数字のみ） -->
-    ${makeBox(B.step1Year, d.startYear ? String(d.startYear) : '', 7, 700, NAVY, debug)}
-
-    <!-- STEP1 月（数字のみ） -->
-    ${makeBox(B.step1Month, d.startMonth ? String(d.startMonth) : '', 16, 900, GOLD, debug)}
-
-    <!-- STEP2 年（数字のみ） -->
-    ${makeBox(B.step2Year, d.marketingYear ? String(d.marketingYear) : '', 7, 700, NAVY, debug)}
-
-    <!-- STEP2 開始月（数字のみ） -->
-    ${makeBox(B.step2StartM, d.marketingStartMonth ? String(d.marketingStartMonth) : '', 13, 900, GOLD, debug)}
-
-    <!-- STEP2 終了月（数字のみ） -->
-    ${makeBox(B.step2EndM, d.marketingEndMonth ? String(d.marketingEndMonth) : '', 13, 900, GOLD, debug)}
-
-    <!-- 最低価格（数値のみ） -->
+    <!-- ④ 最低価格（数値のみ） -->
     ${makeBox(B.minPrice, fmtNum(d.minimumPrice), 13, 900, GOLD, debug)}
 
-    <!-- STEP3 年（数字のみ） -->
-    ${makeBox(B.step3Year, d.contractYear ? String(d.contractYear) : '', 7, 700, NAVY, debug)}
-
-    <!-- STEP3 月（数字のみ） -->
-    ${makeBox(B.step3Month, d.contractMonth ? String(d.contractMonth) : '', 16, 900, GOLD, debug)}
-
-    <!-- STEP4 年（数字のみ） -->
-    ${makeBox(B.step4Year, d.settlementYear ? String(d.settlementYear) : '', 7, 700, NAVY, debug)}
-
-    <!-- STEP4 月（数字のみ・「月中旬」は背景画像） -->
-    ${makeBox(B.step4Month, d.settlementMonth ? String(d.settlementMonth) : '', 14, 900, GOLD, debug)}
+    <!-- 年月（調整保留中・非表示） -->
 
   </div>
 </div>
