@@ -146,6 +146,52 @@ router.post(
 );
 
 /**
+ * Send other company purchase notification
+ * POST /chat-notifications/other-company-purchase/:sellerId
+ */
+router.post(
+  '/other-company-purchase/:sellerId',
+  [
+    param('sellerId').isUUID().withMessage('Invalid seller ID'),
+    body('reason').optional().isString(),
+    body('notes').optional().isString(),
+    body('assignee').optional().isString(),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Validation failed',
+            details: errors.array(),
+            retryable: false,
+          },
+        });
+      }
+
+      const { sellerId } = req.params;
+      const success = await new ChatNotificationService().sendOtherCompanyPurchaseNotification(
+        sellerId,
+        req.body
+      );
+
+      res.json({ success });
+    } catch (error: any) {
+      console.error('Send other company purchase notification error:', error);
+      res.status(500).json({
+        error: {
+          code: 'NOTIFICATION_ERROR',
+          message: error.message || 'Failed to send notification',
+          retryable: true,
+        },
+      });
+    }
+  }
+);
+
+/**
  * Send pre-visit other decision notification
  * POST /chat-notifications/pre-visit-other-decision/:sellerId
  */

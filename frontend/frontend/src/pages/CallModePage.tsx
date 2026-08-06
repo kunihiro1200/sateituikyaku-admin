@@ -4850,7 +4850,7 @@ HP：https://ifoo-oita.com/
   const requiresDecisionDate = (status: string): boolean => {
     if (!status) return false;
     const label = getStatusLabel(status);
-    return label.includes('専任') || label.includes('他決');
+    return label.includes('専任') || label.includes('他決') || label === '他社買取';
   };
 
   // 必須項目が全て入力されているかチェック
@@ -4988,6 +4988,8 @@ HP：https://ifoo-oita.com/
         endpoint = `/api/chat-notifications/post-visit-other-decision/${seller.id}`;
       } else if (statusLabel.includes('未訪問他決')) {
         endpoint = `/api/chat-notifications/pre-visit-other-decision/${seller.id}`;
+      } else if (statusLabel === '他社買取') {
+        endpoint = `/api/chat-notifications/other-company-purchase/${seller.id}`;
       } else if (statusLabel.includes('他決')) {
         // visit_assigneeが設定されている（訪問済み）場合は訪問後他決、それ以外は未訪問他決
         const isVisited = seller.visitAssignee && seller.visitAssignee !== '' && seller.visitAssignee !== '外す';

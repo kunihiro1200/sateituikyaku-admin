@@ -138,6 +138,37 @@ export class ChatNotificationService {
   }
 
   /**
+   * Send other company purchase notification
+   * 
+   * @param sellerId - Seller ID
+   * @param data - Notification data
+   * @returns Success status
+   */
+  async sendOtherCompanyPurchaseNotification(
+    sellerId: string,
+    data: ChatNotificationData
+  ): Promise<boolean> {
+    try {
+      const seller = await this.getSellerInfo(sellerId);
+      
+      const message = this.formatOtherCompanyPurchaseMessage({
+        ...data,
+        assignee: data.assignee || seller.visit_assignee,
+        sellerNumber: seller.seller_number,
+        sellerName: seller.name,
+        propertyAddress: seller.property_address,
+        reason: data.reason || seller.exclusive_other_decision_factor,
+        callPageUrl: seller.call_page_url,
+      });
+
+      return await this.sendToGoogleChat(message);
+    } catch (error) {
+      console.error('Send other company purchase notification error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Send pre-visit other decision notification
    * 
    * @param sellerId - Seller ID
@@ -294,6 +325,25 @@ ${data.callPageUrl ? `\n🔗 ${data.callPageUrl}` : ''}
 
 訪問査定後に他決となりました。
 ${data.notes ? `\n対策: ${data.notes}` : ''}
+${data.callPageUrl ? `\n🔗 ${data.callPageUrl}` : ''}
+    `.trim();
+  }
+
+  /**
+   * Format other company purchase message
+   */
+  private formatOtherCompanyPurchaseMessage(data: ChatNotificationData): string {
+    return `
+🏢 *他社買取*
+
+売主番号: ${data.sellerNumber}
+売主名: ${data.sellerName}
+物件所在地: ${data.propertyAddress}
+他決要因: ${data.reason || '未記入'}
+担当者: ${data.assignee || '未設定'}
+
+他社買取となりました。
+${data.notes ? `\n備考: ${data.notes}` : ''}
 ${data.callPageUrl ? `\n🔗 ${data.callPageUrl}` : ''}
     `.trim();
   }
