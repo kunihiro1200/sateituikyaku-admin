@@ -521,7 +521,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     <!-- 行間: 7mm固定 / 列X座標確定済み -->
     ${p.rows.slice(0, Math.max(p.rows.length - 2, 1)).map((row, i) => {
       // template2(取得費不明)は5mm下にオフセット
-      const baseTop = p.taxMode === 'unknown' ? 176 : 171;
+      const baseTop = p.taxMode === 'unknown' ? 180 : 171;
       const rowTop = baseTop + i * 8;
       const rowH = 7;
       const fmtM = p.fmtMan;
