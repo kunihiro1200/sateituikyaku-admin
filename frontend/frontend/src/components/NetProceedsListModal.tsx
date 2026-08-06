@@ -510,11 +510,11 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     ${debug ? buildNpDebugGrid() : ''}
 
     <!-- ① 物件所在地（仮座標） -->
-    ${npBox(50, 38, 140, 7, propertyAddress || '', 8.5, 600, '#1a1a1a', debug, 'propertyAddress',
+    ${npBox(46, 38, 144, 7, propertyAddress || '', 11.5, 600, '#1a1a1a', debug, 'propertyAddress',
       'justify-content:flex-start;padding-left:1mm;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;align-items:flex-start;')}
 
     <!-- ② 売主名（仮座標） -->
-    ${npBox(50, 47, 100, 7, ownerDisplay, 9, 600, '#1a1a1a', debug, 'ownerName', 'justify-content:flex-start;padding-left:1mm;')}
+    ${npBox(46, 47, 104, 7, ownerDisplay, 12, 600, '#1a1a1a', debug, 'ownerName', 'justify-content:flex-start;padding-left:1mm;')}
 
     <!-- ③〜⑧ 表の数値：次フェーズで追加 -->
 
