@@ -522,7 +522,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     ${p.rows.slice(0, Math.max(p.rows.length - 2, 1)).map((row, i) => {
       // template2(取得費不明)は5mm下にオフセット
       const baseTop = p.taxMode === 'unknown' ? 180 : 171;
-      const rowTop = baseTop + i * 8;
+      const rowTop = baseTop + i * (p.taxMode === 'unknown' ? 9 : 8);
       const rowH = 7;
       const fmtM = p.fmtMan;
       // 各行の取得費は売却価格×5%（taxMode=unknown）
