@@ -10175,8 +10175,17 @@ HP：https://ifoo-oita.com/
           initialSellerNumber={seller.sellerNumber || ''}
           initialOwnerName={seller.name || ''}
           initialPropertyAddress={propInfo.address || seller.propertyAddress || ''}
-          initialAssessPrice={seller.valuationAmount1 || undefined}
-          initialMinPrice={seller.valuationAmount3 || seller.valuationAmount2 || seller.valuationAmount1 || undefined}
+          initialAssessPrice={
+            // 売出価格 = 査定額の最高値
+            seller.valuationAmount3 || seller.valuationAmount2 || seller.valuationAmount1 || undefined
+          }
+          initialMinPrice={
+            // 最低価格範囲用に全査定額を渡す（Modal内で最高〜中間を計算）
+            seller.valuationAmount1 || undefined
+          }
+          initialValuation1={seller.valuationAmount1 || undefined}
+          initialValuation2={seller.valuationAmount2 || undefined}
+          initialValuation3={seller.valuationAmount3 || undefined}
         />
       )}
 

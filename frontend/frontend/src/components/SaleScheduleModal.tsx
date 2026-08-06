@@ -101,8 +101,11 @@ interface Props {
   initialSellerNumber?: string;
   initialOwnerName?: string;
   initialPropertyAddress?: string;
-  initialAssessPrice?: number;  // 円：売出価格の初期値
-  initialMinPrice?: number;     // 円：最低価格の初期値
+  initialAssessPrice?: number;  // 円：売出価格（最高値）
+  initialMinPrice?: number;     // 円：最低価格（最低値）
+  initialValuation1?: number;   // 円：査定額1（低）
+  initialValuation2?: number;   // 円：査定額2（中）
+  initialValuation3?: number;   // 円：査定額3（高）
 }
 
 function calcDates() {
@@ -318,21 +321,44 @@ function buildA4Html(d: SaleScheduleData, debug = false): string {
 // ─────────────────────────────────────────
 export const SaleScheduleModal: React.FC<Props> = ({
   open, onClose,
-  initialSellerNumber='', initialOwnerName='', initialPropertyAddress='', initialAssessPrice, initialMinPrice,
+  initialSellerNumber='', initialOwnerName='', initialPropertyAddress='',
+  initialAssessPrice, initialMinPrice,
+  initialValuation1, initialValuation2, initialValuation3,
 }) => {
   const NAVY = '#061D3B';
   const { sy, sm, cy, cm, sety, setm, ms, me, my } = calcDates();
+
+  // 渡された3つの査定額から売出価格（最高値）・最低価格範囲を計算
+  const initVals = [initialValuation1, initialValuation2, initialValuation3]
+    .filter((v): v is number => v != null && v > 0);
+  const initSortedDesc = [...initVals].sort((a, b) => b - a);
+  const initHighest = initSortedDesc[0];
+  const initSecond  = initSortedDesc[1];
+
+  // 売出価格 = 最高値（万円）
+  const initListPrice = initHighest
+    ? Math.round(initHighest / 10000)
+    : initialAssessPrice ? Math.round(initialAssessPrice / 10000) : undefined;
+
+  // 最低価格範囲 = 「最高値〜中間値」
+  let initMinPriceRange: string | undefined;
+  if (initHighest && initSecond) {
+    initMinPriceRange = `${Math.round(initHighest/10000).toLocaleString()}〜${Math.round(initSecond/10000).toLocaleString()}`;
+  } else if (initHighest) {
+    initMinPriceRange = Math.round(initHighest/10000).toLocaleString();
+  }
   const [searchNo, setSearchNo] = useState(initialSellerNumber);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string|null>(null);
-  const [debugMode, setDebugMode] = useState(true); // 初期ON（調整しやすいように）
+  const [debugMode, setDebugMode] = useState(true);
   const [data, setData] = useState<SaleScheduleData>({
     propertyNo: initialSellerNumber,
-    ownerName: initialOwnerName, propertyAddress: initialPropertyAddress,
-    assessPrice: initialAssessPrice ? Math.round(initialAssessPrice/10000) : undefined,
-    // 査定額を売出価格・最低価格の初期値として使用（後でフォームで変更可能）
-    listPrice: initialAssessPrice ? Math.round(initialAssessPrice/10000) : undefined,
-    minimumPrice: initialMinPrice ? Math.round(initialMinPrice/10000) : undefined,
+    ownerName: initialOwnerName,
+    propertyAddress: initialPropertyAddress,
+    assessPrice: initHighest ? Math.round(initHighest/10000) : undefined,
+    listPrice: initListPrice,           // 売出価格 = 査定額最高値
+    minimumPrice: undefined,
+    minPriceRange: initMinPriceRange,   // 最低価格範囲 = 「最高〜中間」
     startYear:sy, startMonth:sm, marketingYear:my, marketingStartMonth:ms, marketingEndMonth:me,
     contractYear:cy, contractMonth:cm, settlementYear:sety, settlementMonth:setm,
   });
