@@ -521,17 +521,17 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     <!-- 行1のY座標(仮): top≈122mm -->
     ${p.rows.length > 0 ? (() => {
       const row = p.rows[0];
-      const rowTop = 172;
+      const rowTop = 171;
       const rowH = 7;
       const fmtM = p.fmtMan;
       const acqCost = p.taxMode !== 'none' && p.taxDetail ? p.taxDetail.acquisitionCostUsed : 0;
       return [
-        npBox(  6, rowTop, 32, rowH, fmtM(row.priceYen),     8, 600, '#1a1a1a', debug, '売却価格'),
-        npBox( 40, rowTop, 32, rowH, fmtM(row.brokerageFee), 8, 600, '#1a1a1a', debug, '仲介手数料'),
-        npBox( 74, rowTop, 18, rowH, fmtM(row.stampDuty),    8, 600, '#1a1a1a', debug, '印紙代'),
-        npBox( 94, rowTop, 28, rowH, acqCost > 0 ? fmtM(acqCost) : '―', 8, 600, '#1a1a1a', debug, '取得費'),
-        npBox(127, rowTop, 30, rowH, p.taxMode !== 'none' ? fmtM(row.transferTax, true) : '―', 8, 600, '#1a1a1a', debug, '譲渡所得税'),
-        npBox(159, rowTop, 42, rowH, fmtM(row.netProceeds),  9, 900, '#c0392b', debug, '手残り金額'),
+        npBox(  6, rowTop, 32, rowH, fmtM(row.priceYen),     10, 600, '#1a1a1a', debug, '売却価格'),
+        npBox( 40, rowTop, 32, rowH, fmtM(row.brokerageFee), 10, 600, '#1a1a1a', debug, '仲介手数料'),
+        npBox( 74, rowTop, 18, rowH, fmtM(row.stampDuty),    10, 600, '#1a1a1a', debug, '印紙代'),
+        npBox( 94, rowTop, 28, rowH, acqCost > 0 ? fmtM(acqCost) : '―', 10, 600, '#1a1a1a', debug, '取得費'),
+        npBox(129, rowTop, 30, rowH, p.taxMode !== 'none' ? fmtM(row.transferTax, true) : '―', 10, 600, '#1a1a1a', debug, '譲渡所得税'),
+        npBox(161, rowTop, 42, rowH, fmtM(row.netProceeds),  11, 900, '#c0392b', debug, '手残り金額'),
       ].join('');
     })() : ''}
 
