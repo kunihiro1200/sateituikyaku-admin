@@ -1,66 +1,90 @@
 /**
  * 売却スケジュール資料生成モーダル
  *
- * 方式: 背景画像固定 + position:absolute テキストオーバーレイ
+ * 方式: 背景画像固定 + 透明BOX方式（position:absolute + flex中央配置）
  * 背景: /sale-schedule/illustrations/template.png (210mm × 297mm)
  *
- * 座標系: A4左上=(0,0) 単位mm
- * 背景・オーバーレイ両方とも left:0;top:0 で完全一致
- *
- * プレビュー: transform:scale() でブラウザ表示を縮小（座標には影響しない）
- * 印刷: 別ウィンドウ方式（210mm原寸）
- *
  * ============================================================
- * 座標定数（FIELD_COORDS）
- * ここだけ変更すれば全項目の位置が変わる
- * 背景画像の空欄位置に合わせて1mm単位で調整する
+ * BOX座標定数（BOXES）
+ * 単位: mm / A4左上=(0,0)
+ * 各BOXは背景画像の空欄に重ねる「透明な容器」
+ * デバッグON時は赤い枠で表示
  * ============================================================
+ *
+ * スクリーンショット計測値（デバッググリッド基準）：
+ *
+ * 【物件情報エリア】
+ *   売主名空欄:      left≈56, top≈33, w≈90, h≈6
+ *   物件所在地空欄:  left≈56, top≈41, w≈140, h≈9
+ *
+ * 【STEP1】左側濃紺BOX内
+ *   年の空欄:        left≈20, top≈76, w≈36, h≈5
+ *   月の空欄:        left≈20, top≈82, w≈36, h≈10
+ *   売出価格空欄:    left≈80, top≈65, w≈50, h≈7
+ *
+ * 【STEP2】左側濃紺BOX内
+ *   年の空欄:        left≈20, top≈120, w≈36, h≈5
+ *   開始月空欄:      left≈20, top≈126, w≈17, h≈9
+ *   終了月空欄:      left≈38, top≈126, w≈17, h≈9
+ *
+ * 【STEP3】左側濃紺BOX内
+ *   年の空欄:        left≈20, top≈164, w≈36, h≈5
+ *   月の空欄:        left≈20, top≈170, w≈36, h≈9
+ *   最低価格空欄:    left≈80, top≈160, w≈45, h≈7
+ *
+ * 【STEP4】左側濃紺BOX内
+ *   年の空欄:        left≈20, top≈196, w≈36, h≈5
+ *   月の空欄:        left≈20, top≈202, w≈36, h≈8
  */
 import React, { useState, useCallback, useRef } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, Grid, Box, Typography,
-  CircularProgress, Alert, Divider, IconButton, Switch, FormControlLabel,
+  CircularProgress, Alert, Divider, IconButton,
+  Switch, FormControlLabel,
 } from '@mui/material';
 import { Close as CloseIcon, Print as PrintIcon, Search as SearchIcon } from '@mui/icons-material';
 import api from '../services/api';
 
 // ─────────────────────────────────────────
-// 座標定数（ここを微調整する）
-// A4左上原点(0,0) 単位:mm
-// 背景画像の空欄に合わせて調整
+// BOX座標定数（ここだけ変更すればOK）
 // ─────────────────────────────────────────
-const COORDS = {
-  // 物件情報エリア
-  propertyNo:   { left: 56,  top: 31.0, w: 90,  h: 5.5, fs: 8.5, fw: 600, color: '#1a1a1a', align: 'left'   as const },
-  ownerName:    { left: 56,  top: 37.0, w: 90,  h: 5.5, fs: 8.5, fw: 600, color: '#1a1a1a', align: 'left'   as const },
-  propertyAddr: { left: 56,  top: 43.0, w: 140, h: 10,  fs: 8.5, fw: 600, color: '#1a1a1a', align: 'left'   as const },
+const BOXES = {
+  // 売主名（「様」は背景画像に印刷済み → 氏名のみ表示）
+  ownerName:    { left: 56, top: 33.0, w: 90,  h: 6.0 },
 
-  // STEP1 売り出し開始
-  listPrice:    { left: 89,  top: 67.5, w: 50,  h: 7,   fs: 15,  fw: 900, color: '#C99A3D', align: 'left'   as const },
-  step1Year:    { left: 22,  top: 72.0, w: 32,  h: 5,   fs: 7,   fw: 700, color: '#ffffff', align: 'center' as const },
-  step1Month:   { left: 22,  top: 77.0, w: 32,  h: 9,   fs: 14,  fw: 900, color: '#C99A3D', align: 'center' as const },
+  // 物件所在地
+  address:      { left: 56, top: 41.0, w: 140, h: 9.0 },
 
-  // STEP2 販売活動を強化
-  step2Year:    { left: 22,  top: 123.0, w: 32, h: 5,   fs: 7,   fw: 700, color: '#ffffff', align: 'center' as const },
-  step2StartM:  { left: 22,  top: 128.0, w: 14, h: 8,   fs: 12,  fw: 900, color: '#C99A3D', align: 'center' as const },
-  step2EndM:    { left: 38,  top: 128.0, w: 14, h: 8,   fs: 12,  fw: 900, color: '#C99A3D', align: 'center' as const },
+  // 売出価格（数値のみ・「万円」は背景画像）
+  listPrice:    { left: 81, top: 65.0, w: 48,  h: 7.0 },
 
-  // STEP3 売買契約
-  minimumPrice: { left: 89,  top: 161.0, w: 50, h: 7,   fs: 14,  fw: 900, color: '#C99A3D', align: 'left'   as const },
-  step3Year:    { left: 22,  top: 165.0, w: 32, h: 5,   fs: 7,   fw: 700, color: '#ffffff', align: 'center' as const },
-  step3Month:   { left: 22,  top: 170.0, w: 32, h: 9,   fs: 14,  fw: 900, color: '#C99A3D', align: 'center' as const },
+  // STEP1
+  step1Year:    { left: 21, top: 76.5, w: 34,  h: 5.0 },
+  step1Month:   { left: 21, top: 82.5, w: 34,  h: 9.5 },
 
-  // STEP4 決済・お引渡し
-  step4Year:    { left: 22,  top: 196.0, w: 32, h: 5,   fs: 7,   fw: 700, color: '#ffffff', align: 'center' as const },
-  step4Month:   { left: 22,  top: 201.0, w: 32, h: 8,   fs: 12,  fw: 900, color: '#C99A3D', align: 'center' as const },
+  // STEP2
+  step2Year:    { left: 21, top: 120.5, w: 34, h: 5.0 },
+  step2StartM:  { left: 21, top: 127.0, w: 16, h: 9.0 },
+  step2EndM:    { left: 40, top: 127.0, w: 16, h: 9.0 },
+
+  // 最低価格（数値のみ・「万円で売買契約」は背景画像）
+  minPrice:     { left: 81, top: 159.5, w: 45, h: 7.0 },
+
+  // STEP3
+  step3Year:    { left: 21, top: 164.5, w: 34, h: 5.0 },
+  step3Month:   { left: 21, top: 170.5, w: 34, h: 9.0 },
+
+  // STEP4
+  step4Year:    { left: 21, top: 196.5, w: 34, h: 5.0 },
+  step4Month:   { left: 21, top: 202.5, w: 34, h: 7.5 },
 } as const;
 
 // ─────────────────────────────────────────
 // 型定義
 // ─────────────────────────────────────────
 export interface SaleScheduleData {
-  propertyNo: string;
+  propertyNo: string;       // 内部管理用（資料には表示しない）
   ownerName: string;
   propertyAddress: string;
   assessPrice?: number;
@@ -113,79 +137,92 @@ function convertDb(seller: Record<string, unknown>, pl: Record<string, unknown> 
   };
 }
 
-function withSama(name: string): string {
-  const n = name.trim();
-  return n ? (n.endsWith('様') ? n : n + '　様') : '';
-}
-
 const fmtNum = (v?: number) => v != null ? v.toLocaleString() : '';
 
-// ─────────────────────────────────────────
-// 1フィールド分のHTML生成（完全固定座標）
-// ─────────────────────────────────────────
-type CoordEntry = { left:number; top:number; w:number; h:number; fs:number; fw:number; color:string; align:'left'|'center'|'right' };
+// 売主名：「様」は背景画像側 → 氏名のみ（末尾の「様」を除去）
+function ownerNameOnly(name: string): string {
+  return name.trim().replace(/[\s　]*様\s*$/, '');
+}
 
-function field(c: CoordEntry, content: string, debug: boolean, extraCss = ''): string {
-  const dbg = debug ? 'outline:1px solid red;background:rgba(255,0,0,0.05);' : '';
+// ─────────────────────────────────────────
+// グリッド生成（5mm / 10mm）
+// ─────────────────────────────────────────
+function buildDebugGrid(): string {
+  let html = '';
+  for (let x = 0; x <= 210; x += 5) {
+    const c = x % 10 === 0 ? 'rgba(255,0,0,0.35)' : 'rgba(255,100,100,0.18)';
+    html += `<div style="position:absolute;left:${x}mm;top:0;width:0;height:297mm;border-left:1px solid ${c};pointer-events:none;"></div>`;
+    if (x % 10 === 0 && x > 0)
+      html += `<div style="position:absolute;left:${x+0.3}mm;top:0.5mm;font-size:4.5pt;color:red;opacity:0.7;pointer-events:none;">${x}</div>`;
+  }
+  for (let y = 0; y <= 297; y += 5) {
+    const c = y % 10 === 0 ? 'rgba(255,0,0,0.35)' : 'rgba(255,100,100,0.18)';
+    html += `<div style="position:absolute;left:0;top:${y}mm;width:210mm;height:0;border-top:1px solid ${c};pointer-events:none;"></div>`;
+    if (y % 10 === 0 && y > 0)
+      html += `<div style="position:absolute;left:0.3mm;top:${y+0.3}mm;font-size:4.5pt;color:red;opacity:0.7;pointer-events:none;">${y}</div>`;
+  }
+  return html;
+}
+
+// ─────────────────────────────────────────
+// BOX生成（透明コンテナ + 文字を中央配置）
+// ─────────────────────────────────────────
+type BoxCoord = { left:number; top:number; w:number; h:number };
+
+function makeBox(
+  coord: BoxCoord,
+  content: string,
+  fontSize: number,
+  fontWeight: number,
+  color: string,
+  debug: boolean,
+  extraStyle = '',
+): string {
+  const dbgStyle = debug
+    ? 'outline:2px solid red;background:rgba(255,0,0,0.10);'
+    : '';
   return `<div style="
     position:absolute;
-    left:${c.left}mm; top:${c.top}mm;
-    width:${c.w}mm; height:${c.h}mm;
-    font-size:${c.fs}pt; font-weight:${c.fw}; color:${c.color};
-    text-align:${c.align}; line-height:1.0;
-    overflow:hidden; white-space:nowrap;
-    ${dbg}${extraCss}
+    left:${coord.left}mm; top:${coord.top}mm;
+    width:${coord.w}mm; height:${coord.h}mm;
+    display:flex; align-items:center; justify-content:center;
+    margin:0; padding:0; box-sizing:border-box;
+    font-size:${fontSize}pt; font-weight:${fontWeight}; color:${color};
+    white-space:nowrap; overflow:hidden;
+    ${dbgStyle}${extraStyle}
   ">${content}</div>`;
 }
 
-// 物件所在地専用（折り返しあり・フォント可変）
-function addrField(d: SaleScheduleData, debug: boolean): string {
-  const c = COORDS.propertyAddr;
-  const len = (d.propertyAddress||'').length;
-  const fs = len > 36 ? 6.5 : len > 24 ? 7.5 : c.fs;
-  const dbg = debug ? 'outline:1px solid red;background:rgba(255,0,0,0.05);' : '';
+// 物件所在地専用（長い場合のみフォント縮小・flex中央配置・2行まで）
+function makeAddressBox(addr: string, debug: boolean): string {
+  const coord = BOXES.address;
+  const len = addr.length;
+  const fs = len > 40 ? 6 : len > 28 ? 7 : 8.5;
+  const lh = len > 28 ? 1.3 : 1.1;
+  const wrapStyle = len > 28
+    ? 'white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-all;text-align:left;align-items:flex-start;'
+    : 'white-space:nowrap;text-align:left;';
+  const dbgStyle = debug ? 'outline:2px solid red;background:rgba(255,0,0,0.10);' : '';
   return `<div style="
     position:absolute;
-    left:${c.left}mm; top:${c.top}mm;
-    width:${c.w}mm; height:${c.h}mm;
-    font-size:${fs}pt; font-weight:${c.fw}; color:${c.color};
-    text-align:${c.align}; line-height:1.35;
-    overflow:hidden;
-    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
-    word-break:break-all;
-    ${dbg}
-  ">${d.propertyAddress||''}</div>`;
+    left:${coord.left}mm; top:${coord.top}mm;
+    width:${coord.w}mm; height:${coord.h}mm;
+    display:flex; align-items:center;
+    margin:0; padding:0; box-sizing:border-box;
+    font-size:${fs}pt; font-weight:600; color:#1a1a1a;
+    line-height:${lh}; overflow:hidden;
+    ${wrapStyle}${dbgStyle}
+  ">${addr||''}</div>`;
 }
 
 // ─────────────────────────────────────────
-// デバッググリッド（5mm間隔）
-// ─────────────────────────────────────────
-function debugGrid(): string {
-  const lines: string[] = [];
-  // 縦線（5mm間隔）
-  for (let x = 0; x <= 210; x += 5) {
-    const color = x % 10 === 0 ? 'rgba(255,0,0,0.3)' : 'rgba(255,0,0,0.15)';
-    lines.push(`<div style="position:absolute;left:${x}mm;top:0;width:0;height:297mm;border-left:1px solid ${color};"></div>`);
-    if (x % 10 === 0) {
-      lines.push(`<div style="position:absolute;left:${x + 0.5}mm;top:1mm;font-size:5pt;color:red;opacity:0.6;">${x}</div>`);
-    }
-  }
-  // 横線（5mm間隔）
-  for (let y = 0; y <= 297; y += 5) {
-    const color = y % 10 === 0 ? 'rgba(255,0,0,0.3)' : 'rgba(255,0,0,0.15)';
-    lines.push(`<div style="position:absolute;left:0;top:${y}mm;width:210mm;height:0;border-top:1px solid ${color};"></div>`);
-    if (y % 10 === 0) {
-      lines.push(`<div style="position:absolute;left:1mm;top:${y + 0.5}mm;font-size:5pt;color:red;opacity:0.6;">${y}</div>`);
-    }
-  }
-  return lines.join('');
-}
-
-// ─────────────────────────────────────────
-// A4 HTML生成
+// A4 HTML生成（背景画像 + BOXオーバーレイ）
 // ─────────────────────────────────────────
 function buildA4Html(d: SaleScheduleData, debug = false): string {
-  const C = COORDS;
+  const B = BOXES;
+  const GOLD = '#C99A3D';
+  const NAVY = '#ffffff'; // 濃紺BOX内の文字は白
+
   return `<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8"><title>売却スケジュール</title>
 <style>
@@ -197,14 +234,13 @@ function buildA4Html(d: SaleScheduleData, debug = false): string {
     print-color-adjust: exact;
     font-family: 'Noto Sans JP','Hiragino Kaku Gothic Pro','Meiryo',sans-serif;
   }
-  /* A4ページ：背景と文字レイヤーの共通親 */
   .a4-page {
     position: relative;
     width: 210mm;
     height: 297mm;
     overflow: hidden;
   }
-  /* 背景テンプレート：A4左上(0,0)に固定 */
+  /* 背景：A4左上(0,0)に完全固定 */
   .template-background {
     position: absolute;
     left: 0; top: 0;
@@ -212,7 +248,7 @@ function buildA4Html(d: SaleScheduleData, debug = false): string {
     object-fit: fill;
     z-index: 0;
   }
-  /* オーバーレイレイヤー：背景と完全一致(0,0) */
+  /* オーバーレイ：背景と同じ(0,0)基準 */
   .overlay-layer {
     position: absolute;
     left: 0; top: 0;
@@ -222,31 +258,53 @@ function buildA4Html(d: SaleScheduleData, debug = false): string {
 </style>
 </head><body>
 <div class="a4-page">
+  <!-- 背景テンプレート（変更禁止） -->
   <img class="template-background"
     src="/sale-schedule/illustrations/template.png" alt="" />
+
+  <!-- 動的テキストBOXオーバーレイ -->
   <div class="overlay-layer">
-    ${debug ? debugGrid() : ''}
+    ${debug ? buildDebugGrid() : ''}
 
-    ${field(C.propertyNo,   d.propertyNo || '', debug)}
-    ${field(C.ownerName,    withSama(d.ownerName || ''), debug)}
-    ${addrField(d, debug)}
+    <!-- 売主名（氏名のみ・「様」は背景画像） -->
+    ${makeBox(B.ownerName, ownerNameOnly(d.ownerName||''), 9, 600, '#1a1a1a', debug, 'justify-content:flex-start;padding-left:2mm;')}
 
-    ${field(C.listPrice,    fmtNum(d.listPrice), debug)}
+    <!-- 物件所在地 -->
+    ${makeAddressBox(d.propertyAddress||'', debug)}
 
-    ${field(C.step1Year,    d.startYear  ? String(d.startYear)  : '', debug)}
-    ${field(C.step1Month,   d.startMonth ? String(d.startMonth) : '', debug)}
+    <!-- 売出価格（数値のみ） -->
+    ${makeBox(B.listPrice, fmtNum(d.listPrice), 14, 900, GOLD, debug)}
 
-    ${field(C.step2Year,    d.marketingYear ? String(d.marketingYear) : '', debug)}
-    ${field(C.step2StartM,  d.marketingStartMonth ? String(d.marketingStartMonth) : '', debug)}
-    ${field(C.step2EndM,    d.marketingEndMonth   ? String(d.marketingEndMonth)   : '', debug)}
+    <!-- STEP1 年（数字のみ） -->
+    ${makeBox(B.step1Year, d.startYear ? String(d.startYear) : '', 7, 700, NAVY, debug)}
 
-    ${field(C.minimumPrice, fmtNum(d.minimumPrice), debug)}
+    <!-- STEP1 月（数字のみ） -->
+    ${makeBox(B.step1Month, d.startMonth ? String(d.startMonth) : '', 16, 900, GOLD, debug)}
 
-    ${field(C.step3Year,    d.contractYear  ? String(d.contractYear)  : '', debug)}
-    ${field(C.step3Month,   d.contractMonth ? String(d.contractMonth) : '', debug)}
+    <!-- STEP2 年（数字のみ） -->
+    ${makeBox(B.step2Year, d.marketingYear ? String(d.marketingYear) : '', 7, 700, NAVY, debug)}
 
-    ${field(C.step4Year,    d.settlementYear  ? String(d.settlementYear)  : '', debug)}
-    ${field(C.step4Month,   d.settlementMonth ? String(d.settlementMonth) : '', debug)}
+    <!-- STEP2 開始月（数字のみ） -->
+    ${makeBox(B.step2StartM, d.marketingStartMonth ? String(d.marketingStartMonth) : '', 13, 900, GOLD, debug)}
+
+    <!-- STEP2 終了月（数字のみ） -->
+    ${makeBox(B.step2EndM, d.marketingEndMonth ? String(d.marketingEndMonth) : '', 13, 900, GOLD, debug)}
+
+    <!-- 最低価格（数値のみ） -->
+    ${makeBox(B.minPrice, fmtNum(d.minimumPrice), 13, 900, GOLD, debug)}
+
+    <!-- STEP3 年（数字のみ） -->
+    ${makeBox(B.step3Year, d.contractYear ? String(d.contractYear) : '', 7, 700, NAVY, debug)}
+
+    <!-- STEP3 月（数字のみ） -->
+    ${makeBox(B.step3Month, d.contractMonth ? String(d.contractMonth) : '', 16, 900, GOLD, debug)}
+
+    <!-- STEP4 年（数字のみ） -->
+    ${makeBox(B.step4Year, d.settlementYear ? String(d.settlementYear) : '', 7, 700, NAVY, debug)}
+
+    <!-- STEP4 月（数字のみ・「月中旬」は背景画像） -->
+    ${makeBox(B.step4Month, d.settlementMonth ? String(d.settlementMonth) : '', 14, 900, GOLD, debug)}
+
   </div>
 </div>
 </body></html>`;
@@ -264,10 +322,10 @@ export const SaleScheduleModal: React.FC<Props> = ({
   const [searchNo, setSearchNo] = useState(initialSellerNumber);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string|null>(null);
-  const [debugMode, setDebugMode] = useState(false);
+  const [debugMode, setDebugMode] = useState(true); // 初期ON（調整しやすいように）
   const [data, setData] = useState<SaleScheduleData>({
-    propertyNo: initialSellerNumber, ownerName: initialOwnerName,
-    propertyAddress: initialPropertyAddress,
+    propertyNo: initialSellerNumber,
+    ownerName: initialOwnerName, propertyAddress: initialPropertyAddress,
     assessPrice: initialAssessPrice ? Math.round(initialAssessPrice/10000) : undefined,
     listPrice: undefined, minimumPrice: undefined,
     startYear:sy, startMonth:sm, marketingYear:my, marketingStartMonth:ms, marketingEndMonth:me,
@@ -292,27 +350,23 @@ export const SaleScheduleModal: React.FC<Props> = ({
   const setStr = (f: keyof SaleScheduleData) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setData(p => ({ ...p, [f]: e.target.value }));
 
+  // 印刷（debug=OFF）
   const handlePrint = useCallback(() => {
-    const html = buildA4Html(data, false); // 印刷時はdebug=OFF
+    const html = buildA4Html(data, false);
     const win = window.open('', '_blank', 'width=900,height=750');
     if (!win) { alert('ポップアップブロックを解除してください。'); return; }
-    win.document.write(html);
-    win.document.close();
+    win.document.write(html); win.document.close();
     setTimeout(() => { try { win.focus(); win.print(); } catch {} }, 600);
   }, [data]);
 
-  // プレビュー用：210mmをpxに変換してscaleでコンテナに収める
-  // 1mm = 3.7795px（96dpi基準）
-  // プレビューコンテナ幅 ≒ 550px → scale = 550 / (210 * 3.7795) ≒ 0.693
-  const A4_PX_W = 210 * 3.7795;
-  const A4_PX_H = 297 * 3.7795;
-  const PREVIEW_W = 550;
-  const PREVIEW_H = 640;
-  const scale = Math.min(PREVIEW_W / A4_PX_W, PREVIEW_H / A4_PX_H);
+  // iframeのscale計算（A4実寸px → プレビューコンテナに収める）
+  const A4W = 210 * 3.7795;
+  const A4H = 297 * 3.7795;
+  const PW = 550; // プレビュー幅px
+  const PH = 660; // プレビュー高さpx
+  const scale = Math.min(PW / A4W, PH / A4H);
 
   const previewHtml = buildA4Html(data, debugMode);
-
-  // iframeのsrcDoc変化でリロードを制御
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   return (
@@ -322,8 +376,10 @@ export const SaleScheduleModal: React.FC<Props> = ({
         <Typography variant="h6" fontWeight="bold">売却スケジュール資料生成</Typography>
         <Box sx={{ display:'flex', alignItems:'center', gap:1 }}>
           <FormControlLabel
-            control={<Switch size="small" checked={debugMode} onChange={e => setDebugMode(e.target.checked)} />}
-            label={<Typography variant="caption">デバッグ</Typography>}
+            control={<Switch size="small" checked={debugMode} onChange={e=>setDebugMode(e.target.checked)} color="error" />}
+            label={<Typography variant="caption" color={debugMode?'error':'text.secondary'}>
+              {debugMode ? '🔴 デバッグON' : 'デバッグOFF'}
+            </Typography>}
             sx={{ mr:0 }}
           />
           <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
@@ -331,6 +387,7 @@ export const SaleScheduleModal: React.FC<Props> = ({
       </DialogTitle>
       <Divider />
       <DialogContent sx={{ p:2 }}>
+        {/* 検索 */}
         <Box sx={{ display:'flex', gap:1, mb:2, alignItems:'center' }}>
           <TextField label="売主番号" size="small" value={searchNo}
             onChange={e=>setSearchNo(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSearch()}
@@ -346,56 +403,76 @@ export const SaleScheduleModal: React.FC<Props> = ({
           <Grid item xs={12} md={4}>
             <Typography variant="subtitle2" fontWeight="bold" sx={{ mb:1, color:NAVY }}>物件情報</Typography>
             <Grid container spacing={1}>
-              <Grid item xs={12}><TextField fullWidth size="small" label="物件番号" value={data.propertyNo} onChange={setStr('propertyNo')}/></Grid>
-              <Grid item xs={12}><TextField fullWidth size="small" label="売主様氏名" value={data.ownerName} onChange={setStr('ownerName')} helperText="「様」は自動で付きます"/></Grid>
-              <Grid item xs={12}><TextField fullWidth size="small" label="物件所在地" value={data.propertyAddress} onChange={setStr('propertyAddress')} multiline rows={2}/></Grid>
-              <Grid item xs={12}><TextField fullWidth size="small" label="売出価格（万円）" type="number" value={data.listPrice??''} onChange={setNum('listPrice')}/></Grid>
-              <Grid item xs={12}><TextField fullWidth size="small" label="最低売却価格（万円）" type="number" value={data.minimumPrice??''} onChange={setNum('minimumPrice')}/></Grid>
+              <Grid item xs={12}>
+                <TextField fullWidth size="small" label="売主様氏名" value={data.ownerName}
+                  onChange={setStr('ownerName')} helperText="「様」は背景画像側に固定" />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField fullWidth size="small" label="物件所在地" value={data.propertyAddress}
+                  onChange={setStr('propertyAddress')} multiline rows={2} />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField fullWidth size="small" label="売出価格（万円）" type="number"
+                  value={data.listPrice??''} onChange={setNum('listPrice')} />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField fullWidth size="small" label="最低売却価格（万円）" type="number"
+                  value={data.minimumPrice??''} onChange={setNum('minimumPrice')} />
+              </Grid>
             </Grid>
+
             <Typography variant="subtitle2" fontWeight="bold" sx={{ mt:2, mb:1, color:NAVY }}>STEP1 売り出し開始</Typography>
             <Grid container spacing={1}>
-              <Grid item xs={6}><TextField fullWidth size="small" label="年" type="number" value={data.startYear??''} onChange={setNum('startYear')}/></Grid>
-              <Grid item xs={6}><TextField fullWidth size="small" label="月" type="number" value={data.startMonth??''} inputProps={{min:1,max:12}} onChange={setNum('startMonth')}/></Grid>
+              <Grid item xs={6}><TextField fullWidth size="small" label="年（数字のみ）" type="number" value={data.startYear??''} onChange={setNum('startYear')}/></Grid>
+              <Grid item xs={6}><TextField fullWidth size="small" label="月（数字のみ）" type="number" value={data.startMonth??''} inputProps={{min:1,max:12}} onChange={setNum('startMonth')}/></Grid>
             </Grid>
+
             <Typography variant="subtitle2" fontWeight="bold" sx={{ mt:1.5, mb:1, color:NAVY }}>STEP2 販売活動強化</Typography>
             <Grid container spacing={1}>
               <Grid item xs={4}><TextField fullWidth size="small" label="年" type="number" value={data.marketingYear??''} onChange={setNum('marketingYear')}/></Grid>
               <Grid item xs={4}><TextField fullWidth size="small" label="開始月" type="number" value={data.marketingStartMonth??''} inputProps={{min:1,max:12}} onChange={setNum('marketingStartMonth')}/></Grid>
               <Grid item xs={4}><TextField fullWidth size="small" label="終了月" type="number" value={data.marketingEndMonth??''} inputProps={{min:1,max:12}} onChange={setNum('marketingEndMonth')}/></Grid>
             </Grid>
+
             <Typography variant="subtitle2" fontWeight="bold" sx={{ mt:1.5, mb:1, color:NAVY }}>STEP3 売買契約</Typography>
             <Grid container spacing={1}>
               <Grid item xs={6}><TextField fullWidth size="small" label="年" type="number" value={data.contractYear??''} onChange={setNum('contractYear')}/></Grid>
               <Grid item xs={6}><TextField fullWidth size="small" label="月" type="number" value={data.contractMonth??''} inputProps={{min:1,max:12}} onChange={setNum('contractMonth')}/></Grid>
             </Grid>
+
             <Typography variant="subtitle2" fontWeight="bold" sx={{ mt:1.5, mb:1, color:NAVY }}>STEP4 決済・引渡し</Typography>
             <Grid container spacing={1}>
               <Grid item xs={6}><TextField fullWidth size="small" label="年" type="number" value={data.settlementYear??''} onChange={setNum('settlementYear')}/></Grid>
-              <Grid item xs={6}><TextField fullWidth size="small" label="月" type="number" value={data.settlementMonth??''} inputProps={{min:1,max:12}} onChange={setNum('settlementMonth')}/></Grid>
+              <Grid item xs={6}><TextField fullWidth size="small" label="月（数字のみ）" type="number" value={data.settlementMonth??''} inputProps={{min:1,max:12}} onChange={setNum('settlementMonth')}/></Grid>
             </Grid>
+
+            {debugMode && (
+              <Box sx={{ mt:2, p:1.5, bgcolor:'#fff3f3', border:'1px solid #f44336', borderRadius:1 }}>
+                <Typography variant="caption" color="error" fontWeight="bold">
+                  🔴 デバッグモード ON
+                </Typography>
+                <Typography variant="caption" display="block" color="error" sx={{ mt:0.5, fontSize:'0.65rem' }}>
+                  赤いBOXが背景画像の空欄に重なるよう確認してください。<br/>
+                  ズレている場合はコード内BOXESの座標値を調整します。
+                </Typography>
+              </Box>
+            )}
           </Grid>
 
-          {/* 右：A4プレビュー
-              ★ iframeではなくsrcDocを使ったiframe（サイズ問題対策）
-              ★ コンテナはoverflow:hidden + position:relative
-              ★ iframeはA4実寸(210mm×297mm相当px)で描画し、transformでscale縮小
-          */}
+          {/* 右：A4プレビュー（iframe + transform:scale）*/}
           <Grid item xs={12} md={8}>
-            <Box sx={{ display:'flex', justifyContent:'space-between', alignItems:'center', mb:1 }}>
-              <Typography variant="subtitle2" fontWeight="bold" sx={{ color:NAVY }}>
-                プレビュー（A4）{debugMode && <span style={{color:'red',marginLeft:8}}>🔴 デバッグモード ON</span>}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                座標ズレは左フォームで確認後、コード内COORDSを調整
-              </Typography>
-            </Box>
+            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb:1, color:NAVY }}>
+              プレビュー（A4）
+            </Typography>
+            {/* コンテナ：実寸iframeをscaleで縮小して見せる */}
             <Box sx={{
-              width: PREVIEW_W, height: PREVIEW_H,
-              overflow: 'hidden', border: '1px solid #ccc',
-              borderRadius: 1, background: '#888',
+              width: PW, height: PH,
+              overflow: 'hidden',
+              border: '2px solid #ccc',
+              borderRadius: 1,
+              background: '#666',
               position: 'relative',
             }}>
-              {/* iframeをA4実寸で配置し、transform:scaleで縮小表示 */}
               <iframe
                 ref={iframeRef}
                 srcDoc={previewHtml}
@@ -403,8 +480,8 @@ export const SaleScheduleModal: React.FC<Props> = ({
                 style={{
                   position: 'absolute',
                   left: 0, top: 0,
-                  width: `${A4_PX_W}px`,
-                  height: `${A4_PX_H}px`,
+                  width: `${A4W}px`,
+                  height: `${A4H}px`,
                   border: 'none',
                   transformOrigin: 'top left',
                   transform: `scale(${scale})`,
