@@ -66,8 +66,8 @@ const BOXES = {
   // STEP1月（4mm上、5mm左）
   step1Month:   { left: 14, top: 92.5, w: 36,  h: 10.0 },
   step2Year:    { left: 14, top: 139.0, w: 36, h: 5.5 },
-  step2StartM:  { left: 19, top: 146.0, w: 20, h: 9.5 },
-  step2EndM:    { left: 33, top: 152.0, w: 17, h: 9.5 },
+  step2StartM:  { left: 21, top: 146.0, w: 20, h: 9.5 },
+  step2EndM:    { left: 33, top: 154.0, w: 17, h: 9.5 },
   step3Year:    { left: 19, top: 171.5, w: 36, h: 5.5 },
   step3Month:   { left: 19, top: 178.5, w: 36, h: 9.5 },
   step4Year:    { left: 19, top: 202.5, w: 36, h: 5.5 },
