@@ -488,7 +488,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
   // taxMode='none'(なし) → template3
   // taxMode='known'(取得費明確) → template4
   const templateFile = p.taxMode === 'none'
-    ? 'template3.png?v=20260807a'
+    ? 'template3.png?v=20260807b'
     : p.taxMode === 'known'
     ? 'template4.png?v=20260807a'
     : 'template2.png?v=20260807f';
