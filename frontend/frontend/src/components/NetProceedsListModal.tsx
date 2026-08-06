@@ -162,8 +162,8 @@ export const NetProceedsListModal: React.FC<Props> = ({
     initialMinPrice ? Math.round(initialMinPrice / 10_000).toString() : ''
   );
 
-  // 抵当権抹消
-  const [hasMortgage, setHasMortgage] = useState(true);
+  // 抵当権抹消：非表示・false固定
+  const [hasMortgage] = useState(false);
 
   // 譲渡所得税
   const [taxMode, setTaxMode] = useState<'unknown' | 'known' | 'none'>('unknown');
@@ -298,16 +298,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
                 </Grid>
               </Grid>
 
-              <Divider sx={{ my: 1.5 }} />
-
-              {/* 抵当権抹消 */}
-              <FormControlLabel
-                control={<Checkbox checked={hasMortgage} onChange={e => setHasMortgage(e.target.checked)}
-                  sx={{ color: NAVY }} />}
-                label={<Typography variant="body2" fontWeight="bold">抵当権抹消費用あり（5万円）</Typography>}
-              />
-
-              <Divider sx={{ my: 1.5 }} />
+              {/* 抵当権抹消チェックボックス（非表示・false固定） */}
 
               {/* 譲渡所得税 */}
               <FormControl component="fieldset">
