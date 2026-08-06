@@ -230,7 +230,25 @@ export const NetProceedsListModal: React.FC<Props> = ({
     return approx ? `約${str}` : str;
   };
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    const html = buildNetProceedsHtml({
+      ownerName, propertyAddress, rows, hasMortgage, taxMode,
+      acquisitionCostMan, purchaseYear, taxDetail,
+      fmtMan: (yen: number, approx = false) => {
+        const man = yen / 10_000;
+        const str = Number.isInteger(man) ? `${man.toLocaleString()}万円` : `${man.toFixed(2)}万円`;
+        return approx ? `約${str}` : str;
+      },
+      debug: false,
+    });
+    const win = window.open('', '_blank', 'width=900,height=750');
+    if (!win) { alert('ポップアップブロックを解除してください。'); return; }
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => { try { win.focus(); win.print(); } catch {} }, 600);
+  };
+
+  const [debugMode, setDebugMode] = React.useState(true);
 
   return (
     <>
@@ -351,26 +369,46 @@ export const NetProceedsListModal: React.FC<Props> = ({
               )}
             </Grid>
 
-            {/* 右：A4プレビュー */}
+            {/* 右：iframeプレビュー */}
             <Grid item xs={12} md={8}>
-              <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, color: NAVY }}>
-                プレビュー（A4）
-              </Typography>
-              <Box sx={{ overflowY: 'auto', maxHeight: 680, border: '1px solid #ccc', borderRadius: 1, background: '#e8e8e8', p: 1 }}>
-                <NetProceedsA4
-                  ref={previewRef}
-                  ownerName={ownerName}
-                  propertyAddress={propertyAddress}
-                  rows={rows}
-                  hasMortgage={hasMortgage}
-                  taxMode={taxMode}
-                  acquisitionCostMan={acquisitionCostMan}
-                  purchaseYear={purchaseYear}
-                  taxDetail={taxDetail}
-                  fmtMan={fmtMan}
-                  navy={NAVY}
-                  gold={GOLD}
-                  bgLight={BG_LIGHT}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Typography variant="subtitle2" fontWeight="bold" sx={{ color: NAVY }}>
+                  プレビュー（A4）
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="caption" color={debugMode ? 'error' : 'text.secondary'}>
+                    {debugMode ? '🔴 デバッグON' : 'デバッグOFF'}
+                  </Typography>
+                  <input type="checkbox" checked={debugMode} onChange={e => setDebugMode(e.target.checked)} />
+                </Box>
+              </Box>
+              <Box sx={{
+                width: 550, height: 660,
+                overflow: 'hidden', border: '2px solid #ccc',
+                borderRadius: 1, background: '#666',
+                position: 'relative',
+              }}>
+                <iframe
+                  srcDoc={buildNetProceedsHtml({
+                    ownerName, propertyAddress, rows, hasMortgage, taxMode,
+                    acquisitionCostMan, purchaseYear, taxDetail,
+                    fmtMan: (yen: number, approx = false) => {
+                      const man = yen / 10_000;
+                      const str = Number.isInteger(man) ? `${man.toLocaleString()}万円` : `${man.toFixed(2)}万円`;
+                      return approx ? `約${str}` : str;
+                    },
+                    debug: debugMode,
+                  })}
+                  title="手残りリストプレビュー"
+                  style={{
+                    position: 'absolute', left: 0, top: 0,
+                    width: `${210 * 3.7795}px`,
+                    height: `${297 * 3.7795}px`,
+                    border: 'none',
+                    transformOrigin: 'top left',
+                    transform: `scale(${Math.min(550 / (210 * 3.7795), 660 / (297 * 3.7795))})`,
+                    background: '#fff',
+                  }}
                 />
               </Box>
             </Grid>
@@ -380,7 +418,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
         <DialogActions sx={{ px: 2, py: 1.5, gap: 1 }}>
           <Button onClick={onClose} color="inherit">閉じる</Button>
           <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>印刷</Button>
-          <Button variant="contained" startIcon={<PdfIcon />} onClick={handlePrint}
+          <Button variant="contained" startIcon={<PrintIcon />} onClick={handlePrint}
             sx={{ bgcolor: NAVY, '&:hover': { bgcolor: '#082447' } }}>
             PDF保存
           </Button>
@@ -391,7 +429,102 @@ export const NetProceedsListModal: React.FC<Props> = ({
 };
 
 // ─────────────────────────────────────────
-// A4 プレビューコンポーネント
+// デバッググリッド生成
+// ─────────────────────────────────────────
+function buildNpDebugGrid(): string {
+  let html = '';
+  for (let x = 0; x <= 210; x += 5) {
+    const c = x % 10 === 0 ? 'rgba(255,0,0,0.35)' : 'rgba(255,100,100,0.18)';
+    html += `<div style="position:absolute;left:${x}mm;top:0;width:0;height:297mm;border-left:1px solid ${c};pointer-events:none;"></div>`;
+    if (x % 10 === 0 && x > 0)
+      html += `<div style="position:absolute;left:${x+0.3}mm;top:0.5mm;font-size:4.5pt;color:red;opacity:0.7;">${x}</div>`;
+  }
+  for (let y = 0; y <= 297; y += 5) {
+    const c = y % 10 === 0 ? 'rgba(255,0,0,0.35)' : 'rgba(255,100,100,0.18)';
+    html += `<div style="position:absolute;left:0;top:${y}mm;width:210mm;height:0;border-top:1px solid ${c};pointer-events:none;"></div>`;
+    if (y % 10 === 0 && y > 0)
+      html += `<div style="position:absolute;left:0.3mm;top:${y+0.3}mm;font-size:4.5pt;color:red;opacity:0.7;">${y}</div>`;
+  }
+  return html;
+}
+
+// ─────────────────────────────────────────
+// overlay BOX生成（デバッグ時は赤枠）
+// ─────────────────────────────────────────
+function npBox(
+  left: number, top: number, w: number, h: number,
+  content: string, fontSize: number, fontWeight: number, color: string,
+  debug: boolean, label = '', extraStyle = ''
+): string {
+  const dbg = debug
+    ? `outline:2px solid red;background:rgba(255,0,0,0.08);`
+    : '';
+  const lbl = debug && label
+    ? `<div style="position:absolute;top:0;left:0;font-size:4pt;color:red;line-height:1;">${label}</div>`
+    : '';
+  return `<div style="position:absolute;left:${left}mm;top:${top}mm;width:${w}mm;height:${h}mm;
+    display:flex;align-items:center;justify-content:center;
+    font-size:${fontSize}pt;font-weight:${fontWeight};color:${color};
+    white-space:nowrap;overflow:hidden;box-sizing:border-box;${dbg}${extraStyle}">
+    ${lbl}${content}
+  </div>`;
+}
+
+// ─────────────────────────────────────────
+// A4 HTML生成（背景画像 + overlay）
+// ─────────────────────────────────────────
+interface BuildHtmlParams {
+  ownerName: string;
+  propertyAddress: string;
+  rows: NetProceedsRow[];
+  hasMortgage: boolean;
+  taxMode: 'unknown' | 'known' | 'none';
+  acquisitionCostMan: string;
+  purchaseYear: string;
+  taxDetail: ReturnType<typeof calcTransferTax> | null;
+  fmtMan: (yen: number, approx?: boolean) => string;
+  debug: boolean;
+}
+
+function buildNetProceedsHtml(p: BuildHtmlParams): string {
+  const { ownerName, propertyAddress, debug, fmtMan } = p;
+
+  // 売主名（「様」重複防止）
+  const ownerDisplay = ownerName.trim().replace(/[\s　]*様\s*$/, '');
+
+  return `<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><title>手残りリスト</title>
+<style>
+  @page{size:A4 portrait;margin:0;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{width:210mm;height:297mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;
+    font-family:'Noto Sans JP','Hiragino Kaku Gothic Pro','Meiryo',sans-serif;}
+  .a4{position:relative;width:210mm;height:297mm;overflow:hidden;}
+  .bg{position:absolute;left:0;top:0;width:210mm;height:297mm;object-fit:fill;z-index:0;}
+  .layer{position:absolute;left:0;top:0;width:210mm;height:297mm;z-index:10;}
+</style>
+</head><body>
+<div class="a4">
+  <img class="bg" src="/sale-schedule/illustrations/template2.png?v=${Date.now()}" alt="" />
+  <div class="layer">
+    ${debug ? buildNpDebugGrid() : ''}
+
+    <!-- ① 物件所在地（仮座標） -->
+    ${npBox(50, 38, 140, 7, propertyAddress || '', 8.5, 600, '#1a1a1a', debug, 'propertyAddress',
+      'justify-content:flex-start;padding-left:1mm;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;align-items:flex-start;')}
+
+    <!-- ② 売主名（仮座標） -->
+    ${npBox(50, 47, 100, 7, ownerDisplay, 9, 600, '#1a1a1a', debug, 'ownerName', 'justify-content:flex-start;padding-left:1mm;')}
+
+    <!-- ③〜⑧ 表の数値：次フェーズで追加 -->
+
+  </div>
+</div>
+</body></html>`;
+}
+
+// ─────────────────────────────────────────
+// A4 プレビューコンポーネント（旧・保持）
 // ─────────────────────────────────────────
 interface A4Props {
   ownerName: string;
