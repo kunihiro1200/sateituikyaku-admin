@@ -61,9 +61,10 @@ const BOXES = {
   // ④ 最低価格
   minPrice:     { left: 66, top: 178.0, w: 57,  h: 7.0 },
 
-  // ── 年月（調整保留中）──
-  step1Year:    { left: 19, top: 89.5, w: 36,  h: 5.5 },
-  step1Month:   { left: 19, top: 96.5, w: 36,  h: 10.0 },
+  // STEP1年（5mm上、5mm左）
+  step1Year:    { left: 14, top: 84.5, w: 36,  h: 5.5 },
+  // STEP1月（4mm上、5mm左）
+  step1Month:   { left: 14, top: 92.5, w: 36,  h: 10.0 },
   step2Year:    { left: 19, top: 139.0, w: 36, h: 5.5 },
   step2StartM:  { left: 19, top: 146.0, w: 17, h: 9.5 },
   step2EndM:    { left: 38, top: 146.0, w: 17, h: 9.5 },
@@ -311,8 +312,8 @@ function buildA4Html(d: SaleScheduleData, debug = false): string {
 
     <!-- 年月（調整保留中・非表示） -->
     <!-- STEP1 年・月：表示開始 -->
-    ${makeBox(B.step1Year,  d.startYear  ? String(d.startYear)  : '', 7,  700, '#ffffff', debug)}
-    ${makeBox(B.step1Month, d.startMonth ? String(d.startMonth) : '', 16, 900, '#C99A3D', debug)}
+    ${makeBox(B.step1Year,  d.startYear  ? `${d.startYear}年`  : '', 10, 700, '#ffffff', debug)}
+    ${makeBox(B.step1Month, d.startMonth ? `${d.startMonth}月` : '', 16, 900, '#C99A3D', debug)}
 
   </div>
 </div>
