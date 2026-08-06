@@ -516,24 +516,25 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     <!-- ② 売主名（確定済み・変更禁止） -->
     ${npBox(46, 47, 104, 7, ownerDisplay, 12, 600, '#1a1a1a', debug, 'ownerName', 'justify-content:flex-start;padding-left:1mm;')}
 
-    <!-- ③〜⑧ 表1行目（仮座標・位置合わせ中） -->
-    <!-- 列X座標（仮）: 売却価格|仲介手数料|印紙代|取得費|譲渡所得税|手残り金額 -->
-    <!-- 行1のY座標(仮): top≈122mm -->
-    ${p.rows.length > 0 ? (() => {
-      const row = p.rows[0];
-      const rowTop = 171;
+    <!-- ③〜⑧ 表（行ごとにY座標固定・X座標共通） -->
+    <!-- 行間: 7mm固定 / 列X座標確定済み -->
+    ${p.rows.slice(0, 2).map((row, i) => {
+      const rowTop = 171 + i * 7;
       const rowH = 7;
       const fmtM = p.fmtMan;
-      const acqCost = p.taxMode !== 'none' && p.taxDetail ? p.taxDetail.acquisitionCostUsed : 0;
+      // 各行の取得費は売却価格×5%（taxMode=unknown）
+      const acqCost = p.taxMode !== 'none'
+        ? Math.round(row.priceYen * 0.05)
+        : 0;
       return [
-        npBox(  6, rowTop, 32, rowH, fmtM(row.priceYen),     12, 600, '#1a1a1a', debug, '売却価格'),
-        npBox( 40, rowTop, 32, rowH, fmtM(row.brokerageFee), 12, 600, '#1a1a1a', debug, '仲介手数料'),
-        npBox( 74, rowTop, 18, rowH, fmtM(row.stampDuty),    12, 600, '#1a1a1a', debug, '印紙代'),
-        npBox( 94, rowTop, 28, rowH, acqCost > 0 ? fmtM(acqCost) : '―', 12, 600, '#1a1a1a', debug, '取得費'),
-        npBox(129, rowTop, 30, rowH, p.taxMode !== 'none' ? fmtM(row.transferTax, true) : '―', 12, 600, '#1a1a1a', debug, '譲渡所得税'),
-        npBox(161, rowTop, 42, rowH, fmtM(row.netProceeds),  13, 900, '#c0392b', debug, '手残り金額'),
+        npBox(  6, rowTop, 32, rowH, fmtM(row.priceYen),     12, 600, '#1a1a1a', debug, i===0?'売却価格':''),
+        npBox( 40, rowTop, 32, rowH, fmtM(row.brokerageFee), 12, 600, '#1a1a1a', debug, i===0?'仲介手数料':''),
+        npBox( 74, rowTop, 18, rowH, fmtM(row.stampDuty),    12, 600, '#1a1a1a', debug, i===0?'印紙代':''),
+        npBox( 94, rowTop, 28, rowH, acqCost > 0 ? fmtM(acqCost) : '―', 12, 600, '#1a1a1a', debug, i===0?'取得費':''),
+        npBox(129, rowTop, 30, rowH, p.taxMode !== 'none' ? fmtM(row.transferTax, true) : '―', 12, 600, '#1a1a1a', debug, i===0?'譲渡所得税':''),
+        npBox(161, rowTop, 42, rowH, fmtM(row.netProceeds),  13, 900, '#c0392b', debug, i===0?'手残り金額':''),
       ].join('');
-    })() : ''}
+    }).join('')}
 
   </div>
 </div>
