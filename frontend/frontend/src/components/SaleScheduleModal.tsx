@@ -59,7 +59,7 @@ const BOXES = {
   // ③ 売出価格：上へ1mm（65→64）
   listPrice:    { left: 78, top: 64.0, w: 52,  h: 7.0 },
   // ④ 最低価格
-  minPrice:     { left: 76, top: 173.0, w: 57,  h: 7.0 },
+  minPrice:     { left: 71, top: 173.0, w: 57,  h: 7.0 },
 
   // ── 年月（調整保留中）──
   step1Year:    { left: 19, top: 89.5, w: 36,  h: 5.5 },
@@ -291,7 +291,7 @@ function buildA4Html(d: SaleScheduleData, debug = false): string {
 <div class="a4-page">
   <!-- 背景テンプレート（変更禁止） -->
   <img class="template-background"
-    src="/sale-schedule/illustrations/template.png" alt="" />
+    src="/sale-schedule/illustrations/template.png?v=${Date.now()}" alt="" />
 
   <!-- 動的テキストBOXオーバーレイ -->
   <div class="overlay-layer">
