@@ -511,17 +511,17 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     ${debug ? buildNpDebugGrid() : ''}
 
     <!-- ① 物件所在地（確定済み・変更禁止） -->
-    ${npBox(46, 38, 144, 7, propertyAddress || '', 11.5, 600, '#1a1a1a', debug, 'propertyAddress',
+    ${npBox(46, 38, 144, 7, propertyAddress || '', 13.5, 600, '#1a1a1a', debug, 'propertyAddress',
       'justify-content:flex-start;padding-left:1mm;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;align-items:flex-start;')}
 
     <!-- ② 売主名（確定済み・変更禁止） -->
-    ${npBox(46, 47, 104, 7, ownerDisplay, 12, 600, '#1a1a1a', debug, 'ownerName', 'justify-content:flex-start;padding-left:1mm;')}
+    ${npBox(46, 47, 104, 7, ownerDisplay, 14, 600, '#1a1a1a', debug, 'ownerName', 'justify-content:flex-start;padding-left:1mm;')}
 
     <!-- ③〜⑧ 表（行ごとにY座標固定・X座標共通） -->
     <!-- 行間: 7mm固定 / 列X座標確定済み -->
     ${p.rows.slice(0, Math.max(p.rows.length - 2, 1)).map((row, i) => {
-      // template2(取得費不明)は5mm下にオフセット
-      const baseTop = p.taxMode === 'unknown' ? 180 : 171;
+      // template2(取得費不明)は+5mm、template3(なし)は-10mm、template4はそのまま
+      const baseTop = p.taxMode === 'unknown' ? 180 : p.taxMode === 'none' ? 161 : 171;
       const rowTop = baseTop + i * (p.taxMode === 'unknown' ? 9 : 8);
       const rowH = 7;
       const fmtM = p.fmtMan;
