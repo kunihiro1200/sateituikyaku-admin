@@ -491,7 +491,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     ? 'template3.png?v=20260807a'
     : p.taxMode === 'known'
     ? 'template4.png?v=20260807a'
-    : 'template2.png?v=20260807d';
+    : 'template2.png?v=20260807e';
 
   return `<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8"><title>手残りリスト</title>
