@@ -50,34 +50,34 @@ import api from '../services/api';
 // BOX座標定数（ここだけ変更すればOK）
 // ─────────────────────────────────────────
 const BOXES = {
-  // 売主名（「様」は背景画像に印刷済み → 氏名のみ表示）
-  ownerName:    { left: 56, top: 33.0, w: 90,  h: 6.0 },
+  // 売主名（新テンプレート：物件番号欄なし → 1行目が売主様）
+  ownerName:    { left: 56, top: 28.5, w: 92,  h: 6.0 },
 
-  // 物件所在地
-  address:      { left: 56, top: 41.0, w: 140, h: 9.0 },
+  // 物件所在地（2行目）
+  address:      { left: 56, top: 36.5, w: 140, h: 9.0 },
 
   // 売出価格（数値のみ・「万円」は背景画像）
-  listPrice:    { left: 81, top: 65.0, w: 48,  h: 7.0 },
+  listPrice:    { left: 81, top: 65.5, w: 48,  h: 7.0 },
 
-  // STEP1
-  step1Year:    { left: 21, top: 76.5, w: 34,  h: 5.0 },
-  step1Month:   { left: 21, top: 82.5, w: 34,  h: 9.5 },
+  // STEP1：左側濃紺BOX内
+  step1Year:    { left: 19, top: 81.0, w: 36,  h: 5.5 },
+  step1Month:   { left: 19, top: 87.5, w: 36,  h: 10.5 },
 
-  // STEP2
-  step2Year:    { left: 21, top: 120.5, w: 34, h: 5.0 },
-  step2StartM:  { left: 21, top: 127.0, w: 16, h: 9.0 },
-  step2EndM:    { left: 40, top: 127.0, w: 16, h: 9.0 },
+  // STEP2：左側濃紺BOX内
+  step2Year:    { left: 19, top: 128.5, w: 36, h: 5.5 },
+  step2StartM:  { left: 19, top: 135.0, w: 17, h: 9.5 },
+  step2EndM:    { left: 38, top: 135.0, w: 17, h: 9.5 },
 
   // 最低価格（数値のみ・「万円で売買契約」は背景画像）
-  minPrice:     { left: 81, top: 159.5, w: 45, h: 7.0 },
+  minPrice:     { left: 81, top: 160.0, w: 45, h: 7.0 },
 
-  // STEP3
-  step3Year:    { left: 21, top: 164.5, w: 34, h: 5.0 },
-  step3Month:   { left: 21, top: 170.5, w: 34, h: 9.0 },
+  // STEP3：左側濃紺BOX内
+  step3Year:    { left: 19, top: 165.0, w: 36, h: 5.5 },
+  step3Month:   { left: 19, top: 171.5, w: 36, h: 9.5 },
 
-  // STEP4
-  step4Year:    { left: 21, top: 196.5, w: 34, h: 5.0 },
-  step4Month:   { left: 21, top: 202.5, w: 34, h: 7.5 },
+  // STEP4：左側濃紺BOX内
+  step4Year:    { left: 19, top: 196.0, w: 36, h: 5.5 },
+  step4Month:   { left: 19, top: 202.5, w: 36, h: 8.0 },
 } as const;
 
 // ─────────────────────────────────────────
