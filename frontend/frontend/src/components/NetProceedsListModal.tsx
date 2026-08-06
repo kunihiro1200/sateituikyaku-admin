@@ -521,7 +521,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     <!-- 行1のY座標(仮): top≈122mm -->
     ${p.rows.length > 0 ? (() => {
       const row = p.rows[0];
-      const rowTop = 160;
+      const rowTop = 172;
       const rowH = 7;
       const fmtM = p.fmtMan;
       const acqCost = p.taxMode !== 'none' && p.taxDetail ? p.taxDetail.acquisitionCostUsed : 0;
