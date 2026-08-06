@@ -50,33 +50,20 @@ import api from '../services/api';
 // BOX座標定数（ここだけ変更すればOK）
 // ─────────────────────────────────────────
 const BOXES = {
-  // ── 物件情報エリア ──
-  // 売主名：「売 主 様」行の右側空欄
-  ownerName:    { left: 56, top: 26.0, w: 140, h: 6.5 },
-
-  // 物件所在地：「物件所在地」行の右側空欄（売主名の約8mm下）
-  address:      { left: 56, top: 34.5, w: 140, h: 9.0 },
-
-  // ── STEP1 ──
-  // 売出価格：「売出価格」右の空欄
+  // 売主名
+  ownerName:    { left: 56, top: 22.0, w: 140, h: 6.5 },
+  // 物件所在地
+  address:      { left: 56, top: 30.5, w: 140, h: 9.0 },
+  // 売出価格
   listPrice:    { left: 80, top: 64.5, w: 50,  h: 7.0 },
-
-  // STEP1 年：左側濃紺BOX内「年」の上の数字
+  // STEP1
   step1Year:    { left: 19, top: 81.5, w: 36,  h: 5.5 },
-
-  // STEP1 月：年の下の大きい数字
   step1Month:   { left: 19, top: 88.5, w: 36,  h: 10.0 },
-
-  // ── STEP2 ──
-  // STEP2 年：左側濃紺BOX内「年」の上の数字
-  step2Year:    { left: 19, top: 130.0, w: 36, h: 5.5 },
-
-  // STEP2 開始月・終了月：「月〜月」の左月と右月
-  step2StartM:  { left: 19, top: 137.0, w: 17, h: 9.5 },
-  step2EndM:    { left: 38, top: 137.0, w: 17, h: 9.5 },
-
-  // ── STEP3 ──
-  // 最低価格：「最低価格」右の空欄
+  // STEP2
+  step2Year:    { left: 19, top: 131.0, w: 36, h: 5.5 },
+  step2StartM:  { left: 19, top: 138.0, w: 17, h: 9.5 },
+  step2EndM:    { left: 38, top: 138.0, w: 17, h: 9.5 },
+  // 最低価格
   minPrice:     { left: 80, top: 158.5, w: 45, h: 7.0 },
 
   // STEP3 年・月：左側濃紺BOX内
@@ -133,27 +120,31 @@ function calcDates() {
 
 function convertDb(seller: Record<string, unknown>, pl: Record<string, unknown> | null): Partial<SaleScheduleData> {
   const { sy, sm, cy, cm, sety, setm, ms, me, my } = calcDates();
-  const listRaw = (pl?.listing_price as number|null) || (pl?.sales_price as number|null) || null;
-  const assessRaw = (seller?.valuation_amount_1 as number|null) || (seller?.valuation_amount_2 as number|null) || null;
 
-  // 売出価格: property_listingsにあればそちら優先、なければ査定額最高値を初期値に
-  // 最低価格: property_listingsにあればそちら優先、なければ査定額最低値を初期値に
+  // property_listings から売出価格取得（あれば優先）
+  const listRaw = (pl?.listing_price as number|null) || (pl?.sales_price as number|null) || null;
+
+  // sellers から査定額取得（camelCase: by-numberレスポンス形式）
+  const v1 = (seller?.valuationAmount1 as number|null) || (seller?.valuation_amount_1 as number|null) || null;
+  const v2 = (seller?.valuationAmount2 as number|null) || (seller?.valuation_amount_2 as number|null) || null;
+  const v3 = (seller?.valuationAmount3 as number|null) || (seller?.valuation_amount_3 as number|null) || null;
+
+  // 売出価格: property_listings優先 → なければ査定額最高値
+  const maxAssess = [v1, v2, v3].filter((v): v is number => v != null && v > 0);
+  const highestAssess = maxAssess.length > 0 ? Math.max(...maxAssess) : null;
   const listPriceMan = listRaw
     ? Math.round(listRaw / 10000)
-    : assessRaw ? Math.round(assessRaw / 10000) : undefined;
+    : highestAssess ? Math.round(highestAssess / 10000) : undefined;
 
-  const assess1 = (seller?.valuation_amount_1 as number|null);
-  const assess2 = (seller?.valuation_amount_2 as number|null);
-  const assess3 = (seller?.valuation_amount_3 as number|null);
-  const vals = [assess1, assess2, assess3].filter((v): v is number => v != null && v > 0);
-  const minAssess = vals.length > 0 ? Math.min(...vals) : null;
-  const minPriceMan = minAssess ? Math.round(minAssess / 10000) : undefined;
+  // 最低価格: property_listings優先 → なければ査定額最低値
+  const lowestAssess = maxAssess.length > 0 ? Math.min(...maxAssess) : null;
+  const minPriceMan = lowestAssess ? Math.round(lowestAssess / 10000) : undefined;
 
   return {
-    propertyNo: (seller?.seller_number as string)||'',
-    ownerName: (seller?.name as string)||'',
-    propertyAddress: (seller?.property_address as string)||'',
-    assessPrice: assessRaw ? Math.round(assessRaw/10000) : undefined,
+    propertyNo: (seller?.sellerNumber as string) || (seller?.seller_number as string) || '',
+    ownerName: (seller?.name as string) || '',
+    propertyAddress: (seller?.propertyAddress as string) || (seller?.property_address as string) || '',
+    assessPrice: highestAssess ? Math.round(highestAssess / 10000) : undefined,
     listPrice: listPriceMan,
     minimumPrice: minPriceMan,
     startYear:sy, startMonth:sm, marketingYear:my, marketingStartMonth:ms, marketingEndMonth:me,

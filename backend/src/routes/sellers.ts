@@ -1298,6 +1298,10 @@ router.get('/by-number/:sellerNumber', async (req: Request, res: Response) => {
       latitude,
       longitude,
       youtoChiiki,
+      // 売却スケジュール資料生成用
+      valuationAmount1: seller.valuationAmount1,
+      valuationAmount2: seller.valuationAmount2,
+      valuationAmount3: seller.valuationAmount3,
     });
   } catch (error) {
     console.error('Get seller by number error:', error);
