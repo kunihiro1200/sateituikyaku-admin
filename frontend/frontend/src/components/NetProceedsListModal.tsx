@@ -511,7 +511,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     ${debug ? buildNpDebugGrid() : ''}
 
     <!-- ① 物件所在地（確定済み・変更禁止） -->
-    ${npBox(46, 38, 144, 7, propertyAddress || '', 13.5, 600, '#1a1a1a', debug, 'propertyAddress',
+    ${npBox(46, p.taxMode === 'none' ? 37 : 38, 144, 7, propertyAddress || '', 13.5, 600, '#1a1a1a', debug, 'propertyAddress',
       'justify-content:flex-start;padding-left:1mm;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;align-items:flex-start;')}
 
     <!-- ② 売主名（確定済み・変更禁止） -->
@@ -520,19 +520,24 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     <!-- ③〜⑧ 表（行ごとにY座標固定・X座標共通） -->
     <!-- 行間: 7mm固定 / 列X座標確定済み -->
     ${p.rows.slice(0, Math.max(p.rows.length - 2, 1)).map((row, i) => {
-      // template2(取得費不明)は+5mm、template3(なし)は-10mm、template4はそのまま
-      const baseTop = p.taxMode === 'unknown' ? 180 : p.taxMode === 'none' ? 161 : 171;
-      const rowTop = baseTop + i * (p.taxMode === 'unknown' ? 9 : 8);
+      // template2(取得費不明): baseTop=180, 行間9mm
+      // template3(なし):      baseTop=156(-5mm), 行間9mm
+      // template4(取得費明確): baseTop=171, 行間8mm
+      const baseTop = p.taxMode === 'unknown' ? 180 : p.taxMode === 'none' ? 156 : 171;
+      const rowInterval = p.taxMode === 'known' ? 8 : 9;
+      const rowTop = baseTop + i * rowInterval;
       const rowH = 7;
       const fmtM = p.fmtMan;
-      // 各行の取得費は売却価格×5%（taxMode=unknown）
       const acqCost = p.taxMode !== 'none'
         ? Math.round(row.priceYen * 0.05)
         : 0;
+      // template3のみ仲介手数料+3mm、印紙代+6mm（仲介+3に加えてさらに+3）
+      const brokerageLeft = p.taxMode === 'none' ? 43 : 40;
+      const stampLeft     = p.taxMode === 'none' ? 80 : 74;
       return [
         npBox(  6, rowTop, 32, rowH, fmtM(row.priceYen),     12, 600, '#1a1a1a', debug, i===0?'売却価格':''),
-        npBox( 40, rowTop, 32, rowH, fmtM(row.brokerageFee), 12, 600, '#1a1a1a', debug, i===0?'仲介手数料':''),
-        npBox( 74, rowTop, 18, rowH, fmtM(row.stampDuty),    12, 600, '#1a1a1a', debug, i===0?'印紙代':''),
+        npBox(brokerageLeft, rowTop, 32, rowH, fmtM(row.brokerageFee), 12, 600, '#1a1a1a', debug, i===0?'仲介手数料':''),
+        npBox(stampLeft,     rowTop, 18, rowH, fmtM(row.stampDuty),    12, 600, '#1a1a1a', debug, i===0?'印紙代':''),
         npBox( 94, rowTop, 28, rowH, acqCost > 0 ? fmtM(acqCost) : '―', 12, 600, '#1a1a1a', debug, i===0?'取得費':''),
         npBox(131, rowTop, 30, rowH, p.taxMode !== 'none' ? fmtM(row.transferTax, true) : '―', 12, 600, '#1a1a1a', debug, i===0?'譲渡所得税':''),
         npBox(161, rowTop, 42, rowH, fmtM(row.netProceeds),  13, 900, '#c0392b', debug, i===0?'手残り金額':''),
