@@ -263,7 +263,7 @@ function buildA4Html(d: SaleScheduleData, debug = false, sellerNumber = ''): str
   // oita用座標オフセット（FI用BOXESは絶対変更しない）
   const B = isOita ? {
     ownerName:   { ...BOXES.ownerName,   top: BOXES.ownerName.top   + 1 },
-    address:     { ...BOXES.address,     top: BOXES.address.top     + 3 },
+    address:     { ...BOXES.address,     top: BOXES.address.top     + 4 },
     listPrice:   { ...BOXES.listPrice,   top: BOXES.listPrice.top   + 3, left: BOXES.listPrice.left - 1 },
     minPrice:    { ...BOXES.minPrice,    top: BOXES.minPrice.top    + 4 },
     step1Year:   { ...BOXES.step1Year },
@@ -271,10 +271,10 @@ function buildA4Html(d: SaleScheduleData, debug = false, sellerNumber = ''): str
     step2Year:   { ...BOXES.step2Year,   top: BOXES.step2Year.top   + 2 },
     step2StartM: { ...BOXES.step2StartM, top: BOXES.step2StartM.top + 2 },
     step2EndM:   { ...BOXES.step2EndM,   top: BOXES.step2EndM.top   + 2 },
-    step3Year:   { ...BOXES.step3Year,   top: BOXES.step3Year.top   + 3 },
-    step3Month:  { ...BOXES.step3Month,  top: BOXES.step3Month.top  + 3 },
-    step4Year:   { ...BOXES.step4Year,   top: BOXES.step4Year.top   + 4 },
-    step4Month:  { ...BOXES.step4Month,  top: BOXES.step4Month.top  + 4 },
+    step3Year:   { ...BOXES.step3Year,   top: BOXES.step3Year.top   + 4 },
+    step3Month:  { ...BOXES.step3Month,  top: BOXES.step3Month.top  + 4 },
+    step4Year:   { ...BOXES.step4Year,   top: BOXES.step4Year.top   + 5 },
+    step4Month:  { ...BOXES.step4Month,  top: BOXES.step4Month.top  + 5 },
   } : BOXES;
 
   return `<!DOCTYPE html>
