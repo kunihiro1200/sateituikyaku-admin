@@ -225,8 +225,7 @@ function makeBox(
 }
 
 // 物件所在地専用（長い場合のみフォント縮小・flex中央配置・2行まで）
-function makeAddressBox(addr: string, debug: boolean): string {
-  const coord = BOXES.address;
+function makeAddressBox(addr: string, debug: boolean, coord = BOXES.address): string {
   const len = addr.length;
   // 1.3〜1.4倍に変更（元8.5pt → 11〜12pt）
   const fs = len > 40 ? 8 : len > 28 ? 9.5 : 12;
@@ -324,7 +323,7 @@ function buildA4Html(d: SaleScheduleData, debug = false, sellerNumber = ''): str
     ${makeBox(B.ownerName, ownerNameOnly(d.ownerName||''), 12.5, 600, '#1a1a1a', debug, 'justify-content:flex-start;padding-left:2mm;')}
 
     <!-- ② 物件所在地 fs可変→大きめに -->
-    ${makeAddressBox(d.propertyAddress||'', debug)}
+    ${makeAddressBox(d.propertyAddress||'', debug, B.address)}
 
     <!-- ③ 売出価格（数値のみ）fs:14→18pt ゴールド太字 -->
     ${makeBox(B.listPrice, fmtNum(d.listPrice), 18, 900, GOLD, debug)}
