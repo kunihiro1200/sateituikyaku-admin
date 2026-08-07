@@ -136,6 +136,7 @@ interface Props {
   initialPropertyAddress?: string;
   initialMaxPrice?: number;   // 円
   initialMinPrice?: number;   // 円
+  initialPropertyType?: string; // 種別（正規化済み: 'land', 'apartment', 'detached_house' 等）
 }
 
 // ─────────────────────────────────────────
@@ -147,6 +148,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
   initialPropertyAddress = '',
   initialMaxPrice,
   initialMinPrice,
+  initialPropertyType,
 }) => {
   const NAVY = '#061D3B';
   const GOLD = '#C99A3D';
@@ -164,6 +166,9 @@ export const NetProceedsListModal: React.FC<Props> = ({
 
   // 抵当権抹消：非表示・false固定
   const [hasMortgage] = useState(false);
+
+  // 種別が土地かどうか（土地は建物がないため築年数・減価償却不要）
+  const isLand = initialPropertyType === 'land' || (initialPropertyType || '').includes('土');
 
   // 譲渡所得税
   const [taxMode, setTaxMode] = useState<'unknown' | 'known' | 'none'>('unknown');
@@ -202,13 +207,14 @@ export const NetProceedsListModal: React.FC<Props> = ({
         mode: taxMode,
         salePrice: priceYen,
         acquisitionCost: acquisitionCostMan ? parseFloat(acquisitionCostMan) * 10_000 : undefined,
-        purchaseYear: purchaseYear ? parseInt(purchaseYear) : undefined,
+        // 土地は建物なし・減価償却不要のため purchaseYear を渡さない（長期前提）
+        purchaseYear: (!isLand && purchaseYear) ? parseInt(purchaseYear) : undefined,
         saleYear: new Date().getFullYear(),
       });
       const netProceeds = priceYen - brokerageFee - stampDuty - mortgageRelease - taxAmount;
       return { priceYen, brokerageFee, stampDuty, mortgageRelease, transferTax: taxAmount, netProceeds };
     });
-  }, [maxPriceMan, minPriceMan, hasMortgage, taxMode, acquisitionCostMan, purchaseYear]);
+  }, [maxPriceMan, minPriceMan, hasMortgage, taxMode, acquisitionCostMan, purchaseYear, isLand]);
 
   // 税計算の詳細（代表値: 最高額で表示）
   const taxDetail = useMemo(() => {
@@ -219,10 +225,11 @@ export const NetProceedsListModal: React.FC<Props> = ({
       mode: taxMode,
       salePrice: maxYen,
       acquisitionCost: acquisitionCostMan ? parseFloat(acquisitionCostMan) * 10_000 : undefined,
-      purchaseYear: purchaseYear ? parseInt(purchaseYear) : undefined,
+      // 土地は建物なし・減価償却不要のため purchaseYear を渡さない
+      purchaseYear: (!isLand && purchaseYear) ? parseInt(purchaseYear) : undefined,
       saleYear: new Date().getFullYear(),
     });
-  }, [taxMode, maxPriceMan, acquisitionCostMan, purchaseYear]);
+  }, [taxMode, maxPriceMan, acquisitionCostMan, purchaseYear, isLand]);
 
   const fmtMan = (yen: number, approx = false) => {
     const man = yen / 10_000;
@@ -316,18 +323,27 @@ export const NetProceedsListModal: React.FC<Props> = ({
 
               {taxMode === 'known' && (
                 <Grid container spacing={1} sx={{ mt: 0.5 }}>
-                  <Grid item xs={6}>
-                    <TextField fullWidth size="small" label="取得費（万円）" type="number"
+                  <Grid item xs={isLand ? 12 : 6}>
+                    <TextField fullWidth size="small" label="取得費（万円）*" type="number"
+                      required
+                      error={!acquisitionCostMan}
+                      helperText={!acquisitionCostMan ? '必須入力です' : ''}
                       value={acquisitionCostMan} onChange={e => setAcquisitionCostMan(e.target.value)} />
                   </Grid>
-                  <Grid item xs={6}>
-                    <TextField fullWidth size="small" label="購入年（例:2010）" type="number"
-                      value={purchaseYear} onChange={e => setPurchaseYear(e.target.value)} />
-                  </Grid>
+                  {!isLand && (
+                    <Grid item xs={6}>
+                      <TextField fullWidth size="small" label="購入年（例:2010）*" type="number"
+                        required
+                        error={!purchaseYear}
+                        helperText={!purchaseYear ? '必須入力です' : ''}
+                        value={purchaseYear} onChange={e => setPurchaseYear(e.target.value)} />
+                    </Grid>
+                  )}
                   <Grid item xs={12}>
                     <Alert severity="info" sx={{ fontSize: '0.7rem', py: 0 }}>
-                      土地:建物＝3:7で按分。建物は木造(0.046)で減価償却。
-                      5年超所有: 長期譲渡所得税率20.315%。
+                      {isLand
+                        ? '土地は建物がないため減価償却はありません。5年超所有: 長期譲渡所得税率20.315%。'
+                        : '土地:建物＝3:7で按分。建物は木造(0.046)で減価償却。5年超所有: 長期譲渡所得税率20.315%。'}
                     </Alert>
                   </Grid>
                 </Grid>
@@ -408,8 +424,12 @@ export const NetProceedsListModal: React.FC<Props> = ({
         <Divider />
         <DialogActions sx={{ px: 2, py: 1.5, gap: 1 }}>
           <Button onClick={onClose} color="inherit">閉じる</Button>
-          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>印刷</Button>
+          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}
+            disabled={taxMode === 'known' && (!acquisitionCostMan || (!isLand && !purchaseYear))}>
+            印刷
+          </Button>
           <Button variant="contained" startIcon={<PrintIcon />} onClick={handlePrint}
+            disabled={taxMode === 'known' && (!acquisitionCostMan || (!isLand && !purchaseYear))}
             sx={{ bgcolor: NAVY, '&:hover': { bgcolor: '#082447' } }}>
             PDF保存
           </Button>
@@ -522,8 +542,8 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     ${(p.taxMode === 'none' ? p.rows.slice(0, Math.max(p.rows.length - 2, 1)) : p.rows.slice(0, Math.max(p.rows.length - 2, 1))).map((row, i) => {
       // template2(取得費不明): baseTop=180, 行間9mm
       // template3(なし):      baseTop=155(-1mm上), 行間10mm(+1mm)
-      // template4(取得費明確): baseTop=148(-8mm上), 行間9mm(+1mm)
-      const baseTop = p.taxMode === 'unknown' ? 180 : p.taxMode === 'none' ? 155 : 148;
+      // template4(取得費明確): baseTop=146(-2mm上), 行間9mm
+      const baseTop = p.taxMode === 'unknown' ? 180 : p.taxMode === 'none' ? 155 : 146;
       const rowInterval = p.taxMode === 'known' ? 9 : p.taxMode === 'none' ? 10 : 9;
       const rowTop = baseTop + i * rowInterval;
       const rowH = 7;

@@ -10196,6 +10196,7 @@ HP：https://ifoo-oita.com/
           onClose={() => setNetProceedsModalOpen(false)}
           initialOwnerName={seller.name || ''}
           initialPropertyAddress={propInfo.address || seller.propertyAddress || ''}
+          initialPropertyType={propInfo.propertyType || seller.propertyType || ''}
           initialMaxPrice={Math.max(
             seller.valuationAmount1 || 0,
             seller.valuationAmount2 || 0,
