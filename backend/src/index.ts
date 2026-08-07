@@ -90,6 +90,7 @@ import hazardAnalyzeRoutes from './routes/hazardAnalyze';
 import floorPlanCompareRoutes from './routes/floorPlanCompare';
 import youtoChiikiRoutes from './routes/youtoChiiki';
 import sitemapRoutes from './routes/sitemap';
+import documentDraftsRoutes from './routes/documentDrafts';
 import { activityLogger } from './middleware/activityLogger';
 import { authenticate } from './middleware/auth';
 
@@ -1082,6 +1083,7 @@ app.use('/api/distribution-history', distributionHistoryRoutes); // 他社物件
 app.use('/api/property-preview', propertyPreviewRoutes); // 物件プレビュー（認証不要・公開）
 app.use('/api/ai', aiPropertyEnhanceRoutes); // AI物件情報解析（認証不要）
 app.use('/api/ai', aiImagePropertyRegisterRoutes); // AI画像→他社物件登録
+app.use('/api/document-drafts', documentDraftsRoutes); // 資料生成ドラフト保存・取得
 // floor-plan-compareは上部（sellerRoutesより前）に登録済み
 
 // Cron Job: 買主の建売専門HP価格変動チェック（毎日実行）

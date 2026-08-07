@@ -36,7 +36,7 @@
  *   年の空欄:        left≈20, top≈196, w≈36, h≈5
  *   月の空欄:        left≈20, top≈202, w≈36, h≈8
  */
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, Grid, Box, Typography,
@@ -389,6 +389,7 @@ export const SaleScheduleModal: React.FC<Props> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string|null>(null);
   const [debugMode, setDebugMode] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle'|'saving'|'saved'|'error'>('idle');
   const [data, setData] = useState<SaleScheduleData>({
     propertyNo: initialSellerNumber,
     ownerName: initialOwnerName,
@@ -413,6 +414,35 @@ export const SaleScheduleModal: React.FC<Props> = ({
       setError((e as {response?:{data?:{message?:string}}})?.response?.data?.message || '売主番号が見つかりませんでした');
     } finally { setLoading(false); }
   }, [searchNo]);
+
+  // モーダルが開いたとき、DBに保存済みデータがあれば読み込む
+  useEffect(() => {
+    if (!open || !initialSellerNumber) return;
+    (async () => {
+      try {
+        const res = await api.get(`/api/document-drafts/${initialSellerNumber}/sale_schedule`);
+        if (res.data?.data) {
+          setData(prev => ({ ...prev, ...res.data.data }));
+        }
+      } catch {
+        // 保存データなし → 初期値のまま
+      }
+    })();
+  }, [open, initialSellerNumber]);
+
+  // DBに保存
+  const handleSave = useCallback(async () => {
+    if (!initialSellerNumber) return;
+    setSaveStatus('saving');
+    try {
+      await api.post(`/api/document-drafts/${initialSellerNumber}/sale_schedule`, { data });
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch {
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    }
+  }, [data, initialSellerNumber]);
 
   const setNum = (f: keyof SaleScheduleData) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setData(p => ({ ...p, [f]: e.target.value===''?undefined:Number(e.target.value) }));
@@ -566,6 +596,11 @@ export const SaleScheduleModal: React.FC<Props> = ({
       <Divider />
       <DialogActions sx={{ px:2, py:1.5, gap:1 }}>
         <Button onClick={onClose} color="inherit">閉じる</Button>
+        <Button variant="outlined" onClick={handleSave}
+          disabled={saveStatus === 'saving'}
+          color={saveStatus === 'saved' ? 'success' : saveStatus === 'error' ? 'error' : 'primary'}>
+          {saveStatus === 'saving' ? '保存中...' : saveStatus === 'saved' ? '✓ 保存済み' : saveStatus === 'error' ? '保存失敗' : '保存'}
+        </Button>
         <Button variant="contained" startIcon={<PrintIcon/>} onClick={handlePrint}
           sx={{ bgcolor:NAVY, '&:hover':{ bgcolor:'#082447' } }}>
           印刷 / PDF保存
