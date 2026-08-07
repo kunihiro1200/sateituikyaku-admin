@@ -541,8 +541,8 @@ interface BuildHtmlParams {
 function buildNetProceedsHtml(p: BuildHtmlParams): string {
   const { ownerName, propertyAddress, debug, fmtMan } = p;
 
-  // 売主名（「様」重複防止）
-  const ownerDisplay = ownerName.trim().replace(/[\s　]*様\s*$/, '');
+  // 売主名（「様」重複防止してから付与）
+  const ownerDisplay = ownerName.trim().replace(/[\s　]*様\s*$/, '') + ' 様';
 
   // テンプレート切り替え：
   // taxMode='unknown'(取得費不明) → template2
