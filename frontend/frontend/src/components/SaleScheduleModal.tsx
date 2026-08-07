@@ -54,8 +54,8 @@ import api from '../services/api';
 const BOXES = {
   // ① 売主名：上へ3mm（40→37）
   ownerName:    { left: 56, top: 37.0, w: 130, h: 6.5 },
-  // ② 物件所在地（2mm下げ）
-  address:      { left: 56, top: 50.0, w: 130, h: 9.0 },
+  // ② 物件所在地（2mm下げ → さらに2mm下げて計4mm）
+  address:      { left: 56, top: 52.0, w: 130, h: 9.0 },
   // ③ 売出価格：2mm下げ
   listPrice:    { left: 78, top: 68.0, w: 52,  h: 7.0 },
   // ④ 最低価格：左4mm・下3mm
