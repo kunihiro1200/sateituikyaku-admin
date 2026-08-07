@@ -611,7 +611,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
 <style>
   @page{size:A4 portrait;margin:0;}
   *{box-sizing:border-box;margin:0;padding:0;}
-  html,body{width:210mm;height:297mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;
+  html,body{width:210mm;height:297mm;margin:0 !important;padding:0 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;
     font-family:'Noto Sans JP','Hiragino Kaku Gothic Pro','Meiryo',sans-serif;}
   .a4{position:relative;width:210mm;height:297mm;overflow:hidden;}
   .bg{position:absolute;left:0;top:0;width:210mm;height:297mm;object-fit:fill;z-index:0;}
