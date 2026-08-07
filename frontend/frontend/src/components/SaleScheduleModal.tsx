@@ -251,7 +251,6 @@ function makeAddressBox(addr: string, debug: boolean): string {
 // A4 HTML生成（背景画像 + BOXオーバーレイ）
 // ─────────────────────────────────────────
 function buildA4Html(d: SaleScheduleData, debug = false, sellerNumber = ''): string {
-  const B = BOXES;
   const GOLD = '#C99A3D';
   const NAVY = '#ffffff'; // 濃紺BOX内の文字は白
 
@@ -260,6 +259,23 @@ function buildA4Html(d: SaleScheduleData, debug = false, sellerNumber = ''): str
   const templateFile = isOita
     ? `/sale-schedule/illustrations/template_oita.png?v=${Date.now()}`
     : `/sale-schedule/illustrations/template.png?v=${Date.now()}`;
+
+  // oita用座標オフセット（FI用BOXESは絶対変更しない）
+  const B = isOita ? {
+    ownerName:   { ...BOXES.ownerName,   top: BOXES.ownerName.top   + 1 },
+    address:     { ...BOXES.address,     top: BOXES.address.top     + 1 },
+    listPrice:   { ...BOXES.listPrice,   top: BOXES.listPrice.top   + 2 },
+    minPrice:    { ...BOXES.minPrice,    top: BOXES.minPrice.top    + 2 },
+    step1Year:   { ...BOXES.step1Year },
+    step1Month:  { ...BOXES.step1Month },
+    step2Year:   { ...BOXES.step2Year,   top: BOXES.step2Year.top   + 2 },
+    step2StartM: { ...BOXES.step2StartM, top: BOXES.step2StartM.top + 2 },
+    step2EndM:   { ...BOXES.step2EndM,   top: BOXES.step2EndM.top   + 2 },
+    step3Year:   { ...BOXES.step3Year,   top: BOXES.step3Year.top   + 2 },
+    step3Month:  { ...BOXES.step3Month,  top: BOXES.step3Month.top  + 2 },
+    step4Year:   { ...BOXES.step4Year,   top: BOXES.step4Year.top   + 2 },
+    step4Month:  { ...BOXES.step4Month,  top: BOXES.step4Month.top  + 2 },
+  } : BOXES;
 
   return `<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8"><title>売却スケジュール</title>
