@@ -539,21 +539,26 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
 
     <!-- ③〜⑧ 表（行ごとにY座標固定・X座標共通） -->
     <!-- 行間: 7mm固定 / 列X座標確定済み -->
-    ${(p.taxMode === 'none' ? p.rows.slice(0, Math.max(p.rows.length - 2, 1)) : p.rows.slice(0, Math.max(p.rows.length - 2, 1))).map((row, i) => {
+    ${(p.taxMode === 'none' ? p.rows.slice(0, Math.max(p.rows.length - 2, 1)) : p.taxMode === 'known' ? p.rows.slice(0) : p.rows.slice(0, Math.max(p.rows.length - 2, 1))).map((row, i) => {
       // template2(取得費不明): baseTop=180, 行間9mm
       // template3(なし):      baseTop=155(-1mm上), 行間10mm(+1mm)
-      // template4(取得費明確): baseTop=146(-2mm上), 行間9mm
+      // template4(取得費明確): baseTop=146, 1-2行目9mm・3行目以降8mm
       const baseTop = p.taxMode === 'unknown' ? 180 : p.taxMode === 'none' ? 155 : 146;
-      const rowInterval = p.taxMode === 'known' ? 9 : p.taxMode === 'none' ? 10 : 9;
-      const rowTop = baseTop + i * rowInterval;
+      const rowInterval = p.taxMode === 'known'
+        ? (i < 2 ? 9 : 8)
+        : p.taxMode === 'none' ? 10 : 9;
+      // template4: 1行目=baseTop, 2行目=baseTop+9, 3行目=baseTop+18+8, ...
+      const rowTop = p.taxMode === 'known'
+        ? (i === 0 ? baseTop : i === 1 ? baseTop + 9 : baseTop + 9 + (i - 1) * 8)
+        : baseTop + i * rowInterval;
       const rowH = 7;
       const fmtM = p.fmtMan;
       const acqCost = p.taxMode !== 'none'
         ? Math.round(row.priceYen * 0.05)
         : 0;
-      // template3のみ仲介手数料50mm、印紙代107mm / template4は仲介手数料45mm、印紙代89mm
+      // template3のみ仲介手数料50mm、印紙代107mm / template4は仲介手数料45mm、印紙代91mm
       const brokerageLeft = p.taxMode === 'none' ? 50 : p.taxMode === 'known' ? 45 : 40;
-      const stampLeft     = p.taxMode === 'none' ? 107 : p.taxMode === 'known' ? 89 : 74;
+      const stampLeft     = p.taxMode === 'none' ? 107 : p.taxMode === 'known' ? 91 : 74;
       // template3のみ譲渡所得税+4mm / template4は手残り金額+2mm
       const transferTaxLeft = p.taxMode === 'none' ? 135 : 131;
       const netProceedsLeft = p.taxMode === 'known' ? 163 : 161;
