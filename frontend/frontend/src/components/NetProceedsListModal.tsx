@@ -531,9 +531,9 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
       const acqCost = p.taxMode !== 'none'
         ? Math.round(row.priceYen * 0.05)
         : 0;
-      // template3のみ仲介手数料46mm、印紙代89mm
-      const brokerageLeft = p.taxMode === 'none' ? 46 : 40;
-      const stampLeft     = p.taxMode === 'none' ? 89 : 74;
+      // template3のみ仲介手数料49mm、印紙代96mm
+      const brokerageLeft = p.taxMode === 'none' ? 49 : 40;
+      const stampLeft     = p.taxMode === 'none' ? 96 : 74;
       // template3のみ譲渡所得税+4mm
       const transferTaxLeft = p.taxMode === 'none' ? 135 : 131;
       return [
