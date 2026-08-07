@@ -92,6 +92,52 @@ export const SouhuModal: React.FC<Props> = ({
       .catch(() => {});
   }, []);
 
+  const [saveStatus, setSaveStatus] = useState<'idle'|'saving'|'saved'|'error'>('idle');
+
+  // モーダルが開いたとき、DBに保存済みデータがあれば読み込む
+  useEffect(() => {
+    if (!open || !sellerNumber) return;
+    (async () => {
+      try {
+        const { default: api } = await import('../services/api');
+        const res = await api.get(`/api/document-drafts/${sellerNumber}/souhu`);
+        if (res.data?.data) {
+          const d = res.data.data;
+          if (d.chkSatei   !== undefined) setChkSatei(d.chkSatei);
+          if (d.chkPamphlet !== undefined) setChkPamphlet(d.chkPamphlet);
+          if (d.chkSchedule !== undefined) setChkSchedule(d.chkSchedule);
+          if (d.chkTemodori !== undefined) setChkTemodori(d.chkTemodori);
+          if (d.custom1    !== undefined) setCustom1(d.custom1);
+          if (d.chkCustom1 !== undefined) setChkCustom1(d.chkCustom1);
+          if (d.custom2    !== undefined) setCustom2(d.custom2);
+          if (d.chkCustom2 !== undefined) setChkCustom2(d.chkCustom2);
+          if (d.custom3    !== undefined) setCustom3(d.custom3);
+          if (d.chkCustom3 !== undefined) setChkCustom3(d.chkCustom3);
+          if (d.memo       !== undefined) setMemo(d.memo);
+          if (d.signature  !== undefined) setSignature(d.signature);
+        }
+      } catch {
+        // 保存データなし → 初期値のまま
+      }
+    })();
+  }, [open, sellerNumber]);
+
+  const handleSave = async () => {
+    if (!sellerNumber) return;
+    setSaveStatus('saving');
+    try {
+      const { default: api } = await import('../services/api');
+      await api.post(`/api/document-drafts/${sellerNumber}/souhu`, {
+        data: { chkSatei, chkPamphlet, chkSchedule, chkTemodori, custom1, chkCustom1, custom2, chkCustom2, custom3, chkCustom3, memo, signature },
+      });
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch {
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    }
+  };
+
   const buildHtml = (): string => {
     const items: string[] = [];
     if (chkSatei)                        items.push('□　査定書（査定額、周辺事例、マーケット情報、防災関連）');
@@ -273,6 +319,10 @@ export const SouhuModal: React.FC<Props> = ({
       <Divider />
       <DialogActions sx={{ px: 2, py: 1.5, gap: 1 }}>
         <Button onClick={onClose} color="inherit">閉じる</Button>
+        <Button variant="outlined" onClick={handleSave} disabled={saveStatus === 'saving'}
+          color={saveStatus === 'saved' ? 'success' : saveStatus === 'error' ? 'error' : 'primary'}>
+          {saveStatus === 'saving' ? '保存中...' : saveStatus === 'saved' ? '✓ 保存済み' : saveStatus === 'error' ? '保存失敗' : '保存'}
+        </Button>
         <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>印刷</Button>
         <Button variant="contained" startIcon={<PrintIcon />} onClick={handlePrint}
           sx={{ bgcolor: NAVY, '&:hover': { bgcolor: '#082447' } }}>

@@ -291,6 +291,44 @@ export const NetProceedsListModal: React.FC<Props> = ({
   };
 
   const [debugMode, setDebugMode] = React.useState(false);
+  const [saveStatus, setSaveStatus] = React.useState<'idle'|'saving'|'saved'|'error'>('idle');
+
+  // モーダルが開いたとき、DBに保存済みデータがあれば読み込む
+  React.useEffect(() => {
+    if (!open || !initialSellerNumber) return;
+    (async () => {
+      try {
+        const { default: api } = await import('../services/api');
+        const res = await api.get(`/api/document-drafts/${initialSellerNumber}/net_proceeds`);
+        if (res.data?.data) {
+          const d = res.data.data;
+          if (d.maxPriceMan) setMaxPriceMan(d.maxPriceMan);
+          if (d.minPriceMan) setMinPriceMan(d.minPriceMan);
+          if (d.taxMode) setTaxMode(d.taxMode);
+          if (d.acquisitionCostMan) setAcquisitionCostMan(d.acquisitionCostMan);
+          if (d.purchaseYear) setPurchaseYear(d.purchaseYear);
+        }
+      } catch {
+        // 保存データなし → 初期値のまま
+      }
+    })();
+  }, [open, initialSellerNumber]);
+
+  const handleSave = async () => {
+    if (!initialSellerNumber) return;
+    setSaveStatus('saving');
+    try {
+      const { default: api } = await import('../services/api');
+      await api.post(`/api/document-drafts/${initialSellerNumber}/net_proceeds`, {
+        data: { maxPriceMan, minPriceMan, taxMode, acquisitionCostMan, purchaseYear },
+      });
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch {
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    }
+  };
 
   return (
     <>
@@ -462,6 +500,10 @@ export const NetProceedsListModal: React.FC<Props> = ({
         <Divider />
         <DialogActions sx={{ px: 2, py: 1.5, gap: 1 }}>
           <Button onClick={onClose} color="inherit">閉じる</Button>
+          <Button variant="outlined" onClick={handleSave} disabled={saveStatus === 'saving'}
+            color={saveStatus === 'saved' ? 'success' : saveStatus === 'error' ? 'error' : 'primary'}>
+            {saveStatus === 'saving' ? '保存中...' : saveStatus === 'saved' ? '✓ 保存済み' : saveStatus === 'error' ? '保存失敗' : '保存'}
+          </Button>
           <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}
             disabled={taxMode === 'known' && (!acquisitionCostMan || (!isLand && !purchaseYear))}>
             印刷
