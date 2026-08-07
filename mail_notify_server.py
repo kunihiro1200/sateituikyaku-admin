@@ -586,10 +586,7 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                                 logging.info(f"  [スキップ] HOME4U: スレッド {thread_id[:16]}... は既に処理済み（コメントなし）")
                         else:
                             if not memo_found:
-                                logging.info(f"  [待機] HOME4U: コメントが取れていないため処理済みにせず次回チェックに委ねます (thread={thread_id[:16]}...)")
-                                # notified_ids にも追加しない → 次回チェックで再処理される
-                                notified_ids.discard(msg_id)
-                                continue
+                                logging.info(f"  [DB転記] HOME4U: コメントなしだが転記します (thread={thread_id[:16]}...)")
                             home4u_processed_threads.add(thread_id)
                             save_home4u_processed_threads(home4u_processed_threads)
                             logging.info("  [DB転記] HOME4U(Re:あり)検知 → home4u-transfer を非同期実行します")
