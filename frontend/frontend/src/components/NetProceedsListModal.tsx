@@ -519,7 +519,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
 
     <!-- ③〜⑧ 表（行ごとにY座標固定・X座標共通） -->
     <!-- 行間: 7mm固定 / 列X座標確定済み -->
-    ${(p.taxMode === 'none' ? p.rows.slice(0, Math.max(p.rows.length - 3, 1)) : p.rows.slice(0, Math.max(p.rows.length - 2, 1))).map((row, i) => {
+    ${(p.taxMode === 'none' ? p.rows.slice(0, Math.max(p.rows.length - 2, 1)) : p.rows.slice(0, Math.max(p.rows.length - 2, 1))).map((row, i) => {
       // template2(取得費不明): baseTop=180, 行間9mm
       // template3(なし):      baseTop=155(-1mm上), 行間10mm(+1mm)
       // template4(取得費明確): baseTop=171, 行間8mm
