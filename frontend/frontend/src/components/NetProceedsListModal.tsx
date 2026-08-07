@@ -624,8 +624,10 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         npBox(  6, rowTop, 32, rowH, fmtM(row.priceYen),     12, 600, '#1a1a1a', debug, i===0?'売却価格':''),
         npBox(brokerageLeft, rowTop, 32, rowH, fmtM(row.brokerageFee), 12, 600, '#1a1a1a', debug, i===0?'仲介手数料':''),
         npBox(stampLeft,     rowTop, 18, rowH, fmtM(row.stampDuty),    12, 600, '#1a1a1a', debug, i===0?'印紙代':''),
-        p.taxMode !== 'known' ? npBox( 94, rowTop, 28, rowH, acqCost > 0 ? fmtM(acqCost) : '―', 12, 600, '#1a1a1a', debug, i===0?'取得費':'') : '',
-        npBox(transferTaxLeft, rowTop, 30, rowH, p.taxMode !== 'none' ? fmtM(row.transferTax, true) : '', 12, 600, '#1a1a1a', debug, i===0&&p.taxMode!=='none'?'譲渡所得税':''),
+        // template3(none)は取得費・譲渡所得税列なし
+        p.taxMode === 'unknown' ? npBox( 94, rowTop, 28, rowH, acqCost > 0 ? fmtM(acqCost) : '', 12, 600, '#1a1a1a', debug, i===0?'取得費':'') : '',
+        p.taxMode === 'known'   ? npBox( 94, rowTop, 28, rowH, '', 12, 600, '#1a1a1a', debug, '') : '',
+        p.taxMode !== 'none'    ? npBox(transferTaxLeft, rowTop, 30, rowH, fmtM(row.transferTax, true), 12, 600, '#1a1a1a', debug, i===0?'譲渡所得税':'') : '',
         npBox(netProceedsLeft, rowTop, 42, rowH, fmtM(row.netProceeds),  13, 900, '#c0392b', debug, i===0?'手残り金額':''),
       ].join('');
     }).join('')}
