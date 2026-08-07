@@ -389,7 +389,7 @@ export const SaleScheduleModal: React.FC<Props> = ({
   const [searchNo, setSearchNo] = useState(initialSellerNumber);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string|null>(null);
-  const [debugMode, setDebugMode] = useState(true);
+  const [debugMode, setDebugMode] = useState(false);
   const [data, setData] = useState<SaleScheduleData>({
     propertyNo: initialSellerNumber,
     ownerName: initialOwnerName,
