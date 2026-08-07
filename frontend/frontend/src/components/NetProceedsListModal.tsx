@@ -172,6 +172,26 @@ export const NetProceedsListModal: React.FC<Props> = ({
   // 種別が土地かどうか（土地は建物がないため築年数・減価償却不要）
   const isLand = initialPropertyType === 'land' || (initialPropertyType || '').includes('土');
 
+  // テンプレート画像をBase64でキャッシュ（srcDoc内で外部画像が読めない問題の対策）
+  const [imgCache, setImgCache] = useState<Record<string, string>>({});
+  React.useEffect(() => {
+    const templates = [
+      'template2.png', 'template3.png', 'template4.png',
+      'template2_oita.png', 'template3_oita.png', 'template4_oita.png',
+    ];
+    templates.forEach(name => {
+      const url = `/sale-schedule/illustrations/${name}`;
+      fetch(url)
+        .then(r => r.blob())
+        .then(blob => {
+          const reader = new FileReader();
+          reader.onload = () => setImgCache(prev => ({ ...prev, [name]: reader.result as string }));
+          reader.readAsDataURL(blob);
+        })
+        .catch(() => {});
+    });
+  }, []);
+
   // 譲渡所得税
   const [taxMode, setTaxMode] = useState<'unknown' | 'known' | 'none'>('unknown');
   const [acquisitionCostMan, setAcquisitionCostMan] = useState('');
@@ -239,12 +259,23 @@ export const NetProceedsListModal: React.FC<Props> = ({
     return approx ? `約${str}` : str;
   };
 
+  // 現在のtaxMode・sellerNumberに対応するテンプレートファイル名を返す
+  const getTemplateName = (mode: typeof taxMode, sellerNum: string) => {
+    const isOitaMode = sellerNum.trim().length > 0 && !sellerNum.trim().toUpperCase().startsWith('FI');
+    const sfx = isOitaMode ? '_oita' : '';
+    return mode === 'none' ? `template3${sfx}.png`
+      : mode === 'known' ? `template4${sfx}.png`
+      : `template2${sfx}.png`;
+  };
+
   const handlePrint = () => {
+    const tplName = getTemplateName(taxMode, initialSellerNumber);
     const html = buildNetProceedsHtml({
       ownerName, propertyAddress, rows, hasMortgage, taxMode,
       acquisitionCostMan, purchaseYear, taxDetail,
       sellerNumber: initialSellerNumber,
       baseUrl: window.location.origin,
+      templateDataUrl: imgCache[tplName],
       fmtMan: (yen: number, approx = false) => {
         const man = yen / 10_000;
         const str = Number.isInteger(man) ? `${man.toLocaleString()}万円` : `${man.toFixed(2)}万円`;
@@ -405,6 +436,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
                     acquisitionCostMan, purchaseYear, taxDetail,
                     sellerNumber: initialSellerNumber,
                     baseUrl: window.location.origin,
+                    templateDataUrl: imgCache[getTemplateName(taxMode, initialSellerNumber)],
                     fmtMan: (yen: number, approx = false) => {
                       const man = yen / 10_000;
                       const str = Number.isInteger(man) ? `${man.toLocaleString()}万円` : `${man.toFixed(2)}万円`;
@@ -503,6 +535,7 @@ interface BuildHtmlParams {
   debug: boolean;
   sellerNumber?: string; // 売主番号（FI で始まらない場合は _oita テンプレートを使用）
   baseUrl?: string;      // srcDoc内でのベースURL（window.location.origin）
+  templateDataUrl?: string; // Base64エンコードされた背景画像（srcDoc内で外部URL不可のため）
 }
 
 function buildNetProceedsHtml(p: BuildHtmlParams): string {
@@ -527,6 +560,8 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     : `template2${suffix}.png?v=20260807f`;
   // srcDoc内のiframeはoriginを引き継がないため絶対URLで指定
   const templateFile = `${p.baseUrl || ''}/sale-schedule/illustrations/${templateName}`;
+  // Base64データがあればそちらを優先（srcDoc内での外部画像読み込み問題の対策）
+  const templateSrc = p.templateDataUrl || templateFile;
 
   return `<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8"><title>手残りリスト</title>
@@ -542,7 +577,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
 </style>
 </head><body>
 <div class="a4">
-  <img class="bg" src="${templateFile}" alt="" />
+  <img class="bg" src="${templateSrc}" alt="" />
   <div class="layer">
     ${debug ? buildNpDebugGrid() : ''}
 
