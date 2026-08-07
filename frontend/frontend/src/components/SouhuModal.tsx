@@ -151,7 +151,7 @@ export const SouhuModal: React.FC<Props> = ({
     </div>
 
     <!-- 本文エリア -->
-    <div style="position:absolute;left:20mm;top:168mm;width:170mm;">
+    <div style="position:absolute;left:20mm;top:167mm;width:170mm;">
       <div style="font-size:11.5pt;line-height:2.0;">
         お世話になっております。${companyShort}の${sigName}と申します。<br/>
         この度は査定のご依頼を頂きまして誠にありがとうございます。<br/>
