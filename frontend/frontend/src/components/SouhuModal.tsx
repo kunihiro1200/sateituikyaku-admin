@@ -71,11 +71,11 @@ export const SouhuModal: React.FC<Props> = ({
     if (chkTemodori)  items.push('□　手残り金額リスト');
 
     const itemsHtml = items.map(item =>
-      `<div style="margin-bottom:2.5mm;font-size:9.5pt;">${item}</div>`
+      `<div style="margin-bottom:2.5mm;font-size:11.5pt;">${item}</div>`
     ).join('');
 
     const memoHtml = memo.trim()
-      ? `<div style="margin-top:3mm;font-size:9.5pt;">${memo.trim().replace(/\n/g, '<br/>')}</div>`
+      ? `<div style="margin-top:3mm;font-size:11.5pt;">${memo.trim().replace(/\n/g, '<br/>')}</div>`
       : '';
 
     const imgSrc = imgData || `/sale-schedule/illustrations/souhu.png`;
@@ -96,8 +96,8 @@ export const SouhuModal: React.FC<Props> = ({
   <img class="bg" src="${imgSrc}" alt="" />
   <div class="layer">
     <!-- 本文エリア -->
-    <div style="position:absolute;left:20mm;top:68mm;width:170mm;">
-      <div style="font-size:9.5pt;line-height:2.0;">
+    <div style="position:absolute;left:20mm;top:168mm;width:170mm;">
+      <div style="font-size:11.5pt;line-height:2.0;">
         お世話になっております。${companyName}の${employeeName || '◎◎'}と申します。<br/>
         この度は査定のご依頼を頂きまして誠にありがとうございます。<br/>
         下記を同封させていただきます。
@@ -105,11 +105,11 @@ export const SouhuModal: React.FC<Props> = ({
       <div style="margin-top:4mm;">
         ${itemsHtml}
       </div>
-      <div style="font-size:9.5pt;line-height:2.0;margin-top:2mm;">
+      <div style="font-size:11.5pt;line-height:2.0;margin-top:2mm;">
         となっております。
       </div>
       ${memoHtml}
-      <div style="font-size:9.5pt;line-height:2.0;margin-top:4mm;">
+      <div style="font-size:11.5pt;line-height:2.0;margin-top:4mm;">
         こちらのエリアでは弊社に問合せの多い地域となっておりますので、<br/>
         ご売却の際は是非ご紹介させて頂ければと思います。<br/>
         ご不明点がございましたらいつでもご連絡頂ければと思います。<br/>
