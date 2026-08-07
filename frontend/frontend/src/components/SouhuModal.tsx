@@ -120,9 +120,14 @@ export const SouhuModal: React.FC<Props> = ({
   <img class="bg" src="${imgSrc}" alt="" />
   <div class="layer">
 
-    <!-- 署名エリア：上60mm・左115mm -->
-    <div style="position:absolute;left:115mm;top:60mm;width:90mm;font-size:11pt;line-height:1.8;">
-      <div style="font-weight:700;font-size:12pt;margin-bottom:1mm;">${company.name}</div>
+    <!-- 日付：署名の5mm上 -->
+    <div style="position:absolute;left:120mm;top:60mm;width:90mm;font-size:12pt;">
+      ${new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}
+    </div>
+
+    <!-- 署名エリア：上65mm・左120mm -->
+    <div style="position:absolute;left:120mm;top:65mm;width:90mm;font-size:12pt;line-height:1.8;">
+      <div style="font-weight:700;font-size:13pt;margin-bottom:1mm;">${company.name}</div>
       <div>${company.zip}</div>
       <div>${company.address}</div>
       <div>${company.building}</div>
