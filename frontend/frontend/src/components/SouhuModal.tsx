@@ -125,8 +125,8 @@ export const SouhuModal: React.FC<Props> = ({
       ${new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}
     </div>
 
-    <!-- 売主名：上81mm・左20mm -->
-    <div style="position:absolute;left:20mm;top:81mm;font-size:20pt;font-weight:600;font-family:'Hiragino Mincho ProN','Yu Mincho','YuMincho','MS Mincho','serif';">
+    <!-- 売主名：上76mm・左20mm -->
+    <div style="position:absolute;left:20mm;top:76mm;font-size:20pt;font-weight:600;font-family:'Hiragino Mincho ProN','Yu Mincho','YuMincho','MS Mincho','serif';">
       ${ownerName.trim().replace(/[\s　]*様\s*$/, '')}
     </div>
 
