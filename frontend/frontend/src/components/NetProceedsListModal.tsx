@@ -547,17 +547,24 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
 
     <!-- ③〜⑧ 表（行ごとにY座標固定・X座標共通） -->
     <!-- 行間: 7mm固定 / 列X座標確定済み -->
-    ${(p.taxMode === 'none' ? p.rows.slice(0, Math.max(p.rows.length - 2, 1)) : p.taxMode === 'known' ? p.rows.slice(0) : p.rows.slice(0, Math.max(p.rows.length - 2, 1))).map((row, i) => {
+    ${(p.taxMode === 'none' ? p.rows.slice(0, Math.max(p.rows.length - 2, 1)) : p.taxMode === 'known' ? p.rows.slice(0, 12) : p.rows.slice(0, Math.max(p.rows.length - 2, 1))).map((row, i) => {
       // template2(取得費不明): baseTop=180, 行間9mm
       // template3(なし):      baseTop=155(-1mm上), 行間10mm(+1mm)
-      // template4(取得費明確): baseTop=146, 1-2行目9mm・3行目以降8mm
+      // template4(取得費明確): baseTop=146, 1-2行目9mm・3-4行目8mm・5行目以降9mm
       const baseTop = p.taxMode === 'unknown' ? 180 : p.taxMode === 'none' ? 155 : 146;
       const rowInterval = p.taxMode === 'known'
-        ? (i < 2 ? 9 : 8)
+        ? (i < 2 ? 9 : i < 4 ? 8 : 9)
         : p.taxMode === 'none' ? 10 : 9;
-      // template4: 1行目=baseTop, 2行目=baseTop+9, 3行目=baseTop+18+8, ...
+      // template4: 累積オフセットで正確に計算
+      // i=0:+0, i=1:+9, i=2:+17, i=3:+25, i=4:+34, i=5:+43, ...
       const rowTop = p.taxMode === 'known'
-        ? (i === 0 ? baseTop : i === 1 ? baseTop + 9 : baseTop + 9 + (i - 1) * 8)
+        ? (() => {
+            if (i === 0) return baseTop;
+            if (i === 1) return baseTop + 9;
+            if (i === 2) return baseTop + 17;
+            if (i === 3) return baseTop + 25;
+            return baseTop + 25 + (i - 3) * 9; // 5行目(i=4)以降は9mm間隔
+          })()
         : baseTop + i * rowInterval;
       const rowH = 7;
       const fmtM = p.fmtMan;
