@@ -290,7 +290,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
     setTimeout(() => { try { win.focus(); win.print(); } catch {} }, 600);
   };
 
-  const [debugMode, setDebugMode] = React.useState(true);
+  const [debugMode, setDebugMode] = React.useState(false);
 
   return (
     <>
@@ -625,7 +625,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         npBox(brokerageLeft, rowTop, 32, rowH, fmtM(row.brokerageFee), 12, 600, '#1a1a1a', debug, i===0?'仲介手数料':''),
         npBox(stampLeft,     rowTop, 18, rowH, fmtM(row.stampDuty),    12, 600, '#1a1a1a', debug, i===0?'印紙代':''),
         p.taxMode !== 'known' ? npBox( 94, rowTop, 28, rowH, acqCost > 0 ? fmtM(acqCost) : '―', 12, 600, '#1a1a1a', debug, i===0?'取得費':'') : '',
-        npBox(transferTaxLeft, rowTop, 30, rowH, p.taxMode !== 'none' ? fmtM(row.transferTax, true) : '―', 12, 600, '#1a1a1a', debug, i===0?'譲渡所得税':''),
+        npBox(transferTaxLeft, rowTop, 30, rowH, p.taxMode !== 'none' ? fmtM(row.transferTax, true) : '', 12, 600, '#1a1a1a', debug, i===0&&p.taxMode!=='none'?'譲渡所得税':''),
         npBox(netProceedsLeft, rowTop, 42, rowH, fmtM(row.netProceeds),  13, 900, '#c0392b', debug, i===0?'手残り金額':''),
       ].join('');
     }).join('')}
