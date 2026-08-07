@@ -29,7 +29,7 @@ const COMPANY_FI = {
   name: '株式会社くじら不動産',
   zip: '〒810-0073',
   address: '福岡市中央区舞鶴３－１－１０',
-  building: 'オフィスニューガイアセレス赤坂門No19－201',
+  building: '',
   tel: '092-401-5331',
   mail: 'tenant@ifoo-oita.com',
 };
@@ -135,7 +135,7 @@ export const SouhuModal: React.FC<Props> = ({
       <div style="font-weight:700;font-size:13pt;margin-bottom:1mm;">${company.name}</div>
       <div>${company.zip}</div>
       <div>${company.address}</div>
-      <div>${company.building}</div>
+      ${company.building ? `<div>${company.building}</div>` : ''}
       <div>担当：${sigName}</div>
       <div>TEL:${company.tel}</div>
       <div>MAIL:${company.mail}</div>
