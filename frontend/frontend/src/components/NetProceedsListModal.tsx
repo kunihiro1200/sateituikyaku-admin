@@ -137,6 +137,7 @@ interface Props {
   initialMaxPrice?: number;   // 円
   initialMinPrice?: number;   // 円
   initialPropertyType?: string; // 種別（正規化済み: 'land', 'apartment', 'detached_house' 等）
+  initialSellerNumber?: string; // 売主番号（例: FI00001, AA00001）
 }
 
 // ─────────────────────────────────────────
@@ -149,6 +150,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
   initialMaxPrice,
   initialMinPrice,
   initialPropertyType,
+  initialSellerNumber = '',
 }) => {
   const NAVY = '#061D3B';
   const GOLD = '#C99A3D';
@@ -241,6 +243,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
     const html = buildNetProceedsHtml({
       ownerName, propertyAddress, rows, hasMortgage, taxMode,
       acquisitionCostMan, purchaseYear, taxDetail,
+      sellerNumber: initialSellerNumber,
       fmtMan: (yen: number, approx = false) => {
         const man = yen / 10_000;
         const str = Number.isInteger(man) ? `${man.toLocaleString()}万円` : `${man.toFixed(2)}万円`;
@@ -399,6 +402,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
                   srcDoc={buildNetProceedsHtml({
                     ownerName, propertyAddress, rows, hasMortgage, taxMode,
                     acquisitionCostMan, purchaseYear, taxDetail,
+                    sellerNumber: initialSellerNumber,
                     fmtMan: (yen: number, approx = false) => {
                       const man = yen / 10_000;
                       const str = Number.isInteger(man) ? `${man.toLocaleString()}万円` : `${man.toFixed(2)}万円`;
@@ -495,6 +499,7 @@ interface BuildHtmlParams {
   taxDetail: ReturnType<typeof calcTransferTax> | null;
   fmtMan: (yen: number, approx?: boolean) => string;
   debug: boolean;
+  sellerNumber?: string; // 売主番号（FI で始まらない場合は _oita テンプレートを使用）
 }
 
 function buildNetProceedsHtml(p: BuildHtmlParams): string {
@@ -507,11 +512,14 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
   // taxMode='unknown'(取得費不明) → template2
   // taxMode='none'(なし) → template3
   // taxMode='known'(取得費明確) → template4
+  // 売主番号が FI で始まらない場合は _oita サフィックスのテンプレートを使用
+  const isOita = !((p.sellerNumber || '').toUpperCase().startsWith('FI'));
+  const suffix = isOita ? '_oita' : '';
   const templateFile = p.taxMode === 'none'
-    ? 'template3.png?v=20260807c'
+    ? `template3${suffix}.png?v=20260807c`
     : p.taxMode === 'known'
-    ? 'template4.png?v=20260807a'
-    : 'template2.png?v=20260807f';
+    ? `template4${suffix}.png?v=20260807a`
+    : `template2${suffix}.png?v=20260807f`;
 
   return `<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8"><title>手残りリスト</title>

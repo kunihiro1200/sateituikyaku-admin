@@ -10197,6 +10197,7 @@ HP：https://ifoo-oita.com/
           initialOwnerName={seller.name || ''}
           initialPropertyAddress={propInfo.address || seller.propertyAddress || ''}
           initialPropertyType={propInfo.propertyType || seller.propertyType || ''}
+          initialSellerNumber={seller.sellerNumber || ''}
           initialMaxPrice={Math.max(
             seller.valuationAmount1 || 0,
             seller.valuationAmount2 || 0,
