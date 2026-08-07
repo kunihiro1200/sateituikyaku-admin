@@ -511,29 +511,29 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     ${debug ? buildNpDebugGrid() : ''}
 
     <!-- ① 物件所在地（確定済み・変更禁止） -->
-    ${npBox(46, p.taxMode === 'none' ? 37 : 38, 144, 7, propertyAddress || '', 13.5, 600, '#1a1a1a', debug, 'propertyAddress',
+    ${npBox(46, p.taxMode === 'none' ? 37 : p.taxMode === 'known' ? 35 : 38, 144, 7, propertyAddress || '', 13.5, 600, '#1a1a1a', debug, 'propertyAddress',
       'justify-content:flex-start;padding-left:1mm;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;align-items:flex-start;')}
 
     <!-- ② 売主名（確定済み・変更禁止） -->
-    ${npBox(46, 47, 104, 7, ownerDisplay, 14, 600, '#1a1a1a', debug, 'ownerName', 'justify-content:flex-start;padding-left:1mm;')}
+    ${npBox(46, p.taxMode === 'known' ? 45 : 47, 104, 7, ownerDisplay, 14, 600, '#1a1a1a', debug, 'ownerName', 'justify-content:flex-start;padding-left:1mm;')}
 
     <!-- ③〜⑧ 表（行ごとにY座標固定・X座標共通） -->
     <!-- 行間: 7mm固定 / 列X座標確定済み -->
     ${(p.taxMode === 'none' ? p.rows.slice(0, Math.max(p.rows.length - 2, 1)) : p.rows.slice(0, Math.max(p.rows.length - 2, 1))).map((row, i) => {
       // template2(取得費不明): baseTop=180, 行間9mm
       // template3(なし):      baseTop=155(-1mm上), 行間10mm(+1mm)
-      // template4(取得費明確): baseTop=171, 行間8mm
-      const baseTop = p.taxMode === 'unknown' ? 180 : p.taxMode === 'none' ? 155 : 171;
-      const rowInterval = p.taxMode === 'known' ? 8 : p.taxMode === 'none' ? 10 : 9;
+      // template4(取得費明確): baseTop=156(-15mm上), 行間9mm(+1mm)
+      const baseTop = p.taxMode === 'unknown' ? 180 : p.taxMode === 'none' ? 155 : 156;
+      const rowInterval = p.taxMode === 'known' ? 9 : p.taxMode === 'none' ? 10 : 9;
       const rowTop = baseTop + i * rowInterval;
       const rowH = 7;
       const fmtM = p.fmtMan;
       const acqCost = p.taxMode !== 'none'
         ? Math.round(row.priceYen * 0.05)
         : 0;
-      // template3のみ仲介手数料50mm、印紙代101mm
-      const brokerageLeft = p.taxMode === 'none' ? 50 : 40;
-      const stampLeft     = p.taxMode === 'none' ? 101 : 74;
+      // template3のみ仲介手数料50mm、印紙代101mm / template4は仲介手数料45mm、印紙代84mm
+      const brokerageLeft = p.taxMode === 'none' ? 50 : p.taxMode === 'known' ? 45 : 40;
+      const stampLeft     = p.taxMode === 'none' ? 101 : p.taxMode === 'known' ? 84 : 74;
       // template3のみ譲渡所得税+4mm
       const transferTaxLeft = p.taxMode === 'none' ? 135 : 131;
       return [
