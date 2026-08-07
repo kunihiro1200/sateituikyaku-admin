@@ -513,7 +513,9 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
   // taxMode='none'(なし) → template3
   // taxMode='known'(取得費明確) → template4
   // 売主番号が FI で始まらない場合は _oita サフィックスのテンプレートを使用
-  const isOita = !((p.sellerNumber || '').toUpperCase().startsWith('FI'));
+  // ※ 売主番号が未設定（空）の場合は通常テンプレート（FI扱い）
+  const sellerNum = (p.sellerNumber || '').trim().toUpperCase();
+  const isOita = sellerNum.length > 0 && !sellerNum.startsWith('FI');
   const suffix = isOita ? '_oita' : '';
   const templateFile = p.taxMode === 'none'
     ? `template3${suffix}.png?v=20260807c`
