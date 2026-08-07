@@ -244,6 +244,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
       ownerName, propertyAddress, rows, hasMortgage, taxMode,
       acquisitionCostMan, purchaseYear, taxDetail,
       sellerNumber: initialSellerNumber,
+      baseUrl: window.location.origin,
       fmtMan: (yen: number, approx = false) => {
         const man = yen / 10_000;
         const str = Number.isInteger(man) ? `${man.toLocaleString()}万円` : `${man.toFixed(2)}万円`;
@@ -403,6 +404,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
                     ownerName, propertyAddress, rows, hasMortgage, taxMode,
                     acquisitionCostMan, purchaseYear, taxDetail,
                     sellerNumber: initialSellerNumber,
+                    baseUrl: window.location.origin,
                     fmtMan: (yen: number, approx = false) => {
                       const man = yen / 10_000;
                       const str = Number.isInteger(man) ? `${man.toLocaleString()}万円` : `${man.toFixed(2)}万円`;
@@ -500,6 +502,7 @@ interface BuildHtmlParams {
   fmtMan: (yen: number, approx?: boolean) => string;
   debug: boolean;
   sellerNumber?: string; // 売主番号（FI で始まらない場合は _oita テンプレートを使用）
+  baseUrl?: string;      // srcDoc内でのベースURL（window.location.origin）
 }
 
 function buildNetProceedsHtml(p: BuildHtmlParams): string {
@@ -517,11 +520,13 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
   const sellerNum = (p.sellerNumber || '').trim().toUpperCase();
   const isOita = sellerNum.length > 0 && !sellerNum.startsWith('FI');
   const suffix = isOita ? '_oita' : '';
-  const templateFile = p.taxMode === 'none'
+  const templateName = p.taxMode === 'none'
     ? `template3${suffix}.png?v=20260807c`
     : p.taxMode === 'known'
     ? `template4${suffix}.png?v=20260807a`
     : `template2${suffix}.png?v=20260807f`;
+  // srcDoc内のiframeはoriginを引き継がないため絶対URLで指定
+  const templateFile = `${p.baseUrl || ''}/sale-schedule/illustrations/${templateName}`;
 
   return `<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8"><title>手残りリスト</title>
@@ -536,7 +541,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
 </style>
 </head><body>
 <div class="a4">
-  <img class="bg" src="/sale-schedule/illustrations/${templateFile}" alt="" />
+  <img class="bg" src="${templateFile}" alt="" />
   <div class="layer">
     ${debug ? buildNpDebugGrid() : ''}
 
