@@ -530,6 +530,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
 
   return `<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8"><title>手残りリスト</title>
+<base href="${p.baseUrl || ''}/" />
 <style>
   @page{size:A4 portrait;margin:0;}
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -554,7 +555,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
 
     <!-- ③〜⑧ 表（行ごとにY座標固定・X座標共通） -->
     <!-- 行間: 7mm固定 / 列X座標確定済み -->
-    ${(p.taxMode === 'none' ? p.rows.slice(0) : p.taxMode === 'known' ? p.rows.slice(0, 15) : p.rows.slice(0)).map((row, i) => {
+    ${(p.taxMode === 'none' ? p.rows.slice(0) : p.taxMode === 'known' ? p.rows.slice(0, 12) : p.rows.slice(0)).map((row, i) => {
       // template2(取得費不明): baseTop=180, 行間9mm
       // template3(なし):      baseTop=155(-1mm上), 行間10mm(+1mm)
       // template4(取得費明確): baseTop=146, 1-2行目9mm・3-4行目8mm・5行目以降9mm
