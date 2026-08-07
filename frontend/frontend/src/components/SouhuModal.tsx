@@ -120,13 +120,13 @@ export const SouhuModal: React.FC<Props> = ({
   <img class="bg" src="${imgSrc}" alt="" />
   <div class="layer">
 
-    <!-- 日付：署名の5mm上 -->
-    <div style="position:absolute;left:120mm;top:60mm;width:90mm;font-size:12pt;">
+    <!-- 日付：上55mm・右10mm -->
+    <div style="position:absolute;right:10mm;top:55mm;font-size:12pt;">
       ${new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}
     </div>
 
-    <!-- 売主名：上100mm・左20mm -->
-    <div style="position:absolute;left:20mm;top:100mm;font-size:12pt;font-weight:600;">
+    <!-- 売主名：上88mm・左20mm -->
+    <div style="position:absolute;left:20mm;top:88mm;font-size:18pt;font-weight:600;">
       ${ownerName.trim().replace(/[\s　]*様\s*$/, '')}
     </div>
 
