@@ -193,7 +193,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
   }, []);
 
   // 譲渡所得税
-  const [taxMode, setTaxMode] = useState<'unknown' | 'known' | 'none'>('unknown');
+  const [taxMode, setTaxMode] = useState<'unknown' | 'known' | 'none'>('none');
   const [acquisitionCostMan, setAcquisitionCostMan] = useState('');
   const [purchaseYear, setPurchaseYear] = useState('');
 
