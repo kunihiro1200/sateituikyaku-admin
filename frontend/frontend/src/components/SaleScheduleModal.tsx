@@ -250,10 +250,16 @@ function makeAddressBox(addr: string, debug: boolean): string {
 // ─────────────────────────────────────────
 // A4 HTML生成（背景画像 + BOXオーバーレイ）
 // ─────────────────────────────────────────
-function buildA4Html(d: SaleScheduleData, debug = false): string {
+function buildA4Html(d: SaleScheduleData, debug = false, sellerNumber = ''): string {
   const B = BOXES;
   const GOLD = '#C99A3D';
   const NAVY = '#ffffff'; // 濃紺BOX内の文字は白
+
+  // 売主番号がFIで始まらない場合は_oitaテンプレートを使用
+  const isOita = sellerNumber.trim().length > 0 && !sellerNumber.trim().toUpperCase().startsWith('FI');
+  const templateFile = isOita
+    ? `/sale-schedule/illustrations/template_oita.png?v=${Date.now()}`
+    : `/sale-schedule/illustrations/template.png?v=${Date.now()}`;
 
   return `<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8"><title>売却スケジュール</title>
@@ -292,7 +298,7 @@ function buildA4Html(d: SaleScheduleData, debug = false): string {
 <div class="a4-page">
   <!-- 背景テンプレート（変更禁止） -->
   <img class="template-background"
-    src="/sale-schedule/illustrations/template.png?v=${Date.now()}" alt="" />
+    src="${templateFile}" alt="" />
 
   <!-- 動的テキストBOXオーバーレイ -->
   <div class="overlay-layer">
@@ -400,7 +406,7 @@ export const SaleScheduleModal: React.FC<Props> = ({
 
   // 印刷（debug=OFF）
   const handlePrint = useCallback(() => {
-    const html = buildA4Html(data, false);
+    const html = buildA4Html(data, false, initialSellerNumber);
     const win = window.open('', '_blank', 'width=900,height=750');
     if (!win) { alert('ポップアップブロックを解除してください。'); return; }
     win.document.write(html); win.document.close();
@@ -414,7 +420,7 @@ export const SaleScheduleModal: React.FC<Props> = ({
   const PH = 660; // プレビュー高さpx
   const scale = Math.min(PW / A4W, PH / A4H);
 
-  const previewHtml = buildA4Html(data, debugMode);
+  const previewHtml = buildA4Html(data, debugMode, initialSellerNumber);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   return (
