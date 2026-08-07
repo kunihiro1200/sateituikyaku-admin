@@ -79,6 +79,7 @@ import NearbyBuyersList from '../components/NearbyBuyersList';
 import { VisitPreparationButton } from '../components/VisitPreparationButton';
 import SaleScheduleModal from '../components/SaleScheduleModal';
 import NetProceedsListModal from '../components/NetProceedsListModal';
+import { SouhuModal } from '../components/SouhuModal';
 import AreaReportModal from '../components/AreaReportModal';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CommentHighlightsPanel from '../components/CommentHighlightsPanel';
@@ -991,6 +992,7 @@ const CallModePage = () => {
   const [docGenMenuAnchor, setDocGenMenuAnchor] = useState<null | HTMLElement>(null);
   const [saleScheduleModalOpen, setSaleScheduleModalOpen] = useState(false);
   const [netProceedsModalOpen, setNetProceedsModalOpen] = useState(false);
+  const [souhuModalOpen, setSouhuModalOpen] = useState(false);
   // 画像数バッジ用の状態
   const [driveImageCount, setDriveImageCount] = useState<number | null>(null);
   // エリア情勢レポートモーダル用の状態
@@ -5256,6 +5258,9 @@ HP：https://ifoo-oita.com/
                     </MenuItem>
                     <MenuItem onClick={() => { setDocGenMenuAnchor(null); setNetProceedsModalOpen(true); }}>
                       手残り金額
+                    </MenuItem>
+                    <MenuItem onClick={() => { setDocGenMenuAnchor(null); setSouhuModalOpen(true); }}>
+                      送付状
                     </MenuItem>
                   </Menu>
                 </>
@@ -10207,6 +10212,17 @@ HP：https://ifoo-oita.com/
             ...[seller.valuationAmount1, seller.valuationAmount2, seller.valuationAmount3]
               .filter((v): v is number => typeof v === 'number' && v > 0)
           ) || undefined}
+        />
+      )}
+
+      {/* エリア情勢レポートモーダル */}
+      {seller && (
+        <SouhuModal
+          open={souhuModalOpen}
+          onClose={() => setSouhuModalOpen(false)}
+          sellerNumber={seller.sellerNumber || ''}
+          employeeName={employee?.name || ''}
+          ownerName={seller.name || ''}
         />
       )}
 
