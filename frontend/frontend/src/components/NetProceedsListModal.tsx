@@ -519,7 +519,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
 
     <!-- ③〜⑧ 表（行ごとにY座標固定・X座標共通） -->
     <!-- 行間: 7mm固定 / 列X座標確定済み -->
-    ${p.rows.slice(0, Math.max(p.rows.length - 2, 1)).map((row, i) => {
+    ${(p.taxMode === 'none' ? p.rows.slice(0, Math.max(p.rows.length - 3, 1)) : p.rows.slice(0, Math.max(p.rows.length - 2, 1))).map((row, i) => {
       // template2(取得費不明): baseTop=180, 行間9mm
       // template3(なし):      baseTop=155(-1mm上), 行間10mm(+1mm)
       // template4(取得費明確): baseTop=171, 行間8mm
@@ -531,9 +531,9 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
       const acqCost = p.taxMode !== 'none'
         ? Math.round(row.priceYen * 0.05)
         : 0;
-      // template3のみ仲介手数料+3mm、印紙代+6mm（仲介+3に加えてさらに+3）
-      const brokerageLeft = p.taxMode === 'none' ? 43 : 40;
-      const stampLeft     = p.taxMode === 'none' ? 86 : 74;
+      // template3のみ仲介手数料46mm、印紙代89mm
+      const brokerageLeft = p.taxMode === 'none' ? 46 : 40;
+      const stampLeft     = p.taxMode === 'none' ? 89 : 74;
       // template3のみ譲渡所得税+4mm
       const transferTaxLeft = p.taxMode === 'none' ? 135 : 131;
       return [
