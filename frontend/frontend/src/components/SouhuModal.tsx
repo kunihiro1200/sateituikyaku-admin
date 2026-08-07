@@ -3,8 +3,9 @@
  * - souhu.png を背景に本文をオーバーレイ
  * - 売主番号がFIの場合は「株式会社くじら不動産」、それ以外は「株式会社いふう」
  * - チェックボックスで同封物を選択（チェックなし→本文に含めない）
+ * - カスタム同封物3つ（空欄入力・チェックで追加）
  * - メモ欄はユーザー自由入力
- * - 署名は上から100mm・左から100mmに固定（担当名は変更可能）
+ * - 署名は上から65mm・左から120mmに固定（担当名は変更可能）
  */
 import React, { useState, useEffect } from 'react';
 import {
@@ -17,14 +18,13 @@ import { Close as CloseIcon, Print as PrintIcon } from '@mui/icons-material';
 interface Props {
   open: boolean;
   onClose: () => void;
-  sellerNumber?: string;   // FI判定用
-  employeeName?: string;   // ◎◎ = ログインユーザー名
-  ownerName?: string;      // 売主名（宛先用）
+  sellerNumber?: string;
+  employeeName?: string;
+  ownerName?: string;
 }
 
 const NAVY = '#061D3B';
 
-// FI / 非FI の会社情報
 const COMPANY_FI = {
   name: '株式会社くじら不動産',
   zip: '〒810-0073',
@@ -52,28 +52,34 @@ export const SouhuModal: React.FC<Props> = ({
   const company = isFI ? COMPANY_FI : COMPANY_OITA;
   const companyShort = isFI ? 'くじら不動産' : '株式会社いふう';
 
-  // チェックボックス（デフォルト全チェック）
   const [chkSatei, setChkSatei] = useState(true);
   const [chkPamphlet, setChkPamphlet] = useState(true);
   const [chkSchedule, setChkSchedule] = useState(true);
   const [chkTemodori, setChkTemodori] = useState(true);
+  // カスタム同封物3つ（テキスト＋チェック）
+  const [custom1, setCustom1] = useState('');
+  const [chkCustom1, setChkCustom1] = useState(false);
+  const [custom2, setCustom2] = useState('');
+  const [chkCustom2, setChkCustom2] = useState(false);
+  const [custom3, setCustom3] = useState('');
+  const [chkCustom3, setChkCustom3] = useState(false);
   const [memo, setMemo] = useState('');
-  // 担当名（デフォルト=ログインユーザー名、変更可能）
   const [signature, setSignature] = useState(employeeName);
 
-  // モーダルが開くたびに初期化
   useEffect(() => {
     if (open) {
       setChkSatei(true);
       setChkPamphlet(true);
       setChkSchedule(true);
       setChkTemodori(true);
+      setCustom1(''); setChkCustom1(false);
+      setCustom2(''); setChkCustom2(false);
+      setCustom3(''); setChkCustom3(false);
       setMemo('');
       setSignature(employeeName);
     }
   }, [open, employeeName]);
 
-  // 画像Base64キャッシュ
   const [imgData, setImgData] = useState<string>('');
   useEffect(() => {
     fetch('/sale-schedule/illustrations/souhu.png')
@@ -88,10 +94,13 @@ export const SouhuModal: React.FC<Props> = ({
 
   const buildHtml = (): string => {
     const items: string[] = [];
-    if (chkSatei)     items.push('□　査定書（査定額、周辺事例、マーケット情報、防災関連）');
-    if (chkPamphlet)  items.push('□　パンフレット（売却の流れ、注意点）');
-    if (chkSchedule)  items.push('□　売却スケジュール（あくまで案ですので、ご参考程度にお願い致します）');
-    if (chkTemodori)  items.push('□　手残り金額リスト');
+    if (chkSatei)                        items.push('□　査定書（査定額、周辺事例、マーケット情報、防災関連）');
+    if (chkPamphlet)                     items.push('□　パンフレット（売却の流れ、注意点）');
+    if (chkSchedule)                     items.push('□　売却スケジュール（あくまで案ですので、ご参考程度にお願い致します）');
+    if (chkTemodori)                     items.push('□　手残り金額リスト');
+    if (chkCustom1 && custom1.trim())    items.push(`□　${custom1.trim()}`);
+    if (chkCustom2 && custom2.trim())    items.push(`□　${custom2.trim()}`);
+    if (chkCustom3 && custom3.trim())    items.push(`□　${custom3.trim()}`);
 
     const itemsHtml = items.map(item =>
       `<div style="margin-bottom:2.5mm;font-size:11.5pt;">${item}</div>`
@@ -125,8 +134,8 @@ export const SouhuModal: React.FC<Props> = ({
       ${new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}
     </div>
 
-    <!-- 売主名：上74mm・左20mm -->
-    <div style="position:absolute;left:20mm;top:74mm;font-size:20pt;font-weight:600;font-family:'Hiragino Mincho ProN','Yu Mincho','YuMincho','MS Mincho','serif';">
+    <!-- 売主名：上73mm・左20mm -->
+    <div style="position:absolute;left:20mm;top:73mm;font-size:20pt;font-weight:600;font-family:'Hiragino Mincho ProN','Yu Mincho','YuMincho','MS Mincho','serif';">
       ${ownerName.trim().replace(/[\s　]*様\s*$/, '')}
     </div>
 
@@ -188,7 +197,7 @@ export const SouhuModal: React.FC<Props> = ({
       <DialogContent sx={{ p: 2 }}>
         <Box sx={{ display: 'flex', gap: 2 }}>
           {/* 左：設定フォーム */}
-          <Box sx={{ width: 320, flexShrink: 0 }}>
+          <Box sx={{ width: 340, flexShrink: 0 }}>
             <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 0.5, color: NAVY }}>
               会社名：{company.name}
             </Typography>
@@ -197,7 +206,7 @@ export const SouhuModal: React.FC<Props> = ({
             <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, color: NAVY }}>
               同封物（チェックなしは本文から除外）
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 1 }}>
               <FormControlLabel control={<Checkbox size="small" checked={chkSatei} onChange={e => setChkSatei(e.target.checked)} />}
                 label={<Typography variant="body2">査定書（査定額、周辺事例、マーケット情報、防災関連）</Typography>} />
               <FormControlLabel control={<Checkbox size="small" checked={chkPamphlet} onChange={e => setChkPamphlet(e.target.checked)} />}
@@ -206,8 +215,29 @@ export const SouhuModal: React.FC<Props> = ({
                 label={<Typography variant="body2">売却スケジュール</Typography>} />
               <FormControlLabel control={<Checkbox size="small" checked={chkTemodori} onChange={e => setChkTemodori(e.target.checked)} />}
                 label={<Typography variant="body2">手残り金額リスト</Typography>} />
+              {/* カスタム1 */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Checkbox size="small" checked={chkCustom1} onChange={e => setChkCustom1(e.target.checked)} />
+                <TextField size="small" placeholder="追加同封物を入力" value={custom1}
+                  onChange={e => { setCustom1(e.target.value); if (e.target.value) setChkCustom1(true); }}
+                  sx={{ flex: 1 }} />
+              </Box>
+              {/* カスタム2 */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Checkbox size="small" checked={chkCustom2} onChange={e => setChkCustom2(e.target.checked)} />
+                <TextField size="small" placeholder="追加同封物を入力" value={custom2}
+                  onChange={e => { setCustom2(e.target.value); if (e.target.value) setChkCustom2(true); }}
+                  sx={{ flex: 1 }} />
+              </Box>
+              {/* カスタム3 */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Checkbox size="small" checked={chkCustom3} onChange={e => setChkCustom3(e.target.checked)} />
+                <TextField size="small" placeholder="追加同封物を入力" value={custom3}
+                  onChange={e => { setCustom3(e.target.value); if (e.target.value) setChkCustom3(true); }}
+                  sx={{ flex: 1 }} />
+              </Box>
             </Box>
-            <TextField fullWidth size="small" label="メモ（任意）" multiline rows={4}
+            <TextField fullWidth size="small" label="メモ（任意）" multiline rows={3}
               value={memo} onChange={e => setMemo(e.target.value)}
               placeholder="自由に入力してください" />
           </Box>
