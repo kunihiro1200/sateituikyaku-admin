@@ -5262,6 +5262,11 @@ HP：https://ifoo-oita.com/
                     <MenuItem onClick={() => { setDocGenMenuAnchor(null); setSouhuModalOpen(true); }}>
                       送付状
                     </MenuItem>
+                    {seller?.sellerNumber?.toUpperCase().startsWith('FI') && (
+                      <MenuItem onClick={() => { setDocGenMenuAnchor(null); window.open('https://drive.google.com/drive/u/0/folders/1FwlNVedSK3s-S6lAj1Z7pUpkBT1RBNXy', '_blank'); }}>
+                        福岡追加資料
+                      </MenuItem>
+                    )}
                   </Menu>
                 </>
               )}
