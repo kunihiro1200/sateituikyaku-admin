@@ -165,7 +165,7 @@ export const SouhuModal: React.FC<Props> = ({
       </div>
       ${memoHtml}
       <div style="font-size:11.5pt;line-height:2.0;margin-top:4mm;">
-        こちらのエリアでは弊社に問合せの多い地域となっておりますので、<br/>
+        こちらのエリアは弊社に問合せの多い地域となっておりますので、<br/>
         ご売却の際は是非ご紹介させて頂ければと思います。<br/>
         ご不明点がございましたらいつでもご連絡頂ければと思います。<br/>
         宜しくお願い致します。
