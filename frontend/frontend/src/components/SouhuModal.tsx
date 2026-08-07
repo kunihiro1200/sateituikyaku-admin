@@ -1,9 +1,10 @@
 /**
  * 送付状モーダル
  * - souhu.png を背景に本文をオーバーレイ
- * - 売主番号がFIの場合は「くじら不動産」、それ以外は「株式会社いふう」
+ * - 売主番号がFIの場合は「株式会社くじら不動産」、それ以外は「株式会社いふう」
  * - チェックボックスで同封物を選択（チェックなし→本文に含めない）
  * - メモ欄はユーザー自由入力
+ * - 署名は上から100mm・左から100mmに固定（担当名は変更可能）
  */
 import React, { useState, useEffect } from 'react';
 import {
@@ -23,6 +24,24 @@ interface Props {
 
 const NAVY = '#061D3B';
 
+// FI / 非FI の会社情報
+const COMPANY_FI = {
+  name: '株式会社くじら不動産',
+  zip: '〒810-0073',
+  address: '福岡市中央区舞鶴３－１－１０',
+  building: 'オフィスニューガイアセレス赤坂門No19－201',
+  tel: '092-401-5331',
+  mail: 'tenant@ifoo-oita.com',
+};
+const COMPANY_OITA = {
+  name: '株式会社いふう',
+  zip: '〒870-0044',
+  address: '大分市舞鶴町1-3-30',
+  building: 'STビル１F',
+  tel: '097-533-2022',
+  mail: 'tenant@ifoo-oita.com',
+};
+
 export const SouhuModal: React.FC<Props> = ({
   open, onClose,
   sellerNumber = '',
@@ -30,7 +49,8 @@ export const SouhuModal: React.FC<Props> = ({
   ownerName = '',
 }) => {
   const isFI = sellerNumber.trim().toUpperCase().startsWith('FI') || sellerNumber.trim() === '';
-  const companyName = isFI ? 'くじら不動産' : '株式会社いふう';
+  const company = isFI ? COMPANY_FI : COMPANY_OITA;
+  const companyShort = isFI ? 'くじら不動産' : '株式会社いふう';
 
   // チェックボックス（デフォルト全チェック）
   const [chkSatei, setChkSatei] = useState(true);
@@ -38,6 +58,8 @@ export const SouhuModal: React.FC<Props> = ({
   const [chkSchedule, setChkSchedule] = useState(true);
   const [chkTemodori, setChkTemodori] = useState(true);
   const [memo, setMemo] = useState('');
+  // 担当名（デフォルト=ログインユーザー名、変更可能）
+  const [signature, setSignature] = useState(employeeName);
 
   // モーダルが開くたびに初期化
   useEffect(() => {
@@ -47,8 +69,9 @@ export const SouhuModal: React.FC<Props> = ({
       setChkSchedule(true);
       setChkTemodori(true);
       setMemo('');
+      setSignature(employeeName);
     }
-  }, [open]);
+  }, [open, employeeName]);
 
   // 画像Base64キャッシュ
   const [imgData, setImgData] = useState<string>('');
@@ -63,7 +86,7 @@ export const SouhuModal: React.FC<Props> = ({
       .catch(() => {});
   }, []);
 
-  const buildHtml = (debug = false): string => {
+  const buildHtml = (): string => {
     const items: string[] = [];
     if (chkSatei)     items.push('□　査定書（査定額、周辺事例、マーケット情報、防災関連）');
     if (chkPamphlet)  items.push('□　パンフレット（売却の流れ、注意点）');
@@ -79,6 +102,7 @@ export const SouhuModal: React.FC<Props> = ({
       : '';
 
     const imgSrc = imgData || `/sale-schedule/illustrations/souhu.png`;
+    const sigName = signature || employeeName || '◎◎';
 
     return `<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8"><title>送付状</title>
@@ -95,10 +119,22 @@ export const SouhuModal: React.FC<Props> = ({
 <div class="a4">
   <img class="bg" src="${imgSrc}" alt="" />
   <div class="layer">
+
+    <!-- 署名エリア：上100mm・左100mm -->
+    <div style="position:absolute;left:100mm;top:100mm;width:105mm;font-size:9pt;line-height:1.8;">
+      <div style="font-weight:700;font-size:10pt;margin-bottom:1mm;">${company.name}</div>
+      <div>${company.zip}</div>
+      <div>${company.address}</div>
+      <div>${company.building}</div>
+      <div>担当：${sigName}</div>
+      <div>TEL:${company.tel}</div>
+      <div>MAIL:${company.mail}</div>
+    </div>
+
     <!-- 本文エリア -->
     <div style="position:absolute;left:20mm;top:168mm;width:170mm;">
       <div style="font-size:11.5pt;line-height:2.0;">
-        お世話になっております。${companyName}の${employeeName || '◎◎'}と申します。<br/>
+        お世話になっております。${companyShort}の${sigName}と申します。<br/>
         この度は査定のご依頼を頂きまして誠にありがとうございます。<br/>
         下記を同封させていただきます。
       </div>
@@ -116,13 +152,14 @@ export const SouhuModal: React.FC<Props> = ({
         宜しくお願い致します。
       </div>
     </div>
+
   </div>
 </div>
 </body></html>`;
   };
 
   const handlePrint = () => {
-    const html = buildHtml(false);
+    const html = buildHtml();
     const win = window.open('', '_blank', 'width=900,height=750');
     if (!win) { alert('ポップアップブロックを解除してください。'); return; }
     win.document.write(html);
@@ -142,10 +179,12 @@ export const SouhuModal: React.FC<Props> = ({
         <Box sx={{ display: 'flex', gap: 2 }}>
           {/* 左：設定フォーム */}
           <Box sx={{ width: 320, flexShrink: 0 }}>
-            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, color: NAVY }}>
-              会社名：{companyName}
+            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 0.5, color: NAVY }}>
+              会社名：{company.name}
             </Typography>
-            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1.5, color: NAVY }}>
+            <TextField fullWidth size="small" label="担当名（変更可能）" sx={{ mb: 2 }}
+              value={signature} onChange={e => setSignature(e.target.value)} />
+            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, color: NAVY }}>
               同封物（チェックなしは本文から除外）
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 2 }}>
@@ -175,7 +214,7 @@ export const SouhuModal: React.FC<Props> = ({
               position: 'relative',
             }}>
               <iframe
-                srcDoc={buildHtml(false)}
+                srcDoc={buildHtml()}
                 title="送付状プレビュー"
                 style={{
                   position: 'absolute', left: 0, top: 0,
