@@ -247,9 +247,11 @@ export class BuyerService {
 
         case 'oneMonthCallUnchecked': {
           // 1か月後架電未: 1か月後架電確認済み = "1か月架電未" AND (【問合メール】電話対応 = "不通" OR "未")
+          // ※ 次電日が今日以前の買主は除外（当日TELとして表示するため）
           query = query
             .eq('one_month_call_confirmed', '1か月架電未')
-            .or('inquiry_email_phone.eq.不通,inquiry_email_phone.eq.未');
+            .or('inquiry_email_phone.eq.不通,inquiry_email_phone.eq.未')
+            .or(`next_call_date.is.null,next_call_date.gt.${todayStr}`);
           break;
         }
         

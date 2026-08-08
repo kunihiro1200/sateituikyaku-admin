@@ -332,13 +332,15 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
 
     // Priority 7.2: 1か月後架電未
     // 条件: [1か月後架電確認済み] = "1か月架電未" AND ([【問合メール】電話対応] = "不通" OR "未")
+    // ※ 次電日が今日以前の場合は除外（当日TELとして表示するため）
     if (
       and(
         equals(buyer.one_month_call_confirmed, '1か月架電未'),
         or(
           equals(buyer.inquiry_email_phone, '不通'),
           equals(buyer.inquiry_email_phone, '未')
-        )
+        ),
+        not(and(isNotBlank(buyer.next_call_date), isTodayOrPast(buyer.next_call_date)))
       )
     ) {
       const status = '1か月後架電未';
