@@ -65,6 +65,7 @@ export const SouhuModal: React.FC<Props> = ({
   const [chkCustom3, setChkCustom3] = useState(false);
   const [memo, setMemo] = useState('');
   const [signature, setSignature] = useState(employeeName);
+  const [chkUndecided, setChkUndecided] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -77,6 +78,7 @@ export const SouhuModal: React.FC<Props> = ({
       setCustom3(''); setChkCustom3(false);
       setMemo('');
       setSignature(employeeName);
+      setChkUndecided(false);
     }
   }, [open, employeeName]);
 
@@ -113,8 +115,9 @@ export const SouhuModal: React.FC<Props> = ({
           if (d.chkCustom2 !== undefined) setChkCustom2(d.chkCustom2);
           if (d.custom3    !== undefined) setCustom3(d.custom3);
           if (d.chkCustom3 !== undefined) setChkCustom3(d.chkCustom3);
-          if (d.memo       !== undefined) setMemo(d.memo);
-          if (d.signature  !== undefined) setSignature(d.signature);
+          if (d.memo           !== undefined) setMemo(d.memo);
+          if (d.signature      !== undefined) setSignature(d.signature);
+          if (d.chkUndecided   !== undefined) setChkUndecided(d.chkUndecided);
         }
       } catch {
         // 保存データなし → 初期値のまま
@@ -128,7 +131,7 @@ export const SouhuModal: React.FC<Props> = ({
     try {
       const { default: api } = await import('../services/api');
       await api.post(`/api/document-drafts/${sellerNumber}/souhu`, {
-        data: { chkSatei, chkPamphlet, chkSchedule, chkTemodori, custom1, chkCustom1, custom2, chkCustom2, custom3, chkCustom3, memo, signature },
+        data: { chkSatei, chkPamphlet, chkSchedule, chkTemodori, custom1, chkCustom1, custom2, chkCustom2, custom3, chkCustom3, memo, signature, chkUndecided },
       });
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
@@ -211,7 +214,7 @@ export const SouhuModal: React.FC<Props> = ({
       </div>
       ${memoHtml}
       <div style="font-size:11.5pt;line-height:2.0;margin-top:4mm;">
-        こちらのエリアは弊社に問合せの多い地域となっておりますので、<br/>
+        ${chkUndecided ? 'まだ売却されるかどうかは迷われているとのことで承知しております。判断材料の一つとして頂ければと思います。<br/><br/>' : ''}こちらのエリアは弊社に問合せの多い地域となっておりますので、<br/>
         ご売却の際は是非ご紹介させて頂ければと思います。<br/>
         ご不明点がございましたらいつでもご連絡頂ければと思います。<br/>
         宜しくお願い致します。
@@ -225,11 +228,17 @@ export const SouhuModal: React.FC<Props> = ({
 
   const handlePrint = () => {
     const html = buildHtml();
-    const win = window.open('', '_blank', 'width=900,height=750');
-    if (!win) { alert('ポップアップブロックを解除してください。'); return; }
-    win.document.write(html);
-    win.document.close();
-    setTimeout(() => { try { win.focus(); win.print(); } catch {} }, 600);
+    // 非表示iframeで印刷（margin:0が確実に適用される）
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:0;left:0;width:210mm;height:297mm;border:none;opacity:0;pointer-events:none;z-index:-1;';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) { document.body.removeChild(iframe); return; }
+    doc.open(); doc.write(html); doc.close();
+    setTimeout(() => {
+      try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch {}
+      setTimeout(() => { try { document.body.removeChild(iframe); } catch {} }, 2000);
+    }, 800);
   };
 
   return (
@@ -286,6 +295,15 @@ export const SouhuModal: React.FC<Props> = ({
             <TextField fullWidth size="small" label="メモ（任意）" multiline rows={3}
               value={memo} onChange={e => setMemo(e.target.value)}
               placeholder="自由に入力してください" />
+            <Box sx={{ mt: 1 }}>
+              <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 0.5, color: NAVY }}>
+                本文オプション
+              </Typography>
+              <FormControlLabel
+                control={<Checkbox size="small" checked={chkUndecided} onChange={e => setChkUndecided(e.target.checked)} />}
+                label={<Typography variant="body2">「まだ売却されるかどうかは迷われているとのことで承知しております。判断材料の一つとして頂ければと思います。」を挿入</Typography>}
+              />
+            </Box>
           </Box>
 
           {/* 右：プレビュー */}

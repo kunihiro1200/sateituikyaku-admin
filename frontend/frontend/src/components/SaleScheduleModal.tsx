@@ -450,14 +450,20 @@ export const SaleScheduleModal: React.FC<Props> = ({
   const setStr = (f: keyof SaleScheduleData) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setData(p => ({ ...p, [f]: e.target.value }));
 
-  // 印刷（debug=OFF）
+  // 印刷（debug=OFF）：非表示iframeで印刷することでmargin:0が確実に適用される
   const handlePrint = useCallback(() => {
     const html = buildA4Html(data, false, initialSellerNumber);
-    const win = window.open('', '_blank', 'width=900,height=750');
-    if (!win) { alert('ポップアップブロックを解除してください。'); return; }
-    win.document.write(html); win.document.close();
-    setTimeout(() => { try { win.focus(); win.print(); } catch {} }, 600);
-  }, [data]);
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:0;left:0;width:210mm;height:297mm;border:none;opacity:0;pointer-events:none;z-index:-1;';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) { document.body.removeChild(iframe); return; }
+    doc.open(); doc.write(html); doc.close();
+    setTimeout(() => {
+      try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch {}
+      setTimeout(() => { try { document.body.removeChild(iframe); } catch {} }, 2000);
+    }, 800);
+  }, [data, initialSellerNumber]);
 
   // iframeのscale計算（A4実寸px → プレビューコンテナに収める）
   const A4W = 210 * 3.7795;

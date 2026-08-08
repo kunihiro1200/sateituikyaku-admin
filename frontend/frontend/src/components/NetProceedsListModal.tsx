@@ -283,11 +283,17 @@ export const NetProceedsListModal: React.FC<Props> = ({
       },
       debug: false,
     });
-    const win = window.open('', '_blank', 'width=900,height=750');
-    if (!win) { alert('ポップアップブロックを解除してください。'); return; }
-    win.document.write(html);
-    win.document.close();
-    setTimeout(() => { try { win.focus(); win.print(); } catch {} }, 600);
+    // 非表示iframeで印刷（margin:0が確実に適用される）
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:0;left:0;width:210mm;height:297mm;border:none;opacity:0;pointer-events:none;z-index:-1;';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) { document.body.removeChild(iframe); return; }
+    doc.open(); doc.write(html); doc.close();
+    setTimeout(() => {
+      try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch {}
+      setTimeout(() => { try { document.body.removeChild(iframe); } catch {} }, 2000);
+    }, 800);
   };
 
   const [debugMode, setDebugMode] = React.useState(false);
