@@ -994,6 +994,7 @@ const CallModePage = () => {
   const [saleScheduleModalOpen, setSaleScheduleModalOpen] = useState(false);
   const [netProceedsModalOpen, setNetProceedsModalOpen] = useState(false);
   const [souhuModalOpen, setSouhuModalOpen] = useState(false);
+  const [souhuEmptyModalOpen, setSouhuEmptyModalOpen] = useState(false);
   // 画像数バッジ用の状態
   const [driveImageCount, setDriveImageCount] = useState<number | null>(null);
   // エリア情勢レポートモーダル用の状態
@@ -5270,6 +5271,9 @@ HP：https://ifoo-oita.com/
                     </MenuItem>
                     <MenuItem onClick={() => { setDocGenMenuAnchor(null); setSouhuModalOpen(true); }}>
                       送付状
+                    </MenuItem>
+                    <MenuItem onClick={() => { setDocGenMenuAnchor(null); setSouhuEmptyModalOpen(true); }}>
+                      送付状（空）
                     </MenuItem>
                     {seller?.sellerNumber?.toUpperCase().startsWith('FI') && (
                       <MenuItem onClick={() => { setDocGenMenuAnchor(null); window.open('https://drive.google.com/drive/u/0/folders/1FwlNVedSK3s-S6lAj1Z7pUpkBT1RBNXy', '_blank'); }}>
@@ -10243,6 +10247,18 @@ HP：https://ifoo-oita.com/
           ownerName={seller.name || ''}
           onOpenSaleSchedule={() => { setSouhuModalOpen(false); setSaleScheduleModalOpen(true); }}
           onOpenNetProceeds={() => { setSouhuModalOpen(false); setNetProceedsModalOpen(true); }}
+        />
+      )}
+
+      {/* 送付状（空）モーダル */}
+      {seller && (
+        <SouhuModal
+          open={souhuEmptyModalOpen}
+          onClose={() => setSouhuEmptyModalOpen(false)}
+          sellerNumber={seller.sellerNumber || ''}
+          employeeName={employee?.name || ''}
+          ownerName={seller.name || ''}
+          emptyBody
         />
       )}
 

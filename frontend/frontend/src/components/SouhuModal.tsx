@@ -25,6 +25,8 @@ interface Props {
   onOpenSaleSchedule?: () => void;
   /** 「→手残りリスト作成」ボタンクリック時に呼ばれるコールバック */
   onOpenNetProceeds?: () => void;
+  /** true のとき、同封物チェックを非表示にし、本文を自由入力にする（送付状（空）モード） */
+  emptyBody?: boolean;
 }
 
 const NAVY = '#061D3B';
@@ -53,6 +55,7 @@ export const SouhuModal: React.FC<Props> = ({
   ownerName = '',
   onOpenSaleSchedule,
   onOpenNetProceeds,
+  emptyBody = false,
 }) => {
   const isFI = sellerNumber.trim().toUpperCase().startsWith('FI') || sellerNumber.trim() === '';
   const company = isFI ? COMPANY_FI : COMPANY_OITA;
@@ -72,6 +75,8 @@ export const SouhuModal: React.FC<Props> = ({
   const [memo, setMemo] = useState('');
   const [signature, setSignature] = useState(employeeName);
   const [chkUndecided, setChkUndecided] = useState(false);
+  // 送付状（空）モード用：自由入力本文
+  const [freeBody, setFreeBody] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -85,6 +90,7 @@ export const SouhuModal: React.FC<Props> = ({
       setMemo('');
       setSignature(employeeName);
       setChkUndecided(false);
+      setFreeBody('');
     }
   }, [open, employeeName]);
 
@@ -207,12 +213,15 @@ export const SouhuModal: React.FC<Props> = ({
 
     <!-- 本文エリア -->
     <div style="position:absolute;left:20mm;top:166mm;width:170mm;">
-      <div style="font-size:11.5pt;line-height:2.0;">お世話になっております。${companyShort}の${sigName}と申します。<br/>この度は査定のご依頼を頂きまして誠にありがとうございます。<br/>下記を同封させていただきます。</div>
+      ${emptyBody
+        ? `<div style="font-size:11.5pt;line-height:2.0;white-space:pre-wrap;">${freeBody.trim().replace(/\n/g, '<br/>')}</div>`
+        : `<div style="font-size:11.5pt;line-height:2.0;">お世話になっております。${companyShort}の${sigName}と申します。<br/>この度は査定のご依頼を頂きまして誠にありがとうございます。<br/>下記を同封させていただきます。</div>
       <div style="margin-top:4mm;">${itemsHtml}</div>
       <div style="font-size:11.5pt;line-height:2.0;margin-top:2mm;">となっております。</div>
       ${memoHtml}
       ${chkUndecided ? `<div style="font-size:11.5pt;line-height:1.5;margin-top:2mm;">まだ売却されるかどうかは迷われているとのことで承知しております。判断材料の一つとして頂ければと思います。</div>` : ''}
-      <div style="font-size:11.5pt;line-height:2.0;margin-top:${chkUndecided ? '1mm' : '4mm'};">こちらのエリアは弊社に問合せの多い地域となっておりますので、<br/>ご売却の際は是非ご紹介させて頂ければと思います。<br/>ご不明点がございましたらいつでもご連絡頂ければと思います。<br/>宜しくお願い致します。</div>
+      <div style="font-size:11.5pt;line-height:2.0;margin-top:${chkUndecided ? '1mm' : '4mm'};">こちらのエリアは弊社に問合せの多い地域となっておりますので、<br/>ご売却の際は是非ご紹介させて頂ければと思います。<br/>ご不明点がございましたらいつでもご連絡頂ければと思います。<br/>宜しくお願い致します。</div>`
+      }
     </div>
 
   </div>
@@ -239,7 +248,7 @@ export const SouhuModal: React.FC<Props> = ({
     <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth
       PaperProps={{ sx: { maxHeight: '96vh' } }}>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
-        <Typography variant="h6" fontWeight="bold">送付状 資料生成</Typography>
+        <Typography variant="h6" fontWeight="bold">送付状{emptyBody ? '（空）' : ''} 資料生成</Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {onOpenSaleSchedule && (
             <Button
@@ -276,6 +285,20 @@ export const SouhuModal: React.FC<Props> = ({
             </Typography>
             <TextField fullWidth size="small" label="担当名（変更可能）" sx={{ mb: 2 }}
               value={signature} onChange={e => setSignature(e.target.value)} />
+            {emptyBody ? (
+              /* 送付状（空）モード：本文を自由入力 */
+              <TextField
+                fullWidth
+                size="small"
+                label="本文（自由入力）"
+                multiline
+                rows={12}
+                value={freeBody}
+                onChange={e => setFreeBody(e.target.value)}
+                placeholder="本文を自由に入力してください"
+              />
+            ) : (
+              <>
             <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, color: NAVY }}>
               同封物（チェックなしは本文から除外）
             </Typography>
@@ -322,6 +345,8 @@ export const SouhuModal: React.FC<Props> = ({
                 label={<Typography variant="body2">「まだ売却されるかどうかは迷われているとのことで承知しております。判断材料の一つとして頂ければと思います。」を挿入</Typography>}
               />
             </Box>
+              </>
+            )}
           </Box>
 
           {/* 右：プレビュー */}
