@@ -201,24 +201,12 @@ export const SouhuModal: React.FC<Props> = ({
 
     <!-- 本文エリア -->
     <div style="position:absolute;left:20mm;top:166mm;width:170mm;">
-      <div style="font-size:11.5pt;line-height:2.0;">
-        お世話になっております。${companyShort}の${sigName}と申します。<br/>
-        この度は査定のご依頼を頂きまして誠にありがとうございます。<br/>
-        下記を同封させていただきます。
-      </div>
-      <div style="margin-top:4mm;">
-        ${itemsHtml}
-      </div>
-      <div style="font-size:11.5pt;line-height:2.0;margin-top:2mm;">
-        となっております。
-      </div>
+      <div style="font-size:11.5pt;line-height:2.0;">お世話になっております。${companyShort}の${sigName}と申します。<br/>この度は査定のご依頼を頂きまして誠にありがとうございます。<br/>下記を同封させていただきます。</div>
+      <div style="margin-top:4mm;">${itemsHtml}</div>
+      <div style="font-size:11.5pt;line-height:2.0;margin-top:2mm;">となっております。</div>
       ${memoHtml}
-      <div style="font-size:11.5pt;line-height:2.0;margin-top:4mm;">
-        ${chkUndecided ? 'まだ売却されるかどうかは迷われているとのことで承知しております。判断材料の一つとして頂ければと思います。<br/><br/>' : ''}こちらのエリアは弊社に問合せの多い地域となっておりますので、<br/>
-        ご売却の際は是非ご紹介させて頂ければと思います。<br/>
-        ご不明点がございましたらいつでもご連絡頂ければと思います。<br/>
-        宜しくお願い致します。
-      </div>
+      ${chkUndecided ? `<div style="font-size:11.5pt;line-height:1.5;margin-top:2mm;">まだ売却されるかどうかは迷われているとのことで承知しております。判断材料の一つとして頂ければと思います。</div>` : ''}
+      <div style="font-size:11.5pt;line-height:2.0;margin-top:${chkUndecided ? '1mm' : '4mm'};">こちらのエリアは弊社に問合せの多い地域となっておりますので、<br/>ご売却の際は是非ご紹介させて頂ければと思います。<br/>ご不明点がございましたらいつでもご連絡頂ければと思います。<br/>宜しくお願い致します。</div>
     </div>
 
   </div>
