@@ -293,6 +293,13 @@ function buildA4Html(d: SaleScheduleData, debug = false, sellerNumber = ''): str
     width: 210mm;
     height: 297mm;
     overflow: hidden;
+    margin: 0 !important;
+    padding: 0 !important;
+    top: 0 !important;
+  }
+  @media print {
+    html, body { margin: 0 !important; padding: 0 !important; }
+    .a4-page { position: absolute; top: 0 !important; left: 0 !important; margin: 0 !important; }
   }
   /* 背景：A4左上(0,0)に完全固定 */
   .template-background {
