@@ -10241,6 +10241,8 @@ HP：https://ifoo-oita.com/
           sellerNumber={seller.sellerNumber || ''}
           employeeName={employee?.name || ''}
           ownerName={seller.name || ''}
+          onOpenSaleSchedule={() => { setSouhuModalOpen(false); setSaleScheduleModalOpen(true); }}
+          onOpenNetProceeds={() => { setSouhuModalOpen(false); setNetProceedsModalOpen(true); }}
         />
       )}
 

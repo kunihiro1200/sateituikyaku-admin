@@ -21,6 +21,10 @@ interface Props {
   sellerNumber?: string;
   employeeName?: string;
   ownerName?: string;
+  /** 「→売却スケジュール」ボタンクリック時に呼ばれるコールバック */
+  onOpenSaleSchedule?: () => void;
+  /** 「→手残りリスト作成」ボタンクリック時に呼ばれるコールバック */
+  onOpenNetProceeds?: () => void;
 }
 
 const NAVY = '#061D3B';
@@ -47,6 +51,8 @@ export const SouhuModal: React.FC<Props> = ({
   sellerNumber = '',
   employeeName = '',
   ownerName = '',
+  onOpenSaleSchedule,
+  onOpenNetProceeds,
 }) => {
   const isFI = sellerNumber.trim().toUpperCase().startsWith('FI') || sellerNumber.trim() === '';
   const company = isFI ? COMPANY_FI : COMPANY_OITA;
@@ -234,7 +240,31 @@ export const SouhuModal: React.FC<Props> = ({
       PaperProps={{ sx: { maxHeight: '96vh' } }}>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
         <Typography variant="h6" fontWeight="bold">送付状 資料生成</Typography>
-        <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {onOpenSaleSchedule && (
+            <Button
+              size="small"
+              variant="outlined"
+              color="primary"
+              onClick={() => { onClose(); onOpenSaleSchedule(); }}
+              sx={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+            >
+              → 売却スケジュール
+            </Button>
+          )}
+          {onOpenNetProceeds && (
+            <Button
+              size="small"
+              variant="outlined"
+              color="primary"
+              onClick={() => { onClose(); onOpenNetProceeds(); }}
+              sx={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+            >
+              → 手残りリスト作成
+            </Button>
+          )}
+          <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+        </Box>
       </DialogTitle>
       <Divider />
       <DialogContent sx={{ p: 2 }}>
