@@ -3180,7 +3180,7 @@ TEL：097-533-2022`;
                               {/* Pinrichリンク */}
                               <Grid item xs={12}>
                                 <Link
-                                  href="https://pinrich.com/management/hankyo"
+                                  href="https://pinrich.com/"
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem' }}

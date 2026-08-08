@@ -933,7 +933,7 @@ export default function NewBuyerPage() {
                     </Select>
                   </FormControl>
                   <Link
-                    href="https://pinrich.com/management/hankyo"
+                    href="https://pinrich.com/"
                     target="_blank"
                     rel="noopener noreferrer"
                     sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem', mt: 0.5 }}
