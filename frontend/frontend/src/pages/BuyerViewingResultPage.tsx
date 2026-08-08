@@ -192,8 +192,8 @@ const VIEWING_RESULT_QUICK_INPUTS = [
   { label: '次のアクション', text: '次のアクション：' },
   { label: 'クロージング', text: 'クロージング：' },
   { label: '予算', text: '予算：' },
-  { label: '自己資金', text: '自己資金：' },
-  { label: '銀行融資', text: '銀行融資：' },
+  { label: '自己資金', text: '　　自己資金' },
+  { label: '銀行融資', text: '　　銀行融資' },
 ];
 
 // 「契約後も配信」の入力が必要な最新状況（3つのケース）
@@ -421,8 +421,8 @@ export default function BuyerViewingResultPage() {
         '<p>・物件の気に入っている点：</p>' +
         '<p>・懸念事項：</p>' +
         '<p>・予算：</p>' +
-        '<p>・自己資金：</p>' +
-        '<p>・銀行融資：</p>' +
+        '<p>　　自己資金</p>' +
+        '<p>　　銀行融資</p>' +
         '<p>・時期：</p>';
       setViewingResultEditValue(res.data.viewing_result_follow_up || VIEWING_RESULT_DEFAULT_TEMPLATE);
       // 気づきフィールドの初期値をセット
@@ -1967,8 +1967,8 @@ export default function BuyerViewingResultPage() {
                 '<p>・物件の気に入っている点：</p>' +
                 '<p>・懸念事項：</p>' +
                 '<p>・予算：</p>' +
-                '<p>・自己資金：</p>' +
-                '<p>・銀行融資：</p>' +
+                '<p>　　自己資金</p>' +
+                '<p>　　銀行融資</p>' +
                 '<p>・時期：</p>';
               const savedValue = buyer?.viewing_result_follow_up || '';
               const isDirty = savedValue
