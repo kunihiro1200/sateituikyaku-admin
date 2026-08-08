@@ -10205,6 +10205,8 @@ HP：https://ifoo-oita.com/
           initialValuation1={seller.valuationAmount1 || undefined}
           initialValuation2={seller.valuationAmount2 || undefined}
           initialValuation3={seller.valuationAmount3 || undefined}
+          onOpenNetProceeds={() => { setSaleScheduleModalOpen(false); setNetProceedsModalOpen(true); }}
+          onOpenSouhu={() => { setSaleScheduleModalOpen(false); setSouhuModalOpen(true); }}
         />
       )}
 

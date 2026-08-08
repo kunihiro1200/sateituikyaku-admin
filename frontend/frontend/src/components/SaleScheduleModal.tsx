@@ -107,6 +107,10 @@ interface Props {
   initialValuation1?: number;   // 円：査定額1（低）
   initialValuation2?: number;   // 円：査定額2（中）
   initialValuation3?: number;   // 円：査定額3（高）
+  /** 「→手残りリスト作成」ボタンクリック時に呼ばれるコールバック */
+  onOpenNetProceeds?: () => void;
+  /** 「→送付状」ボタンクリック時に呼ばれるコールバック */
+  onOpenSouhu?: () => void;
 }
 
 function calcDates() {
@@ -375,6 +379,7 @@ export const SaleScheduleModal: React.FC<Props> = ({
   initialSellerNumber='', initialOwnerName='', initialPropertyAddress='',
   initialAssessPrice, initialMinPrice,
   initialValuation1, initialValuation2, initialValuation3,
+  onOpenNetProceeds, onOpenSouhu,
 }) => {
   const NAVY = '#061D3B';
   const { sy, sm, cy, cm, sety, setm, ms, me, my } = calcDates();
@@ -493,6 +498,28 @@ export const SaleScheduleModal: React.FC<Props> = ({
       <DialogTitle sx={{ display:'flex', alignItems:'center', justifyContent:'space-between', pb:1 }}>
         <Typography variant="h6" fontWeight="bold">売却スケジュール資料生成</Typography>
         <Box sx={{ display:'flex', alignItems:'center', gap:1 }}>
+          {onOpenNetProceeds && (
+            <Button
+              size="small"
+              variant="outlined"
+              color="primary"
+              onClick={() => { onClose(); onOpenNetProceeds(); }}
+              sx={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+            >
+              → 手残りリスト作成
+            </Button>
+          )}
+          {onOpenSouhu && (
+            <Button
+              size="small"
+              variant="outlined"
+              color="primary"
+              onClick={() => { onClose(); onOpenSouhu(); }}
+              sx={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+            >
+              → 送付状
+            </Button>
+          )}
           <FormControlLabel
             control={<Switch size="small" checked={debugMode} onChange={e=>setDebugMode(e.target.checked)} color="error" />}
             label={<Typography variant="caption" color={debugMode?'error':'text.secondary'}>
