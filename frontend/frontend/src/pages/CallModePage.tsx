@@ -10228,6 +10228,8 @@ HP：https://ifoo-oita.com/
             ...[seller.valuationAmount1, seller.valuationAmount2, seller.valuationAmount3]
               .filter((v): v is number => typeof v === 'number' && v > 0)
           ) || undefined}
+          onOpenSaleSchedule={() => { setNetProceedsModalOpen(false); setSaleScheduleModalOpen(true); }}
+          onOpenSouhu={() => { setNetProceedsModalOpen(false); setSouhuModalOpen(true); }}
         />
       )}
 

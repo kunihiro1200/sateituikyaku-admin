@@ -138,6 +138,10 @@ interface Props {
   initialMinPrice?: number;   // 円
   initialPropertyType?: string; // 種別（正規化済み: 'land', 'apartment', 'detached_house' 等）
   initialSellerNumber?: string; // 売主番号（例: FI00001, AA00001）
+  /** 「→売却スケジュール」ボタンクリック時に呼ばれるコールバック */
+  onOpenSaleSchedule?: () => void;
+  /** 「→送付状」ボタンクリック時に呼ばれるコールバック */
+  onOpenSouhu?: () => void;
 }
 
 // ─────────────────────────────────────────
@@ -151,6 +155,8 @@ export const NetProceedsListModal: React.FC<Props> = ({
   initialMinPrice,
   initialPropertyType,
   initialSellerNumber = '',
+  onOpenSaleSchedule,
+  onOpenSouhu,
 }) => {
   const NAVY = '#061D3B';
   const GOLD = '#C99A3D';
@@ -356,7 +362,31 @@ export const NetProceedsListModal: React.FC<Props> = ({
         PaperProps={{ sx: { maxHeight: '96vh' } }}>
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
           <Typography variant="h6" fontWeight="bold">手残りリスト 資料生成</Typography>
-          <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {onOpenSaleSchedule && (
+              <Button
+                size="small"
+                variant="outlined"
+                color="primary"
+                onClick={() => { onClose(); onOpenSaleSchedule(); }}
+                sx={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+              >
+                → 売却スケジュール
+              </Button>
+            )}
+            {onOpenSouhu && (
+              <Button
+                size="small"
+                variant="outlined"
+                color="primary"
+                onClick={() => { onClose(); onOpenSouhu(); }}
+                sx={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+              >
+                → 送付状
+              </Button>
+            )}
+            <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+          </Box>
         </DialogTitle>
         <Divider />
         <DialogContent sx={{ p: 2 }}>
