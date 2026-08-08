@@ -86,7 +86,7 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
       message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n${companyIntro}\n\n所在地：${address}\n上記の物件のお問い合わせ、ありがとうございます。\nご不明な点等ございましたら、お気軽にお問い合わせください。${preViewingSection}\n\nまた、ご内覧希望の場合は、こちらからご予約お願いいたします↓↓\n${viewingFormUrl}${hasFI ? '' : `\n\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri\n★非公開の物件はこちらから↓↓\n${PUBLIC_SITE_URL}\nお気軽にお問い合わせください。`}\n\nまた、他社物件もご紹介できますので、気になる物件がございましたらお気軽にご連絡ください。${signature}`;
     } else if (templateId === 'ask_email') {
       const askEmailCompany = hasFI ? 'くじら不動産' : '不動産会社いふう';
-      message = `${name}様\n\nお世話になっております。${askEmailCompany}です。\n先ほどは物件についてお問い合わせいただき、誠にありがとうございました。\n今後、ご希望条件に合う新着物件やおすすめ物件がございましたら、メールにてご紹介・配信させていただければと思っております。\n差し支えなければ、こちらのショートメールへご確認いただけるメールアドレスをご返信いただけますと幸いです。\nどうぞよろしくお願いいたします。${signature}`;
+      message = `${name}様\nお世話になっております。${askEmailCompany}です。\n先ほどは物件についてお問い合わせいただき、誠にありがとうございました。\n今後、ご希望条件に合う新着物件やおすすめ物件がございましたら、メールにてご紹介・配信させていただければと思っております。\n差し支えなければ、こちらのショートメールへご確認いただけるメールアドレスをご返信いただけますと幸いです。\nどうぞよろしくお願いいたします。${signature}`;
     } else if (templateId === 'post_viewing_thanks') {
       message = `${name}様\n\nお世話になっております。㈱いふうです。\n本日は、貴重な時間を割いていただき、誠にありがとうございました。\n弊社としましては、${name}様の不動産の購入のお手伝いをスタッフ一同で精一杯努めてまいりたいと思っております。\nご内覧いただいた中でご不明点などございましたらお気軽にお申し付けください。\nまた、いただいているメールアドレス宛に公開前物件等の配信をいたします。\n他社様の掲載物件もご紹介できますので気になる物件がございましたらお声がけいただけますと幸いです。\nリフォーム、補助金制度などについてもご相談も承っております。\n今後ともどうぞよろしくお願い致します。\n\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri\n★非公開の情報はこちらから検索可能です↓↓\n${PUBLIC_SITE_URL}${signature}`;
     }
