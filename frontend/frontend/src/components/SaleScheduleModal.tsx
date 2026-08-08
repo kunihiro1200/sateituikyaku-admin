@@ -300,6 +300,11 @@ function buildA4Html(d: SaleScheduleData, debug = false, sellerNumber = ''): str
   @media print {
     html, body { margin: 0 !important; padding: 0 !important; }
     .a4-page { position: absolute; top: 0 !important; left: 0 !important; margin: 0 !important; }
+    /* 印刷時にブラウザヘッダー/フッター分(約15mm)だけ全体を縮小してページ内に収める */
+    .a4-page {
+      transform: scale(0.94);
+      transform-origin: top left;
+    }
   }
   /* 背景：A4左上(0,0)に完全固定 */
   .template-background {
