@@ -653,9 +653,10 @@ export default function BuyerDetailPage() {
       setBlockNavigation(hasOtherCompanyPropertyMissing);
       setValidationDialogOpen(true);
     } else {
-      // 買主一覧に戻る場合はブラウザ履歴で戻る（ステータスフィルターを維持するため）
+      // 買主一覧に戻る場合はsessionStorageのURLを使う（フィルター状態を維持）
       if (url === '/buyers') {
-        navigate(-1);
+        const savedUrl = sessionStorage.getItem('buyerListUrl');
+        navigate(savedUrl || '/buyers');
       } else {
         navigate(url);
       }
@@ -4367,9 +4368,10 @@ TEL：097-533-2022`;
         onProceed={() => {
           setValidationDialogOpen(false);
           setBlockNavigation(false);
-          // 買主一覧に戻る場合はブラウザ履歴で戻る（ステータスフィルターを維持するため）
+          // 買主一覧に戻る場合はsessionStorageのURLを使う（フィルター状態を維持）
           if (pendingNavigationUrl === '/buyers') {
-            navigate(-1);
+            const savedUrl = sessionStorage.getItem('buyerListUrl');
+            navigate(savedUrl || '/buyers');
           } else {
             navigate(pendingNavigationUrl);
           }

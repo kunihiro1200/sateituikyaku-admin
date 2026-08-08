@@ -128,6 +128,12 @@ export default function BuyersPage() {
   const [sidebarNormalStaffInitials, setSidebarNormalStaffInitials] = useState<string[]>(cachedData?.normalStaffInitials ?? []);
   const [sidebarLoading, setSidebarLoading] = useState(!cachedData);
 
+  // 買主一覧のURLをsessionStorageに保存（買主詳細から戻る際に使用）
+  useEffect(() => {
+    const currentUrl = `/buyers${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    sessionStorage.setItem('buyerListUrl', currentUrl);
+  }, [searchParams]);
+
   // 検索入力のdebounce（300ms）
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -560,6 +566,9 @@ export default function BuyersPage() {
       } else {
         next.delete('status');
       }
+      // sessionStorageにも保存（買主詳細→戻るで使用）
+      const savedUrl = `/buyers${next.toString() ? '?' + next.toString() : ''}`;
+      sessionStorage.setItem('buyerListUrl', savedUrl);
       return next;
     }, { replace: true });
   };
