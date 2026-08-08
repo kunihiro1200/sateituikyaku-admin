@@ -31,6 +31,15 @@ const PLACES_API_TYPE_MAP: Record<string, string> = {
   cram_school: 'school',
 };
 
+// 追加検索が必要なカテゴリ（1つのtype検索では漏れる施設を補完する）
+// イオン等の大型スーパーはGoogleでshopping_mallに分類されることがあるため追加検索
+const EXTRA_SEARCHES: Record<string, { type?: string; keyword: string }[]> = {
+  supermarket: [
+    { keyword: 'イオン スーパー' },
+    { type: 'shopping_mall', keyword: 'イオン' },
+  ],
+};
+
 // カテゴリごとのkeywordパラメータ（APIレベルで絞り込む）
 const PLACES_API_KEYWORD_MAP: Record<string, string> = {
   elementary_school: '小学校',
@@ -104,13 +113,53 @@ router.get('/places', authenticate, async (req: Request, res: Response) => {
             }
           );
 
+          let allResults: any[] = [];
           if (response.data.status === 'OK' && response.data.results?.length > 0) {
+            allResults = response.data.results;
+          }
+
+          // 追加検索（イオン等の大型スーパーがshopping_mallに分類されるケースに対応）
+          const extraSearches = EXTRA_SEARCHES[category.type];
+          if (extraSearches) {
+            const extraResponses = await Promise.all(
+              extraSearches.map((extra) =>
+                axios.get(
+                  'https://maps.googleapis.com/maps/api/place/nearbysearch/json',
+                  {
+                    params: {
+                      location: `${latNum},${lngNum}`,
+                      radius: radiusNum,
+                      ...(extra.type ? { type: extra.type } : {}),
+                      keyword: extra.keyword,
+                      language: 'ja',
+                      key: apiKey,
+                    },
+                    timeout: 10000,
+                  }
+                ).catch(() => null)
+              )
+            );
+            for (const extraRes of extraResponses) {
+              if (extraRes?.data?.status === 'OK' && extraRes.data.results?.length > 0) {
+                // place_idで重複排除してマージ
+                const existingIds = new Set(allResults.map((p: any) => p.place_id));
+                for (const place of extraRes.data.results) {
+                  if (!existingIds.has(place.place_id)) {
+                    allResults.push(place);
+                    existingIds.add(place.place_id);
+                  }
+                }
+              }
+            }
+          }
+
+          if (allResults.length > 0) {
             // 名前フィルタ（小学校・中学校・高校・塾の絞り込み）
             const nameFilter = CATEGORY_NAME_FILTERS[category.type];
             // 除外フィルタ（幼稚園など）
             const excludeFilter = CATEGORY_EXCLUDE_FILTERS[category.type];
 
-            let filtered = response.data.results;
+            let filtered = allResults;
             if (nameFilter) {
               filtered = filtered.filter((p: any) => nameFilter.test(p.name || ''));
             }
