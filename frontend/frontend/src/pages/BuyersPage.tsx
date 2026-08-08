@@ -68,7 +68,7 @@ function normalizeSearch(str: string): string {
 
 export default function BuyersPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialStatus = searchParams.get('status');
   const viewingMonth = searchParams.get('viewingMonth'); // YYYY-MM形式
   const assigneeParam = searchParams.get('assignee');
@@ -547,6 +547,23 @@ export default function BuyersPage() {
     }
   };
 
+  // ステータス選択時にURLパラメータを同期する
+  const handleStatusSelect = (status: string | null) => {
+    setSelectedCalculatedStatus(status);
+    setSearchQuery('');
+    setPage(0);
+    // URLパラメータを更新（戻る時にステータスが復元されるように）
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (status) {
+        next.set('status', status);
+      } else {
+        next.delete('status');
+      }
+      return next;
+    }, { replace: true });
+  };
+
   const handleRowClick = (buyerId: string, viewingDate?: string | null) => {
     // selectedCalculatedStatusはカテゴリキー（例: 'visitDayBefore'）なので、日本語表示名に変換して比較
     const displayName = categoryKeyToDisplayName[selectedCalculatedStatus || ''] || selectedCalculatedStatus;
@@ -715,7 +732,7 @@ export default function BuyersPage() {
           <AccordionDetails sx={{ p: 1 }}>
             <BuyerStatusSidebar
               selectedStatus={selectedCalculatedStatus}
-              onStatusSelect={(status) => { setSelectedCalculatedStatus(status); setSearchQuery(''); setPage(0); }}
+              onStatusSelect={handleStatusSelect}
               totalCount={total}
               categoryCounts={sidebarCounts}
               normalStaffInitials={sidebarNormalStaffInitials}
@@ -731,7 +748,7 @@ export default function BuyersPage() {
           <Paper sx={{ width: 220, flexShrink: 0, alignSelf: 'flex-start', maxHeight: 'none', overflow: 'visible' }}>
             <BuyerStatusSidebar
               selectedStatus={selectedCalculatedStatus}
-              onStatusSelect={(status) => { setSelectedCalculatedStatus(status); setSearchQuery(''); setPage(0); }}
+              onStatusSelect={handleStatusSelect}
               totalCount={total}
               categoryCounts={sidebarCounts}
               normalStaffInitials={sidebarNormalStaffInitials}

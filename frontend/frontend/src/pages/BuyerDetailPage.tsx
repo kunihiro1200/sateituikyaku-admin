@@ -653,7 +653,12 @@ export default function BuyerDetailPage() {
       setBlockNavigation(hasOtherCompanyPropertyMissing);
       setValidationDialogOpen(true);
     } else {
-      navigate(url);
+      // 買主一覧に戻る場合はブラウザ履歴で戻る（ステータスフィルターを維持するため）
+      if (url === '/buyers') {
+        navigate(-1);
+      } else {
+        navigate(url);
+      }
     }
   };
 
@@ -1540,7 +1545,7 @@ export default function BuyerDetailPage() {
           <Button 
             variant="contained" 
             startIcon={<ArrowBackIcon />} 
-            onClick={() => navigate('/buyers')}
+            onClick={() => navigate(-1)}
           >
             買主一覧に戻る
           </Button>
@@ -1561,7 +1566,7 @@ export default function BuyerDetailPage() {
     return (
       <Container maxWidth="xl" sx={{ py: 3, px: 2 }}>
         <Typography>買主が見つかりませんでした</Typography>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/buyers')}>
+        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)}>
           一覧に戻る
         </Button>
       </Container>
@@ -4362,7 +4367,12 @@ TEL：097-533-2022`;
         onProceed={() => {
           setValidationDialogOpen(false);
           setBlockNavigation(false);
-          navigate(pendingNavigationUrl);
+          // 買主一覧に戻る場合はブラウザ履歴で戻る（ステータスフィルターを維持するため）
+          if (pendingNavigationUrl === '/buyers') {
+            navigate(-1);
+          } else {
+            navigate(pendingNavigationUrl);
+          }
         }}
         onStay={() => {
           setValidationDialogOpen(false);
