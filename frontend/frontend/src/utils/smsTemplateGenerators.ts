@@ -472,6 +472,24 @@ export const generateGreetingSMS = (
 };
 
 /**
+ * 9. メールアドレス確認SMS
+ * AA → (株)いふう、FI → (株)くじら不動産
+ */
+export const generateAskEmailSMS = (
+  seller: Seller,
+  property: PropertyInfo | null,
+  employees?: Employee[]
+): string => {
+  const name = seller.name || '';
+
+  // 売主番号でAA/FI判定
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? 'くじら不動産' : '不動産会社いふう';
+
+  return `${name}様[改行]お世話になっております。${companyName}です。[改行]先ほどは物件についてお問い合わせいただき、誠にありがとうございました。[改行]今後、ご希望条件に合う新着物件やおすすめ物件がございましたら、メールにてご紹介・配信させていただければと思っております。[改行]差し支えなければ、こちらのショートメールへご確認いただけるメールアドレスをご返信いただけますと幸いです。[改行]どうぞよろしくお願いいたします。`;
+};
+
+/**
  * 改行プレースホルダーを実際の改行文字に変換
  */
 export const convertLineBreaks = (message: string): string => {
