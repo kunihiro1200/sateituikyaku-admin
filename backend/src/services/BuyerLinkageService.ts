@@ -132,7 +132,9 @@ export class BuyerLinkageService {
           property_address,
           property_number,
           viewing_insight_executor,
-          viewing_insight_companion
+          viewing_insight_companion,
+          viewing_result_follow_up,
+          budget
         `)
         .ilike('property_number', `%${propertyNumber}%`)
         .is('deleted_at', null)

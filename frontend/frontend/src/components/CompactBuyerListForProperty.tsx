@@ -26,6 +26,8 @@ interface BuyerWithDetails {
   inquiry_confidence?: string;
   phone_number?: string;
   email?: string;
+  viewing_result_follow_up?: string;
+  budget?: string;
 }
 
 interface CompactBuyerListForPropertyProps {
@@ -136,6 +138,8 @@ export default function CompactBuyerListForProperty({
                 <TableCell sx={{ fontWeight: 'bold', bgcolor: '#f5f5f5' }}>内覧日</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', bgcolor: '#f5f5f5' }}>時間</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', bgcolor: '#f5f5f5' }}>最新状況</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#f5f5f5' }}>内覧結果・後続対応</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#f5f5f5' }}>予算</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -165,6 +169,18 @@ export default function CompactBuyerListForProperty({
                   >
                     {buyer.latest_status || '-'}
                   </TableCell>
+                  <TableCell
+                    sx={{
+                      maxWidth: 200,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                    title={buyer.viewing_result_follow_up || ''}
+                  >
+                    {buyer.viewing_result_follow_up || '-'}
+                  </TableCell>
+                  <TableCell>{buyer.budget || '-'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
