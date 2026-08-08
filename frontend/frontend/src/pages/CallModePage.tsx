@@ -63,6 +63,7 @@ import {
   generatePostVisitThankYouSMS,
   generateLongTermCustomerSMS,
   generateCallReminderSMS,
+  generateGreetingSMS,
   convertLineBreaks,
   replacePlaceholders,
 } from '../utils/smsTemplateGenerators';
@@ -1365,6 +1366,11 @@ const CallModePage = () => {
       id: 'call_reminder',
       label: '当社が電話したというリマインドメール',
       generator: generateCallReminderSMS,
+    },
+    {
+      id: 'greeting',
+      label: '空',
+      generator: generateGreetingSMS,
     },
   ];
 
@@ -4281,9 +4287,9 @@ HP：https://ifoo-oita.com/
       }
 
       // generator関数を使用してメッセージ内容を生成
-      // 訪問後御礼メールの場合は従業員データを渡す
+      // 訪問後御礼メール・挨拶の場合は従業員データを渡す
       // call_reminder の場合は担当者名字を渡す（リマインドSMS差出人名表示用）
-      const generatedContent = template.id === 'post_visit_thank_you'
+      const generatedContent = (template.id === 'post_visit_thank_you' || template.id === 'greeting')
         ? template.generator(seller!, property, employees)
         : template.id === 'call_reminder'
           ? template.generator(seller!, property, myLastName)
