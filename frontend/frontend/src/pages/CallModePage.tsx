@@ -9026,6 +9026,21 @@ HP：https://ifoo-oita.com/
                   </Typography>
                 </Box>
               )}
+              {mailingStatus === '済' && (
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.5 }}>
+                  <Chip
+                    label="📮 郵送済み"
+                    size="small"
+                    sx={{
+                      backgroundColor: '#e8f5e9',
+                      color: '#2e7d32',
+                      fontWeight: 'bold',
+                      border: '1px solid #a5d6a7',
+                      fontSize: '0.8rem',
+                    }}
+                  />
+                </Box>
+              )}
               <RichTextCommentEditor
                 ref={commentEditorRef}
                 value={editableComments}
