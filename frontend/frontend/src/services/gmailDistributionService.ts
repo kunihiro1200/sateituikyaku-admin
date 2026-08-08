@@ -293,8 +293,10 @@ export class GmailDistributionService {
     error?: string;
   }> {
     try {
-      const subject = replacePlaceholders(template.subject, propertyData);
-      const body = replacePlaceholders(template.body, propertyData);
+      // buyerNameはバックエンドで各買主ごとに個別差し替えするため、フロント側では置換しない
+      const { buyerName, ...propertyDataWithoutBuyerName } = propertyData;
+      const subject = replacePlaceholders(template.subject, propertyDataWithoutBuyerName);
+      const body = replacePlaceholders(template.body, propertyDataWithoutBuyerName);
 
       // 買主番号とメールアドレスのマッピングを作成
       const recipients = recipientEmails.map(email => ({

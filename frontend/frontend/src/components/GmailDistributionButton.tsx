@@ -173,6 +173,8 @@ export default function GmailDistributionButton({
 
   // テンプレートのプレースホルダーを置換
   const replacePlaceholders = (template: string, buyerName?: string): string => {
+    // buyerNameに「様」を付ける（テンプレートから「様」を分離したため）
+    const buyerNameWithHonorific = buyerName ? (buyerName === 'お客様' ? 'お客様' : buyerName + '様') : '';
     return template
       .replace(/\{address\}/g, propertyAddress || '')
       .replace(/\{propertyNumber\}/g, propertyNumber)
@@ -182,7 +184,7 @@ export default function GmailDistributionButton({
       .replace(/\{propertyType\}/g, propertyType || '')
       .replace(/\{price\}/g, getPriceText())
       .replace(/\{signature\}/g, getSignatureByPropertyNumber(propertyNumber))
-      .replace(/\{buyerName\}/g, buyerName || '')
+      .replace(/\{buyerName\}/g, buyerNameWithHonorific)
       .replace(/\{propertyImages\}/g, ''); // 画像はバックエンドで埋め込むためプレビューでは空
   };
 

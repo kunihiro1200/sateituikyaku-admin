@@ -937,7 +937,7 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
         const buyerNumber = typeof recipient === 'string' ? undefined : recipient.buyerNumber;
         
         // 買主名を取得（買主番号がある場合）、なければ「お客様」
-        const buyerName = buyerNumber && buyerNameMap[buyerNumber] ? buyerNameMap[buyerNumber] : 'お客様';
+        const buyerName = buyerNumber && buyerNameMap[buyerNumber] ? buyerNameMap[buyerNumber] + '様' : 'お客様';
         
         // {buyerName}プレースホルダーを実際の買主名に置換
         const personalizedSubject = subject.replace(/\{buyerName\}/g, buyerName);

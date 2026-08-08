@@ -13,7 +13,7 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     id: 'price-reduction',
     name: '値下げメール配信',
     subject: '【価格変更】{address}',
-    body: `{buyerName}様
+    body: `{buyerName}
 お世話になっております。
 
 {address}の物件価格が変更となりました。
@@ -42,7 +42,7 @@ https://sateituikyaku-admin-frontend.vercel.app/tateuri
     id: 'new-listing',
     name: '新着物件配信',
     subject: '【新着物件】{address}',
-    body: `{buyerName}様
+    body: `{buyerName}
 いつもお世話になっております。
 新着物件のご案内です。
 
@@ -68,7 +68,7 @@ https://sateituikyaku-admin-frontend.vercel.app/tateuri
     id: 'pre-listing',
     name: '公開前配信',
     subject: '【未発表物件】{address}',
-    body: `{buyerName}様
+    body: `{buyerName}
 未発表の物件のご案内です。
 
 物件住所: {address}
@@ -93,7 +93,7 @@ https://sateituikyaku-admin-frontend.vercel.app/tateuri
     id: 'private-email-only',
     name: '非公開案件メール配信',
     subject: '未公開物件のお知らせ＜{address}＞',
-    body: `{buyerName}様
+    body: `{buyerName}
 
 ★★★顧客様限定！【ネット非公開情報】のご案内★★★
 
