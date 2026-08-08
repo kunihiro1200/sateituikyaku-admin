@@ -1692,7 +1692,7 @@ const CallModePage = () => {
         // 未保存変更チェック後に遷移警告チェックを経由
         const proceed = () => {
           navigateWithWarningCheck(() => {
-            pageDataCache.invalidateByPrefix(CACHE_KEYS.SELLERS_LIST);
+            sessionStorage.setItem('sellersNeedRefresh', '1');
             pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
             navigate('/sellers');
           });
@@ -1704,7 +1704,7 @@ const CallModePage = () => {
         } else {
           // 遷移許可: 既存の警告チェックを経由
           navigateWithWarningCheck(() => {
-            pageDataCache.invalidateByPrefix(CACHE_KEYS.SELLERS_LIST);
+            sessionStorage.setItem('sellersNeedRefresh', '1');
             pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
             navigate('/sellers');
           });
@@ -2555,7 +2555,7 @@ const CallModePage = () => {
     // 不通未入力警告（反響日2026年1月1日以降 かつ 不通未入力）
     const isAfterJan2026ForUnreachable = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01');
     const onConfirm = () => {
-      pageDataCache.invalidateByPrefix(CACHE_KEYS.SELLERS_LIST);
+      sessionStorage.setItem('sellersNeedRefresh', '1');
       pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
       navigate('/sellers');
     };
@@ -2574,7 +2574,7 @@ const CallModePage = () => {
         open: true,
         warningType: 'confidence',
         onConfirm: () => {
-          pageDataCache.invalidateByPrefix(CACHE_KEYS.SELLERS_LIST);
+          sessionStorage.setItem('sellersNeedRefresh', '1');
           pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
           navigate('/sellers');
         },
@@ -2589,15 +2589,15 @@ const CallModePage = () => {
         open: true,
         warningType: 'firstCall',
         onConfirm: () => {
-          pageDataCache.invalidateByPrefix(CACHE_KEYS.SELLERS_LIST);
+          sessionStorage.setItem('sellersNeedRefresh', '1');
           pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
           navigate('/sellers');
         },
       });
       return;
     }
-    // 売主一覧キャッシュを無効化（最終電話などが即時反映されるように）
-    pageDataCache.invalidateByPrefix(CACHE_KEYS.SELLERS_LIST);
+    // 売主一覧はキャッシュを保持してスクロール位置復元を優先し、バックグラウンドで最新化
+    sessionStorage.setItem('sellersNeedRefresh', '1');
     pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
     navigate('/sellers');
   };
@@ -4981,23 +4981,26 @@ HP：https://ifoo-oita.com/
       setPageEdited(false); // 次電日を含むステータス保存後はリマインダーダイアログ不要
       
       // ステータスに応じて適切なエンドポイントを選択
+      // 注意: 「他決→専任」「他決→一般」は「専任」「一般」より先にチェックすること
+      // そうしないと statusLabel.includes('一般') が「他決→一般」にもマッチしてしまう
       let endpoint = '';
-      if (statusLabel.includes('専任')) {
-        endpoint = `/api/chat-notifications/exclusive-contract/${seller.id}`;
-      } else if (statusLabel.includes('一般')) {
-        endpoint = `/api/chat-notifications/general-contract/${seller.id}`;
-      } else if (statusLabel.includes('訪問後他決')) {
+      if (statusLabel.includes('訪問後他決')) {
         endpoint = `/api/chat-notifications/post-visit-other-decision/${seller.id}`;
       } else if (statusLabel.includes('未訪問他決')) {
         endpoint = `/api/chat-notifications/pre-visit-other-decision/${seller.id}`;
       } else if (statusLabel === '他社買取') {
         endpoint = `/api/chat-notifications/other-company-purchase/${seller.id}`;
       } else if (statusLabel.includes('他決')) {
+        // 「他決→専任」「他決→一般」「他決→追客」「他決→追客不要」を含む
         // visit_assigneeが設定されている（訪問済み）場合は訪問後他決、それ以外は未訪問他決
         const isVisited = seller.visitAssignee && seller.visitAssignee !== '' && seller.visitAssignee !== '外す';
         endpoint = isVisited
           ? `/api/chat-notifications/post-visit-other-decision/${seller.id}`
           : `/api/chat-notifications/pre-visit-other-decision/${seller.id}`;
+      } else if (statusLabel.includes('専任')) {
+        endpoint = `/api/chat-notifications/exclusive-contract/${seller.id}`;
+      } else if (statusLabel.includes('一般')) {
+        endpoint = `/api/chat-notifications/general-contract/${seller.id}`;
       } else {
         throw new Error('このステータスでは通知を送信できません');
       }
