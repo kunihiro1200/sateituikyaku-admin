@@ -5312,6 +5312,18 @@ HP：https://ifoo-oita.com/
                   fontWeight="bold"
                   sx={{ color: SECTION_COLORS.seller.main, fontSize: isMobile ? '0.95rem' : undefined }}
                 >{seller?.name || '読み込み中...'}</Typography>
+              {seller?.visitAssignee && (
+                <Chip
+                  label={`担当: ${seller.visitAssignee}`}
+                  size="small"
+                  sx={{
+                    bgcolor: '#e3f2fd',
+                    color: '#1565c0',
+                    fontWeight: 'bold',
+                    fontSize: isMobile ? '0.65rem' : '0.75rem',
+                  }}
+                />
+              )}
               {seller?.sellerNumber && (
                 <>
                   <Chip 
