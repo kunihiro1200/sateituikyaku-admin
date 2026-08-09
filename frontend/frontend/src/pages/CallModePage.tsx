@@ -63,6 +63,7 @@ import {
   generatePostVisitThankYouSMS,
   generateLongTermCustomerSMS,
   generateCallReminderSMS,
+  generateUnvisitedOtherDecisionSMS,
   generateGreetingSMS,
   convertLineBreaks,
   replacePlaceholders,
@@ -1426,6 +1427,11 @@ const CallModePage = () => {
       id: 'call_reminder',
       label: '当社が電話したというリマインドメール',
       generator: generateCallReminderSMS,
+    },
+    {
+      id: 'unvisited_other_decision',
+      label: '未訪問他決の理由伺い',
+      generator: generateUnvisitedOtherDecisionSMS,
     },
     {
       id: 'greeting',
