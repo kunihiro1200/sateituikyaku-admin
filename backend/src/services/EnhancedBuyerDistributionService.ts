@@ -180,6 +180,11 @@ export class EnhancedBuyerDistributionService {
             price_range_apartment: consolidatedBuyer.priceRanges.apartment.join(' / '),
             price_range_house: consolidatedBuyer.priceRanges.house.join(' / '),
             price_range_land: consolidatedBuyer.priceRanges.land.join(' / '),
+            // buyer_filter用フィールド（最も許容的な値を使用）
+            pet_allowed_required: this.getMostPermissivePet(consolidatedBuyer.originalRecords),
+            parking_spaces: this.getMostPermissiveParking(consolidatedBuyer.originalRecords),
+            hot_spring_required: this.getMostPermissiveOnsen(consolidatedBuyer.originalRecords),
+            high_floor_required: this.getMostPermissiveFloor(consolidatedBuyer.originalRecords),
             filterResults: {
               geography: geoMatch.matched,
               distribution: distMatch,
@@ -359,7 +364,11 @@ export class EnhancedBuyerDistributionService {
           desired_property_type,
           price_range_apartment,
           price_range_house,
-          price_range_land
+          price_range_land,
+          pet_allowed_required,
+          parking_spaces,
+          hot_spring_required,
+          high_floor_required
         `)
         .not('email', 'is', null)
         .neq('email', '')
@@ -513,6 +522,55 @@ export class EnhancedBuyerDistributionService {
     const p2 = priority[type2 || ''] || 0;
     
     return p1 > p2;
+  }
+
+  /**
+   * buyer_filter用: ペット許可で最も許容的な値を取得
+   * 「可」が1つでもあれば「可」、なければ最初のレコードの値
+   */
+  private getMostPermissivePet(records: any[]): string | null {
+    for (const r of records) {
+      if (r.pet_allowed_required === '可') return '可';
+    }
+    for (const r of records) {
+      if (r.pet_allowed_required === 'どちらでも') return 'どちらでも';
+    }
+    return records[0]?.pet_allowed_required || null;
+  }
+
+  /**
+   * buyer_filter用: 駐車場で最も許容的な値を取得
+   */
+  private getMostPermissiveParking(records: any[]): string | null {
+    // 「不要」が最も許容的（条件なし）
+    for (const r of records) {
+      if (!r.parking_spaces || r.parking_spaces === '' || r.parking_spaces === '不要') return r.parking_spaces || null;
+    }
+    return records[0]?.parking_spaces || null;
+  }
+
+  /**
+   * buyer_filter用: 温泉で最も許容的な値を取得
+   * 「あり」が1つでもあれば「あり」（温泉付き物件にマッチさせるため）
+   */
+  private getMostPermissiveOnsen(records: any[]): string | null {
+    for (const r of records) {
+      if (r.hot_spring_required === 'あり') return 'あり';
+    }
+    for (const r of records) {
+      if (r.hot_spring_required === 'どちらでも') return 'どちらでも';
+    }
+    return records[0]?.hot_spring_required || null;
+  }
+
+  /**
+   * buyer_filter用: 階数で最も許容的な値を取得
+   */
+  private getMostPermissiveFloor(records: any[]): string | null {
+    for (const r of records) {
+      if (r.high_floor_required === 'どちらでも') return 'どちらでも';
+    }
+    return records[0]?.high_floor_required || null;
   }
 
   /**
