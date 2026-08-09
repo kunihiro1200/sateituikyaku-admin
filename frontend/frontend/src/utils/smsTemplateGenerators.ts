@@ -260,28 +260,22 @@ export const generateCallReminderSMS = (
  * 8-extra. 未訪問他決の理由伺い
  * 訪問前に他社決定した顧客への理由確認メッセージ
  * FI: 署名はくじら不動産、非FI: 株式会社いふう
+ * @param staffLastName ログインユーザーの名字（アカウント名として使用）
  */
 export const generateUnvisitedOtherDecisionSMS = (
   seller: Seller,
-  property: PropertyInfo | null
+  property: PropertyInfo | null,
+  staffLastName?: string
 ): string => {
   const name = seller.name || '';
+  const accountName = staffLastName || '';
 
-  let message = `${name}様ご丁寧にご連絡いただきありがとうございます。[改行]他社様にご依頼されたとのこと、承知いたしました。今回は弊社では直接お話を伺う機会をつくれず、お力になれなかったことを残念に思っております。[改行]差し支えなければ、他社様に決められた一番の決め手を教えていただけないでしょうか？[改行]査定額やご提案内容、担当者の対応、訪問までの流れなど、率直にお聞かせいただけると大変ありがたいです。[改行]今後のご売却が良い形で進むことを願っております。[改行][改行]くじら不動産　<<アカウント名>>`;
-
-  // プレースホルダー置換（FI判定により会社名・住所が切り替わる）
-  // ただしこのテンプレートはFI/非FIで本文末尾の会社名を別途制御する
+  // FI判定で署名の会社名を決定
   const sellerNumber = (seller.sellerNumber || '').toUpperCase();
   const hasFI = sellerNumber.includes('FI');
+  const companyName = hasFI ? 'くじら不動産' : '株式会社いふう';
 
-  if (!hasFI) {
-    // 非FI: 「くじら不動産」→「株式会社いふう」
-    message = message.replace(/くじら不動産(?=　<<アカウント名>>)/, '株式会社いふう');
-  }
-
-  // アカウント名プレースホルダー（表示そのまま残す。実際の置換はUIコンポーネント側で対応、
-  // またはここで seller.assignedTo 等から解決する場合は以下のコメントを外す）
-  // message = message.replace(/<<アカウント名>>/g, seller.assignedTo || '');
+  let message = `${name}様ご丁寧にご連絡いただきありがとうございます。[改行]他社様にご依頼されたとのこと、承知いたしました。今回は弊社では直接お話を伺う機会をつくれず、お力になれなかったことを残念に思っております。[改行]最後にお願いがあるのですが、他社様に決められた一番の決め手を教えていただけないでしょうか？[改行]査定額やご提案内容、担当者の対応、訪問までの流れなど、率直にお聞かせいただけると大変ありがたいです。[改行]今後のご売却が良い形で進むことを願っております。[改行][改行]${companyName}　${accountName}`;
 
   message = replacePlaceholders(message, seller);
 
