@@ -87,6 +87,10 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
     } else if (templateId === 'ask_email') {
       const askEmailCompany = hasFI ? 'くじら不動産' : '不動産会社いふう';
       message = `${name}様お世話になっております。${askEmailCompany}です。\n先ほどは物件についてお問い合わせいただき、誠にありがとうございました。\n今後、ご希望条件に合う新着物件やおすすめ物件がございましたら、メールにてご紹介・配信させていただければと思っております。\n差し支えなければ、こちらのショートメールへご確認いただけるメールアドレスをご返信いただけますと幸いです。\nどうぞよろしくお願いいたします。`;
+    } else if (templateId === 'empty_greeting') {
+      const emptyCompany = hasFI ? '株式会社くじら不動産' : '株式会社いふう';
+      const senderDisplay = senderName || '●●';
+      message = `${name}様\nお世話になっております。${emptyCompany}の${senderDisplay}です。\n今後ともどうぞよろしくお願いいたします。`;
     } else if (templateId === 'post_viewing_thanks') {
       message = `${name}様\n\nお世話になっております。㈱いふうです。\n本日は、貴重な時間を割いていただき、誠にありがとうございました。\n弊社としましては、${name}様の不動産の購入のお手伝いをスタッフ一同で精一杯努めてまいりたいと思っております。\nご内覧いただいた中でご不明点などございましたらお気軽にお申し付けください。\nまた、いただいているメールアドレス宛に公開前物件等の配信をいたします。\n他社様の掲載物件もご紹介できますので気になる物件がございましたらお声がけいただけますと幸いです。\nリフォーム、補助金制度などについてもご相談も承っております。\n今後ともどうぞよろしくお願い致します。\n\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri\n★非公開の情報はこちらから検索可能です↓↓\n${PUBLIC_SITE_URL}${signature}`;
     }
@@ -169,6 +173,7 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
         <MenuItem onClick={() => sendSms('no_response', '前回問合せ後反応なし')}>前回問合せ後反応なし</MenuItem>
         <MenuItem onClick={() => sendSms('no_response_offer', '反応なし（買付あり不適合）')}>反応なし（買付あり不適合）</MenuItem>
         <MenuItem onClick={() => sendSms('pinrich', '物件指定なし（Pinrich）')}>物件指定なし（Pinrich）</MenuItem>
+        <MenuItem onClick={() => sendSms('empty_greeting', '空')}>空</MenuItem>
       </Menu>
     </>
   );
