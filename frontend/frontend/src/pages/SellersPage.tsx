@@ -1472,6 +1472,7 @@ export default function SellersPage() {
                   input={<OutlinedInput label="営業担当" />}
                   renderValue={(selected) => selected.join(', ')}
                 >
+                  <MenuItem value="__none__">（なし）</MenuItem>
                   {assigneeInitials.map((initial) => (
                     <MenuItem key={initial} value={initial}>{initial}</MenuItem>
                   ))}

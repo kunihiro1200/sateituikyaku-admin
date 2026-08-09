@@ -750,10 +750,20 @@ export class SellerService extends BaseRepository {
     // 営業担当フィルター（visit_assigneeカラム、複数選択対応）
     if (visitAssignee && (Array.isArray(visitAssignee) ? visitAssignee.length > 0 : true)) {
       const assignees = Array.isArray(visitAssignee) ? visitAssignee : [visitAssignee];
-      if (assignees.length === 1) {
-        query = query.eq('visit_assignee', assignees[0]);
+      const hasNone = assignees.includes('__none__');
+      const realAssignees = assignees.filter(a => a !== '__none__');
+
+      if (hasNone && realAssignees.length === 0) {
+        // 「なし」のみ選択 → visit_assignee が NULL または空文字
+        query = query.or('visit_assignee.is.null,visit_assignee.eq.');
+      } else if (hasNone && realAssignees.length > 0) {
+        // 「なし」＋特定担当者 → OR条件
+        const inList = realAssignees.join(',');
+        query = query.or(`visit_assignee.is.null,visit_assignee.eq.,visit_assignee.in.(${inList})`);
+      } else if (realAssignees.length === 1) {
+        query = query.eq('visit_assignee', realAssignees[0]);
       } else {
-        query = query.in('visit_assignee', assignees);
+        query = query.in('visit_assignee', realAssignees);
       }
     }
 
