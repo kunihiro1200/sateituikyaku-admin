@@ -4821,6 +4821,7 @@ ${pageUrl}`;
             );
           })()}
           <EditableField label="台帳作成済み" field="ledger_created" type="date" />
+          <EditableButtonSelect label="ATBB成約済み" field="atbb_contract_completed" options={['N', 'Y']} />
           {/* 入金確認（売）: 決済日>2025/10/20 かつ 決済完了チャット入力済みの場合は必須・ハイライト */}
           {(() => {
             const settlementDate = getValue('settlement_date');

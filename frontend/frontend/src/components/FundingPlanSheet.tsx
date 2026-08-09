@@ -310,6 +310,13 @@ const FundingPlanSheet = React.forwardRef<HTMLDivElement, FundingPlanSheetProps>
           </Box>
         </Box>
 
+        {/* 太陽光発電注意書き */}
+        <Box sx={{ mt: 1 }}>
+          <Typography sx={{ fontSize: '7.5pt', fontFamily: FONT }}>
+            ※物件に太陽光発電設備が設置されている場合、売買に伴う名義変更手続きおよび行政書士等へ依頼する際に要する費用（目安：約5万円～10万円程度）は、買主様のご負担となります。
+          </Typography>
+        </Box>
+
         {/* フッター */}
         <Box sx={{ mt: 1, pt: 0.5, borderTop: '1px solid #000', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography sx={{ fontSize: '8pt', fontFamily: FONT }}>

@@ -44,6 +44,7 @@
     "決済日": "settlement_date",
     "売買契約備考": "sales_contract_notes",
     "台帳作成済み": "ledger_created",
+    "ATBB成約済み": "atbb_contract_completed",
     "保留": "on_hold",
     "添付資料印刷": "attachment_printed"
   },

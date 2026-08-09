@@ -485,6 +485,7 @@ export function generatePage4Html(propertyAddress: string, propertyPrice: number
         <td style="${td};font-size:7.5pt;">*物件価格以外にかかる費用です</td>
       </tr>
     </table>
+    <div style="margin-top:6px;font-size:7.5pt;">※物件に太陽光発電設備が設置されている場合、売買に伴う名義変更手続きおよび行政書士等へ依頼する際に要する費用（目安：約5万円～10万円程度）は、買主様のご負担となります。</div>
     <div style="margin-top:8px;padding-top:4px;border-top:1px solid #000;display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:8pt;">${esc(footerText)}</span>
       <span style="font-size:7pt;color:#666;">info→3</span>
@@ -585,6 +586,7 @@ export function generatePage4RepeaterHtml(propertyAddress: string, propertyPrice
         <td style="${td};font-size:7.5pt;">*物件価格以外にかかる費用です</td>
       </tr>
     </table>
+    <div style="margin-top:6px;font-size:7.5pt;">※物件に太陽光発電設備が設置されている場合、売買に伴う名義変更手続きおよび行政書士等へ依頼する際に要する費用（目安：約5万円～10万円程度）は、買主様のご負担となります。</div>
     <div style="margin-top:8px;padding-top:4px;border-top:1px solid #000;display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:8pt;">${esc(footerText)}</span>
       <span style="font-size:7pt;color:#666;">info→3</span>
@@ -646,6 +648,7 @@ export function generatePage4CashRepeaterHtml(propertyAddress: string, propertyP
         <td style="${td};font-size:7.5pt;">*物件価格以外にかかる費用です</td>
       </tr>
     </table>
+    <div style="margin-top:6px;font-size:7.5pt;">※物件に太陽光発電設備が設置されている場合、売買に伴う名義変更手続きおよび行政書士等へ依頼する際に要する費用（目安：約5万円～10万円程度）は、買主様のご負担となります。</div>
     <div style="margin-top:8px;padding-top:4px;border-top:1px solid #000;display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:8pt;">${esc(footerText)}</span>
       <span style="font-size:7pt;color:#666;">info→3</span>
@@ -708,6 +711,7 @@ export function generatePage4CashHtml(propertyAddress: string, propertyPrice: nu
         <td style="${td};font-size:7.5pt;">*物件価格以外にかかる費用です</td>
       </tr>
     </table>
+    <div style="margin-top:6px;font-size:7.5pt;">※物件に太陽光発電設備が設置されている場合、売買に伴う名義変更手続きおよび行政書士等へ依頼する際に要する費用（目安：約5万円～10万円程度）は、買主様のご負担となります。</div>
     <div style="margin-top:8px;padding-top:4px;border-top:1px solid #000;display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:8pt;">${esc(footerText)}</span>
       <span style="font-size:7pt;color:#666;">info→3</span>
