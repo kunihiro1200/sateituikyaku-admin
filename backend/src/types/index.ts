@@ -504,6 +504,8 @@ export interface ListSellersParams {
   valuationAmountMax?: number; // 査定額フィルター（万円単位）上限
   // Deletion sync filter
   includeDeleted?: boolean; // Default: false (exclude deleted sellers)
+  // 営業担当フィルター（visit_assignee）
+  visitAssignee?: string | string[];
   // サイドバーカテゴリフィルター
   statusCategory?: 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitScheduled' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'pinrichChangeRequired' | 'exclusive' | 'general' | 'visitOtherDecision' | 'unvisitedOtherDecision' | string;
 }

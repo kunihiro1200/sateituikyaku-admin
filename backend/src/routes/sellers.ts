@@ -585,6 +585,8 @@ router.get(
         // 査定額フィルター（万円単位）
         valuationAmountMin: req.query.valuationAmountMin ? parseFloat(req.query.valuationAmountMin as string) : undefined,
         valuationAmountMax: req.query.valuationAmountMax ? parseFloat(req.query.valuationAmountMax as string) : undefined,
+        // 営業担当フィルター（visit_assignee）：複数選択対応
+        visitAssignee: toStringArray(req.query.visitAssignee),
       };
 
       const result = await sellerService.listSellers(params);

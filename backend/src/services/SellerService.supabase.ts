@@ -1205,6 +1205,7 @@ export class SellerService extends BaseRepository {
       currentStatusFilter, // 状況（売主）フィルター
       valuationAmountMin, // 査定額フィルター下限（万円単位）
       valuationAmountMax, // 査定額フィルター上限（万円単位）
+      visitAssignee, // 営業担当フィルター（visit_assignee）
     } = params;
 
     // JST今日の日付を取得
@@ -1244,7 +1245,8 @@ export class SellerService extends BaseRepository {
       valuationAmountMin ?? 'all',
       valuationAmountMax ?? 'all',
       nextCallDateFrom || 'all',
-      nextCallDateTo || 'all'
+      nextCallDateTo || 'all',
+      toCacheKeyPart(visitAssignee)
     );
 
     // キャッシュをチェック（インメモリ優先、次にRedis）
@@ -1839,6 +1841,23 @@ export class SellerService extends BaseRepository {
     }
     if (valuationAmountMax !== undefined) {
       query = query.lte('valuation_amount_1', valuationAmountMax * 10000);
+    }
+    // 営業担当フィルター（visit_assigneeカラム、複数選択対応）
+    // __none__ = visit_assignee が NULL または空文字（担当なし）
+    const visitAssigneeList = toArray(visitAssignee as any);
+    if (visitAssigneeList) {
+      const hasNone = visitAssigneeList.includes('__none__');
+      const realAssignees = visitAssigneeList.filter(a => a !== '__none__');
+      if (hasNone && realAssignees.length === 0) {
+        query = query.or('visit_assignee.is.null,visit_assignee.eq.');
+      } else if (hasNone && realAssignees.length > 0) {
+        const inList = realAssignees.join(',');
+        query = query.or(`visit_assignee.is.null,visit_assignee.eq.,visit_assignee.in.(${inList})`);
+      } else if (realAssignees.length === 1) {
+        query = query.eq('visit_assignee', realAssignees[0]);
+      } else {
+        query = query.in('visit_assignee', realAssignees);
+      }
     }
 
     // ソート（inquiry_dateがnullのものは最後に表示、同日の場合は売主番号が大きいほうを最新とする）
