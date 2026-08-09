@@ -754,6 +754,8 @@ const CallModePage = () => {
   // 一時追加フィルターのID・ラベル（URLパラメータから読み取る）
   const [tempFilterId, setTempFilterId] = useState<string>('');
   const [tempFilterLabel, setTempFilterLabel] = useState<string>('');
+  // 一時追加フィルター内の売主ID一覧（NEXTボタン用）
+  const [tempFilterSellerIds, setTempFilterSellerIds] = useState<string[]>([]);
   
   // URLパラメータから状態を読み取る
   useEffect(() => {
@@ -767,6 +769,63 @@ const CallModePage = () => {
     setTempFilterId(tfId);
     setTempFilterLabel(tfLabel);
   }, []);
+
+  // 一時追加フィルターの売主ID一覧を取得（NEXTボタン用）
+  // tempFilterId が変わるたびに（ページ遷移含む）再取得する
+  useEffect(() => {
+    if (!tempFilterId) {
+      setTempFilterSellerIds([]);
+      return;
+    }
+    const fetchTempFilterSellerIds = async () => {
+      try {
+        // フィルター定義を取得
+        const filterRes = await api.get('/api/sellers/sidebar-temp-filters');
+        const filters: Array<{ id: string; filters: Record<string, any> }> = filterRes.data.filters || [];
+        const tf = filters.find((f) => f.id === tempFilterId);
+        if (!tf) return;
+
+        // フィルター条件を使って売主一覧を取得（ID・ソート順のみ必要なので pageSize を大きく）
+        const f = tf.filters || {};
+        const params: any = {
+          page: 1,
+          pageSize: 500,
+          sortBy: 'next_call_date',
+          sortOrder: 'asc',
+        };
+        const toArr = (v: any): string[] => {
+          if (!v) return [];
+          if (Array.isArray(v)) return v.filter(Boolean);
+          return [String(v)];
+        };
+        if (f.region) params.region = toArr(f.region);
+        if (f.confidenceLevel) params.confidenceLevel = toArr(f.confidenceLevel);
+        if (f.inquirySite) params.inquirySite = toArr(f.inquirySite);
+        if (f.propertyType) params.propertyType = toArr(f.propertyType);
+        if (f.statusFilter) params.statusFilter = toArr(f.statusFilter);
+        if (f.currentStatusFilter) params.currentStatusFilter = toArr(f.currentStatusFilter);
+        if (f.inquiryDateFrom) params.inquiryDateFrom = f.inquiryDateFrom;
+        if (f.inquiryDateTo) params.inquiryDateTo = f.inquiryDateTo;
+        if (f.valuationAmountMin !== undefined) params.valuationAmountMin = parseFloat(f.valuationAmountMin);
+        if (f.valuationAmountMax !== undefined) params.valuationAmountMax = parseFloat(f.valuationAmountMax);
+        if (f.nextCallDateFrom && f.nextCallDateTo && f.nextCallDateFrom === f.nextCallDateTo) {
+          params.nextCallDateFrom = f.nextCallDateFrom;
+          params.nextCallDateTo = f.nextCallDateTo;
+        } else if (f.nextCallDateFrom) {
+          params.nextCallDateFrom = f.nextCallDateFrom;
+        } else if (f.nextCallDateTo) {
+          params.nextCallDateTo = f.nextCallDateTo;
+        }
+
+        const sellersRes = await api.get('/api/sellers', { params });
+        const ids: string[] = (sellersRes.data.data || []).map((s: any) => s.id);
+        setTempFilterSellerIds(ids);
+      } catch (err) {
+        console.warn('[CallModePage] 一時フィルター売主一覧取得失敗:', err);
+      }
+    };
+    fetchTempFilterSellerIds();
+  }, [tempFilterId]);
   
   // カテゴリ選択ハンドラー（通話モードページ用）
   const handleCategorySelect = useCallback((category: StatusCategory, visitAssignee?: string) => {
@@ -5216,6 +5275,36 @@ HP：https://ifoo-oita.com/
               📌 {tempFilterLabel}
             </Button>
           )}
+          {/* 一時追加フィルターから入った場合：NEXTボタンを表示 */}
+          {tempFilterId && tempFilterLabel && seller?.id && (() => {
+            const currentIdx = tempFilterSellerIds.indexOf(seller.id);
+            const hasNext = currentIdx !== -1 && currentIdx < tempFilterSellerIds.length - 1;
+            const nextSellerId = hasNext ? tempFilterSellerIds[currentIdx + 1] : null;
+            const posLabel = currentIdx !== -1 ? `${currentIdx + 1}/${tempFilterSellerIds.length}` : '';
+            return (
+              <Button
+                variant="contained"
+                size="small"
+                disabled={!hasNext}
+                sx={{
+                  bgcolor: '#8e24aa',
+                  '&:hover': { bgcolor: '#6a1b9a' },
+                  '&.Mui-disabled': { bgcolor: '#ce93d8', color: 'white' },
+                  minWidth: 80,
+                }}
+                onClick={() => {
+                  if (!nextSellerId) return;
+                  navigateWithWarningCheck(() => {
+                    const tfParam = `tempFilterId=${encodeURIComponent(tempFilterId)}&tempFilterLabel=${encodeURIComponent(tempFilterLabel)}`;
+                    navigate(`/sellers/${nextSellerId}/call?${tfParam}`);
+                  });
+                }}
+              >
+                {posLabel && <span style={{ fontSize: '0.7rem', marginRight: 4, opacity: 0.85 }}>{posLabel}</span>}
+                NEXT ▶
+              </Button>
+            );
+          })()}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography
