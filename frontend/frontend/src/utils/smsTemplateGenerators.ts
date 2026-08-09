@@ -270,14 +270,21 @@ export const generateUnvisitedOtherDecisionSMS = (
   const name = seller.name || '';
   const accountName = staffLastName || '';
 
-  // FI判定で署名の会社名を決定
+  // FI判定で署名の会社名を決定（replacePlaceholders は呼ばずに直接組み立てる）
   const sellerNumber = (seller.sellerNumber || '').toUpperCase();
   const hasFI = sellerNumber.includes('FI');
   const companyName = hasFI ? 'くじら不動産' : '株式会社いふう';
 
-  let message = `${name}様ご丁寧にご連絡いただきありがとうございます。[改行]他社様にご依頼されたとのこと、承知いたしました。今回は弊社では直接お話を伺う機会をつくれず、お力になれなかったことを残念に思っております。[改行]最後にお願いがあるのですが、他社様に決められた一番の決め手を教えていただけないでしょうか？[改行]査定額やご提案内容、担当者の対応、訪問までの流れなど、率直にお聞かせいただけると大変ありがたいです。[改行]今後のご売却が良い形で進むことを願っております。[改行][改行]${companyName}　${accountName}`;
-
-  message = replacePlaceholders(message, seller);
+  // [改行] は convertLineBreaks で \n に変換される
+  const message = [
+    `${name}様ご丁寧にご連絡いただきありがとうございます。`,
+    `他社様にご依頼されたとのこと、承知いたしました。今回は弊社では直接お話を伺う機会をつくれず、お力になれなかったことを残念に思っております。`,
+    `最後にお願いがあるのですが、他社様に決められた一番の決め手を教えていただけないでしょうか？`,
+    `査定額やご提案内容、担当者の対応、訪問までの流れなど、率直にお聞かせいただけると大変ありがたいです。`,
+    `今後のご売却が良い形で進むことを願っております。`,
+    ``,
+    `${companyName}　${accountName}`,
+  ].join('[改行]');
 
   return message;
 };
