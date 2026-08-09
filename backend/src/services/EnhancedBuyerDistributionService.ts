@@ -658,6 +658,12 @@ export class EnhancedBuyerDistributionService {
       }
     }
 
+    // 逆方向: 物件が㊵（大分市全域）を持つ場合、大分市エリア（①〜⑧）を希望する買主にもマッチ
+    if (propertyAreas.includes(OITA_ALL)) {
+      const buyerWantsOitaArea = buyerAreas.filter(a => OITA_AREA_NUMBERS.includes(a));
+      matchedAreas.push(...buyerWantsOitaArea);
+    }
+
     // ㊶（U+32B6）= 別府市全域: 買主が㊶を選択していて、物件が別府市エリア（⑨〜⑮㊷㊸）のいずれかであれば該当
     const BEPPU_ALL = '\u32B6'; // ㊶
     if (buyerAreas.includes(BEPPU_ALL)) {
@@ -665,6 +671,12 @@ export class EnhancedBuyerDistributionService {
       if (isBeppuProperty) {
         matchedAreas.push(BEPPU_ALL);
       }
+    }
+
+    // 逆方向: 物件が㊶（別府市全域）を持つ場合、別府市エリア（⑨〜⑮㊷㊸）を希望する買主にもマッチ
+    if (propertyAreas.includes(BEPPU_ALL)) {
+      const buyerWantsBeppuArea = buyerAreas.filter(a => BEPPU_AREA_NUMBERS.includes(a));
+      matchedAreas.push(...buyerWantsBeppuArea);
     }
 
     // 通常のエリアマッチング（直接一致）
