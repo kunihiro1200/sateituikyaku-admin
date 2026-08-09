@@ -5269,6 +5269,16 @@ HP：https://ifoo-oita.com/
                     <MenuItem onClick={() => { setDocGenMenuAnchor(null); setNetProceedsModalOpen(true); }}>
                       手残り金額
                     </MenuItem>
+                    {!seller?.sellerNumber?.toUpperCase().startsWith('FI') && seller?.id && (
+                      <MenuItem onClick={() => { setDocGenMenuAnchor(null); window.open(`/sellers/${seller.id}/nearby-buyers`, '_blank'); }}>
+                        近隣買主
+                      </MenuItem>
+                    )}
+                    {!seller?.sellerNumber?.toUpperCase().startsWith('FI') && seller?.id && (
+                      <MenuItem onClick={() => { setDocGenMenuAnchor(null); window.open(`/sellers/${seller.id}/sales-history`, '_blank'); }}>
+                        売買実績
+                      </MenuItem>
+                    )}
                     <MenuItem onClick={() => { setDocGenMenuAnchor(null); setSouhuModalOpen(true); }}>
                       送付状
                     </MenuItem>
