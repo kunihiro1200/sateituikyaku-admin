@@ -346,6 +346,8 @@ export default function SellersPage() {
   // 次電日フィルター：モード（以降/ぴったり/以前）と日付
   const [nextCallDateMode, setNextCallDateMode] = useState<'' | 'onOrAfter' | 'exact' | 'onOrBefore'>('');
   const [nextCallDateValue, setNextCallDateValue] = useState('');
+  // 営業担当フィルター（visit_assignee、複数選択対応）
+  const [visitAssigneeFilter, setVisitAssigneeFilter] = useState<string[]>([]);
   // サイドバー一時追加フィルター
   const [sidebarTempFilters, setSidebarTempFilters] = useState<Array<{
     id: string;
@@ -609,6 +611,7 @@ export default function SellersPage() {
           filtersToSave.nextCallDateTo = nextCallDateValue;
         }
       }
+      if (visitAssigneeFilter.length > 0) filtersToSave.visitAssignee = visitAssigneeFilter;
 
       const response = await api.post('/api/sellers/sidebar-temp-filters', {
         label: tempFilterLabel.trim(),
@@ -662,6 +665,7 @@ export default function SellersPage() {
     setValuationAmountMaxFilter('');
     setNextCallDateMode('');
     setNextCallDateValue('');
+    setVisitAssigneeFilter([]);
 
     const f = tempFilter.filters || {};
     // フィルター値を配列に正規化（単一値も配列に変換）
@@ -690,6 +694,7 @@ export default function SellersPage() {
       setNextCallDateMode('onOrBefore');
       setNextCallDateValue(f.nextCallDateTo);
     }
+    if (f.visitAssignee) setVisitAssigneeFilter(toArr(f.visitAssignee));
 
     setSelectedTempFilterId(tempFilter.id);
     setSelectedCategory('all'); // サイドバーの固定カテゴリとは独立させる
@@ -762,7 +767,7 @@ export default function SellersPage() {
 
   useEffect(() => {
     fetchSellers();
-  }, [page, rowsPerPage, confidenceLevelFilter, inquirySiteFilter, propertyTypeFilter, statusFilterValue, regionFilter, inquiryDateFromFilter, inquiryDateToFilter, currentStatusFilterValue, valuationAmountMinFilter, valuationAmountMaxFilter, nextCallDateMode, nextCallDateValue, selectedCategory, sortBy, sortOrder]);
+  }, [page, rowsPerPage, confidenceLevelFilter, inquirySiteFilter, propertyTypeFilter, statusFilterValue, regionFilter, inquiryDateFromFilter, inquiryDateToFilter, currentStatusFilterValue, valuationAmountMinFilter, valuationAmountMaxFilter, nextCallDateMode, nextCallDateValue, visitAssigneeFilter, selectedCategory, sortBy, sortOrder]);
 
   const fetchSellers = async () => {
     try {
@@ -819,6 +824,9 @@ export default function SellersPage() {
       // サイドバーカテゴリフィルター
       if (selectedCategory && selectedCategory !== 'all') {
         params.statusCategory = selectedCategory;
+      }
+      if (visitAssigneeFilter.length > 0) {
+        params.visitAssignee = visitAssigneeFilter;
       }
 
       // キャッシュキー（パラメータを含む）
@@ -1453,6 +1461,22 @@ export default function SellersPage() {
                 disabled={!nextCallDateMode}
                 InputLabelProps={{ shrink: true }}
               />
+
+              {/* 営業担当（複数選択） */}
+              <FormControl size="small" sx={{ minWidth: 130 }}>
+                <InputLabel>営業担当</InputLabel>
+                <Select
+                  multiple
+                  value={visitAssigneeFilter}
+                  onChange={(e) => setVisitAssigneeFilter(typeof e.target.value === 'string' ? [e.target.value] : e.target.value as string[])}
+                  input={<OutlinedInput label="営業担当" />}
+                  renderValue={(selected) => selected.join(', ')}
+                >
+                  {assigneeInitials.map((initial) => (
+                    <MenuItem key={initial} value={initial}>{initial}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
               
               <Button
                 variant="text"
@@ -1469,6 +1493,7 @@ export default function SellersPage() {
                   setValuationAmountMaxFilter('');
                   setNextCallDateMode('');
                   setNextCallDateValue('');
+                  setVisitAssigneeFilter([]);
                   setSelectedTempFilterId(null);
                 }}
                 size="small"

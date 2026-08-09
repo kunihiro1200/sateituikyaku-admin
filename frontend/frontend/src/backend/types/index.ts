@@ -412,6 +412,8 @@ export interface ListSellersParams {
   duplicateConfirmed?: boolean;
   // Deletion sync filter
   includeDeleted?: boolean; // Default: false (exclude deleted sellers)
+  // 営業担当フィルター（visit_assignee）
+  visitAssignee?: string | string[];
 }
 
 export interface PaginatedResult<T> {

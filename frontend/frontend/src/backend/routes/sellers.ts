@@ -83,6 +83,7 @@ router.get(
     query('firstCaller').optional().isString().withMessage('First caller must be a string'),
     query('duplicateConfirmed').optional().isBoolean().withMessage('Duplicate confirmed must be a boolean'),
   ],
+  ],
   async (req: Request, res: Response) => {
     try {
       const errors = validationResult(req);
@@ -114,8 +115,11 @@ router.get(
         confidenceLevel: req.query.confidenceLevel as any,
         firstCaller: req.query.firstCaller as string,
         duplicateConfirmed: req.query.duplicateConfirmed === 'true' ? true : req.query.duplicateConfirmed === 'false' ? false : undefined,
+        // 営業担当フィルター（複数選択対応: 配列または単一値）
+        visitAssignee: req.query.visitAssignee
+          ? (Array.isArray(req.query.visitAssignee) ? req.query.visitAssignee as string[] : [req.query.visitAssignee as string])
+          : undefined,
       };
-
       const result = await sellerService.listSellers(params);
       res.json(result);
     } catch (error) {

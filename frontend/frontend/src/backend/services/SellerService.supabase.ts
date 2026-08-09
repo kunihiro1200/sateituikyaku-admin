@@ -702,6 +702,7 @@ export class SellerService extends BaseRepository {
       sortBy = 'inquiry_date',
       sortOrder = 'desc',
       includeDeleted = false, // デフォルトで削除済みを除外
+      visitAssignee,
     } = params;
 
     // キャッシュキーを生成
@@ -713,7 +714,8 @@ export class SellerService extends BaseRepository {
       assignedTo || 'all',
       sortBy,
       sortOrder,
-      includeDeleted ? 'with-deleted' : 'active-only'
+      includeDeleted ? 'with-deleted' : 'active-only',
+      visitAssignee ? (Array.isArray(visitAssignee) ? visitAssignee.join(',') : visitAssignee) : 'all'
     );
 
     // キャッシュをチェック
@@ -744,6 +746,15 @@ export class SellerService extends BaseRepository {
     }
     if (nextCallDateTo) {
       query = query.lte('next_call_date', nextCallDateTo);
+    }
+    // 営業担当フィルター（visit_assigneeカラム、複数選択対応）
+    if (visitAssignee && (Array.isArray(visitAssignee) ? visitAssignee.length > 0 : true)) {
+      const assignees = Array.isArray(visitAssignee) ? visitAssignee : [visitAssignee];
+      if (assignees.length === 1) {
+        query = query.eq('visit_assignee', assignees[0]);
+      } else {
+        query = query.in('visit_assignee', assignees);
+      }
     }
 
     // ソート（inquiry_dateがnullのものは最後に表示、同日の場合は売主番号が大きいほうを最新とする）
