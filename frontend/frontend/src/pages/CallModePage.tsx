@@ -757,6 +757,8 @@ const CallModePage = () => {
   const [tempFilterLabel, setTempFilterLabel] = useState<string>('');
   // 一時追加フィルター内の売主ID一覧（NEXTボタン用）
   const [tempFilterSellerIds, setTempFilterSellerIds] = useState<string[]>([]);
+  // カテゴリフィルター内の売主ID一覧（当日TEL分など、カテゴリから入った場合のNEXTボタン用）
+  const [categorySellerIds, setCategorySellerIds] = useState<string[]>([]);
   
   // URLパラメータから状態を読み取る
   useEffect(() => {
@@ -828,6 +830,34 @@ const CallModePage = () => {
     fetchTempFilterSellerIds();
   }, [tempFilterId]);
   
+  // カテゴリフィルター（当日TEL分など）の売主ID一覧を取得（NEXTボタン用）
+  // selectedCategory が変わるたびに再取得する
+  useEffect(() => {
+    // 一時フィルターがある場合はそちらを優先するので取得しない
+    if (tempFilterId || !selectedCategory || selectedCategory === 'all') {
+      setCategorySellerIds([]);
+      return;
+    }
+    const fetchCategorySellerIds = async () => {
+      try {
+        const params: any = {
+          page: 1,
+          pageSize: 1000,
+          sortBy: 'next_call_date',
+          sortOrder: 'asc',
+          statusCategory: selectedCategory,
+        };
+        // todayCallAssigned:XXX 形式の場合も statusCategory としてそのまま渡す
+        const sellersRes = await api.get('/api/sellers', { params });
+        const ids: string[] = (sellersRes.data.data || []).map((s: any) => s.id);
+        setCategorySellerIds(ids);
+      } catch (err) {
+        console.warn('[CallModePage] カテゴリ売主一覧取得失敗:', err);
+      }
+    };
+    fetchCategorySellerIds();
+  }, [selectedCategory, tempFilterId]);
+
   // カテゴリ選択ハンドラー（通話モードページ用）
   const handleCategorySelect = useCallback((category: StatusCategory, visitAssignee?: string) => {
     setSelectedCategory(category);
@@ -5308,6 +5338,35 @@ HP：https://ifoo-oita.com/
               >
                 {posLabel && <span style={{ fontSize: '0.7rem', marginRight: 4, opacity: 0.85 }}>{posLabel}</span>}
                 NEXT ▶
+              </Button>
+            );
+          })()}
+          {/* カテゴリ（当日TEL分など）から入った場合：次へボタンを表示 */}
+          {!tempFilterId && selectedCategory && selectedCategory !== 'all' && seller?.id && categorySellerIds.length > 0 && (() => {
+            const currentIdx = categorySellerIds.indexOf(seller.id);
+            const hasNext = currentIdx !== -1 && currentIdx < categorySellerIds.length - 1;
+            const nextSellerId = hasNext ? categorySellerIds[currentIdx + 1] : null;
+            const posLabel = currentIdx !== -1 ? `${currentIdx + 1}/${categorySellerIds.length}` : '';
+            return (
+              <Button
+                variant="contained"
+                size="small"
+                disabled={!hasNext}
+                sx={{
+                  bgcolor: '#e65100',
+                  '&:hover': { bgcolor: '#bf360c' },
+                  '&.Mui-disabled': { bgcolor: '#ffccbc', color: '#777' },
+                  minWidth: 80,
+                }}
+                onClick={() => {
+                  if (!nextSellerId) return;
+                  navigateWithWarningCheck(() => {
+                    navigate(`/sellers/${nextSellerId}/call?category=${encodeURIComponent(selectedCategory)}`);
+                  });
+                }}
+              >
+                {posLabel && <span style={{ fontSize: '0.7rem', marginRight: 4, opacity: 0.85 }}>{posLabel}</span>}
+                次へ ▶
               </Button>
             );
           })()}
