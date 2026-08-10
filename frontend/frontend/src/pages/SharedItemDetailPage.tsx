@@ -114,6 +114,11 @@ export default function SharedItemDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
+  // 完了ボタン・次へボタン
+  const [completing, setCompleting] = useState(false);
+  const [navigatingNext, setNavigatingNext] = useState(false);
+  const [finishedDialogOpen, setFinishedDialogOpen] = useState(false);
+
   // 初期値（変更検知用）
   const [initialContent, setInitialContent] = useState('');
   const [initialSharingDate, setInitialSharingDate] = useState('');
@@ -243,6 +248,68 @@ export default function SharedItemDetailPage() {
       navigate('/shared-items', { state: { restoreLocation: fromLocation } });
     } else {
       navigate('/shared-items');
+    }
+  };
+
+  // 完了ボタン：今日の日付を共有日にセットして保存
+  const handleComplete = async () => {
+    if (!item) return;
+    // type="date" inputには YYYY-MM-DD 形式が必要
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    setSharingDate(today);
+    setCompleting(true);
+    setApiError('');
+    setSaveSuccess(false);
+    try {
+      const pdfUrls = [1, 2, 3, 4].map((n) => item[`PDF${n}`] || '');
+      const imageUrls = [1, 2, 3, 4].map((n) => item[`画像${n === 1 ? '１' : n === 2 ? '２' : n === 3 ? '３' : '４'}`] || '');
+      const payload: Record<string, string> = {
+        'PDF1': pdfUrls[0], 'PDF2': pdfUrls[1], 'PDF3': pdfUrls[2], 'PDF4': pdfUrls[3],
+        '画像１': imageUrls[0], '画像２': imageUrls[1], '画像３': imageUrls[2], '画像４': imageUrls[3],
+        '共有日': today,
+        '確認日': confirmationDate,
+        '共有できていない': staffNotShared.join(','),
+        '内容': content,
+      };
+      await api.put(`/api/shared-items/${item.id}`, payload);
+      pageDataCache.invalidate(CACHE_KEYS.SHARED_ITEMS);
+      setItem((prev) => (prev ? { ...prev, ...payload } : prev));
+      setInitialSharingDate(today);
+      setInitialConfirmationDate(confirmationDate);
+      setInitialStaffNotShared(staffNotShared.join(','));
+      setInitialContent(content);
+      setSaveSuccess(true);
+    } catch (error: any) {
+      console.error('Complete error:', error);
+      setApiError(error.response?.data?.error || '保存に失敗しました。もう一度お試しください。');
+    } finally {
+      setCompleting(false);
+    }
+  };
+
+  // 次へボタン：同じ共有場カテゴリーで共有日が未入力（未完了）のものへ遷移
+  const handleNext = async () => {
+    if (!fromLocation) return;
+    setNavigatingNext(true);
+    try {
+      const response = await api.get('/api/shared-items', {
+        params: { limit: 1000, offset: 0, orderBy: 'created_at', orderDirection: 'desc' },
+        timeout: 30000,
+      });
+      const allItems: SharedItem[] = response.data.data || [];
+      const pending = allItems.filter(
+        (i) => i['共有場'] === fromLocation && !i['共有日'] && i.id !== id
+      );
+      if (pending.length === 0) {
+        setFinishedDialogOpen(true);
+      } else {
+        navigate(`/shared-items/${pending[0].id}`, { state: { fromLocation } });
+      }
+    } catch (error) {
+      console.error('Next item fetch error:', error);
+    } finally {
+      setNavigatingNext(false);
     }
   };
 
@@ -449,6 +516,28 @@ export default function SharedItemDetailPage() {
         </DialogActions>
       </Dialog>
 
+      {/* 終わりダイアログ */}
+      <Dialog open={finishedDialogOpen} onClose={() => setFinishedDialogOpen(false)}>
+        <DialogTitle>🎉 終わり</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            「{fromLocation}」の未完了アイテムはすべて完了しました！
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setFinishedDialogOpen(false);
+              handleBack();
+            }}
+            sx={{ bgcolor: color.main, '&:hover': { bgcolor: color.dark } }}
+          >
+            一覧に戻る
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Paper sx={{ p: 3 }}>
         <Grid container spacing={3}>
           {/* 日付・入力者 */}
@@ -575,16 +664,16 @@ export default function SharedItemDetailPage() {
           )}
 
           {/* 完了（編集可能） */}
-          <Grid item xs={6}>
+          <Grid item xs={fromLocation ? 12 : 6}>
             <Typography variant="caption" color="text.secondary">完了</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
               <TextField
-                fullWidth
                 type="date"
                 value={sharingDate}
                 onChange={(e) => setSharingDate(e.target.value)}
                 size="small"
                 InputLabelProps={{ shrink: true }}
+                sx={{ width: 180 }}
               />
               <Button
                 variant="contained"
@@ -595,6 +684,30 @@ export default function SharedItemDetailPage() {
               >
                 {saving ? '保存中...' : '保存'}
               </Button>
+              {/* 朝礼等カテゴリーから来た場合のみ「完了」「次へ」ボタンを表示 */}
+              {fromLocation && (
+                <>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    onClick={handleComplete}
+                    disabled={completing || !!sharingDate}
+                    sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                    startIcon={completing ? <CircularProgress size={16} color="inherit" /> : undefined}
+                  >
+                    {completing ? '保存中...' : '✓ 完了'}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={handleNext}
+                    disabled={navigatingNext}
+                    sx={{ whiteSpace: 'nowrap', flexShrink: 0, borderColor: color.main, color: color.main }}
+                    startIcon={navigatingNext ? <CircularProgress size={16} color="inherit" /> : undefined}
+                  >
+                    {navigatingNext ? '...' : '次へ →'}
+                  </Button>
+                </>
+              )}
             </Box>
           </Grid>
 
