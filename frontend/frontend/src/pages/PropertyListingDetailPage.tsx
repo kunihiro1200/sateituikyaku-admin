@@ -3668,12 +3668,7 @@ export default function PropertyListingDetailPage() {
               if (!data?.property_number) return;
               setChatSending(true);
               try {
-                const apiBase = import.meta.env.VITE_API_URL || '';
-                const res = await fetch(`${apiBase}/api/property-listings/${data.property_number}/notify-contract-completed`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                });
-                if (!res.ok) throw new Error('送信失敗');
+                await api.post(`/api/property-listings/${data.property_number}/notify-contract-completed`);
                 setSnackbar({ open: true, message: 'チャットに送信しました', severity: 'success' });
                 setSalesContractDialog(false);
                 setSalesContractUrlDialog(true);
