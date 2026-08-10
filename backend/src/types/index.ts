@@ -74,6 +74,7 @@ export interface Seller {
   
   // 物件情報（PropertyInfoとして別管理）
   address: string; // 物件所在地
+  postalCode?: string; // 売主郵便番号（例: 123-4567）
   propertyAddressForIeulMansion?: string; // イエウール・マンション専用
   
   // 査定情報

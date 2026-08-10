@@ -510,6 +510,9 @@ export class SellerService extends BaseRepository {
     if (data.address !== undefined) {
       updates.address = data.address;
     }
+    if ((data as any).postalCode !== undefined) {
+      updates.postal_code = (data as any).postalCode || null;
+    }
     if (data.phoneNumber !== undefined) {
       updates.phone_number = encrypt(data.phoneNumber);
       updates.phone_number_hash = data.phoneNumber ? crypto.createHash('sha256').update(data.phoneNumber).digest('hex') : null;
@@ -2447,6 +2450,8 @@ export class SellerService extends BaseRepository {
         siteUrl: seller.site_url,
         // 用途地域
         youtoChiiki: seller.youto_chiiki,
+        // 郵便番号
+        postalCode: seller.postal_code || undefined,
       };
       
       console.log(`[PERF] decryptSeller total: ${Date.now() - _dt0}ms`);

@@ -1064,6 +1064,7 @@ const CallModePage = () => {
   const [editingSeller, setEditingSeller] = useState(false);
   const [editedName, setEditedName] = useState<string>('');
   const [editedAddress, setEditedAddress] = useState<string>('');
+  const [editedPostalCode, setEditedPostalCode] = useState<string>('');
   const [editedPhoneNumber, setEditedPhoneNumber] = useState<string>('');
   const [editedEmail, setEditedEmail] = useState<string>('');
   const [editedInquiryDate, setEditedInquiryDate] = useState<string>('');
@@ -2254,6 +2255,7 @@ const CallModePage = () => {
       // 売主情報の初期化
       setEditedName(sellerData.name || '');
       setEditedAddress(sellerData.address || '');
+      setEditedPostalCode(sellerData.postalCode || '');
       setEditedPhoneNumber(sellerData.phoneNumber || '');
       setEditedEmail(sellerData.email || '');
       
@@ -3237,6 +3239,7 @@ const CallModePage = () => {
       const updateData: any = {
         name: editedName,
         address: editedAddress || null,
+        postalCode: editedPostalCode || null,
         phoneNumber: editedPhoneNumber,
         email: editedEmail || null,
         site: editedSite || null,
@@ -6684,6 +6687,7 @@ HP：https://ifoo-oita.com/
                       // キャンセル時は元の値に戻す
                       setEditedName(seller.name || '');
                       setEditedAddress(seller.address || '');
+                      setEditedPostalCode(seller.postalCode || '');
                       setEditedPhoneNumber(seller.phoneNumber || '');
                       setEditedEmail(seller.email || '');
                       if (seller.inquiryDate) {
@@ -6722,6 +6726,14 @@ HP：https://ifoo-oita.com/
                         </Typography>
                         <Typography variant="body1">{seller.address}</Typography>
                       </Box>
+                      {seller.postalCode && (
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            郵便番号
+                          </Typography>
+                          <Typography variant="body1">〒{seller.postalCode}</Typography>
+                        </Box>
+                      )}
                       <Box sx={{ mb: 2 }}>
                         <Typography variant="body2" color="text.secondary">
                           電話番号
@@ -6796,6 +6808,17 @@ HP：https://ifoo-oita.com/
                           label="住所"
                           value={editedAddress}
                           onChange={(e) => setEditedAddress(e.target.value)}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="郵便番号（例: 123-4567）"
+                          value={editedPostalCode}
+                          onChange={(e) => setEditedPostalCode(e.target.value)}
+                          inputProps={{ maxLength: 8 }}
+                          placeholder="123-4567"
                         />
                       </Grid>
                       <Grid item xs={12}>
