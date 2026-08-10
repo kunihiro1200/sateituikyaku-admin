@@ -790,7 +790,7 @@ export default function SharedItemDetailPage() {
                 variant="contained"
                 color="success"
                 onClick={handleComplete}
-                disabled={completing || !!sharingDate}
+                disabled={completing}
                 sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
                 startIcon={completing ? <CircularProgress size={16} color="inherit" /> : undefined}
               >
