@@ -31,6 +31,12 @@ import {
   AccordionDetails,
   Badge,
   Menu,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+  Popper,
+  ClickAwayListener,
 } from '@mui/material';
 import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Sms as SmsIcon, OpenInNew as OpenInNewIcon, Print as PrintIcon } from '@mui/icons-material';
 import api, { emailImageApi } from '../services/api';
@@ -924,6 +930,10 @@ const CallModePage = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false); // スナックバー表示フラグ
   const [snackbarMessage, setSnackbarMessage] = useState<string>(''); // スナックバーメッセージ
   const [sellerNumberSearch, setSellerNumberSearch] = useState<string>(''); // 売主番号検索
+  const [sellerSearchResults, setSellerSearchResults] = useState<Seller[]>([]); // 検索候補
+  const [sellerSearchLoading, setSellerSearchLoading] = useState(false); // 検索中フラグ
+  const [sellerSearchAnchorEl, setSellerSearchAnchorEl] = useState<HTMLElement | null>(null); // ドロップダウンアンカー
+  const sellerSearchRef = useRef<HTMLDivElement>(null); // 検索フィールドの参照
   const [showNearbyBuyers, setShowNearbyBuyers] = useState(false); // 近隣買主表示フラグ
   const [inquiryUrl, setInquiryUrl] = useState<string | null>(null); // 反響URL
 
@@ -5211,37 +5221,96 @@ HP：https://ifoo-oita.com/
       {/* ナビゲーションバー */}
       <Box sx={{ position: 'sticky', top: 0, zIndex: 200, bgcolor: 'background.default', borderBottom: '1px solid', borderColor: 'divider', px: 1, py: 0.5, display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
         <PageNavigation onNavigate={(path) => navigateWithWarningCheck(() => navigate(path))} />
-        <TextField
-          size="small"
-          placeholder="売主番号で移動"
-          value={sellerNumberSearch}
-          onChange={(e) => setSellerNumberSearch(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && sellerNumberSearch.trim()) {
-              // 全角英数字を半角に変換してから検索
-              const normalized = sellerNumberSearch.trim().replace(/[Ａ-Ｚａ-ｚ０-９]/g, (c) =>
-                String.fromCharCode(c.charCodeAt(0) - 0xFEE0)
-              ).toUpperCase();
-              navigate(`/sellers/${normalized}/call`);
-              setSellerNumberSearch('');
-            }
-          }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon fontSize="small" />
-              </InputAdornment>
-            ),
-            endAdornment: sellerNumberSearch ? (
-              <InputAdornment position="end">
-                <IconButton size="small" onClick={() => setSellerNumberSearch('')}>
-                  <ClearIcon fontSize="small" />
-                </IconButton>
-              </InputAdornment>
-            ) : null,
-          }}
-          sx={{ width: 200 }}
-        />
+        <ClickAwayListener onClickAway={() => { setSellerSearchResults([]); setSellerSearchAnchorEl(null); }}>
+          <div ref={sellerSearchRef} style={{ position: 'relative' }}>
+            <TextField
+              size="small"
+              placeholder="売主番号・電話番号・名前で移動"
+              value={sellerNumberSearch}
+              onChange={(e) => setSellerNumberSearch(e.target.value)}
+              onKeyDown={async (e) => {
+                if (e.key === 'Enter' && sellerNumberSearch.trim()) {
+                  // 全角英数字を半角に変換
+                  const normalized = sellerNumberSearch.trim().replace(/[Ａ-Ｚａ-ｚ０-９]/g, (c) =>
+                    String.fromCharCode(c.charCodeAt(0) - 0xFEE0)
+                  ).toUpperCase();
+                  // 売主番号パターン（2文字英字 + 数字）なら直接遷移
+                  if (/^[A-Z]{2}\d+$/.test(normalized)) {
+                    navigate(`/sellers/${normalized}/call`);
+                    setSellerNumberSearch('');
+                    setSellerSearchResults([]);
+                    return;
+                  }
+                  // それ以外はAPIで検索
+                  setSellerSearchLoading(true);
+                  try {
+                    const res = await api.get(`/sellers/search?q=${encodeURIComponent(sellerNumberSearch.trim())}`);
+                    const results: Seller[] = res.data;
+                    if (results.length === 1) {
+                      navigate(`/sellers/${results[0].sellerNumber}/call`);
+                      setSellerNumberSearch('');
+                      setSellerSearchResults([]);
+                    } else if (results.length > 1) {
+                      setSellerSearchResults(results);
+                      setSellerSearchAnchorEl(sellerSearchRef.current);
+                    } else {
+                      setSellerSearchResults([]);
+                      setSnackbarMessage('該当する売主が見つかりませんでした');
+                      setSnackbarOpen(true);
+                    }
+                  } catch {
+                    setSnackbarMessage('検索中にエラーが発生しました');
+                    setSnackbarOpen(true);
+                  } finally {
+                    setSellerSearchLoading(false);
+                  }
+                }
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    {sellerSearchLoading ? <CircularProgress size={16} /> : <SearchIcon fontSize="small" />}
+                  </InputAdornment>
+                ),
+                endAdornment: sellerNumberSearch ? (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => { setSellerNumberSearch(''); setSellerSearchResults([]); }}>
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null,
+              }}
+              sx={{ width: 260 }}
+            />
+            <Popper
+              open={sellerSearchResults.length > 1}
+              anchorEl={sellerSearchAnchorEl}
+              placement="bottom-start"
+              style={{ zIndex: 1300, width: sellerSearchRef.current?.offsetWidth ?? 260 }}
+            >
+              <Paper elevation={4} sx={{ maxHeight: 320, overflowY: 'auto' }}>
+                <List dense disablePadding>
+                  {sellerSearchResults.map((s) => (
+                    <ListItem key={s.sellerNumber} disablePadding>
+                      <ListItemButton onClick={() => {
+                        navigate(`/sellers/${s.sellerNumber}/call`);
+                        setSellerNumberSearch('');
+                        setSellerSearchResults([]);
+                      }}>
+                        <ListItemText
+                          primary={`${s.sellerNumber}　${s.name ?? ''}`}
+                          secondary={s.phoneNumber ?? ''}
+                          primaryTypographyProps={{ fontSize: 13 }}
+                          secondaryTypographyProps={{ fontSize: 11 }}
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
+              </Paper>
+            </Popper>
+          </div>
+        </ClickAwayListener>
       </Box>
       {/* ヘッダー */}
       <Box
