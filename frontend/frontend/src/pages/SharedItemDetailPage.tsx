@@ -257,7 +257,6 @@ export default function SharedItemDetailPage() {
     // type="date" inputには YYYY-MM-DD 形式が必要
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    setSharingDate(today);
     setCompleting(true);
     setApiError('');
     setSaveSuccess(false);
@@ -275,10 +274,14 @@ export default function SharedItemDetailPage() {
       await api.put(`/api/shared-items/${item.id}`, payload);
       pageDataCache.invalidate(CACHE_KEYS.SHARED_ITEMS);
       setItem((prev) => (prev ? { ...prev, ...payload } : prev));
+      // 保存成功後にステートと初期値を同時に同じ値でセット → hasChanges が false になり保存ボタンがグレーに戻る
+      setSharingDate(today);
       setInitialSharingDate(today);
       setInitialConfirmationDate(confirmationDate);
       setInitialStaffNotShared(staffNotShared.join(','));
       setInitialContent(content);
+      setNewPdfs([]);
+      setNewImages([]);
       setSaveSuccess(true);
     } catch (error: any) {
       console.error('Complete error:', error);
