@@ -5244,7 +5244,7 @@ HP：https://ifoo-oita.com/
                   // それ以外はAPIで検索
                   setSellerSearchLoading(true);
                   try {
-                    const res = await api.get(`/sellers/search?q=${encodeURIComponent(sellerNumberSearch.trim())}`);
+                    const res = await api.get(`/api/sellers/search?q=${encodeURIComponent(sellerNumberSearch.trim())}`);
                     const results: Seller[] = res.data;
                     if (results.length === 1) {
                       navigate(`/sellers/${results[0].sellerNumber}/call`);
