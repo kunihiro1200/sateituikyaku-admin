@@ -5235,6 +5235,8 @@ HP：https://ifoo-oita.com/
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 2, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+          {/* 「一覧」と売主番号を上下2段で表示 */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
           <Button startIcon={<ArrowBack />} size={isMobile ? 'small' : 'medium'} onClick={() => {
             navigateWithWarningCheck(() => {
               // 一覧に戻る時にスクロール位置・ページ番号をリセット（トップに戻る）
@@ -5249,6 +5251,33 @@ HP：https://ifoo-oita.com/
           }} variant="outlined">
             一覧
           </Button>
+          {seller?.sellerNumber && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Chip
+                label={seller.sellerNumber}
+                size="small"
+                sx={{
+                  backgroundColor: SECTION_COLORS.seller.main,
+                  color: SECTION_COLORS.seller.contrastText,
+                  cursor: 'pointer',
+                  '&:hover': {
+                    backgroundColor: SECTION_COLORS.seller.dark,
+                    opacity: 0.9
+                  }
+                }}
+                onClick={() => {
+                  navigator.clipboard.writeText(seller.sellerNumber || '');
+                  setCopiedSellerNumber(true);
+                  setTimeout(() => setCopiedSellerNumber(false), 1500);
+                }}
+                title="クリックでコピー"
+              />
+              {copiedSellerNumber && (
+                <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold' }}>✓</Typography>
+              )}
+            </Box>
+          )}
+          </Box>
           {/* カテゴリ一覧ボタン＋次へボタンを上下2段で表示 */}
           {(selectedCategory && selectedCategory !== 'all') && (() => {
             // カテゴリーラベルを生成
@@ -5393,28 +5422,6 @@ HP：https://ifoo-oita.com/
               )}
               {seller?.sellerNumber && (
                 <>
-                  <Chip 
-                    label={seller.sellerNumber} 
-                    size="small" 
-                    sx={{ 
-                      backgroundColor: SECTION_COLORS.seller.main,
-                      color: SECTION_COLORS.seller.contrastText,
-                      cursor: 'pointer',
-                      '&:hover': { 
-                        backgroundColor: SECTION_COLORS.seller.dark,
-                        opacity: 0.9
-                      }
-                    }}
-                    onClick={() => {
-                      navigator.clipboard.writeText(seller.sellerNumber || '');
-                      setCopiedSellerNumber(true);
-                      setTimeout(() => setCopiedSellerNumber(false), 1500);
-                    }}
-                    title="クリックでコピー"
-                  />
-                  {copiedSellerNumber && (
-                    <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold' }}>✓</Typography>
-                  )}
                   {/* 資料生成・文字起ボタンを上下2段 */}
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                   <Button
@@ -5493,38 +5500,34 @@ HP：https://ifoo-oita.com/
           </Box>
 
           {seller?.id && (
-            <Button
-              type="button"
-              variant="contained"
-              color="secondary"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (seller?.id) {
-                  window.open(`/sellers/${seller.id}/nearby-buyers`, '_blank');
-                }
-              }}
-              size={isMobile ? 'small' : 'medium'}
-              sx={{ ml: isMobile ? 0 : 1, fontWeight: 'bold' }}
-              title="近隣買主を別ページで表示"
-            >
-              近隣買主
-            </Button>
-          )}
-          {/* 削除ボタン */}
-          {seller?.id && (
-            <>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 0.5, ml: isMobile ? 0 : 1 }}>
+              <Button
+                type="button"
+                variant="contained"
+                color="secondary"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (seller?.id) {
+                    window.open(`/sellers/${seller.id}/nearby-buyers`, '_blank');
+                  }
+                }}
+                size="small"
+                sx={{ fontWeight: 'bold' }}
+                title="近隣買主を別ページで表示"
+              >
+                近隣買主
+              </Button>
               <Button
                 variant="outlined"
                 color="error"
                 startIcon={<DeleteIcon />}
                 onClick={() => setDeleteDialogOpen(true)}
-                sx={{ ml: 'auto' }}
                 size="small"
               >
                 削除
               </Button>
-            </>
+            </Box>
           )}
         </Box>
 
