@@ -1633,6 +1633,15 @@ export default function SellersPage() {
                     >
                       {seller.name || '-'}
                     </Typography>
+                    {seller.phoneNumber && (
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ fontSize: '13px', mb: 0.5 }}
+                      >
+                        {seller.phoneNumber}
+                      </Typography>
+                    )}
                     <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 0.5 }}>
                       <Typography
                         variant="body2"
@@ -1800,6 +1809,11 @@ export default function SellersPage() {
                     <TableCell>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
                         <Typography variant="body2">{seller.name}</Typography>
+                        {seller.phoneNumber && (
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                            {seller.phoneNumber}
+                          </Typography>
+                        )}
                         {(seller.status || '').includes('→') ? (
                           <Typography
                             variant="body2"
