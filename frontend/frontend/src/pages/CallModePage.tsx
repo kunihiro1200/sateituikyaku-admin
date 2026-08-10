@@ -1971,6 +1971,22 @@ const CallModePage = () => {
     }
   }, [fetchSidebarCounts]);
 
+  // 売主郵便番号を自動取得（postalCodeが空の場合、売主住所からGoogle Geocodingで取得してDBに保存）
+  useEffect(() => {
+    if (!seller?.id) return;
+    if (seller.postalCode) return; // 既にある場合はスキップ
+    if (!seller.address) return;   // 売主住所（D列「依頼者住所」）がない場合はスキップ
+
+    api.post(`/api/sellers/${seller.id}/fetch-postal-code`)
+      .then((res) => {
+        if (res.data?.postalCode) {
+          // seller stateを部分更新して再レンダリング
+          setSeller((prev: any) => prev ? { ...prev, postalCode: res.data.postalCode } : prev);
+        }
+      })
+      .catch(() => { /* 取得失敗は無視（表示しないだけ） */ });
+  }, [seller?.id, seller?.postalCode, seller?.address]);
+
   // 物件住所の読み仮名を取得（sellerが読み込まれた後にバックグラウンドで実行）
   useEffect(() => {
     if (!seller?.id) return;

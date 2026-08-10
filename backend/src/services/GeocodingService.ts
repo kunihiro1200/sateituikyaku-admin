@@ -68,6 +68,51 @@ export class GeocodingService {
   }
 
   /**
+   * 住所から郵便番号を取得
+   * Google Geocoding APIの address_components から postal_code タイプを抽出する
+   * @param address 住所（売主住所など）
+   * @returns 郵便番号（例: "123-4567"）、または取得失敗時はnull
+   */
+  async getPostalCode(address: string): Promise<string | null> {
+    try {
+      console.log(`[GeocodingService] Getting postal code for address: "${address}"`);
+
+      const response = await axios.get(this.baseUrl, {
+        params: {
+          address,
+          key: this.apiKey,
+          language: 'ja',
+          region: 'jp',
+        },
+      });
+
+      if (response.data.status !== 'OK' || response.data.results.length === 0) {
+        console.warn('[GeocodingService] getPostalCode: no results for address:', address, 'status:', response.data.status);
+        return null;
+      }
+
+      const addressComponents: Array<{ long_name: string; short_name: string; types: string[] }> =
+        response.data.results[0].address_components;
+
+      const postalComponent = addressComponents.find((c) => c.types.includes('postal_code'));
+      if (!postalComponent) {
+        console.warn('[GeocodingService] getPostalCode: no postal_code component for address:', address);
+        return null;
+      }
+
+      // Google は "1234567" 形式で返すことがあるのでハイフンを補完
+      const raw = postalComponent.long_name.replace(/[^0-9]/g, '');
+      const formatted = raw.length === 7 ? `${raw.slice(0, 3)}-${raw.slice(3)}` : postalComponent.long_name;
+
+      console.log(`[GeocodingService] getPostalCode success: "${address}" -> "${formatted}"`);
+      return formatted;
+    } catch (error: any) {
+      console.error('[GeocodingService] Error in getPostalCode:', error);
+      return null;
+    }
+  }
+
+  /**
    * Haversine公式を使用して2点間の距離を計算
    * @param lat1 地点1の緯度
    * @param lng1 地点1の経度

@@ -2511,6 +2511,48 @@ const VALID_SITE_OPTIONS = [
 ];
 
 /**
+ * 売主住所から郵便番号を自動取得してDBに保存
+ * POST /api/sellers/:id/fetch-postal-code
+ */
+router.post('/:id/fetch-postal-code', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // 売主情報を取得
+    const seller = await sellerService.getSeller(id);
+    if (!seller) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+
+    // 既に郵便番号がある場合はそのまま返す
+    if (seller.postalCode) {
+      return res.json({ postalCode: seller.postalCode, cached: true });
+    }
+
+    // 売主住所（address = D列「依頼者住所」）が空の場合は取得不可
+    if (!seller.address) {
+      return res.json({ postalCode: null, reason: 'no_address' });
+    }
+
+    const { GeocodingService } = await import('../services/GeocodingService');
+    const geocodingService = new GeocodingService();
+    const postalCode = await geocodingService.getPostalCode(seller.address);
+
+    if (!postalCode) {
+      return res.json({ postalCode: null, reason: 'not_found' });
+    }
+
+    // DBに保存
+    await sellerService.updateSeller(id, { postalCode } as any);
+
+    return res.json({ postalCode, cached: false });
+  } catch (error: any) {
+    console.error('fetch-postal-code error:', error);
+    return res.status(500).json({ error: 'Failed to fetch postal code' });
+  }
+});
+
+/**
  * 売主情報を更新
  */
 router.put('/:id', async (req: Request, res: Response) => {
