@@ -182,22 +182,26 @@ const filterBuyersByAgency = (
   if (filterType === null) return buyers;
 
   return buyers.filter(buyer => {
-    // broker_inquiry が "業者（両手）" かつ distribution_type が "要" の両方を満たすことが共通条件
-    if (buyer.broker_inquiry !== '業者（両手）') return false;
-    if ((buyer.distribution_type || '').trim() !== '要') return false;
+    // broker_inquiry が "業者（両手）" であることが共通条件
+    // ※ distribution_type は業者フィルターの判定に使わない
+    //   （バックエンドは broker_inquiry='業者（両手）' OR distribution_type='要' で取得するため
+    //    distribution_type が空の業者買主も正しく含める）
+    const brokerInquiry = (buyer.broker_inquiry || '').trim();
+    if (brokerInquiry !== '業者（両手）') return false;
 
     const desiredType = (buyer.desired_type || '').trim();
 
+    // desired_type が空欄・指定なし・条件次第 → 種別問わず全物件対象なので表示する
+    // （バックエンドの matchesPropertyTypeCriteria と同じ挙動に合わせる）
+    if (!desiredType || desiredType === '指定なし' || desiredType === '条件次第') return true;
+
     switch (filterType) {
       case '土地':
-        // desired_type が空欄 or "土地" を含む
-        return !desiredType || desiredType.includes('土地');
+        return desiredType.includes('土地');
       case '戸建':
-        // desired_type が "戸建" と完全一致（複合値NG）
-        return desiredType === '戸建';
+        return desiredType.includes('戸建');
       case 'マンション':
-        // desired_type が "マンション" と完全一致
-        return desiredType === 'マンション';
+        return desiredType.includes('マンション');
       default:
         return true;
     }
@@ -394,6 +398,16 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
     }
 
     const agencyFiltered = filterBuyersByAgency(baseList, activeAgencyFilter);
+    // DEBUG: 業者フィルター適用時に除外された買主をログ出力
+    if (activeAgencyFilter !== null) {
+      const excluded = baseList.filter(b => !agencyFiltered.includes(b));
+      excluded.forEach(b => {
+        console.log(`[AgencyFilter EXCLUDED] ${b.buyer_number} broker_inquiry="${b.broker_inquiry}" desired_type="${b.desired_type}" distribution_type="${b.distribution_type}"`);
+      });
+      agencyFiltered.forEach(b => {
+        console.log(`[AgencyFilter INCLUDED] ${b.buyer_number} broker_inquiry="${b.broker_inquiry}" desired_type="${b.desired_type}"`);
+      });
+    }
     return filterBuyersByPrice(agencyFiltered, selectedPriceRanges, landBuyerMode ? '土地' : propertyType);
   }, [activeBuyers, activeAgencyFilter, selectedPriceRanges, propertyType, landBuyerMode, richFilterActive]);
 
