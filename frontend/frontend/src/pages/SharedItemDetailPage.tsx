@@ -273,7 +273,13 @@ export default function SharedItemDetailPage() {
       };
       await api.put(`/api/shared-items/${item.id}`, payload);
       pageDataCache.invalidate(CACHE_KEYS.SHARED_ITEMS);
-      setItem((prev) => (prev ? { ...prev, ...payload } : prev));
+      // PDF/画像フィールドの空文字はsetItemに渡さない（hasChanges の誤検知を防ぐ）
+      const payloadForState = Object.fromEntries(
+        Object.entries(payload).filter(([k, v]) => !(
+          (/^PDF\d$/.test(k) || /^画像[１２３４]$/.test(k)) && v === ''
+        ))
+      );
+      setItem((prev) => (prev ? { ...prev, ...payloadForState } : prev));
       // 保存成功後にステートと初期値を同時に同じ値でセット → hasChanges が false になり保存ボタンがグレーに戻る
       setSharingDate(today);
       setInitialSharingDate(today);
@@ -398,7 +404,13 @@ export default function SharedItemDetailPage() {
       await api.put(`/api/shared-items/${item.id}`, payload);
 
       pageDataCache.invalidate(CACHE_KEYS.SHARED_ITEMS);
-      setItem((prev) => (prev ? { ...prev, ...payload } : prev));
+      // PDF/画像フィールドの空文字はsetItemに渡さない（hasChanges の誤検知を防ぐ）
+      const payloadForState = Object.fromEntries(
+        Object.entries(payload).filter(([k, v]) => !(
+          (/^PDF\d$/.test(k) || /^画像[１２３４]$/.test(k)) && v === ''
+        ))
+      );
+      setItem((prev) => (prev ? { ...prev, ...payloadForState } : prev));
       setNewPdfs([]);
       setNewImages([]);
       setInitialSharingDate(sharingDate);
