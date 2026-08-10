@@ -5083,8 +5083,8 @@ HP：https://ifoo-oita.com/
       setPageEdited(false); // 次電日を含むステータス保存後はリマインダーダイアログ不要
       
       // ステータスに応じて適切なエンドポイントを選択
-      // 注意: 「他決→専任」「他決→一般」は「専任」「一般」より先にチェックすること
-      // そうしないと statusLabel.includes('一般') が「他決→一般」にもマッチしてしまう
+      // 注意: 「他決→専任」「他決→一般」は汎用の「他決」チェックより先にチェックすること
+      // そうしないと statusLabel.includes('他決') が「他決→専任」「他決→一般」にもマッチしてしまう
       let endpoint = '';
       if (statusLabel.includes('訪問後他決')) {
         endpoint = `/api/chat-notifications/post-visit-other-decision/${seller.id}`;
@@ -5092,8 +5092,14 @@ HP：https://ifoo-oita.com/
         endpoint = `/api/chat-notifications/pre-visit-other-decision/${seller.id}`;
       } else if (statusLabel === '他社買取') {
         endpoint = `/api/chat-notifications/other-company-purchase/${seller.id}`;
+      } else if (statusLabel.includes('他決') && statusLabel.includes('専任')) {
+        // 「他決→専任」: 専任媒介契約取得エンドポイントに送信
+        endpoint = `/api/chat-notifications/exclusive-contract/${seller.id}`;
+      } else if (statusLabel.includes('他決') && statusLabel.includes('一般')) {
+        // 「他決→一般」: 一般媒介契約エンドポイントに送信
+        endpoint = `/api/chat-notifications/general-contract/${seller.id}`;
       } else if (statusLabel.includes('他決')) {
-        // 「他決→専任」「他決→一般」「他決→追客」「他決→追客不要」を含む
+        // 「他決→追客」「他決→追客不要」など、専任でも一般でもない他決系ステータス
         // visit_assigneeが設定されている（訪問済み）場合は訪問後他決、それ以外は未訪問他決
         const isVisited = seller.visitAssignee && seller.visitAssignee !== '' && seller.visitAssignee !== '外す';
         endpoint = isVisited
