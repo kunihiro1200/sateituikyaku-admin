@@ -764,9 +764,9 @@ export default function SharedItemDetailPage() {
             )}
           </Grid>
 
-          {/* 完了（編集可能） */}
-          <Grid item xs={fromLocation ? 12 : 6}>
-            <Typography variant="caption" color="text.secondary">完了</Typography>
+          {/* 共有完了（編集可能） */}
+          <Grid item xs={12}>
+            <Typography variant="caption" color="text.secondary">共有完了</Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
               <TextField
                 type="date"
@@ -785,29 +785,28 @@ export default function SharedItemDetailPage() {
               >
                 {saving ? '保存中...' : '保存'}
               </Button>
-              {/* 朝礼等カテゴリーから来た場合のみ「完了」「次へ」ボタンを表示 */}
+              {/* 共有完了ボタン：今日の日付を自動入力して保存 */}
+              <Button
+                variant="contained"
+                color="success"
+                onClick={handleComplete}
+                disabled={completing || !!sharingDate}
+                sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                startIcon={completing ? <CircularProgress size={16} color="inherit" /> : undefined}
+              >
+                {completing ? '保存中...' : '✓ 共有完了'}
+              </Button>
+              {/* 朝礼等カテゴリーから来た場合のみ「次へ」ボタンを表示 */}
               {fromLocation && (
-                <>
-                  <Button
-                    variant="contained"
-                    color="success"
-                    onClick={handleComplete}
-                    disabled={completing || !!sharingDate}
-                    sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
-                    startIcon={completing ? <CircularProgress size={16} color="inherit" /> : undefined}
-                  >
-                    {completing ? '保存中...' : '✓ 完了'}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    onClick={handleNext}
-                    disabled={navigatingNext}
-                    sx={{ whiteSpace: 'nowrap', flexShrink: 0, borderColor: color.main, color: color.main }}
-                    startIcon={navigatingNext ? <CircularProgress size={16} color="inherit" /> : undefined}
-                  >
-                    {navigatingNext ? '...' : '次へ →'}
-                  </Button>
-                </>
+                <Button
+                  variant="outlined"
+                  onClick={handleNext}
+                  disabled={navigatingNext}
+                  sx={{ whiteSpace: 'nowrap', flexShrink: 0, borderColor: color.main, color: color.main }}
+                  startIcon={navigatingNext ? <CircularProgress size={16} color="inherit" /> : undefined}
+                >
+                  {navigatingNext ? '...' : '次へ →'}
+                </Button>
               )}
             </Box>
           </Grid>
