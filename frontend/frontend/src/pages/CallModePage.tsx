@@ -5249,7 +5249,8 @@ HP：https://ifoo-oita.com/
           }} variant="outlined">
             一覧
           </Button>
-          {selectedCategory && selectedCategory !== 'all' && (() => {
+          {/* カテゴリ一覧ボタン＋次へボタンを上下2段で表示 */}
+          {(selectedCategory && selectedCategory !== 'all') && (() => {
             // カテゴリーラベルを生成
             let label = selectedCategory as string;
             if (selectedCategory === 'visitDayBefore' || selectedCategory === 'VISITDAYBEFORE') label = '訪問日前日';
@@ -5267,107 +5268,108 @@ HP：https://ifoo-oita.com/
             else if (selectedCategory === 'general' || selectedCategory === 'GENERAL') label = '一般';
             else if (typeof selectedCategory === 'string' && selectedCategory.startsWith('visitAssigned:')) label = `担当（${selectedCategory.replace('visitAssigned:', '')}）`;
             else if (typeof selectedCategory === 'string' && selectedCategory.startsWith('todayCallAssigned:')) label = `当日TEL(${selectedCategory.replace('todayCallAssigned:', '')})`;
+
+            // 次へボタン（カテゴリ）用
+            const catIdx = (!tempFilterId && seller?.id && categorySellerIds.length > 0) ? categorySellerIds.indexOf(seller.id) : -1;
+            const catHasNext = catIdx !== -1 && catIdx < categorySellerIds.length - 1;
+            const catNextId = catHasNext ? categorySellerIds[catIdx + 1] : null;
+            const catPosLabel = catIdx !== -1 ? `${catIdx + 1}/${categorySellerIds.length}` : '';
+
+            // 次へボタン（一時フィルター）用
+            const tfIdx = (tempFilterId && seller?.id) ? tempFilterSellerIds.indexOf(seller.id) : -1;
+            const tfHasNext = tfIdx !== -1 && tfIdx < tempFilterSellerIds.length - 1;
+            const tfNextId = tfHasNext ? tempFilterSellerIds[tfIdx + 1] : null;
+            const tfPosLabel = tfIdx !== -1 ? `${tfIdx + 1}/${tempFilterSellerIds.length}` : '';
+
             return (
-              <Button
-                variant="outlined"
-                color="error"
-                size="small"
-                onClick={() => {
-                  navigateWithWarningCheck(() => {
-                    // 一覧に戻る時にスクロール位置・ページ番号をリセット（トップに戻る）
-                    sessionStorage.removeItem('sellersScrollPosition');
-                    sessionStorage.removeItem('selectedSellerId');
-                    sessionStorage.removeItem('sellersPage');
-                    sessionStorage.setItem('selectedStatusCategory', selectedCategory);
-                    pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
-                    pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
-                    pageDataCache.invalidateByPrefix('sidebar_expanded:');
-                    navigate('/');
-                  });
-                }}
-              >
-                {label}一覧
-              </Button>
-            );
-          })()}
-          {/* 一時追加フィルターから入った場合：そのカテゴリーに戻るボタンを表示 */}
-          {tempFilterId && tempFilterLabel && (
-            <Button
-              variant="outlined"
-              size="small"
-              sx={{ borderColor: '#8e24aa', color: '#8e24aa', '&:hover': { borderColor: '#6a1b9a', bgcolor: '#f3e5f5' } }}
-              onClick={() => {
-                navigateWithWarningCheck(() => {
-                  sessionStorage.removeItem('sellersScrollPosition');
-                  sessionStorage.removeItem('selectedSellerId');
-                  sessionStorage.removeItem('sellersPage');
-                  // 一時フィルターIDをsessionStorageに保存して、戻った時に再選択できるようにする
-                  sessionStorage.setItem('selectedTempFilterId', tempFilterId);
-                  pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
-                  navigate('/');
-                });
-              }}
-            >
-              📌 {tempFilterLabel}
-            </Button>
-          )}
-          {/* 一時追加フィルターから入った場合：NEXTボタンを表示 */}
-          {tempFilterId && tempFilterLabel && seller?.id && (() => {
-            const currentIdx = tempFilterSellerIds.indexOf(seller.id);
-            const hasNext = currentIdx !== -1 && currentIdx < tempFilterSellerIds.length - 1;
-            const nextSellerId = hasNext ? tempFilterSellerIds[currentIdx + 1] : null;
-            const posLabel = currentIdx !== -1 ? `${currentIdx + 1}/${tempFilterSellerIds.length}` : '';
-            return (
-              <Button
-                variant="contained"
-                size="small"
-                disabled={!hasNext}
-                sx={{
-                  bgcolor: '#8e24aa',
-                  '&:hover': { bgcolor: '#6a1b9a' },
-                  '&.Mui-disabled': { bgcolor: '#ce93d8', color: 'white' },
-                  minWidth: 80,
-                }}
-                onClick={() => {
-                  if (!nextSellerId) return;
-                  navigateWithWarningCheck(() => {
-                    const tfParam = `tempFilterId=${encodeURIComponent(tempFilterId)}&tempFilterLabel=${encodeURIComponent(tempFilterLabel)}`;
-                    navigate(`/sellers/${nextSellerId}/call?${tfParam}`);
-                  });
-                }}
-              >
-                {posLabel && <span style={{ fontSize: '0.7rem', marginRight: 4, opacity: 0.85 }}>{posLabel}</span>}
-                NEXT ▶
-              </Button>
-            );
-          })()}
-          {/* カテゴリ（当日TEL分など）から入った場合：次へボタンを表示 */}
-          {!tempFilterId && selectedCategory && selectedCategory !== 'all' && seller?.id && categorySellerIds.length > 0 && (() => {
-            const currentIdx = categorySellerIds.indexOf(seller.id);
-            const hasNext = currentIdx !== -1 && currentIdx < categorySellerIds.length - 1;
-            const nextSellerId = hasNext ? categorySellerIds[currentIdx + 1] : null;
-            const posLabel = currentIdx !== -1 ? `${currentIdx + 1}/${categorySellerIds.length}` : '';
-            return (
-              <Button
-                variant="contained"
-                size="small"
-                disabled={!hasNext}
-                sx={{
-                  bgcolor: '#e65100',
-                  '&:hover': { bgcolor: '#bf360c' },
-                  '&.Mui-disabled': { bgcolor: '#ffccbc', color: '#777' },
-                  minWidth: 80,
-                }}
-                onClick={() => {
-                  if (!nextSellerId) return;
-                  navigateWithWarningCheck(() => {
-                    navigate(`/sellers/${nextSellerId}/call?category=${encodeURIComponent(selectedCategory)}`);
-                  });
-                }}
-              >
-                {posLabel && <span style={{ fontSize: '0.7rem', marginRight: 4, opacity: 0.85 }}>{posLabel}</span>}
-                次へ ▶
-              </Button>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                {/* 上段：一覧に戻るボタン（または一時フィルターボタン） */}
+                {tempFilterId && tempFilterLabel ? (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    sx={{ fontSize: '0.7rem', py: 0.25, px: 0.75, minWidth: 0, borderColor: '#8e24aa', color: '#8e24aa', '&:hover': { borderColor: '#6a1b9a', bgcolor: '#f3e5f5' } }}
+                    onClick={() => {
+                      navigateWithWarningCheck(() => {
+                        sessionStorage.removeItem('sellersScrollPosition');
+                        sessionStorage.removeItem('selectedSellerId');
+                        sessionStorage.removeItem('sellersPage');
+                        sessionStorage.setItem('selectedTempFilterId', tempFilterId);
+                        pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
+                        navigate('/');
+                      });
+                    }}
+                  >
+                    📌 {tempFilterLabel}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    sx={{ fontSize: '0.7rem', py: 0.25, px: 0.75, minWidth: 0 }}
+                    onClick={() => {
+                      navigateWithWarningCheck(() => {
+                        sessionStorage.removeItem('sellersScrollPosition');
+                        sessionStorage.removeItem('selectedSellerId');
+                        sessionStorage.removeItem('sellersPage');
+                        sessionStorage.setItem('selectedStatusCategory', selectedCategory);
+                        pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
+                        pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+                        pageDataCache.invalidateByPrefix('sidebar_expanded:');
+                        navigate('/');
+                      });
+                    }}
+                  >
+                    {label}一覧
+                  </Button>
+                )}
+                {/* 下段：次へボタン（一時フィルター or カテゴリ） */}
+                {tempFilterId && tempFilterLabel && seller?.id ? (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disabled={!tfHasNext}
+                    sx={{
+                      fontSize: '0.7rem', py: 0.25, px: 0.75, minWidth: 0,
+                      bgcolor: '#8e24aa',
+                      '&:hover': { bgcolor: '#6a1b9a' },
+                      '&.Mui-disabled': { bgcolor: '#ce93d8', color: 'white' },
+                    }}
+                    onClick={() => {
+                      if (!tfNextId) return;
+                      navigateWithWarningCheck(() => {
+                        const tfParam = `tempFilterId=${encodeURIComponent(tempFilterId)}&tempFilterLabel=${encodeURIComponent(tempFilterLabel)}`;
+                        navigate(`/sellers/${tfNextId}/call?${tfParam}`);
+                      });
+                    }}
+                  >
+                    {tfPosLabel && <span style={{ fontSize: '0.65rem', marginRight: 2, opacity: 0.85 }}>{tfPosLabel}</span>}
+                    NEXT ▶
+                  </Button>
+                ) : (!tempFilterId && seller?.id && categorySellerIds.length > 0) ? (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disabled={!catHasNext}
+                    sx={{
+                      fontSize: '0.7rem', py: 0.25, px: 0.75, minWidth: 0,
+                      bgcolor: '#e65100',
+                      '&:hover': { bgcolor: '#bf360c' },
+                      '&.Mui-disabled': { bgcolor: '#ffccbc', color: '#777' },
+                    }}
+                    onClick={() => {
+                      if (!catNextId) return;
+                      navigateWithWarningCheck(() => {
+                        navigate(`/sellers/${catNextId}/call?category=${encodeURIComponent(selectedCategory)}`);
+                      });
+                    }}
+                  >
+                    {catPosLabel && <span style={{ fontSize: '0.65rem', marginRight: 2, opacity: 0.85 }}>{catPosLabel}</span>}
+                    次へ ▶
+                  </Button>
+                ) : null}
+              </Box>
             );
           })()}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -5413,13 +5415,14 @@ HP：https://ifoo-oita.com/
                   {copiedSellerNumber && (
                     <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold' }}>✓</Typography>
                   )}
-                  {/* 資料生成ボタン */}
+                  {/* 資料生成・文字起ボタンを上下2段 */}
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                   <Button
                     variant="outlined"
                     size="small"
                     endIcon={<span style={{ fontSize: 10 }}>▼</span>}
                     onClick={(e) => setDocGenMenuAnchor(e.currentTarget)}
-                    sx={{ whiteSpace: 'nowrap', ml: 0.5 }}
+                    sx={{ whiteSpace: 'nowrap', ml: 0.5, fontSize: '0.75rem', py: 0.25 }}
                   >
                     資料生成
                   </Button>
@@ -5457,6 +5460,18 @@ HP：https://ifoo-oita.com/
                       </MenuItem>
                     )}
                   </Menu>
+                  {/* 文字起ボタン（資料生成の下に配置） */}
+                  <Button
+                    variant="outlined"
+                    color="info"
+                    size="small"
+                    onClick={() => window.open(`/sellers/${id}/transcription`, '_blank')}
+                    sx={{ ml: 0.5, fontSize: '0.75rem', py: 0.25 }}
+                    title="通話を録音して文字起こし・要約（新しいタブで開く）"
+                  >
+                    文字起
+                  </Button>
+                  </Box>{/* 資料生成・文字起の縦並びBox閉じ */}
                 </>
               )}
             </Box>
@@ -5499,17 +5514,6 @@ HP：https://ifoo-oita.com/
           {/* 削除ボタン */}
           {seller?.id && (
             <>
-              {/* 文字起ボタン */}
-              <Button
-                variant="outlined"
-                color="info"
-                size="small"
-                onClick={() => window.open(`/sellers/${id}/transcription`, '_blank')}
-                sx={{ ml: isMobile ? 0 : 1, fontWeight: 'bold' }}
-                title="通話を録音して文字起こし・要約（新しいタブで開く）"
-              >
-                文字起
-              </Button>
               <Button
                 variant="outlined"
                 color="error"
@@ -5626,6 +5630,8 @@ HP：https://ifoo-oita.com/
         </Box>
         {seller && (
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            {/* 訪問準備・画像ボタンを上下2段 */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
             {/* 訪問準備ボタン */}
             <VisitPreparationButton
               sellerId={seller?.id}
@@ -5651,8 +5657,7 @@ HP：https://ifoo-oita.com/
                 画像
               </Button>
             </Badge>
-
-            {/* エリア情勢・売買実績ボタンは訪問準備ボタン内に移動済みのため非表示 */}
+            </Box>{/* 訪問準備・画像の縦並びBox閉じ */}
 
             {/* Emailテンプレート選択 */}
             <Box sx={{ minWidth: 200, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
