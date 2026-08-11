@@ -2486,6 +2486,22 @@ export class BuyerService {
         result.viewingPostInputCounts[assignee] = (result.viewingPostInputCounts[assignee] || 0) + 1;
       }
 
+      // 内覧アンケート未確認: viewing_survey_result が入力済み かつ viewing_survey_confirmed が空欄
+      const hasSurveyResult = buyer.viewing_survey_result && String(buyer.viewing_survey_result).trim();
+      const isSurveyConfirmed = buyer.viewing_survey_confirmed && String(buyer.viewing_survey_confirmed).trim();
+      if (hasSurveyResult && !isSurveyConfirmed) {
+        result.viewingSurveyUnchecked++;
+      }
+
+      // ピンリッチ未登録
+      if (
+        buyer.email && String(buyer.email).trim() &&
+        (!buyer.pinrich_registration || buyer.pinrich_registration === '未')
+      ) {
+        // ※ pinrichUnregistered は calculated_status ベースではなくここで直接カウントしない
+        // （calculated_status に '未登録' が入るので上のループで処理済み）
+      }
+
       // 持ち家ヒアリング統計（月別）
       const receptionDate = buyer.reception_date ? String(buyer.reception_date).trim() : '';
       if (receptionDate) {
