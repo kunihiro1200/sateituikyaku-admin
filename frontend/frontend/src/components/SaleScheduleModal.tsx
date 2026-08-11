@@ -357,20 +357,20 @@ function buildA4Html(d: SaleScheduleData, debug = false, sellerNumber = ''): str
     ${makeBox(B.step1Month, d.startMonth ? `${d.startMonth}月` : '', 16, 900, '#C99A3D', debug)}
 
     <!-- STEP2 年・月〜月 -->
-    ${makeBox(B.step2Year,   d.marketingYear        ? `${d.marketingYear}年`        : '', 13, 700, '#ffffff', debug)}
-    ${makeBox(B.step2StartM, d.marketingStartMonth  ? `${d.marketingStartMonth}月〜`  : '', 16, 900, '#C99A3D', debug)}
+    ${makeBox(B.step2Year,   d.marketingYear       ? `${d.marketingYear}年`       : '', 13, 700, '#ffffff', debug)}
+    ${makeBox(B.step2StartM, d.marketingStartMonth ? `${d.marketingStartMonth}月〜` : '', 16, 900, '#C99A3D', debug)}
     ${(() => {
-      // 終了月が翌年の場合（marketingEndYear > marketingYear）は年を前置き表示
-      const endYear = d.marketingEndYear;
       const startYear = d.marketingYear;
+      const endYear = d.marketingEndYear;
       const endMonth = d.marketingEndMonth;
-      if (!endMonth) return makeBox(B.step2EndM, '', 16, 900, '#C99A3D', debug);
-      const showYear = endYear && startYear && endYear !== startYear;
-      if (showYear) {
-        // 年をまたぐ場合：「2027年1月」を小フォントで収める
-        return makeBox(B.step2EndM, `${endYear}年${endMonth}月`, 10, 900, '#C99A3D', debug);
+      const crossYear = endYear && startYear && endYear !== startYear;
+      if (crossYear) {
+        // 終了年BOX：step2EndMの直上に白字で「2027年」
+        const endYearBox = { left: B.step2EndM.left, top: B.step2EndM.top - 5.5, w: B.step2EndM.w, h: 5.5 };
+        return makeBox(endYearBox, `${endYear}年`, 10, 700, '#ffffff', debug)
+             + makeBox(B.step2EndM, endMonth ? `${endMonth}月` : '', 16, 900, '#C99A3D', debug);
       }
-      return makeBox(B.step2EndM, `${endMonth}月`, 16, 900, '#C99A3D', debug);
+      return makeBox(B.step2EndM, endMonth ? `${endMonth}月` : '', 16, 900, '#C99A3D', debug);
     })()}
 
     <!-- STEP3 年・月 -->
