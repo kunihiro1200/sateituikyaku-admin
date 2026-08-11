@@ -3933,20 +3933,19 @@ const CallModePage = () => {
       // 同じ査定方法をクリックした場合は解除（空文字に）
       const newMethod = editedValuationMethod === method ? '' : method;
 
+      // 郵送系で mailingStatus が未設定なら「未」も同時に1回のPUTで保存
+      const shouldSetMailingStatus = newMethod.includes('郵送') && !mailingStatus;
       await api.put(`/api/sellers/${id}`, {
         valuationMethod: newMethod,
+        ...(shouldSetMailingStatus ? { mailingStatus: '未' } : {}),
       });
 
       // ローカル状態を更新
       setEditedValuationMethod(newMethod);
 
       // 「郵送」系の査定方法が選択された場合、郵送ステータスが未設定なら「未」をデフォルト設定
-      if (newMethod.includes('郵送') && !mailingStatus) {
+      if (shouldSetMailingStatus) {
         setMailingStatus('未');
-        // DBにも保存
-        await api.put(`/api/sellers/${id}`, {
-          mailingStatus: '未',
-        });
       }
       // 「郵送」系が選択された場合、郵送先住所を売主住所で初期化し確認フラグをリセット
       if (newMethod.includes('郵送')) {

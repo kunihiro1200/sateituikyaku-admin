@@ -2747,24 +2747,33 @@ router.put('/:id', async (req: Request, res: Response) => {
       const seller = await sellerService.updateSeller(req.params.id, req.body);
       invalidateDuplicatesCache(req.params.id);
 
-      // スプレッドシートに同期（awaitして確実に完了させる）
-      // Vercelサーバーレス環境ではレスポンス後に非同期処理が打ち切られるため、awaitが必須
-      try {
-        console.log(`🔄 [SpreadsheetSync] Starting sync for seller ${req.params.id}...`);
-        const syncService = await createSpreadsheetSyncService();
-        if (syncService) {
-          console.log(`🔄 [SpreadsheetSync] Service initialized, calling syncToSpreadsheet...`);
-          const syncResult = await syncService.syncToSpreadsheet(req.params.id);
-          if (syncResult.success) {
-            console.log(`✅ [SpreadsheetSync] Sync completed for ${req.params.id}`);
+      // 郵送関連フィールドのみの更新はスプレッドシートに存在しないためスキップ
+      // （mailingStatus / alternativeMailingAddress のみの更新は数秒かかる同期処理を省略して即レスポンス）
+      const MAILING_ONLY_FIELDS = new Set(['mailingStatus', 'alternativeMailingAddress', 'mailingAddressConfirmed']);
+      const isMailingOnlyUpdate = Object.keys(req.body).every(k => MAILING_ONLY_FIELDS.has(k));
+
+      if (isMailingOnlyUpdate) {
+        console.log(`⚡ [SpreadsheetSync] Skipping sync for mailing-only update of seller ${req.params.id}`);
+      } else {
+        // スプレッドシートに同期（awaitして確実に完了させる）
+        // Vercelサーバーレス環境ではレスポンス後に非同期処理が打ち切られるため、awaitが必須
+        try {
+          console.log(`🔄 [SpreadsheetSync] Starting sync for seller ${req.params.id}...`);
+          const syncService = await createSpreadsheetSyncService();
+          if (syncService) {
+            console.log(`🔄 [SpreadsheetSync] Service initialized, calling syncToSpreadsheet...`);
+            const syncResult = await syncService.syncToSpreadsheet(req.params.id);
+            if (syncResult.success) {
+              console.log(`✅ [SpreadsheetSync] Sync completed for ${req.params.id}`);
+            } else {
+              console.error(`⚠️ [SpreadsheetSync] Sync failed for ${req.params.id}:`, syncResult.error);
+            }
           } else {
-            console.error(`⚠️ [SpreadsheetSync] Sync failed for ${req.params.id}:`, syncResult.error);
+            console.error(`❌ [SpreadsheetSync] createSpreadsheetSyncService returned null for ${req.params.id}`);
           }
-        } else {
-          console.error(`❌ [SpreadsheetSync] createSpreadsheetSyncService returned null for ${req.params.id}`);
+        } catch (e) {
+          console.error('⚠️ [SpreadsheetSync] Sync error:', e);
         }
-      } catch (e) {
-        console.error('⚠️ [SpreadsheetSync] Sync error:', e);
       }
 
       res.json(seller);
