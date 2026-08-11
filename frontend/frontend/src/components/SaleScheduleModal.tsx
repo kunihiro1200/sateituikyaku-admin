@@ -90,6 +90,7 @@ export interface SaleScheduleData {
   marketingYear?: number;
   marketingStartMonth?: number;
   marketingEndMonth?: number;
+  marketingEndYear?: number;  // 売買活動終了月の年（年をまたぐ場合に使用）
   contractYear?: number;
   contractMonth?: number;
   settlementYear?: number;
@@ -122,11 +123,13 @@ function calcDates() {
   const ms = sm + 1 > 12 ? 1 : sm + 1;
   const me = sm + 2 > 12 ? (sm + 2) - 12 : sm + 2;
   const my = ms < sm ? sy + 1 : sy;
-  return { sy, sm, cy, cm, sety, setm, ms, me, my };
+  // 終了月の年：開始月より終了月が小さい（年をまたぐ）場合は翌年
+  const mey = me < ms ? my + 1 : my;
+  return { sy, sm, cy, cm, sety, setm, ms, me, my, mey };
 }
 
 function convertDb(seller: Record<string, unknown>, pl: Record<string, unknown> | null): Partial<SaleScheduleData> {
-  const { sy, sm, cy, cm, sety, setm, ms, me, my } = calcDates();
+  const { sy, sm, cy, cm, sety, setm, ms, me, my, mey } = calcDates();
 
   // property_listings から売出価格取得（あれば優先）
   const listRaw = (pl?.listing_price as number|null) || (pl?.sales_price as number|null) || null;
@@ -167,7 +170,7 @@ function convertDb(seller: Record<string, unknown>, pl: Record<string, unknown> 
     listPrice: listPriceMan,
     minimumPrice: minPriceMan,
     minPriceRange,
-    startYear:sy, startMonth:sm, marketingYear:my, marketingStartMonth:ms, marketingEndMonth:me,
+    startYear:sy, startMonth:sm, marketingYear:my, marketingStartMonth:ms, marketingEndMonth:me, marketingEndYear:mey,
     contractYear:cy, contractMonth:cm, settlementYear:sety, settlementMonth:setm,
   };
 }
@@ -356,7 +359,19 @@ function buildA4Html(d: SaleScheduleData, debug = false, sellerNumber = ''): str
     <!-- STEP2 年・月〜月 -->
     ${makeBox(B.step2Year,   d.marketingYear        ? `${d.marketingYear}年`        : '', 13, 700, '#ffffff', debug)}
     ${makeBox(B.step2StartM, d.marketingStartMonth  ? `${d.marketingStartMonth}月〜`  : '', 16, 900, '#C99A3D', debug)}
-    ${makeBox(B.step2EndM,   d.marketingEndMonth    ? `${d.marketingEndMonth}月`    : '', 16, 900, '#C99A3D', debug)}
+    ${(() => {
+      // 終了月が翌年の場合（marketingEndYear > marketingYear）は年を前置き表示
+      const endYear = d.marketingEndYear;
+      const startYear = d.marketingYear;
+      const endMonth = d.marketingEndMonth;
+      if (!endMonth) return makeBox(B.step2EndM, '', 16, 900, '#C99A3D', debug);
+      const showYear = endYear && startYear && endYear !== startYear;
+      if (showYear) {
+        // 年をまたぐ場合：「2027年1月」を小フォントで収める
+        return makeBox(B.step2EndM, `${endYear}年${endMonth}月`, 10, 900, '#C99A3D', debug);
+      }
+      return makeBox(B.step2EndM, `${endMonth}月`, 16, 900, '#C99A3D', debug);
+    })()}
 
     <!-- STEP3 年・月 -->
     ${makeBox(B.step3Year,  d.contractYear  ? `${d.contractYear}年`  : '', 13, 700, '#ffffff', debug)}
@@ -382,7 +397,7 @@ export const SaleScheduleModal: React.FC<Props> = ({
   onOpenNetProceeds, onOpenSouhu,
 }) => {
   const NAVY = '#061D3B';
-  const { sy, sm, cy, cm, sety, setm, ms, me, my } = calcDates();
+  const { sy, sm, cy, cm, sety, setm, ms, me, my, mey } = calcDates();
 
   // 渡された3つの査定額から売出価格（最高値）・最低価格範囲を計算
   const initVals = [initialValuation1, initialValuation2, initialValuation3]
@@ -416,7 +431,7 @@ export const SaleScheduleModal: React.FC<Props> = ({
     listPrice: initListPrice,           // 売出価格 = 査定額最高値
     minimumPrice: undefined,
     minPriceRange: initMinPriceRange,   // 最低価格範囲 = 「最高〜中間」
-    startYear:sy, startMonth:sm, marketingYear:my, marketingStartMonth:ms, marketingEndMonth:me,
+    startYear:sy, startMonth:sm, marketingYear:my, marketingStartMonth:ms, marketingEndMonth:me, marketingEndYear:mey,
     contractYear:cy, contractMonth:cm, settlementYear:sety, settlementMonth:setm,
   });
 
@@ -576,9 +591,12 @@ export const SaleScheduleModal: React.FC<Props> = ({
 
             <Typography variant="subtitle2" fontWeight="bold" sx={{ mt:1.5, mb:1, color:NAVY }}>STEP2 販売活動強化</Typography>
             <Grid container spacing={1}>
-              <Grid item xs={4}><TextField fullWidth size="small" label="年" type="number" value={data.marketingYear??''} onChange={setNum('marketingYear')}/></Grid>
+              <Grid item xs={4}><TextField fullWidth size="small" label="開始年" type="number" value={data.marketingYear??''} onChange={setNum('marketingYear')}/></Grid>
               <Grid item xs={4}><TextField fullWidth size="small" label="開始月" type="number" value={data.marketingStartMonth??''} inputProps={{min:1,max:12}} onChange={setNum('marketingStartMonth')}/></Grid>
+              <Grid item xs={4}></Grid>
+              <Grid item xs={4}><TextField fullWidth size="small" label="終了年" type="number" value={data.marketingEndYear??''} onChange={setNum('marketingEndYear')} helperText="年またぎ時のみ"/></Grid>
               <Grid item xs={4}><TextField fullWidth size="small" label="終了月" type="number" value={data.marketingEndMonth??''} inputProps={{min:1,max:12}} onChange={setNum('marketingEndMonth')}/></Grid>
+              <Grid item xs={4}></Grid>
             </Grid>
 
             <Typography variant="subtitle2" fontWeight="bold" sx={{ mt:1.5, mb:1, color:NAVY }}>STEP3 売買契約</Typography>
