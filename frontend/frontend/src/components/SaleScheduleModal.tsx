@@ -365,10 +365,11 @@ function buildA4Html(d: SaleScheduleData, debug = false, sellerNumber = ''): str
       const endMonth = d.marketingEndMonth;
       const crossYear = endYear && startYear && endYear !== startYear;
       if (crossYear) {
-        // 終了年BOX：step2EndMの直上に白字で「2027年」
-        const endYearBox = { left: B.step2EndM.left, top: B.step2EndM.top - 5.5, w: B.step2EndM.w, h: 5.5 };
-        return makeBox(endYearBox, `${endYear}年`, 10, 700, '#ffffff', debug)
-             + makeBox(B.step2EndM, endMonth ? `${endMonth}月` : '', 16, 900, '#C99A3D', debug);
+        // 終了年BOX：step2EndMの直上に白字で「2027年」（4mm下げ）
+        const endYearBox = { left: B.step2EndM.left, top: B.step2EndM.top - 5.5 + 4, w: B.step2EndM.w, h: 5.5 };
+        const endMonthBox = { ...B.step2EndM, top: B.step2EndM.top + 4 };
+        return makeBox(endYearBox, `${endYear}年`, 12, 700, '#ffffff', debug)
+             + makeBox(endMonthBox, endMonth ? `${endMonth}月` : '', 16, 900, '#C99A3D', debug);
       }
       return makeBox(B.step2EndM, endMonth ? `${endMonth}月` : '', 16, 900, '#C99A3D', debug);
     })()}
