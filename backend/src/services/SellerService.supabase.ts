@@ -921,14 +921,31 @@ export class SellerService extends BaseRepository {
 
     // サイドバーカウント更新（awaitして確実に完了させる）
     // Vercelサーバーレス環境ではレスポンス後に非同期処理が打ち切られるため、awaitが必須
+    // ただし郵送フィールドのみの更新（mailing_status / alternative_mailing_address）は
+    // レスポンス速度を優先して非同期（ノンブロッキング）で実行する
+    const MAILING_ONLY_UPDATE_FIELDS = new Set(['mailing_status', 'alternative_mailing_address']);
+    const isMailingOnlyUpdates = Object.keys(updates).every(k => MAILING_ONLY_UPDATE_FIELDS.has(k));
+
     if (this.shouldUpdateSellerSidebarCounts(updates)) {
       const updatedFields = Object.keys(updates);
-      try {
-        const { SellerSidebarCountsUpdateService } = await import('./SellerSidebarCountsUpdateService');
-        const sidebarService = new SellerSidebarCountsUpdateService(this.supabase);
-        await sidebarService.updateAffectedCategories(updatedFields);
-      } catch (err: any) {
-        console.error('⚠️ Failed to update affected sidebar categories:', err);
+      if (isMailingOnlyUpdates) {
+        // 郵送フィールドのみの場合は非同期で実行（レスポンスをブロックしない）
+        import('./SellerSidebarCountsUpdateService').then(({ SellerSidebarCountsUpdateService }) => {
+          const sidebarService = new SellerSidebarCountsUpdateService(this.supabase);
+          sidebarService.updateAffectedCategories(updatedFields).catch((err: any) => {
+            console.error('⚠️ Failed to update affected sidebar categories (async):', err);
+          });
+        }).catch((err: any) => {
+          console.error('⚠️ Failed to import SellerSidebarCountsUpdateService:', err);
+        });
+      } else {
+        try {
+          const { SellerSidebarCountsUpdateService } = await import('./SellerSidebarCountsUpdateService');
+          const sidebarService = new SellerSidebarCountsUpdateService(this.supabase);
+          await sidebarService.updateAffectedCategories(updatedFields);
+        } catch (err: any) {
+          console.error('⚠️ Failed to update affected sidebar categories:', err);
+        }
       }
     }
 
