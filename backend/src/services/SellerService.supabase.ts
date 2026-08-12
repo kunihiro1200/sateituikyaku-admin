@@ -1666,13 +1666,13 @@ export class SellerService extends BaseRepository {
             }
           } else if (dynamicCategory.startsWith('unvisitedOtherDecision:')) {
             // 未訪問他決の月別サブカテゴリ（例: unvisitedOtherDecision:2026-08）
+            // 🚨 専任他決打合せが「完了」でも一覧からは消さない（フロントでグレー表示するため除外条件なし）
             const yearMonth = dynamicCategory.replace('unvisitedOtherDecision:', '');
             const [ymYear, ymMonth] = yearMonth.split('-').map(Number);
             const nextMonthStart = ymMonth === 12
               ? `${ymYear + 1}-01-01`
               : `${ymYear}-${String(ymMonth + 1).padStart(2, '0')}-01`;
             query = query
-              .or('exclusive_other_decision_meeting.is.null,exclusive_other_decision_meeting.neq.完了')
               .in('status', ['他決→追客', '他決→追客不要'])
               .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
               .gte('contract_year_month', `${yearMonth}-01`)

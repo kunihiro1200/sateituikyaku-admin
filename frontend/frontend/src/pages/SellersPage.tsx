@@ -1597,7 +1597,12 @@ export default function SellersPage() {
                     mb: 1,
                     cursor: 'pointer',
                     minHeight: 44,
-                    ...(seller.otherDecisionCountermeasure && seller.otherDecisionCountermeasure.trim() !== ''
+                    ...(seller.exclusiveOtherDecisionMeeting === '完了'
+                      ? {
+                          bgcolor: '#eeeeee',
+                          '&:hover': { bgcolor: '#e0e0e0' },
+                        }
+                      : seller.otherDecisionCountermeasure && seller.otherDecisionCountermeasure.trim() !== ''
                       ? {
                           bgcolor: '#e3f2fd',
                           '&:hover': { bgcolor: '#bbdefb' },
@@ -1795,7 +1800,12 @@ export default function SellersPage() {
                     }}
                     sx={{
                       cursor: 'pointer',
-                      ...(seller.otherDecisionCountermeasure && seller.otherDecisionCountermeasure.trim() !== ''
+                      ...(seller.exclusiveOtherDecisionMeeting === '完了'
+                        ? {
+                            bgcolor: '#eeeeee',
+                            '&:hover': { bgcolor: '#e0e0e0' },
+                          }
+                        : seller.otherDecisionCountermeasure && seller.otherDecisionCountermeasure.trim() !== ''
                         ? {
                             bgcolor: '#e3f2fd',
                             '&:hover': { bgcolor: '#bbdefb' },

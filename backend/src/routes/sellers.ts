@@ -1994,8 +1994,7 @@ router.get('/unvisited-other-decision-monthly-summary', async (req: Request, res
     }> = {};
 
     for (const row of (data || [])) {
-      // 専任他決打合せが「完了」の場合は除外
-      if (row.exclusive_other_decision_meeting === '完了') continue;
+      // 🚨 専任他決打合せが「完了」でも一覧からは除外しない（フロントでグレー表示するため）
 
       const d = new Date(row.contract_year_month);
       if (isNaN(d.getTime())) continue;
