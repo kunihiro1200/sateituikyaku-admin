@@ -256,15 +256,15 @@ function makeAddressBox(addr: string, debug: boolean, coord = BOXES.address): st
 // ─────────────────────────────────────────
 // A4 HTML生成（背景画像 + BOXオーバーレイ）
 // ─────────────────────────────────────────
-function buildA4Html(d: SaleScheduleData, debug = false, sellerNumber = ''): string {
+function buildA4Html(d: SaleScheduleData, debug = false, sellerNumber = '', imgSrc = ''): string {
   const GOLD = '#C99A3D';
   const NAVY = '#ffffff'; // 濃紺BOX内の文字は白
 
   // 売主番号がFIで始まらない場合は_oitaテンプレートを使用
   const isOita = sellerNumber.trim().length > 0 && !sellerNumber.trim().toUpperCase().startsWith('FI');
-  const templateFile = isOita
+  const templateFile = imgSrc || (isOita
     ? `/sale-schedule/illustrations/template_oita.png?v=${Date.now()}`
-    : `/sale-schedule/illustrations/template.png?v=${Date.now()}`;
+    : `/sale-schedule/illustrations/template.png?v=${Date.now()}`);
 
   // oita用座標オフセット（FI用BOXESは絶対変更しない）
   const B = isOita ? {
@@ -424,6 +424,20 @@ export const SaleScheduleModal: React.FC<Props> = ({
   const [error, setError] = useState<string|null>(null);
   const [debugMode, setDebugMode] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle'|'saving'|'saved'|'error'>('idle');
+  // 背景画像をBase64で保持（srcdoc iframe内から相対パスが解決できないため）
+  const [imgDataFI, setImgDataFI] = useState('');
+  const [imgDataOita, setImgDataOita] = useState('');
+  useEffect(() => {
+    const loadImg = (url: string, setter: (d: string) => void) => {
+      fetch(url).then(r => r.blob()).then(blob => {
+        const reader = new FileReader();
+        reader.onload = () => setter(reader.result as string);
+        reader.readAsDataURL(blob);
+      }).catch(() => {});
+    };
+    loadImg('/sale-schedule/illustrations/template.png', setImgDataFI);
+    loadImg('/sale-schedule/illustrations/template_oita.png', setImgDataOita);
+  }, []);
   const [data, setData] = useState<SaleScheduleData>({
     propertyNo: initialSellerNumber,
     ownerName: initialOwnerName,
@@ -485,7 +499,9 @@ export const SaleScheduleModal: React.FC<Props> = ({
 
   // 印刷（debug=OFF）：非表示iframeで印刷することでmargin:0が確実に適用される
   const handlePrint = useCallback(() => {
-    const html = buildA4Html(data, false, initialSellerNumber);
+    const isOita = initialSellerNumber.trim().length > 0 && !initialSellerNumber.trim().toUpperCase().startsWith('FI');
+    const imgSrc = isOita ? imgDataOita : imgDataFI;
+    const html = buildA4Html(data, false, initialSellerNumber, imgSrc);
     const iframe = document.createElement('iframe');
     iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;visibility:hidden;';
     iframe.srcdoc = html;
@@ -501,7 +517,7 @@ export const SaleScheduleModal: React.FC<Props> = ({
       }, 3000);
     };
     document.body.appendChild(iframe);
-  }, [data, initialSellerNumber]);
+  }, [data, initialSellerNumber, imgDataFI, imgDataOita]);
 
   // iframeのscale計算（A4実寸px → プレビューコンテナに収める）
   const A4W = 210 * 3.7795;
@@ -510,7 +526,9 @@ export const SaleScheduleModal: React.FC<Props> = ({
   const PH = 660; // プレビュー高さpx
   const scale = Math.min(PW / A4W, PH / A4H);
 
-  const previewHtml = buildA4Html(data, debugMode, initialSellerNumber);
+  const isOitaPreview = initialSellerNumber.trim().length > 0 && !initialSellerNumber.trim().toUpperCase().startsWith('FI');
+  const previewImgSrc = isOitaPreview ? imgDataOita : imgDataFI;
+  const previewHtml = buildA4Html(data, debugMode, initialSellerNumber, previewImgSrc);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   return (
