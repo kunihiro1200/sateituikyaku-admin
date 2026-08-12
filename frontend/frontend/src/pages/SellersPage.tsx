@@ -1597,7 +1597,14 @@ export default function SellersPage() {
                     mb: 1,
                     cursor: 'pointer',
                     minHeight: 44,
-                    '&:hover': { bgcolor: 'grey.50' },
+                    ...(seller.otherDecisionCountermeasure && seller.otherDecisionCountermeasure.trim() !== ''
+                      ? {
+                          bgcolor: '#e3f2fd',
+                          '&:hover': { bgcolor: '#bbdefb' },
+                        }
+                      : {
+                          '&:hover': { bgcolor: 'grey.50' },
+                        }),
                   }}
                 >
                   <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
@@ -1786,7 +1793,15 @@ export default function SellersPage() {
                         : '';
                       navigate(`/sellers/${seller.id}/call${categoryParam}${tempFilterParam}`);
                     }}
-                    sx={{ cursor: 'pointer' }}
+                    sx={{
+                      cursor: 'pointer',
+                      ...(seller.otherDecisionCountermeasure && seller.otherDecisionCountermeasure.trim() !== ''
+                        ? {
+                            bgcolor: '#e3f2fd',
+                            '&:hover': { bgcolor: '#bbdefb' },
+                          }
+                        : {}),
+                    }}
                     data-seller-id={seller.id}
                   >
                     <TableCell>
