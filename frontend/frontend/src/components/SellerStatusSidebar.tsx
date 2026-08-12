@@ -1412,13 +1412,15 @@ function SellerStatusSidebarComponent({
             ── 未訪問他決 ──
           </Typography>
           {unvisitedOtherDecisionMonthlySummary.map(({ yearMonth, label, count }) => {
+            const monthCategory = `unvisitedOtherDecision:${yearMonth}` as StatusCategory;
+            const isMonthActive = isActive(monthCategory);
             return (
               <Box key={yearMonth}>
                 <Button
                   fullWidth
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/unvisited-other-decision-list?month=${yearMonth}`);
+                    handleCategoryClick(monthCategory);
                   }}
                   sx={{
                     justifyContent: 'space-between',
@@ -1426,10 +1428,10 @@ function SellerStatusSidebarComponent({
                     fontSize: '0.85rem',
                     py: 1,
                     px: 1.5,
-                    color: '#bf360c',
-                    bgcolor: 'transparent',
+                    color: isMonthActive ? 'white' : '#bf360c',
+                    bgcolor: isMonthActive ? '#ff5722' : 'transparent',
                     borderRadius: 1,
-                    '&:hover': { bgcolor: '#ffe0b2' },
+                    '&:hover': { bgcolor: isMonthActive ? '#ff5722' : '#ffe0b2' },
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1439,8 +1441,8 @@ function SellerStatusSidebarComponent({
                       size="small"
                       sx={{
                         height: 20, fontSize: '0.7rem',
-                        bgcolor: '#fff3e0',
-                        color: '#bf360c',
+                        bgcolor: isMonthActive ? 'rgba(255,255,255,0.3)' : '#fff3e0',
+                        color: isMonthActive ? 'white' : '#bf360c',
                         fontWeight: 'bold',
                       }}
                     />

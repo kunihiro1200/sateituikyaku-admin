@@ -1186,6 +1186,11 @@ export default function SellersPage() {
                    selectedCategory === 'general' ? '一般' :
                    selectedCategory === 'visitOtherDecision' ? '訪問後他決' :
                    selectedCategory === 'unvisitedOtherDecision' ? '未訪問他決' :
+                   typeof selectedCategory === 'string' && selectedCategory.startsWith('unvisitedOtherDecision:') ? (() => {
+                     const ym = selectedCategory.replace('unvisitedOtherDecision:', '');
+                     const [y, m] = ym.split('-');
+                     return `未訪問他決【${y}年${parseInt(m)}月】`;
+                   })() :
                    typeof selectedCategory === 'string' && selectedCategory.startsWith('visitAssigned:') ? `担当（${selectedCategory.replace('visitAssigned:', '')}）` :
                    typeof selectedCategory === 'string' && selectedCategory.startsWith('todayCallAssigned:') ? `当日TEL(${selectedCategory.replace('todayCallAssigned:', '')})` :
                    typeof selectedCategory === 'string' && selectedCategory === 'fi:todayCall' ? '福岡 当日TEL分' :

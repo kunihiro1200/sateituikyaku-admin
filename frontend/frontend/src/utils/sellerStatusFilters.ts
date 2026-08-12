@@ -48,7 +48,8 @@ export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayC
   | `visitAssigned:${string}`        // 担当カテゴリー（例: visitAssigned:Y）
   | `todayCallAssigned:${string}`    // 当日TELサブカテゴリー（例: todayCallAssigned:Y）
   | `todayCallWithInfo:${string}`    // 当日TEL（内容）ラベル別カテゴリー（例: todayCallWithInfo:当日TEL(I・Eメール)）
-  | `visitThankYouPending:${string}`;  // 訪問後御礼サブカテゴリー（例: visitThankYouPending:Y）
+  | `visitThankYouPending:${string}`  // 訪問後御礼サブカテゴリー（例: visitThankYouPending:Y）
+  | `unvisitedOtherDecision:${string}`; // 未訪問他決の月別サブカテゴリー（例: unvisitedOtherDecision:2026-08）
 
 // カテゴリカウントのインターフェース
 export interface CategoryCounts {
