@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, memo } from 'react';
-import { Paper, Typography, Box, Button, Chip, Collapse, IconButton, List, ListItem, Divider, CircularProgress } from '@mui/material';
+import { Paper, Typography, Box, Button, Chip, Collapse, IconButton, List, ListItem, Divider, CircularProgress, Dialog, DialogTitle, DialogContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { ExpandMore, ExpandLess, Edit, Email, Phone, Chat, LocationOn, OpenInNew as OpenInNewIcon, PushPin as PushPinIcon, Close as CloseIcon } from '@mui/icons-material';
 import api from '../services/api';
@@ -330,8 +330,32 @@ function SellerStatusSidebarComponent({
 
   // 未訪問他決・月別サマリー
   const [unvisitedOtherDecisionMonthlySummary, setUnvisitedOtherDecisionMonthlySummary] = useState<
-    { yearMonth: string; label: string; count: number }[]
+    {
+      yearMonth: string;
+      label: string;
+      count: number;
+      sellers?: {
+        id: string;
+        sellerNumber: string;
+        propertyAddress: string;
+        name: string;
+        comments: string;
+        status: string;
+        competitorNameAndReason: string;
+        nextCallDate: string | null;
+        contractYearMonth: string | null;
+        inquiryDate: string | null;
+        valuationAmount1: number | null;
+        valuationAmount2: number | null;
+        valuationAmount3: number | null;
+        valuationAssignee: string;
+      }[];
+    }[]
   >([]);
+
+  // 未訪問他決モーダル
+  const [unvisitedModalOpen, setUnvisitedModalOpen] = useState(false);
+  const [unvisitedModalMonth, setUnvisitedModalMonth] = useState<{ yearMonth: string; label: string } | null>(null);
 
   // 専任月別セクション専用の展開state（売主リストのexpandedCategoryと完全に分離）
   const [exclusiveExpandedMonth, setExclusiveExpandedMonth] = useState<string | null>(null);
@@ -1390,20 +1414,14 @@ function SellerStatusSidebarComponent({
             ── 未訪問他決 ──
           </Typography>
           {unvisitedOtherDecisionMonthlySummary.map(({ yearMonth, label, count }) => {
-            const isExpanded = unvisitedOtherDecisionExpandedMonth === yearMonth;
             return (
               <Box key={yearMonth}>
                 <Button
                   fullWidth
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (isExpanded) {
-                      setUnvisitedOtherDecisionExpandedMonth(null);
-                    } else {
-                      setUnvisitedOtherDecisionExpandedMonth(yearMonth);
-                      // 一覧ページに遷移
-                      window.open(`/unvisited-other-decision-list?month=${yearMonth}`, '_blank', 'noopener,noreferrer');
-                    }
+                    setUnvisitedModalMonth({ yearMonth, label });
+                    setUnvisitedModalOpen(true);
                   }}
                   sx={{
                     justifyContent: 'space-between',
@@ -1430,13 +1448,110 @@ function SellerStatusSidebarComponent({
                       }}
                     />
                   </Box>
-                  <OpenInNewIcon sx={{ fontSize: '0.9rem', color: '#bf360c' }} />
                 </Button>
               </Box>
             );
           })}
         </Box>
       )}
+
+      {/* 未訪問他決 一覧モーダル */}
+      <Dialog
+        open={unvisitedModalOpen}
+        onClose={() => setUnvisitedModalOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{ sx: { maxHeight: '85vh' } }}
+      >
+        <DialogTitle sx={{ bgcolor: '#ff5722', color: 'white', py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+              🚫 未訪問他決【{unvisitedModalMonth?.label}】
+            </Typography>
+            {unvisitedModalMonth && (() => {
+              const group = unvisitedOtherDecisionMonthlySummary.find(g => g.yearMonth === unvisitedModalMonth.yearMonth);
+              return group ? (
+                <Chip label={`${group.count}件`} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.3)', color: 'white', fontWeight: 'bold' }} />
+              ) : null;
+            })()}
+          </Box>
+          <IconButton size="small" onClick={() => setUnvisitedModalOpen(false)} sx={{ color: 'white' }}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          {unvisitedModalMonth && (() => {
+            const group = unvisitedOtherDecisionMonthlySummary.find(g => g.yearMonth === unvisitedModalMonth.yearMonth);
+            if (!group?.sellers || group.sellers.length === 0) {
+              return (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography color="text.secondary">データがありません</Typography>
+                </Box>
+              );
+            }
+            const formatDate = (d: string | null) => {
+              if (!d) return '－';
+              const dt = new Date(d);
+              if (isNaN(dt.getTime())) return d;
+              return `${dt.getFullYear()}/${String(dt.getMonth() + 1).padStart(2, '0')}/${String(dt.getDate()).padStart(2, '0')}`;
+            };
+            return (
+              <TableContainer>
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow sx={{ '& th': { bgcolor: '#fff3e0', fontWeight: 'bold', fontSize: '0.78rem', color: '#bf360c', whiteSpace: 'nowrap' } }}>
+                      <TableCell>売主番号</TableCell>
+                      <TableCell>氏名</TableCell>
+                      <TableCell>物件住所</TableCell>
+                      <TableCell>ステータス</TableCell>
+                      <TableCell>反響日</TableCell>
+                      <TableCell>他決日</TableCell>
+                      <TableCell>次電日</TableCell>
+                      <TableCell>査定額</TableCell>
+                      <TableCell>競合・理由</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {group.sellers.map((seller) => (
+                      <TableRow key={seller.id} hover sx={{ '&:hover': { bgcolor: '#fff8e1' } }}>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                          <Button
+                            size="small"
+                            onClick={() => window.open(`/sellers/${seller.id}/call`, '_blank', 'noopener,noreferrer')}
+                            sx={{ textTransform: 'none', p: '0 4px', minWidth: 'auto', fontSize: '0.82rem', fontWeight: 'bold', color: '#1565c0' }}
+                            endIcon={<OpenInNewIcon sx={{ fontSize: '0.65rem !important' }} />}
+                          >
+                            {seller.sellerNumber}
+                          </Button>
+                        </TableCell>
+                        <TableCell sx={{ fontSize: '0.82rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{seller.name}</TableCell>
+                        <TableCell sx={{ fontSize: '0.78rem', maxWidth: 200 }}>{seller.propertyAddress || '－'}</TableCell>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                          <Chip
+                            label={seller.status}
+                            size="small"
+                            sx={{ height: 20, fontSize: '0.68rem', bgcolor: seller.status === '他決→追客' ? '#ef5350' : '#b71c1c', color: 'white' }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{formatDate(seller.inquiryDate)}</TableCell>
+                        <TableCell sx={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{formatDate(seller.contractYearMonth)}</TableCell>
+                        <TableCell sx={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{formatDate(seller.nextCallDate)}</TableCell>
+                        <TableCell sx={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
+                          {[seller.valuationAmount1, seller.valuationAmount2, seller.valuationAmount3]
+                            .filter(v => v)
+                            .map(v => `${Math.round(v! / 10000)}万`)
+                            .join(' / ') || '－'}
+                        </TableCell>
+                        <TableCell sx={{ fontSize: '0.75rem', maxWidth: 160 }}>{seller.competitorNameAndReason || '－'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* 📚 学習ライブラリボタン */}
       <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid', borderColor: '#ce93d8' }}>

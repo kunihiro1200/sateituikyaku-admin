@@ -1957,10 +1957,11 @@ router.get('/unvisited-other-decision-monthly-summary', async (req: Request, res
     // 営担が空欄 or '外す' のものを取得
     const { data, error } = await supabase
       .from('sellers')
-      .select('id, seller_number, name, property_address, address, status, contract_year_month, comments, competitor_name, competitor_name_and_reason, next_call_date, other_decision_countermeasure, unvisited_other_decision_ai_analysis, inquiry_date, valuation_amount_1, valuation_amount_2, valuation_amount_3, valuation_assignee')
+      .select('id, seller_number, name, property_address, address, status, contract_year_month, comments, competitor_name, competitor_name_and_reason, next_call_date, other_decision_countermeasure, unvisited_other_decision_ai_analysis, inquiry_date, valuation_amount_1, valuation_amount_2, valuation_amount_3, valuation_assignee, exclusive_other_decision_meeting')
       .in('status', UNVISITED_OTHER_DECISION_STATUSES)
       .gte('contract_year_month', '2026-05-01')
       .is('deleted_at', null)
+      .neq('exclusive_other_decision_meeting', '完了')
       .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
       .order('contract_year_month', { ascending: false });
 
