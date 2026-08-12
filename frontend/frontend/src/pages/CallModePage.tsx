@@ -9324,7 +9324,7 @@ HP：https://ifoo-oita.com/
                 </Box>
               )}
               {mailingStatus === '済' && (
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.5 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1, mb: 0.5 }}>
                   <Chip
                     label="📮 郵送済み"
                     size="small"
@@ -9336,6 +9336,26 @@ HP：https://ifoo-oita.com/
                       fontSize: '0.8rem',
                     }}
                   />
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => window.open('https://trackings.post.japanpost.jp/services/srv/search/input', '_blank')}
+                    sx={{
+                      fontSize: '0.75rem',
+                      color: '#c62828',
+                      borderColor: '#c62828',
+                      fontWeight: 'bold',
+                      py: 0.25,
+                      px: 1,
+                      minWidth: 'auto',
+                      '&:hover': {
+                        backgroundColor: '#ffebee',
+                        borderColor: '#b71c1c',
+                      },
+                    }}
+                  >
+                    📦 レタパ追跡
+                  </Button>
                 </Box>
               )}
               <RichTextCommentEditor
