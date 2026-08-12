@@ -1961,7 +1961,6 @@ router.get('/unvisited-other-decision-monthly-summary', async (req: Request, res
       .in('status', UNVISITED_OTHER_DECISION_STATUSES)
       .gte('contract_year_month', '2026-05-01')
       .is('deleted_at', null)
-      .neq('exclusive_other_decision_meeting', '完了')
       .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
       .order('contract_year_month', { ascending: false });
 
@@ -1995,6 +1994,9 @@ router.get('/unvisited-other-decision-monthly-summary', async (req: Request, res
     }> = {};
 
     for (const row of (data || [])) {
+      // 専任他決打合せが「完了」の場合は除外
+      if (row.exclusive_other_decision_meeting === '完了') continue;
+
       const d = new Date(row.contract_year_month);
       if (isNaN(d.getTime())) continue;
       const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
