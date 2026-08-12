@@ -1266,13 +1266,16 @@ function SellerStatusSidebarComponent({
                   {/* 展開：担当者リスト */}
                   <Collapse in={isExpanded}>
                     <Box sx={{ bgcolor: '#fff8f0', border: 1, borderColor: '#ffb74d', borderTop: 0, borderRadius: '0 0 4px 4px' }}>
-                      {entries.map(({ assignee, count, sellerIds }) => (
+                      {(() => {
+                        // 「次へ」ナビゲーション用：この月の担当者を上から順番につないだキュー
+                        const queueStr = entries.map(e => `${e.sellerIds[0]}:${e.assignee}`).join('|');
+                        return entries.map(({ assignee, count, sellerIds }, idx) => (
                         <Button
                           key={assignee}
                           fullWidth
                           onClick={() => {
                             if (sellerIds.length > 0) {
-                              window.open(`/sellers/${sellerIds[0]}/exclusive-analysis`, '_blank', 'noopener,noreferrer');
+                              window.open(`/sellers/${sellerIds[0]}/exclusive-analysis?queue=${encodeURIComponent(queueStr)}&qi=${idx}`, '_blank', 'noopener,noreferrer');
                             }
                           }}
                           sx={{
@@ -1295,7 +1298,8 @@ function SellerStatusSidebarComponent({
                             sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#ff6d00', color: 'white' }}
                           />
                         </Button>
-                      ))}
+                        ));
+                      })()}
                     </Box>
                   </Collapse>
                 </Box>

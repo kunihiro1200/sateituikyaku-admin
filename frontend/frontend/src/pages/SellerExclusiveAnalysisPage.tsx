@@ -23,6 +23,7 @@ import {
   LinearProgress,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import QuizIcon from '@mui/icons-material/Quiz';
@@ -100,6 +101,29 @@ export default function SellerExclusiveAnalysisPage() {
   const fromSharedItems = searchParams.get('from') === 'shared-items';
   const backPath = fromSharedItems ? '/shared-items' : `/sellers/${id}/call`;
   const backLabel = fromSharedItems ? '共有に戻る' : '通話モードに戻る';
+
+  // 「次へ」ナビゲーション：同じ月内の担当者を上から順番に切り替えるキュー
+  // queue形式: "sellerId:assignee|sellerId:assignee|..."
+  const queueParam = searchParams.get('queue') || '';
+  const queueIndex = parseInt(searchParams.get('qi') || '0', 10);
+  const queueItems = queueParam
+    ? queueParam.split('|').map(item => {
+        const [sellerId, assignee] = item.split(':');
+        return { sellerId, assignee };
+      })
+    : [];
+  const nextQueueItem = queueItems.length > 0 && queueIndex < queueItems.length - 1
+    ? queueItems[queueIndex + 1]
+    : null;
+
+  const handleNext = () => {
+    if (!nextQueueItem) return;
+    const params = new URLSearchParams();
+    if (fromSharedItems) params.set('from', 'shared-items');
+    params.set('queue', queueParam);
+    params.set('qi', String(queueIndex + 1));
+    navigate(`/sellers/${nextQueueItem.sellerId}/exclusive-analysis?${params.toString()}`);
+  };
 
   // 段階的ロード：データ取得とAI分析を分離
   const [dataLoading, setDataLoading] = useState(true);   // テーブル・ヘッダー用
@@ -232,15 +256,27 @@ export default function SellerExclusiveAnalysisPage() {
         />
       )}
 
-      <Button
-        startIcon={<ArrowBackIcon />}
-        onClick={() => navigate(backPath)}
-        sx={{ mb: 2 }}
-        variant="outlined"
-        size="small"
-      >
-        {backLabel}
-      </Button>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate(backPath)}
+          variant="outlined"
+          size="small"
+        >
+          {backLabel}
+        </Button>
+        {nextQueueItem && (
+          <Button
+            endIcon={<ArrowForwardIcon />}
+            onClick={handleNext}
+            variant="outlined"
+            size="small"
+            sx={{ borderColor: '#2e7d32', color: '#2e7d32', '&:hover': { borderColor: '#1b5e20', bgcolor: '#e8f5e9' } }}
+          >
+            次へ（{nextQueueItem.assignee}）
+          </Button>
+        )}
+      </Box>
 
       {/* ヘッダー：データ取得中はスケルトン表示 */}
       {dataLoading ? (
