@@ -692,9 +692,9 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
       const acqCost = p.taxMode !== 'none'
         ? Math.round(row.priceYen * 0.05)
         : 0;
-      // template3のみ仲介手数料50mm、印紙代107mm / template4は仲介手数料45mm、印紙代91mm
+      // template3のみ仲介手数料50mm、印紙代109mm / template4は仲介手数料45mm、印紙代91mm
       const brokerageLeft = p.taxMode === 'none' ? 50 : p.taxMode === 'known' ? 45 : 40;
-      const stampLeft     = p.taxMode === 'none' ? 107 : p.taxMode === 'known' ? 91 : 74;
+      const stampLeft     = p.taxMode === 'none' ? 109 : p.taxMode === 'known' ? 91 : 74;
       // template3のみ譲渡所得税+4mm / template4は手残り金額+2mm
       const transferTaxLeft = p.taxMode === 'none' ? 135 : 131;
       const netProceedsLeft = p.taxMode === 'known' ? 163 : 161;
