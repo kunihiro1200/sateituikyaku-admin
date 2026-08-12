@@ -11,7 +11,8 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Paper, Chip, CircularProgress, Alert, Button, TextField,
-  Snackbar, IconButton, Divider,
+  Snackbar, IconButton, Divider, Table, TableBody, TableCell, TableContainer,
+  TableHead, TableRow,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
@@ -234,7 +235,7 @@ export default function UnvisitedOtherDecisionListPage() {
   }
 
   return (
-    <Box sx={{ maxWidth: 1000, mx: 'auto', p: { xs: 1, sm: 2, md: 3 } }}>
+    <Box sx={{ maxWidth: 1400, mx: 'auto', p: { xs: 1, sm: 2, md: 3 } }}>
       <Button
         startIcon={<ArrowBackIcon />}
         onClick={() => navigate('/sellers')}
@@ -259,6 +260,7 @@ export default function UnvisitedOtherDecisionListPage() {
       ) : (
         displayData.map((group) => (
           <Box key={group.yearMonth} sx={{ mb: 4 }}>
+            {/* 月ヘッダー */}
             <Box sx={{ bgcolor: '#ff5722', color: 'white', px: 2, py: 1, borderRadius: '4px 4px 0 0', display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
                 【未訪問他決】{group.label}
@@ -266,152 +268,82 @@ export default function UnvisitedOtherDecisionListPage() {
               <Chip label={`${group.count}件`} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.3)', color: 'white', fontWeight: 'bold' }} />
             </Box>
 
-            <Paper sx={{ borderRadius: '0 0 4px 4px', overflow: 'hidden' }}>
-              {group.sellers.map((seller, idx) => {
-                const ai = aiResults[seller.sellerNumber];
-                const isAiLoading = aiLoadingIds.has(seller.sellerNumber);
-                const logs = followUpLogs[seller.sellerNumber] || [];
-                const isLogsLoading = logsLoadingIds.has(seller.sellerNumber);
-                const commentText = truncateComment(seller.comments);
-
-                return (
-                  <Box key={seller.id}>
-                    {idx > 0 && <Divider sx={{ borderColor: '#ffccbc' }} />}
-                    <Box sx={{ p: 1.5, '&:hover': { bgcolor: '#fafafa' } }}>
-                      {/* ヘッダー行 */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
-                        <Button
-                          size="small"
-                          onClick={() => window.open(`/sellers/${seller.id}/call`, '_blank', 'noopener,noreferrer')}
-                          sx={{ textTransform: 'none', p: '0 4px', minWidth: 'auto', fontSize: '0.85rem', fontWeight: 'bold', color: '#1565c0' }}
-                          endIcon={<OpenInNewIcon sx={{ fontSize: '0.7rem !important' }} />}
-                        >
-                          {seller.sellerNumber}
-                        </Button>
-                        {seller.name && (
-                          <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{seller.name}</Typography>
-                        )}
-                        <Chip label={seller.status} size="small" sx={{ height: 20, fontSize: '0.7rem', bgcolor: seller.status === '他決→追客' ? '#ef5350' : '#b71c1c', color: 'white' }} />
-                        <Typography variant="caption" sx={{ color: '#666', ml: 'auto' }}>反響日: {formatDate(seller.inquiryDate)}</Typography>
-                        <Typography variant="caption" sx={{ color: '#666' }}>他決日: {formatDate(seller.contractYearMonth)}</Typography>
-                        <Typography variant="caption" sx={{ color: '#666' }}>次電日: {formatDate(seller.nextCallDate)}</Typography>
-                      </Box>
-
-                      {/* 物件住所 */}
-                      <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#333', mb: 0.5, pl: 0.5 }}>
-                        📍 {seller.propertyAddress || '住所なし'}
-                      </Typography>
-
-                      {/* 査定額 */}
-                      {(seller.valuationAmount1 || seller.valuationAmount2 || seller.valuationAmount3) && (
-                        <Typography variant="body2" sx={{ fontSize: '0.78rem', color: '#2e7d32', mb: 0.5, pl: 0.5 }}>
-                          💰 査定額: {[seller.valuationAmount1, seller.valuationAmount2, seller.valuationAmount3]
-                            .filter(v => v)
-                            .map(v => `${Math.round(v! / 10000)}万円`)
-                            .join(' / ')}
-                          {seller.valuationAssignee && <span style={{ color: '#666', marginLeft: 8 }}>（{seller.valuationAssignee}）</span>}
-                        </Typography>
-                      )}
-
-                      {/* 競合名、理由 */}
-                      {seller.competitorNameAndReason && (
-                        <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#c62828', mb: 0.5, pl: 0.5 }}>
-                          🏢 {seller.competitorNameAndReason}
-                        </Typography>
-                      )}
-
-                      {/* コメント（【以下自動転記】の前まで） */}
-                      {commentText && (
-                        <Typography variant="body2" sx={{ fontSize: '0.78rem', color: '#555', mb: 0.5, pl: 0.5, whiteSpace: 'pre-wrap' }}>
-                          💬 {commentText}
-                        </Typography>
-                      )}
-
-                      {/* 売主追客ログ */}
-                      {isLogsLoading ? (
-                        <Box sx={{ pl: 0.5, mb: 0.5 }}>
-                          <Typography variant="caption" sx={{ color: '#9e9e9e' }}>追客ログ読込中...</Typography>
-                        </Box>
-                      ) : logs.length > 0 && (
-                        <Box sx={{ mt: 0.5, pl: 0.5, mb: 0.5 }}>
-                          <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#1565c0', display: 'block', mb: 0.3 }}>
-                            📞 追客ログ（{logs.length}件）
-                          </Typography>
-                          <Box sx={{ pl: 1, borderLeft: '2px solid #bbdefb', maxHeight: 200, overflow: 'auto' }}>
-                            {logs.map((log, i) => (
-                              <Box key={i} sx={{ mb: 0.3 }}>
-                                <Typography variant="caption" sx={{ color: '#333', fontSize: '0.72rem' }}>
-                                  <strong>{formatDate(log.date)}</strong>
-                                  {(log.assigneeFirstHalf || log.assigneeSecondHalf) && (
-                                    <span style={{ color: '#1565c0' }}> [{log.assigneeFirstHalf}{log.assigneeSecondHalf && `/${log.assigneeSecondHalf}`}]</span>
-                                  )}
-                                  {log.comment && ` ${log.comment}`}
-                                </Typography>
-                              </Box>
-                            ))}
-                          </Box>
-                        </Box>
-                      )}
-
-                      {/* AI分析ボタン & 結果 */}
-                      <Box sx={{ mt: 1, pl: 0.5 }}>
-                        {!ai && !isAiLoading && (
+            {/* テーブル */}
+            <TableContainer component={Paper} sx={{ borderRadius: '0 0 4px 4px', boxShadow: 'none', border: '1px solid #ffccbc', borderTop: 'none' }}>
+              <Table size="small" stickyHeader>
+                <TableHead>
+                  <TableRow sx={{ '& th': { bgcolor: '#fff3e0', fontWeight: 'bold', fontSize: '0.78rem', color: '#bf360c', whiteSpace: 'nowrap', borderBottom: '2px solid #ff8a65' } }}>
+                    <TableCell>売主番号</TableCell>
+                    <TableCell>氏名</TableCell>
+                    <TableCell>物件住所</TableCell>
+                    <TableCell>ステータス</TableCell>
+                    <TableCell>反響日</TableCell>
+                    <TableCell>他決日</TableCell>
+                    <TableCell>次電日</TableCell>
+                    <TableCell>査定額</TableCell>
+                    <TableCell>競合・理由</TableCell>
+                    <TableCell sx={{ minWidth: 200 }}>コメント</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {group.sellers.map((seller) => {
+                    const commentText = truncateComment(seller.comments);
+                    return (
+                      <TableRow key={seller.id} hover sx={{ '&:hover': { bgcolor: '#fff8e1' }, verticalAlign: 'top' }}>
+                        {/* 売主番号 */}
+                        <TableCell sx={{ whiteSpace: 'nowrap', py: 1 }}>
                           <Button
                             size="small"
-                            variant="outlined"
-                            startIcon={<AutoAwesomeIcon sx={{ fontSize: '0.9rem !important' }} />}
-                            onClick={() => fetchAiForSeller(seller)}
-                            sx={{ fontSize: '0.75rem', color: '#7b1fa2', borderColor: '#ce93d8', py: 0.3 }}
+                            onClick={() => window.open(`/sellers/${seller.id}/call`, '_blank', 'noopener,noreferrer')}
+                            sx={{ textTransform: 'none', p: '0 4px', minWidth: 'auto', fontSize: '0.82rem', fontWeight: 'bold', color: '#1565c0' }}
+                            endIcon={<OpenInNewIcon sx={{ fontSize: '0.65rem !important' }} />}
                           >
-                            AI分析
+                            {seller.sellerNumber}
                           </Button>
-                        )}
-                        {isAiLoading && (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <CircularProgress size={14} sx={{ color: '#7b1fa2' }} />
-                            <Typography variant="caption" sx={{ color: '#7b1fa2' }}>分析中...</Typography>
-                          </Box>
-                        )}
-                        {ai && (
-                          <Box sx={{ p: 1, bgcolor: '#f3e5f5', borderRadius: 1, border: '1px solid #e1bee7' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                              <AutoAwesomeIcon sx={{ fontSize: '0.85rem', color: '#7b1fa2' }} />
-                              <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#4a148c' }}>AI分析</Typography>
-                            </Box>
-                            <Typography variant="body2" sx={{ fontSize: '0.78rem', color: '#333', mb: 0.3 }}>
-                              <strong>要約:</strong> {ai.summary}
-                            </Typography>
-                            <Typography variant="body2" sx={{ fontSize: '0.78rem', color: '#c62828', mb: 0.3 }}>
-                              <strong>敗因:</strong> {ai.whyLost}
-                            </Typography>
-                            <Typography variant="body2" sx={{ fontSize: '0.78rem', color: '#1b5e20' }}>
-                              <strong>対策:</strong> {ai.countermeasure}
-                            </Typography>
-                          </Box>
-                        )}
-                      </Box>
-
-                      {/* 対策メモ */}
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mt: 1, pl: 0.5 }}>
-                        <Typography variant="caption" sx={{ color: '#bf360c', fontWeight: 'bold', mt: 0.8, whiteSpace: 'nowrap' }}>対策メモ:</Typography>
-                        <TextField
-                          size="small"
-                          multiline
-                          maxRows={4}
-                          value={countermeasures[seller.id] || ''}
-                          onChange={(e) => setCountermeasures(prev => ({ ...prev, [seller.id]: e.target.value }))}
-                          placeholder="対策を入力..."
-                          sx={{ flex: 1, '& .MuiInputBase-input': { fontSize: '0.8rem', py: 0.5 }, '& .MuiOutlinedInput-root': { bgcolor: '#fff8e1' } }}
-                        />
-                        <IconButton size="small" color="primary" onClick={() => handleSave(seller.id)} disabled={savingIds.has(seller.id)} sx={{ mt: 0.3 }}>
-                          {savingIds.has(seller.id) ? <CircularProgress size={16} /> : <SaveIcon fontSize="small" />}
-                        </IconButton>
-                      </Box>
-                    </Box>
-                  </Box>
-                );
-              })}
-            </Paper>
+                        </TableCell>
+                        {/* 氏名 */}
+                        <TableCell sx={{ fontSize: '0.82rem', fontWeight: 'bold', whiteSpace: 'nowrap', py: 1 }}>
+                          {seller.name || '－'}
+                        </TableCell>
+                        {/* 物件住所 */}
+                        <TableCell sx={{ fontSize: '0.78rem', py: 1 }}>
+                          {seller.propertyAddress || '－'}
+                        </TableCell>
+                        {/* ステータス */}
+                        <TableCell sx={{ whiteSpace: 'nowrap', py: 1 }}>
+                          <Chip
+                            label={seller.status}
+                            size="small"
+                            sx={{ height: 20, fontSize: '0.68rem', bgcolor: seller.status === '他決→追客' ? '#ef5350' : '#b71c1c', color: 'white' }}
+                          />
+                        </TableCell>
+                        {/* 反響日 */}
+                        <TableCell sx={{ fontSize: '0.78rem', whiteSpace: 'nowrap', py: 1 }}>{formatDate(seller.inquiryDate)}</TableCell>
+                        {/* 他決日 */}
+                        <TableCell sx={{ fontSize: '0.78rem', whiteSpace: 'nowrap', py: 1 }}>{formatDate(seller.contractYearMonth)}</TableCell>
+                        {/* 次電日 */}
+                        <TableCell sx={{ fontSize: '0.78rem', whiteSpace: 'nowrap', py: 1 }}>{formatDate(seller.nextCallDate)}</TableCell>
+                        {/* 査定額 */}
+                        <TableCell sx={{ fontSize: '0.78rem', whiteSpace: 'nowrap', py: 1 }}>
+                          {[seller.valuationAmount1, seller.valuationAmount2, seller.valuationAmount3]
+                            .filter(v => v)
+                            .map(v => `${Math.round(v! / 10000)}万円`)
+                            .join(' / ') || '－'}
+                        </TableCell>
+                        {/* 競合・理由 */}
+                        <TableCell sx={{ fontSize: '0.75rem', py: 1 }}>
+                          {seller.competitorNameAndReason || '－'}
+                        </TableCell>
+                        {/* コメント */}
+                        <TableCell sx={{ fontSize: '0.75rem', py: 1, maxWidth: 300, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                          {commentText || '－'}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Box>
         ))
       )}
