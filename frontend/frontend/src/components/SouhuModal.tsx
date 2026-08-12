@@ -219,7 +219,7 @@ export const SouhuModal: React.FC<Props> = ({
       <div style="margin-top:4mm;">${itemsHtml}</div>
       <div style="font-size:11.5pt;line-height:2.0;margin-top:2mm;">となっております。</div>
       ${memoHtml}
-      ${chkUndecided ? `<div style="font-size:11.5pt;line-height:1.5;margin-top:2mm;">まだ売却されるかどうかは迷われているとのことで承知しております。判断材料の一つとして頂ければと思います。</div>` : ''}
+      ${chkUndecided ? `<div style="font-size:11.5pt;line-height:1.5;margin-top:2mm;"><span style="background:rgba(255,255,0,0.45);padding:0 1px;">まだ売却されるかどうかは迷われているとのことで承知しております。判断材料の一つとして頂ければと思います。</span></div>` : ''}
       <div style="font-size:11.5pt;line-height:2.0;margin-top:${chkUndecided ? '1mm' : '4mm'};">こちらのエリアは弊社に問合せの多い地域となっておりますので、<br/>ご売却の際は是非ご紹介させて頂ければと思います。<br/>ご不明点がございましたらいつでもご連絡頂ければと思います。<br/>宜しくお願い致します。</div>`
       }
     </div>
@@ -233,15 +233,13 @@ export const SouhuModal: React.FC<Props> = ({
     const html = buildHtml();
     // 非表示iframeで印刷（margin:0が確実に適用される）
     const iframe = document.createElement('iframe');
-    iframe.style.cssText = 'position:fixed;top:0;left:0;width:210mm;height:297mm;border:none;opacity:0;pointer-events:none;z-index:-1;';
-    document.body.appendChild(iframe);
-    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!doc) { document.body.removeChild(iframe); return; }
-    doc.open(); doc.write(html); doc.close();
-    setTimeout(() => {
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;visibility:hidden;';
+    iframe.srcdoc = html;
+    iframe.onload = () => {
       try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch {}
-      setTimeout(() => { try { document.body.removeChild(iframe); } catch {} }, 2000);
-    }, 800);
+      setTimeout(() => { try { document.body.removeChild(iframe); } catch {} }, 3000);
+    };
+    document.body.appendChild(iframe);
   };
 
   return (
@@ -342,7 +340,18 @@ export const SouhuModal: React.FC<Props> = ({
               </Typography>
               <FormControlLabel
                 control={<Checkbox size="small" checked={chkUndecided} onChange={e => setChkUndecided(e.target.checked)} />}
-                label={<Typography variant="body2">「まだ売却されるかどうかは迷われているとのことで承知しております。判断材料の一つとして頂ければと思います。」を挿入</Typography>}
+                label={
+                  <Typography variant="body2" sx={{
+                    ...(chkUndecided && {
+                      background: 'rgba(255,255,0,0.5)',
+                      borderRadius: '2px',
+                      px: 0.5,
+                    }),
+                    transition: 'background 0.2s',
+                  }}>
+                    「まだ売却されるかどうかは迷われているとのことで承知しております。判断材料の一つとして頂ければと思います。」を挿入
+                  </Typography>
+                }
               />
             </Box>
               </>

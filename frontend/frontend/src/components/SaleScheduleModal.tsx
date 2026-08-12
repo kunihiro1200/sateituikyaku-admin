@@ -487,15 +487,20 @@ export const SaleScheduleModal: React.FC<Props> = ({
   const handlePrint = useCallback(() => {
     const html = buildA4Html(data, false, initialSellerNumber);
     const iframe = document.createElement('iframe');
-    iframe.style.cssText = 'position:fixed;top:0;left:0;width:210mm;height:297mm;border:none;opacity:0;pointer-events:none;z-index:-1;';
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;visibility:hidden;';
+    iframe.srcdoc = html;
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) {
+        console.error('印刷エラー:', e);
+      }
+      setTimeout(() => {
+        try { document.body.removeChild(iframe); } catch {}
+      }, 3000);
+    };
     document.body.appendChild(iframe);
-    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!doc) { document.body.removeChild(iframe); return; }
-    doc.open(); doc.write(html); doc.close();
-    setTimeout(() => {
-      try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch {}
-      setTimeout(() => { try { document.body.removeChild(iframe); } catch {} }, 2000);
-    }, 800);
   }, [data, initialSellerNumber]);
 
   // iframeのscale計算（A4実寸px → プレビューコンテナに収める）
