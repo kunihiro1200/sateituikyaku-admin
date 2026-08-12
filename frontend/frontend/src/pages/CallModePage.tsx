@@ -1288,6 +1288,7 @@ const CallModePage = () => {
 
   // 郵送ステータス用の状態
   const [mailingStatus, setMailingStatus] = useState<string>('');
+  const [mailingDoneBy, setMailingDoneBy] = useState<string>('');
   const [savingMailingStatus, setSavingMailingStatus] = useState(false);
   // 郵送先住所用の状態
   const [mailingAddress, setMailingAddress] = useState<string>('');
@@ -2403,6 +2404,7 @@ const CallModePage = () => {
       // DBに保存済みの値があればそれを使用。デフォルトで「未」を入れない（ボタンが最初から色づくのを防ぐ）
       const defaultMailingStatus = sellerData.mailingStatus || '';
       setMailingStatus(defaultMailingStatus);
+      setMailingDoneBy((sellerData as any).mailingDoneBy || '');
       // 郵送先住所の初期化（保存済みの住所があればそれを使用、なければ売主住所をデフォルト）
       setMailingAddress(sellerData.alternativeMailingAddress || sellerData.address || '');
       // 「済」が既に保存されている場合は確認済みフラグをtrueにする（済ボタンの光った状態を維持するため）
@@ -3914,12 +3916,18 @@ const CallModePage = () => {
       setSavingMailingStatus(true);
       setError(null);
 
+      // 「済」にする場合は操作者のイニシャルを記録、「未」に戻す場合はクリア
+      const { employee } = useAuthStore.getState();
+      const doneBy = status === '済' ? (employee?.initials || '') : '';
+
       await api.put(`/api/sellers/${id}`, {
         mailingStatus: status,
+        mailingDoneBy: doneBy,
         alternativeMailingAddress: mailingAddress,
       });
 
       setMailingStatus(status);
+      setMailingDoneBy(doneBy);
       setSuccessMessage(`郵送ステータスを「${status}」に更新しました`);
       setTimeout(() => {
         setSuccessMessage(null);
@@ -9361,6 +9369,20 @@ HP：https://ifoo-oita.com/
               )}
               {mailingStatus === '済' && (
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                  {mailingDoneBy && (
+                    <Chip
+                      label={mailingDoneBy}
+                      size="small"
+                      sx={{
+                        backgroundColor: '#e3f2fd',
+                        color: '#1565c0',
+                        fontWeight: 'bold',
+                        border: '1px solid #90caf9',
+                        fontSize: '0.8rem',
+                        minWidth: 28,
+                      }}
+                    />
+                  )}
                   <Chip
                     label="📮 郵送済み"
                     size="small"
