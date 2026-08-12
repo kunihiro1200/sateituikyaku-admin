@@ -1000,6 +1000,10 @@ const CallModePage = () => {
   const [savedConfidence, setSavedConfidence] = useState<ConfidenceLevel | ''>('');
   const [savedExclusiveOtherDecisionMeeting, setSavedExclusiveOtherDecisionMeeting] = useState<string>('');
   const [savedNextCallDate, setSavedNextCallDate] = useState<string>('');
+  // 未訪問他決：対策・反省点（DBのみ保存）
+  const [editedUnvisitedOtherDecisionMemo, setEditedUnvisitedOtherDecisionMemo] = useState<string>('');
+  const [savedUnvisitedOtherDecisionMemo, setSavedUnvisitedOtherDecisionMemo] = useState<string>('');
+  const [savingUnvisitedMemo, setSavingUnvisitedMemo] = useState(false);
   
   // 4つのフィールドの保存済み値（変更検知用）
   const [savedExclusiveDecisionDate, setSavedExclusiveDecisionDate] = useState<string>('');
@@ -2230,6 +2234,9 @@ const CallModePage = () => {
       setSavedStatus(sellerData.status);
       setSavedConfidence(sellerData.confidence || '');
       setSavedExclusiveOtherDecisionMeeting(sellerData.exclusiveOtherDecisionMeeting || '');
+      // 未訪問他決：対策・反省点の初期化
+      setEditedUnvisitedOtherDecisionMemo(sellerData.otherDecisionCountermeasure || '');
+      setSavedUnvisitedOtherDecisionMemo(sellerData.otherDecisionCountermeasure || '');
       
       // 除外日を設定（YYYY-MM-DD形式に変換）
       if (sellerData.exclusionDate) {
@@ -4985,6 +4992,17 @@ HP：https://ifoo-oita.com/
     return label.includes('専任') || label.includes('他決') || label === '他社買取';
   };
 
+  // 未訪問他決かどうかを判定（対策・反省点フィールドの表示条件）
+  // 条件：他決系ステータス かつ 営担（visitAssignee）が空または「外す」
+  const isUnvisitedOtherDecision = (): boolean => {
+    if (!editedStatus) return false;
+    const label = getStatusLabel(editedStatus);
+    const isOtherDecision = label.includes('他決') || label === '他社買取';
+    if (!isOtherDecision) return false;
+    const assignee = seller?.visitAssigneeInitials || seller?.visitAssignee || '';
+    return !assignee || assignee === '外す';
+  };
+
   // 必須項目が全て入力されているかチェック
   const isRequiredFieldsComplete = (): boolean => {
     if (!requiresDecisionDate(editedStatus)) {
@@ -5154,6 +5172,24 @@ HP：https://ifoo-oita.com/
       setError(err.response?.data?.error?.message || 'Chat通知の送信に失敗しました');
     } finally {
       setSendingChatNotification(false);
+    }
+  };
+
+  // 未訪問他決：対策・反省点を保存する（DBのみ、スプシ同期なし）
+  const handleSaveUnvisitedMemo = async () => {
+    if (!seller?.id) return;
+    try {
+      setSavingUnvisitedMemo(true);
+      setError(null);
+      await api.put(`/api/sellers/${seller.id}/unvisited-other-decision-countermeasure`, {
+        countermeasure: editedUnvisitedOtherDecisionMemo || '',
+      });
+      setSavedUnvisitedOtherDecisionMemo(editedUnvisitedOtherDecisionMemo);
+      setSuccessMessage('対策・反省点を保存しました');
+    } catch (err: any) {
+      setError('対策・反省点の保存に失敗しました');
+    } finally {
+      setSavingUnvisitedMemo(false);
     }
   };
 
@@ -9917,6 +9953,41 @@ HP：https://ifoo-oita.com/
                       {editedExclusiveOtherDecisionMeeting === '完了' && (
                         <Chip label="完了済み" size="small" color="success" />
                       )}
+                    </Box>
+                  </Grid>
+                )}
+
+                {/* 未訪問他決：対策・反省点（DBのみ保存） */}
+                {isUnvisitedOtherDecision() && (
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        対策・反省点
+                      </Typography>
+                      <TextField
+                        multiline
+                        minRows={3}
+                        fullWidth
+                        size="small"
+                        placeholder="対策・反省点を入力してください"
+                        value={editedUnvisitedOtherDecisionMemo}
+                        onChange={(e) => setEditedUnvisitedOtherDecisionMemo(e.target.value)}
+                      />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={handleSaveUnvisitedMemo}
+                          disabled={savingUnvisitedMemo || editedUnvisitedOtherDecisionMemo === savedUnvisitedOtherDecisionMemo}
+                        >
+                          {savingUnvisitedMemo ? '保存中...' : '保存'}
+                        </Button>
+                        {editedUnvisitedOtherDecisionMemo !== savedUnvisitedOtherDecisionMemo && (
+                          <Typography variant="caption" color="warning.main">
+                            未保存の変更があります
+                          </Typography>
+                        )}
+                      </Box>
                     </Box>
                   </Grid>
                 )}
