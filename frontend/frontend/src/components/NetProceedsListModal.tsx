@@ -435,12 +435,12 @@ export const NetProceedsListModal: React.FC<Props> = ({
                 </FormLabel>
                 <RadioGroup value={taxMode} onChange={e => setTaxMode(e.target.value as typeof taxMode)}>
                   <FormControlLabel value="none" control={<Radio size="small" />} label="なし" />
+                  <FormControlLabel value="none_mortgage" control={<Radio size="small" />}
+                    label={<Typography variant="body2">なし・抵当権抹消費用あり</Typography>} />
                   <FormControlLabel value="unknown" control={<Radio size="small" />}
                     label={<Typography variant="body2">あり ─ 取得費不明（売価の5%で計算）</Typography>} />
                   <FormControlLabel value="unknown_mortgage" control={<Radio size="small" />}
                     label={<Typography variant="body2">あり ─ 取得費不明・抵当権抹消費用あり</Typography>} />
-                  <FormControlLabel value="none_mortgage" control={<Radio size="small" />}
-                    label={<Typography variant="body2">なし・抵当権抹消費用あり</Typography>} />
                   <FormControlLabel value="known" control={<Radio size="small" />}
                     label={<Typography variant="body2">あり ─ 取得費明確</Typography>} />
                   <FormControlLabel value="known_mortgage" control={<Radio size="small" />}
