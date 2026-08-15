@@ -718,8 +718,8 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
       // unknown_mortgage(template2_teitou)・none_mortgage(template3_teitou_direct)は「抵当権抹消費用」列を
       // 印紙代の左側に挿入するため他モードより列幅を詰める
       const brokerageLeft = (p.taxMode === 'none' || p.taxMode === 'none_mortgage') ? 50 : p.taxMode === 'known' ? 45 : p.taxMode === 'unknown_mortgage' ? 38 : 40;
-      const mortgageLeft  = p.taxMode === 'none_mortgage' ? 98 : 77; // 印紙代の左側（none_mortgageは+10mm+2mm右にずらし済み）
-      const stampLeft     = p.taxMode === 'none_mortgage' ? 125 : p.taxMode === 'none' ? 111 : p.taxMode === 'known' ? 95 : p.taxMode === 'unknown_mortgage' ? 97 : 74;
+      const mortgageLeft  = p.taxMode === 'none_mortgage' ? 100 : 77; // 印紙代の左側（none_mortgageは+10mm+2mm+2mm右にずらし済み）
+      const stampLeft     = p.taxMode === 'none_mortgage' ? 128 : p.taxMode === 'none' ? 111 : p.taxMode === 'known' ? 95 : p.taxMode === 'unknown_mortgage' ? 97 : 74;
       const acqCostLeft   = p.taxMode === 'unknown_mortgage' ? 115 : 94;
       // template3のみ譲渡所得税+4mm / template4は手残り金額+2mm / unknown_mortgageは+2mm・フォント1段階小さく
       const transferTaxLeft = p.taxMode === 'none' ? 135 : p.taxMode === 'unknown_mortgage' ? 138 : 131;
