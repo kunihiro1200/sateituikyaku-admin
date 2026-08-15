@@ -730,7 +730,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         : p.taxMode === 'unknown_mortgage' ? 38 : 40;
       const mortgageLeft  = p.taxMode === 'none_mortgage' ? 100 : p.taxMode === 'known_mortgage' ? 89 : 77; // 印紙代の左側（none_mortgageは+10mm+2mm+2mm、known_mortgageは+20mm-1mm右にずらし済み）
       const stampLeft     = p.taxMode === 'none_mortgage' ? 128 : p.taxMode === 'none' ? 111
-        : p.taxMode === 'known_mortgage' ? 106
+        : p.taxMode === 'known_mortgage' ? 107
         : p.taxMode === 'known' ? 95
         : p.taxMode === 'unknown_mortgage' ? 97 : 74;
       const acqCostLeft   = p.taxMode === 'unknown_mortgage' ? 115 : 94;
