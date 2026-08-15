@@ -710,11 +710,11 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
       // template3のみ仲介手数料50mm、印紙代111mm / template4は仲介手数料45mm、印紙代91mm
       // unknown_mortgage(template2_teitou)は「抵当権抹消費用」列を印紙代の左側に挿入するため他モードより列幅を詰める
       const brokerageLeft = p.taxMode === 'none' ? 50 : p.taxMode === 'known' ? 45 : p.taxMode === 'unknown_mortgage' ? 38 : 40;
-      const mortgageLeft  = 68; // 印紙代の左側（unknown_mortgageのみ使用）
-      const stampLeft     = p.taxMode === 'none' ? 111 : p.taxMode === 'known' ? 95 : p.taxMode === 'unknown_mortgage' ? 88 : 74;
-      const acqCostLeft   = p.taxMode === 'unknown_mortgage' ? 106 : 94;
+      const mortgageLeft  = 73; // 印紙代の左側（unknown_mortgageのみ使用、+5mm右にずらし済み）
+      const stampLeft     = p.taxMode === 'none' ? 111 : p.taxMode === 'known' ? 95 : p.taxMode === 'unknown_mortgage' ? 93 : 74;
+      const acqCostLeft   = p.taxMode === 'unknown_mortgage' ? 111 : 94;
       // template3のみ譲渡所得税+4mm / template4は手残り金額+2mm
-      const transferTaxLeft = p.taxMode === 'none' ? 135 : 131;
+      const transferTaxLeft = p.taxMode === 'none' ? 135 : p.taxMode === 'unknown_mortgage' ? 136 : 131;
       const netProceedsLeft = p.taxMode === 'known' ? 163 : 161;
       return [
         npBox(  6, rowTop, p.taxMode === 'unknown_mortgage' ? 30 : 32, rowH, fmtM(row.priceYen),     12, 600, '#1a1a1a', debug, i===0?'売却価格':''),
