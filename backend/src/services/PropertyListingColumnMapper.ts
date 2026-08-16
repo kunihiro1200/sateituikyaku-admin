@@ -53,6 +53,14 @@ export class PropertyListingColumnMapper {
       return null;
     }
 
+    // スプレッドシートのエラー値（#REF!, #N/A, #VALUE! 等）をnullとして扱う
+    // ※ Suumo URL等の文字列カラムに#REF!等が混入すると「空」判定に失敗し、
+    //    サイドバー通知（レインズ登録＋SUUMO URL 要登録等）が発火しなくなるため必須のガード
+    const strCheck = String(value).trim();
+    if (/^#(REF|N\/A|VALUE|ERROR|NAME\?|NULL|DIV\/0)!?$/i.test(strCheck)) {
+      return null;
+    }
+
     const type = this.typeConversions[column];
     
     if (type === 'date') {
