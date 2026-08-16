@@ -287,7 +287,11 @@ export default function PropertyPreviewPage() {
     return (
       <>
         <style>{`
-          @page { size: A4 landscape; margin: 6mm; }
+          /* 名前付きページを使い、グローバルprint.cssの@page（縦A4）と衝突しないようにする。
+             名前付き@pageの宣言は仕様上、無名@pageより優先されるため、
+             読み込み順に依存せず確実に横向きA4で印刷される。 */
+          @page property-preview-print { size: A4 landscape; margin: 6mm; }
+          .print-page { page: property-preview-print; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
           body { margin: 0; padding: 0; background: white; }
           @media screen {
@@ -296,7 +300,7 @@ export default function PropertyPreviewPage() {
           }
           @media print {
             body { background: white; padding: 0; display: block; }
-            .print-page { box-shadow: none !important; }
+            .print-page { box-shadow: none !important; overflow: hidden; }
           }
         `}</style>
         <div className="print-page" style={{
