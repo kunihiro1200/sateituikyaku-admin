@@ -341,6 +341,15 @@ export default function WorkTasksPage() {
           </Button>
           <Button
             variant="outlined"
+            color="secondary"
+            size="small"
+            onClick={() => window.open('https://drive.google.com/drive/u/0/folders/19oegZH2jVhGuTB266jjQpWIgaDaMGsBm', '_blank', 'noopener,noreferrer')}
+            sx={{ whiteSpace: 'nowrap', fontWeight: 'bold' }}
+          >
+            雛形_福岡
+          </Button>
+          <Button
+            variant="outlined"
             color="info"
             size="small"
             startIcon={<RecordVoiceOverIcon />}
