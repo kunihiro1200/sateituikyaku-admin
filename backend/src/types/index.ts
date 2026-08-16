@@ -109,6 +109,8 @@ export interface Seller {
   contactMethod?: string; // 連絡方法
   comments?: string; // コメント
   mailingStatus?: string; // 郵送（未、済）
+  mailingDoneBy?: string; // 郵送済みにした操作者のイニシャル
+  mailingDoneAt?: Date; // 郵送済みにした日時
   alternativeMailingAddress?: string;
   
   // 訪問査定情報

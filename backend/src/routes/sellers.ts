@@ -2751,7 +2751,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
       // 郵送関連フィールドのみの更新はスプレッドシートに存在しないためスキップ
       // （mailingStatus / alternativeMailingAddress のみの更新は数秒かかる同期処理を省略して即レスポンス）
-      const MAILING_ONLY_FIELDS = new Set(['mailingStatus', 'alternativeMailingAddress', 'mailingAddressConfirmed']);
+      const MAILING_ONLY_FIELDS = new Set(['mailingStatus', 'mailingDoneBy', 'mailingDoneAt', 'alternativeMailingAddress', 'mailingAddressConfirmed']);
       const isMailingOnlyUpdate = Object.keys(req.body).every(k => MAILING_ONLY_FIELDS.has(k));
 
       if (isMailingOnlyUpdate) {

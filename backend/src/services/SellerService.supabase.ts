@@ -719,6 +719,10 @@ export class SellerService extends BaseRepository {
     if ((data as any).mailingDoneBy !== undefined) {
       updates.mailing_done_by = (data as any).mailingDoneBy;
     }
+    // 郵送済みにした日時フィールド
+    if ((data as any).mailingDoneAt !== undefined) {
+      updates.mailing_done_at = (data as any).mailingDoneAt;
+    }
     // 郵送先住所フィールド
     if ((data as any).alternativeMailingAddress !== undefined) {
       updates.alternative_mailing_address = (data as any).alternativeMailingAddress;
@@ -2448,6 +2452,7 @@ export class SellerService extends BaseRepository {
         // Mailing status fields
         mailingStatus: seller.mailing_status,
         mailingDoneBy: seller.mailing_done_by,
+        mailingDoneAt: seller.mailing_done_at ? new Date(seller.mailing_done_at) : undefined,
         mailSentDate: seller.mail_sent_date ? new Date(seller.mail_sent_date) : undefined,
         alternativeMailingAddress: seller.alternative_mailing_address,
         // Valuation method field

@@ -1004,6 +1004,8 @@ const CallModePage = () => {
   const [editedUnvisitedOtherDecisionMemo, setEditedUnvisitedOtherDecisionMemo] = useState<string>('');
   const [savedUnvisitedOtherDecisionMemo, setSavedUnvisitedOtherDecisionMemo] = useState<string>('');
   const [savingUnvisitedMemo, setSavingUnvisitedMemo] = useState(false);
+  // 他決→◯◯選択時に対策・反省点の入力を促す必須ポップアップ
+  const [unvisitedMemoPopupOpen, setUnvisitedMemoPopupOpen] = useState(false);
   
   // 4つのフィールドの保存済み値（変更検知用）
   const [savedExclusiveDecisionDate, setSavedExclusiveDecisionDate] = useState<string>('');
@@ -1289,6 +1291,7 @@ const CallModePage = () => {
   // 郵送ステータス用の状態
   const [mailingStatus, setMailingStatus] = useState<string>('');
   const [mailingDoneBy, setMailingDoneBy] = useState<string>('');
+  const [mailingDoneAt, setMailingDoneAt] = useState<string>('');
   const [savingMailingStatus, setSavingMailingStatus] = useState(false);
   // 郵送先住所用の状態
   const [mailingAddress, setMailingAddress] = useState<string>('');
@@ -2405,6 +2408,7 @@ const CallModePage = () => {
       const defaultMailingStatus = sellerData.mailingStatus || '';
       setMailingStatus(defaultMailingStatus);
       setMailingDoneBy((sellerData as any).mailingDoneBy || '');
+      setMailingDoneAt((sellerData as any).mailingDoneAt || '');
       // 郵送先住所の初期化（保存済みの住所があればそれを使用、なければ売主住所をデフォルト）
       setMailingAddress(sellerData.alternativeMailingAddress || sellerData.address || '');
       // 「済」が既に保存されている場合は確認済みフラグをtrueにする（済ボタンの光った状態を維持するため）
@@ -3916,18 +3920,21 @@ const CallModePage = () => {
       setSavingMailingStatus(true);
       setError(null);
 
-      // 「済」にする場合は操作者のイニシャルを記録、「未」に戻す場合はクリア
+      // 「済」にする場合は操作者のイニシャルと日時を記録、「未」に戻す場合はクリア
       const { employee } = useAuthStore.getState();
       const doneBy = status === '済' ? (employee?.initials || '') : '';
+      const doneAt = status === '済' ? new Date().toISOString() : '';
 
       await api.put(`/api/sellers/${id}`, {
         mailingStatus: status,
         mailingDoneBy: doneBy,
+        mailingDoneAt: doneAt || null,
         alternativeMailingAddress: mailingAddress,
       });
 
       setMailingStatus(status);
       setMailingDoneBy(doneBy);
+      setMailingDoneAt(doneAt);
       setSuccessMessage(`郵送ステータスを「${status}」に更新しました`);
       setTimeout(() => {
         setSuccessMessage(null);
@@ -5002,14 +5009,17 @@ HP：https://ifoo-oita.com/
 
   // 未訪問他決かどうかを判定（対策・反省点フィールドの表示条件）
   // 条件：他決系ステータス かつ 営担（visitAssignee）が空または「外す」
-  const isUnvisitedOtherDecision = (): boolean => {
-    if (!editedStatus) return false;
-    const label = getStatusLabel(editedStatus);
+  // status引数を渡すことで、setEditedStatus実行前（onChange時点）でも判定できるようにする
+  const checkIsUnvisitedOtherDecision = (status: string): boolean => {
+    if (!status) return false;
+    const label = getStatusLabel(status);
     const isOtherDecision = label.includes('他決') || label === '他社買取';
     if (!isOtherDecision) return false;
     const assignee = seller?.visitAssigneeInitials || seller?.visitAssignee || '';
     return !assignee || assignee === '外す';
   };
+
+  const isUnvisitedOtherDecision = (): boolean => checkIsUnvisitedOtherDecision(editedStatus);
 
   // 必須項目が全て入力されているかチェック
   const isRequiredFieldsComplete = (): boolean => {
@@ -5184,8 +5194,8 @@ HP：https://ifoo-oita.com/
   };
 
   // 未訪問他決：対策・反省点を保存する（DBのみ、スプシ同期なし）
-  const handleSaveUnvisitedMemo = async () => {
-    if (!seller?.id) return;
+  const handleSaveUnvisitedMemo = async (): Promise<boolean> => {
+    if (!seller?.id) return false;
     try {
       setSavingUnvisitedMemo(true);
       setError(null);
@@ -5194,10 +5204,21 @@ HP：https://ifoo-oita.com/
       });
       setSavedUnvisitedOtherDecisionMemo(editedUnvisitedOtherDecisionMemo);
       setSuccessMessage('対策・反省点を保存しました');
+      return true;
     } catch (err: any) {
       setError('対策・反省点の保存に失敗しました');
+      return false;
     } finally {
       setSavingUnvisitedMemo(false);
+    }
+  };
+
+  // 他決→◯◯選択時の必須ポップアップから保存する（未入力の場合は保存しない）
+  const handleSaveUnvisitedMemoFromPopup = async () => {
+    if (!editedUnvisitedOtherDecisionMemo.trim()) return;
+    const success = await handleSaveUnvisitedMemo();
+    if (success) {
+      setUnvisitedMemoPopupOpen(false);
     }
   };
 
@@ -9394,6 +9415,14 @@ HP：https://ifoo-oita.com/
                       fontSize: '0.8rem',
                     }}
                   />
+                  {mailingDoneAt && (
+                    <Typography
+                      variant="caption"
+                      sx={{ color: '#2e7d32', fontSize: '0.75rem' }}
+                    >
+                      {formatDateTime(mailingDoneAt)}
+                    </Typography>
+                  )}
                   <Button
                     size="small"
                     variant="outlined"
@@ -9602,7 +9631,17 @@ HP：https://ifoo-oita.com/
                     <Select
                       value={editedStatus}
                       label="状況（当社）"
-                      onChange={(e) => { setEditedStatus(e.target.value); setStatusChanged(true); statusChangedRef.current = true; setPageEdited(true); }}
+                      onChange={(e) => {
+                        const newStatus = e.target.value;
+                        setEditedStatus(newStatus);
+                        setStatusChanged(true);
+                        statusChangedRef.current = true;
+                        setPageEdited(true);
+                        // 他決→◯◯（未訪問他決）に変更した場合、対策・反省点の入力を促すポップアップを即時表示
+                        if (checkIsUnvisitedOtherDecision(newStatus)) {
+                          setUnvisitedMemoPopupOpen(true);
+                        }
+                      }}
                     >
                       <MenuItem value="追客中">追客中</MenuItem>
                       <MenuItem value="追客不要(未訪問）">追客不要(未訪問）</MenuItem>
@@ -10932,6 +10971,46 @@ HP：https://ifoo-oita.com/
             variant="contained"
           >
             通電OK
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 他決→◯◯選択時：対策・反省点の入力を促す必須ポップアップ */}
+      <Dialog
+        open={unvisitedMemoPopupOpen}
+        onClose={() => {}}
+        disableEscapeKeyDown
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 'bold' }}>
+          対策・反省点の入力が必要です
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            「{getStatusLabel(editedStatus)}」に変更されました。今回のケースの対策・反省点を入力してください。
+          </Typography>
+          <TextField
+            autoFocus
+            multiline
+            minRows={4}
+            fullWidth
+            size="small"
+            placeholder="対策・反省点を入力してください"
+            value={editedUnvisitedOtherDecisionMemo}
+            onChange={(e) => setEditedUnvisitedOtherDecisionMemo(e.target.value)}
+            error={!editedUnvisitedOtherDecisionMemo.trim()}
+            helperText={!editedUnvisitedOtherDecisionMemo.trim() ? '必須項目です' : ''}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={handleSaveUnvisitedMemoFromPopup}
+            variant="contained"
+            color="primary"
+            disabled={!editedUnvisitedOtherDecisionMemo.trim() || savingUnvisitedMemo}
+          >
+            {savingUnvisitedMemo ? '保存中...' : '保存'}
           </Button>
         </DialogActions>
       </Dialog>

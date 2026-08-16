@@ -109,6 +109,8 @@ export interface Seller {
   contactMethod?: string; // 連絡方法
   contact_method?: string | null; // 連絡方法 - snake_case版
   mailingStatus?: string; // 郵送（未、済）
+  mailingDoneBy?: string; // 郵送済みにした操作者のイニシャル
+  mailingDoneAt?: string | Date; // 郵送済みにした日時
   alternativeMailingAddress?: string;
   
   // 訪問査定情報
