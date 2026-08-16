@@ -5021,6 +5021,18 @@ HP：https://ifoo-oita.com/
 
   const isUnvisitedOtherDecision = (): boolean => checkIsUnvisitedOtherDecision(editedStatus);
 
+  // 他決→◯◯の対策・反省点ポップアップを必須表示する基準日
+  // 「他決と分かった日付（専任（他決）決定日）」がこの日付以降の場合のみ対象とする
+  const UNVISITED_MEMO_REQUIRED_CUTOFF_DATE = '2026-08-18';
+
+  // 対策・反省点ポップアップを表示・必須化すべきかどうかを判定
+  // 条件：未訪問他決であり、かつ「専任（他決）決定日」が基準日（2026/8/18）以降
+  const shouldRequireUnvisitedMemo = (status: string, decisionDate: string): boolean => {
+    if (!checkIsUnvisitedOtherDecision(status)) return false;
+    if (!decisionDate) return false;
+    return decisionDate >= UNVISITED_MEMO_REQUIRED_CUTOFF_DATE;
+  };
+
   // 必須項目が全て入力されているかチェック
   const isRequiredFieldsComplete = (): boolean => {
     if (!requiresDecisionDate(editedStatus)) {
@@ -9638,7 +9650,8 @@ HP：https://ifoo-oita.com/
                         statusChangedRef.current = true;
                         setPageEdited(true);
                         // 他決→◯◯（未訪問他決）に変更した場合、対策・反省点の入力を促すポップアップを即時表示
-                        if (checkIsUnvisitedOtherDecision(newStatus)) {
+                        // 対象は「専任（他決）決定日」が2026/8/18以降のケースのみ
+                        if (shouldRequireUnvisitedMemo(newStatus, editedExclusiveDecisionDate)) {
                           setUnvisitedMemoPopupOpen(true);
                         }
                       }}
@@ -9751,7 +9764,16 @@ HP：https://ifoo-oita.com/
                         type="date"
                         required
                         value={editedExclusiveDecisionDate}
-                        onChange={(e) => { setEditedExclusiveDecisionDate(e.target.value); setStatusChanged(true); statusChangedRef.current = true; }}
+                        onChange={(e) => {
+                          const newDate = e.target.value;
+                          setEditedExclusiveDecisionDate(newDate);
+                          setStatusChanged(true);
+                          statusChangedRef.current = true;
+                          // 決定日を入力/変更した時点で基準日以降なら対策・反省点ポップアップを表示
+                          if (shouldRequireUnvisitedMemo(editedStatus, newDate)) {
+                            setUnvisitedMemoPopupOpen(true);
+                          }
+                        }}
                         InputLabelProps={{ shrink: true }}
                         error={!editedExclusiveDecisionDate}
                         helperText={!editedExclusiveDecisionDate ? '必須項目です' : ''}
