@@ -134,10 +134,10 @@ export const calculatePropertyStatus = (
 
   // 1. 報告日が設定されていて、かつ今日以前の場合のみ未報告
   // 報告日が空欄（null）または将来の日付の物件は未報告カテゴリに含めない
-  // ※ ATBB状況が「専任・公開中」の物件のみ未報告として扱う（一般媒介は除外）
+  // ※ ATBB状況が「専任・公開中」または「一般・公開中」の物件を未報告として扱う
   const reportDate = parseDate(listing.report_date);
   const atbbStatus = listing.atbb_status || '';
-  const isPublished = atbbStatus === '専任・公開中';
+  const isPublished = atbbStatus === '専任・公開中' || atbbStatus === '一般・公開中';
   
   // デバッグログ: 未報告判定の詳細を出力
   if (listing.property_number && listing.report_date) {
