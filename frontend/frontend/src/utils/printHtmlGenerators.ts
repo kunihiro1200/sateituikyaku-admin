@@ -1067,47 +1067,31 @@ export function generateExtraPage1Html(base: string, isFI: boolean = false): str
     <span style="font-size:11pt;font-weight:bold;">購入までの行程</span>
     <div style="margin-left:12px;background:#f0f0f0;border-radius:4px;padding:2px 10px;font-size:8pt;">物件探しはこちらから！</div>
   </div>
-  <!-- フロー図（HTML） -->
-  <div style="margin-bottom:14px;">
-    <!-- 購入の流れ -->
-    <div style="display:flex;align-items:stretch;margin-bottom:0;">
-      <div style="background:${pink};border:1px solid #ccc;padding:4px 2px;text-align:center;font-size:7pt;font-weight:bold;writing-mode:vertical-rl;min-width:22px;display:flex;align-items:center;justify-content:center;">購入の流れ</div>
-      <div style="display:flex;flex:1;">
-        <div style="${cellH}background:${pink};flex:1;font-weight:bold;">内覧</div>
-        <div style="${cellH}background:${pink};flex:1;font-weight:bold;">買付申込</div>
-        <div style="${cellH}background:${pink};flex:1.2;font-weight:bold;">重要事項説明</div>
-        <div style="${cellH}background:${pink};flex:1.2;font-weight:bold;">契約・手付金</div>
-        <div style="${cellH}background:${pink};flex:1.3;font-weight:bold;">必要書類の準備</div>
-        <div style="${cellH}background:${pink};flex:1.1;font-weight:bold;">決済・引渡し</div>
-        <div style="${cellH}background:${pink};flex:1;font-weight:bold;">残金支払</div>
-        <div style="${cellH}background:${pink};flex:1.3;font-weight:bold;">鍵の引き渡し</div>
-        <div style="${cellH}background:${pink};flex:1.5;font-weight:bold;">所有権移転登記完了</div>
-      </div>
-      <div style="display:flex;align-items:center;margin-left:4px;font-size:16pt;color:#4a6fa5;">▶</div>
+  <!-- フロー図（画像） -->
+  <img src="${base}/ifoo-assets/flow-chart.png" style="width:100%;margin-bottom:8px;display:block;"/>
+  <!-- 補足：追加ステップ -->
+  <div style="margin-bottom:14px;font-size:8pt;line-height:1.8;">
+    <div style="font-weight:bold;margin-bottom:4px;">※ 詳細ステップ</div>
+    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:4px;">
+      <span style="font-weight:bold;color:#c0392b;">購入の流れ：</span>
+      <span style="background:${pink};padding:2px 6px;border-radius:3px;">内覧</span>→
+      <span style="background:${pink};padding:2px 6px;border-radius:3px;">買付申込</span>→
+      <span style="background:${pink};padding:2px 6px;border-radius:3px;">重要事項説明</span>→
+      <span style="background:${pink};padding:2px 6px;border-radius:3px;">契約・手付金</span>→
+      <span style="background:${pink};padding:2px 6px;border-radius:3px;">必要書類の準備</span>→
+      <span style="background:${pink};padding:2px 6px;border-radius:3px;">決済・引渡し</span>→
+      <span style="background:${pink};padding:2px 6px;border-radius:3px;">残金支払</span>→
+      <span style="background:${pink};padding:2px 6px;border-radius:3px;">鍵の引き渡し</span>→
+      <span style="background:${pink};padding:2px 6px;border-radius:3px;">所有権移転登記完了</span>
     </div>
-    <!-- 期間 -->
-    <div style="display:flex;align-items:stretch;margin-bottom:0;">
-      <div style="min-width:22px;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:7pt;font-weight:bold;padding:2px;">例</div>
-      <div style="display:flex;flex:1;">
-        <div style="${cellH}flex:1;border:2px solid #333;font-weight:bold;">約1〜2週間</div>
-        <div style="${cellH}flex:1;border:2px solid #333;font-weight:bold;">約1週間</div>
-        <div style="${cellH}flex:2;border:2px solid #333;font-weight:bold;">約3週間</div>
-        <div style="${cellH}flex:2;border:2px solid #333;font-weight:bold;">約1〜2週間</div>
-      </div>
-      <div style="display:flex;align-items:center;margin-left:4px;font-size:16pt;color:#4a6fa5;">▶</div>
-    </div>
-    <!-- ローンの流れ -->
-    <div style="display:flex;align-items:stretch;">
-      <div style="background:${blue};border:1px solid #ccc;padding:4px 2px;text-align:center;font-size:7pt;font-weight:bold;writing-mode:vertical-rl;min-width:22px;display:flex;align-items:center;justify-content:center;">ローンの流れ</div>
-      <div style="display:flex;flex:1;">
-        <div style="${cellH}background:${blue};flex:1;font-weight:bold;">仮審査申込</div>
-        <div style="${cellH}background:${blue};flex:1.2;font-weight:bold;">仮審査承認通知</div>
-        <div style="${cellH}background:${blue};flex:1;font-weight:bold;">本審査申込</div>
-        <div style="${cellH}background:${blue};flex:1.2;font-weight:bold;">本審査承認通知</div>
-        <div style="${cellH}background:${blue};flex:1;font-weight:bold;">金消契約</div>
-        <div style="${cellH}background:${blue};flex:1;font-weight:bold;">融資実行</div>
-      </div>
-      <div style="display:flex;align-items:center;margin-left:4px;font-size:16pt;color:transparent;">▶</div>
+    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+      <span style="font-weight:bold;color:#2980b9;">ローンの流れ：</span>
+      <span style="background:${blue};padding:2px 6px;border-radius:3px;">仮審査申込</span>→
+      <span style="background:${blue};padding:2px 6px;border-radius:3px;">仮審査承認通知</span>→
+      <span style="background:${blue};padding:2px 6px;border-radius:3px;">本審査申込</span>→
+      <span style="background:${blue};padding:2px 6px;border-radius:3px;">本審査承認通知</span>→
+      <span style="background:${blue};padding:2px 6px;border-radius:3px;">金消契約</span>→
+      <span style="background:${blue};padding:2px 6px;border-radius:3px;">融資実行</span>
     </div>
   </div>
   <!-- 押さえておきたい税 -->
