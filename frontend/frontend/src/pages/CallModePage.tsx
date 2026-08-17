@@ -46,8 +46,7 @@ import { getDisplayName } from '../utils/employeeUtils';
 import { formatDateTime } from '../utils/dateFormat';
 import CallLogDisplay, { CallLogDisplayHandle } from '../components/CallLogDisplay';
 import CallRankingDisplay from '../components/CallRankingDisplay';
-import { FollowUpLogHistoryTable } from '../components/FollowUpLogHistoryTable';
-import AssigneeSection, { SMS_TEMPLATE_ASSIGNEE_MAP, EMAIL_TEMPLATE_ASSIGNEE_MAP } from '../components/AssigneeSection';
+import { SMS_TEMPLATE_ASSIGNEE_MAP, EMAIL_TEMPLATE_ASSIGNEE_MAP } from '../components/AssigneeSection';
 import DuplicateIndicatorBadge from '../components/DuplicateIndicatorBadge';
 import DuplicateDetailsModal from '../components/DuplicateDetailsModal';
 import DocumentModal from '../components/DocumentModal';
@@ -94,7 +93,6 @@ import CollapsibleSection from '../components/CollapsibleSection';
 import CommentHighlightsPanel from '../components/CommentHighlightsPanel';
 import HouseMakerModal from '../components/HouseMakerModal';
 import MansionModal, { MANSION_BRANDS } from '../components/MansionModal';
-import PortalSearchLinks from '../components/PortalSearchLinks';
 
 import { formatCurrentStatusDetailed } from '../utils/propertyStatusFormatter';
 import PageNavigation from '../components/PageNavigation';
@@ -183,9 +181,9 @@ function SmsEmailHistoryModal({ open, activity, onClose }: SmsEmailHistoryModalP
   const titleBgColor = isSms ? '#e3f2fd' : '#e8f5e9';
 
   // 本文の取得と BR 変換
-  const rawBody = isEmail
-    ? (activity.metadata?.body ?? null)
-    : (activity.content ?? null);
+  // SMS・メールともに本文は metadata.body に保存されているため優先的に使用する
+  // （metadata.body が無い旧形式データの場合のみ activity.content にフォールバック）
+  const rawBody = activity.metadata?.body ?? activity.content ?? null;
   const bodyText = rawBody != null ? convertBrToNewline(rawBody) : null;
 
   // 件名（メールのみ）
@@ -6302,18 +6300,6 @@ HP：https://ifoo-oita.com/
             onClose={handleModalClose}
           />
 
-          {/* 過去の活動ログ（追客ログの直下） */}
-          <Box sx={{ width: isMobile ? '100%' : 280, p: 2, borderBottom: 1, borderColor: 'divider', display: isMobile && !mobileCallLogOpen ? 'none' : undefined }}>
-            {seller?.sellerNumber ? (
-              <FollowUpLogHistoryTable sellerNumber={seller.sellerNumber} />
-            ) : (
-              <div className="mt-2">
-                <h3 className="text-lg font-semibold text-gray-900">過去の活動ログ</h3>
-                <p className="text-sm text-gray-400 mt-2">売主データを読み込み中...</p>
-              </div>
-            )}
-          </Box>
-
           {/* カテゴリー（一番下） */}
           {!isMobile && (
             <Box data-testid="seller-status-sidebar">
@@ -10523,31 +10509,10 @@ HP：https://ifoo-oita.com/
               </div>
             )}
 
-            {/* ネット掲載調査セクション */}
-            <CollapsibleSection title="🌐 ネット掲載調査（競合物件を検索）" defaultExpanded={false} headerColor="#e3f2fd">
-              <PortalSearchLinks
-                sellerId={seller.id}
-                propertyAddress={propInfo.address || seller?.propertyAddress}
-                propertyType={propInfo.propertyType}
-                buildYear={propInfo.buildYear ?? undefined}
-              />
-            </CollapsibleSection>
-
             {/* 実績セクション */}
             <CollapsibleSection title="実績" defaultExpanded={false} headerColor="success.light">
               <PerformanceMetricsSection />
             </CollapsibleSection>
-
-            {/* 担当者設定セクション */}
-            {seller && (
-              <Box sx={{ mt: 2 }}>
-                <AssigneeSection
-                  seller={seller}
-                  activities={activities}
-                  onUpdate={(fields) => setSeller((prev) => prev ? { ...prev, ...fields } : prev)}
-                />
-              </Box>
-            )}
             </Box>{/* スマホ時コメント開閉Box */}
           </Grid>
         </Grid>
