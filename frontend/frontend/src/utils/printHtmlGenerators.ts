@@ -767,6 +767,7 @@ export function generatePage5Html(): string {
     <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">${manRows}</table>
     <div style="font-size:11pt;font-weight:bold;text-align:center;margin-bottom:8px;">戸建リフォーム概算表【税抜価格】</div>
     <table style="width:100%;border-collapse:collapse;">${koRows}</table>
+    <div style="margin-top:12px;font-size:8pt;line-height:1.6;">※リフォーム概算につきましては、現在の資材価格の高騰等の影響もございますので、あくまで概算金額となります。実際の費用につきましては、現地確認や仕様等により変動する場合がございますので、あらかじめご了承ください。</div>
     <div style="text-align:right;margin-top:8px;font-size:8pt;color:#666;">last</div>
   </div>`;
 }
