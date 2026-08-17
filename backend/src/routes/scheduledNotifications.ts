@@ -411,4 +411,36 @@ router.get('/preview', async (req: Request, res: Response) => {
   });
 });
 
+/**
+ * POST /api/scheduled-notifications/test-send
+ * テスト送信（日付を指定して強制送信。1件目だけ送信）
+ * CRON_SECRET認証
+ */
+router.post('/test-send', async (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
+
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  try {
+    // テスト: 1件目の通知を強制送信
+    const emailService = new EmailService();
+    const testSubject = '【テスト】定期メール通知テスト送信';
+    const testBody = 'お疲れ様です。\nこれは定期メール通知のテスト送信です。\n正常に届いていれば、毎日の自動送信も問題なく動作します。';
+
+    await emailService.sendEmail({
+      to: RECIPIENTS,
+      subject: testSubject,
+      body: testBody,
+    });
+
+    return res.json({ success: true, message: 'テスト送信完了', subject: testSubject, recipients: RECIPIENTS });
+  } catch (error: any) {
+    console.error('[scheduled-notifications] テスト送信エラー:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;
