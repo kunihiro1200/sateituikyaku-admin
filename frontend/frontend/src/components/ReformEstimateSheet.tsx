@@ -207,6 +207,13 @@ const ReformEstimateSheet = React.forwardRef<HTMLDivElement, Record<string, neve
           <ReformRow isLastInCategory isLast item="●オール電化工事" price="100万円" notes={['エコキュート370L', 'IH取付']} />
         </Box>
 
+        {/* 注意書き */}
+        <Box sx={{ mt: 1.5 }}>
+          <Typography sx={{ fontSize: '8pt', fontFamily: FONT, lineHeight: 1.6 }}>
+            ※リフォーム概算につきましては、現在の資材価格の高騰等の影響もございますので、あくまで概算金額となります。実際の費用につきましては、現地確認や仕様等により変動する場合がございますので、あらかじめご了承ください。
+          </Typography>
+        </Box>
+
         {/* フッター */}
         <Box sx={{ mt: 1, textAlign: 'right' }}>
           <Typography sx={{ fontSize: '8pt', color: '#666', fontFamily: FONT }}>
