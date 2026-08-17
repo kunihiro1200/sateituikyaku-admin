@@ -238,9 +238,14 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
     {
       label: '添付資料',
       content: (
-        <a href={FIXED_LINKS_BEFORE[0].url} target="_blank" rel="noopener noreferrer">
-          添付資料
-        </a>
+        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+          <a href={FIXED_LINKS_BEFORE[0].url} target="_blank" rel="noopener noreferrer">
+            添付資料
+          </a>
+          <Typography component="span" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
+            （白黒両面）
+          </Typography>
+        </Box>
       ),
     },
     // 2. ぜんりん（ログイン情報付き）
@@ -251,6 +256,9 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
           <a href={FIXED_LINKS_BEFORE[1].url} target="_blank" rel="noopener noreferrer">
             ぜんりん
           </a>
+          <Typography component="span" sx={{ fontWeight: 'bold', fontSize: '0.85rem', ml: 1 }}>
+            （白黒片面　レイヤーはブルーマップと用途地域のみ　手書きでハザード+小中校区記載）
+          </Typography>
           <ZenrinCredentials />
           <Typography sx={{ color: 'error.main', fontSize: '0.85rem', mt: 0.5 }}>
             ヘッダーの「画像」ボタンより、PDF保存してください。
@@ -267,7 +275,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
       content: (
         <Box component="span" sx={{ display: 'inline-block', verticalAlign: 'top' }}>
           <a href={FIXED_LINKS_BEFORE[2].url} target="_blank" rel="noopener noreferrer">
-            謄本
+            謄本+字図
           </a>
           <Typography sx={{ color: 'error.main', fontSize: '0.85rem', mt: 0.5 }}>
             ヘッダーの「画像」ボタンより、PDF保存してください。
@@ -324,7 +332,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
             </a>
           </Box>
           <Box component="span" sx={{ color: 'red', fontSize: '0.85em' }}>
-            （マンションの成約事例は、画像ボタンよりPDF保存してください）
+            事務はマンションの成約事例のみ出力（マンションの成約事例は、画像ボタンよりPDF保存してください）
           </Box>
         </Box>
       ),
@@ -333,9 +341,14 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
     {
       label: '近隣買主',
       content: sellerId ? (
-        <a href={`/sellers/${sellerId}/nearby-buyers`} target="_blank" rel="noopener noreferrer">
-          近隣買主
-        </a>
+        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+          <a href={`/sellers/${sellerId}/nearby-buyers`} target="_blank" rel="noopener noreferrer">
+            近隣買主
+          </a>
+          <Typography component="span" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
+            （白黒両面10枚のみ印刷　絞込不要）
+          </Typography>
+        </Box>
       ) : (
         <span>（リンクなし）</span>
       ),
