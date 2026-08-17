@@ -315,6 +315,7 @@ export const generateUnreachableAfterValuationCheckSMS = (
     `${companyName}の${accountName}です。`,
     `先日は不動産の査定をご依頼いただき、ありがとうございました。`,
     `査定について一度お話できればと思い、お電話いたしました。`,
+    ``,
     `①売却を検討中`,
     `②まだ時期は未定`,
     `③売却予定なし`,
