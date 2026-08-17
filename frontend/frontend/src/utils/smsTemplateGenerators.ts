@@ -292,6 +292,37 @@ export const generateUnvisitedOtherDecisionSMS = (
 };
 
 /**
+ * 不通・査定後の状況確認メール
+ * 査定後に連絡が取れない売主への状況確認メッセージ
+ * 会社名は常に「株式会社くじら不動産」固定表記
+ * @param staffLastName ログインユーザーの名字（アカウント名として使用）
+ */
+export const generateUnreachableAfterValuationCheckSMS = (
+  seller: Seller,
+  property: PropertyInfo | null,
+  staffLastName?: string
+): string => {
+  const name = seller.name || '';
+  const accountName = staffLastName || '';
+
+  // [改行] は convertLineBreaks で \n に変換される
+  const message = [
+    `${name}様`,
+    `株式会社くじら不動産の${accountName}です。`,
+    `先日は不動産の査定をご依頼いただき、ありがとうございました。`,
+    `査定について一度お話できればと思い、お電話いたしました。`,
+    `①売却を検討中`,
+    `②まだ時期は未定`,
+    `③売却予定なし`,
+    `差し支えなければ、現在のご状況を番号だけでもご返信いただけますと幸いです。`,
+    `③の場合は、以降こちらからのご連絡は控えさせていただきます。`,
+    `よろしくお願いいたします。`,
+  ].join('[改行]');
+
+  return message;
+};
+
+/**
  * プレースホルダーを売主情報に基づいて置き換える
  * 
  * サポートされているプレースホルダー:

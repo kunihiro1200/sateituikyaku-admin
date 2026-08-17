@@ -70,6 +70,7 @@ import {
   generateLongTermCustomerSMS,
   generateCallReminderSMS,
   generateUnvisitedOtherDecisionSMS,
+  generateUnreachableAfterValuationCheckSMS,
   generateGreetingSMS,
   convertLineBreaks,
   replacePlaceholders,
@@ -1456,6 +1457,11 @@ const CallModePage = () => {
       id: 'valuation',
       label: '査定Sメール',
       generator: generateValuationSMS,
+    },
+    {
+      id: 'unreachable_after_valuation_check',
+      label: '不通・査定後の状況確認メール',
+      generator: generateUnreachableAfterValuationCheckSMS,
     },
     {
       id: 'valuation_net_proceeds',
@@ -4444,7 +4450,7 @@ HP：https://ifoo-oita.com/
       // call_reminder の場合は担当者名字を渡す（リマインドSMS差出人名表示用）
       const generatedContent = (template.id === 'post_visit_thank_you' || template.id === 'greeting')
         ? template.generator(seller!, property, employees)
-        : (template.id === 'call_reminder' || template.id === 'unvisited_other_decision')
+        : (template.id === 'call_reminder' || template.id === 'unvisited_other_decision' || template.id === 'unreachable_after_valuation_check')
           ? template.generator(seller!, property, myLastName)
           : template.generator(seller!, property);
       
