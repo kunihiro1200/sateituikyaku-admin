@@ -3,7 +3,6 @@ import {
   hasValidVisitAssignee as sharedHasValidVisitAssignee,
   hasContactInfo as sharedHasContactInfo,
   isFiSeller as sharedIsFiSeller,
-  isAaSeller as sharedIsAaSeller,
   isTodayCallNotStarted as sharedIsTodayCallNotStarted,
   isTodayCallNoInfo as sharedIsTodayCallNoInfo,
   isTodayCallWithInfo as sharedIsTodayCallWithInfo,
@@ -82,7 +81,6 @@ export class SellerSidebarCountsUpdateService {
       // ヘルパー関数: 営担が有効かどうかを判定（共通関数を使用）
       const hasValidVisitAssignee = sharedHasValidVisitAssignee;
       const isFiSeller = sharedIsFiSeller;
-      const isAaSeller = sharedIsAaSeller;
 
       // 全データを並列取得
       // 🔧 訪問日前日用データはページネーション対応（1000件超の場合に対応）
@@ -173,7 +171,7 @@ export class SellerSidebarCountsUpdateService {
           .ilike('status', '%追客中%')
           .gte('inquiry_date', cutoffDate)
           .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す'),
-        // 7. 査定（郵送）カウント（FI売主は除外→fi_mailingPendingで別計算。残りはAA売主のためaa_mailingPendingと同値）
+        // 7. 査定（郵送）カウント（FI売主は除外→fi_mailingPendingで別計算）
         this.supabase
           .from('sellers')
           .select('*', { count: 'exact', head: true })
@@ -430,12 +428,8 @@ export class SellerSidebarCountsUpdateService {
       });
 
       // FI（福岡）売主と通常売主を分離（共通関数を使用）
-      // 🚨 注意: 売主番号のプレフィックスはFI（福岡）とAA（大分）の2種類のみ存在する。
-      // そのため「通常売主（!isFiSeller）」は実質的に全てAA（大分）売主と一致する。
       const filteredTodayCallNormal = filteredTodayCallSellers.filter(s => !isFiSeller(s));
       const filteredTodayCallFI = filteredTodayCallSellers.filter(s => isFiSeller(s));
-      // AA（大分）専用データ = 通常売主データと同一（別プレフィックスが存在しないため）
-      const filteredTodayCallAA = filteredTodayCallNormal;
 
       // ── 共通フィルタ関数を使用してカウント計算 ──────────────────────────────
       // todayCallWithInfo（内容あり）
@@ -454,12 +448,9 @@ export class SellerSidebarCountsUpdateService {
       const todayCallNotStartedCount = filteredTodayCallNormal.filter(s => sharedIsTodayCallNotStarted(s, todayJST)).length;
 
       // unvaluated（未査定）
-      // 🚨 注意: 売主番号のプレフィックスはFI（福岡）とAA（大分）の2種類のみ存在するため、
-      // 通常カテゴリー（!isFiSeller）は実質的にAA（大分）売主と一致する。
       const unvaluatedSellers = unvaluatedSellersResult.data || [];
       const unvaluatedCount = unvaluatedSellers.filter(s => !isFiSeller(s) && sharedIsUnvaluated(s, todayJST)).length;
       const fi_unvaluatedCount = unvaluatedSellers.filter(s => isFiSeller(s) && sharedIsUnvaluated(s, todayJST)).length;
-      const aa_unvaluatedCount = unvaluatedSellers.filter(s => isAaSeller(s) && sharedIsUnvaluated(s, todayJST)).length;
 
       const mailingPendingCount = mailingPendingCountResult.count || 0;
 
@@ -474,17 +465,6 @@ export class SellerSidebarCountsUpdateService {
         .ilike('seller_number', 'FI%');
       const fi_mailingPendingCount = fi_mailingPendingCountResult.count || 0;
 
-      // AA（大分）査定（郵送）カウント
-      const aa_mailingPendingCountResult = await this.supabase
-        .from('sellers')
-        .select('*', { count: 'exact', head: true })
-        .is('deleted_at', null)
-        .in('status', ['追客中', '除外後追客中', '他決→追客'])
-        .eq('valuation_method', '机上査定（郵送）')
-        .eq('mailing_status', '未')
-        .ilike('seller_number', 'AA%');
-      const aa_mailingPendingCount = aa_mailingPendingCountResult.count || 0;
-
       // FI（福岡）専用カウント計算（共通関数を使用）
       const fi_todayCallWithInfoSellers = filteredTodayCallFI.filter(s => sharedIsTodayCallWithInfo(s, todayJST));
       const fi_todayCallWithInfoCount = fi_todayCallWithInfoSellers.length;
@@ -495,17 +475,6 @@ export class SellerSidebarCountsUpdateService {
       });
       const fi_todayCallNotStartedCount = filteredTodayCallFI.filter(s => sharedIsTodayCallNotStarted(s, todayJST)).length;
       const fi_todayCallNoInfoCount = filteredTodayCallFI.filter(s => sharedIsTodayCallNoInfo(s, todayJST)).length;
-
-      // AA（大分）専用カウント計算（共通関数を使用。通常売主データ = AA売主データ）
-      const aa_todayCallWithInfoSellers = filteredTodayCallAA.filter(s => sharedIsTodayCallWithInfo(s, todayJST));
-      const aa_todayCallWithInfoCount = aa_todayCallWithInfoSellers.length;
-      const aa_labelCountMap: Record<string, number> = {};
-      aa_todayCallWithInfoSellers.forEach(s => {
-        const label = sharedGetTodayCallWithInfoLabel(s);
-        aa_labelCountMap[label] = (aa_labelCountMap[label] || 0) + 1;
-      });
-      const aa_todayCallNotStartedCount = filteredTodayCallAA.filter(s => sharedIsTodayCallNotStarted(s, todayJST)).length;
-      const aa_todayCallNoInfoCount = filteredTodayCallAA.filter(s => sharedIsTodayCallNoInfo(s, todayJST)).length;
 
       let pinrichEmptyAllSellers: any[] = [];
       {
@@ -619,12 +588,6 @@ export class SellerSidebarCountsUpdateService {
         { category: 'fi_todayCallNotStarted', count: fi_todayCallNotStartedCount, label: null, assignee: null },
         { category: 'fi_unvaluated', count: fi_unvaluatedCount, label: null, assignee: null },
         { category: 'fi_mailingPending', count: fi_mailingPendingCount, label: null, assignee: null },
-        // 大分（AA）専用カウント
-        { category: 'aa_todayCall', count: aa_todayCallNoInfoCount, label: null, assignee: null },
-        { category: 'aa_todayCallWithInfo', count: aa_todayCallWithInfoCount, label: null, assignee: null },
-        { category: 'aa_todayCallNotStarted', count: aa_todayCallNotStartedCount, label: null, assignee: null },
-        { category: 'aa_unvaluated', count: aa_unvaluatedCount, label: null, assignee: null },
-        { category: 'aa_mailingPending', count: aa_mailingPendingCount, label: null, assignee: null },
       ];
 
       // todayCallWithInfoLabels
@@ -635,11 +598,6 @@ export class SellerSidebarCountsUpdateService {
       // fi_todayCallWithInfoLabels
       Object.entries(fi_labelCountMap).forEach(([label, count]) => {
         rows.push({ category: 'fi_todayCallWithInfo', count, label, assignee: null });
-      });
-
-      // aa_todayCallWithInfoLabels
-      Object.entries(aa_labelCountMap).forEach(([label, count]) => {
-        rows.push({ category: 'aa_todayCallWithInfo', count, label, assignee: null });
       });
 
       // todayCallAssignedCounts
@@ -797,8 +755,7 @@ export class SellerSidebarCountsUpdateService {
         .in('status', ['追客中', '除外後追客中', '他決→追客'])
         .eq('valuation_method', '机上査定（郵送）')
         .eq('mailing_status', '未')
-        .not('seller_number', 'ilike', 'FI%')
-        .not('seller_number', 'ilike', 'AA%');
+        .not('seller_number', 'ilike', 'FI%');
     }
     if (needsExclusive) {
       queries.exclusive = this.supabase
