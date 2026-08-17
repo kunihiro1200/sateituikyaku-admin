@@ -315,6 +315,9 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
           <a href="https://docs.google.com/document/d/1qXQ9dYuIXS5HgqWDt-0S7fAsFzVTxxv3xtn3zFCFXEo/edit?tab=t.2wdqx1i81hul" target="_blank" rel="noopener noreferrer">
             事務の準備方法
           </a>
+          <Typography component="span" sx={{ color: 'error.main', fontSize: '0.85rem' }}>
+            事務は保存までで印刷しない
+          </Typography>
         </Box>
       ),
     },
