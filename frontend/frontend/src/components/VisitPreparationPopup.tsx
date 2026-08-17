@@ -332,7 +332,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
             </a>
           </Box>
           <Box component="span" sx={{ color: 'red', fontSize: '0.85em' }}>
-            事務はマンションの成約事例のみ出力（マンションの成約事例は、画像ボタンよりPDF保存してください）
+            （マンションの成約事例は、画像ボタンよりPDF保存してください）
           </Box>
         </Box>
       ),
