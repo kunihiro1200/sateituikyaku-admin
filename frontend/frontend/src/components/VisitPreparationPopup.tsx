@@ -514,6 +514,15 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         >
           ＊準備前に必ずカレンダーに●つけてください！！
         </Typography>
+        <Typography
+          sx={{
+            color: 'error.main',
+            fontWeight: 'bold',
+            mb: 2,
+          }}
+        >
+          ＊事務は1～9まで準備
+        </Typography>
 
         {/* リンク一覧（番号付きリスト） */}
         <List component="ol" sx={{ listStyleType: 'decimal', pl: 2 }}>
