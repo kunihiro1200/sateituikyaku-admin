@@ -407,7 +407,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
             近隣事例
           </a>
           <Typography component="span" sx={{ fontSize: '0.85rem' }}>
-            （土地建物のみ地図検索で周辺の掲載中のもの2-3枚　印刷用画面からカラー印刷）
+            （両面カラー印刷　土地建物のみ2-3枚）
           </Typography>
         </Box>
       ),
