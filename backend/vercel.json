@@ -63,6 +63,10 @@
       "schedule": "0 0 * * *"
     },
     {
+      "path": "/api/scheduled-notifications/send",
+      "schedule": "0 0 * * *"
+    },
+    {
       "path": "/api/cron/check-property-prices",
       "schedule": "0 9 * * *"
     },

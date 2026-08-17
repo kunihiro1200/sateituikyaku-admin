@@ -272,15 +272,20 @@ function getAllNotifications(): Notification[] {
 
 /**
  * POST /api/scheduled-notifications/send
+ * GET /api/scheduled-notifications/send (Vercel Cron用)
  * 今日送信すべき通知をチェックして送信する
- * CRON_SECRET認証（GitHub Actionsから呼び出し）
  */
-router.post('/send', async (req: Request, res: Response) => {
-  // CRON_SECRET認証
+async function handleSend(req: Request, res: Response) {
+  // CRON_SECRET認証（Vercel Cronの場合はヘッダーなしで来るので両方対応）
   const authHeader = req.headers.authorization;
   const cronSecret = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
+  const vercelCronSecret = req.headers['x-vercel-cron-auth-bypass-secret'];
 
-  if (authHeader !== `Bearer ${cronSecret}`) {
+  // Vercel内部cronか、CRON_SECRET認証のいずれかで認証
+  const isVercelCron = !!vercelCronSecret;
+  const isCronSecretAuth = authHeader === `Bearer ${cronSecret}`;
+
+  if (!isVercelCron && !isCronSecretAuth) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
 
@@ -325,18 +330,25 @@ router.post('/send', async (req: Request, res: Response) => {
     console.error('[scheduled-notifications] エラー:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
-});
+}
+
+router.post('/send', handleSend);
+router.get('/send', handleSend);
 
 /**
  * GET /api/scheduled-notifications/preview
  * 今日送信予定の通知をプレビュー（送信しない）
- * CRON_SECRET認証
+ * CRON_SECRET認証またはVercel Cron
  */
 router.get('/preview', async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
   const cronSecret = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
+  const vercelCronSecret = req.headers['x-vercel-cron-auth-bypass-secret'];
 
-  if (authHeader !== `Bearer ${cronSecret}`) {
+  const isVercelCron = !!vercelCronSecret;
+  const isCronSecretAuth = authHeader === `Bearer ${cronSecret}`;
+
+  if (!isVercelCron && !isCronSecretAuth) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
 
