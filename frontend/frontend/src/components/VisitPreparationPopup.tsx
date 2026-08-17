@@ -406,7 +406,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
           <a href="https://www.athome.co.jp/" target="_blank" rel="noopener noreferrer">
             近隣事例
           </a>
-          <Typography component="span" sx={{ fontSize: '0.85rem' }}>
+          <Typography component="span" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
             （両面カラー印刷　土地建物の場合のみ2-3枚）
           </Typography>
         </Box>
