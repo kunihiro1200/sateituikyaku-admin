@@ -5556,6 +5556,14 @@ HP：https://ifoo-oita.com/
             else if (selectedCategory === 'general' || selectedCategory === 'GENERAL') label = '一般';
             else if (typeof selectedCategory === 'string' && selectedCategory.startsWith('visitAssigned:')) label = `担当（${selectedCategory.replace('visitAssigned:', '')}）`;
             else if (typeof selectedCategory === 'string' && selectedCategory.startsWith('todayCallAssigned:')) label = `当日TEL(${selectedCategory.replace('todayCallAssigned:', '')})`;
+            else if (typeof selectedCategory === 'string' && selectedCategory.startsWith('visitThankYouPending:')) label = `訪問後御礼(${selectedCategory.replace('visitThankYouPending:', '')})`;
+            else if (typeof selectedCategory === 'string' && selectedCategory.startsWith('todayCallWithInfo:')) label = selectedCategory.replace('todayCallWithInfo:', '');
+            else if (typeof selectedCategory === 'string' && selectedCategory.startsWith('unvisitedOtherDecision:')) {
+              const ym = selectedCategory.replace('unvisitedOtherDecision:', '');
+              const [y, m] = ym.split('-');
+              label = `未訪問他決【${y}年${parseInt(m)}月】`;
+            }
+            else if (selectedCategory === 'pinrichChangeRequired') label = 'Pinrich要変更';
             else if (selectedCategory === 'fi:todayCall') label = '福岡 当日TEL分';
             else if (selectedCategory === 'fi:todayCallNotStarted') label = '福岡 当日TEL_未着手';
             else if (selectedCategory === 'fi:todayCallWithInfo') label = '福岡 当日TEL（内容）';
