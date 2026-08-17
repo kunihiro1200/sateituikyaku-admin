@@ -43,10 +43,7 @@ export default function ScheduledNotificationsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem('auth_token') || '';
-        const res = await fetch(`${API_URL}/api/scheduled-notifications/list`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(`${API_URL}/api/scheduled-notifications/list`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         setNotifications(data.notifications || []);

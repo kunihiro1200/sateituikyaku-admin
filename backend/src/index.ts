@@ -847,6 +847,7 @@ app.use('/api/auth', authSupabaseRoutes);
 
 // 認証不要ルート（最優先で登録）
 app.use('/api/tateuri', tateuriPreviewRoutes); // 建売専門HP（認証不要・公開）
+app.use('/api/scheduled-notifications', scheduledNotificationRoutes); // 定期メール通知（CRON_SECRET認証・認証不要/list）
 app.use('/api/property-preview', propertyPreviewRoutes); // 物件プレビュー（認証不要・公開）
 app.use('/api', sitemapRoutes); // サイトマップ（認証不要・公開）
 
@@ -1078,7 +1079,6 @@ app.use('/api', inquiryHistoryRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/property-listing-sync', propertyListingSyncRoutes);
 app.use('/api/staff-sync', staffSyncRoutes); // スタッフ同期API
-app.use('/api/scheduled-notifications', scheduledNotificationRoutes); // 定期メール通知（CRON_SECRET認証）
 app.use('/api/nearby-map', nearbyMapRoutes); // 近隣MAPapi
 app.use('/api/youto-chiiki', youtoChiikiRoutes); // 用途地域取得API（不動産情報ライブラリ）
 app.use('/api/distribution-history', distributionHistoryRoutes); // 他社物件配信履歴

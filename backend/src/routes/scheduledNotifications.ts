@@ -338,9 +338,9 @@ router.get('/send', handleSend);
 
 /**
  * GET /api/scheduled-notifications/list
- * 全通知スケジュール一覧を返す（ログイン認証）
+ * 全通知スケジュール一覧を返す（認証不要）
  */
-router.get('/list', authenticate, async (_req: Request, res: Response) => {
+router.get('/list', async (_req: Request, res: Response) => {
   const notifications = getAllNotifications();
 
   const formatted = notifications.map((n, i) => {
