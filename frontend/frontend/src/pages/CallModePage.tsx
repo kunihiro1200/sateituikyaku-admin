@@ -1875,12 +1875,13 @@ const CallModePage = () => {
       return;
     }
 
-    // 変更がない場合はスキップ
+    // 変更がない場合はスキップ（不通ステータスも自動保存対象に含める）
     const hasChanges = 
       editedPhoneContactPerson !== (seller.phoneContactPerson || '') ||
       editedPreferredContactTime !== (seller.preferredContactTime || '') ||
       editedContactMethod !== (seller.contactMethod || '') ||
-      editedFirstCallPerson !== (seller.firstCallPerson || '');
+      editedFirstCallPerson !== (seller.firstCallPerson || '') ||
+      (unreachableStatus || null) !== savedUnreachableStatus;
 
     if (!hasChanges) return;
 
@@ -1905,9 +1906,12 @@ const CallModePage = () => {
           preferredContactTime: editedPreferredContactTime || null,
           contactMethod: editedContactMethod || null,
           firstCallPerson: editedFirstCallPerson || null,
+          unreachableStatus: unreachableStatus || null,
         });
 
         console.log('✅ コミュニケーションフィールドを自動保存しました');
+        setSavedFirstCallPerson(editedFirstCallPerson || '');
+        setSavedUnreachableStatus(unreachableStatus || null);
       } catch (err: any) {
         console.error('❌ 自動保存に失敗:', err);
         setError('自動保存に失敗しました');
@@ -1918,7 +1922,62 @@ const CallModePage = () => {
     }, 1000); // 1秒のデバウンス
 
     return () => clearTimeout(timeoutId);
-  }, [editedPhoneContactPerson, editedPreferredContactTime, editedContactMethod, editedFirstCallPerson, seller?.phoneContactPerson, seller?.preferredContactTime, seller?.contactMethod, seller?.firstCallPerson, id]);
+  }, [editedPhoneContactPerson, editedPreferredContactTime, editedContactMethod, editedFirstCallPerson, unreachableStatus, savedUnreachableStatus, seller?.phoneContactPerson, seller?.preferredContactTime, seller?.contactMethod, seller?.firstCallPerson, id]);
+
+  // コメントの自動保存（不通が「不通」でコメント変更時は確認ダイアログ経由で保存）
+  useEffect(() => {
+    if (!seller) return;
+
+    // 変更がない場合はスキップ
+    if (editableComments === savedComments) return;
+
+    // 保存中の場合はスキップ
+    if (savingComments) return;
+
+    // 不通確認ダイアログが既に開いている場合はスキップ（ユーザー選択待ち）
+    if (unreachableConfirmOpen) return;
+
+    // デバウンス処理（1.5秒後に保存）
+    const timeoutId = setTimeout(() => {
+      handleSaveComments();
+    }, 1500); // 1.5秒のデバウンス
+
+    return () => clearTimeout(timeoutId);
+  }, [editableComments, savedComments, savingComments, unreachableConfirmOpen]);
+
+  // ステータスセクションの自動保存（状況・確度・次電日・専任他決関連フィールド等）
+  useEffect(() => {
+    if (!seller) return;
+
+    // 変更がない場合はスキップ
+    if (!statusChanged) return;
+
+    // 保存中の場合はスキップ
+    if (savingStatus) return;
+
+    // 確度警告ダイアログ表示中は自動保存しない（ユーザーの選択待ち）
+    if (statusConfidenceWarningOpen) return;
+
+    // デバウンス処理（1.5秒後に保存）
+    const timeoutId = setTimeout(() => {
+      handleUpdateStatus();
+    }, 1500); // 1.5秒のデバウンス
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    editedStatus,
+    editedConfidence,
+    editedNextCallDate,
+    editedExclusiveOtherDecisionMeeting,
+    editedExclusiveDecisionDate,
+    editedCompetitors.join(','),
+    editedExclusiveOtherDecisionFactors.join(','),
+    editedCompetitorNameAndReason,
+    editedPinrichStatus,
+    statusChanged,
+    savingStatus,
+    statusConfidenceWarningOpen,
+  ]);
 
   // サイドバー用のカテゴリカウントを取得（APIから直接取得）
   const fetchSidebarCounts = useCallback(async () => {
