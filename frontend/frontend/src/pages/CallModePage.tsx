@@ -2714,23 +2714,10 @@ const CallModePage = () => {
 
   /**
    * 未保存変更があるセクション名の一覧を返す
+   * ※ コメント・ステータスは自動保存（デバウンス1.5秒）になったため、この警告対象から除外
    */
   const getUnsavedSections = (): string[] => {
     const sections: string[] = [];
-    if (editableComments !== savedComments && !savingComments) sections.push('コメント');
-    // ステータスセクション: 保存中でなければ実際の値を保存済み値と比較して判定
-    if (!savingStatus) {
-      const hasStatusChanges = 
-        editedStatus !== savedStatus ||
-        editedConfidence !== savedConfidence ||
-        editedNextCallDate !== savedNextCallDate ||
-        editedExclusiveOtherDecisionMeeting !== savedExclusiveOtherDecisionMeeting ||
-        editedExclusiveDecisionDate !== savedExclusiveDecisionDate ||
-        JSON.stringify(editedCompetitors) !== JSON.stringify(savedCompetitors) ||
-        JSON.stringify(editedExclusiveOtherDecisionFactors) !== JSON.stringify(savedExclusiveOtherDecisionFactors) ||
-        editedCompetitorNameAndReason !== savedCompetitorNameAndReason;
-      if (hasStatusChanges) sections.push('ステータス');
-    }
     if (editingProperty && !savingProperty) sections.push('物件情報');
     if (editingSeller && !savingSeller) sections.push('売主情報');
     return sections;
