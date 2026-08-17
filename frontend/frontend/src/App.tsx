@@ -38,6 +38,7 @@ import PortalMeritsPage from './pages/PortalMeritsPage';
 import TemodoriCalcPage from './pages/TemodoriCalcPage';
 import BuyerCandidateListPage from './pages/BuyerCandidateListPage';
 import SharedItemsPage from './pages/SharedItemsPage';
+import ScheduledNotificationsPage from './pages/ScheduledNotificationsPage';
 import SharedItemDetailPage from './pages/SharedItemDetailPage';
 import NewSharedItemPage from './pages/NewSharedItemPage';
 import ReviewCampaignStatsPage from './pages/ReviewCampaignStatsPage';
@@ -124,6 +125,14 @@ function App() {
         <Route path="/fukuoka-tateuri/manage" element={<FukuokaTateuriManagePage />} />
         <Route
           path="/"
+          element={
+            <ProtectedRoute>
+              <SellersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sellers"
           element={
             <ProtectedRoute>
               <SellersPage />
@@ -367,6 +376,14 @@ function App() {
         element={
           <ProtectedRoute>
             <BuyerViewingResultPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/scheduled-notifications"
+        element={
+          <ProtectedRoute>
+            <ScheduledNotificationsPage />
           </ProtectedRoute>
         }
       />

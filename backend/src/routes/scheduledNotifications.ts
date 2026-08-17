@@ -336,6 +336,44 @@ router.post('/send', handleSend);
 router.get('/send', handleSend);
 
 /**
+ * GET /api/scheduled-notifications/list
+ * 全通知スケジュール一覧を返す（認証必要）
+ */
+router.get('/list', async (_req: Request, res: Response) => {
+  const notifications = getAllNotifications();
+
+  const formatted = notifications.map((n, i) => {
+    let scheduleLabel = '';
+    switch (n.type) {
+      case 'monthly_day': scheduleLabel = `毎月${n.day}日`; break;
+      case 'monthly_last_day': scheduleLabel = '毎月最終日'; break;
+      case 'monthly_last_sunday': scheduleLabel = '毎月最終日曜日'; break;
+      case 'monthly_first_sunday': scheduleLabel = '毎月第一日曜日'; break;
+      case 'monthly_first_saturday': scheduleLabel = '毎月第一土曜日'; break;
+      case 'weekly_friday': scheduleLabel = '毎週金曜日'; break;
+      case 'weekly_saturday': scheduleLabel = '毎週土曜日'; break;
+      case 'weekly_sunday': scheduleLabel = '毎週日曜日'; break;
+      case 'yearly_dates':
+        scheduleLabel = '毎年 ' + (n.dates || []).map(d => `${d.month}/${d.day}`).join(', ');
+        break;
+      case 'yearly_date': scheduleLabel = `毎年${n.month}/${n.day}`; break;
+      case 'yearly_first_monday_of_month': scheduleLabel = `毎年${n.month}月第一月曜日`; break;
+      case 'one_time': scheduleLabel = `${n.year}/${n.month}/${n.day}（1回のみ）`; break;
+    }
+
+    return {
+      id: i + 1,
+      schedule: scheduleLabel,
+      subject: n.subject,
+      body: n.body,
+      type: n.type,
+    };
+  });
+
+  return res.json({ success: true, notifications: formatted, total: formatted.length, recipients: RECIPIENTS });
+});
+
+/**
  * GET /api/scheduled-notifications/preview
  * 今日送信予定の通知をプレビュー（送信しない）
  * CRON_SECRET認証またはVercel Cron
