@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -15,6 +15,7 @@ import {
   Paper,
   Container,
   Divider,
+  Checkbox,
 } from '@mui/material';
 import { ArrowBack, Print as PrintIcon } from '@mui/icons-material';
 import { GoogleMap, Circle, Marker } from '@react-google-maps/api';
@@ -81,6 +82,9 @@ export default function SalesHistoryPage() {
   const onMapLoad = useCallback((_m: google.maps.Map) => {}, []);
   const onMapUnmount = useCallback(() => {}, []);
 
+  // 取捨選択用：除外するアイテムのインデックスセット
+  const [excludedIndexes, setExcludedIndexes] = useState<Set<number>>(new Set());
+
   useEffect(() => {
     if (!id) return;
     api.get<SalesHistoryResponse>(`/api/sellers/${id}/sales-history`)
@@ -118,6 +122,46 @@ export default function SalesHistoryPage() {
     // 統合：nearbyを先頭（距離順）、その後keywordのみ
     return [...nearbyItems, ...uniqueKeyword];
   })();
+
+  // 取捨選択のトグル
+  const toggleItem = (index: number) => {
+    setExcludedIndexes(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (excludedIndexes.size === 0) {
+      // 全て選択中 → 全て除外
+      setExcludedIndexes(new Set(mergedItems.map((_, i) => i)));
+    } else {
+      // 何か除外中 → 全て選択
+      setExcludedIndexes(new Set());
+    }
+  };
+
+  // 印刷対象のアイテム（選択されたもの）
+  const printItems = useMemo(() =>
+    mergedItems.filter((_, i) => !excludedIndexes.has(i)),
+    [mergedItems, excludedIndexes]
+  );
+
+  // 近隣物件のうち選択されているもの（地図マーカー用）
+  const selectedNearbyAddresses = useMemo(() => {
+    const addresses = new Set<string>();
+    mergedItems.forEach((item, i) => {
+      if (!excludedIndexes.has(i) && item.source === 'nearby') {
+        addresses.add(item.address.trim());
+      }
+    });
+    return addresses;
+  }, [mergedItems, excludedIndexes]);
 
   const handlePrint = () => window.print();
 
@@ -210,7 +254,7 @@ export default function SalesHistoryPage() {
             株式会社いふう　{data?.address || ''}　近隣エリアの売買実績
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            件数：{mergedItems.length}件
+            件数：{printItems.length}件
           </Typography>
         </Box>
 
@@ -254,12 +298,14 @@ export default function SalesHistoryPage() {
                     {/* 近隣物件マーカー（実際の座標） */}
                     {nearbyData.results.map((item, idx) => {
                       if (!item.lat || !item.lng) return null;
+                      // 除外されている物件はマーカーを薄く表示
+                      const isIncluded = selectedNearbyAddresses.has(item.address.trim());
                       const isSelected = selectedItem?.address === item.address;
                       return (
                         <Marker
                           key={idx}
                           position={{ lat: item.lat, lng: item.lng }}
-                          icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: markerColor(item.atbbStatus, isSelected), fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: isSelected ? 11 : 9 }}
+                          icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: isIncluded ? markerColor(item.atbbStatus, isSelected) : '#e0e0e0', fillOpacity: isIncluded ? 1 : 0.4, strokeColor: '#fff', strokeWeight: 2, scale: isSelected ? 11 : 9 }}
                           title={item.address}
                           onClick={() => setSelectedItem(isSelected ? null : { ...item, source: 'nearby' })}
                           zIndex={isSelected ? 999 : idx}
@@ -277,29 +323,41 @@ export default function SalesHistoryPage() {
                   </Box>
                   {nearbyData.results.map((item, idx) => {
                     const isSelected = selectedItem?.address === item.address;
+                    // mergedItemsでのインデックスを見つける（nearbyはmergedItemsの先頭に配置される）
+                    const mergedIdx = mergedItems.findIndex(m => m.address.trim() === item.address.trim() && m.source === 'nearby');
+                    const isChecked = mergedIdx >= 0 && !excludedIndexes.has(mergedIdx);
                     return (
-                      <Box key={idx} onClick={() => setSelectedItem(isSelected ? null : { ...item, source: 'nearby' })}
-                        sx={{ p: 1.2, borderBottom: '1px solid #f0f0f0', cursor: 'pointer', bgcolor: isSelected ? '#e3f2fd' : 'transparent', '&:hover': { bgcolor: '#f5f5f5' } }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.3 }}>
-                          <span className="type-badge" style={{ backgroundColor: typeColor(item.propertyType), fontSize: '11px', padding: '1px 6px' }}>
-                            {item.propertyType || '-'}
-                          </span>
-                          <Typography variant="caption" sx={{ color: '#1565c0', fontWeight: 'bold' }}>
-                            {item.distanceKm.toFixed(2)}km
-                          </Typography>
-                          {item.atbbStatus && (
-                            <span className="status-badge" style={{ fontSize: '11px', padding: '1px 6px', backgroundColor: item.atbbStatus === '成約済み' ? '#e0e0e0' : '#e8f5e9', color: item.atbbStatus === '成約済み' ? '#424242' : '#2e7d32', border: `1px solid ${item.atbbStatus === '成約済み' ? '#bdbdbd' : '#a5d6a7'}` }}>
-                              {item.atbbStatus}
+                      <Box key={idx}
+                        sx={{ p: 1.2, borderBottom: '1px solid #f0f0f0', cursor: 'pointer', bgcolor: isSelected ? '#e3f2fd' : 'transparent', '&:hover': { bgcolor: '#f5f5f5' }, opacity: isChecked ? 1 : 0.5, display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
+                        <Checkbox
+                          size="small"
+                          checked={isChecked}
+                          onChange={() => { if (mergedIdx >= 0) toggleItem(mergedIdx); }}
+                          onClick={(e) => e.stopPropagation()}
+                          sx={{ p: 0, mt: 0.3 }}
+                        />
+                        <Box onClick={() => setSelectedItem(isSelected ? null : { ...item, source: 'nearby' })} sx={{ flex: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.3 }}>
+                            <span className="type-badge" style={{ backgroundColor: typeColor(item.propertyType), fontSize: '11px', padding: '1px 6px' }}>
+                              {item.propertyType || '-'}
                             </span>
-                          )}
+                            <Typography variant="caption" sx={{ color: '#1565c0', fontWeight: 'bold' }}>
+                              {item.distanceKm.toFixed(2)}km
+                            </Typography>
+                            {item.atbbStatus && (
+                              <span className="status-badge" style={{ fontSize: '11px', padding: '1px 6px', backgroundColor: item.atbbStatus === '成約済み' ? '#e0e0e0' : '#e8f5e9', color: item.atbbStatus === '成約済み' ? '#424242' : '#2e7d32', border: `1px solid ${item.atbbStatus === '成約済み' ? '#bdbdbd' : '#a5d6a7'}` }}>
+                                {item.atbbStatus}
+                              </span>
+                            )}
+                          </Box>
+                          <Typography variant="body2" sx={{ fontSize: '0.77rem' }}>{item.address || '-'}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {item.settlementDate ? formatDate(item.settlementDate) : ''}
+                            {item.salesPrice ? `　${formatPrice(item.salesPrice)}` : ''}
+                            {item.landArea ? `　土地${formatArea(item.landArea)}` : ''}
+                            {item.buildingArea ? `　建物${formatArea(item.buildingArea)}` : ''}
+                          </Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ fontSize: '0.77rem' }}>{item.address || '-'}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {item.settlementDate ? formatDate(item.settlementDate) : ''}
-                          {item.salesPrice ? `　${formatPrice(item.salesPrice)}` : ''}
-                          {item.landArea ? `　土地${formatArea(item.landArea)}` : ''}
-                          {item.buildingArea ? `　建物${formatArea(item.buildingArea)}` : ''}
-                        </Typography>
                       </Box>
                     );
                   })}
@@ -328,9 +386,9 @@ export default function SalesHistoryPage() {
                 // 中心マーカー（赤・大）
                 const centerMarker = `markers=color:red%7Csize:mid%7Clabel:★%7C${center}`;
 
-                // 近隣物件マーカー（成約済み→gray、それ以外→blue）
+                // 近隣物件マーカー（成約済み→gray、それ以外→blue）— 選択された物件のみ
                 const nearbyMarkers = nearbyData.results
-                  .filter(item => item.lat && item.lng)
+                  .filter(item => item.lat && item.lng && selectedNearbyAddresses.has(item.address.trim()))
                   .map(item => {
                     const color = item.atbbStatus === '成約済み' ? 'gray' : 'blue';
                     return `markers=color:${color}%7Csize:small%7C${item.lat},${item.lng}`;
@@ -379,8 +437,89 @@ export default function SalesHistoryPage() {
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }} className="no-print">
                     {mergedItems.length}件
                     {nearbyData && `（うち半径${nearbyData.radiusKm}km以内：${nearbyData.results.length}件）`}
+                    {excludedIndexes.size > 0 && `　→ 印刷対象：${printItems.length}件`}
                   </Typography>
-                  <TableContainer component={Paper} elevation={2}>
+
+                  {/* 画面表示用テーブル（チェックボックス付き） */}
+                  <TableContainer component={Paper} elevation={2} className="no-print">
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow sx={{ bgcolor: '#1a237e' }}>
+                          <TableCell sx={{ color: 'white', p: 0.5, width: 40 }}>
+                            <Checkbox
+                              size="small"
+                              checked={excludedIndexes.size === 0}
+                              indeterminate={excludedIndexes.size > 0 && excludedIndexes.size < mergedItems.length}
+                              onChange={toggleAll}
+                              sx={{ color: 'white', '&.Mui-checked': { color: 'white' }, '&.MuiCheckbox-indeterminate': { color: 'white' }, p: 0.5 }}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>種別</TableCell>
+                          <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>決済日</TableCell>
+                          <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>所在地</TableCell>
+                          <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>土地面積</TableCell>
+                          <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>建物面積</TableCell>
+                          <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>売買価格</TableCell>
+                          <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>状態</TableCell>
+                          <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>距離</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {mergedItems.map((item, index) => {
+                          const isChecked = !excludedIndexes.has(index);
+                          return (
+                            <TableRow key={index}
+                              sx={{ '&:nth-of-type(odd)': { bgcolor: '#f5f5f5' }, '&:hover': { bgcolor: '#e3f2fd' }, opacity: isChecked ? 1 : 0.4 }}>
+                              <TableCell sx={{ p: 0.5 }}>
+                                <Checkbox
+                                  size="small"
+                                  checked={isChecked}
+                                  onChange={() => toggleItem(index)}
+                                  sx={{ p: 0.5 }}
+                                />
+                              </TableCell>
+                              <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                <span className="type-badge" style={{ backgroundColor: typeColor(item.propertyType) }}>
+                                  {item.propertyType || '-'}
+                                </span>
+                              </TableCell>
+                              <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                {item.settlementDate ? formatDate(item.settlementDate) : '-'}
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="body2">{item.address || '-'}</Typography>
+                                {item.displayAddress && item.displayAddress !== item.address && (
+                                  <Typography variant="caption" color="text.secondary">{item.displayAddress}</Typography>
+                                )}
+                              </TableCell>
+                              <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                {item.landArea ? formatArea(item.landArea) : '-'}
+                              </TableCell>
+                              <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                {item.buildingArea ? formatArea(item.buildingArea) : '-'}
+                              </TableCell>
+                              <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold' }}>
+                                {item.salesPrice ? formatPrice(item.salesPrice) : '-'}
+                              </TableCell>
+                              <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                {item.atbbStatus ? (
+                                  <span className="status-badge" style={{ backgroundColor: item.atbbStatus === '成約済み' ? '#e0e0e0' : '#e8f5e9', color: item.atbbStatus === '成約済み' ? '#424242' : '#2e7d32', border: `1px solid ${item.atbbStatus === '成約済み' ? '#bdbdbd' : '#a5d6a7'}` }}>
+                                    {item.atbbStatus}
+                                  </span>
+                                ) : '-'}
+                              </TableCell>
+                              <TableCell sx={{ whiteSpace: 'nowrap', color: item.distanceKm != null ? '#1565c0' : 'text.secondary', fontWeight: item.distanceKm != null ? 'bold' : 'normal' }}>
+                                {item.distanceKm != null ? `${item.distanceKm.toFixed(2)}km` : '-'}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+
+                  {/* 印刷用テーブル（選択されたアイテムのみ、チェックボックスなし） */}
+                  <TableContainer component={Paper} elevation={0} className="print-only">
                     <Table size="small">
                       <TableHead>
                         <TableRow sx={{ bgcolor: '#1a237e' }}>
@@ -395,9 +534,9 @@ export default function SalesHistoryPage() {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {mergedItems.map((item, index) => (
+                        {printItems.map((item, index) => (
                           <TableRow key={index}
-                            sx={{ '&:nth-of-type(odd)': { bgcolor: '#f5f5f5' }, '&:hover': { bgcolor: '#e3f2fd' } }}>
+                            sx={{ '&:nth-of-type(odd)': { bgcolor: '#f5f5f5' } }}>
                             <TableCell sx={{ whiteSpace: 'nowrap' }}>
                               <span className="type-badge" style={{ backgroundColor: typeColor(item.propertyType) }}>
                                 {item.propertyType || '-'}
