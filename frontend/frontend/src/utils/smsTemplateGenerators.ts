@@ -294,7 +294,7 @@ export const generateUnvisitedOtherDecisionSMS = (
 /**
  * 不通・査定後の状況確認メール
  * 査定後に連絡が取れない売主への状況確認メッセージ
- * 会社名は常に「株式会社くじら不動産」固定表記
+ * 売主番号にAAが含まれる場合は「㈱いふう」、それ以外（FI等）は「株式会社くじら不動産」
  * @param staffLastName ログインユーザーの名字（アカウント名として使用）
  */
 export const generateUnreachableAfterValuationCheckSMS = (
@@ -305,10 +305,14 @@ export const generateUnreachableAfterValuationCheckSMS = (
   const name = seller.name || '';
   const accountName = staffLastName || '';
 
+  // 売主番号にAAが含まれる場合は㈱いふう、それ以外は株式会社くじら不動産
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('AA') ? '㈱いふう' : '株式会社くじら不動産';
+
   // [改行] は convertLineBreaks で \n に変換される
   const message = [
     `${name}様`,
-    `株式会社くじら不動産の${accountName}です。`,
+    `${companyName}の${accountName}です。`,
     `先日は不動産の査定をご依頼いただき、ありがとうございました。`,
     `査定について一度お話できればと思い、お電話いたしました。`,
     `①売却を検討中`,
