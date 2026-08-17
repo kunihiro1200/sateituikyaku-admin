@@ -37,7 +37,7 @@ const FIXED_LINKS = [
   {
     label: 'ATBB',
     url: 'https://atbb.athome.jp/',
-    description: '①詳細ページと②地図③インフォシート2枚印刷',
+    description: '①詳細ページと②インフォシート1枚印刷',
   },
 ] as const;
 
@@ -451,6 +451,12 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
                       sx={{ color: 'error.main', fontSize: '0.8rem', mt: 0.3 }}
                     >
                       ※＋を２回押して拡大表示して印刷してください。カラーの両面印刷です。
+                    </Typography>
+                    <Typography
+                      component="div"
+                      sx={{ color: 'error.main', fontSize: '0.8rem', mt: 0.3 }}
+                    >
+                      ※お客様資料に追加し渡す
                     </Typography>
                   </Box>
                 }
