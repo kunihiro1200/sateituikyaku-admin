@@ -837,6 +837,9 @@ export class SellerService extends BaseRepository {
     if ((data as any).pinrichStatus !== undefined) {
       updates.pinrich_status = (data as any).pinrichStatus;
     }
+    if ((data as any).visitThankYouSent !== undefined) {
+      updates.visit_thank_you_sent = (data as any).visitThankYouSent;
+    }
 
     if (Object.keys(updates).length === 0) {
       throw new Error('No fields to update');
@@ -1746,10 +1749,10 @@ export class SellerService extends BaseRepository {
               d.setUTCDate(d.getUTCDate() + 1);
               return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
             })();
-            // 訪問済み売主を取得
+            // 訪問済み売主を取得（手動送信済みフラグも含む）
             const { data: visitedSellers } = await this.supabase
               .from('sellers')
-              .select('id')
+              .select('id, visit_thank_you_sent')
               .is('deleted_at', null)
               .not('visit_assignee', 'is', null)
               .neq('visit_assignee', '')
@@ -1758,7 +1761,10 @@ export class SellerService extends BaseRepository {
               .not('visit_date', 'is', null)
               .gte('visit_date', visitThankYouCutoff)
               .lt('visit_date', tomorrowJSTLocal);
-            const visitedIds = (visitedSellers || []).map((s: any) => s.id);
+            // 手動送信済みを除外
+            const visitedIds = (visitedSellers || [])
+              .filter((s: any) => s.visit_thank_you_sent !== true)
+              .map((s: any) => s.id);
             // 御礼メール送信済みの seller_id を activities テーブルから取得
             // メール: 【訪問査定後御礼メール】を送信 / SMS: 【訪問後御礼メール】を送信
             const thankYouSentIds = new Set<string>();
@@ -2492,6 +2498,8 @@ export class SellerService extends BaseRepository {
         youtoChiiki: seller.youto_chiiki,
         // 郵便番号
         postalCode: seller.postal_code || undefined,
+        // 訪問後お礼メール送信済みフラグ
+        visitThankYouSent: seller.visit_thank_you_sent || false,
       };
       
       console.log(`[PERF] decryptSeller total: ${Date.now() - _dt0}ms`);

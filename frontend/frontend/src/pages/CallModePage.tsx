@@ -9058,6 +9058,87 @@ HP：https://ifoo-oita.com/
                   </Box>
                 );
               })()}
+              {/* 訪問後お礼メール送信：済/未 トグル（訪問日が過ぎている場合に表示） */}
+              {(() => {
+                const visitDate = seller?.visitDate;
+                const visitAssignee = seller?.visitAssigneeInitials || (seller as any)?.visit_assignee || seller?.visitAssignee;
+                if (!visitDate || !visitAssignee) return null;
+                // 訪問日が今日以前（過ぎている）か判定
+                const visitDateStr = typeof visitDate === 'string' ? visitDate.substring(0, 10) : '';
+                const today = new Date();
+                const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                if (!visitDateStr || visitDateStr > todayStr) return null;
+                const isSent = (seller as any)?.visitThankYouSent === true;
+                return (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontSize: '0.7rem' }}
+                    >
+                      訪問後お礼:
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <Button
+                        size="small"
+                        variant={isSent ? 'contained' : 'outlined'}
+                        color={isSent ? 'success' : 'inherit'}
+                        onClick={async () => {
+                          if (!seller?.id) return;
+                          try {
+                            await api.put(`/api/sellers/${seller.id}`, {
+                              visitThankYouSent: true,
+                            });
+                            setSeller((prev: any) =>
+                              prev ? { ...prev, visitThankYouSent: true } : prev
+                            );
+                          } catch (err) {
+                            console.error('訪問後お礼メール済み保存エラー:', err);
+                          }
+                        }}
+                        sx={{
+                          minWidth: 28,
+                          px: 0.5,
+                          py: 0.25,
+                          fontSize: '0.7rem',
+                          fontWeight: isSent ? 'bold' : 'normal',
+                          borderRadius: 1,
+                        }}
+                      >
+                        済
+                      </Button>
+                      <Button
+                        size="small"
+                        variant={!isSent ? 'contained' : 'outlined'}
+                        color={!isSent ? 'error' : 'inherit'}
+                        onClick={async () => {
+                          if (!seller?.id) return;
+                          try {
+                            await api.put(`/api/sellers/${seller.id}`, {
+                              visitThankYouSent: false,
+                            });
+                            setSeller((prev: any) =>
+                              prev ? { ...prev, visitThankYouSent: false } : prev
+                            );
+                          } catch (err) {
+                            console.error('訪問後お礼メール未保存エラー:', err);
+                          }
+                        }}
+                        sx={{
+                          minWidth: 28,
+                          px: 0.5,
+                          py: 0.25,
+                          fontSize: '0.7rem',
+                          fontWeight: !isSent ? 'bold' : 'normal',
+                          borderRadius: 1,
+                        }}
+                      >
+                        未
+                      </Button>
+                    </Box>
+                  </Box>
+                );
+              })()}
               {showBanner && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                   <Typography

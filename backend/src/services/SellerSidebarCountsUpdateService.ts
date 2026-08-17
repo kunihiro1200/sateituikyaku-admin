@@ -246,7 +246,7 @@ export class SellerSidebarCountsUpdateService {
         while (true) {
           const { data: vcData, error: vcError } = await this.supabase
             .from('sellers')
-            .select('id, seller_number, visit_assignee')
+            .select('id, seller_number, visit_assignee, visit_thank_you_sent')
             .is('deleted_at', null)
             .not('visit_assignee', 'is', null)
             .neq('visit_assignee', '')
@@ -297,6 +297,8 @@ export class SellerSidebarCountsUpdateService {
       visitCompletedSellers.forEach((s: any) => {
         const assignee = s.visit_assignee;
         if (!assignee) return;
+        // 手動で「送信済み」にした場合も除外
+        if (s.visit_thank_you_sent === true) return;
         // 御礼メール未送信の場合のみカウント（seller_id で照合）
         if (!thankYouSentSellerIds.has(s.id)) {
           visitThankYouPendingCounts[assignee] = (visitThankYouPendingCounts[assignee] || 0) + 1;
