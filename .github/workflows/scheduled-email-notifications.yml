@@ -1,0 +1,37 @@
+name: 定期メール通知
+
+on:
+  schedule:
+    # 毎日 午前0時 (UTC) = 日本時間 午前9時に実行
+    - cron: '0 0 * * *'
+  # 手動実行も可能
+  workflow_dispatch:
+
+jobs:
+  send-notifications:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: 定期メール通知を送信
+        run: |
+          echo "定期メール通知チェック開始: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.SYNC_API_URL }}/api/scheduled-notifications/send")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+          
+          echo "HTTPステータス: $HTTP_CODE"
+          echo "レスポンス: $BODY"
+          
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ 定期メール通知送信失敗 (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+          
+          echo "✅ 定期メール通知チェック完了"
