@@ -323,9 +323,14 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
       label: '成約事例',
       content: (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-          <a href={FIXED_LINKS_AFTER_ASSESSMENT[0].url} target="_blank" rel="noopener noreferrer">
-            成約事例
-          </a>
+          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <a href={FIXED_LINKS_AFTER_ASSESSMENT[0].url} target="_blank" rel="noopener noreferrer">
+              成約事例
+            </a>
+            <a href="https://docs.google.com/document/d/1qXQ9dYuIXS5HgqWDt-0S7fAsFzVTxxv3xtn3zFCFXEo/edit?tab=t.x250eg61pmmp" target="_blank" rel="noopener noreferrer">
+              マンションの場合は事務が成約事例をだす
+            </a>
+          </Box>
           <Box component="span" sx={{ color: 'red', fontSize: '0.85em' }}>
             事務はマンションの成約事例のみ出力（マンションの成約事例は、画像ボタンよりPDF保存してください）
           </Box>
