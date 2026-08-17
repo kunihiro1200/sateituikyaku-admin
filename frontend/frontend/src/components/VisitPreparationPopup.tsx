@@ -366,7 +366,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
             エリア情勢
           </a>
           <Typography component="span" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
-            両面カラー印刷
+            （両面カラー印刷）
           </Typography>
         </Box>
       ) : (
@@ -387,7 +387,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
               売買実績
             </a>
             <Typography component="span" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
-              片面カラー印刷
+              （片面カラー印刷）
             </Typography>
           </Box>
           <Typography component="span" sx={{ color: 'error.main', fontSize: '0.85rem' }}>
