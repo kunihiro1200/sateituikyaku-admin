@@ -523,7 +523,7 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
               <ListItemText
                 primary={
                   <Box>
-                    <Typography component="span" sx={{ fontWeight: 'bold' }}>
+                    <Typography component="span">
                       評価ポイント！{linkedProperties.filter(p => p.property_number?.startsWith('FI') || p.property_number?.startsWith('AA')).length > 1 ? `（${lp.property_number}）` : ''}：
                     </Typography>
                     <Box sx={{ mt: 0.5 }}>
@@ -546,7 +546,7 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
               <ListItemText
                 primary={
                   <Box>
-                    <Typography component="span" sx={{ fontWeight: 'bold' }}>
+                    <Typography component="span">
                       評価ポイント！：
                     </Typography>
                     <Box sx={{ mt: 0.5 }}>
