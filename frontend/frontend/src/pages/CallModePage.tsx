@@ -966,10 +966,9 @@ const CallModePage = () => {
   const [editedStatus, setEditedStatus] = useState<string>('追客中');
   const [editedConfidence, setEditedConfidence] = useState<ConfidenceLevel | ''>('');
   const [editedExclusiveOtherDecisionMeeting, setEditedExclusiveOtherDecisionMeeting] = useState<string>('');
-  // 専任他決打合せ：追記欄（入力があると未訪問他決一覧でピンク表示）
+  // 専任他決打合せ：追記欄（入力があると未訪問他決一覧でピンク表示、対策・反省点の下に常時表示）
   const [editedExclusiveOtherDecisionMeetingNote, setEditedExclusiveOtherDecisionMeetingNote] = useState<string>('');
   const [savedExclusiveOtherDecisionMeetingNote, setSavedExclusiveOtherDecisionMeetingNote] = useState<string>('');
-  const [exclusiveMeetingNotePopupOpen, setExclusiveMeetingNotePopupOpen] = useState(false);
   const [savingExclusiveMeetingNote, setSavingExclusiveMeetingNote] = useState(false);
   const [exclusionDate, setExclusionDate] = useState<string>('');
   const [exclusionAction, setExclusionAction] = useState<string>('');
@@ -10147,15 +10146,6 @@ HP：https://ifoo-oita.com/
                       >
                         完了
                       </Button>
-                      <Button
-                        variant={editedExclusiveOtherDecisionMeetingNote ? 'contained' : 'outlined'}
-                        color={editedExclusiveOtherDecisionMeetingNote ? 'secondary' : 'primary'}
-                        size="small"
-                        onClick={() => setExclusiveMeetingNotePopupOpen(true)}
-                        sx={{ minWidth: '80px' }}
-                      >
-                        追記
-                      </Button>
                       {editedExclusiveOtherDecisionMeeting === '完了' && (
                         <Chip label="完了済み" size="small" color="success" />
                       )}
@@ -10192,6 +10182,51 @@ HP：https://ifoo-oita.com/
                           {savingUnvisitedMemo ? '保存中...' : '保存'}
                         </Button>
                         {editedUnvisitedOtherDecisionMemo !== savedUnvisitedOtherDecisionMemo && (
+                          <Typography variant="caption" color="warning.main">
+                            未保存の変更があります
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  </Grid>
+                )}
+
+                {/* 専任他決打合せ：追記（対策・反省点の下に常時表示、DB保存済みの内容はいつでも見える） */}
+                {requiresDecisionDate(editedStatus) && (
+                  <Grid item xs={12}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 1,
+                        p: 1.5,
+                        bgcolor: editedExclusiveOtherDecisionMeetingNote ? '#fce4ec' : 'transparent',
+                        border: editedExclusiveOtherDecisionMeetingNote ? '1px solid #f8bbd0' : 'none',
+                        borderRadius: 1,
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        専任他決打合せ：追記
+                      </Typography>
+                      <TextField
+                        multiline
+                        minRows={3}
+                        fullWidth
+                        size="small"
+                        placeholder="追記内容を入力してください"
+                        value={editedExclusiveOtherDecisionMeetingNote}
+                        onChange={(e) => setEditedExclusiveOtherDecisionMeetingNote(e.target.value)}
+                      />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={handleSaveExclusiveMeetingNote}
+                          disabled={savingExclusiveMeetingNote || editedExclusiveOtherDecisionMeetingNote === savedExclusiveOtherDecisionMeetingNote}
+                        >
+                          {savingExclusiveMeetingNote ? '保存中...' : '保存'}
+                        </Button>
+                        {editedExclusiveOtherDecisionMeetingNote !== savedExclusiveOtherDecisionMeetingNote && (
                           <Typography variant="caption" color="warning.main">
                             未保存の変更があります
                           </Typography>
@@ -11119,46 +11154,6 @@ HP：https://ifoo-oita.com/
             variant="contained"
           >
             通電OK
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* 専任他決打合せ：追記ポップアップ */}
-      <Dialog
-        open={exclusiveMeetingNotePopupOpen}
-        onClose={() => setExclusiveMeetingNotePopupOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle sx={{ fontWeight: 'bold' }}>
-          専任他決打合せ：追記
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            multiline
-            minRows={6}
-            fullWidth
-            size="small"
-            placeholder="追記内容を入力してください"
-            value={editedExclusiveOtherDecisionMeetingNote}
-            onChange={(e) => setEditedExclusiveOtherDecisionMeetingNote(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setExclusiveMeetingNotePopupOpen(false)}>
-            閉じる
-          </Button>
-          <Button
-            onClick={async () => {
-              const ok = await handleSaveExclusiveMeetingNote();
-              if (ok) setExclusiveMeetingNotePopupOpen(false);
-            }}
-            variant="contained"
-            color="primary"
-            disabled={savingExclusiveMeetingNote || editedExclusiveOtherDecisionMeetingNote === savedExclusiveOtherDecisionMeetingNote}
-          >
-            {savingExclusiveMeetingNote ? '保存中...' : '保存'}
           </Button>
         </DialogActions>
       </Dialog>
