@@ -5556,6 +5556,11 @@ HP：https://ifoo-oita.com/
             else if (selectedCategory === 'general' || selectedCategory === 'GENERAL') label = '一般';
             else if (typeof selectedCategory === 'string' && selectedCategory.startsWith('visitAssigned:')) label = `担当（${selectedCategory.replace('visitAssigned:', '')}）`;
             else if (typeof selectedCategory === 'string' && selectedCategory.startsWith('todayCallAssigned:')) label = `当日TEL(${selectedCategory.replace('todayCallAssigned:', '')})`;
+            else if (selectedCategory === 'fi:todayCall') label = '福岡 当日TEL分';
+            else if (selectedCategory === 'fi:todayCallNotStarted') label = '福岡 当日TEL_未着手';
+            else if (selectedCategory === 'fi:todayCallWithInfo') label = '福岡 当日TEL（内容）';
+            else if (selectedCategory === 'fi:unvaluated') label = '福岡 未査定';
+            else if (typeof selectedCategory === 'string' && selectedCategory.startsWith('fi:todayCallWithInfo:')) label = `福岡 ${selectedCategory.replace('fi:todayCallWithInfo:', '')}`;
 
             // 次へボタン（カテゴリ）用
             const catIdx = (!tempFilterId && seller?.id && categorySellerIds.length > 0) ? categorySellerIds.indexOf(seller.id) : -1;
