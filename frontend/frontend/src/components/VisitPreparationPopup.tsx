@@ -277,6 +277,9 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
           <a href={FIXED_LINKS_BEFORE[2].url} target="_blank" rel="noopener noreferrer">
             謄本+字図
           </a>
+          <Typography component="span" sx={{ color: 'error.main', fontSize: '0.85rem', ml: 1 }}>
+            該当箇所全て取得する
+          </Typography>
           <Typography sx={{ color: 'error.main', fontSize: '0.85rem', mt: 0.5 }}>
             ヘッダーの「画像」ボタンより、PDF保存してください。
           </Typography>
