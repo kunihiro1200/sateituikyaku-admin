@@ -859,6 +859,10 @@ const CallModePage = () => {
           sortOrder: listSortOrder,
           statusCategory: selectedCategory,
         };
+        // 一覧ページで営業担当フィルターが適用されていた場合、NEXTボタンの候補にも同じ絞り込みを適用する
+        if (selectedVisitAssignee) {
+          params.visitAssignee = [selectedVisitAssignee];
+        }
         // todayCallAssigned:XXX 形式の場合も statusCategory としてそのまま渡す
         const sellersRes = await api.get('/api/sellers', { params });
         const ids: string[] = (sellersRes.data.data || []).map((s: any) => s.id);
@@ -868,7 +872,7 @@ const CallModePage = () => {
       }
     };
     fetchCategorySellerIds();
-  }, [selectedCategory, tempFilterId, listSortBy, listSortOrder]);
+  }, [selectedCategory, tempFilterId, listSortBy, listSortOrder, selectedVisitAssignee]);
 
   // カテゴリ選択ハンドラー（通話モードページ用）
   const handleCategorySelect = useCallback((category: StatusCategory, visitAssignee?: string) => {
@@ -5669,7 +5673,8 @@ HP：https://ifoo-oita.com/
                     onClick={() => {
                       if (!catNextId) return;
                       navigateWithWarningCheck(() => {
-                        navigate(`/sellers/${catNextId}/call?category=${encodeURIComponent(selectedCategory)}&sortBy=${encodeURIComponent(listSortBy)}&sortOrder=${encodeURIComponent(listSortOrder)}`);
+                        const vaParam = selectedVisitAssignee ? `&visitAssignee=${encodeURIComponent(selectedVisitAssignee)}` : '';
+                        navigate(`/sellers/${catNextId}/call?category=${encodeURIComponent(selectedCategory)}&sortBy=${encodeURIComponent(listSortBy)}&sortOrder=${encodeURIComponent(listSortOrder)}${vaParam}`);
                       });
                     }}
                   >

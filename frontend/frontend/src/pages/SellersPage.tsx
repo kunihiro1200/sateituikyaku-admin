@@ -1593,7 +1593,9 @@ export default function SellersPage() {
                       : '';
                     const hasParam = categoryParam || tempFilterParam;
                     const sortParam = `${hasParam ? '&' : '?'}sortBy=${encodeURIComponent(sortBy)}&sortOrder=${encodeURIComponent(sortOrder)}`;
-                    navigate(`/sellers/${seller.id}/call${categoryParam}${tempFilterParam}${sortParam}`);
+                    // 営業担当フィルターが適用中の場合、通話モードのNEXTボタンにも同じ絞り込みを反映させる
+                    const vaParam = visitAssigneeFilter.length === 1 ? `&visitAssignee=${encodeURIComponent(visitAssigneeFilter[0])}` : '';
+                    navigate(`/sellers/${seller.id}/call${categoryParam}${tempFilterParam}${sortParam}${vaParam}`);
                   }}
                   sx={{
                     mb: 1,
@@ -1805,7 +1807,9 @@ export default function SellersPage() {
                         : '';
                       const hasParam = categoryParam || tempFilterParam;
                       const sortParam = `${hasParam ? '&' : '?'}sortBy=${encodeURIComponent(sortBy)}&sortOrder=${encodeURIComponent(sortOrder)}`;
-                      navigate(`/sellers/${seller.id}/call${categoryParam}${tempFilterParam}${sortParam}`);
+                      // 営業担当フィルターが適用中の場合、通話モードのNEXTボタンにも同じ絞り込みを反映させる
+                      const vaParam = visitAssigneeFilter.length === 1 ? `&visitAssignee=${encodeURIComponent(visitAssigneeFilter[0])}` : '';
+                      navigate(`/sellers/${seller.id}/call${categoryParam}${tempFilterParam}${sortParam}${vaParam}`);
                     }}
                     sx={{
                       cursor: 'pointer',
