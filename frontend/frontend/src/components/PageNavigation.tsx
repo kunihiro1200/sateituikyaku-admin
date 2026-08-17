@@ -9,6 +9,7 @@ import {
   Public as PublicIcon,
   Share as ShareIcon,
   Menu as MenuIcon,
+  Email as EmailIcon,
 } from '@mui/icons-material';
 import { useAuthStore } from '../store/authStore';
 import { EmployeeRole } from '../types';
@@ -20,6 +21,7 @@ const NAV_COLORS = {
   '/property-listings': { main: '#00acc1', light: '#e0f7fa', text: '#00acc1' }, // 物件リスト: 水色
   '/work-tasks': { main: '#8e24aa', light: '#f3e5f5', text: '#8e24aa' }, // 業務依頼: 紫
   '/shared-items': { main: '#fb8c00', light: '#fff3e0', text: '#fb8c00' }, // 共有: オレンジ
+  '/scheduled-notifications': { main: '#546e7a', light: '#eceff1', text: '#546e7a' }, // メール通知: グレー
 };
 
 interface PageNavigationProps {
@@ -62,6 +64,7 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
     { path: '/property-listings', label: '物件リスト', icon: <ShoppingCartIcon />, viewerAllowed: true },
     { path: '/work-tasks', label: '業務依頼', icon: <AssignmentIcon />, viewerAllowed: false },
     { path: '/shared-items', label: '共有', icon: <ShareIcon />, viewerAllowed: false },
+    { path: '/scheduled-notifications', label: 'メール通知', icon: <EmailIcon />, viewerAllowed: false },
   ];
 
   const navItems = isViewer ? allNavItems.filter(item => item.viewerAllowed) : allNavItems;
