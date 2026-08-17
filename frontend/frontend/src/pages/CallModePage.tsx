@@ -760,6 +760,9 @@ const CallModePage = () => {
   // 一時追加フィルターのID・ラベル（URLパラメータから読み取る）
   const [tempFilterId, setTempFilterId] = useState<string>('');
   const [tempFilterLabel, setTempFilterLabel] = useState<string>('');
+  // 一覧ページで使用中だったソート条件（URLパラメータから読み取る。NEXTボタンの並び順を一覧と一致させるため）
+  const [listSortBy, setListSortBy] = useState<string>('next_call_date');
+  const [listSortOrder, setListSortOrder] = useState<'asc' | 'desc'>('asc');
   // 一時追加フィルター内の売主ID一覧（NEXTボタン用）
   const [tempFilterSellerIds, setTempFilterSellerIds] = useState<string[]>([]);
   // カテゴリフィルター内の売主ID一覧（当日TEL分など、カテゴリから入った場合のNEXTボタン用）
@@ -772,10 +775,14 @@ const CallModePage = () => {
     const assignee = params.get('visitAssignee') || undefined;
     const tfId = params.get('tempFilterId') || '';
     const tfLabel = params.get('tempFilterLabel') || '';
+    const sb = params.get('sortBy') || 'next_call_date';
+    const so = (params.get('sortOrder') as 'asc' | 'desc') || 'asc';
     setSelectedCategory(category);
     setSelectedVisitAssignee(assignee);
     setTempFilterId(tfId);
     setTempFilterLabel(tfLabel);
+    setListSortBy(sb);
+    setListSortOrder(so);
   }, []);
 
   // 一時追加フィルターの売主ID一覧を取得（NEXTボタン用）
@@ -798,8 +805,8 @@ const CallModePage = () => {
         const params: any = {
           page: 1,
           pageSize: 500,
-          sortBy: 'next_call_date',
-          sortOrder: 'asc',
+          sortBy: listSortBy,
+          sortOrder: listSortOrder,
         };
         const toArr = (v: any): string[] => {
           if (!v) return [];
@@ -833,7 +840,7 @@ const CallModePage = () => {
       }
     };
     fetchTempFilterSellerIds();
-  }, [tempFilterId]);
+  }, [tempFilterId, listSortBy, listSortOrder]);
   
   // カテゴリフィルター（当日TEL分など）の売主ID一覧を取得（NEXTボタン用）
   // selectedCategory が変わるたびに再取得する
@@ -848,8 +855,8 @@ const CallModePage = () => {
         const params: any = {
           page: 1,
           pageSize: 1000,
-          sortBy: 'next_call_date',
-          sortOrder: 'asc',
+          sortBy: listSortBy,
+          sortOrder: listSortOrder,
           statusCategory: selectedCategory,
         };
         // todayCallAssigned:XXX 形式の場合も statusCategory としてそのまま渡す
@@ -861,7 +868,7 @@ const CallModePage = () => {
       }
     };
     fetchCategorySellerIds();
-  }, [selectedCategory, tempFilterId]);
+  }, [selectedCategory, tempFilterId, listSortBy, listSortOrder]);
 
   // カテゴリ選択ハンドラー（通話モードページ用）
   const handleCategorySelect = useCallback((category: StatusCategory, visitAssignee?: string) => {
@@ -5640,7 +5647,7 @@ HP：https://ifoo-oita.com/
                     onClick={() => {
                       if (!tfNextId) return;
                       navigateWithWarningCheck(() => {
-                        const tfParam = `tempFilterId=${encodeURIComponent(tempFilterId)}&tempFilterLabel=${encodeURIComponent(tempFilterLabel)}`;
+                        const tfParam = `tempFilterId=${encodeURIComponent(tempFilterId)}&tempFilterLabel=${encodeURIComponent(tempFilterLabel)}&sortBy=${encodeURIComponent(listSortBy)}&sortOrder=${encodeURIComponent(listSortOrder)}`;
                         navigate(`/sellers/${tfNextId}/call?${tfParam}`);
                       });
                     }}
@@ -5662,7 +5669,7 @@ HP：https://ifoo-oita.com/
                     onClick={() => {
                       if (!catNextId) return;
                       navigateWithWarningCheck(() => {
-                        navigate(`/sellers/${catNextId}/call?category=${encodeURIComponent(selectedCategory)}`);
+                        navigate(`/sellers/${catNextId}/call?category=${encodeURIComponent(selectedCategory)}&sortBy=${encodeURIComponent(listSortBy)}&sortOrder=${encodeURIComponent(listSortOrder)}`);
                       });
                     }}
                   >

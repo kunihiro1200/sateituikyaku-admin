@@ -1591,7 +1591,9 @@ export default function SellersPage() {
                     const tempFilterParam = selectedTempFilterId
                       ? (categoryParam ? '&' : '?') + `tempFilterId=${encodeURIComponent(selectedTempFilterId)}&tempFilterLabel=${encodeURIComponent(sidebarTempFilters.find(f => f.id === selectedTempFilterId)?.label || '')}`
                       : '';
-                    navigate(`/sellers/${seller.id}/call${categoryParam}${tempFilterParam}`);
+                    const hasParam = categoryParam || tempFilterParam;
+                    const sortParam = `${hasParam ? '&' : '?'}sortBy=${encodeURIComponent(sortBy)}&sortOrder=${encodeURIComponent(sortOrder)}`;
+                    navigate(`/sellers/${seller.id}/call${categoryParam}${tempFilterParam}${sortParam}`);
                   }}
                   sx={{
                     mb: 1,
@@ -1801,7 +1803,9 @@ export default function SellersPage() {
                       const tempFilterParam = selectedTempFilterId
                         ? (categoryParam ? '&' : '?') + `tempFilterId=${encodeURIComponent(selectedTempFilterId)}&tempFilterLabel=${encodeURIComponent(sidebarTempFilters.find(f => f.id === selectedTempFilterId)?.label || '')}`
                         : '';
-                      navigate(`/sellers/${seller.id}/call${categoryParam}${tempFilterParam}`);
+                      const hasParam = categoryParam || tempFilterParam;
+                      const sortParam = `${hasParam ? '&' : '?'}sortBy=${encodeURIComponent(sortBy)}&sortOrder=${encodeURIComponent(sortOrder)}`;
+                      navigate(`/sellers/${seller.id}/call${categoryParam}${tempFilterParam}${sortParam}`);
                     }}
                     sx={{
                       cursor: 'pointer',
