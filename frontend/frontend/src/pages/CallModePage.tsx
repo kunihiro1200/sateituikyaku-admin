@@ -5537,8 +5537,8 @@ HP：https://ifoo-oita.com/
             </Box>
           )}
           </Box>
-          {/* カテゴリ一覧ボタン＋次へボタンを上下2段で表示 */}
-          {(selectedCategory && selectedCategory !== 'all') && (() => {
+          {/* カテゴリ一覧ボタン＋次へボタンを上下2段で表示（一時追加フィルターから入った場合も表示） */}
+          {((selectedCategory && selectedCategory !== 'all') || tempFilterId) && (() => {
             // カテゴリーラベルを生成
             let label = selectedCategory as string;
             if (selectedCategory === 'visitDayBefore' || selectedCategory === 'VISITDAYBEFORE') label = '訪問日前日';
