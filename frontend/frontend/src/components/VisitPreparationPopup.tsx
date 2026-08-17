@@ -398,7 +398,21 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         <span>（リンクなし）</span>
       ),
     },
-    // 9. 評価ポイント！（システム内で入力・保存）
+    // 9. at-home近隣事例
+    {
+      label: 'at-home近隣事例',
+      content: (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <a href="https://www.athome.co.jp/" target="_blank" rel="noopener noreferrer">
+            近隣事例
+          </a>
+          <Typography component="span" sx={{ fontSize: '0.85rem' }}>
+            （土地建物のみ地図検索で周辺の掲載中のもの2-3枚　印刷用画面からカラー印刷）
+          </Typography>
+        </Box>
+      ),
+    },
+    // 10. 評価ポイント！（システム内で入力・保存）
     {
       label: '評価ポイント！',
       content: sellerId ? (
@@ -419,7 +433,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         <span>（リンクなし）</span>
       ),
     },
-    // 10. ハウスメーカー（コメントにハウスメーカー名がある場合のみ）
+    // 11. ハウスメーカー（コメントにハウスメーカー名がある場合のみ）
     ...(hasHouseMaker ? [{
       label: 'ハウスメーカー',
       content: (
@@ -437,7 +451,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         </Box>
       ),
     }] : []),
-    // 11. マンション（物件住所にマンション名がある場合のみ）
+    // 12. マンション（物件住所にマンション名がある場合のみ）
     ...(hasMansion ? [{
       label: `マンション：${detectedMansionBrand}`,
       content: (
