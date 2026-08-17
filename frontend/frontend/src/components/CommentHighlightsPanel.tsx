@@ -1,6 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Typography, CircularProgress, IconButton, Tooltip, Chip } from '@mui/material';
+import {
+  Box,
+  Typography,
+  CircularProgress,
+  IconButton,
+  Tooltip,
+  Chip,
+  Button,
+  Badge,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+} from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import CloseIcon from '@mui/icons-material/Close';
+import SummarizeIcon from '@mui/icons-material/Summarize';
 import api from '../services/api';
 import { ButtonState } from '../hooks/useCallModeQuickButtonState';
 
@@ -48,6 +62,7 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
   const [otherSummary, setOtherSummary] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const prevCommentRef = useRef<string>('');
 
   const fetchHighlights = async (html: string, forceRefresh = false) => {
@@ -113,13 +128,40 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
 
   return (
     <Box sx={{ mb: 2 }}>
-      {/* AIコメントまとめ */}
+      {/* AIコメントまとめ（ボタン化：クリックで詳細モーダル表示） */}
       {hasContent && (
-        <Box sx={{ mb: 1.5, p: 1.5, bgcolor: '#f3e5f5', borderRadius: 1, border: '1px solid #ce93d8' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
-            <Typography variant="subtitle2" sx={{ color: '#6a1b9a', fontWeight: 'bold' }}>
-              📌 AIコメントまとめ
-            </Typography>
+        <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Badge
+            badgeContent={highlights.length + otherSummary.length}
+            color="secondary"
+            invisible={loading || highlights.length + otherSummary.length === 0}
+          >
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={loading ? <CircularProgress size={14} sx={{ color: '#6a1b9a' }} /> : <SummarizeIcon fontSize="small" />}
+              onClick={() => setDetailOpen(true)}
+              sx={{
+                color: '#6a1b9a',
+                borderColor: '#ce93d8',
+                bgcolor: '#f3e5f5',
+                '&:hover': { bgcolor: '#e1bee7', borderColor: '#ce93d8' },
+              }}
+            >
+              📌 AIコメントまとめ{loading ? '（解析中...）' : ''}
+            </Button>
+          </Badge>
+          {error && !loading && (
+            <Typography variant="caption" color="error">{error}</Typography>
+          )}
+        </Box>
+      )}
+
+      {/* AIコメントまとめ 詳細モーダル */}
+      <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#6a1b9a', fontWeight: 'bold' }}>
+          📌 AIコメントまとめ
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <Tooltip title="再取得">
               <span>
                 <IconButton
@@ -132,8 +174,12 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
                 </IconButton>
               </span>
             </Tooltip>
+            <IconButton size="small" onClick={() => setDetailOpen(false)}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
           </Box>
-
+        </DialogTitle>
+        <DialogContent>
           {loading && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <CircularProgress size={14} sx={{ color: '#6a1b9a' }} />
@@ -169,8 +215,8 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
               </Box>
             </>
           )}
-        </Box>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* ヒアリング未フィールド */}
       {unhearingButtons.length > 0 && (
