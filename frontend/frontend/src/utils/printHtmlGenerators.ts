@@ -1068,32 +1068,7 @@ export function generateExtraPage1Html(base: string, isFI: boolean = false): str
     <div style="margin-left:12px;background:#f0f0f0;border-radius:4px;padding:2px 10px;font-size:8pt;">物件探しはこちらから！</div>
   </div>
   <!-- フロー図（画像） -->
-  <img src="${base}/ifoo-assets/flow-chart.png" style="width:100%;margin-bottom:8px;display:block;"/>
-  <!-- 補足：追加ステップ -->
-  <div style="margin-bottom:14px;font-size:8pt;line-height:1.8;">
-    <div style="font-weight:bold;margin-bottom:4px;">※ 詳細ステップ</div>
-    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:4px;">
-      <span style="font-weight:bold;color:#c0392b;">購入の流れ：</span>
-      <span style="background:${pink};padding:2px 6px;border-radius:3px;">内覧</span>→
-      <span style="background:${pink};padding:2px 6px;border-radius:3px;">買付申込</span>→
-      <span style="background:${pink};padding:2px 6px;border-radius:3px;">重要事項説明</span>→
-      <span style="background:${pink};padding:2px 6px;border-radius:3px;">契約・手付金</span>→
-      <span style="background:${pink};padding:2px 6px;border-radius:3px;">必要書類の準備</span>→
-      <span style="background:${pink};padding:2px 6px;border-radius:3px;">決済・引渡し</span>→
-      <span style="background:${pink};padding:2px 6px;border-radius:3px;">残金支払</span>→
-      <span style="background:${pink};padding:2px 6px;border-radius:3px;">鍵の引き渡し</span>→
-      <span style="background:${pink};padding:2px 6px;border-radius:3px;">所有権移転登記完了</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
-      <span style="font-weight:bold;color:#2980b9;">ローンの流れ：</span>
-      <span style="background:${blue};padding:2px 6px;border-radius:3px;">仮審査申込</span>→
-      <span style="background:${blue};padding:2px 6px;border-radius:3px;">仮審査承認通知</span>→
-      <span style="background:${blue};padding:2px 6px;border-radius:3px;">本審査申込</span>→
-      <span style="background:${blue};padding:2px 6px;border-radius:3px;">本審査承認通知</span>→
-      <span style="background:${blue};padding:2px 6px;border-radius:3px;">金消契約</span>→
-      <span style="background:${blue};padding:2px 6px;border-radius:3px;">融資実行</span>
-    </div>
-  </div>
+  <img src="${base}/ifoo-assets/flow-chart.png" style="width:100%;margin-bottom:14px;display:block;"/>
   <!-- 押さえておきたい税 -->
   <div style="display:flex;align-items:center;margin-bottom:10px;">
     <span style="font-size:9pt;margin-right:8px;">🐾</span>
