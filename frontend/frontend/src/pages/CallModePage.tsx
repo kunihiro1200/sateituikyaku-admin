@@ -965,6 +965,11 @@ const CallModePage = () => {
   const [editedStatus, setEditedStatus] = useState<string>('追客中');
   const [editedConfidence, setEditedConfidence] = useState<ConfidenceLevel | ''>('');
   const [editedExclusiveOtherDecisionMeeting, setEditedExclusiveOtherDecisionMeeting] = useState<string>('');
+  // 専任他決打合せ：追記欄（入力があると未訪問他決一覧でピンク表示）
+  const [editedExclusiveOtherDecisionMeetingNote, setEditedExclusiveOtherDecisionMeetingNote] = useState<string>('');
+  const [savedExclusiveOtherDecisionMeetingNote, setSavedExclusiveOtherDecisionMeetingNote] = useState<string>('');
+  const [exclusiveMeetingNotePopupOpen, setExclusiveMeetingNotePopupOpen] = useState(false);
+  const [savingExclusiveMeetingNote, setSavingExclusiveMeetingNote] = useState(false);
   const [exclusionDate, setExclusionDate] = useState<string>('');
   const [exclusionAction, setExclusionAction] = useState<string>('');
   const [editedNextCallDate, setEditedNextCallDate] = useState<string>('');
@@ -2231,6 +2236,7 @@ const CallModePage = () => {
       setEditedStatus(sellerData.status);
       setEditedConfidence(sellerData.confidence || '');
       setEditedExclusiveOtherDecisionMeeting(sellerData.exclusiveOtherDecisionMeeting || '');
+      setEditedExclusiveOtherDecisionMeetingNote(sellerData.exclusiveOtherDecisionMeetingNote || '');
       setStatusChanged(false); // 売主データ読み込み時にリセット
       statusChangedRef.current = false;
       
@@ -2238,6 +2244,7 @@ const CallModePage = () => {
       setSavedStatus(sellerData.status);
       setSavedConfidence(sellerData.confidence || '');
       setSavedExclusiveOtherDecisionMeeting(sellerData.exclusiveOtherDecisionMeeting || '');
+      setSavedExclusiveOtherDecisionMeetingNote(sellerData.exclusiveOtherDecisionMeetingNote || '');
       // 未訪問他決：対策・反省点の初期化
       setEditedUnvisitedOtherDecisionMemo(sellerData.otherDecisionCountermeasure || '');
       setSavedUnvisitedOtherDecisionMemo(sellerData.otherDecisionCountermeasure || '');
@@ -5202,6 +5209,26 @@ HP：https://ifoo-oita.com/
       setError(err.response?.data?.error?.message || 'Chat通知の送信に失敗しました');
     } finally {
       setSendingChatNotification(false);
+    }
+  };
+
+  // 専任他決打合せ：追記欄を保存する（DBのみ、スプシ同期なし）
+  const handleSaveExclusiveMeetingNote = async (): Promise<boolean> => {
+    if (!seller?.id) return false;
+    try {
+      setSavingExclusiveMeetingNote(true);
+      setError(null);
+      await api.put(`/api/sellers/${seller.id}`, {
+        exclusiveOtherDecisionMeetingNote: editedExclusiveOtherDecisionMeetingNote || '',
+      });
+      setSavedExclusiveOtherDecisionMeetingNote(editedExclusiveOtherDecisionMeetingNote);
+      setSuccessMessage('追記を保存しました');
+      return true;
+    } catch (err: any) {
+      setError('追記の保存に失敗しました');
+      return false;
+    } finally {
+      setSavingExclusiveMeetingNote(false);
     }
   };
 
@@ -10114,6 +10141,15 @@ HP：https://ifoo-oita.com/
                       >
                         完了
                       </Button>
+                      <Button
+                        variant={editedExclusiveOtherDecisionMeetingNote ? 'contained' : 'outlined'}
+                        color={editedExclusiveOtherDecisionMeetingNote ? 'secondary' : 'primary'}
+                        size="small"
+                        onClick={() => setExclusiveMeetingNotePopupOpen(true)}
+                        sx={{ minWidth: '80px' }}
+                      >
+                        追記
+                      </Button>
                       {editedExclusiveOtherDecisionMeeting === '完了' && (
                         <Chip label="完了済み" size="small" color="success" />
                       )}
@@ -10128,12 +10164,15 @@ HP：https://ifoo-oita.com/
                       <Typography variant="body2" sx={{ fontWeight: 500 }}>
                         対策・反省点
                       </Typography>
+                      <Typography variant="caption" sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                        ※文頭に「イニシャル・日付」を入力してください（例：Y 2026/8/17　内容...）
+                      </Typography>
                       <TextField
                         multiline
                         minRows={3}
                         fullWidth
                         size="small"
-                        placeholder="対策・反省点を入力してください"
+                        placeholder="例：Y 2026/8/17　対策・反省点を入力してください"
                         value={editedUnvisitedOtherDecisionMemo}
                         onChange={(e) => setEditedUnvisitedOtherDecisionMemo(e.target.value)}
                       />
@@ -11074,6 +11113,46 @@ HP：https://ifoo-oita.com/
             variant="contained"
           >
             通電OK
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 専任他決打合せ：追記ポップアップ */}
+      <Dialog
+        open={exclusiveMeetingNotePopupOpen}
+        onClose={() => setExclusiveMeetingNotePopupOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 'bold' }}>
+          専任他決打合せ：追記
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            multiline
+            minRows={6}
+            fullWidth
+            size="small"
+            placeholder="追記内容を入力してください"
+            value={editedExclusiveOtherDecisionMeetingNote}
+            onChange={(e) => setEditedExclusiveOtherDecisionMeetingNote(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setExclusiveMeetingNotePopupOpen(false)}>
+            閉じる
+          </Button>
+          <Button
+            onClick={async () => {
+              const ok = await handleSaveExclusiveMeetingNote();
+              if (ok) setExclusiveMeetingNotePopupOpen(false);
+            }}
+            variant="contained"
+            color="primary"
+            disabled={savingExclusiveMeetingNote || editedExclusiveOtherDecisionMeetingNote === savedExclusiveOtherDecisionMeetingNote}
+          >
+            {savingExclusiveMeetingNote ? '保存中...' : '保存'}
           </Button>
         </DialogActions>
       </Dialog>

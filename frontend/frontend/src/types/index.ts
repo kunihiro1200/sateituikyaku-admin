@@ -137,6 +137,7 @@ export interface Seller {
   phone_person?: string | null; // スプレッドシートCQ列（電話担当（任意））
   contractYearMonth?: string | Date;
   exclusiveOtherDecisionMeeting?: string; // 専任他決打合せ
+  exclusiveOtherDecisionMeetingNote?: string; // 専任他決打合せ：追記欄
   comments?: string;
   
   // 競合・他決情報
@@ -384,6 +385,7 @@ export interface CompetitorInfo {
   otherDecisionCountermeasure?: string;
   contractYearMonth?: Date | string;
   exclusiveOtherDecisionMeeting?: string;
+  exclusiveOtherDecisionMeetingNote?: string; // 専任他決打合せ：追記欄
 }
 
 export interface ExclusionInfo {

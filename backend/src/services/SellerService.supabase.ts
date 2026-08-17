@@ -668,6 +668,9 @@ export class SellerService extends BaseRepository {
     if ((data as any).exclusiveOtherDecisionMeeting !== undefined) {
       updates.exclusive_other_decision_meeting = (data as any).exclusiveOtherDecisionMeeting;
     }
+    if ((data as any).exclusiveOtherDecisionMeetingNote !== undefined) {
+      updates.exclusive_other_decision_meeting_note = (data as any).exclusiveOtherDecisionMeetingNote;
+    }
     if ((data as any).competitorNameAndReason !== undefined) {
       updates.competitor_name_and_reason = (data as any).competitorNameAndReason;
     }
@@ -2423,6 +2426,7 @@ export class SellerService extends BaseRepository {
         contractYearMonth: seller.contract_year_month,
         exclusiveDecisionDate: seller.contract_year_month, // 専任（他決）決定日（contract_year_monthのエイリアス）
         exclusiveOtherDecisionMeeting: seller.exclusive_other_decision_meeting,
+        exclusiveOtherDecisionMeetingNote: seller.exclusive_other_decision_meeting_note,
         // Site field
         inquirySite: seller.inquiry_site,
         site: seller.inquiry_site,  // 後方互換性のため残す

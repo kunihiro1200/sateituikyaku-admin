@@ -136,6 +136,7 @@ export interface Seller {
   phoneAssignee?: string; // 電話担当
   contractYearMonth?: Date;
   exclusive_other_decision_meeting?: string; // 専任他決打合せ
+  exclusiveOtherDecisionMeetingNote?: string; // 専任他決打合せ：追記欄
   
   // 競合・他決情報
   competitorNameAndReason?: string;
@@ -351,6 +352,7 @@ export interface CompetitorInfo {
   otherDecisionCountermeasure?: string;
   contractYearMonth?: Date;
   exclusiveOtherDecisionMeeting?: string;
+  exclusiveOtherDecisionMeetingNote?: string; // 専任他決打合せ：追記欄
 }
 
 export interface ExclusionInfo {

@@ -1602,6 +1602,11 @@ export default function SellersPage() {
                           bgcolor: '#eeeeee',
                           '&:hover': { bgcolor: '#e0e0e0' },
                         }
+                      : seller.exclusiveOtherDecisionMeetingNote && seller.exclusiveOtherDecisionMeetingNote.trim() !== ''
+                      ? {
+                          bgcolor: '#fce4ec',
+                          '&:hover': { bgcolor: '#f8bbd0' },
+                        }
                       : seller.otherDecisionCountermeasure && seller.otherDecisionCountermeasure.trim() !== ''
                       ? {
                           bgcolor: '#e3f2fd',
@@ -1804,6 +1809,11 @@ export default function SellersPage() {
                         ? {
                             bgcolor: '#eeeeee',
                             '&:hover': { bgcolor: '#e0e0e0' },
+                          }
+                        : seller.exclusiveOtherDecisionMeetingNote && seller.exclusiveOtherDecisionMeetingNote.trim() !== ''
+                        ? {
+                            bgcolor: '#fce4ec',
+                            '&:hover': { bgcolor: '#f8bbd0' },
                           }
                         : seller.otherDecisionCountermeasure && seller.otherDecisionCountermeasure.trim() !== ''
                         ? {
