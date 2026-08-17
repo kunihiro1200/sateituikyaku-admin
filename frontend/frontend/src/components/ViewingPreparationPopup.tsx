@@ -121,6 +121,7 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
   const [printingCash, setPrintingCash] = useState(false);
   const [printingRepeater, setPrintingRepeater] = useState(false);
   const [printingCashRepeater, setPrintingCashRepeater] = useState(false);
+  const [printingOther, setPrintingOther] = useState(false);
 
   function getTodayStr(): string {
     const d = new Date();
@@ -256,6 +257,25 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
       else { iframe.onload = () => setTimeout(doPrint, 1200); setTimeout(doPrint, 5000); }
       setTimeout(() => { setPrinting2(false); }, 8000);
     }).catch(() => { setPrinting2(false); });
+  };
+
+  // その他資料（アフターメンテナンス＋e暮らしサポート）印刷
+  const handlePrintOther = () => {
+    setPrintingOther(true);
+    import('../utils/printHtmlGenerators').then(({ generateOtherMaterialsHtml }) => {
+      const html = generateOtherMaterialsHtml();
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+      document.body.appendChild(iframe);
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) { setPrintingOther(false); document.body.removeChild(iframe); return; }
+      doc.open(); doc.write(html); doc.close();
+      const cleanup = () => { setTimeout(() => { try { document.body.removeChild(iframe); } catch (_) {} setPrintingOther(false); }, 1000); };
+      const doPrint = () => { try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch (_) {} cleanup(); };
+      if (iframe.contentDocument?.readyState === 'complete') { setTimeout(doPrint, 1200); }
+      else { iframe.onload = () => setTimeout(doPrint, 1200); setTimeout(doPrint, 5000); }
+      setTimeout(() => { setPrintingOther(false); }, 8000);
+    }).catch(() => { setPrintingOther(false); });
   };
 
   return (
@@ -535,6 +555,42 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
                       />
                     </Box>
                   </Box>
+                }
+              />
+            </ListItem>
+          )}
+          {/* その他資料（アフターメンテナンス＋e暮らしサポート） - FI物件以外 */}
+          {hasPropertyNumber && linkedProperties && linkedProperties.length > 0 && (() => {
+            const propNum = ((linkedProperties[0]?.property_number as string) || '').toUpperCase();
+            const isFI = propNum.includes('FI');
+            return !isFI;
+          })() && (
+            <ListItem component="li" sx={{ display: 'list-item', py: 0.5 }}>
+              <ListItemText
+                primary={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography component="span">その他資料：</Typography>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={printingOther ? <CircularProgress size={14} color="inherit" /> : <PrintIcon />}
+                      onClick={handlePrintOther}
+                      disabled={printingOther}
+                      sx={{
+                        borderColor: '#ff7043',
+                        color: '#d84315',
+                        fontSize: '0.75rem',
+                        '&:hover': { borderColor: '#d84315', bgcolor: '#fbe9e7' },
+                      }}
+                    >
+                      {printingOther ? '印刷中...' : '印刷'}
+                    </Button>
+                  </Box>
+                }
+                secondary={
+                  <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mt: 0.3 }}>
+                    アフターメンテナンスのご案内 / e暮らしサポートサービスのご案内
+                  </Typography>
                 }
               />
             </ListItem>

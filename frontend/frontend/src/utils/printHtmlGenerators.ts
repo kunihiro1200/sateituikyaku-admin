@@ -129,12 +129,11 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
   const footerCompany = isFI ? '株式会社くじら不動産' : '株式会社いふう';
   const footerAddress = isFI ? '福岡市中央区舞鶴3－1－10' : '大分市舞鶴町1-3-30';
   const footerTel = isFI ? 'TEL：092-401-5331' : 'TEL：097-533-2022';
-  // 追加5ページのHTML（FI物件は5・6枚目を除外）
+  // 追加ページのHTML（アフターメンテナンス・e暮らしサポートは「その他資料」に移動）
   const extraPages = [
     generateExtraPage1Html(base, isFI),
     generateExtraPage2Html(),
     generateExtraPage3Html(base, isFI),
-    ...(isFI ? [] : [generateExtraPage4Html(), generateExtraPage5Html()]),
   ];
   const extraPagesHtml = extraPages.map(p => `<div class="page">${p}</div>`).join('');
 
@@ -1375,4 +1374,29 @@ export function generateExtraPage5Html(): string {
   </div>
   <div style="text-align:right;font-size:7.5pt;color:#666;margin-top:8px;">8</div>
 </div>`;
+}
+
+// ============================================================
+// その他資料（アフターメンテナンス＋e暮らしサポート）
+// ============================================================
+export function generateOtherMaterialsHtml(): string {
+  const pages = [generateExtraPage4Html(), generateExtraPage5Html()];
+  const pagesHtml = pages.map(p => `<div class="page">${p}</div>`).join('');
+
+  return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  html,body { margin: 0; padding: 0; background: #fff; font-family: "Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif; color: #000; }
+  .page { width: 210mm; height: 297mm; background: #fff; overflow: hidden; display: block; page-break-after: always; break-after: page; }
+  .page:last-child { page-break-after: auto; break-after: auto; }
+</style>
+</head>
+<body>
+${pagesHtml}
+</body>
+</html>`;
 }
