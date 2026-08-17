@@ -64,7 +64,6 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
     { path: '/property-listings', label: '物件リスト', icon: <ShoppingCartIcon />, viewerAllowed: true },
     { path: '/work-tasks', label: '業務依頼', icon: <AssignmentIcon />, viewerAllowed: false },
     { path: '/shared-items', label: '共有', icon: <ShareIcon />, viewerAllowed: false },
-    { path: '/scheduled-notifications', label: 'メール通知', icon: <EmailIcon />, viewerAllowed: false },
   ];
 
   const navItems = isViewer ? allNavItems.filter(item => item.viewerAllowed) : allNavItems;
