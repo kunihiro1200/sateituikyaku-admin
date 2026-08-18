@@ -538,6 +538,80 @@ router.get('/debug/find-row/:propertyNumber', async (req: Request, res: Response
   }
 });
 
+// スプレッドシート同期デバッグ（内覧時鍵等・内覧前伝達事項・固定資産税の全件不一致チェック）
+router.get('/debug/viewing-fields-mismatch', async (req: Request, res: Response) => {
+  try {
+    const sheetsClient = (propertyListingService as any).sheetsClient;
+    if (!sheetsClient) {
+      res.json({ error: 'sheetsClient not initialized' });
+      return;
+    }
+    await sheetsClient.authenticate();
+    const rows = await sheetsClient.readAll();
+    const columnMapper = (propertyListingService as any).columnMapper;
+
+    // DB全件取得（ページング）
+    const dbMap = new Map<string, any>();
+    let offset = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+    while (hasMore) {
+      const { data: pageData, error } = await supabase
+        .from('property_listings')
+        .select('property_number, viewing_key, pre_viewing_notes, property_tax')
+        .range(offset, offset + pageSize - 1);
+      if (error) throw new Error(error.message);
+      if (!pageData || pageData.length === 0) { hasMore = false; break; }
+      for (const p of pageData) dbMap.set(p.property_number, p);
+      offset += pageSize;
+      if (pageData.length < pageSize) hasMore = false;
+    }
+
+    const mismatches: any[] = [];
+    let sheetHasViewingKey = 0;
+    let sheetHasPreViewing = 0;
+    let sheetHasPropertyTax = 0;
+
+    for (const row of rows) {
+      const propertyNumber = String(row['物件番号'] || '').trim();
+      if (!propertyNumber) continue;
+      const dbRow = dbMap.get(propertyNumber);
+      if (!dbRow) continue;
+
+      const mapped = columnMapper.mapSpreadsheetToDatabase(row);
+      if (mapped.viewing_key) sheetHasViewingKey++;
+      if (mapped.pre_viewing_notes) sheetHasPreViewing++;
+      if (mapped.property_tax !== null && mapped.property_tax !== undefined) sheetHasPropertyTax++;
+
+      const diff: any = {};
+      if ((mapped.viewing_key || null) !== (dbRow.viewing_key || null)) {
+        diff.viewing_key = { sheet: mapped.viewing_key, db: dbRow.viewing_key };
+      }
+      if ((mapped.pre_viewing_notes || null) !== (dbRow.pre_viewing_notes || null)) {
+        diff.pre_viewing_notes = { sheet: mapped.pre_viewing_notes, db: dbRow.pre_viewing_notes };
+      }
+      if ((mapped.property_tax ?? null) !== (dbRow.property_tax ?? null)) {
+        diff.property_tax = { sheet: mapped.property_tax, db: dbRow.property_tax };
+      }
+      if (Object.keys(diff).length > 0) {
+        mismatches.push({ propertyNumber, ...diff });
+      }
+    }
+
+    res.json({
+      totalSheetRows: rows.length,
+      totalDbRows: dbMap.size,
+      sheetHasViewingKey,
+      sheetHasPreViewing,
+      sheetHasPropertyTax,
+      mismatchCount: mismatches.length,
+      mismatches: mismatches.slice(0, 30),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message, stack: error.stack });
+  }
+});
+
 // スプレッドシート同期デバッグ（内覧時鍵等・内覧前伝達事項・固定資産税の実値確認）
 router.get('/debug/viewing-fields/:propertyNumber', async (req: Request, res: Response) => {
   try {
