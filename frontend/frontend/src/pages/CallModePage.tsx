@@ -968,8 +968,11 @@ const CallModePage = () => {
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
   const [mansionModalOpen, setMansionModalOpen] = useState(false);
 
-  // 不通確認ダイアログの状態
+  // 不通確認ダイアログの状態（ページ遷移時に表示。onProceedは「不通のまま」「通電OK」いずれか選択後に実行する遷移処理）
   const [unreachableConfirmOpen, setUnreachableConfirmOpen] = useState(false);
+  const unreachableConfirmOnProceedRef = useRef<(() => void) | null>(null);
+  // このページ滞在中にコメントが編集されたか（不通のまま遷移する際の確認ダイアログ表示判定に使用）
+  const [commentsEditedThisVisit, setCommentsEditedThisVisit] = useState(false);
 
   // ステータス更新用の状態
   const [editedStatus, setEditedStatus] = useState<string>('追客中');
@@ -1734,6 +1737,7 @@ const CallModePage = () => {
     setSelectedImages([]);
     // 売主が切り替わったら編集フラグをリセット
     setPageEdited(false);
+    setCommentsEditedThisVisit(false);
   }, [id]);
 
   // スプレッドシートから売主用Emailテンプレートを取得
@@ -1935,7 +1939,9 @@ const CallModePage = () => {
     return () => clearTimeout(timeoutId);
   }, [editedPhoneContactPerson, editedPreferredContactTime, editedContactMethod, editedFirstCallPerson, unreachableStatus, savedUnreachableStatus, seller?.phoneContactPerson, seller?.preferredContactTime, seller?.contactMethod, seller?.firstCallPerson, id]);
 
-  // コメントの自動保存（不通が「不通」でコメント変更時は確認ダイアログ経由で保存）
+  // コメントの自動保存
+  // 不通が「不通」の状態でコメントが編集された場合、確認ポップアップは自動保存時ではなく
+  // ページ遷移時に表示する（入力中に何度もポップアップが出て邪魔になるのを防ぐため）
   useEffect(() => {
     if (!seller) return;
 
@@ -1948,13 +1954,16 @@ const CallModePage = () => {
     // 不通確認ダイアログが既に開いている場合はスキップ（ユーザー選択待ち）
     if (unreachableConfirmOpen) return;
 
+    // コメントが編集されたことを記録（遷移時の確認ダイアログ表示判定に使用）
+    setCommentsEditedThisVisit(true);
+
     // デバウンス処理（1.5秒後に保存）
     const timeoutId = setTimeout(() => {
-      handleSaveComments();
+      doSaveComments();
     }, 1500); // 1.5秒のデバウンス
 
     return () => clearTimeout(timeoutId);
-  }, [editableComments, savedComments, savingComments, unreachableConfirmOpen]);
+  }, [editableComments, savedComments, savingComments, unreachableConfirmOpen, unreachableStatus]);
 
   // ステータスセクションの自動保存（状況・確度・次電日・専任他決関連フィールド等）
   useEffect(() => {
@@ -2751,12 +2760,24 @@ const CallModePage = () => {
         unsavedSections: unsaved,
         onProceed: () => {
           // 未保存を無視して遷移（以降の警告チェックも経由）
-          _handleBackAfterUnsavedCheck();
+          _checkUnreachableCommentBeforeBack();
         },
       });
       return;
     }
 
+    _checkUnreachableCommentBeforeBack();
+  };
+
+  /**
+   * 不通のままコメントが編集されている場合、「戻る」ボタン押下時に確認ダイアログを表示する
+   */
+  const _checkUnreachableCommentBeforeBack = () => {
+    if (unreachableStatus === '不通' && commentsEditedThisVisit) {
+      unreachableConfirmOnProceedRef.current = () => _handleBackAfterUnsavedCheck();
+      setUnreachableConfirmOpen(true);
+      return;
+    }
     _handleBackAfterUnsavedCheck();
   };
 
@@ -2830,11 +2851,24 @@ const CallModePage = () => {
       setUnsavedChangesDialog({
         open: true,
         unsavedSections: unsaved,
-        onProceed: () => _navigateWithWarningCheckCore(onConfirm),
+        onProceed: () => _checkUnreachableCommentBeforeNavigate(onConfirm),
       });
       return;
     }
 
+    _checkUnreachableCommentBeforeNavigate(onConfirm);
+  };
+
+  /**
+   * 不通のままコメントが編集されている場合、ページ遷移時に確認ダイアログを表示する
+   * （入力中に何度もポップアップが出るのを防ぐため、自動保存時ではなく遷移時にのみチェックする）
+   */
+  const _checkUnreachableCommentBeforeNavigate = (onConfirm: () => void) => {
+    if (unreachableStatus === '不通' && commentsEditedThisVisit) {
+      unreachableConfirmOnProceedRef.current = () => _navigateWithWarningCheckCore(onConfirm);
+      setUnreachableConfirmOpen(true);
+      return;
+    }
     _navigateWithWarningCheckCore(onConfirm);
   };
 
@@ -3036,13 +3070,10 @@ const CallModePage = () => {
     }
   };
 
-  // コメント直接編集の保存処理
+  // コメント直接編集の保存処理（保存ボタン押下時）
+  // 不通確認ポップアップはページ遷移時にのみ表示するため、ここでは通常通り保存する
   const handleSaveComments = async () => {
-    // 不通フィールドが「不通」かつコメントに変更がある場合、確認ダイアログを表示
-    if (unreachableStatus === '不通' && editableComments !== savedComments) {
-      setUnreachableConfirmOpen(true);
-      return;
-    }
+    setCommentsEditedThisVisit(true);
     await doSaveComments();
   };
 
@@ -3081,7 +3112,7 @@ const CallModePage = () => {
     }
   };
 
-  // 不通確認ダイアログ：「通電OK」として保存
+  // 不通確認ダイアログ：「通電OK」として保存し、保留中の遷移を実行する
   const handleSaveCommentsAsTsudenOK = async () => {
     setUnreachableConfirmOpen(false);
     setUnreachableStatus('通電OK');
@@ -3106,6 +3137,17 @@ const CallModePage = () => {
     } finally {
       setSavingComments(false);
     }
+    const proceed = unreachableConfirmOnProceedRef.current;
+    unreachableConfirmOnProceedRef.current = null;
+    proceed?.();
+  };
+
+  // 不通確認ダイアログ：「不通のまま」を選択し、保留中の遷移を実行する
+  const handleProceedAsUnreachable = () => {
+    setUnreachableConfirmOpen(false);
+    const proceed = unreachableConfirmOnProceedRef.current;
+    unreachableConfirmOnProceedRef.current = null;
+    proceed?.();
   };
 
   // 通話メモの保存処理
@@ -11170,7 +11212,7 @@ HP：https://ifoo-oita.com/
       </Dialog>
 
       {/* 不通確認ダイアログ */}
-      <Dialog open={unreachableConfirmOpen} onClose={() => setUnreachableConfirmOpen(false)}>
+      <Dialog open={unreachableConfirmOpen} onClose={handleProceedAsUnreachable}>
         <DialogTitle>⚠️ 不通になっています</DialogTitle>
         <DialogContent>
           <Typography>
@@ -11179,7 +11221,7 @@ HP：https://ifoo-oita.com/
         </DialogContent>
         <DialogActions>
           <Button
-            onClick={() => { setUnreachableConfirmOpen(false); doSaveComments(); }}
+            onClick={handleProceedAsUnreachable}
             color="inherit"
             variant="outlined"
           >
