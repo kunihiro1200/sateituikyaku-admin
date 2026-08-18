@@ -598,6 +598,10 @@ router.get('/debug/viewing-fields-mismatch', async (req: Request, res: Response)
       }
     }
 
+    const viewingKeyMismatches = mismatches.filter(m => m.viewing_key);
+    const preViewingMismatches = mismatches.filter(m => m.pre_viewing_notes);
+    const propertyTaxMismatches = mismatches.filter(m => m.property_tax);
+
     res.json({
       totalSheetRows: rows.length,
       totalDbRows: dbMap.size,
@@ -605,7 +609,12 @@ router.get('/debug/viewing-fields-mismatch', async (req: Request, res: Response)
       sheetHasPreViewing,
       sheetHasPropertyTax,
       mismatchCount: mismatches.length,
-      mismatches: mismatches.slice(0, 30),
+      viewingKeyMismatchCount: viewingKeyMismatches.length,
+      preViewingMismatchCount: preViewingMismatches.length,
+      propertyTaxMismatchCount: propertyTaxMismatches.length,
+      viewingKeyMismatchSample: viewingKeyMismatches.slice(0, 10),
+      preViewingMismatchSample: preViewingMismatches.slice(0, 10),
+      propertyTaxMismatchSample: propertyTaxMismatches.slice(0, 15),
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message, stack: error.stack });
