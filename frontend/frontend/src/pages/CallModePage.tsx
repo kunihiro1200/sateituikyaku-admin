@@ -1397,6 +1397,14 @@ const CallModePage = () => {
     value: option,
   }));
 
+  // 構造オプション（InlineEditableField用）
+  const STRUCTURE_OPTIONS = [
+    { label: '木造', value: '木造' },
+    { label: '軽量鉄骨', value: '軽量鉄骨' },
+    { label: '鉄骨', value: '鉄骨' },
+    { label: '他', value: '他' },
+  ];
+
   // 競合会社リスト
   const competitorCompanies = [
     '別大興産',
@@ -3400,6 +3408,52 @@ const CallModePage = () => {
       setError(err.response?.data?.error?.message || '物件情報の更新に失敗しました');
     } finally {
       setSavingProperty(false);
+    }
+  };
+
+  // 「土地（当社調べ）」「建物（当社調べ）」「構造」は編集ボタンを押さなくても
+  // その場でクリック→入力→保存できるようにするための単項目保存ハンドラー
+  const handleInlinePropertyFieldSave = async (
+    fieldKey: 'landAreaVerified' | 'buildingAreaVerified' | 'structure',
+    value: any
+  ) => {
+    if (!seller) return;
+
+    let processedValue: any = value;
+    if (fieldKey === 'landAreaVerified' || fieldKey === 'buildingAreaVerified') {
+      processedValue = value !== '' && value !== null && value !== undefined ? parseFloat(value) : null;
+      if (processedValue !== null && isNaN(processedValue)) {
+        processedValue = null;
+      }
+    } else {
+      processedValue = value || null;
+    }
+
+    try {
+      if (property) {
+        await api.put(`/properties/${property.id}`, { [fieldKey]: processedValue });
+        setProperty(prev => (prev ? { ...prev, [fieldKey]: processedValue } as PropertyInfo : prev));
+      } else {
+        await api.put(`/api/sellers/${id}`, { [fieldKey]: processedValue });
+        setSeller(prev => (prev ? { ...prev, [fieldKey]: processedValue } : prev));
+      }
+
+      // 編集フォーム（編集ボタン押下時）のstateも同期しておく
+      if (fieldKey === 'landAreaVerified') {
+        setEditedLandAreaVerified(processedValue !== null ? String(processedValue) : '');
+      } else if (fieldKey === 'buildingAreaVerified') {
+        setEditedBuildingAreaVerified(processedValue !== null ? String(processedValue) : '');
+      } else {
+        setEditedStructure(processedValue || '');
+      }
+
+      setPageEdited(true);
+      if (id) {
+        pageDataCache.invalidate(sellerDetailCacheKey(id));
+      }
+    } catch (err: any) {
+      console.error(`❌ handleInlinePropertyFieldSave(${fieldKey}) error:`, err, err?.response?.data);
+      throw new Error(err?.response?.data?.error?.message || '保存に失敗しました');
     }
   };
 
@@ -6910,22 +6964,36 @@ HP：https://ifoo-oita.com/
                         <Typography variant="body2" sx={{ color: areaWarning.landRed ? 'error.main' : 'inherit' }}>{displayLandArea}{displayLandAreaTsubo}</Typography>
                       </Grid>
                     )}
-                    {displayLandAreaVerified && (
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="text.secondary">土地（当社調べ）(m²)</Typography>
-                        <Typography variant="body2">{displayLandAreaVerified}{displayLandAreaVerifiedTsubo}</Typography>
-                      </Grid>
-                    )}
+                    {/* 土地（当社調べ）：編集ボタンを押さなくてもクリックしてその場で入力・保存できる */}
+                    <Grid item xs={6}>
+                      <InlineEditableField
+                        value={rawLandAreaVerified ?? ''}
+                        fieldName="landAreaVerified"
+                        fieldType="number"
+                        label="土地（当社調べ）(m²)"
+                        placeholder="未入力"
+                        onSave={(v) => handleInlinePropertyFieldSave('landAreaVerified', v)}
+                        enableConflictDetection={false}
+                      />
+                    </Grid>
                     {!isLandType && displayBuildingArea && (
                       <Grid item xs={6}>
                         <Typography variant="caption" color="text.secondary">建物面積 (m²)</Typography>
                         <Typography variant="body2" sx={{ color: areaWarning.buildingRed ? 'error.main' : 'inherit' }}>{displayBuildingArea}{displayBuildingAreaTsubo}</Typography>
                       </Grid>
                     )}
-                    {!isLandType && displayBuildingAreaVerified && (
+                    {/* 建物（当社調べ）：編集ボタンを押さなくてもクリックしてその場で入力・保存できる */}
+                    {!isLandType && (
                       <Grid item xs={6}>
-                        <Typography variant="caption" color="text.secondary">建物（当社調べ）(m²)</Typography>
-                        <Typography variant="body2">{displayBuildingAreaVerified}{displayBuildingAreaVerifiedTsubo}</Typography>
+                        <InlineEditableField
+                          value={rawBuildingAreaVerified ?? ''}
+                          fieldName="buildingAreaVerified"
+                          fieldType="number"
+                          label="建物（当社調べ）(m²)"
+                          placeholder="未入力"
+                          onSave={(v) => handleInlinePropertyFieldSave('buildingAreaVerified', v)}
+                          enableConflictDetection={false}
+                        />
                       </Grid>
                     )}
                     {!isLandType && displayBuildYear && (
@@ -6940,10 +7008,19 @@ HP：https://ifoo-oita.com/
                         <Typography variant="body2">{displayFloorPlan}</Typography>
                       </Grid>
                     )}
-                    {!isLandType && displayStructure && (
+                    {/* 構造：編集ボタンを押さなくてもクリックしてその場で選択・保存できる */}
+                    {!isLandType && (
                       <Grid item xs={6}>
-                        <Typography variant="caption" color="text.secondary">構造</Typography>
-                        <Typography variant="body2">{displayStructure}</Typography>
+                        <InlineEditableField
+                          value={displayStructure || ''}
+                          fieldName="structure"
+                          fieldType="dropdown"
+                          label="構造"
+                          options={STRUCTURE_OPTIONS}
+                          placeholder="未選択"
+                          onSave={(v) => handleInlinePropertyFieldSave('structure', v)}
+                          enableConflictDetection={false}
+                        />
                       </Grid>
                     )}
                     {displayCurrentStatus && (
