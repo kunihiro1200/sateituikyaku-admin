@@ -538,6 +538,54 @@ router.get('/debug/find-row/:propertyNumber', async (req: Request, res: Response
   }
 });
 
+// スプレッドシート同期デバッグ（内覧時鍵等・内覧前伝達事項・固定資産税の実値確認）
+router.get('/debug/viewing-fields/:propertyNumber', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+    const sheetsClient = (propertyListingService as any).sheetsClient;
+    if (!sheetsClient) {
+      res.json({ error: 'sheetsClient not initialized' });
+      return;
+    }
+    await sheetsClient.authenticate();
+
+    const rows = await sheetsClient.readAll();
+    const row = rows.find((r: any) => String(r['物件番号'] || '').trim() === propertyNumber);
+
+    if (!row) {
+      res.json({ propertyNumber, found: false });
+      return;
+    }
+
+    const columnMapper = (propertyListingService as any).columnMapper;
+    const mapped = columnMapper.mapSpreadsheetToDatabase(row);
+
+    const { data: dbRow } = await supabase
+      .from('property_listings')
+      .select('property_number, viewing_key, pre_viewing_notes, property_tax, updated_at')
+      .eq('property_number', propertyNumber)
+      .single();
+
+    res.json({
+      propertyNumber,
+      found: true,
+      spreadsheetRaw: {
+        '●内覧時（鍵等）': row['●内覧時（鍵等）'],
+        '●内覧前伝達事項': row['●内覧前伝達事項'],
+        '固定資産税': row['固定資産税'],
+      },
+      mappedFromSpreadsheet: {
+        viewing_key: mapped.viewing_key,
+        pre_viewing_notes: mapped.pre_viewing_notes,
+        property_tax: mapped.property_tax,
+      },
+      db: dbRow,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message, stack: error.stack });
+  }
+});
+
 // 複数物件の買主カウント取得
 router.get('/buyer-counts/batch', async (req: Request, res: Response): Promise<void> => {
   try {
