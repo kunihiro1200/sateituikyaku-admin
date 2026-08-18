@@ -26,6 +26,7 @@ import {
   InputAdornment,
   Chip,
   ButtonGroup,
+  Badge,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -40,10 +41,12 @@ import {
   Clear as ClearIcon,
   Sms as SmsIcon,
   ArrowDropDown as ArrowDropDownIcon,
+  Image as ImageIcon,
 } from '@mui/icons-material';
 import api, { propertyListingApi } from '../services/api';
 import RichTextEmailEditor from '../components/RichTextEmailEditor';
 import ImageSelectorModal from '../components/ImageSelectorModal';
+import DocumentModal from '../components/DocumentModal';
 import SenderAddressSelector from '../components/SenderAddressSelector';
 import { emailTemplates } from '../utils/emailTemplates';
 import { getActiveEmployees } from '../services/employeeService';
@@ -288,6 +291,9 @@ export default function PropertyListingDetailPage() {
   const [salesContractUrlDialog, setSalesContractUrlDialog] = useState(false);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
   const [chatToOfficePanelOpen, setChatToOfficePanelOpen] = useState(false);
+  // 画像ボタン用の状態（業務依頼の画像ボタンと同じ仕組み）
+  const [documentModalOpen, setDocumentModalOpen] = useState(false);
+  const [driveImageCount, setDriveImageCount] = useState<number | null>(null);
   const [chatMessage, setChatMessage] = useState('');
   const [chatToOfficeMessage, setChatToOfficeMessage] = useState('');
   const [chatSending, setChatSending] = useState(false);
@@ -378,6 +384,22 @@ export default function PropertyListingDetailPage() {
       // 事務ありスタッフ一覧を取得
       fetchJimuStaff();
     }
+  }, [propertyNumber]);
+
+  // 画像数をバックグラウンドで取得（「画像」ボタンのバッジ表示用。業務依頼の画像ボタンと同じ仕組み）
+  useEffect(() => {
+    if (!propertyNumber) return;
+    let cancelled = false;
+    api.get(`/api/drive/folders/${propertyNumber}`)
+      .then((res) => {
+        if (cancelled) return;
+        const files: any[] = res.data.files || [];
+        setDriveImageCount(files.length);
+      })
+      .catch(() => {
+        // 取得失敗時はバッジを非表示にする（エラーは無視）
+      });
+    return () => { cancelled = true; };
   }, [propertyNumber]);
 
   // 物件テンプレート（非報告）を取得する関数
@@ -1806,6 +1828,35 @@ export default function PropertyListingDetailPage() {
                   }}
                 >
                   事務へCHAT
+                </Button>
+                {/* 画像ボタン（業務依頼の画像ボタンと同じもの） */}
+                <Badge
+                  badgeContent={driveImageCount && driveImageCount > 0 ? driveImageCount : null}
+                  color="primary"
+                  max={99}
+                >
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<ImageIcon fontSize="small" />}
+                    onClick={() => setDocumentModalOpen(true)}
+                  >
+                    画像
+                  </Button>
+                </Badge>
+                {/* スプシボタン: 物件リストスプレッドシートを開く */}
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    window.open(
+                      'https://docs.google.com/spreadsheets/d/1tI_iXaiLuWBggs5y0RH7qzkbHs9wnLLdRekAmjkhcLY/edit?gid=290420661#gid=290420661',
+                      '_blank',
+                      'noopener,noreferrer'
+                    );
+                  }}
+                >
+                  スプシ
                 </Button>
               </Box>
               )}
@@ -3591,6 +3642,15 @@ export default function PropertyListingDetailPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* ドキュメント管理モーダル（画像ボタンから開く。業務依頼の画像ボタンと同じもの） */}
+      {propertyNumber && (
+        <DocumentModal
+          open={documentModalOpen}
+          onClose={() => setDocumentModalOpen(false)}
+          sellerNumber={propertyNumber}
+        />
+      )}
 
       {/* ATBB非公開時 買付フィールド必須警告ダイアログ */}
       <Dialog open={atbbWarningDialog} onClose={() => setAtbbWarningDialog(false)} maxWidth="sm" fullWidth>        <DialogTitle sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold', fontSize: '1.1rem' }}>
