@@ -6958,42 +6958,72 @@ HP：https://ifoo-oita.com/
                         </Box>
                       </Grid>
                     )}
-                    {displayLandArea && (
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="text.secondary">土地面積 (m²)</Typography>
-                        <Typography variant="body2" sx={{ color: areaWarning.landRed ? 'error.main' : 'inherit' }}>{displayLandArea}{displayLandAreaTsubo}</Typography>
+                    {/* 土地面積 + 土地（当社調べ）：当社調べはマンションでは不要なため非表示。
+                        右側にひっそりと目立たない形で編集できるようにする */}
+                    {(displayLandArea || !isApartmentType) && (
+                      <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                          <Box sx={{ flex: 1 }}>
+                            {displayLandArea && (
+                              <>
+                                <Typography variant="caption" color="text.secondary">土地面積 (m²)</Typography>
+                                <Typography variant="body2" sx={{ color: areaWarning.landRed ? 'error.main' : 'inherit' }}>{displayLandArea}{displayLandAreaTsubo}</Typography>
+                              </>
+                            )}
+                          </Box>
+                          {!isApartmentType && (
+                            <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                              <Box sx={{ minWidth: 140, maxWidth: 200 }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'right' }}>
+                                  土地（当社調べ）(m²)
+                                </Typography>
+                                <InlineEditableField
+                                  value={rawLandAreaVerified ?? ''}
+                                  fieldName="landAreaVerified"
+                                  fieldType="number"
+                                  placeholder="未入力"
+                                  showEditIndicator={false}
+                                  helperText={displayLandAreaVerifiedTsubo || undefined}
+                                  onSave={(v) => handleInlinePropertyFieldSave('landAreaVerified', v)}
+                                  enableConflictDetection={false}
+                                />
+                              </Box>
+                            </Box>
+                          )}
+                        </Box>
                       </Grid>
                     )}
-                    {/* 土地（当社調べ）：編集ボタンを押さなくてもクリックしてその場で入力・保存できる */}
-                    <Grid item xs={6}>
-                      <InlineEditableField
-                        value={rawLandAreaVerified ?? ''}
-                        fieldName="landAreaVerified"
-                        fieldType="number"
-                        label="土地（当社調べ）(m²)"
-                        placeholder="未入力"
-                        onSave={(v) => handleInlinePropertyFieldSave('landAreaVerified', v)}
-                        enableConflictDetection={false}
-                      />
-                    </Grid>
-                    {!isLandType && displayBuildingArea && (
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="text.secondary">建物面積 (m²)</Typography>
-                        <Typography variant="body2" sx={{ color: areaWarning.buildingRed ? 'error.main' : 'inherit' }}>{displayBuildingArea}{displayBuildingAreaTsubo}</Typography>
-                      </Grid>
-                    )}
-                    {/* 建物（当社調べ）：編集ボタンを押さなくてもクリックしてその場で入力・保存できる */}
+                    {/* 建物面積 + 建物（当社調べ）：当社調べは土地では不要なため非表示。
+                        右側にひっそりと目立たない形で編集できるようにする */}
                     {!isLandType && (
-                      <Grid item xs={6}>
-                        <InlineEditableField
-                          value={rawBuildingAreaVerified ?? ''}
-                          fieldName="buildingAreaVerified"
-                          fieldType="number"
-                          label="建物（当社調べ）(m²)"
-                          placeholder="未入力"
-                          onSave={(v) => handleInlinePropertyFieldSave('buildingAreaVerified', v)}
-                          enableConflictDetection={false}
-                        />
+                      <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                          <Box sx={{ flex: 1 }}>
+                            {displayBuildingArea && (
+                              <>
+                                <Typography variant="caption" color="text.secondary">建物面積 (m²)</Typography>
+                                <Typography variant="body2" sx={{ color: areaWarning.buildingRed ? 'error.main' : 'inherit' }}>{displayBuildingArea}{displayBuildingAreaTsubo}</Typography>
+                              </>
+                            )}
+                          </Box>
+                          <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                            <Box sx={{ minWidth: 140, maxWidth: 200 }}>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'right' }}>
+                                建物（当社調べ）(m²)
+                              </Typography>
+                              <InlineEditableField
+                                value={rawBuildingAreaVerified ?? ''}
+                                fieldName="buildingAreaVerified"
+                                fieldType="number"
+                                placeholder="未入力"
+                                showEditIndicator={false}
+                                helperText={displayBuildingAreaVerifiedTsubo || undefined}
+                                onSave={(v) => handleInlinePropertyFieldSave('buildingAreaVerified', v)}
+                                enableConflictDetection={false}
+                              />
+                            </Box>
+                          </Box>
+                        </Box>
                       </Grid>
                     )}
                     {!isLandType && displayBuildYear && (
@@ -7008,16 +7038,17 @@ HP：https://ifoo-oita.com/
                         <Typography variant="body2">{displayFloorPlan}</Typography>
                       </Grid>
                     )}
-                    {/* 構造：編集ボタンを押さなくてもクリックしてその場で選択・保存できる */}
+                    {/* 構造：右側にひっそりと目立たない形でクリックして選択・保存できる */}
                     {!isLandType && (
                       <Grid item xs={6}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>構造</Typography>
                         <InlineEditableField
                           value={displayStructure || ''}
                           fieldName="structure"
                           fieldType="dropdown"
-                          label="構造"
                           options={STRUCTURE_OPTIONS}
                           placeholder="未選択"
+                          showEditIndicator={false}
                           onSave={(v) => handleInlinePropertyFieldSave('structure', v)}
                           enableConflictDetection={false}
                         />
