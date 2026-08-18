@@ -1838,17 +1838,26 @@ export default function PropertyListingDetailPage() {
                   max={99}
                 >
                   <Button
-                    variant="outlined"
+                    variant="contained"
                     size="small"
                     startIcon={<ImageIcon fontSize="small" />}
                     onClick={() => setDocumentModalOpen(true)}
+                    sx={{
+                      bgcolor: '#b3e5fc',
+                      color: '#01579b',
+                      boxShadow: 'none',
+                      '&:hover': {
+                        bgcolor: '#81d4fa',
+                        boxShadow: 'none',
+                      },
+                    }}
                   >
                     画像
                   </Button>
                 </Badge>
                 {/* スプシボタン: 業務依頼（物件ごと）のスプレッドシートを開く */}
                 <Button
-                  variant="outlined"
+                  variant="contained"
                   size="small"
                   disabled={!workTaskData?.spreadsheet_url}
                   onClick={() => {
@@ -1856,6 +1865,15 @@ export default function PropertyListingDetailPage() {
                     if (url) {
                       window.open(buildSheetUrl(url, ATHOME_SHEET_GID), '_blank', 'noopener,noreferrer');
                     }
+                  }}
+                  sx={{
+                    bgcolor: '#b3e5fc',
+                    color: '#01579b',
+                    boxShadow: 'none',
+                    '&:hover': {
+                      bgcolor: '#81d4fa',
+                      boxShadow: 'none',
+                    },
                   }}
                 >
                   スプシ
