@@ -67,6 +67,47 @@ api.interceptors.request.use(
   }
 );
 
+// 同時に複数のリクエストが401を受け取った場合でも、
+// トークンリフレッシュは1回だけ実行し、他のリクエストはその結果を待つ。
+// Supabaseのrefresh_tokenは1回使うと失効するため、並行してリフレッシュすると
+// 2件目以降が失敗し「セッションが切れました」が誤って表示されてしまう。
+let refreshPromise: Promise<string> | null = null;
+
+const refreshAccessToken = (): Promise<string> => {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      // インターセプターをスキップして直接リクエスト
+      const response = await axios.post(
+        `${API_BASE_URL}/auth/refresh`,
+        { refresh_token: refreshToken },
+        {
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+      const { access_token, refresh_token: newRefreshToken } = response.data;
+
+      localStorage.setItem('session_token', access_token);
+      if (newRefreshToken) {
+        localStorage.setItem('refresh_token', newRefreshToken);
+      }
+
+      return access_token;
+    })();
+
+    // 完了後（成功・失敗いずれも）に次回のリフレッシュのためにクリアする
+    refreshPromise.finally(() => {
+      refreshPromise = null;
+    });
+  }
+
+  return refreshPromise;
+};
+
 // レスポンスインターセプター（エラーハンドリングとリトライ）
 api.interceptors.response.use(
   (response) => response,
@@ -82,26 +123,13 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      // リフレッシュトークンで再試行
+      // リフレッシュトークンで再試行（複数リクエストが同時に401でも1回だけ実行される）
       const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken) {
         originalRequest._retry = true;
 
         try {
-          // インターセプターをスキップして直接リクエスト
-          const response = await axios.post(
-            `${API_BASE_URL}/auth/refresh`,
-            { refresh_token: refreshToken },
-            {
-              headers: { 'Content-Type': 'application/json' },
-            }
-          );
-          const { access_token, refresh_token: newRefreshToken } = response.data;
-
-          localStorage.setItem('session_token', access_token);
-          if (newRefreshToken) {
-            localStorage.setItem('refresh_token', newRefreshToken);
-          }
+          const access_token = await refreshAccessToken();
 
           // 元のリクエストを再実行
           originalRequest.headers.Authorization = `Bearer ${access_token}`;
