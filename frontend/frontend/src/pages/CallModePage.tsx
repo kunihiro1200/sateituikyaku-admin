@@ -97,6 +97,7 @@ import MansionModal, { MANSION_BRANDS } from '../components/MansionModal';
 import { formatCurrentStatusDetailed } from '../utils/propertyStatusFormatter';
 import PageNavigation from '../components/PageNavigation';
 import NavigationBlockDialog from '../components/NavigationBlockDialog';
+import DecisionFieldsBlockDialog from '../components/DecisionFieldsBlockDialog';
 import NextCallDateReminderDialog from '../components/NextCallDateReminderDialog';
 import { calcKadoiVisitRatio, VisitStatsResponse } from '../utils/visitRatioCalculator';
 import { KadoiVisitRatioWarningDialog } from '../components/KadoiVisitRatioWarningDialog';
@@ -993,6 +994,7 @@ const CallModePage = () => {
   const showBanner = !isExcluded && !isStatusChanged && !!exclusionAction;
   const showStatusDisplay = isExcluded || isStatusChanged;
   const nextCallDateRef = useRef<HTMLInputElement>(null); // 次電日フィールドのref
+  const exclusiveDecisionDateRef = useRef<HTMLInputElement>(null); // 専任（他決）決定日フィールドのref
   const confidenceRef = useRef<HTMLDivElement>(null); // 確度フィールドのref
   const [confidenceHighlight, setConfidenceHighlight] = useState(false); // 確度フィールドのハイライト
   const [statusConfidenceWarningOpen, setStatusConfidenceWarningOpen] = useState(false); // 状況×確度警告ダイアログ
@@ -1343,6 +1345,9 @@ const CallModePage = () => {
 
   // 遷移ブロックダイアログ用の状態（追客中+次電日未入力時に遷移を完全ブロック）
   const [navigationBlockDialog, setNavigationBlockDialog] = useState<{ open: boolean }>({ open: false });
+
+  // 遷移ブロックダイアログ用の状態（専任・他決系ステータスで決定日・競合・専任他決要因が未入力時に遷移を完全ブロック）
+  const [decisionFieldsBlockDialog, setDecisionFieldsBlockDialog] = useState<{ open: boolean }>({ open: false });
 
   // 未保存変更確認ダイアログ用の状態
   const [unsavedChangesDialog, setUnsavedChangesDialog] = useState<{
@@ -1832,6 +1837,10 @@ const CallModePage = () => {
         // ブロック: 戻るボタンを無効化して再度pushState
         window.history.pushState(null, '', window.location.href);
         setNavigationBlockDialog({ open: true });
+      } else if (requiresDecisionDate(editedStatus) && !hasRequiredDecisionFieldsFilled()) {
+        // ブロック: 専任・他決系ステータスで必須項目未入力の場合も戻るボタンを無効化
+        window.history.pushState(null, '', window.location.href);
+        setDecisionFieldsBlockDialog({ open: true });
       } else {
         // 未保存変更チェック後に遷移警告チェックを経由
         const proceed = () => {
@@ -1858,7 +1867,7 @@ const CallModePage = () => {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [editedStatus, editedNextCallDate]);
+  }, [editedStatus, editedNextCallDate, editedExclusiveDecisionDate, editedCompetitors, editedExclusiveOtherDecisionFactors]);
 
   // sellerが変更されたときにコミュニケーションフィールドを初期化
   useEffect(() => {
@@ -1977,6 +1986,11 @@ const CallModePage = () => {
 
     // 確度警告ダイアログ表示中は自動保存しない（ユーザーの選択待ち）
     if (statusConfidenceWarningOpen) return;
+
+    // 専任・他決関連のステータスで必須フィールド（決定日・競合・専任他決要因）が
+    // 未入力の間は自動保存しない。ここでバリデーションエラーを出すとページ全体が
+    // エラー画面に置き換わってしまうため、入力完了 or ページ遷移時までチェックを持ち越す。
+    if (requiresDecisionDate(editedStatus) && !hasRequiredDecisionFieldsFilled()) return;
 
     // デバウンス処理（1.5秒後に保存）
     const timeoutId = setTimeout(() => {
@@ -2752,6 +2766,12 @@ const CallModePage = () => {
       return;
     }
 
+    // 専任・他決系ステータスで決定日・競合・専任他決要因が未入力の場合は遷移を完全ブロック
+    if (requiresDecisionDate(editedStatus) && !hasRequiredDecisionFieldsFilled()) {
+      setDecisionFieldsBlockDialog({ open: true });
+      return;
+    }
+
     // 未保存変更チェック
     const unsaved = getUnsavedSections();
     if (unsaved.length > 0) {
@@ -2842,6 +2862,12 @@ const CallModePage = () => {
     // editedStatusを参照（画面上の現在値、保存前も含む）
     if (editedStatus?.includes('追客中') && !editedNextCallDate) {
       setNavigationBlockDialog({ open: true });
+      return;
+    }
+
+    // 専任・他決系ステータスで決定日・競合・専任他決要因が未入力の場合は遷移を完全ブロック
+    if (requiresDecisionDate(editedStatus) && !hasRequiredDecisionFieldsFilled()) {
+      setDecisionFieldsBlockDialog({ open: true });
       return;
     }
 
@@ -2959,6 +2985,18 @@ const CallModePage = () => {
     if (nextCallDateRef.current) {
       nextCallDateRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
       nextCallDateRef.current.focus();
+    }
+  };
+
+  /**
+   * DecisionFieldsBlockDialogの「入力する」ボタン処理
+   * ダイアログを閉じて専任（他決）決定日フィールドへスクロール＆フォーカス
+   */
+  const handleGoToDecisionFields = () => {
+    setDecisionFieldsBlockDialog({ open: false });
+    if (exclusiveDecisionDateRef.current) {
+      exclusiveDecisionDateRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      exclusiveDecisionDateRef.current.focus();
     }
   };
 
@@ -5152,6 +5190,16 @@ HP：https://ifoo-oita.com/
       editedCompetitors.length > 0 &&
       editedExclusiveOtherDecisionFactors.length > 0 &&
       editedCompetitorNameAndReason.trim() !== ''
+    );
+  };
+
+  // 専任・他決系ステータスの自動保存に必要な項目（決定日・競合・専任他決要因）が
+  // すべて入力済みかどうかをチェックする（「競合名、理由」は自動保存の対象外）
+  const hasRequiredDecisionFieldsFilled = (): boolean => {
+    return (
+      editedExclusiveDecisionDate !== '' &&
+      editedCompetitors.length > 0 &&
+      editedExclusiveOtherDecisionFactors.length > 0
     );
   };
 
@@ -9976,6 +10024,7 @@ HP：https://ifoo-oita.com/
                         label="専任（他決）決定日"
                         type="date"
                         required
+                        inputRef={exclusiveDecisionDateRef}
                         value={editedExclusiveDecisionDate}
                         onChange={(e) => {
                           const newDate = e.target.value;
@@ -11117,6 +11166,12 @@ HP：https://ifoo-oita.com/
       <NavigationBlockDialog
         open={navigationBlockDialog.open}
         onGoToNextCallDate={handleGoToNextCallDate}
+      />
+
+      {/* 遷移ブロックダイアログ（専任・他決系ステータスで決定日・競合・専任他決要因が未入力時に遷移を完全ブロック） */}
+      <DecisionFieldsBlockDialog
+        open={decisionFieldsBlockDialog.open}
+        onGoToFields={handleGoToDecisionFields}
       />
 
       {/* 未保存変更確認ダイアログ */}
