@@ -78,6 +78,7 @@ import { ChatHistoryItem } from '../types/chatHistory';
 import HouseMakerModal from '../components/HouseMakerModal';
 import MansionModal, { MANSION_BRANDS } from '../components/MansionModal';
 import NearbyMapModal from '../components/NearbyMapModal';
+import { buildSheetUrl, ATHOME_SHEET_GID } from '../utils/spreadsheetUrl';
 import TashaPropertyPanel from '../components/TashaPropertyPanel';
 
 interface PropertyListing {
@@ -200,6 +201,7 @@ interface Buyer {
 
 interface WorkTaskData {
   storage_url?: string;
+  spreadsheet_url?: string;
 }
 
 // 値下げ履歴の最初の行から「前の価格」を取得するヘルパー
@@ -1844,16 +1846,16 @@ export default function PropertyListingDetailPage() {
                     画像
                   </Button>
                 </Badge>
-                {/* スプシボタン: 物件リストスプレッドシートを開く */}
+                {/* スプシボタン: 業務依頼（物件ごと）のスプレッドシートを開く */}
                 <Button
                   variant="outlined"
                   size="small"
+                  disabled={!workTaskData?.spreadsheet_url}
                   onClick={() => {
-                    window.open(
-                      'https://docs.google.com/spreadsheets/d/1tI_iXaiLuWBggs5y0RH7qzkbHs9wnLLdRekAmjkhcLY/edit?gid=290420661#gid=290420661',
-                      '_blank',
-                      'noopener,noreferrer'
-                    );
+                    const url = workTaskData?.spreadsheet_url;
+                    if (url) {
+                      window.open(buildSheetUrl(url, ATHOME_SHEET_GID), '_blank', 'noopener,noreferrer');
+                    }
                   }}
                 >
                   スプシ
