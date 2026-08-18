@@ -96,28 +96,32 @@ export class PropertyListingColumnMapper {
     let str = String(value).trim();
     if (!str) return null;
 
+    // 全角数字・全角ピリオド（．）を半角に統一
+    // ⚠️ 重要: これを最初に行わないと「３．８万円」のような全角ピリオド入りの値で
+    //   万/千の単位判定や小数パースが失敗し、誤った数値（例: 3.8万円 → 3）になるバグが発生する
+    str = str.replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFF10 + 0x30));
+    str = str.replace(/．/g, '.');
+
     // 「約」「概算」などの接頭辞を除去
     str = str.replace(/^[約概算ほぼおよそ]+/g, '');
     
     // 「万」「千」の単位を処理
-    const manMatch = str.match(/^([0-9０-９.,，]+)\s*万/);
+    const manMatch = str.match(/^([0-9.,，]+)\s*万/);
     if (manMatch) {
-      const numStr = manMatch[1].replace(/[,，]/g, '').replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFF10 + 0x30));
+      const numStr = manMatch[1].replace(/[,，]/g, '');
       const num = parseFloat(numStr);
       return isNaN(num) ? null : num * 10000;
     }
 
-    const senMatch = str.match(/^([0-9０-９.,，]+)\s*千/);
+    const senMatch = str.match(/^([0-9.,，]+)\s*千/);
     if (senMatch) {
-      const numStr = senMatch[1].replace(/[,，]/g, '').replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFF10 + 0x30));
+      const numStr = senMatch[1].replace(/[,，]/g, '');
       const num = parseFloat(numStr);
       return isNaN(num) ? null : num * 1000;
     }
 
     // 通常の数値パース（カンマ、円、￥、スペースを除去）
     str = str.replace(/[,，円￥\s万千約]/g, '');
-    // 全角数字を半角に変換
-    str = str.replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFF10 + 0x30));
     if (!str) return null;
 
     const num = parseFloat(str);

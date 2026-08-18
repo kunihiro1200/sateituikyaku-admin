@@ -462,12 +462,44 @@ function parseDate(value) {
 
 /**
  * 数値変換
+ * ⚠️ 重要: 全角数字・全角ピリオド（．）を先に半角へ変換すること。
+ *   これを怠ると「３．８万円」のような値で万/千の単位判定・小数パースが失敗し、
+ *   誤った数値（例: 3.8万円 → 3）になるバグが発生する（backend側と同じロジックに統一）。
  */
 function parseNumber(value) {
   if (value === null || value === undefined || value === '') return null;
   if (typeof value === 'number') return value;
 
-  var str = String(value).replace(/[,，円￥\s]/g, '').trim();
+  var str = String(value).trim();
+  if (!str) return null;
+
+  // 全角数字を半角に変換
+  str = str.replace(/[０-９]/g, function(ch) {
+    return String.fromCharCode(ch.charCodeAt(0) - 0xFF10 + 0x30);
+  });
+  // 全角ピリオドを半角に変換
+  str = str.replace(/．/g, '.');
+
+  // 「約」「概算」などの接頭辞を除去
+  str = str.replace(/^[約概算ほぼおよそ]+/g, '');
+
+  // 「万」の単位を処理
+  var manMatch = str.match(/^([0-9.,，]+)\s*万/);
+  if (manMatch) {
+    var manNumStr = manMatch[1].replace(/[,，]/g, '');
+    var manNum = parseFloat(manNumStr);
+    return isNaN(manNum) ? null : manNum * 10000;
+  }
+
+  // 「千」の単位を処理
+  var senMatch = str.match(/^([0-9.,，]+)\s*千/);
+  if (senMatch) {
+    var senNumStr = senMatch[1].replace(/[,，]/g, '');
+    var senNum = parseFloat(senNumStr);
+    return isNaN(senNum) ? null : senNum * 1000;
+  }
+
+  str = str.replace(/[,，円￥\s万千約]/g, '');
   if (!str) return null;
 
   var num = parseFloat(str);
