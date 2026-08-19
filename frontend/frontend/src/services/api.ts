@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { supabase } from '../config/supabase';
 
 // 本番環境では強制的に正しいバックエンドURLを使用
 const API_BASE_URL = import.meta.env.MODE === 'production' 
@@ -76,27 +77,38 @@ let refreshPromise: Promise<string> | null = null;
 const refreshAccessToken = (): Promise<string> => {
   if (!refreshPromise) {
     refreshPromise = (async () => {
+      // ⚠️ supabase-jsのセッションを信頼できる唯一の情報源として使う。
+      // localStorageの'refresh_token'コピーは、supabase-jsのautoRefreshTokenが
+      // バックグラウンドで既にローテーションさせて失効させている可能性があるため使わない。
+      // まずsupabase.auth.getSession()で現在有効なセッションを取得し、
+      // 期限切れならsupabase.auth.refreshSession()でリフレッシュする（トークンのローテーションが一元化される）。
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+
+      if (currentSession) {
+        localStorage.setItem('session_token', currentSession.access_token);
+        if (currentSession.refresh_token) {
+          localStorage.setItem('refresh_token', currentSession.refresh_token);
+        }
+        return currentSession.access_token;
+      }
+
       const refreshToken = localStorage.getItem('refresh_token');
       if (!refreshToken) {
         throw new Error('No refresh token available');
       }
 
-      // インターセプターをスキップして直接リクエスト
-      const response = await axios.post(
-        `${API_BASE_URL}/auth/refresh`,
-        { refresh_token: refreshToken },
-        {
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-      const { access_token, refresh_token: newRefreshToken } = response.data;
+      const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
 
-      localStorage.setItem('session_token', access_token);
-      if (newRefreshToken) {
-        localStorage.setItem('refresh_token', newRefreshToken);
+      if (error || !data.session) {
+        throw error || new Error('Failed to refresh session');
       }
 
-      return access_token;
+      localStorage.setItem('session_token', data.session.access_token);
+      if (data.session.refresh_token) {
+        localStorage.setItem('refresh_token', data.session.refresh_token);
+      }
+
+      return data.session.access_token;
     })();
 
     // 完了後（成功・失敗いずれも）に次回のリフレッシュのためにクリアする
