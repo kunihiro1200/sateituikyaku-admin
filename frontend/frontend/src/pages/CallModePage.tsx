@@ -84,6 +84,7 @@ import { useCallModeQuickButtonState } from '../hooks/useCallModeQuickButtonStat
 import { pageDataCache, sellerDetailCacheKey, CACHE_KEYS } from '../store/pageDataCache';
 import PropertyMapSection from '../components/PropertyMapSection';
 import NearbyBuyersList from '../components/NearbyBuyersList';
+import MatchingIntentPanel from '../components/MatchingIntentPanel';
 import { VisitPreparationButton } from '../components/VisitPreparationButton';
 import SaleScheduleModal from '../components/SaleScheduleModal';
 import NetProceedsListModal from '../components/NetProceedsListModal';
@@ -10826,6 +10827,13 @@ HP：https://ifoo-oita.com/
                   <NearbyBuyersList sellerId={seller.id} propertyType={propInfo.propertyType} />
                 </CollapsibleSection>
               </div>
+            )}
+
+            {/* マッチング（売主⇔買主） */}
+            {seller?.id && (
+              <CollapsibleSection title="🔍 マッチング" defaultExpanded={false} headerColor="#f3e5f5">
+                <MatchingIntentPanel entityType="seller" entityId={seller.id} />
+              </CollapsibleSection>
             )}
 
             {/* 実績セクション */}

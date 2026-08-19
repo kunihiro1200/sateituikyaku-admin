@@ -2524,6 +2524,15 @@ TEL：097-533-2022`;
           )}
           <Box sx={{ display: isMobile && !mobileBuyerInfoOpen ? 'none' : undefined }}>
 
+          {/* マッチング（買主⇔売主） */}
+          {buyer_number && (
+            <Paper sx={{ p: 2, mb: 2 }}>
+              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
+                🔍 マッチング
+              </Typography>
+              <MatchingIntentPanel entityType="buyer" entityId={buyer_number} />
+            </Paper>
+          )}
 
           {BUYER_FIELD_SECTIONS.map((section) => (
             <Box key={section.title}>
@@ -4355,16 +4364,6 @@ TEL：097-533-2022`;
           ))}
 
           </Box>{/* スマホ時買主情報開閉Box */}
-
-          {/* マッチング（買主⇔売主） */}
-          {buyer_number && (
-            <Paper sx={{ p: 2, mt: 2 }}>
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-                🔍 マッチング
-              </Typography>
-              <MatchingIntentPanel entityType="buyer" entityId={buyer_number} />
-            </Paper>
-          )}
         </Box>
       </Box>
 
