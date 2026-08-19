@@ -10,10 +10,12 @@ import { authenticate } from '../middleware/auth';
 import { apiKeyAuth } from '../middleware/apiKeyAuth';
 import { BuyerLinkageCache } from '../services/BuyerLinkageCache';
 import { PropertyListingService } from '../services/PropertyListingService';
+import { MatchingIntentService, MATCH_TIMING_OPTIONS } from '../services/MatchingIntentService';
 import * as cheerio from 'cheerio';
 
 const router = Router();
 const buyerService = new BuyerService();
+const matchingIntentService = new MatchingIntentService();
 const buyerSyncService = new BuyerSyncService();
 const emailHistoryService = new EmailHistoryService();
 const buyerLinkageCache = new BuyerLinkageCache();
@@ -1011,6 +1013,48 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // ===== 具体的なルート（/:id よりも前に定義する必要がある） =====
+
+// 買主のマッチング入力欄（種別/エリア/時期/金額）を更新
+router.put('/:id/match-intent', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { matchIntentType, matchAreas, matchAreaFreeText, matchTiming, matchPriceMin, matchPriceMax, matchMemo } = req.body;
+
+    if (matchTiming !== undefined && matchTiming !== null && !MATCH_TIMING_OPTIONS.includes(matchTiming)) {
+      return res.status(400).json({ error: '時期の値が不正です' });
+    }
+    if (matchAreas !== undefined && matchAreas !== null && !Array.isArray(matchAreas)) {
+      return res.status(400).json({ error: 'matchAreas は配列で指定してください' });
+    }
+
+    await matchingIntentService.updateBuyerIntent(id, {
+      matchIntentType,
+      matchAreas,
+      matchAreaFreeText,
+      matchTiming,
+      matchPriceMin,
+      matchPriceMax,
+      matchMemo,
+    });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Update buyer match-intent error:', error);
+    res.status(500).json({ error: error.message || 'マッチング情報の更新に失敗しました' });
+  }
+});
+
+// 買主に対するマッチング売主候補を検索
+router.get('/:id/match-candidates', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const result = await matchingIntentService.findSellerCandidatesForBuyer(id);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Get buyer match-candidates error:', error);
+    res.status(500).json({ error: error.message || 'マッチング候補の検索に失敗しました' });
+  }
+});
 
 // 紐づく物件取得
 router.get('/:id/properties', async (req: Request, res: Response) => {

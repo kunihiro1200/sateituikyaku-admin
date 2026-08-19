@@ -50,6 +50,7 @@ import { InquiryResponseEmailModal } from '../components/InquiryResponseEmailMod
 import RelatedBuyersSection from '../components/RelatedBuyersSection';
 import UnifiedInquiryHistoryTable from '../components/UnifiedInquiryHistoryTable';
 import RelatedBuyerNotificationBadge from '../components/RelatedBuyerNotificationBadge';
+import MatchingIntentPanel from '../components/MatchingIntentPanel';
 import { ConfirmationToAssignee } from '../components/ConfirmationToAssignee';
 import BuyerGmailSendButton from '../components/BuyerGmailSendButton';
 import { ViewingPreparationButton } from '../components/ViewingPreparationButton';
@@ -4354,6 +4355,16 @@ TEL：097-533-2022`;
           ))}
 
           </Box>{/* スマホ時買主情報開閉Box */}
+
+          {/* マッチング（買主⇔売主） */}
+          {buyer_number && (
+            <Paper sx={{ p: 2, mt: 2 }}>
+              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
+                🔍 マッチング
+              </Typography>
+              <MatchingIntentPanel entityType="buyer" entityId={buyer_number} />
+            </Paper>
+          )}
         </Box>
       </Box>
 

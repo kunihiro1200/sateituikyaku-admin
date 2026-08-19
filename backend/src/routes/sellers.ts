@@ -16,9 +16,11 @@ import { PerformanceMetricsService } from '../services/PerformanceMetricsService
 import { SpreadsheetSyncService } from '../services/SpreadsheetSyncService';
 import { GoogleSheetsClient } from '../services/GoogleSheetsClient';
 import { fetchPopulationData, estimateAreaRatio, fetchTransactionData, fetchPriceData } from '../services/EStatService';
+import { MatchingIntentService, MATCH_TIMING_OPTIONS } from '../services/MatchingIntentService';
 
 const router = Router();
 const sellerService = new SellerService();
+const matchingIntentService = new MatchingIntentService();
 
 // シングルトンインスタンス（キャッシュを維持するため）
 const distributionCalculator = new PropertyDistributionAreaCalculator();
@@ -3105,6 +3107,62 @@ router.get(
     }
   }
 );
+
+/**
+ * 売主のマッチング入力欄（種別/エリア/時期/金額）を更新
+ * PUT /api/sellers/:id/match-intent
+ */
+router.put('/:id/match-intent', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { matchIntentType, matchAreas, matchAreaFreeText, matchTiming, matchPriceMin, matchPriceMax, matchMemo } = req.body;
+
+    if (matchTiming !== undefined && matchTiming !== null && !MATCH_TIMING_OPTIONS.includes(matchTiming)) {
+      return res.status(400).json({
+        error: { code: 'INVALID_MATCH_TIMING', message: '時期の値が不正です', retryable: false },
+      });
+    }
+    if (matchAreas !== undefined && matchAreas !== null && !Array.isArray(matchAreas)) {
+      return res.status(400).json({
+        error: { code: 'INVALID_MATCH_AREAS', message: 'matchAreas は配列で指定してください', retryable: false },
+      });
+    }
+
+    await matchingIntentService.updateSellerIntent(id, {
+      matchIntentType,
+      matchAreas,
+      matchAreaFreeText,
+      matchTiming,
+      matchPriceMin,
+      matchPriceMax,
+      matchMemo,
+    });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Update seller match-intent error:', error);
+    res.status(500).json({
+      error: { code: 'MATCH_INTENT_UPDATE_ERROR', message: error.message || 'マッチング情報の更新に失敗しました', retryable: true },
+    });
+  }
+});
+
+/**
+ * 売主に対するマッチング買主候補を検索
+ * GET /api/sellers/:id/match-candidates
+ */
+router.get('/:id/match-candidates', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const result = await matchingIntentService.findBuyerCandidatesForSeller(id);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Get seller match-candidates error:', error);
+    res.status(500).json({
+      error: { code: 'MATCH_CANDIDATES_ERROR', message: error.message || 'マッチング候補の検索に失敗しました', retryable: true },
+    });
+  }
+});
 
 /**
  * 売主の近隣買主リストを取得

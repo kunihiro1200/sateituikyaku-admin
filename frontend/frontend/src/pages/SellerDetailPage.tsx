@@ -41,6 +41,7 @@ import { useAuthStore } from '../store/authStore';
 import { useSellerPresenceTrack } from '../hooks/useSellerPresence';
 import EditableSection from '../components/EditableSection';
 import CollapsibleSection from '../components/CollapsibleSection';
+import MatchingIntentPanel from '../components/MatchingIntentPanel';
 import CompactBuyerList from '../components/CompactBuyerList';
 import ViewingNotesField from '../components/ViewingNotesField';
 import LatestStatusDropdown from '../components/LatestStatusDropdown';
@@ -2058,6 +2059,13 @@ const SellerDetailPage = () => {
         <Grid item xs={12}>
           <CollapsibleSection title="追客ログ" defaultExpanded={false}>
             <CallLogDisplay sellerId={id!} />
+          </CollapsibleSection>
+        </Grid>
+
+        {/* マッチング（売主⇔買主） */}
+        <Grid item xs={12}>
+          <CollapsibleSection title="🔍 マッチング" defaultExpanded={false} headerColor="#f3e5f5">
+            <MatchingIntentPanel entityType="seller" entityId={id!} />
           </CollapsibleSection>
         </Grid>
 
