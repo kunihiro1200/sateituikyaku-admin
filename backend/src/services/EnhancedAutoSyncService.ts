@@ -944,6 +944,9 @@ export class EnhancedAutoSyncService {
           const sheetComments = (sheetRow['コメント'] || '').trim();
           if (sheetComments !== dbComments) {
             needsUpdate = true;
+            // デバッグ用: コメント混入バグ調査のため、差分検出時に売主番号と両方の値を記録する
+            // （別売主のコメントが混入する不具合の原因調査用。原因判明後に削除可）
+            console.log(`🔍 [detectUpdatedSellers] ${sellerNumber}: コメント差分検出 - DB="${dbComments.slice(0, 60)}" SHEET="${sheetComments.slice(0, 60)}"`);
           }
 
           // first_call_personの比較
@@ -1367,6 +1370,9 @@ export class EnhancedAutoSyncService {
     // 常に差分が検出されDB側のHTML書式が消えてしまう問題を防止
     if (row['コメント']) {
       updateData.comments = String(row['コメント']);
+      // デバッグ用: コメント混入バグ調査のため、スプシ→DB反映時にどの内容を書き込むか記録する
+      // （別売主のコメントが混入する不具合の原因調査用。原因判明後に削除可）
+      console.log(`🔍 [updateSingleSeller] ${sellerNumber}: コメントをDBに反映 -> "${String(row['コメント']).slice(0, 80)}"`);
     }
 
     // next_call_date: スプシに値がある場合のみ更新（空欄の場合はDBの値を保持）
@@ -1730,6 +1736,9 @@ export class EnhancedAutoSyncService {
       unreachable_status: row['不通'] ? String(row['不通']) : null,
       comments: row['コメント'] ? String(row['コメント']) : null,
     };
+    // デバッグ用: コメント混入バグ調査のため、新規行作成時にどの内容を書き込むか記録する
+    // （別売主のコメントが混入する不具合の原因調査用。原因判明後に削除可）
+    console.log(`🔍 [syncSingleSeller] ${sellerNumber}: 新規作成コメント -> "${String(row['コメント'] || '').slice(0, 80)}"`);
 
     // 状況（売主）をsellers.current_statusにも保存
     const currentStatusNew = row['状況（売主）'];

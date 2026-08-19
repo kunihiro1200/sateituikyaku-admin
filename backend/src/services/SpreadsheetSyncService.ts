@@ -120,6 +120,9 @@ export class SpreadsheetSyncService {
       // スプレッドシート形式に変換
       const sheetRow = this.columnMapper.mapToSheet(decryptedSeller as SellerData);
       console.log(`📋 [SpreadsheetSync] Converted to sheet row. メールアドレス="${sheetRow['メールアドレス'] || '(empty)'}", keys count=${Object.keys(sheetRow).length}`);
+      // デバッグ用: コメント混入バグ調査のため、DB→スプシ書き込み時にどの内容・どの行に書くか記録する
+      // （別売主のコメントが混入する不具合の原因調査用。原因判明後に削除可）
+      console.log(`🔍 [SpreadsheetSync] ${seller.seller_number} (id=${seller.id}): コメントをシートに書き込み予定 -> "${String(sheetRow['コメント'] || '').slice(0, 80)}"`);
 
       // 既存行を検索（リトライロジック付き）
       const existingRowIndex = await this.findRowBySellerIdWithRetry(seller.seller_number);
