@@ -5712,16 +5712,20 @@ HP：https://ifoo-oita.com/
             else if (selectedCategory === 'fi:unvaluated') label = '福岡 未査定';
             else if (typeof selectedCategory === 'string' && selectedCategory.startsWith('fi:todayCallWithInfo:')) label = `福岡 ${selectedCategory.replace('fi:todayCallWithInfo:', '')}`;
 
-            // 次へボタン（カテゴリ）用
+            // 次へ／前へボタン（カテゴリ）用
             const catIdx = (!tempFilterId && seller?.id && categorySellerIds.length > 0) ? categorySellerIds.indexOf(seller.id) : -1;
             const catHasNext = catIdx !== -1 && catIdx < categorySellerIds.length - 1;
             const catNextId = catHasNext ? categorySellerIds[catIdx + 1] : null;
+            const catHasPrev = catIdx > 0;
+            const catPrevId = catHasPrev ? categorySellerIds[catIdx - 1] : null;
             const catPosLabel = catIdx !== -1 ? `${catIdx + 1}/${categorySellerIds.length}` : '';
 
-            // 次へボタン（一時フィルター）用
+            // 次へ／前へボタン（一時フィルター）用
             const tfIdx = (tempFilterId && seller?.id) ? tempFilterSellerIds.indexOf(seller.id) : -1;
             const tfHasNext = tfIdx !== -1 && tfIdx < tempFilterSellerIds.length - 1;
             const tfNextId = tfHasNext ? tempFilterSellerIds[tfIdx + 1] : null;
+            const tfHasPrev = tfIdx > 0;
+            const tfPrevId = tfHasPrev ? tempFilterSellerIds[tfIdx - 1] : null;
             const tfPosLabel = tfIdx !== -1 ? `${tfIdx + 1}/${tempFilterSellerIds.length}` : '';
 
             return (
@@ -5767,51 +5771,95 @@ HP：https://ifoo-oita.com/
                     {label}一覧
                   </Button>
                 )}
-                {/* 下段：次へボタン（一時フィルター or カテゴリ） */}
+                {/* 下段：前へ／次へボタン（一時フィルター or カテゴリ） */}
                 {tempFilterId && tempFilterLabel && seller?.id ? (
-                  <Button
-                    variant="contained"
-                    size="small"
-                    disabled={!tfHasNext}
-                    sx={{
-                      fontSize: '0.7rem', py: 0.25, px: 0.75, minWidth: 0,
-                      bgcolor: '#8e24aa',
-                      '&:hover': { bgcolor: '#6a1b9a' },
-                      '&.Mui-disabled': { bgcolor: '#ce93d8', color: 'white' },
-                    }}
-                    onClick={() => {
-                      if (!tfNextId) return;
-                      navigateWithWarningCheck(() => {
-                        const tfParam = `tempFilterId=${encodeURIComponent(tempFilterId)}&tempFilterLabel=${encodeURIComponent(tempFilterLabel)}&sortBy=${encodeURIComponent(listSortBy)}&sortOrder=${encodeURIComponent(listSortOrder)}`;
-                        navigate(`/sellers/${tfNextId}/call?${tfParam}`);
-                      });
-                    }}
-                  >
-                    {tfPosLabel && <span style={{ fontSize: '0.65rem', marginRight: 2, opacity: 0.85 }}>{tfPosLabel}</span>}
-                    NEXT ▶
-                  </Button>
+                  <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={!tfHasPrev}
+                      sx={{
+                        fontSize: '0.7rem', py: 0.25, px: 0.75, minWidth: 0,
+                        bgcolor: '#8e24aa',
+                        '&:hover': { bgcolor: '#6a1b9a' },
+                        '&.Mui-disabled': { bgcolor: '#ce93d8', color: 'white' },
+                      }}
+                      onClick={() => {
+                        if (!tfPrevId) return;
+                        navigateWithWarningCheck(() => {
+                          const tfParam = `tempFilterId=${encodeURIComponent(tempFilterId)}&tempFilterLabel=${encodeURIComponent(tempFilterLabel)}&sortBy=${encodeURIComponent(listSortBy)}&sortOrder=${encodeURIComponent(listSortOrder)}`;
+                          navigate(`/sellers/${tfPrevId}/call?${tfParam}`);
+                        });
+                      }}
+                    >
+                      ◀ 前へ
+                    </Button>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={!tfHasNext}
+                      sx={{
+                        fontSize: '0.7rem', py: 0.25, px: 0.75, minWidth: 0,
+                        bgcolor: '#8e24aa',
+                        '&:hover': { bgcolor: '#6a1b9a' },
+                        '&.Mui-disabled': { bgcolor: '#ce93d8', color: 'white' },
+                      }}
+                      onClick={() => {
+                        if (!tfNextId) return;
+                        navigateWithWarningCheck(() => {
+                          const tfParam = `tempFilterId=${encodeURIComponent(tempFilterId)}&tempFilterLabel=${encodeURIComponent(tempFilterLabel)}&sortBy=${encodeURIComponent(listSortBy)}&sortOrder=${encodeURIComponent(listSortOrder)}`;
+                          navigate(`/sellers/${tfNextId}/call?${tfParam}`);
+                        });
+                      }}
+                    >
+                      {tfPosLabel && <span style={{ fontSize: '0.65rem', marginRight: 2, opacity: 0.85 }}>{tfPosLabel}</span>}
+                      NEXT ▶
+                    </Button>
+                  </Box>
                 ) : (!tempFilterId && seller?.id && categorySellerIds.length > 0) ? (
-                  <Button
-                    variant="contained"
-                    size="small"
-                    disabled={!catHasNext}
-                    sx={{
-                      fontSize: '0.7rem', py: 0.25, px: 0.75, minWidth: 0,
-                      bgcolor: '#e65100',
-                      '&:hover': { bgcolor: '#bf360c' },
-                      '&.Mui-disabled': { bgcolor: '#ffccbc', color: '#777' },
-                    }}
-                    onClick={() => {
-                      if (!catNextId) return;
-                      navigateWithWarningCheck(() => {
-                        const vaParam = selectedVisitAssignee ? `&visitAssignee=${encodeURIComponent(selectedVisitAssignee)}` : '';
-                        navigate(`/sellers/${catNextId}/call?category=${encodeURIComponent(selectedCategory)}&sortBy=${encodeURIComponent(listSortBy)}&sortOrder=${encodeURIComponent(listSortOrder)}${vaParam}`);
-                      });
-                    }}
-                  >
-                    {catPosLabel && <span style={{ fontSize: '0.65rem', marginRight: 2, opacity: 0.85 }}>{catPosLabel}</span>}
-                    次へ ▶
-                  </Button>
+                  <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={!catHasPrev}
+                      sx={{
+                        fontSize: '0.7rem', py: 0.25, px: 0.75, minWidth: 0,
+                        bgcolor: '#e65100',
+                        '&:hover': { bgcolor: '#bf360c' },
+                        '&.Mui-disabled': { bgcolor: '#ffccbc', color: '#777' },
+                      }}
+                      onClick={() => {
+                        if (!catPrevId) return;
+                        navigateWithWarningCheck(() => {
+                          const vaParam = selectedVisitAssignee ? `&visitAssignee=${encodeURIComponent(selectedVisitAssignee)}` : '';
+                          navigate(`/sellers/${catPrevId}/call?category=${encodeURIComponent(selectedCategory)}&sortBy=${encodeURIComponent(listSortBy)}&sortOrder=${encodeURIComponent(listSortOrder)}${vaParam}`);
+                        });
+                      }}
+                    >
+                      ◀ 前へ
+                    </Button>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={!catHasNext}
+                      sx={{
+                        fontSize: '0.7rem', py: 0.25, px: 0.75, minWidth: 0,
+                        bgcolor: '#e65100',
+                        '&:hover': { bgcolor: '#bf360c' },
+                        '&.Mui-disabled': { bgcolor: '#ffccbc', color: '#777' },
+                      }}
+                      onClick={() => {
+                        if (!catNextId) return;
+                        navigateWithWarningCheck(() => {
+                          const vaParam = selectedVisitAssignee ? `&visitAssignee=${encodeURIComponent(selectedVisitAssignee)}` : '';
+                          navigate(`/sellers/${catNextId}/call?category=${encodeURIComponent(selectedCategory)}&sortBy=${encodeURIComponent(listSortBy)}&sortOrder=${encodeURIComponent(listSortOrder)}${vaParam}`);
+                        });
+                      }}
+                    >
+                      {catPosLabel && <span style={{ fontSize: '0.65rem', marginRight: 2, opacity: 0.85 }}>{catPosLabel}</span>}
+                      次へ ▶
+                    </Button>
+                  </Box>
                 ) : null}
               </Box>
             );
