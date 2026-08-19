@@ -51,6 +51,9 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
 
   try {
     console.log('[ieul-transfer] イエウールメール本文解析開始');
+    // デバッグ用: コメント混入バグ調査のため受信したmailBody全文をログ出力する
+    // （別の依頼者のコメントが混入する不具合の原因調査用。原因判明後に削除可）
+    console.log('[ieul-transfer] 受信body全文 >>>\n' + mailBody + '\n<<< body全文終了');
 
     // ============================================================
     // 1. メール本文解析（GASのtransferIeuru相当）
@@ -208,6 +211,8 @@ router.post('/ieul-transfer', async (req: Request, res: Response) => {
       if (endIdx !== -1) sub = sub.slice(0, endIdx);
       commentToAdd = sub.trim();
     }
+    // デバッグ用: コメント混入バグ調査のためコメント抽出結果をログ出力する（原因判明後に削除可）
+    console.log(`[ieul-transfer] コメント抽出デバッグ: commentStart=${commentStart}, name="${name}", commentToAdd="${commentToAdd}"`);
 
     const commentParts: string[] = [];
     if (furigana) commentParts.push(`フリガナ: ${furigana}`);
