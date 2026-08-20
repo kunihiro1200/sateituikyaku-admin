@@ -23,6 +23,7 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { areasOverlap, priceRangesOverlapAny, timingUrgencyScore, parseDesiredPriceRangeToMinMax, MATCH_TIMING_OPTIONS, MatchTiming, getTimingFreshness } from './MatchingIntentService';
+import { decrypt } from '../utils/encryption';
 
 /**
  * seller_buyer_match_contacts テーブルから、指定した売主×買主ペアのうち
@@ -204,6 +205,8 @@ export class MatchingSidebarService {
       }
 
       if (buyerMatchCount > 0) {
+        let decryptedName: string | null = null;
+        try { decryptedName = seller.name ? decrypt(seller.name) : null; } catch { decryptedName = null; }
         items.push({
           sellerId: seller.id,
           sellerNumber: seller.seller_number,
@@ -211,7 +214,7 @@ export class MatchingSidebarService {
           matchContactStatus: seller.match_contact_status,
           buyerMatchCount,
           topUrgencyScore,
-          name: seller.name,
+          name: decryptedName,
           propertyAddress: seller.property_address,
           propertyType: seller.property_type,
         });
