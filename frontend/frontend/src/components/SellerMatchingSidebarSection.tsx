@@ -11,6 +11,9 @@ interface SellerMatchSidebarItem {
   matchContactStatus: string | null;
   buyerMatchCount: number;
   topUrgencyScore: number;
+  name: string | null;
+  propertyAddress: string | null;
+  propertyType: string | null;
 }
 
 /**
@@ -136,8 +139,21 @@ const SellerMatchingSidebarSection: React.FC = () => {
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography variant="subtitle2" fontWeight="bold" sx={{ color: 'primary.main' }}>
                   {item.sellerNumber || item.sellerId}
+                  {item.name ? `（${item.name}）` : ''}
                 </Typography>
                 <Chip label={`買主候補 ${item.buyerMatchCount}件`} size="small" color="secondary" />
+              </Box>
+              <Box sx={{ mt: 0.5, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                {item.propertyType && (
+                  <Typography variant="caption" color="text.secondary">
+                    種別: {item.propertyType}
+                  </Typography>
+                )}
+                {item.propertyAddress && (
+                  <Typography variant="caption" color="text.secondary">
+                    {item.propertyAddress}
+                  </Typography>
+                )}
               </Box>
             </Box>
           ))}

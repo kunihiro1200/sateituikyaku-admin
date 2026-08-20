@@ -36,6 +36,76 @@ export function timingUrgencyScore(timing: string | null | undefined): number {
   return TIMING_URGENCY_SCORE[timing] ?? 0;
 }
 
+// ============================================================
+// 時期の陳腐化判定（fresh / warning / expired）
+//
+// 背景:
+//   「半年以内」と入力してから何年も経過している場合、まだ動く意思があるか不明。
+//   一方で、決まっていないだけで実際にはまだ有効なケースも多い。
+//   そのため即除外はせず、基準期間の間は通常表示、基準期間〜2倍の間は
+//   警告表示（テーブルには残す）、2倍を超えたら候補から除外する。
+//
+// 基準期間（入力してからの経過月数）:
+//   今すぐ = 1ヶ月 / 3ヶ月以内 = 3ヶ月 / 半年以内 = 6ヶ月 / 1年以内 = 12ヶ月
+//   1年以上・様子見 = 期限なし（常にfresh。そもそも「様子見」なので陳腐化の概念がない）
+//
+// 基準日:
+//   売主側: match_updated_at（マッチング欄の最終保存日時）
+//   買主側: reception_date（受付日）。desired_timing専用の更新日時カラムは持たないため、
+//           受付日を代用する（希望条件を変更しても受付日は更新されないが、実用上十分）。
+// ============================================================
+export type TimingFreshness = 'fresh' | 'warning' | 'expired';
+
+const TIMING_BASE_MONTHS: Record<string, number> = {
+  '今すぐ': 1,
+  '3ヶ月以内': 3,
+  '半年以内': 6,
+  '1年以内': 12,
+  // '1年以上・様子見' は期限なし（下記関数で別扱い）
+};
+
+export interface TimingFreshnessResult {
+  freshness: TimingFreshness;
+  monthsElapsed: number | null;
+}
+
+export function getTimingFreshness(
+  timing: string | null | undefined,
+  referenceDate: string | null | undefined
+): TimingFreshnessResult {
+  if (!timing || !(timing in TIMING_BASE_MONTHS)) {
+    // 「1年以上・様子見」または時期未入力は期限なし
+    return { freshness: 'fresh', monthsElapsed: null };
+  }
+  if (!referenceDate) {
+    // 基準日が不明な場合は判定できないため除外しない
+    return { freshness: 'fresh', monthsElapsed: null };
+  }
+  const refDate = new Date(referenceDate);
+  if (isNaN(refDate.getTime())) {
+    return { freshness: 'fresh', monthsElapsed: null };
+  }
+
+  const baseMonths = TIMING_BASE_MONTHS[timing];
+  const now = new Date();
+  // 年月の差分をおおよその経過月数として使う（日単位の厳密さは求めない）
+  let monthsElapsed = (now.getFullYear() - refDate.getFullYear()) * 12 + (now.getMonth() - refDate.getMonth());
+  if (now.getDate() < refDate.getDate()) monthsElapsed -= 1;
+  if (monthsElapsed < 0) monthsElapsed = 0;
+
+  if (monthsElapsed >= baseMonths * 2) {
+    return { freshness: 'expired', monthsElapsed };
+  }
+  if (monthsElapsed >= baseMonths) {
+    return { freshness: 'warning', monthsElapsed };
+  }
+  return { freshness: 'fresh', monthsElapsed };
+}
+
+export function timingFreshnessWarningReason(timing: string, monthsElapsed: number | null): string {
+  return `⚠️ 「${timing}」と入力してから${monthsElapsed ?? '?'}ヶ月経過（要確認）`;
+}
+
 export interface MatchIntentInput {
   matchIntentType?: MatchIntentType;
   matchAreas?: string[];
@@ -64,6 +134,8 @@ export interface MatchCandidate {
   urgencyScore: number;
   // 売主×買主ペア単位の連絡状況（連絡済み/連絡不要/連絡未）
   contactStatus: string;
+  // 時期の陳腐化判定（fresh=通常 / warning=要確認だが表示は継続 / expired=候補から除外済み・通常は返らない）
+  timingFreshness: TimingFreshness;
 }
 
 export const CONTACT_STATUS_OPTIONS = ['連絡済み', '連絡不要', '連絡未'] as const;
@@ -365,8 +437,15 @@ export class MatchingIntentService {
         : priceRangesOverlapAny(buyer.priceRanges, seller.match_price_min, seller.match_price_max);
       if (!priceResult.matched) continue;
 
+      // 買主の希望時期の陳腐化判定（受付日を基準日として使用）
+      const freshnessResult = getTimingFreshness(buyer.desiredTiming, buyer.receptionDate);
+      if (freshnessResult.freshness === 'expired') continue;
+
       const timingResult = timingIsCompatible(seller.match_timing, buyer.desiredTiming);
       const reasons = [areaResult.reason, priceResult.reason, timingResult.reason].filter((r): r is string => !!r);
+      if (freshnessResult.freshness === 'warning' && buyer.desiredTiming) {
+        reasons.push(timingFreshnessWarningReason(buyer.desiredTiming, freshnessResult.monthsElapsed));
+      }
 
       candidates.push({
         type: 'buyer',
@@ -383,6 +462,7 @@ export class MatchingIntentService {
         matchReasons: reasons,
         urgencyScore: timingUrgencyScore(buyer.desiredTiming),
         contactStatus: '連絡未',
+        timingFreshness: freshnessResult.freshness,
       });
     }
 
@@ -407,7 +487,7 @@ export class MatchingIntentService {
    */
   private async fetchAllBuyersWithDesiredConditions(): Promise<Array<{
     buyer_number: string; name: string | null; desiredAreas: string[];
-    priceRanges: Array<{ min: number; max: number }>; desiredTiming: string | null;
+    priceRanges: Array<{ min: number; max: number }>; desiredTiming: string | null; receptionDate: string | null;
   }>> {
     const results: any[] = [];
     const PAGE_SIZE = 1000;
@@ -415,7 +495,7 @@ export class MatchingIntentService {
     while (true) {
       const { data, error } = await this.supabase
         .from('buyers')
-        .select('buyer_number, name, desired_area, desired_timing, price_range_house, price_range_apartment, price_range_land')
+        .select('buyer_number, name, desired_area, desired_timing, price_range_house, price_range_apartment, price_range_land, reception_date')
         .is('deleted_at', null)
         .not('desired_area', 'is', null)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
@@ -440,6 +520,7 @@ export class MatchingIntentService {
           parseDesiredPriceRangeToMinMax(b.price_range_land),
         ].filter((r): r is { min: number; max: number } => r !== null),
         desiredTiming: b.desired_timing || null,
+        receptionDate: b.reception_date || null,
       }))
       // 希望条件ページの「売主をマッチング」ボタンを押した（= 希望時期を選択・保存した）買主のみを対象にする。
       // 希望時期が未入力・不正な値の買主は候補に出さない。
@@ -514,8 +595,15 @@ export class MatchingIntentService {
         : priceRangesOverlapAny(buyerPriceRanges, seller.match_price_min, seller.match_price_max);
       if (!priceResult.matched) continue;
 
+      // 売主の時期の陳腐化判定（マッチング欄の最終保存日時 match_updated_at を基準日として使用）
+      const freshnessResult = getTimingFreshness(seller.match_timing, seller.match_updated_at);
+      if (freshnessResult.freshness === 'expired') continue;
+
       const timingResult = timingIsCompatible(buyer.desired_timing, seller.match_timing);
       const reasons = [areaResult.reason, priceResult.reason, timingResult.reason].filter((r): r is string => !!r);
+      if (freshnessResult.freshness === 'warning' && seller.match_timing) {
+        reasons.push(timingFreshnessWarningReason(seller.match_timing, freshnessResult.monthsElapsed));
+      }
 
       candidates.push({
         type: 'seller',
@@ -532,6 +620,7 @@ export class MatchingIntentService {
         matchReasons: reasons,
         urgencyScore: timingUrgencyScore(seller.match_timing),
         contactStatus: '連絡未',
+        timingFreshness: freshnessResult.freshness,
       });
     }
 

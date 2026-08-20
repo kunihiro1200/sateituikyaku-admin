@@ -22,7 +22,7 @@
 // つうわモードページ・買主詳細ページの MatchingIntentPanel からいつでも確認できる。
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { areasOverlap, priceRangesOverlapAny, timingUrgencyScore, parseDesiredPriceRangeToMinMax, MATCH_TIMING_OPTIONS, MatchTiming } from './MatchingIntentService';
+import { areasOverlap, priceRangesOverlapAny, timingUrgencyScore, parseDesiredPriceRangeToMinMax, MATCH_TIMING_OPTIONS, MatchTiming, getTimingFreshness } from './MatchingIntentService';
 
 /**
  * seller_buyer_match_contacts テーブルから、指定した売主×買主ペアのうち
@@ -74,6 +74,7 @@ interface MatchIntentFields {
   match_timing: string | null;
   match_price_min: number | null;
   match_price_max: number | null;
+  match_updated_at: string | null;
 }
 
 /**
@@ -87,6 +88,7 @@ interface BuyerDesiredConditions {
   desiredAreas: string[];
   priceRanges: Array<{ min: number; max: number }>;
   desiredTiming: string | null;
+  receptionDate: string | null;
 }
 
 const hasAnyMatchCriteria = (row: MatchIntentFields): boolean => {
@@ -117,6 +119,9 @@ export interface SellerMatchSidebarItem {
   matchContactStatus: string | null;
   buyerMatchCount: number;
   topUrgencyScore: number;
+  name: string | null;
+  propertyAddress: string | null;
+  propertyType: string | null;
 }
 
 export interface BuyerMatchSidebarItem {
@@ -191,6 +196,8 @@ export class MatchingSidebarService {
         if (!matchesSellerToBuyer(seller, buyer)) continue;
         // このペアが連絡済み/連絡不要になっている場合はカウントしない
         if (resolvedPairs.has(`${seller.id}:${buyer.buyer_number}`)) continue;
+        // 買主の希望時期が陳腐化（基準期間の2倍経過）している場合はカウントしない
+        if (getTimingFreshness(buyer.desiredTiming, buyer.receptionDate).freshness === 'expired') continue;
         buyerMatchCount++;
         const score = timingUrgencyScore(buyer.desiredTiming);
         if (score > topUrgencyScore) topUrgencyScore = score;
@@ -204,6 +211,9 @@ export class MatchingSidebarService {
           matchContactStatus: seller.match_contact_status,
           buyerMatchCount,
           topUrgencyScore,
+          name: seller.name,
+          propertyAddress: seller.property_address,
+          propertyType: seller.property_type,
         });
       }
     }
@@ -237,6 +247,8 @@ export class MatchingSidebarService {
         if (!matchesSellerToBuyer(seller, buyer)) continue;
         // このペアが連絡済み/連絡不要になっている場合はカウントしない
         if (resolvedPairs.has(`${seller.id}:${buyer.buyer_number}`)) continue;
+        // 売主の時期が陳腐化（基準期間の2倍経過）している場合はカウントしない
+        if (getTimingFreshness(seller.match_timing, seller.match_updated_at).freshness === 'expired') continue;
         sellerMatchCount++;
         const score = timingUrgencyScore(seller.match_timing);
         if (score > topUrgencyScore) topUrgencyScore = score;
@@ -262,6 +274,7 @@ export class MatchingSidebarService {
    */
   private async fetchActiveSellers(): Promise<Array<MatchIntentFields & {
     id: string; seller_number: string | null; status: string | null; match_contact_status: string | null;
+    name: string | null; property_address: string | null; property_type: string | null;
   }>> {
     const results: any[] = [];
     const PAGE_SIZE = 1000;
@@ -269,7 +282,7 @@ export class MatchingSidebarService {
     while (true) {
       const { data, error } = await this.supabase
         .from('sellers')
-        .select('id, seller_number, status, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, match_contact_status')
+        .select('id, seller_number, status, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, match_contact_status, name, property_address, property_type, match_updated_at')
         .is('deleted_at', null)
         .not('match_updated_at', 'is', null)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
@@ -298,7 +311,7 @@ export class MatchingSidebarService {
     while (true) {
       const { data, error } = await this.supabase
         .from('sellers')
-        .select('id, seller_number, status, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max')
+        .select('id, seller_number, status, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, match_updated_at')
         .is('deleted_at', null)
         .not('match_updated_at', 'is', null)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
@@ -346,7 +359,7 @@ export class MatchingSidebarService {
     while (true) {
       const { data, error } = await this.supabase
         .from('buyers')
-        .select('buyer_number, name, desired_area, desired_timing, price_range_house, price_range_apartment, price_range_land, match_contact_status')
+        .select('buyer_number, name, desired_area, desired_timing, price_range_house, price_range_apartment, price_range_land, match_contact_status, reception_date')
         .is('deleted_at', null)
         .not('desired_area', 'is', null)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
@@ -372,6 +385,7 @@ export class MatchingSidebarService {
           parseDesiredPriceRangeToMinMax(b.price_range_land),
         ].filter((r): r is { min: number; max: number } => r !== null),
         desiredTiming: b.desired_timing || null,
+        receptionDate: b.reception_date || null,
       }))
       // 希望条件ページの「売主をマッチング」ボタンを押した（= 希望時期を選択・保存した）買主のみを対象にする。
       .filter(b => b.desiredAreas.length > 0 && !!b.desiredTiming && MATCH_TIMING_OPTIONS.includes(b.desiredTiming as MatchTiming));

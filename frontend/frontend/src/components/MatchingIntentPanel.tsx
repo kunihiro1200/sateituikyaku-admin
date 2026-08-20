@@ -63,6 +63,7 @@ interface MatchCandidate {
   matchReasons: string[];
   urgencyScore: number;
   contactStatus: string;
+  timingFreshness: 'fresh' | 'warning' | 'expired';
 }
 
 interface MatchingIntentPanelProps {
@@ -343,8 +344,10 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
               </TableRow>
             </TableHead>
             <TableBody>
-              {candidates.map((c) => (
-                <TableRow key={c.id}>
+              {candidates.map((c) => {
+                const isStaleWarning = c.timingFreshness === 'warning';
+                return (
+                <TableRow key={c.id} sx={isStaleWarning ? { bgcolor: '#fff8e1' } : undefined}>
                   <TableCell>
                     <Typography
                       variant="body2"
@@ -371,6 +374,11 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
                         sx={{ bgcolor: TIMING_COLOR[c.matchTiming] || '#9e9e9e', color: 'white' }}
                       />
                     )}
+                    {isStaleWarning && (
+                      <Typography variant="caption" sx={{ display: 'block', color: '#e65100', fontWeight: 'bold', mt: 0.5 }}>
+                        ⚠️ 要確認（時期経過）
+                      </Typography>
+                    )}
                   </TableCell>
                   <TableCell>
                     {(c.matchPriceMin || c.matchPriceMax) ? (
@@ -386,9 +394,18 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, maxWidth: 220 }}>
-                      {c.matchReasons.map((r, idx) => (
-                        <Chip key={idx} label={r} size="small" variant="outlined" />
-                      ))}
+                      {c.matchReasons.map((r, idx) => {
+                        const isWarningReason = r.startsWith('⚠️');
+                        return (
+                          <Chip
+                            key={idx}
+                            label={r}
+                            size="small"
+                            variant={isWarningReason ? 'filled' : 'outlined'}
+                            sx={isWarningReason ? { bgcolor: '#ffe0b2', color: '#e65100', fontWeight: 'bold' } : undefined}
+                          />
+                        );
+                      })}
                     </Box>
                   </TableCell>
                   <TableCell>
@@ -412,7 +429,8 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
                     </Box>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         )}
