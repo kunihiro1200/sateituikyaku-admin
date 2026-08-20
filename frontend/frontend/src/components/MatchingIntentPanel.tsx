@@ -69,8 +69,6 @@ interface MatchingIntentPanelProps {
   entityType: 'seller' | 'buyer';
   entityId: string; // seller: UUID(id), buyer: buyer_number
   initialData?: MatchIntentData;
-  /** trueになったタイミングで自動的に検索を実行する（サイドバーからの遷移時など） */
-  autoSearch?: boolean;
 }
 
 const formatManYen = (yen: number | null | undefined): string => {
@@ -90,7 +88,7 @@ const parseManYenToYen = (man: string): number | null => {
  * 売主・買主の「マッチング欄」入力パネル。
  * 種別・エリア・時期・金額を構造化入力し、保存後に相手候補を検索できる。
  */
-const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, entityId, initialData, autoSearch }) => {
+const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, entityId, initialData }) => {
   const [areas, setAreas] = useState<string[]>(initialData?.matchAreas || []);
   const [areaFreeText, setAreaFreeText] = useState<string>(initialData?.matchAreaFreeText || '');
   const [timing, setTiming] = useState<string>(initialData?.matchTiming || '');
@@ -166,13 +164,31 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     }
   }, [basePath, areas, areaFreeText, timing, priceMin, priceMax, memo]);
 
-  // autoSearch が true になったら自動的に検索を実行する（サイドバーからの遷移時など）
-  useEffect(() => {
-    if (autoSearch && !hasSearched && !searching) {
-      handleSearch();
+  // 保存済みの検索結果を取得する（GETのみ・保存はしない）。
+  // ページを開いた時点で、既存のマッチング条件に対する候補を自動表示するために使う。
+  const fetchExistingCandidates = useCallback(async () => {
+    setSearching(true);
+    setSearchError(null);
+    try {
+      const res = await api.get(`${basePath}/match-candidates`);
+      setCandidates(res.data.candidates || []);
+      setHasSearched(true);
+    } catch (e: any) {
+      setSearchError(e?.response?.data?.error?.message || e?.response?.data?.error || 'マッチング検索に失敗しました');
+      setHasSearched(true);
+    } finally {
+      setSearching(false);
     }
+  }, [basePath]);
+
+  // パネルが表示されたら、保存済みのマッチング条件に対する候補を自動的に表示する
+  // （手動で「🔍 マッチング」ボタンを押さなくても、既存の結果がそのまま見られるようにする）。
+  useEffect(() => {
+    setHasSearched(false);
+    setCandidates(null);
+    fetchExistingCandidates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoSearch]);
+  }, [entityId]);
 
   // 各候補（相手）の連絡状況を更新する。相手ごとに個別のペアとして記録する。
   const handleContactStatusChange = useCallback(async (candidate: MatchCandidate, newStatus: string) => {
@@ -305,7 +321,12 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
             条件に合う{counterpartLabel}が見つかりませんでした。エリア・金額を入力してから再度検索してください。
           </Typography>
         )}
-        {!hasSearched && (
+        {!hasSearched && searching && (
+          <Typography variant="body2" color="text.secondary">
+            読み込み中...
+          </Typography>
+        )}
+        {!hasSearched && !searching && (
           <Typography variant="body2" color="text.secondary">
             「🔍 {counterpartLabel}をマッチング」を押すと候補が表示されます。
           </Typography>

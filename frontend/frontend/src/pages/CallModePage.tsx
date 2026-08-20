@@ -10865,7 +10865,6 @@ HP：https://ifoo-oita.com/
                       matchMemo: (seller as any).matchMemo,
                       matchContactStatus: (seller as any).matchContactStatus,
                     }}
-                    autoSearch={matchingSectionExpanded}
                   />
                 </CollapsibleSection>
               </div>
