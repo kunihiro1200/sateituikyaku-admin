@@ -116,6 +116,9 @@ export default function NewSellerPage() {
   const [sellerCopyOptions, setSellerCopyOptions] = useState<Array<{sellerNumber: string; name: string; id: string}>>([]);
   const [sellerCopyLoading, setSellerCopyLoading] = useState(false);
   const [nextCallDateConfirmOpen, setNextCallDateConfirmOpen] = useState(false);
+  // 売主コピーで売主番号のプレフィックスを明示的に決定したかどうか
+  // trueの間は物件住所に基づく自動プレフィックス切り替え（下記useEffect）を止める
+  const sellerCopyAppliedRef = useRef(false);
 
   // 社員リスト
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -233,7 +236,9 @@ export default function NewSellerPage() {
   }, []);
 
   // 物件住所に「福岡」が含まれる場合、FI番号に切り替え
+  // ※ 売主コピーでコピー元の番号に合わせて採番した場合はこの自動切り替えを行わない
   useEffect(() => {
+    if (sellerCopyAppliedRef.current) return;
     const isFukuoka = propertyAddress.includes('福岡');
     const currentPrefix = sellerNumber.startsWith('FI') ? 'FI' : 'AA';
     const targetPrefix = isFukuoka ? 'FI' : 'AA';
@@ -287,6 +292,19 @@ export default function NewSellerPage() {
       if (seller.email) setEmail(seller.email);
       // 売主コピー時はサイトを「2件目以降査定」にデフォルト設定
       setSite('2件目以降査定');
+
+      // コピー元の売主番号のプレフィックス（FI/AA）に合わせて新しい売主番号を採番
+      const copiedPrefix = option.sellerNumber.startsWith('FI') ? 'FI' : 'AA';
+      sellerCopyAppliedRef.current = true;
+      setSellerNumberLoading(true);
+      try {
+        const numberResponse = await api.get('/api/sellers/next-seller-number', { params: { prefix: copiedPrefix } });
+        setSellerNumber(numberResponse.data.sellerNumber);
+      } catch (numErr) {
+        console.error('Failed to fetch next seller number:', numErr);
+      } finally {
+        setSellerNumberLoading(false);
+      }
     } catch (err) {
       setError('売主情報の取得に失敗しました');
     }
