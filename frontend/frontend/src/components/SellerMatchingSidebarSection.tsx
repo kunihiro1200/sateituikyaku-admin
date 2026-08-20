@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Box, Button, Chip, Typography, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, CircularProgress } from '@mui/material';
 import { ExpandMore, ExpandLess, Close as CloseIcon } from '@mui/icons-material';
+import { useLocation } from 'react-router-dom';
 import api from '../services/api';
 
 interface SellerMatchSidebarItem {
@@ -25,12 +26,33 @@ const SellerMatchingSidebarSection: React.FC = () => {
   const [items, setItems] = useState<SellerMatchSidebarItem[] | null>(null);
   const [loadingList, setLoadingList] = useState(false);
   const [listOpen, setListOpen] = useState(false);
+  const location = useLocation();
 
-  useEffect(() => {
+  const fetchCounts = useCallback(() => {
     api.get('/api/sellers/match-sidebar-counts')
       .then((res) => setCounts(res.data))
       .catch(() => setCounts({ fukuoka: 0, oita: 0 }));
   }, []);
+
+  // 初回マウント時に取得
+  useEffect(() => {
+    fetchCounts();
+  }, [fetchCounts]);
+
+  // 売主一覧ページに戻ってきた時に再取得する
+  // （通話モードページで連絡状況を変更した後、一覧に戻ると最新件数が反映されるようにする）
+  useEffect(() => {
+    if (location.pathname === '/' || location.pathname === '/sellers') {
+      fetchCounts();
+    }
+  }, [location.pathname, fetchCounts]);
+
+  // タブ/ウィンドウにフォーカスが戻った時にも再取得する
+  useEffect(() => {
+    const handleFocus = () => fetchCounts();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [fetchCounts]);
 
   const handleClick = async (area: 'fukuoka' | 'oita') => {
     setExpandedArea(area);
