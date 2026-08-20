@@ -24,6 +24,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import SaveIcon from '@mui/icons-material/Save';
 import api from '../services/api';
 import { ALL_AREA_OPTIONS } from '../utils/buyerDesiredConditionsOptions';
+import MatchContactStatusPanel from './MatchContactStatusPanel';
 
 export const MATCH_TIMING_OPTIONS = ['今すぐ', '3ヶ月以内', '半年以内', '1年以内', '1年以上・様子見'] as const;
 
@@ -43,6 +44,7 @@ interface MatchIntentData {
   matchPriceMin?: number | null;
   matchPriceMax?: number | null;
   matchMemo?: string | null;
+  matchContactStatus?: string | null;
 }
 
 interface MatchCandidate {
@@ -264,6 +266,15 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
         </Box>
       </Box>
 
+      {/* マッチング連絡状況（連絡済み/連絡不要/連絡未） */}
+      <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+        <MatchContactStatusPanel
+          entityType={entityType}
+          entityId={entityId}
+          initialStatus={initialData?.matchContactStatus}
+        />
+      </Box>
+
       {/* 検索結果モーダル */}
       <Dialog open={resultOpen} onClose={() => setResultOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -287,7 +298,15 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
                   sx={{ p: 1.5, border: '1px solid #e0e0e0', borderRadius: 1 }}
                 >
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="subtitle2" fontWeight="bold">
+                    <Typography
+                      variant="subtitle2"
+                      fontWeight="bold"
+                      component="a"
+                      href={c.type === 'seller' ? `/sellers/${c.id}` : `/buyers/${c.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{ color: 'primary.main', textDecoration: 'underline', cursor: 'pointer' }}
+                    >
                       {c.number || c.id}{c.name ? `（${c.name}）` : ''}
                     </Typography>
                     {c.matchTiming && (

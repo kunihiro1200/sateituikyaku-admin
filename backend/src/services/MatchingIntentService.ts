@@ -74,7 +74,7 @@ function normalizeAreaFreeText(text: string | null | undefined): string | null {
  * 1. 既存エリアコード配列（match_areas）が1つ以上重なる → 一致
  * 2. 自由入力地名同士が部分一致する（どちらかがどちらかを含む） → 一致
  */
-function areasOverlap(
+export function areasOverlap(
   areasA: string[],
   freeTextA: string | null,
   areasB: string[],
@@ -101,7 +101,7 @@ function areasOverlap(
  * 金額帯がオーバーラップするか判定する。
  * どちらかの上限・下限が未入力の場合は、その軸に制約がないとみなして通す。
  */
-function priceRangesOverlap(
+export function priceRangesOverlap(
   minA: number | null | undefined,
   maxA: number | null | undefined,
   minB: number | null | undefined,
@@ -131,7 +131,7 @@ function priceRangesOverlap(
  * 現時点では「両者に何らかの時期入力があるか」を軽い参考条件として扱い、
  * 未入力の場合は制約しない（時期は緊急度のソート表示に使うのが主目的）。
  */
-function timingIsCompatible(
+export function timingIsCompatible(
   timingA: string | null | undefined,
   timingB: string | null | undefined
 ): { matched: boolean; reason: string | null } {
@@ -177,6 +177,32 @@ export class MatchingIntentService {
       .eq('buyer_number', buyerNumber);
     if (error) {
       throw new Error(`買主マッチング情報の更新に失敗しました: ${error.message}`);
+    }
+  }
+
+  /**
+   * 売主のマッチング連絡状況（連絡済み/連絡不要/連絡未）のみを更新する
+   */
+  async updateSellerContactStatus(sellerId: string, matchContactStatus: string | null): Promise<void> {
+    const { error } = await this.supabase
+      .from('sellers')
+      .update({ match_contact_status: matchContactStatus })
+      .eq('id', sellerId);
+    if (error) {
+      throw new Error(`売主連絡状況の更新に失敗しました: ${error.message}`);
+    }
+  }
+
+  /**
+   * 買主のマッチング連絡状況（連絡済み/連絡不要/連絡未）のみを更新する
+   */
+  async updateBuyerContactStatus(buyerNumber: string, matchContactStatus: string | null): Promise<void> {
+    const { error } = await this.supabase
+      .from('buyers')
+      .update({ match_contact_status: matchContactStatus })
+      .eq('buyer_number', buyerNumber);
+    if (error) {
+      throw new Error(`買主連絡状況の更新に失敗しました: ${error.message}`);
     }
   }
 
@@ -297,15 +323,21 @@ export class MatchingIntentService {
   }
 
   /**
-   * 指定した買主に対して、マッチする売主候補を検索する
+   * 買主の「希望条件」（desired_area / price_range_house,apartment,land / desired_timing）を使って
+   * マッチする売主候補を検索する。
+   *
+   * 買主側は希望条件ページに既存の構造化フィールドがあるため、
+   * sellers 用に新設した match_areas 等とは異なり、買主専用の match_* フィールドは使わない。
+   * 買主の希望条件を売主の match_* フィールドと同じ形式に変換して比較する。
    */
-  async findSellerCandidatesForBuyer(buyerNumber: string): Promise<{
+  async findSellerCandidatesForBuyerDesiredConditions(buyerNumber: string): Promise<{
     source: { id: string; number: string | null; name: string | null } | null;
     candidates: MatchCandidate[];
+    missingRequiredFields: string[];
   }> {
     const { data: buyer, error } = await this.supabase
       .from('buyers')
-      .select('buyer_number, name, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max')
+      .select('buyer_number, name, desired_area, desired_timing, price_range_house, price_range_apartment, price_range_land')
       .eq('buyer_number', buyerNumber)
       .single();
 
@@ -313,12 +345,33 @@ export class MatchingIntentService {
       throw new Error('買主が見つかりませんでした');
     }
 
-    const buyerAreas: string[] = Array.isArray(buyer.match_areas) ? buyer.match_areas : [];
-    const hasAnyCriteria = buyerAreas.length > 0 || !!buyer.match_area_free_text;
+    const missingRequiredFields: string[] = [];
+    if (!buyer.desired_timing || !MATCH_TIMING_OPTIONS.includes(buyer.desired_timing as MatchTiming)) {
+      missingRequiredFields.push('desired_timing');
+    }
+    if (missingRequiredFields.length > 0) {
+      return {
+        source: { id: buyer.buyer_number, number: buyer.buyer_number, name: buyer.name },
+        candidates: [],
+        missingRequiredFields,
+      };
+    }
+
+    const buyerAreas: string[] = buyer.desired_area
+      ? String(buyer.desired_area).split('|').map((v: string) => v.trim()).filter(Boolean)
+      : [];
+    const buyerPriceRanges = [
+      parseDesiredPriceRangeToMinMax(buyer.price_range_house),
+      parseDesiredPriceRangeToMinMax(buyer.price_range_apartment),
+      parseDesiredPriceRangeToMinMax(buyer.price_range_land),
+    ].filter((r): r is { min: number; max: number } => r !== null);
+
+    const hasAnyCriteria = buyerAreas.length > 0;
     if (!hasAnyCriteria) {
       return {
         source: { id: buyer.buyer_number, number: buyer.buyer_number, name: buyer.name },
         candidates: [],
+        missingRequiredFields: [],
       };
     }
 
@@ -329,13 +382,15 @@ export class MatchingIntentService {
       const sellerAreas: string[] = Array.isArray(seller.match_areas) ? seller.match_areas : [];
       if (sellerAreas.length === 0 && !seller.match_area_free_text) continue;
 
-      const areaResult = areasOverlap(buyerAreas, buyer.match_area_free_text, sellerAreas, seller.match_area_free_text);
+      const areaResult = areasOverlap(buyerAreas, null, sellerAreas, seller.match_area_free_text);
       if (!areaResult.matched) continue;
 
-      const priceResult = priceRangesOverlap(buyer.match_price_min, buyer.match_price_max, seller.match_price_min, seller.match_price_max);
+      const priceResult = buyerPriceRanges.length === 0
+        ? { matched: true, reason: null as string | null }
+        : priceRangesOverlapAny(buyerPriceRanges, seller.match_price_min, seller.match_price_max);
       if (!priceResult.matched) continue;
 
-      const timingResult = timingIsCompatible(buyer.match_timing, seller.match_timing);
+      const timingResult = timingIsCompatible(buyer.desired_timing, seller.match_timing);
       const reasons = [areaResult.reason, priceResult.reason, timingResult.reason].filter((r): r is string => !!r);
 
       candidates.push({
@@ -360,6 +415,57 @@ export class MatchingIntentService {
     return {
       source: { id: buyer.buyer_number, number: buyer.buyer_number, name: buyer.name },
       candidates,
+      missingRequiredFields: [],
     };
   }
+}
+
+/**
+ * 買主の価格帯選択肢（PRICE_RANGE_DETACHED_OPTIONS等）を円単位の min/max に変換する。
+ * 「指定なし」「ヒアリングできず」等は制約なしとして null を返す。
+ * 例: "~1900万" → { min: 0, max: 19000000 }
+ *     "1000万~2999万" → { min: 10000000, max: 29990000 }
+ *     "2000万以上" → { min: 20000000, max: Number.MAX_SAFE_INTEGER }
+ */
+export function parseDesiredPriceRangeToMinMax(value: string | null | undefined): { min: number; max: number } | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === '指定なし' || trimmed === 'ヒアリングできず') return null;
+
+  const toYen = (manStr: string): number => parseInt(manStr, 10) * 10000;
+
+  // "1000万~2999万" のような範囲形式
+  const rangeMatch = trimmed.match(/^(\d+)万\s*[~〜\-]\s*(\d+)万$/);
+  if (rangeMatch) {
+    return { min: toYen(rangeMatch[1]), max: toYen(rangeMatch[2]) };
+  }
+
+  // "~1900万" のような上限のみ形式
+  const upperOnlyMatch = trimmed.match(/^[~〜]\s*(\d+)万$/);
+  if (upperOnlyMatch) {
+    return { min: 0, max: toYen(upperOnlyMatch[1]) };
+  }
+
+  // "2000万以上" のような下限のみ形式
+  const lowerOnlyMatch = trimmed.match(/^(\d+)万\s*以上$/);
+  if (lowerOnlyMatch) {
+    return { min: toYen(lowerOnlyMatch[1]), max: Number.MAX_SAFE_INTEGER };
+  }
+
+  return null;
+}
+
+/**
+ * 買主の複数の価格帯（戸建/マンション/土地）のいずれかが、売主の金額帯とオーバーラップするか判定する（OR条件）。
+ */
+export function priceRangesOverlapAny(
+  buyerRanges: Array<{ min: number; max: number }>,
+  sellerMin: number | null | undefined,
+  sellerMax: number | null | undefined
+): { matched: boolean; reason: string | null } {
+  for (const range of buyerRanges) {
+    const result = priceRangesOverlap(range.min, range.max, sellerMin, sellerMax);
+    if (result.matched) return result;
+  }
+  return { matched: false, reason: null };
 }

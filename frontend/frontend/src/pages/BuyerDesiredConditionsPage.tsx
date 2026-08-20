@@ -43,14 +43,18 @@ import {
   CORNER_ROOM_OPTIONS,
   GOOD_VIEW_OPTIONS,
   MONTHLY_PARKING_OK_OPTIONS,
+  DESIRED_TIMING_OPTIONS,
 } from '../utils/buyerDesiredConditionsOptions';
+import SellerMatchingButton from '../components/SellerMatchingButton';
+
+const DESIRED_TIMING_VALID_VALUES = DESIRED_TIMING_OPTIONS.map((o) => o.value);
 
 interface Buyer {
   [key: string]: any;
 }
 
 const DESIRED_CONDITIONS_FIELDS = [
-  { key: 'desired_timing', label: '希望時期', inlineEditable: true, fieldType: 'text' },
+  { key: 'desired_timing', label: '希望時期', inlineEditable: true, fieldType: 'dropdown', options: DESIRED_TIMING_OPTIONS },
   { key: 'desired_area', label: '★エリア', inlineEditable: false, fieldType: 'multiselect', options: [] as { value: string; label: string }[] },
   { key: 'desired_property_type', label: '★希望種別', inlineEditable: true, fieldType: 'dropdown', options: DESIRED_PROPERTY_TYPE_OPTIONS },
   { key: 'desired_building_age', label: '★築年数', inlineEditable: true, fieldType: 'dropdown', options: BUILDING_AGE_OPTIONS },
@@ -424,16 +428,22 @@ export default function BuyerDesiredConditionsPage() {
             </Box>
           </Box>
         </Box>
-        <Button
-          variant="contained"
-          color={hasChanges ? "warning" : "primary"}
-          disabled={isSaving || !hasChanges}
-          onClick={handleSaveAll}
-          startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
-          sx={{ minWidth: 100 }}
-        >
-          {isSaving ? '保存中...' : '保存'}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <SellerMatchingButton
+            buyerNumber={buyer_number!}
+            isDesiredTimingMissing={!buyer.desired_timing || !DESIRED_TIMING_VALID_VALUES.includes(buyer.desired_timing)}
+          />
+          <Button
+            variant="contained"
+            color={hasChanges ? "warning" : "primary"}
+            disabled={isSaving || !hasChanges}
+            onClick={handleSaveAll}
+            startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
+            sx={{ minWidth: 100 }}
+          >
+            {isSaving ? '保存中...' : '保存'}
+          </Button>
+        </Box>
       </Box>
 
       {/* 配信メール「要」時の必須項目警告バナー */}

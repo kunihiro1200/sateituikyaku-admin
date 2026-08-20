@@ -17,10 +17,12 @@ import { SpreadsheetSyncService } from '../services/SpreadsheetSyncService';
 import { GoogleSheetsClient } from '../services/GoogleSheetsClient';
 import { fetchPopulationData, estimateAreaRatio, fetchTransactionData, fetchPriceData } from '../services/EStatService';
 import { MatchingIntentService, MATCH_TIMING_OPTIONS } from '../services/MatchingIntentService';
+import { MatchingSidebarService } from '../services/MatchingSidebarService';
 
 const router = Router();
 const sellerService = new SellerService();
 const matchingIntentService = new MatchingIntentService();
+const matchingSidebarService = new MatchingSidebarService();
 
 // シングルトンインスタンス（キャッシュを維持するため）
 const distributionCalculator = new PropertyDistributionAreaCalculator();
@@ -160,6 +162,37 @@ router.get('/sidebar-counts', async (req: Request, res: Response) => {
         retryable: true,
       },
     });
+  }
+});
+
+/**
+ * マッチングサイドバー件数を取得（福岡/大分別）
+ * GET /api/sellers/match-sidebar-counts
+ * ⚠️ /:id よりも前に定義する必要がある
+ */
+router.get('/match-sidebar-counts', async (_req: Request, res: Response) => {
+  try {
+    const counts = await matchingSidebarService.getSellerSidebarCounts();
+    res.json(counts);
+  } catch (error: any) {
+    console.error('Get seller match-sidebar-counts error:', error);
+    res.status(500).json({ error: error.message || 'マッチングサイドバー件数の取得に失敗しました' });
+  }
+});
+
+/**
+ * マッチングサイドバーの一覧を取得（福岡/大分別）
+ * GET /api/sellers/match-sidebar-list?area=fukuoka|oita
+ * ⚠️ /:id よりも前に定義する必要がある
+ */
+router.get('/match-sidebar-list', async (req: Request, res: Response) => {
+  try {
+    const area = req.query.area === 'fukuoka' ? 'fukuoka' : 'oita';
+    const list = await matchingSidebarService.getSellerMatchList(area);
+    res.json({ items: list });
+  } catch (error: any) {
+    console.error('Get seller match-sidebar-list error:', error);
+    res.status(500).json({ error: error.message || 'マッチングサイドバー一覧の取得に失敗しました' });
   }
 });
 
@@ -3143,6 +3176,30 @@ router.put('/:id/match-intent', async (req: Request, res: Response) => {
     console.error('Update seller match-intent error:', error);
     res.status(500).json({
       error: { code: 'MATCH_INTENT_UPDATE_ERROR', message: error.message || 'マッチング情報の更新に失敗しました', retryable: true },
+    });
+  }
+});
+
+/**
+ * 売主のマッチング連絡状況（連絡済み/連絡不要/連絡未）のみを更新
+ * PUT /api/sellers/:id/match-contact-status
+ */
+router.put('/:id/match-contact-status', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { matchContactStatus } = req.body;
+    const validValues = ['連絡済み', '連絡不要', '連絡未', null];
+    if (!validValues.includes(matchContactStatus)) {
+      return res.status(400).json({
+        error: { code: 'INVALID_CONTACT_STATUS', message: 'matchContactStatus の値が不正です', retryable: false },
+      });
+    }
+    await matchingIntentService.updateSellerContactStatus(id, matchContactStatus);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Update seller match-contact-status error:', error);
+    res.status(500).json({
+      error: { code: 'CONTACT_STATUS_UPDATE_ERROR', message: error.message || '連絡状況の更新に失敗しました', retryable: true },
     });
   }
 });

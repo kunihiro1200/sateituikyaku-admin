@@ -170,3 +170,12 @@ export const MONTHLY_PARKING_OK_OPTIONS = [
   { value: '不可', label: '不可' },
   { value: 'どちらでも', label: 'どちらでも' },
 ];
+
+// 希望時期（売主マッチング機能の match_timing と同じ選択肢に揃える）
+export const DESIRED_TIMING_OPTIONS = [
+  { value: '今すぐ', label: '今すぐ' },
+  { value: '3ヶ月以内', label: '3ヶ月以内' },
+  { value: '半年以内', label: '半年以内' },
+  { value: '1年以内', label: '1年以内' },
+  { value: '1年以上・様子見', label: '1年以上・様子見' },
+];

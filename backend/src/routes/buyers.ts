@@ -11,11 +11,13 @@ import { apiKeyAuth } from '../middleware/apiKeyAuth';
 import { BuyerLinkageCache } from '../services/BuyerLinkageCache';
 import { PropertyListingService } from '../services/PropertyListingService';
 import { MatchingIntentService, MATCH_TIMING_OPTIONS } from '../services/MatchingIntentService';
+import { MatchingSidebarService } from '../services/MatchingSidebarService';
 import * as cheerio from 'cheerio';
 
 const router = Router();
 const buyerService = new BuyerService();
 const matchingIntentService = new MatchingIntentService();
+const matchingSidebarService = new MatchingSidebarService();
 const buyerSyncService = new BuyerSyncService();
 const emailHistoryService = new EmailHistoryService();
 const buyerLinkageCache = new BuyerLinkageCache();
@@ -1014,41 +1016,54 @@ router.post('/', async (req: Request, res: Response) => {
 
 // ===== 具体的なルート（/:id よりも前に定義する必要がある） =====
 
-// 買主のマッチング入力欄（種別/エリア/時期/金額）を更新
-router.put('/:id/match-intent', async (req: Request, res: Response) => {
+// マッチングサイドバー件数を取得
+router.get('/match-sidebar-counts', async (_req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const { matchIntentType, matchAreas, matchAreaFreeText, matchTiming, matchPriceMin, matchPriceMax, matchMemo } = req.body;
-
-    if (matchTiming !== undefined && matchTiming !== null && !MATCH_TIMING_OPTIONS.includes(matchTiming)) {
-      return res.status(400).json({ error: '時期の値が不正です' });
-    }
-    if (matchAreas !== undefined && matchAreas !== null && !Array.isArray(matchAreas)) {
-      return res.status(400).json({ error: 'matchAreas は配列で指定してください' });
-    }
-
-    await matchingIntentService.updateBuyerIntent(id, {
-      matchIntentType,
-      matchAreas,
-      matchAreaFreeText,
-      matchTiming,
-      matchPriceMin,
-      matchPriceMax,
-      matchMemo,
-    });
-
-    res.json({ success: true });
+    const count = await matchingSidebarService.getBuyerSidebarCount();
+    res.json({ count });
   } catch (error: any) {
-    console.error('Update buyer match-intent error:', error);
-    res.status(500).json({ error: error.message || 'マッチング情報の更新に失敗しました' });
+    console.error('Get buyer match-sidebar-counts error:', error);
+    res.status(500).json({ error: error.message || 'マッチングサイドバー件数の取得に失敗しました' });
   }
 });
 
-// 買主に対するマッチング売主候補を検索
+// マッチングサイドバーの一覧を取得
+router.get('/match-sidebar-list', async (_req: Request, res: Response) => {
+  try {
+    const list = await matchingSidebarService.getBuyerMatchList();
+    res.json({ items: list });
+  } catch (error: any) {
+    console.error('Get buyer match-sidebar-list error:', error);
+    res.status(500).json({ error: error.message || 'マッチングサイドバー一覧の取得に失敗しました' });
+  }
+});
+
+// 買主のマッチング連絡状況（連絡済み/連絡不要/連絡未）を更新
+// ※ 希望条件（desired_area/price_range_*/desired_timing）はマッチング判定にそのまま使うため、
+//    買主専用の match_areas 等の入力欄は使わない
+router.put('/:id/match-contact-status', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { matchContactStatus } = req.body;
+    const validValues = ['連絡済み', '連絡不要', '連絡未', null];
+    if (!validValues.includes(matchContactStatus)) {
+      return res.status(400).json({ error: 'matchContactStatus の値が不正です' });
+    }
+
+    await matchingIntentService.updateBuyerContactStatus(id, matchContactStatus);
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Update buyer match-contact-status error:', error);
+    res.status(500).json({ error: error.message || '連絡状況の更新に失敗しました' });
+  }
+});
+
+// 買主の希望条件（desired_area/price_range_*/desired_timing）を使って売主候補を検索
 router.get('/:id/match-candidates', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const result = await matchingIntentService.findSellerCandidatesForBuyer(id);
+    const result = await matchingIntentService.findSellerCandidatesForBuyerDesiredConditions(id);
     res.json(result);
   } catch (error: any) {
     console.error('Get buyer match-candidates error:', error);
