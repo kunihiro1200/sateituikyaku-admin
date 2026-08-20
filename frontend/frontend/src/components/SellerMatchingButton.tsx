@@ -31,6 +31,11 @@ interface SellerMatchingButtonProps {
   buyerNumber: string;
   /** 希望時期が未入力かどうか（呼び出し元で判定した最新の値を渡す） */
   isDesiredTimingMissing: boolean;
+  /**
+   * 検索前に呼び出される。未保存の変更（希望時期の選択など）を保存するために使う。
+   * バックエンドは保存済みのDB値を見て検索するため、検索前に必ず保存を完了させる必要がある。
+   */
+  onBeforeSearch?: () => Promise<void>;
 }
 
 const formatManYen = (yen: number | null): string => {
@@ -44,7 +49,7 @@ const formatManYen = (yen: number | null): string => {
  * 追客中でない専任・一般媒介・他決→専任の売主候補を検索する。
  * 希望時期が未入力の場合は検索前にエラーを表示する。
  */
-const SellerMatchingButton: React.FC<SellerMatchingButtonProps> = ({ buyerNumber, isDesiredTimingMissing }) => {
+const SellerMatchingButton: React.FC<SellerMatchingButtonProps> = ({ buyerNumber, isDesiredTimingMissing, onBeforeSearch }) => {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [candidates, setCandidates] = useState<MatchCandidate[] | null>(null);
@@ -61,6 +66,10 @@ const SellerMatchingButton: React.FC<SellerMatchingButtonProps> = ({ buyerNumber
     setLoading(true);
     setError(null);
     try {
+      // 未保存の変更（希望時期の選択など）があれば先に保存する
+      if (onBeforeSearch) {
+        await onBeforeSearch();
+      }
       const res = await api.get(`/api/buyers/${buyerNumber}/match-candidates`);
       if (res.data.missingRequiredFields && res.data.missingRequiredFields.length > 0) {
         setError('「希望時期」が未入力です。プルダウンから選択して保存してから、再度お試しください。');

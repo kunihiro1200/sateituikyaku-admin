@@ -431,7 +431,14 @@ export default function BuyerDesiredConditionsPage() {
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           <SellerMatchingButton
             buyerNumber={buyer_number!}
-            isDesiredTimingMissing={!buyer.desired_timing || !DESIRED_TIMING_VALID_VALUES.includes(buyer.desired_timing)}
+            isDesiredTimingMissing={(() => {
+              // 未保存の変更（プルダウンで選択したがまだ保存していない値）を優先してチェックする
+              const effectiveTiming = pendingChanges.desired_timing !== undefined
+                ? pendingChanges.desired_timing
+                : buyer.desired_timing;
+              return !effectiveTiming || !DESIRED_TIMING_VALID_VALUES.includes(effectiveTiming);
+            })()}
+            onBeforeSearch={handleSaveAll}
           />
           <Button
             variant="contained"
