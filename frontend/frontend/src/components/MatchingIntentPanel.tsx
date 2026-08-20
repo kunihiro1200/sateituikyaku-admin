@@ -114,6 +114,11 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
   const [hasSearched, setHasSearched] = useState(false);
   const [contactSaving, setContactSaving] = useState<Record<string, boolean>>({});
 
+  // entityId/direction（表示対象そのもの）が変わった時だけ入力欄をリセットする。
+  // initialData は呼び出し元（CallModePage等）で毎レンダリングごとに新しいオブジェクトとして
+  // 生成されるため、依存配列に入れると親の再レンダリングだけで入力中の値が上書きされてしまう
+  // （例: エリアを自由入力してもタイプ中に他の操作で親が再レンダリングされると消える不具合）。
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setAreas(initialData?.matchAreas || []);
     setAreaFreeText(initialData?.matchAreaFreeText || '');
@@ -121,7 +126,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     setPriceMin(formatManYen(initialData?.matchPriceMin));
     setPriceMax(formatManYen(initialData?.matchPriceMax));
     setMemo(initialData?.matchMemo || '');
-  }, [entityId, initialData]);
+  }, [entityId, direction]);
 
   const basePath = entityType === 'seller' ? `/api/sellers/${entityId}` : `/api/buyers/${entityId}`;
   // 「買いたい」方向（売主が買い替え等で購入希望を持つケース）は独立したエンドポイント群を使う
