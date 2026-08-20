@@ -890,9 +890,10 @@ router.post('/get-sheet-buyer-numbers', authenticateOrApiKey, async (_req: Reque
 router.use(authenticate);
 
 // 次の買主番号を取得（/:id よりも前に定義する必要がある）
-router.get('/next-buyer-number', async (_req: Request, res: Response) => {
+router.get('/next-buyer-number', async (req: Request, res: Response) => {
   try {
-    const buyerNumber = await (buyerService as any).generateBuyerNumber();
+    const propertyNumber = typeof req.query.propertyNumber === 'string' ? req.query.propertyNumber : undefined;
+    const buyerNumber = await buyerService.previewNextBuyerNumber(propertyNumber);
     res.json({ buyerNumber });
   } catch (error: any) {
     console.error('Error generating buyer number:', error);

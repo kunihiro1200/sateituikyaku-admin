@@ -149,15 +149,15 @@ export default function NewBuyerPage() {
   const [isFukuoka, setIsFukuoka] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // 次の買主番号を取得
-    api.get('/api/buyers/next-buyer-number')
+    // 次の買主番号を取得（物件番号がFI等の場合はFK採番のプレビューになる）
+    api.get('/api/buyers/next-buyer-number', { params: propertyNumber ? { propertyNumber } : {} })
       .then(res => setNextBuyerNumber(res.data.buyerNumber))
       .catch(err => console.error('Failed to fetch next buyer number:', err));
     // 通常スタッフのイニシャル一覧を取得
     api.get('/api/employees/normal-initials')
       .then(res => setNormalInitials(res.data.initials || []))
       .catch(err => console.error('Failed to fetch normal initials:', err));
-  }, []);
+  }, [propertyNumber]);
 
   // 物件番号から住所を取得して福岡判定を更新
   const checkFukuokaFromProperty = async (propNum: string) => {

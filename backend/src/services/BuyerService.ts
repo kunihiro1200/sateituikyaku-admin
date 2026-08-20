@@ -823,6 +823,15 @@ export class BuyerService {
   }
 
   /**
+   * 次の買主番号をプレビュー取得する（登録前の画面表示用）
+   * @param propertyNumber 物件番号（指定があればFI判定等に使用）
+   */
+  async previewNextBuyerNumber(propertyNumber?: string): Promise<string> {
+    const isFukuoka = propertyNumber ? await this.isFukuokaBuyer({ property_number: propertyNumber }) : false;
+    return this.generateBuyerNumber(isFukuoka);
+  }
+
+  /**
    * サイドバーカウント更新が必要かどうかを判定
    * @param updateData 更新データ
    * @returns サイドバーカウント更新が必要な場合はtrue
