@@ -321,7 +321,12 @@ export class MatchingIntentService {
   }
 
   /**
-   * 指定した売主に対して、マッチする買主候補を検索する
+   * 指定した売主に対して、マッチする買主候補を検索する。
+   *
+   * 買主側は希望条件ページの既存フィールド（desired_area / price_range_house,apartment,land /
+   * desired_timing）を使う。買主専用の match_* フィールドは使わない（廃止済み）。
+   * これにより、つうわモードページのマッチング結果と、サイドバーのカウント（MatchingSidebarService）が
+   * 同じデータソースを参照し、結果が一致するようにする。
    */
   async findBuyerCandidatesForSeller(sellerId: string): Promise<{
     source: { id: string; number: string | null; name: string | null } | null;
@@ -346,23 +351,21 @@ export class MatchingIntentService {
       };
     }
 
-    // buyersテーブルの match_areas は JSONB のためPostgRESTでの配列重なり検索は行わず、
-    // 該当しそうな買主を取得したうえでJS側で判定する（既存のBuyerCandidateServiceと同じ方針）。
-    const buyers = await this.fetchAllWithMatchIntent('buyers', 'buyer_number, name, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, match_memo, match_updated_at');
+    const buyers = await this.fetchAllBuyersWithDesiredConditions();
 
     const candidates: MatchCandidate[] = [];
-    for (const buyer of buyers || []) {
-      const buyerAreas: string[] = Array.isArray(buyer.match_areas) ? buyer.match_areas : [];
-      if (buyerAreas.length === 0 && !buyer.match_area_free_text) continue;
+    for (const buyer of buyers) {
+      if (buyer.desiredAreas.length === 0) continue;
 
-      const areaResult = areasOverlap(sellerAreas, seller.match_area_free_text, buyerAreas, buyer.match_area_free_text);
+      const areaResult = areasOverlap(sellerAreas, seller.match_area_free_text, buyer.desiredAreas, null);
       if (!areaResult.matched) continue;
 
-      const priceResult = priceRangesOverlap(seller.match_price_min, seller.match_price_max, buyer.match_price_min, buyer.match_price_max);
+      const priceResult = buyer.priceRanges.length === 0
+        ? { matched: true, reason: null as string | null }
+        : priceRangesOverlapAny(buyer.priceRanges, seller.match_price_min, seller.match_price_max);
       if (!priceResult.matched) continue;
 
-      const timingResult = timingIsCompatible(seller.match_timing, buyer.match_timing);
-
+      const timingResult = timingIsCompatible(seller.match_timing, buyer.desiredTiming);
       const reasons = [areaResult.reason, priceResult.reason, timingResult.reason].filter((r): r is string => !!r);
 
       candidates.push({
@@ -370,15 +373,15 @@ export class MatchingIntentService {
         id: buyer.buyer_number,
         number: buyer.buyer_number,
         name: buyer.name,
-        matchAreas: buyerAreas,
-        matchAreaFreeText: buyer.match_area_free_text,
-        matchTiming: buyer.match_timing,
-        matchPriceMin: buyer.match_price_min,
-        matchPriceMax: buyer.match_price_max,
-        matchMemo: buyer.match_memo,
-        matchUpdatedAt: buyer.match_updated_at,
+        matchAreas: buyer.desiredAreas,
+        matchAreaFreeText: null,
+        matchTiming: buyer.desiredTiming,
+        matchPriceMin: buyer.priceRanges[0]?.min ?? null,
+        matchPriceMax: buyer.priceRanges[0]?.max ?? null,
+        matchMemo: null,
+        matchUpdatedAt: null,
         matchReasons: reasons,
-        urgencyScore: timingUrgencyScore(buyer.match_timing),
+        urgencyScore: timingUrgencyScore(buyer.desiredTiming),
         contactStatus: '連絡未',
       });
     }
@@ -395,6 +398,50 @@ export class MatchingIntentService {
       source: { id: seller.id, number: seller.seller_number, name: null },
       candidates,
     };
+  }
+
+  /**
+   * 希望条件（desired_area / price_range_* / desired_timing）が入力済みの買主を全件取得し、
+   * 売主とのマッチング判定用の中間形式に変換する。
+   * MatchingSidebarService.fetchBuyersWithDesiredConditions と同じロジック。
+   */
+  private async fetchAllBuyersWithDesiredConditions(): Promise<Array<{
+    buyer_number: string; name: string | null; desiredAreas: string[];
+    priceRanges: Array<{ min: number; max: number }>; desiredTiming: string | null;
+  }>> {
+    const results: any[] = [];
+    const PAGE_SIZE = 1000;
+    let page = 0;
+    while (true) {
+      const { data, error } = await this.supabase
+        .from('buyers')
+        .select('buyer_number, name, desired_area, desired_timing, price_range_house, price_range_apartment, price_range_land')
+        .is('deleted_at', null)
+        .not('desired_area', 'is', null)
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+      if (error) throw new Error(`買主取得に失敗しました: ${error.message}`);
+      if (!data || data.length === 0) break;
+      results.push(...data);
+      if (data.length < PAGE_SIZE) break;
+      page++;
+    }
+
+    return results
+      .map(b => ({
+        buyer_number: b.buyer_number,
+        name: b.name,
+        desiredAreas: b.desired_area
+          ? String(b.desired_area).split('|').map((v: string) => v.trim()).filter(Boolean)
+          : [],
+        priceRanges: [
+          parseDesiredPriceRangeToMinMax(b.price_range_house),
+          parseDesiredPriceRangeToMinMax(b.price_range_apartment),
+          parseDesiredPriceRangeToMinMax(b.price_range_land),
+        ].filter((r): r is { min: number; max: number } => r !== null),
+        desiredTiming: b.desired_timing || null,
+      }))
+      .filter(b => b.desiredAreas.length > 0);
   }
 
   /**

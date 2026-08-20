@@ -24,6 +24,33 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { areasOverlap, priceRangesOverlapAny, timingUrgencyScore, parseDesiredPriceRangeToMinMax } from './MatchingIntentService';
 
+/**
+ * seller_buyer_match_contacts テーブルから、指定した売主×買主ペアのうち
+ * 「連絡未」でない（連絡済み/連絡不要になっている）ペアの組み合わせキー集合を取得する。
+ * キーは `${sellerId}:${buyerNumber}` の形式。
+ */
+async function fetchResolvedPairKeys(supabase: SupabaseClient): Promise<Set<string>> {
+  const resolved = new Set<string>();
+  const PAGE_SIZE = 1000;
+  let page = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from('seller_buyer_match_contacts')
+      .select('seller_id, buyer_number, contact_status')
+      .neq('contact_status', '連絡未')
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+    if (error) throw new Error(`連絡状況の取得に失敗しました: ${error.message}`);
+    if (!data || data.length === 0) break;
+    for (const row of data) {
+      resolved.add(`${row.seller_id}:${row.buyer_number}`);
+    }
+    if (data.length < PAGE_SIZE) break;
+    page++;
+  }
+  return resolved;
+}
+
 const SELLER_ACTIVE_STATUSES = ['追客中', '他決→追客', '除外後追客中'];
 const SELLER_LISTED_STATUSES = ['専任媒介', '一般媒介', '他決→専任'];
 
@@ -35,10 +62,6 @@ const isSellerActiveForFollowUp = (status: string | null | undefined): boolean =
 const isSellerListed = (status: string | null | undefined): boolean => {
   const s = status || '';
   return SELLER_LISTED_STATUSES.some(st => s.includes(st));
-};
-
-const isContactDone = (contactStatus: string | null | undefined): boolean => {
-  return contactStatus === '連絡済み' || contactStatus === '連絡不要';
 };
 
 const isFiSellerNumber = (sellerNumber: string | null | undefined): boolean => {
@@ -147,24 +170,27 @@ export class MatchingSidebarService {
 
   /**
    * 追客中売主 × 買主の希望条件 の総当たりマッチングを計算する（売主視点）。
+   * 売主×買主ペア単位の連絡状況（seller_buyer_match_contacts）が
+   * '連絡済み'/'連絡不要' になっているペアはカウント対象から除外する。
    */
   private async getSellerMatchItems(): Promise<SellerMatchSidebarItem[]> {
     const sellers = await this.fetchActiveSellers();
     if (sellers.length === 0) return [];
 
     const buyers = await this.fetchBuyersWithDesiredConditions();
+    const resolvedPairs = await fetchResolvedPairKeys(this.supabase);
 
     const items: SellerMatchSidebarItem[] = [];
     for (const seller of sellers) {
-      if (isContactDone(seller.match_contact_status)) continue;
       if (!hasAnyMatchCriteria(seller)) continue;
 
       let buyerMatchCount = 0;
       let topUrgencyScore = 0;
       for (const buyer of buyers) {
-        if (isContactDone(buyer.match_contact_status)) continue;
         if (buyer.desiredAreas.length === 0) continue;
         if (!matchesSellerToBuyer(seller, buyer)) continue;
+        // このペアが連絡済み/連絡不要になっている場合はカウントしない
+        if (resolvedPairs.has(`${seller.id}:${buyer.buyer_number}`)) continue;
         buyerMatchCount++;
         const score = timingUrgencyScore(buyer.desiredTiming);
         if (score > topUrgencyScore) topUrgencyScore = score;
@@ -188,6 +214,8 @@ export class MatchingSidebarService {
 
   /**
    * 買主の希望条件 × (専任/一般媒介かつ非公開でない物件を持つ売主) の総当たりマッチングを計算する（買主視点）。
+   * 売主×買主ペア単位の連絡状況（seller_buyer_match_contacts）が
+   * '連絡済み'/'連絡不要' になっているペアはカウント対象から除外する。
    */
   private async getBuyerMatchItems(): Promise<BuyerMatchSidebarItem[]> {
     const buyers = await this.fetchBuyersWithDesiredConditions();
@@ -196,9 +224,10 @@ export class MatchingSidebarService {
     const listedSellers = await this.fetchListedSellersWithVisibleProperty();
     if (listedSellers.length === 0) return [];
 
+    const resolvedPairs = await fetchResolvedPairKeys(this.supabase);
+
     const items: BuyerMatchSidebarItem[] = [];
     for (const buyer of buyers) {
-      if (isContactDone(buyer.match_contact_status)) continue;
       if (buyer.desiredAreas.length === 0) continue;
 
       let sellerMatchCount = 0;
@@ -206,6 +235,8 @@ export class MatchingSidebarService {
       for (const seller of listedSellers) {
         if (!hasAnyMatchCriteria(seller)) continue;
         if (!matchesSellerToBuyer(seller, buyer)) continue;
+        // このペアが連絡済み/連絡不要になっている場合はカウントしない
+        if (resolvedPairs.has(`${seller.id}:${buyer.buyer_number}`)) continue;
         sellerMatchCount++;
         const score = timingUrgencyScore(seller.match_timing);
         if (score > topUrgencyScore) topUrgencyScore = score;
