@@ -70,6 +70,13 @@ interface MatchingIntentPanelProps {
   entityType: 'seller' | 'buyer';
   entityId: string; // seller: UUID(id), buyer: buyer_number
   initialData?: MatchIntentData;
+  /**
+   * entityType='seller' の場合のみ有効。
+   * 'sell'（デフォルト）: 売却条件を入力し、買主候補を検索する（既存の match-intent系エンドポイント）。
+   * 'buy': 購入条件を入力し、他の売主（売却中）候補を検索する（buy-match-intent系エンドポイント）。
+   * 売主は買い替え等で両方の意図を同時に持ちうるため、同じ売主に対して2つのパネルを並べて使う。
+   */
+  direction?: 'sell' | 'buy';
 }
 
 const formatManYen = (yen: number | null | undefined): string => {
@@ -89,7 +96,7 @@ const parseManYenToYen = (man: string): number | null => {
  * 売主・買主の「マッチング欄」入力パネル。
  * 種別・エリア・時期・金額を構造化入力し、保存後に相手候補を検索できる。
  */
-const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, entityId, initialData }) => {
+const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, entityId, initialData, direction = 'sell' }) => {
   const [areas, setAreas] = useState<string[]>(initialData?.matchAreas || []);
   const [areaFreeText, setAreaFreeText] = useState<string>(initialData?.matchAreaFreeText || '');
   const [timing, setTiming] = useState<string>(initialData?.matchTiming || '');
@@ -117,13 +124,20 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
   }, [entityId, initialData]);
 
   const basePath = entityType === 'seller' ? `/api/sellers/${entityId}` : `/api/buyers/${entityId}`;
+  // 「買いたい」方向（売主が買い替え等で購入希望を持つケース）は独立したエンドポイント群を使う
+  const intentPath = direction === 'buy' ? `${basePath}/buy-match-intent` : `${basePath}/match-intent`;
+  const candidatesPath = direction === 'buy' ? `${basePath}/buy-match-candidates` : `${basePath}/match-candidates`;
+  const contactStatusPathFor = (candidateId: string) =>
+    direction === 'buy'
+      ? `${basePath}/buy-match-candidates/${candidateId}/contact-status`
+      : `${basePath}/match-candidates/${candidateId}/contact-status`;
 
   const handleSave = useCallback(async () => {
     setSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
     try {
-      await api.put(`${basePath}/match-intent`, {
+      await api.put(intentPath, {
         matchAreas: areas,
         matchAreaFreeText: areaFreeText.trim() || null,
         matchTiming: timing || null,
@@ -138,14 +152,14 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     } finally {
       setSaving(false);
     }
-  }, [basePath, areas, areaFreeText, timing, priceMin, priceMax, memo]);
+  }, [intentPath, areas, areaFreeText, timing, priceMin, priceMax, memo]);
 
   const handleSearch = useCallback(async () => {
     setSearching(true);
     setSearchError(null);
     try {
       // 検索前に最新の入力内容を保存しておく（保存し忘れたまま検索するのを防ぐ）
-      await api.put(`${basePath}/match-intent`, {
+      await api.put(intentPath, {
         matchAreas: areas,
         matchAreaFreeText: areaFreeText.trim() || null,
         matchTiming: timing || null,
@@ -154,7 +168,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
         matchMemo: memo.trim() || null,
       });
 
-      const res = await api.get(`${basePath}/match-candidates`);
+      const res = await api.get(candidatesPath);
       setCandidates(res.data.candidates || []);
       setHasSearched(true);
     } catch (e: any) {
@@ -163,7 +177,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     } finally {
       setSearching(false);
     }
-  }, [basePath, areas, areaFreeText, timing, priceMin, priceMax, memo]);
+  }, [intentPath, candidatesPath, areas, areaFreeText, timing, priceMin, priceMax, memo]);
 
   // 保存済みの検索結果を取得する（GETのみ・保存はしない）。
   // ページを開いた時点で、既存のマッチング条件に対する候補を自動表示するために使う。
@@ -171,7 +185,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     setSearching(true);
     setSearchError(null);
     try {
-      const res = await api.get(`${basePath}/match-candidates`);
+      const res = await api.get(candidatesPath);
       setCandidates(res.data.candidates || []);
       setHasSearched(true);
     } catch (e: any) {
@@ -180,7 +194,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     } finally {
       setSearching(false);
     }
-  }, [basePath]);
+  }, [candidatesPath]);
 
   // パネルが表示されたら、保存済みのマッチング条件に対する候補を自動的に表示する
   // （手動で「🔍 マッチング」ボタンを押さなくても、既存の結果がそのまま見られるようにする）。
@@ -189,13 +203,13 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     setCandidates(null);
     fetchExistingCandidates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entityId]);
+  }, [entityId, direction]);
 
   // 各候補（相手）の連絡状況を更新する。相手ごとに個別のペアとして記録する。
   const handleContactStatusChange = useCallback(async (candidate: MatchCandidate, newStatus: string) => {
     setContactSaving((prev) => ({ ...prev, [candidate.id]: true }));
     try {
-      await api.put(`${basePath}/match-candidates/${candidate.id}/contact-status`, { contactStatus: newStatus });
+      await api.put(contactStatusPathFor(candidate.id), { contactStatus: newStatus });
       setCandidates((prev) =>
         prev ? prev.map((c) => (c.id === candidate.id ? { ...c, contactStatus: newStatus } : c)) : prev
       );
@@ -204,14 +218,17 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     } finally {
       setContactSaving((prev) => ({ ...prev, [candidate.id]: false }));
     }
-  }, [basePath]);
+  }, [basePath, direction]);
 
-  const counterpartLabel = entityType === 'seller' ? '買主' : '売主';
+  // 「買いたい」方向の場合、相手は必ず「売りたい」売主（entityTypeに関係なく）
+  const counterpartLabel = direction === 'buy' ? '売主' : (entityType === 'seller' ? '買主' : '売主');
 
   return (
     <Box>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-        ここに入力した内容だけを使って{counterpartLabel}候補を検索します（コメント欄のAI解析は行いません）。
+        {direction === 'buy'
+          ? `ここに入力した購入条件だけを使って売却中の${counterpartLabel}候補を検索します（コメント欄のAI解析は行いません）。`
+          : `ここに入力した内容だけを使って${counterpartLabel}候補を検索します（コメント欄のAI解析は行いません）。`}
       </Typography>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>

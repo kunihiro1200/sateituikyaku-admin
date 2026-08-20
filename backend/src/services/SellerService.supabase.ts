@@ -2484,6 +2484,14 @@ export class SellerService extends BaseRepository {
         matchMemo: seller.match_memo,
         matchContactStatus: seller.match_contact_status,
         matchUpdatedAt: seller.match_updated_at,
+        // マッチング機能（購入側・買いたい意図）
+        buyMatchAreas: seller.buy_match_areas,
+        buyMatchAreaFreeText: seller.buy_match_area_free_text,
+        buyMatchTiming: seller.buy_match_timing,
+        buyMatchPriceMin: seller.buy_match_price_min,
+        buyMatchPriceMax: seller.buy_match_price_max,
+        buyMatchMemo: seller.buy_match_memo,
+        buyMatchUpdatedAt: seller.buy_match_updated_at,
         // Property fields (物件関連フィールド)
         propertyAddress: seller.property_address,
         propertyType: seller.property_type,

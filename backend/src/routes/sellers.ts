@@ -3246,6 +3246,85 @@ router.get('/:id/match-candidates', async (req: Request, res: Response) => {
 });
 
 /**
+ * 売主の「買いたい」マッチング入力欄（エリア/時期/金額）を更新
+ * PUT /api/sellers/:id/buy-match-intent
+ */
+router.put('/:id/buy-match-intent', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { matchAreas, matchAreaFreeText, matchTiming, matchPriceMin, matchPriceMax, matchMemo } = req.body;
+
+    if (matchTiming !== undefined && matchTiming !== null && !MATCH_TIMING_OPTIONS.includes(matchTiming)) {
+      return res.status(400).json({
+        error: { code: 'INVALID_MATCH_TIMING', message: '時期の値が不正です', retryable: false },
+      });
+    }
+    if (matchAreas !== undefined && matchAreas !== null && !Array.isArray(matchAreas)) {
+      return res.status(400).json({
+        error: { code: 'INVALID_MATCH_AREAS', message: 'matchAreas は配列で指定してください', retryable: false },
+      });
+    }
+
+    await matchingIntentService.updateSellerBuyIntent(id, {
+      matchAreas,
+      matchAreaFreeText,
+      matchTiming,
+      matchPriceMin,
+      matchPriceMax,
+      matchMemo,
+    });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Update seller buy-match-intent error:', error);
+    res.status(500).json({
+      error: { code: 'BUY_MATCH_INTENT_UPDATE_ERROR', message: error.message || '購入マッチング情報の更新に失敗しました', retryable: true },
+    });
+  }
+});
+
+/**
+ * 「買いたい」売主に対するマッチング売主候補（売却中）を検索
+ * GET /api/sellers/:id/buy-match-candidates
+ */
+router.get('/:id/buy-match-candidates', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const result = await matchingIntentService.findSellerCandidatesForSellerBuyIntent(id);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Get seller buy-match-candidates error:', error);
+    res.status(500).json({
+      error: { code: 'BUY_MATCH_CANDIDATES_ERROR', message: error.message || '購入マッチング候補の検索に失敗しました', retryable: true },
+    });
+  }
+});
+
+/**
+ * 「買いたい」売主×「売りたい」売主ペア単位の連絡状況（連絡済み/連絡不要/連絡未）を更新
+ * PUT /api/sellers/:id/buy-match-candidates/:sellerSellerId/contact-status
+ */
+router.put('/:id/buy-match-candidates/:sellerSellerId/contact-status', async (req: Request, res: Response) => {
+  try {
+    const { id, sellerSellerId } = req.params;
+    const { contactStatus } = req.body;
+    const validValues = ['連絡済み', '連絡不要', '連絡未'];
+    if (!validValues.includes(contactStatus)) {
+      return res.status(400).json({
+        error: { code: 'INVALID_CONTACT_STATUS', message: 'contactStatus の値が不正です', retryable: false },
+      });
+    }
+    await matchingIntentService.updateSellerSellerPairContactStatus(id, sellerSellerId, contactStatus);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Update seller-seller pair contact-status error:', error);
+    res.status(500).json({
+      error: { code: 'PAIR_CONTACT_STATUS_UPDATE_ERROR', message: error.message || '連絡状況の更新に失敗しました', retryable: true },
+    });
+  }
+});
+
+/**
  * 売主の近隣買主リストを取得
  * GET /api/sellers/:id/nearby-buyers
  */

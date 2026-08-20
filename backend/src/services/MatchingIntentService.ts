@@ -230,7 +230,7 @@ export class MatchingIntentService {
   }
 
   /**
-   * 売主のマッチング入力欄を更新する
+   * 売主のマッチング入力欄（売却条件）を更新する
    */
   async updateSellerIntent(sellerId: string, input: MatchIntentInput): Promise<void> {
     const updates = this.buildUpdatePayload(input);
@@ -240,6 +240,22 @@ export class MatchingIntentService {
       .eq('id', sellerId);
     if (error) {
       throw new Error(`売主マッチング情報の更新に失敗しました: ${error.message}`);
+    }
+  }
+
+  /**
+   * 売主の「買いたい」マッチング入力欄（購入条件）を更新する。
+   * 売却条件（match_*）とは独立したカラム（buy_match_*）を使う。
+   * 売主が買い替え等で同時に「買いたい」意図を持つケースに対応する。
+   */
+  async updateSellerBuyIntent(sellerId: string, input: MatchIntentInput): Promise<void> {
+    const updates = this.buildBuyUpdatePayload(input);
+    const { error } = await this.supabase
+      .from('sellers')
+      .update(updates)
+      .eq('id', sellerId);
+    if (error) {
+      throw new Error(`売主の購入マッチング情報の更新に失敗しました: ${error.message}`);
     }
   }
 
@@ -346,6 +362,46 @@ export class MatchingIntentService {
     }
   }
 
+  /**
+   * 「買いたい」売主×「売りたい」売主ペア単位の連絡状況を取得する（一括）。
+   */
+  async getSellerSellerPairContactStatuses(buyerSellerId: string, sellerSellerIds: string[]): Promise<Map<string, string>> {
+    const result = new Map<string, string>();
+    if (sellerSellerIds.length === 0) return result;
+
+    const { data, error } = await this.supabase
+      .from('seller_seller_match_contacts')
+      .select('seller_seller_id, contact_status')
+      .eq('buyer_seller_id', buyerSellerId)
+      .in('seller_seller_id', sellerSellerIds);
+
+    if (error) {
+      throw new Error(`連絡状況の取得に失敗しました: ${error.message}`);
+    }
+    for (const row of data || []) {
+      result.set(row.seller_seller_id, row.contact_status);
+    }
+    return result;
+  }
+
+  /**
+   * 「買いたい」売主×「売りたい」売主ペアの連絡状況を更新する（upsert）。
+   */
+  async updateSellerSellerPairContactStatus(buyerSellerId: string, sellerSellerId: string, contactStatus: string): Promise<void> {
+    if (!CONTACT_STATUS_OPTIONS.includes(contactStatus as ContactStatus)) {
+      throw new Error('連絡状況の値が不正です');
+    }
+    const { error } = await this.supabase
+      .from('seller_seller_match_contacts')
+      .upsert(
+        { buyer_seller_id: buyerSellerId, seller_seller_id: sellerSellerId, contact_status: contactStatus, updated_at: new Date().toISOString() },
+        { onConflict: 'buyer_seller_id,seller_seller_id' }
+      );
+    if (error) {
+      throw new Error(`連絡状況の更新に失敗しました: ${error.message}`);
+    }
+  }
+
   private buildUpdatePayload(input: MatchIntentInput): Record<string, any> {
     const updates: Record<string, any> = {
       match_updated_at: new Date().toISOString(),
@@ -357,6 +413,19 @@ export class MatchingIntentService {
     if (input.matchPriceMin !== undefined) updates.match_price_min = input.matchPriceMin;
     if (input.matchPriceMax !== undefined) updates.match_price_max = input.matchPriceMax;
     if (input.matchMemo !== undefined) updates.match_memo = input.matchMemo;
+    return updates;
+  }
+
+  private buildBuyUpdatePayload(input: MatchIntentInput): Record<string, any> {
+    const updates: Record<string, any> = {
+      buy_match_updated_at: new Date().toISOString(),
+    };
+    if (input.matchAreas !== undefined) updates.buy_match_areas = input.matchAreas;
+    if (input.matchAreaFreeText !== undefined) updates.buy_match_area_free_text = input.matchAreaFreeText;
+    if (input.matchTiming !== undefined) updates.buy_match_timing = input.matchTiming;
+    if (input.matchPriceMin !== undefined) updates.buy_match_price_min = input.matchPriceMin;
+    if (input.matchPriceMax !== undefined) updates.buy_match_price_max = input.matchPriceMax;
+    if (input.matchMemo !== undefined) updates.buy_match_memo = input.matchMemo;
     return updates;
   }
 
@@ -636,6 +705,95 @@ export class MatchingIntentService {
       source: { id: buyer.buyer_number, number: buyer.buyer_number, name: buyer.name },
       candidates,
       missingRequiredFields: [],
+    };
+  }
+
+  /**
+   * 「買いたい」意図を持つ売主（buy_match_*入力済み）に対して、
+   * マッチする「売りたい」売主候補（match_*入力済み・自分以外）を検索する。
+   *
+   * findSellerCandidatesForBuyerDesiredConditions と条件判定ロジックは同じだが、
+   * 検索元が買主の希望条件ではなく、売主自身の購入条件（buy_match_*）になる点、
+   * および「自分自身」を候補から除外する点が異なる。
+   */
+  async findSellerCandidatesForSellerBuyIntent(buyerSellerId: string): Promise<{
+    source: { id: string; number: string | null; name: string | null } | null;
+    candidates: MatchCandidate[];
+  }> {
+    const { data: buyerSeller, error } = await this.supabase
+      .from('sellers')
+      .select('id, seller_number, buy_match_areas, buy_match_area_free_text, buy_match_timing, buy_match_price_min, buy_match_price_max')
+      .eq('id', buyerSellerId)
+      .single();
+
+    if (error || !buyerSeller) {
+      throw new Error('売主が見つかりませんでした');
+    }
+
+    const buyerAreas: string[] = Array.isArray(buyerSeller.buy_match_areas) ? buyerSeller.buy_match_areas : [];
+    const hasAnyCriteria = buyerAreas.length > 0 || !!buyerSeller.buy_match_area_free_text;
+    if (!hasAnyCriteria) {
+      return {
+        source: { id: buyerSeller.id, number: buyerSeller.seller_number, name: null },
+        candidates: [],
+      };
+    }
+
+    const sellers = await this.fetchAllWithMatchIntent('sellers', 'id, seller_number, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, match_memo, match_updated_at');
+
+    const candidates: MatchCandidate[] = [];
+    for (const seller of sellers || []) {
+      if (seller.id === buyerSeller.id) continue; // 自分自身は除外
+
+      const sellerAreas: string[] = Array.isArray(seller.match_areas) ? seller.match_areas : [];
+      if (sellerAreas.length === 0 && !seller.match_area_free_text) continue;
+
+      const areaResult = areasOverlap(buyerAreas, buyerSeller.buy_match_area_free_text, sellerAreas, seller.match_area_free_text);
+      if (!areaResult.matched) continue;
+
+      const priceResult = priceRangesOverlap(buyerSeller.buy_match_price_min, buyerSeller.buy_match_price_max, seller.match_price_min, seller.match_price_max);
+      if (!priceResult.matched) continue;
+
+      // 売却側の時期の陳腐化判定（マッチング欄の最終保存日時 match_updated_at を基準日として使用）
+      const freshnessResult = getTimingFreshness(seller.match_timing, seller.match_updated_at);
+      if (freshnessResult.freshness === 'expired') continue;
+
+      const timingResult = timingIsCompatible(buyerSeller.buy_match_timing, seller.match_timing);
+      const reasons = [areaResult.reason, priceResult.reason, timingResult.reason].filter((r): r is string => !!r);
+      if (freshnessResult.freshness === 'warning' && seller.match_timing) {
+        reasons.push(timingFreshnessWarningReason(seller.match_timing, freshnessResult.monthsElapsed));
+      }
+
+      candidates.push({
+        type: 'seller',
+        id: seller.id,
+        number: seller.seller_number,
+        name: null, // 売主名は暗号化されているため一覧では出さない（詳細ページで確認する運用）
+        matchAreas: sellerAreas,
+        matchAreaFreeText: seller.match_area_free_text,
+        matchTiming: seller.match_timing,
+        matchPriceMin: seller.match_price_min,
+        matchPriceMax: seller.match_price_max,
+        matchMemo: seller.match_memo,
+        matchUpdatedAt: seller.match_updated_at,
+        matchReasons: reasons,
+        urgencyScore: timingUrgencyScore(seller.match_timing),
+        contactStatus: '連絡未',
+        timingFreshness: freshnessResult.freshness,
+      });
+    }
+
+    // 売主(買いたい)×売主(売りたい)ペア単位の連絡状況を一括取得して各候補に反映する
+    const contactStatusMap = await this.getSellerSellerPairContactStatuses(buyerSeller.id, candidates.map(c => c.id));
+    for (const c of candidates) {
+      c.contactStatus = contactStatusMap.get(c.id) ?? '連絡未';
+    }
+
+    candidates.sort((a, b) => b.urgencyScore - a.urgencyScore);
+
+    return {
+      source: { id: buyerSeller.id, number: buyerSeller.seller_number, name: null },
+      candidates,
     };
   }
 }

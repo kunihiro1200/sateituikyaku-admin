@@ -10848,13 +10848,14 @@ HP：https://ifoo-oita.com/
               </div>
             )}
 
-            {/* マッチング（売主⇔買主） */}
+            {/* マッチング（売主⇔買主・売りたい） */}
             {seller?.id && (
               <div ref={matchingSectionRef}>
-                <CollapsibleSection title="🔍 マッチング" defaultExpanded={false} forceExpanded={matchingSectionExpanded} headerColor="#f3e5f5">
+                <CollapsibleSection title="🔍 マッチング（売りたい）" defaultExpanded={false} forceExpanded={matchingSectionExpanded} headerColor="#f3e5f5">
                   <MatchingIntentPanel
                     entityType="seller"
                     entityId={seller.id}
+                    direction="sell"
                     initialData={{
                       matchIntentType: (seller as any).matchIntentType,
                       matchAreas: (seller as any).matchAreas,
@@ -10868,6 +10869,25 @@ HP：https://ifoo-oita.com/
                   />
                 </CollapsibleSection>
               </div>
+            )}
+
+            {/* マッチング（売主⇔売主・買いたい。買い替え等で購入希望も持つ場合） */}
+            {seller?.id && (
+              <CollapsibleSection title="🔍 マッチング（買いたい）" defaultExpanded={false} headerColor="#e3f2fd">
+                <MatchingIntentPanel
+                  entityType="seller"
+                  entityId={seller.id}
+                  direction="buy"
+                  initialData={{
+                    matchAreas: (seller as any).buyMatchAreas,
+                    matchAreaFreeText: (seller as any).buyMatchAreaFreeText,
+                    matchTiming: (seller as any).buyMatchTiming,
+                    matchPriceMin: (seller as any).buyMatchPriceMin,
+                    matchPriceMax: (seller as any).buyMatchPriceMax,
+                    matchMemo: (seller as any).buyMatchMemo,
+                  }}
+                />
+              </CollapsibleSection>
             )}
 
             {/* 実績セクション */}
