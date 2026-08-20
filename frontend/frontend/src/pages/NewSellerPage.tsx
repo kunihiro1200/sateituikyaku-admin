@@ -224,6 +224,9 @@ export default function NewSellerPage() {
       setSellerNumberLoading(true);
       try {
         const response = await api.get('/api/sellers/next-seller-number', { params: { prefix } });
+        // 取得中に売主コピーが選択され、既にプレフィックスが確定している場合は上書きしない
+        // （Googleスプレッドシート読み取りに時間がかかるため、コピー操作より後に結果が返ることがある）
+        if (sellerCopyAppliedRef.current) return;
         setSellerNumber(response.data.sellerNumber);
       } catch (err) {
         console.error('Failed to fetch next seller number:', err);
