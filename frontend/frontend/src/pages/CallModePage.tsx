@@ -10102,9 +10102,12 @@ HP：https://ifoo-oita.com/
                     value={editedNextCallDate}
                     onChange={(e) => { setEditedNextCallDate(e.target.value); setStatusChanged(true); statusChangedRef.current = true; }}
                     onClick={() => {
+                      // ⚠️ ここで setStatusChanged(true) を呼んではいけない。
+                      // クリック（カレンダーを開いただけ）の時点で自動保存の1.5秒デバウンスが
+                      // 発火してしまい、ユーザーが日付を選ぶ前に「古い次電日」で保存が完了してしまう。
+                      // その結果、実際に選んだ日付が保存されない/上書きされないケースが発生する。
+                      // statusChanged の更新は onChange（実際に値が変わった時）のみに任せる。
                       nextCallDateRef.current?.showPicker?.();
-                      setStatusChanged(true);
-                      statusChangedRef.current = true;
                     }}
                     InputLabelProps={{ 
                       shrink: true,
