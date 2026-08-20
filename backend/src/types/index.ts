@@ -147,6 +147,17 @@ export interface Seller {
   
   // Pinrich
   pinrichStatus?: string;
+
+  // マッチング機能（種別/エリア/時期/金額/連絡状況）
+  matchIntentType?: string;
+  matchAreas?: string[];
+  matchAreaFreeText?: string;
+  matchTiming?: string;
+  matchPriceMin?: number;
+  matchPriceMax?: number;
+  matchMemo?: string;
+  matchContactStatus?: string;
+  matchUpdatedAt?: string;
   
   // 重複管理
   pastOwnerInfo?: string;

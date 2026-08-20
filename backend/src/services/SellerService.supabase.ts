@@ -2474,6 +2474,16 @@ export class SellerService extends BaseRepository {
         latestStatus: seller.latest_status,
         // Pinrich status
         pinrichStatus: seller.pinrich_status,
+        // マッチング機能（種別/エリア/時期/金額/連絡状況）
+        matchIntentType: seller.match_intent_type,
+        matchAreas: seller.match_areas,
+        matchAreaFreeText: seller.match_area_free_text,
+        matchTiming: seller.match_timing,
+        matchPriceMin: seller.match_price_min,
+        matchPriceMax: seller.match_price_max,
+        matchMemo: seller.match_memo,
+        matchContactStatus: seller.match_contact_status,
+        matchUpdatedAt: seller.match_updated_at,
         // Property fields (物件関連フィールド)
         propertyAddress: seller.property_address,
         propertyType: seller.property_type,

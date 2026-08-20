@@ -10,6 +10,7 @@ import { Paper, Typography, Box, Button, Chip, Collapse, IconButton, List, ListI
 import { useNavigate } from 'react-router-dom';
 import { ExpandMore, ExpandLess, Edit, Email, Phone, Chat, LocationOn, OpenInNew as OpenInNewIcon, PushPin as PushPinIcon, Close as CloseIcon } from '@mui/icons-material';
 import api from '../services/api';
+import SellerMatchingSidebarSection from './SellerMatchingSidebarSection';
 import {
   StatusCategory,
   CategoryCounts,
@@ -1198,6 +1199,9 @@ function SellerStatusSidebarComponent({
         {renderCategoryButton('visitOtherDecision', '訪問後他決', '#ff9800')}
         {renderCategoryButton('unvisitedOtherDecision', '未訪問他決', '#ff5722')}
       </Box>
+
+      {/* マッチング通知（追客中の売主 × 買主の希望条件） */}
+      <SellerMatchingSidebarSection />
 
       {/* 【専任媒介】月別分析セクション（2026年5月以降） */}
       {(() => {

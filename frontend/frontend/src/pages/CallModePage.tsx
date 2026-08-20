@@ -10835,7 +10835,20 @@ HP：https://ifoo-oita.com/
             {/* マッチング（売主⇔買主） */}
             {seller?.id && (
               <CollapsibleSection title="🔍 マッチング" defaultExpanded={false} headerColor="#f3e5f5">
-                <MatchingIntentPanel entityType="seller" entityId={seller.id} />
+                <MatchingIntentPanel
+                  entityType="seller"
+                  entityId={seller.id}
+                  initialData={{
+                    matchIntentType: (seller as any).matchIntentType,
+                    matchAreas: (seller as any).matchAreas,
+                    matchAreaFreeText: (seller as any).matchAreaFreeText,
+                    matchTiming: (seller as any).matchTiming,
+                    matchPriceMin: (seller as any).matchPriceMin,
+                    matchPriceMax: (seller as any).matchPriceMax,
+                    matchMemo: (seller as any).matchMemo,
+                    matchContactStatus: (seller as any).matchContactStatus,
+                  }}
+                />
               </CollapsibleSection>
             )}
 
