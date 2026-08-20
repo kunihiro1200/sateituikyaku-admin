@@ -441,7 +441,9 @@ export class MatchingIntentService {
         ].filter((r): r is { min: number; max: number } => r !== null),
         desiredTiming: b.desired_timing || null,
       }))
-      .filter(b => b.desiredAreas.length > 0);
+      // 希望条件ページの「売主をマッチング」ボタンを押した（= 希望時期を選択・保存した）買主のみを対象にする。
+      // 希望時期が未入力・不正な値の買主は候補に出さない。
+      .filter(b => b.desiredAreas.length > 0 && !!b.desiredTiming && MATCH_TIMING_OPTIONS.includes(b.desiredTiming as MatchTiming));
   }
 
   /**

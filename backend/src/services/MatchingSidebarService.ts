@@ -22,7 +22,7 @@
 // つうわモードページ・買主詳細ページの MatchingIntentPanel からいつでも確認できる。
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { areasOverlap, priceRangesOverlapAny, timingUrgencyScore, parseDesiredPriceRangeToMinMax } from './MatchingIntentService';
+import { areasOverlap, priceRangesOverlapAny, timingUrgencyScore, parseDesiredPriceRangeToMinMax, MATCH_TIMING_OPTIONS, MatchTiming } from './MatchingIntentService';
 
 /**
  * seller_buyer_match_contacts テーブルから、指定した売主×買主ペアのうち
@@ -373,6 +373,7 @@ export class MatchingSidebarService {
         ].filter((r): r is { min: number; max: number } => r !== null),
         desiredTiming: b.desired_timing || null,
       }))
-      .filter(b => b.desiredAreas.length > 0);
+      // 希望条件ページの「売主をマッチング」ボタンを押した（= 希望時期を選択・保存した）買主のみを対象にする。
+      .filter(b => b.desiredAreas.length > 0 && !!b.desiredTiming && MATCH_TIMING_OPTIONS.includes(b.desiredTiming as MatchTiming));
   }
 }
