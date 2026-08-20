@@ -155,7 +155,9 @@ export function areasOverlap(
   areasA: string[],
   freeTextA: string | null,
   areasB: string[],
-  freeTextB: string | null
+  freeTextB: string | null,
+  addressesA?: (string | null | undefined)[] | string | null,
+  addressesB?: (string | null | undefined)[] | string | null
 ): { matched: boolean; reason: string | null } {
   const setB = new Set(areasB);
   const codeOverlap = areasA.filter(a => setB.has(a));
@@ -171,6 +173,80 @@ export function areasOverlap(
     }
   }
 
+  // 自由入力地名 vs 相手の物件住所（複数候補: 自分の物件住所・買主が問合せてきた物件の住所など）
+  // （相手が既存エリアコードを選ばず、自分も自由入力していない場合、実際の物件住所と比較する）
+  const listA = (Array.isArray(addressesA) ? addressesA : [addressesA]).filter((a): a is string => !!a);
+  const listB = (Array.isArray(addressesB) ? addressesB : [addressesB]).filter((b): b is string => !!b);
+
+  if (normA) {
+    for (const addr of listB) {
+      const normAddr = normalizeAreaFreeText(addr);
+      if (normAddr && normAddr.includes(normA)) {
+        return { matched: true, reason: `エリア一致（自由入力⇔物件住所）: 「${freeTextA}」⇔「${addr}」` };
+      }
+    }
+  }
+  if (normB) {
+    for (const addr of listA) {
+      const normAddr = normalizeAreaFreeText(addr);
+      if (normAddr && normAddr.includes(normB)) {
+        return { matched: true, reason: `エリア一致（自由入力⇔物件住所）: 「${freeTextB}」⇔「${addr}」` };
+      }
+    }
+  }
+
+  return { matched: false, reason: null };
+}
+
+// ============================================================
+// 種別（マンション/戸建/土地/収益物件/その他）の判定
+//
+// 背景:
+//   売主の property_type、買主の desired_property_type、買主が実際に問い合わせてきた
+//   物件（buyer.property_number → property_listings.property_type）は、
+//   表記が「マ」「戸建て」「戸建、マンション、土地」のように揺れているため、
+//   カテゴリに正規化した上で重なりを判定する。
+//   どちらかの種別が空・「条件次第」等で判定できない場合は制約しないでスルーする
+//   （金額帯と同じ「未入力なら制約しない」方針）。
+// ============================================================
+const PROPERTY_TYPE_CATEGORIES = ['マンション', '戸建', '土地', '収益物件', 'その他'] as const;
+export type PropertyTypeCategory = typeof PROPERTY_TYPE_CATEGORIES[number];
+
+export function parsePropertyTypeCategories(text: string | null | undefined): Set<PropertyTypeCategory> {
+  const categories = new Set<PropertyTypeCategory>();
+  if (!text) return categories;
+  const trimmed = text.trim();
+  if (!trimmed || trimmed === '条件次第' || trimmed === '指定なし') return categories;
+
+  const tokens = trimmed.split(/[,、・]/).map(t => t.trim()).filter(Boolean);
+  for (const token of tokens) {
+    if (token.includes('マンション') || token === 'マ') {
+      categories.add('マンション');
+    } else if (token.includes('戸建') || token === '戸') {
+      categories.add('戸建');
+    } else if (token.includes('土地') || token === '土' || token === '売地') {
+      categories.add('土地');
+    } else if (token.includes('収益') || token.includes('アパート') || token.includes('ビル') || token === '一棟') {
+      categories.add('収益物件');
+    } else if (token.includes('店舗') || token === 'その他') {
+      categories.add('その他');
+    }
+  }
+  return categories;
+}
+
+export function propertyTypesOverlap(
+  categoriesA: Set<PropertyTypeCategory>,
+  categoriesB: Set<PropertyTypeCategory>
+): { matched: boolean; reason: string | null } {
+  if (categoriesA.size === 0 || categoriesB.size === 0) {
+    // どちらかが判定不能（未入力・「条件次第」等） → 種別では制約しない
+    return { matched: true, reason: null };
+  }
+  const overlap = [...categoriesA].filter(c => categoriesB.has(c));
+  if (overlap.length > 0) {
+    return { matched: true, reason: `種別一致: ${overlap.join(', ')}` };
+  }
   return { matched: false, reason: null };
 }
 
@@ -475,7 +551,7 @@ export class MatchingIntentService {
   }> {
     const { data: seller, error } = await this.supabase
       .from('sellers')
-      .select('id, seller_number, name, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max')
+      .select('id, seller_number, name, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, property_address, property_type')
       .eq('id', sellerId)
       .single();
 
@@ -492,14 +568,18 @@ export class MatchingIntentService {
       };
     }
 
+    const sellerPropertyTypeCategories = parsePropertyTypeCategories(seller.property_type);
     const buyers = await this.fetchAllBuyersWithDesiredConditions();
 
     const candidates: MatchCandidate[] = [];
     for (const buyer of buyers) {
-      if (buyer.desiredAreas.length === 0) continue;
+      if (buyer.desiredAreas.length === 0 && !buyer.desiredAreaFreeText && !buyer.inquiredPropertyAddress) continue;
 
-      const areaResult = areasOverlap(sellerAreas, seller.match_area_free_text, buyer.desiredAreas, null);
+      const areaResult = areasOverlap(sellerAreas, seller.match_area_free_text, buyer.desiredAreas, buyer.desiredAreaFreeText, seller.property_address, buyer.inquiredPropertyAddress);
       if (!areaResult.matched) continue;
+
+      const typeResult = propertyTypesOverlap(sellerPropertyTypeCategories, buyer.propertyTypeCategories);
+      if (!typeResult.matched) continue;
 
       const priceResult = buyer.priceRanges.length === 0
         ? { matched: true, reason: null as string | null }
@@ -511,7 +591,7 @@ export class MatchingIntentService {
       if (freshnessResult.freshness === 'expired') continue;
 
       const timingResult = timingIsCompatible(seller.match_timing, buyer.desiredTiming);
-      const reasons = [areaResult.reason, priceResult.reason, timingResult.reason].filter((r): r is string => !!r);
+      const reasons = [areaResult.reason, typeResult.reason, priceResult.reason, timingResult.reason].filter((r): r is string => !!r);
       if (freshnessResult.freshness === 'warning' && buyer.desiredTiming) {
         reasons.push(timingFreshnessWarningReason(buyer.desiredTiming, freshnessResult.monthsElapsed));
       }
@@ -522,7 +602,7 @@ export class MatchingIntentService {
         number: buyer.buyer_number,
         name: buyer.name,
         matchAreas: buyer.desiredAreas,
-        matchAreaFreeText: null,
+        matchAreaFreeText: buyer.desiredAreaFreeText,
         matchTiming: buyer.desiredTiming,
         matchPriceMin: buyer.priceRanges[0]?.min ?? null,
         matchPriceMax: buyer.priceRanges[0]?.max ?? null,
@@ -550,13 +630,45 @@ export class MatchingIntentService {
   }
 
   /**
+   * 買主が問い合わせてきた物件（buyer.property_number）の住所・種別を、
+   * property_listings から一括取得する。複数物件がある場合は先頭の物件番号を使う
+   * （買主リストの他機能と同じ「複数物件はカンマ区切りで先頭を代表とする」慣習に合わせる）。
+   */
+  private async fetchInquiredPropertyInfo(propertyNumbers: string[]): Promise<Map<string, { address: string | null; propertyType: string | null }>> {
+    const result = new Map<string, { address: string | null; propertyType: string | null }>();
+    const uniqueNumbers = [...new Set(propertyNumbers.filter(Boolean))];
+    if (uniqueNumbers.length === 0) return result;
+
+    const CHUNK = 200;
+    for (let i = 0; i < uniqueNumbers.length; i += CHUNK) {
+      const chunk = uniqueNumbers.slice(i, i + CHUNK);
+      const { data, error } = await this.supabase
+        .from('property_listings')
+        .select('property_number, property_type, address, display_address')
+        .in('property_number', chunk);
+
+      if (error) throw new Error(`問合せ物件の取得に失敗しました: ${error.message}`);
+      for (const p of data || []) {
+        result.set(p.property_number, {
+          address: (p.property_type === 'マンション' ? (p.display_address || p.address) : p.address) || null,
+          propertyType: p.property_type || null,
+        });
+      }
+    }
+    return result;
+  }
+
+  /**
    * 希望条件（desired_area / price_range_* / desired_timing）が入力済みの買主を全件取得し、
    * 売主とのマッチング判定用の中間形式に変換する。
    * MatchingSidebarService.fetchBuyersWithDesiredConditions と同じロジック。
+   * エリア・種別の判定には、買主が問い合わせてきた物件（property_number経由）の
+   * 住所・種別も候補として使う（希望条件の入力が薄い場合の補完）。
    */
   private async fetchAllBuyersWithDesiredConditions(): Promise<Array<{
-    buyer_number: string; name: string | null; desiredAreas: string[];
+    buyer_number: string; name: string | null; desiredAreas: string[]; desiredAreaFreeText: string | null;
     priceRanges: Array<{ min: number; max: number }>; desiredTiming: string | null; receptionDate: string | null;
+    inquiredPropertyAddress: string | null; propertyTypeCategories: Set<PropertyTypeCategory>;
   }>> {
     const results: any[] = [];
     const PAGE_SIZE = 1000;
@@ -564,7 +676,7 @@ export class MatchingIntentService {
     while (true) {
       const { data, error } = await this.supabase
         .from('buyers')
-        .select('buyer_number, name, desired_area, desired_timing, price_range_house, price_range_apartment, price_range_land, reception_date')
+        .select('buyer_number, name, desired_area, desired_area_free_text, desired_timing, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, property_number')
         .is('deleted_at', null)
         .not('desired_area', 'is', null)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
@@ -576,24 +688,39 @@ export class MatchingIntentService {
       page++;
     }
 
+    const firstPropertyNumbers = results.map(b => (b.property_number ? String(b.property_number).split(',')[0].trim() : null)).filter((n): n is string => !!n);
+    const inquiredPropertyMap = await this.fetchInquiredPropertyInfo(firstPropertyNumbers);
+
     return results
-      .map(b => ({
-        buyer_number: b.buyer_number,
-        name: b.name,
-        desiredAreas: b.desired_area
-          ? String(b.desired_area).split('|').map((v: string) => v.trim()).filter(Boolean)
-          : [],
-        priceRanges: [
-          parseDesiredPriceRangeToMinMax(b.price_range_house),
-          parseDesiredPriceRangeToMinMax(b.price_range_apartment),
-          parseDesiredPriceRangeToMinMax(b.price_range_land),
-        ].filter((r): r is { min: number; max: number } => r !== null),
-        desiredTiming: b.desired_timing || null,
-        receptionDate: b.reception_date || null,
-      }))
+      .map(b => {
+        const firstPropertyNumber = b.property_number ? String(b.property_number).split(',')[0].trim() : null;
+        const inquiredInfo = firstPropertyNumber ? inquiredPropertyMap.get(firstPropertyNumber) : undefined;
+        const propertyTypeCategories = new Set<PropertyTypeCategory>([
+          ...parsePropertyTypeCategories(b.desired_property_type),
+          ...parsePropertyTypeCategories(inquiredInfo?.propertyType || null),
+        ]);
+        return {
+          buyer_number: b.buyer_number,
+          name: b.name,
+          desiredAreas: b.desired_area
+            ? String(b.desired_area).split('|').map((v: string) => v.trim()).filter(Boolean)
+            : [],
+          desiredAreaFreeText: b.desired_area_free_text || null,
+          priceRanges: [
+            parseDesiredPriceRangeToMinMax(b.price_range_house),
+            parseDesiredPriceRangeToMinMax(b.price_range_apartment),
+            parseDesiredPriceRangeToMinMax(b.price_range_land),
+          ].filter((r): r is { min: number; max: number } => r !== null),
+          desiredTiming: b.desired_timing || null,
+          receptionDate: b.reception_date || null,
+          inquiredPropertyAddress: inquiredInfo?.address || null,
+          propertyTypeCategories,
+        };
+      })
       // 希望条件ページの「売主をマッチング」ボタンを押した（= 希望時期を選択・保存した）買主のみを対象にする。
       // 希望時期が未入力・不正な値の買主は候補に出さない。
-      .filter(b => b.desiredAreas.length > 0 && !!b.desiredTiming && MATCH_TIMING_OPTIONS.includes(b.desiredTiming as MatchTiming));
+      // エリアは既存コード選択・自由入力・問合せ物件の住所のいずれかがあればよい。
+      .filter(b => (b.desiredAreas.length > 0 || !!b.desiredAreaFreeText || !!b.inquiredPropertyAddress) && !!b.desiredTiming && MATCH_TIMING_OPTIONS.includes(b.desiredTiming as MatchTiming));
   }
 
   /**
@@ -611,7 +738,7 @@ export class MatchingIntentService {
   }> {
     const { data: buyer, error } = await this.supabase
       .from('buyers')
-      .select('buyer_number, name, desired_area, desired_timing, price_range_house, price_range_apartment, price_range_land')
+      .select('buyer_number, name, desired_area, desired_area_free_text, desired_timing, desired_property_type, price_range_house, price_range_apartment, price_range_land, property_number')
       .eq('buyer_number', buyerNumber)
       .single();
 
@@ -640,7 +767,16 @@ export class MatchingIntentService {
       parseDesiredPriceRangeToMinMax(buyer.price_range_land),
     ].filter((r): r is { min: number; max: number } => r !== null);
 
-    const hasAnyCriteria = buyerAreas.length > 0;
+    // 買主が問い合わせてきた物件（property_number）の住所・種別も候補として使う
+    const firstPropertyNumber = buyer.property_number ? String(buyer.property_number).split(',')[0].trim() : null;
+    const inquiredPropertyMap = firstPropertyNumber ? await this.fetchInquiredPropertyInfo([firstPropertyNumber]) : new Map();
+    const inquiredInfo = firstPropertyNumber ? inquiredPropertyMap.get(firstPropertyNumber) : undefined;
+    const buyerPropertyTypeCategories = new Set<PropertyTypeCategory>([
+      ...parsePropertyTypeCategories(buyer.desired_property_type),
+      ...parsePropertyTypeCategories(inquiredInfo?.propertyType || null),
+    ]);
+
+    const hasAnyCriteria = buyerAreas.length > 0 || !!buyer.desired_area_free_text || !!inquiredInfo?.address;
     if (!hasAnyCriteria) {
       return {
         source: { id: buyer.buyer_number, number: buyer.buyer_number, name: buyer.name },
@@ -649,15 +785,18 @@ export class MatchingIntentService {
       };
     }
 
-    const sellers = await this.fetchAllWithMatchIntent('sellers', 'id, seller_number, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, match_memo, match_updated_at');
+    const sellers = await this.fetchAllWithMatchIntent('sellers', 'id, seller_number, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, match_memo, match_updated_at, property_address, property_type');
 
     const candidates: MatchCandidate[] = [];
     for (const seller of sellers || []) {
       const sellerAreas: string[] = Array.isArray(seller.match_areas) ? seller.match_areas : [];
       if (sellerAreas.length === 0 && !seller.match_area_free_text) continue;
 
-      const areaResult = areasOverlap(buyerAreas, null, sellerAreas, seller.match_area_free_text);
+      const areaResult = areasOverlap(buyerAreas, buyer.desired_area_free_text, sellerAreas, seller.match_area_free_text, inquiredInfo?.address || null, seller.property_address);
       if (!areaResult.matched) continue;
+
+      const typeResult = propertyTypesOverlap(buyerPropertyTypeCategories, parsePropertyTypeCategories(seller.property_type));
+      if (!typeResult.matched) continue;
 
       const priceResult = buyerPriceRanges.length === 0
         ? { matched: true, reason: null as string | null }
@@ -669,7 +808,7 @@ export class MatchingIntentService {
       if (freshnessResult.freshness === 'expired') continue;
 
       const timingResult = timingIsCompatible(buyer.desired_timing, seller.match_timing);
-      const reasons = [areaResult.reason, priceResult.reason, timingResult.reason].filter((r): r is string => !!r);
+      const reasons = [areaResult.reason, typeResult.reason, priceResult.reason, timingResult.reason].filter((r): r is string => !!r);
       if (freshnessResult.freshness === 'warning' && seller.match_timing) {
         reasons.push(timingFreshnessWarningReason(seller.match_timing, freshnessResult.monthsElapsed));
       }
@@ -722,7 +861,7 @@ export class MatchingIntentService {
   }> {
     const { data: buyerSeller, error } = await this.supabase
       .from('sellers')
-      .select('id, seller_number, buy_match_areas, buy_match_area_free_text, buy_match_timing, buy_match_price_min, buy_match_price_max')
+      .select('id, seller_number, buy_match_areas, buy_match_area_free_text, buy_match_timing, buy_match_price_min, buy_match_price_max, property_address')
       .eq('id', buyerSellerId)
       .single();
 
@@ -739,7 +878,7 @@ export class MatchingIntentService {
       };
     }
 
-    const sellers = await this.fetchAllWithMatchIntent('sellers', 'id, seller_number, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, match_memo, match_updated_at');
+    const sellers = await this.fetchAllWithMatchIntent('sellers', 'id, seller_number, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, match_memo, match_updated_at, property_address');
 
     const candidates: MatchCandidate[] = [];
     for (const seller of sellers || []) {
@@ -748,7 +887,7 @@ export class MatchingIntentService {
       const sellerAreas: string[] = Array.isArray(seller.match_areas) ? seller.match_areas : [];
       if (sellerAreas.length === 0 && !seller.match_area_free_text) continue;
 
-      const areaResult = areasOverlap(buyerAreas, buyerSeller.buy_match_area_free_text, sellerAreas, seller.match_area_free_text);
+      const areaResult = areasOverlap(buyerAreas, buyerSeller.buy_match_area_free_text, sellerAreas, seller.match_area_free_text, buyerSeller.property_address, seller.property_address);
       if (!areaResult.matched) continue;
 
       const priceResult = priceRangesOverlap(buyerSeller.buy_match_price_min, buyerSeller.buy_match_price_max, seller.match_price_min, seller.match_price_max);

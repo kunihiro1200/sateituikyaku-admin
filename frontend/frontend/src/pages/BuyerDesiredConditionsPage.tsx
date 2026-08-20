@@ -56,6 +56,7 @@ interface Buyer {
 const DESIRED_CONDITIONS_FIELDS = [
   { key: 'desired_timing', label: '希望時期', inlineEditable: true, fieldType: 'dropdown', options: DESIRED_TIMING_OPTIONS },
   { key: 'desired_area', label: '★エリア', inlineEditable: false, fieldType: 'multiselect', options: [] as { value: string; label: string }[] },
+  { key: 'desired_area_free_text', label: 'エリア（自由入力・既存選択肢にない地名）', inlineEditable: true, fieldType: 'text' },
   { key: 'desired_property_type', label: '★希望種別', inlineEditable: true, fieldType: 'dropdown', options: DESIRED_PROPERTY_TYPE_OPTIONS },
   { key: 'desired_building_age', label: '★築年数', inlineEditable: true, fieldType: 'dropdown', options: BUILDING_AGE_OPTIONS },
   { key: 'desired_floor_plan', label: '★間取り', inlineEditable: true, fieldType: 'dropdown', options: FLOOR_PLAN_OPTIONS },
@@ -648,6 +649,8 @@ export default function BuyerDesiredConditionsPage() {
                     enableConflictDetection={true}
                     showEditIndicator={true}
                     oneClickDropdown={field.fieldType === 'dropdown'}
+                    placeholder={field.key === 'desired_area_free_text' ? '例: 大分市寿町' : undefined}
+                    helperText={field.key === 'desired_area_free_text' ? '既存エリアに無い地名はここに入力してください。相手側の物件住所・自由入力と部分一致で判定します' : undefined}
                   />
                 ) : (
                   <Typography variant="body2">
