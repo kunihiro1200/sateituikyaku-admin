@@ -379,7 +379,8 @@ export default function NewSellerPage() {
     if (!propertyAddress) missingFields.push('物件所在地');
     if (!propertyType) missingFields.push('物件種別');
     if (!structure) missingFields.push('構造');
-    if (!landArea) missingFields.push('土地面積');
+    // マンションの場合は土地面積を必須としない
+    if (propertyType !== 'apartment' && !landArea) missingFields.push('土地面積');
     if (!buildYear) missingFields.push('築年');
     if (!confidence) missingFields.push('確度');
     if (!nextCallDate) missingFields.push('次電日');
@@ -779,7 +780,7 @@ export default function NewSellerPage() {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  required
+                  required={propertyType !== 'apartment'}
                   label="土地面積（㎡）"
                   type="number"
                   value={landArea}
