@@ -108,7 +108,7 @@ const SellerMatchingSidebarSection: React.FC = () => {
               key={item.sellerId}
               sx={{ p: 1.5, mb: 1, border: '1px solid #e0e0e0', borderRadius: 1, cursor: 'pointer' }}
               onClick={() => {
-                window.open(`/sellers/${item.sellerId}/call`, '_blank');
+                window.open(`/sellers/${item.sellerId}/call#matching`, '_blank');
               }}
             >
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

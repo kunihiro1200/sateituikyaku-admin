@@ -62,7 +62,12 @@ export interface MatchCandidate {
   // マッチング判定の根拠（担当者に説明できるように明示する）
   matchReasons: string[];
   urgencyScore: number;
+  // 売主×買主ペア単位の連絡状況（連絡済み/連絡不要/連絡未）
+  contactStatus: string;
 }
+
+export const CONTACT_STATUS_OPTIONS = ['連絡済み', '連絡不要', '連絡未'] as const;
+export type ContactStatus = typeof CONTACT_STATUS_OPTIONS[number];
 
 function normalizeAreaFreeText(text: string | null | undefined): string | null {
   if (!text) return null;
@@ -206,6 +211,69 @@ export class MatchingIntentService {
     }
   }
 
+  /**
+   * 売主×買主ペア単位の連絡状況を取得する（一括）。
+   * 該当レコードが存在しない場合は '連絡未' とみなす。
+   */
+  async getPairContactStatuses(sellerId: string, buyerNumbers: string[]): Promise<Map<string, string>> {
+    const result = new Map<string, string>();
+    if (buyerNumbers.length === 0) return result;
+
+    const { data, error } = await this.supabase
+      .from('seller_buyer_match_contacts')
+      .select('buyer_number, contact_status')
+      .eq('seller_id', sellerId)
+      .in('buyer_number', buyerNumbers);
+
+    if (error) {
+      throw new Error(`連絡状況の取得に失敗しました: ${error.message}`);
+    }
+    for (const row of data || []) {
+      result.set(row.buyer_number, row.contact_status);
+    }
+    return result;
+  }
+
+  /**
+   * 指定した買主に対する、複数売主とのペア連絡状況を取得する（一括）。
+   */
+  async getPairContactStatusesForBuyer(buyerNumber: string, sellerIds: string[]): Promise<Map<string, string>> {
+    const result = new Map<string, string>();
+    if (sellerIds.length === 0) return result;
+
+    const { data, error } = await this.supabase
+      .from('seller_buyer_match_contacts')
+      .select('seller_id, contact_status')
+      .eq('buyer_number', buyerNumber)
+      .in('seller_id', sellerIds);
+
+    if (error) {
+      throw new Error(`連絡状況の取得に失敗しました: ${error.message}`);
+    }
+    for (const row of data || []) {
+      result.set(row.seller_id, row.contact_status);
+    }
+    return result;
+  }
+
+  /**
+   * 売主×買主ペアの連絡状況を更新する（upsert）。
+   */
+  async updatePairContactStatus(sellerId: string, buyerNumber: string, contactStatus: string): Promise<void> {
+    if (!CONTACT_STATUS_OPTIONS.includes(contactStatus as ContactStatus)) {
+      throw new Error('連絡状況の値が不正です');
+    }
+    const { error } = await this.supabase
+      .from('seller_buyer_match_contacts')
+      .upsert(
+        { seller_id: sellerId, buyer_number: buyerNumber, contact_status: contactStatus, updated_at: new Date().toISOString() },
+        { onConflict: 'seller_id,buyer_number' }
+      );
+    if (error) {
+      throw new Error(`連絡状況の更新に失敗しました: ${error.message}`);
+    }
+  }
+
   private buildUpdatePayload(input: MatchIntentInput): Record<string, any> {
     const updates: Record<string, any> = {
       match_updated_at: new Date().toISOString(),
@@ -311,7 +379,14 @@ export class MatchingIntentService {
         matchUpdatedAt: buyer.match_updated_at,
         matchReasons: reasons,
         urgencyScore: timingUrgencyScore(buyer.match_timing),
+        contactStatus: '連絡未',
       });
+    }
+
+    // 売主×買主ペア単位の連絡状況を一括取得して各候補に反映する
+    const contactStatusMap = await this.getPairContactStatuses(seller.id, candidates.map(c => c.number!));
+    for (const c of candidates) {
+      c.contactStatus = contactStatusMap.get(c.number!) ?? '連絡未';
     }
 
     candidates.sort((a, b) => b.urgencyScore - a.urgencyScore);
@@ -407,7 +482,14 @@ export class MatchingIntentService {
         matchUpdatedAt: seller.match_updated_at,
         matchReasons: reasons,
         urgencyScore: timingUrgencyScore(seller.match_timing),
+        contactStatus: '連絡未',
       });
+    }
+
+    // 買主×売主ペア単位の連絡状況を一括取得して各候補に反映する
+    const contactStatusMap = await this.getPairContactStatusesForBuyer(buyer.buyer_number, candidates.map(c => c.id));
+    for (const c of candidates) {
+      c.contactStatus = contactStatusMap.get(c.id) ?? '連絡未';
     }
 
     candidates.sort((a, b) => b.urgencyScore - a.urgencyScore);

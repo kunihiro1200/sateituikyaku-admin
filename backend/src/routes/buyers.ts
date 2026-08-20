@@ -1071,6 +1071,23 @@ router.get('/:id/match-candidates', async (req: Request, res: Response) => {
   }
 });
 
+// 買主×売主ペア単位の連絡状況（連絡済み/連絡不要/連絡未）を更新
+router.put('/:id/match-candidates/:sellerId/contact-status', async (req: Request, res: Response) => {
+  try {
+    const { id, sellerId } = req.params;
+    const { contactStatus } = req.body;
+    const validValues = ['連絡済み', '連絡不要', '連絡未'];
+    if (!validValues.includes(contactStatus)) {
+      return res.status(400).json({ error: 'contactStatus の値が不正です' });
+    }
+    await matchingIntentService.updatePairContactStatus(sellerId, id, contactStatus);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Update buyer-seller pair contact-status error:', error);
+    res.status(500).json({ error: error.message || '連絡状況の更新に失敗しました' });
+  }
+});
+
 // 紐づく物件取得
 router.get('/:id/properties', async (req: Request, res: Response) => {
   try {

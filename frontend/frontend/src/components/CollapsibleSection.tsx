@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Collapse, IconButton, Paper, Typography } from '@mui/material';
 import { ExpandMore, ExpandLess } from '@mui/icons-material';
 
@@ -8,6 +8,8 @@ interface CollapsibleSectionProps {
   defaultExpanded?: boolean;
   headerColor?: string;
   children: React.ReactNode;
+  /** 外部から展開状態を強制する場合に指定（例: URLハッシュ遷移での自動展開） */
+  forceExpanded?: boolean;
 }
 
 /**
@@ -15,6 +17,7 @@ interface CollapsibleSectionProps {
  * 
  * デフォルトは折りたたみ状態。
  * ヘッダークリックで展開/折りたたみを切り替え。
+ * forceExpanded が true に変わると、外部トリガーで強制的に展開される。
  */
 const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   title,
@@ -22,8 +25,15 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   defaultExpanded = false,
   headerColor,
   children,
+  forceExpanded,
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
+
+  useEffect(() => {
+    if (forceExpanded) {
+      setExpanded(true);
+    }
+  }, [forceExpanded]);
 
   const handleToggle = () => {
     setExpanded(!expanded);

@@ -1078,6 +1078,10 @@ const CallModePage = () => {
   // 近隣買主セクションへのスクロール用ref
   const nearbyBuyersSectionRef = useRef<HTMLDivElement>(null);
 
+  // マッチングセクションへのスクロール用ref（サイドバーの「マッチング通知」クリック時の遷移先）
+  const matchingSectionRef = useRef<HTMLDivElement>(null);
+  const [matchingSectionExpanded, setMatchingSectionExpanded] = useState(false);
+
   // 画像ペースト機能はRichTextEmailEditorに統合されました
   // 査定計算セクションへのスクロール用ref
   const valuationSectionRef = useRef<HTMLDivElement>(null);
@@ -2190,6 +2194,18 @@ const CallModePage = () => {
   // サイドバー用の売主リストを取得（sellerが読み込まれた後にバックグラウンドで実行）
   // メインコンテンツ（売主詳細）はすでに表示済みのため、サイドバーデータは非ブロッキングで取得
   // 依存配列: seller.id（売主切替時のみ再取得）と visitAssignee（営担変更時のみ再取得）
+  // URLハッシュが #matching の場合、マッチングセクションを自動展開してスクロールする
+  // （売主リストサイドバーの「マッチング通知」クリック時の遷移先）
+  useEffect(() => {
+    if (!seller?.id) return;
+    if (window.location.hash === '#matching') {
+      setMatchingSectionExpanded(true);
+      setTimeout(() => {
+        matchingSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+    }
+  }, [seller?.id]);
+
   const sidebarTriggerSellerId = seller?.id;
   const sidebarTriggerVisitAssignee = seller?.visitAssignee || seller?.visitAssigneeInitials;
   useEffect(() => {
@@ -10834,22 +10850,25 @@ HP：https://ifoo-oita.com/
 
             {/* マッチング（売主⇔買主） */}
             {seller?.id && (
-              <CollapsibleSection title="🔍 マッチング" defaultExpanded={false} headerColor="#f3e5f5">
-                <MatchingIntentPanel
-                  entityType="seller"
-                  entityId={seller.id}
-                  initialData={{
-                    matchIntentType: (seller as any).matchIntentType,
-                    matchAreas: (seller as any).matchAreas,
-                    matchAreaFreeText: (seller as any).matchAreaFreeText,
-                    matchTiming: (seller as any).matchTiming,
-                    matchPriceMin: (seller as any).matchPriceMin,
-                    matchPriceMax: (seller as any).matchPriceMax,
-                    matchMemo: (seller as any).matchMemo,
-                    matchContactStatus: (seller as any).matchContactStatus,
-                  }}
-                />
-              </CollapsibleSection>
+              <div ref={matchingSectionRef}>
+                <CollapsibleSection title="🔍 マッチング" defaultExpanded={false} forceExpanded={matchingSectionExpanded} headerColor="#f3e5f5">
+                  <MatchingIntentPanel
+                    entityType="seller"
+                    entityId={seller.id}
+                    initialData={{
+                      matchIntentType: (seller as any).matchIntentType,
+                      matchAreas: (seller as any).matchAreas,
+                      matchAreaFreeText: (seller as any).matchAreaFreeText,
+                      matchTiming: (seller as any).matchTiming,
+                      matchPriceMin: (seller as any).matchPriceMin,
+                      matchPriceMax: (seller as any).matchPriceMax,
+                      matchMemo: (seller as any).matchMemo,
+                      matchContactStatus: (seller as any).matchContactStatus,
+                    }}
+                    autoSearch={matchingSectionExpanded}
+                  />
+                </CollapsibleSection>
+              </div>
             )}
 
             {/* 実績セクション */}

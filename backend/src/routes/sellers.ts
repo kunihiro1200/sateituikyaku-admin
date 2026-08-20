@@ -3205,6 +3205,30 @@ router.put('/:id/match-contact-status', async (req: Request, res: Response) => {
 });
 
 /**
+ * 売主×買主ペア単位の連絡状況（連絡済み/連絡不要/連絡未）を更新
+ * PUT /api/sellers/:id/match-candidates/:buyerNumber/contact-status
+ */
+router.put('/:id/match-candidates/:buyerNumber/contact-status', async (req: Request, res: Response) => {
+  try {
+    const { id, buyerNumber } = req.params;
+    const { contactStatus } = req.body;
+    const validValues = ['連絡済み', '連絡不要', '連絡未'];
+    if (!validValues.includes(contactStatus)) {
+      return res.status(400).json({
+        error: { code: 'INVALID_CONTACT_STATUS', message: 'contactStatus の値が不正です', retryable: false },
+      });
+    }
+    await matchingIntentService.updatePairContactStatus(id, buyerNumber, contactStatus);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Update seller-buyer pair contact-status error:', error);
+    res.status(500).json({
+      error: { code: 'PAIR_CONTACT_STATUS_UPDATE_ERROR', message: error.message || '連絡状況の更新に失敗しました', retryable: true },
+    });
+  }
+});
+
+/**
  * 売主に対するマッチング買主候補を検索
  * GET /api/sellers/:id/match-candidates
  */
