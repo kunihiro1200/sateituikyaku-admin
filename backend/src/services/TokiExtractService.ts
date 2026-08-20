@@ -814,6 +814,86 @@ export class TokiExtractService {
   }
 
   /**
+   * マンション用（媒介契約タブ）：PDFから抽出した生テキストを渡し、Claudeに所有者情報（氏名・住所）
+   * だけを再抽出させる（画像OCRの誤読・前所有者取り違えを補正するための安全策）
+   *
+   * 【重要】pdfjsのgetTextContent()で抽出したテキストには下線（抹消）の視覚情報が失われるため、
+   * 「下線なしの行を採用する」という判定はできない。そのため、権利部（甲区）に複数の
+   * 所有権移転・所有権保存の記載がある場合は、単純に「最後（最新）に出現する所有者」を
+   * 採用するようプロンプトで明示する。
+   */
+  async extractOwnerFromText(pdfText: string): Promise<{ ownerAddress: string | null; ownerName: string | null; coOwners: string | null }> {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY が設定されていません');
+    }
+
+    const client = new Anthropic({ apiKey });
+
+    const prompt = `あなたは不動産登記簿謄本の専門家です。
+以下は登記簿謄本（全部事項証明書）をテキスト抽出した内容です。改行やスペースの位置がずれている場合がありますが、文脈から正しく読み取ってください。
+
+【重要な前提】
+- このテキストには下線（抹消線）の視覚情報が含まれていません。そのため「下線の有無」では判定できません
+- 権利部（甲区）（所有権に関する事項）に「所有権保存」「所有権移転」が複数回記載されている場合は、
+  記載順で最後（最も下・最新）に出現する所有者を現在の所有者として採用してください
+  （＝前所有者や中間の所有者ではなく、一番最後の移転の所有者を採用すること）
+- 権利部（乙区）（抵当権・根抵当権等）に記載された債務者・連帯債務者・保証人の氏名は絶対に使用しないこと
+- 「付記」で「登記名義人住所変更」「氏名変更」がある場合は、その中で最後（最新）の住所・氏名を採用すること
+
+【登記簿テキスト】
+"""
+${pdfText.slice(0, 15000)}
+"""
+
+【抽出項目】
+- owner_name: 権利部（甲区）で最後に効力を持つ所有者（または共有者の1番目）の氏名のみ。氏名以外の文字列（住所、セクション見出しである「権利部」「甲区」「乙区」「所有権に関する事項」等）を絶対に含めないこと
+- owner_address: 上記所有者の住所のみ。氏名を含めないこと
+- co_owners: 共有者が2人目以降いる場合、氏名・住所・持分を改行区切りでまとめる。いない場合はnull
+
+【出力形式】
+必ず以下のJSON形式のみで応答してください（説明文・コードブロック記号は不要）：
+{
+  "owner_address": null,
+  "owner_name": null,
+  "co_owners": null
+}`;
+
+    const response = await callClaudeWithRetry(client, {
+      model: 'claude-opus-4-5',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
+    });
+
+    const responseText =
+      response.content[0].type === 'text' ? response.content[0].text.trim() : '';
+
+    console.log('[TokiExtract] extractOwnerFromText Claude response (first 300):', responseText.substring(0, 300));
+
+    const jsonBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    const jsonRawMatch = responseText.match(/\{[\s\S]*\}/);
+    const jsonStr = jsonBlockMatch?.[1] ?? jsonRawMatch?.[0] ?? null;
+
+    if (!jsonStr) throw new Error('Claude APIからJSONを取得できませんでした');
+
+    let raw: any;
+    try {
+      raw = JSON.parse(jsonStr);
+    } catch (e) {
+      throw new Error(`JSONパースエラー: ${jsonStr.substring(0, 200)}`);
+    }
+
+    // 既存のサニタイズ処理を必ず適用（セクション見出しの混入除去、住所/氏名分離）
+    const sanitized = this.sanitizeOwnerInfo(raw.owner_address ?? null, raw.owner_name ?? null);
+
+    return {
+      ownerAddress: sanitized.ownerAddress,
+      ownerName: sanitized.ownerName,
+      coOwners: raw.co_owners ?? null,
+    };
+  }
+
+  /**
    * 抽出結果をスプレッドシートの指定セルに書き込む
    */
   async writeToSpreadsheet(req: TokiWriteRequest): Promise<void> {

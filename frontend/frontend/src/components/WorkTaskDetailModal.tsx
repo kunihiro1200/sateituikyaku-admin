@@ -2449,15 +2449,22 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           }
         }
 
-        // テキストからClaudeで所有者情報を確実に抽出して上書き（画像認識の誤読を補正）
+        // テキストからClaudeで所有者情報を確実に抽出して上書き（画像認識の誤読・前所有者取り違えを補正）
         setSnackbar({ open: true, message: `所有者情報をテキストから確認中...`, severity: 'info' });
         try {
           const ownerRes = await api.post(`/api/toki-extract/${propertyNumber}/extract-owner-from-text`, {
             pdfText: pdfRawText,
           });
-          // 氏名のみテキスト抽出結果で上書き（住所は画像解析＋プロンプトで対応）
+          // 氏名・住所はセットで取得したものを使用する（片方だけ上書きすると
+          // 「氏名は最新所有者・住所は前所有者」のような組み合わせのズレが発生するため）
           if (ownerRes.data?.ownerName && mergedResult) {
             mergedResult.ownerName = ownerRes.data.ownerName;
+            if (ownerRes.data?.ownerAddress) {
+              mergedResult.ownerAddress = ownerRes.data.ownerAddress;
+            }
+            if (ownerRes.data?.coOwners !== undefined && ownerRes.data.coOwners !== null) {
+              mergedResult.coOwners = ownerRes.data.coOwners;
+            }
           }
         } catch (e) {
           console.warn('[TokiExtract] テキストベース所有者抽出失敗（画像解析結果を使用）:', e);

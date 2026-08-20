@@ -180,6 +180,30 @@ router.post('/:propertyNumber/extract-mansyon-chunk', async (req: Request, res: 
 });
 
 /**
+ * POST /api/toki-extract/:propertyNumber/extract-owner-from-text
+ * マンション用：PDFのテキスト抽出結果から所有者情報（氏名・住所）だけを再抽出する
+ * 画像OCR解析での前所有者取り違え・見出し文字列混入を補正するための安全策
+ */
+router.post('/:propertyNumber/extract-owner-from-text', async (req: Request, res: Response) => {
+  try {
+    const { pdfText } = req.body as { pdfText?: string };
+
+    if (!pdfText || typeof pdfText !== 'string' || pdfText.trim().length === 0) {
+      return res.status(400).json({ error: 'pdfText は必須です' });
+    }
+
+    const result = await tokiExtractService.extractOwnerFromText(pdfText);
+    return res.json({ success: true, ...result });
+  } catch (error: any) {
+    console.error('[TokiExtract] テキストベース所有者抽出エラー:', error.message);
+    if (error?.status === 429 || error?.error?.type === 'rate_limit_error') {
+      return res.status(429).json({ error: 'APIのレート制限に達しました。しばらく待ってから再試行してください。' });
+    }
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST /api/toki-extract/:propertyNumber/write
  * 抽出結果をスプレッドシートの指定セルに書き込む
  */
