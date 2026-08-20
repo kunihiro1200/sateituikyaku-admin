@@ -646,9 +646,18 @@ export class BuyerService {
           return true;
         }
       }
-      // 自社物件の場合: property_listingsから住所を取得
+      // 自社物件の場合
       if (buyerData.property_number) {
         const firstPropertyNumber = String(buyerData.property_number).split(',')[0].trim();
+
+        // 物件番号が「FI」始まりの場合は福岡物件として確定（FK採番）
+        // 住所文字列に「福岡」を含まないケース（例: 糸島市...）でも正しく判定できるようにする
+        if (/^FI\d+/i.test(firstPropertyNumber)) {
+          console.log(`[BuyerService] 福岡物件判定: property_number=${firstPropertyNumber} が「FI」プレフィックス`);
+          return true;
+        }
+
+        // それ以外は property_listings の住所に「福岡」が含まれるか確認
         const { data: listing } = await this.supabase
           .from('property_listings')
           .select('address')
