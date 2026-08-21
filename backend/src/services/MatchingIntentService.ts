@@ -560,7 +560,9 @@ export class MatchingIntentService {
     }
 
     const sellerAreas: string[] = Array.isArray(seller.match_areas) ? seller.match_areas : [];
-    const hasAnyCriteria = sellerAreas.length > 0 || !!seller.match_area_free_text;
+    // エリアの構造化入力（既存コード・自由入力）が両方未入力でも、物件住所があれば
+    // それを判定材料として使えるため、物件住所も有効な条件として扱う。
+    const hasAnyCriteria = sellerAreas.length > 0 || !!seller.match_area_free_text || !!seller.property_address;
     if (!hasAnyCriteria) {
       return {
         source: { id: seller.id, number: seller.seller_number, name: null },
@@ -870,6 +872,10 @@ export class MatchingIntentService {
     }
 
     const buyerAreas: string[] = Array.isArray(buyerSeller.buy_match_areas) ? buyerSeller.buy_match_areas : [];
+    // 注意: 「買いたい」条件のエリア判定には buyerSeller.property_address を使わない。
+    // それは「現在売却中の物件の住所（＝今住んでいる場所）」であり、
+    // 「次に買いたいエリア」とは意味が異なるため、購入希望エリアの構造化入力
+    // （buy_match_areas / buy_match_area_free_text）のみを条件とする。
     const hasAnyCriteria = buyerAreas.length > 0 || !!buyerSeller.buy_match_area_free_text;
     if (!hasAnyCriteria) {
       return {
@@ -887,7 +893,10 @@ export class MatchingIntentService {
       const sellerAreas: string[] = Array.isArray(seller.match_areas) ? seller.match_areas : [];
       if (sellerAreas.length === 0 && !seller.match_area_free_text) continue;
 
-      const areaResult = areasOverlap(buyerAreas, buyerSeller.buy_match_area_free_text, sellerAreas, seller.match_area_free_text, buyerSeller.property_address, seller.property_address);
+      // 注意: buyerSeller.property_address（現在売却中の物件＝今住んでいる場所）は
+      // 「次に買いたいエリア」とは意味が異なるため addressesA には渡さない（null）。
+      // seller.property_address（相手＝売りたい側の実際の物件住所）は判定材料として使う。
+      const areaResult = areasOverlap(buyerAreas, buyerSeller.buy_match_area_free_text, sellerAreas, seller.match_area_free_text, null, seller.property_address);
       if (!areaResult.matched) continue;
 
       const priceResult = priceRangesOverlap(buyerSeller.buy_match_price_min, buyerSeller.buy_match_price_max, seller.match_price_min, seller.match_price_max);
