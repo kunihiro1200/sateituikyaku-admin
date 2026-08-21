@@ -639,7 +639,11 @@ export default function BuyerDesiredConditionsPage() {
                   </FormControl>
                 ) : field.inlineEditable ? (
                   <InlineEditableField
-                    value={buyer[field.key]}
+                    // このページは「入力 → 上部の保存ボタンで一括保存」の2段階方式のため、
+                    // pendingChanges に値がある場合はそれを優先して表示する。
+                    // buyer[field.key]（DBの値）をそのまま渡すと、一時保存直後に
+                    // 表示が元の値へ戻ってしまう不具合になる（実際にはpendingChangesにしか値が無い）。
+                    value={field.key in pendingChanges ? pendingChanges[field.key] : buyer[field.key]}
                     onSave={(newValue) => handleFieldChange(field.key, newValue)}
                     fieldType={field.fieldType || 'text'}
                     fieldName={field.key}
