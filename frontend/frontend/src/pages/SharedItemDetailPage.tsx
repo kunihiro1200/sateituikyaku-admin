@@ -168,14 +168,18 @@ export default function SharedItemDetailPage() {
         setInitialStaffNotShared(sns);
         setInitialContent(ct);
 
-        // 画像コメントを読み込み（画像コメント１〜１０）
-        const comments: Record<number, string> = {};
-        for (let i = 1; i <= 10; i++) {
-          const key = `画像コメント${i === 1 ? '１' : i === 2 ? '２' : i === 3 ? '３' : i === 4 ? '４' : i === 5 ? '５' : i === 6 ? '６' : i === 7 ? '７' : i === 8 ? '８' : i === 9 ? '９' : '１０'}`;
-          comments[i] = (foundItem[key] as string) || '';
+        // 画像コメントを読み込み（DBから取得）
+        try {
+          const commentResponse = await api.get(`/api/shared-items/${foundItem.id}/image-comments`);
+          const comments: Record<number, string> = commentResponse.data.data || {};
+          setImageComments(comments);
+          setInitialImageComments({ ...comments });
+        } catch (commentError) {
+          console.error('Failed to fetch image comments:', commentError);
+          // コメント取得失敗時は空のオブジェクトを設定
+          setImageComments({});
+          setInitialImageComments({});
         }
-        setImageComments(comments);
-        setInitialImageComments({ ...comments });
 
         // 契約率チーム・物件数チームの場合はチームアンサーも取得
         if (TEAM_MODES.includes(foundItem['共有場'])) {
@@ -287,16 +291,20 @@ export default function SharedItemDetailPage() {
         'PDF6': pdfUrls[5], 'PDF7': pdfUrls[6], 'PDF8': pdfUrls[7], 'PDF9': pdfUrls[8], 'PDF10': pdfUrls[9],
         '画像１': imageUrls[0], '画像２': imageUrls[1], '画像３': imageUrls[2], '画像４': imageUrls[3], '画像５': imageUrls[4],
         '画像６': imageUrls[5], '画像７': imageUrls[6], '画像８': imageUrls[7], '画像９': imageUrls[8], '画像１０': imageUrls[9],
-        '画像コメント１': imageComments[1] || '', '画像コメント２': imageComments[2] || '', '画像コメント３': imageComments[3] || '',
-        '画像コメント４': imageComments[4] || '', '画像コメント５': imageComments[5] || '', '画像コメント６': imageComments[6] || '',
-        '画像コメント７': imageComments[7] || '', '画像コメント８': imageComments[8] || '', '画像コメント９': imageComments[9] || '',
-        '画像コメント１０': imageComments[10] || '',
         '共有日': today,
         '確認日': confirmationDate,
         '共有できていない': staffNotShared.join(','),
         '内容': content,
       };
       await api.put(`/api/shared-items/${item.id}`, payload);
+      
+      // 画像コメントは別途DBに保存
+      try {
+        await api.put(`/api/shared-items/${item.id}/image-comments`, { comments: imageComments });
+      } catch (commentError) {
+        console.error('Failed to save image comments:', commentError);
+        // コメント保存失敗は全体の保存を止めない
+      }
       pageDataCache.invalidate(CACHE_KEYS.SHARED_ITEMS);
       // PDF/画像フィールドの空文字はsetItemに渡さない（hasChanges の誤検知を防ぐ）
       const payloadForState = Object.fromEntries(
@@ -446,16 +454,6 @@ export default function SharedItemDetailPage() {
         '画像８': imageUrls[7],
         '画像９': imageUrls[8],
         '画像１０': imageUrls[9],
-        '画像コメント１': imageComments[1] || '',
-        '画像コメント２': imageComments[2] || '',
-        '画像コメント３': imageComments[3] || '',
-        '画像コメント４': imageComments[4] || '',
-        '画像コメント５': imageComments[5] || '',
-        '画像コメント６': imageComments[6] || '',
-        '画像コメント７': imageComments[7] || '',
-        '画像コメント８': imageComments[8] || '',
-        '画像コメント９': imageComments[9] || '',
-        '画像コメント１０': imageComments[10] || '',
         '共有日': sharingDate,
         '確認日': confirmationDate,
         '共有できていない': staffNotShared.join(','),
@@ -463,6 +461,14 @@ export default function SharedItemDetailPage() {
       };
 
       await api.put(`/api/shared-items/${item.id}`, payload);
+
+      // 画像コメントは別途DBに保存
+      try {
+        await api.put(`/api/shared-items/${item.id}/image-comments`, { comments: imageComments });
+      } catch (commentError) {
+        console.error('Failed to save image comments:', commentError);
+        // コメント保存失敗は全体の保存を止めない
+      }
 
       pageDataCache.invalidate(CACHE_KEYS.SHARED_ITEMS);
       // PDF/画像フィールドの空文字はsetItemに渡さない（hasChanges の誤検知を防ぐ）

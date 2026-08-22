@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { SharedItemsService } from '../services/SharedItemsService';
+import { SharedItemImageCommentsService } from '../services/SharedItemImageCommentsService';
 import { EmailService } from '../services/EmailService';
 import multer from 'multer';
 import { createClient } from '@supabase/supabase-js';
@@ -7,6 +8,7 @@ import pool from '../config/database';
 
 const router = Router();
 const sharedItemsService = new SharedItemsService();
+const imageCommentsService = new SharedItemImageCommentsService();
 const emailService = new EmailService();
 
 // multer のメモリストレージ設定（ファイルをバッファとして保持）
@@ -389,4 +391,36 @@ router.put('/:id/team-answers', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/shared-items/:id/image-comments - 画像コメント取得
+ */
+router.get('/:id/image-comments', async (req: Request, res: Response) => {
+  try {
+    const comments = await imageCommentsService.getComments(req.params.id);
+    res.json({ data: comments });
+  } catch (error: any) {
+    console.error('Failed to fetch image comments:', error);
+    res.status(500).json({ error: '画像コメントの取得に失敗しました' });
+  }
+});
+
+/**
+ * PUT /api/shared-items/:id/image-comments - 画像コメント保存
+ */
+router.put('/:id/image-comments', async (req: Request, res: Response) => {
+  try {
+    const { comments } = req.body;
+    if (!comments || typeof comments !== 'object') {
+      return res.status(400).json({ error: 'コメントデータが不正です' });
+    }
+    
+    await imageCommentsService.saveComments(req.params.id, comments);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Failed to save image comments:', error);
+    res.status(500).json({ error: '画像コメントの保存に失敗しました' });
+  }
+});
+
 export default router;
+

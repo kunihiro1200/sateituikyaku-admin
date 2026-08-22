@@ -198,21 +198,27 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
         '画像８': imageUrls[7] || '',
         '画像９': imageUrls[8] || '',
         '画像１０': imageUrls[9] || '',
-        '画像コメント１': images[0]?.comment || '',
-        '画像コメント２': images[1]?.comment || '',
-        '画像コメント３': images[2]?.comment || '',
-        '画像コメント４': images[3]?.comment || '',
-        '画像コメント５': images[4]?.comment || '',
-        '画像コメント６': images[5]?.comment || '',
-        '画像コメント７': images[6]?.comment || '',
-        '画像コメント８': images[7]?.comment || '',
-        '画像コメント９': images[8]?.comment || '',
-        '画像コメント１０': images[9]?.comment || '',
         'URL': url,
         '打ち合わせ内容': meetingContent,
       };
 
       await api.post('/api/shared-items', payload);
+
+      // 画像コメントは別途DBに保存
+      if (images.some(img => img.comment)) {
+        const comments: Record<number, string> = {};
+        images.forEach((img, index) => {
+          if (img.comment) {
+            comments[index + 1] = img.comment;
+          }
+        });
+        try {
+          await api.put(`/api/shared-items/${nextId}/image-comments`, { comments });
+        } catch (commentError) {
+          console.error('Failed to save image comments:', commentError);
+          // コメント保存失敗は全体の保存を止めない
+        }
+      }
 
       // 契約率チーム・物件数チームの場合、「問い」をDBのteam-answersにも保存
       // （詳細ページの「問い」表示はDBの shared_item_team_answers.question を参照するため）
