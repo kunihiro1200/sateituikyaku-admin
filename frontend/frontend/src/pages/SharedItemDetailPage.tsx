@@ -105,6 +105,7 @@ export default function SharedItemDetailPage() {
 
   // 画像コメント（既存画像用）
   const [imageComments, setImageComments] = useState<Record<number, string>>({});
+  const [initialImageComments, setInitialImageComments] = useState<Record<number, string>>({});
 
   // チームアンサー（契約率チーム・物件数チーム専用、DB保存）
   const [teamAnswers, setTeamAnswers] = useState<TeamAnswers>(EMPTY_TEAM_ANSWERS);
@@ -139,6 +140,7 @@ export default function SharedItemDetailPage() {
     setNewPdfs([]);
     setNewImages([]);
     setImageComments({});
+    setInitialImageComments({});
     setTeamAnswers(EMPTY_TEAM_ANSWERS);
     setInitialTeamAnswers(EMPTY_TEAM_ANSWERS);
     fetchItem();
@@ -173,6 +175,7 @@ export default function SharedItemDetailPage() {
           comments[i] = (foundItem[key] as string) || '';
         }
         setImageComments(comments);
+        setInitialImageComments({ ...comments });
 
         // 契約率チーム・物件数チームの場合はチームアンサーも取得
         if (TEAM_MODES.includes(foundItem['共有場'])) {
@@ -308,6 +311,7 @@ export default function SharedItemDetailPage() {
       setInitialConfirmationDate(confirmationDate);
       setInitialStaffNotShared(staffNotShared.join(','));
       setInitialContent(content);
+      setInitialImageComments({ ...imageComments });
       setNewPdfs([]);
       setNewImages([]);
       setSaveSuccess(true);
@@ -474,6 +478,7 @@ export default function SharedItemDetailPage() {
       setInitialConfirmationDate(confirmationDate);
       setInitialStaffNotShared(staffNotShared.join(','));
       setInitialContent(content);
+      setInitialImageComments({ ...imageComments });
       setSaveSuccess(true);
     } catch (error: any) {
       console.error('Save error:', error);
@@ -519,7 +524,8 @@ export default function SharedItemDetailPage() {
     content !== initialContent ||
     sharingDate !== initialSharingDate ||
     confirmationDate !== initialConfirmationDate ||
-    staffNotShared.join(',') !== initialStaffNotShared;
+    staffNotShared.join(',') !== initialStaffNotShared ||
+    JSON.stringify(imageComments) !== JSON.stringify(initialImageComments);
 
   const isTeamMode = TEAM_MODES.includes(item['共有場'] || '');
   const hasTeamAnswerChanges = JSON.stringify(teamAnswers) !== JSON.stringify(initialTeamAnswers);
