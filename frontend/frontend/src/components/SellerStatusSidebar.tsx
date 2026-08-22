@@ -1180,6 +1180,9 @@ function SellerStatusSidebarComponent({
       {renderCategoryButton('pinrichChangeRequired', 'Pinrich要変更', '#e91e63')}
       {renderCategoryButton('pinrichEmpty', '⑧Pinrich空欄', '#795548')}
 
+      {/* マッチング通知（追客中の売主 × 買主の希望条件）：福岡セクションの直前 */}
+      <SellerMatchingSidebarSection />
+
       {/* 担当者別カテゴリー（動的生成・区切り線なし） */}
       {/* assigneeInitialsが空でもsellersから動的取得するため常に表示 */}
       {/* 福岡（FI）セクション：担当（）より上に表示 */}
@@ -1199,9 +1202,6 @@ function SellerStatusSidebarComponent({
         {renderCategoryButton('visitOtherDecision', '訪問後他決', '#ff9800')}
         {renderCategoryButton('unvisitedOtherDecision', '未訪問他決', '#ff5722')}
       </Box>
-
-      {/* マッチング通知（追客中の売主 × 買主の希望条件） */}
-      <SellerMatchingSidebarSection />
 
       {/* 【専任媒介】月別分析セクション（2026年5月以降） */}
       {(() => {
