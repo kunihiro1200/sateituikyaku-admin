@@ -45,7 +45,7 @@ import {
   MONTHLY_PARKING_OK_OPTIONS,
   DESIRED_TIMING_OPTIONS,
 } from '../utils/buyerDesiredConditionsOptions';
-import SellerMatchingButton from '../components/SellerMatchingButton';
+import BuyerMatchingSelector from '../components/BuyerMatchingSelector';
 
 const DESIRED_TIMING_VALID_VALUES = DESIRED_TIMING_OPTIONS.map((o) => o.value);
 
@@ -221,7 +221,23 @@ export default function BuyerDesiredConditionsPage() {
 
     setIsSaving(true);
     try {
-      const result = await buyerApi.update(buyer_number!, pendingChanges, { sync: true });
+      // 希望条件が変更された場合は、desired_conditions_updated_atを更新し、matching_requiredをnullにリセット
+      const hasDesiredConditionsChange = Object.keys(pendingChanges).some(key => 
+        ['desired_area', 'desired_area_free_text', 'desired_property_type', 'desired_building_age', 
+         'desired_floor_plan', 'budget', 'price_range_house', 'price_range_apartment', 'price_range_land',
+         'parking_spaces', 'monthly_parking_ok', 'hot_spring_required', 'garden_required', 
+         'pet_allowed_required', 'good_view_required', 'high_floor_required', 'corner_room_required'].includes(key)
+      );
+
+      const updateData = hasDesiredConditionsChange 
+        ? { 
+            ...pendingChanges, 
+            desired_conditions_updated_at: new Date().toISOString(),
+            matching_required: null  // 希望条件を編集したら再選択を促す
+          }
+        : pendingChanges;
+
+      const result = await buyerApi.update(buyer_number!, updateData, { sync: true });
 
       if (result.conflicts && result.conflicts.length > 0) {
         setSnackbar({ open: true, message: '同期競合が発生しました。スプレッドシートの値が変更されています。', severity: 'warning' });
@@ -430,8 +446,9 @@ export default function BuyerDesiredConditionsPage() {
           </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <SellerMatchingButton
+          <BuyerMatchingSelector
             buyerNumber={buyer_number!}
+            matchingRequired={buyer.matching_required}
             isDesiredTimingMissing={(() => {
               // 未保存の変更（プルダウンで選択したがまだ保存していない値）を優先してチェックする
               const effectiveTiming = pendingChanges.desired_timing !== undefined
@@ -439,7 +456,35 @@ export default function BuyerDesiredConditionsPage() {
                 : buyer.desired_timing;
               return !effectiveTiming || !DESIRED_TIMING_VALID_VALUES.includes(effectiveTiming);
             })()}
+            hasUnsavedChanges={hasChanges}
             onBeforeSearch={handleSaveAll}
+            onMatchingStatusChange={async (required: boolean) => {
+              // マッチング必須フラグを更新
+              try {
+                const result = await buyerApi.update(
+                  buyer_number!,
+                  { 
+                    matching_required: required,
+                    desired_conditions_updated_at: new Date().toISOString()
+                  },
+                  { sync: true }
+                );
+                setBuyer(result.buyer);
+                setSnackbar({ 
+                  open: true, 
+                  message: required ? 'マッチング実行に設定しました' : 'マッチング不要に設定しました', 
+                  severity: 'success' 
+                });
+              } catch (error: any) {
+                console.error('Failed to update matching status:', error);
+                setSnackbar({ 
+                  open: true, 
+                  message: error.response?.data?.error || 'マッチング状態の更新に失敗しました', 
+                  severity: 'error' 
+                });
+                throw error;
+              }
+            }}
           />
           <Button
             variant="contained"

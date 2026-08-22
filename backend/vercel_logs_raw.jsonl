@@ -1,0 +1,18 @@
+﻿node.exe : WARNING! Did you mean to 
+deploy the subdirectory "logs"? Use 
+`vc --cwd logs` instead.
+発生場所 C:\Users\kunih\AppData\Roaming\
+npm\vercel.ps1:24 文字:5
++     & "node$exe"  "$basedir/node_m
+odules/vercel/dist/vc.js" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSp 
+   ecified: (WARNING! Did yo... lo  
+  gs` instead.:String) [], Remote   
+ Exception
+    + FullyQualifiedErrorId : Nativ 
+   eCommandError
+ 
+Error: The --follow flag does not su
+pport filtering. Remove: --limit

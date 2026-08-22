@@ -1,34 +1,47 @@
+# デプロイ手順
+
+## ⚠️ 重要：ローカルでビルド・vercelコマンドを叩かないこと
+
+`npm run build` や `vercel --prod` はローカルで実行しない。
+**`git push` だけで GitHub Actions が自動でビルド＆デプロイする。**
+
 ---
-inclusion: manual
----
-
-
-
-# デプロイ手順（絶対に守るべきルール）
 
 ## ✅ 正しいデプロイ手順（フロントエンド・バックエンド共通）
 
-**Git連携によりpushするだけで両方が自動デプロイされます。**
+```bash
+# 1. 変更ファイルをステージング（対象ファイルのみ指定する）
+git add frontend/frontend/src/components/HogeComponent.tsx
 
-```powershell
-git add .
-git commit -m "fix: 変更内容"
+# 2. コミット
+git commit -m "fix: 変更内容の説明"
+
+# 3. pushするだけ → GitHub Actions が自動デプロイ
 git push origin main
 ```
 
-- `sateituikyaku-admin-backend`（バックエンド）→ Root Directory: `backend`
-- `sateituikyaku-admin-frontend`（フロントエンド）→ Root Directory: `frontend/frontend`
-
-どちらもGit連携済みのため、`main` ブランチへのpushで自動デプロイされます。
+これだけ。以上。
 
 ---
 
-## 🚨 CLIデプロイ（npx vercel --prod）は使わない
+## 📋 GitHub Actions の動作
 
-`npx vercel --prod` をサブディレクトリから実行するとパスの二重解釈エラーが発生するため、
-**原則としてCLIデプロイは使用しない**。
+| 変更パス | トリガーされるワークフロー | デプロイ先 |
+|---|---|---|
+| `frontend/**` | `deploy-frontend.yml` | Vercel（フロントエンド） |
+| `backend/**` | `deploy-backend.yml` | Vercel（バックエンド） |
+
+- Actions の進捗は https://github.com/kunihiro1200/sateituikyaku-admin/actions で確認できる
+- 通常 **3〜5分** でデプロイ完了
 
 ---
 
-**最終更新日**: 2026年3月23日
-**作成理由**: git pushによる自動デプロイに統一するため
+## ❌ やってはいけないこと
+
+- `npm run build` をローカルで実行してからデプロイ → 時間の無駄
+- `vercel --prod` をローカルで実行 → 37MBアップロードが発生して遅い
+- `frontend/frontend` ディレクトリで `vercel` を実行 → パスが二重になりエラー
+
+---
+
+**最終更新日**: 2026年8月

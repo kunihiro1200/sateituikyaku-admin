@@ -32,6 +32,7 @@ import sellerRoutes from './routes/sellers';
 import ieulTransferRoutes from './routes/ieul-transfer';
 import home4uTransferRoutes from './routes/home4u-transfer';
 import lifullTransferRoutes from './routes/lifull-transfer';
+import sumaiTransferRoutes from './routes/sumai-transfer';
 import athomeTransferRoutes from './routes/athome-transfer';
 import athomeBuyerTransferRoutes from './routes/athome-buyer-transfer';
 import sellersManagementRoutes from './routes/sellersManagement';
@@ -1027,6 +1028,7 @@ app.use('/api/floor-plan-compare', floorPlanCompareRoutes); // 間取り図比�
 app.use('/api/sellers', ieulTransferRoutes);
 app.use('/api/sellers', home4uTransferRoutes);
 app.use('/api/sellers', lifullTransferRoutes);
+app.use('/api/sellers', sumaiTransferRoutes);
 app.use('/api/sellers', athomeTransferRoutes);
 app.use('/api/sellers', sellerRoutes);
 app.use('/api/sellers', sellersManagementRoutes);

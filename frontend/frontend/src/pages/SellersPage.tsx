@@ -322,6 +322,8 @@ export default function SellersPage() {
   
   const [total, setTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  // fetchSellers の競合状態（古いリクエストが後から解決して新しいフィルター結果を上書きする）を防ぐための連番
+  const fetchSellersRequestIdRef = useRef(0);
   
   // ソート状態
   const [sortBy, setSortBy] = useState<string>('inquiry_date');
@@ -770,6 +772,8 @@ export default function SellersPage() {
   }, [page, rowsPerPage, confidenceLevelFilter, inquirySiteFilter, propertyTypeFilter, statusFilterValue, regionFilter, inquiryDateFromFilter, inquiryDateToFilter, currentStatusFilterValue, valuationAmountMinFilter, valuationAmountMaxFilter, nextCallDateMode, nextCallDateValue, visitAssigneeFilter, selectedCategory, sortBy, sortOrder]);
 
   const fetchSellers = async () => {
+    // このリクエストの連番を発行（後から解決した古いリクエストの結果を無視するため）
+    const requestId = ++fetchSellersRequestIdRef.current;
     try {
       const params: any = {
         page: page + 1,
@@ -838,13 +842,19 @@ export default function SellersPage() {
       // キャッシュが有効な場合はローディングなしで即座に表示
       const cached = !isVisitThankYouCategory ? pageDataCache.get<{ data: Seller[]; total: number }>(cacheKey) : null;
       if (cached) {
-        setSellers(cached.data);
-        setTotal(cached.total);
-        setLoading(false); // キャッシュヒット時はローディングを解除
+        // 古いリクエストの場合は state を更新しない（後から発行された新しいフィルター条件のリクエストを優先）
+        if (requestId === fetchSellersRequestIdRef.current) {
+          setSellers(cached.data);
+          setTotal(cached.total);
+          setLoading(false); // キャッシュヒット時はローディングを解除
+        }
         // バックグラウンドで最新データを取得してキャッシュを更新
         api.get('/api/sellers', { params }).then((response) => {
-          setSellers(response.data.data);
-          setTotal(response.data.total);
+          // このリクエストがまだ最新の場合のみ画面に反映する（競合状態対策）
+          if (requestId === fetchSellersRequestIdRef.current) {
+            setSellers(response.data.data);
+            setTotal(response.data.total);
+          }
           // fi:xxx / visitThankYouPending:xxx カテゴリは都度最新を取得するためキャッシュしない
           const isFiCategory = typeof params.statusCategory === 'string' && params.statusCategory.startsWith('fi:');
           const isVisitThankYouCategory = typeof params.statusCategory === 'string' && params.statusCategory.startsWith('visitThankYouPending:');
@@ -858,8 +868,12 @@ export default function SellersPage() {
       // キャッシュなしの場合のみローディング表示
       setLoading(true);
       const response = await api.get('/api/sellers', { params });
-      setSellers(response.data.data);
-      setTotal(response.data.total);
+      // このリクエストがまだ最新の場合のみ画面に反映する（競合状態対策：古いリクエストが後から解決して
+      // 新しいフィルター結果を上書きしてしまう問題を防ぐ）
+      if (requestId === fetchSellersRequestIdRef.current) {
+        setSellers(response.data.data);
+        setTotal(response.data.total);
+      }
       // fi:xxx / visitThankYouPending:xxx カテゴリは都度最新を取得するためキャッシュしない
       // それ以外は15分間キャッシュ（コールドスタート対策）
       const isFiCategoryNoCache = typeof params.statusCategory === 'string' && params.statusCategory.startsWith('fi:');
@@ -870,7 +884,9 @@ export default function SellersPage() {
     } catch (error) {
       console.error('Failed to fetch sellers:', error);
     } finally {
-      setLoading(false);
+      if (requestId === fetchSellersRequestIdRef.current) {
+        setLoading(false);
+      }
     }
   };
 
