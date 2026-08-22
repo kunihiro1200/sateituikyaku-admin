@@ -34,6 +34,7 @@ interface UploadedFile {
   file: File;
   name: string;
   uploadedUrl?: string;
+  comment?: string; // 画像用コメント
 }
 
 interface Staff {
@@ -105,14 +106,14 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
   const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const newFiles = files.map((f) => ({ file: f, name: f.name }));
-    setPdfs((prev) => [...prev, ...newFiles].slice(0, 4));
+    setPdfs((prev) => [...prev, ...newFiles].slice(0, 10));
     e.target.value = '';
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const newFiles = files.map((f) => ({ file: f, name: f.name }));
-    setImages((prev) => [...prev, ...newFiles].slice(0, 4));
+    const newFiles = files.map((f) => ({ file: f, name: f.name, comment: '' }));
+    setImages((prev) => [...prev, ...newFiles].slice(0, 10));
     e.target.value = '';
   };
 
@@ -122,6 +123,12 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
 
   const removeImage = (index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateImageComment = (index: number, comment: string) => {
+    setImages((prev) => 
+      prev.map((img, i) => i === index ? { ...img, comment } : img)
+    );
   };
 
   const validate = (): boolean => {
@@ -175,10 +182,32 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
         'PDF2': pdfUrls[1] || '',
         'PDF3': pdfUrls[2] || '',
         'PDF4': pdfUrls[3] || '',
+        'PDF5': pdfUrls[4] || '',
+        'PDF6': pdfUrls[5] || '',
+        'PDF7': pdfUrls[6] || '',
+        'PDF8': pdfUrls[7] || '',
+        'PDF9': pdfUrls[8] || '',
+        'PDF10': pdfUrls[9] || '',
         '画像１': imageUrls[0] || '',
         '画像２': imageUrls[1] || '',
         '画像３': imageUrls[2] || '',
         '画像４': imageUrls[3] || '',
+        '画像５': imageUrls[4] || '',
+        '画像６': imageUrls[5] || '',
+        '画像７': imageUrls[6] || '',
+        '画像８': imageUrls[7] || '',
+        '画像９': imageUrls[8] || '',
+        '画像１０': imageUrls[9] || '',
+        '画像コメント１': images[0]?.comment || '',
+        '画像コメント２': images[1]?.comment || '',
+        '画像コメント３': images[2]?.comment || '',
+        '画像コメント４': images[3]?.comment || '',
+        '画像コメント５': images[4]?.comment || '',
+        '画像コメント６': images[5]?.comment || '',
+        '画像コメント７': images[6]?.comment || '',
+        '画像コメント８': images[7]?.comment || '',
+        '画像コメント９': images[8]?.comment || '',
+        '画像コメント１０': images[9]?.comment || '',
         'URL': url,
         '打ち合わせ内容': meetingContent,
       };
@@ -333,14 +362,14 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
 
         {/* PDF添付 */}
         <Grid item xs={12}>
-          <Typography variant="caption" color="text.secondary">PDF（最大4件）</Typography>
+          <Typography variant="caption" color="text.secondary">PDF（最大10件）</Typography>
           <Box sx={{ mt: 0.5 }}>
             <Button
               component="label"
               variant="outlined"
               startIcon={<AttachFileIcon />}
               size="small"
-              disabled={pdfs.length >= 4}
+              disabled={pdfs.length >= 10}
               sx={{ borderColor: color.main, color: color.main }}
             >
               PDFを選択
@@ -369,14 +398,14 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
 
         {/* 画像添付 */}
         <Grid item xs={12}>
-          <Typography variant="caption" color="text.secondary">画像（最大4件）</Typography>
+          <Typography variant="caption" color="text.secondary">画像（最大10件）</Typography>
           <Box sx={{ mt: 0.5 }}>
             <Button
               component="label"
               variant="outlined"
               startIcon={<AttachFileIcon />}
               size="small"
-              disabled={images.length >= 4}
+              disabled={images.length >= 10}
               sx={{ borderColor: color.main, color: color.main }}
             >
               画像を選択
@@ -388,16 +417,34 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
                 onChange={handleImageChange}
               />
             </Button>
-            <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
               {images.map((img, i) => (
-                <Chip
-                  key={i}
-                  label={img.name}
-                  onDelete={() => removeImage(i)}
-                  deleteIcon={<CloseIcon />}
-                  size="small"
-                  sx={{ bgcolor: `${color.main}15` }}
-                />
+                <Box key={i} sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 1.5, bgcolor: '#fafafa' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="body2" fontWeight="bold" sx={{ color: color.main }}>
+                      画像 {i + 1}: {img.name}
+                    </Typography>
+                    <IconButton size="small" onClick={() => removeImage(i)} sx={{ color: '#f44336' }}>
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                  <TextField
+                    fullWidth
+                    placeholder={`画像 ${i + 1} のコメントを入力`}
+                    value={img.comment || ''}
+                    onChange={(e) => updateImageComment(i, e.target.value)}
+                    size="small"
+                    multiline
+                    rows={2}
+                    sx={{ 
+                      mt: 1,
+                      '& .MuiOutlinedInput-root': { 
+                        bgcolor: '#fff',
+                        fontSize: '0.9rem',
+                      }
+                    }}
+                  />
+                </Box>
               ))}
             </Box>
           </Box>

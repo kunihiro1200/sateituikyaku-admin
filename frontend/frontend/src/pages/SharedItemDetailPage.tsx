@@ -77,6 +77,7 @@ interface Staff {
 interface NewFile {
   file: File;
   name: string;
+  comment?: string;
 }
 
 export default function SharedItemDetailPage() {
@@ -101,6 +102,9 @@ export default function SharedItemDetailPage() {
   // 追加ファイル
   const [newPdfs, setNewPdfs] = useState<NewFile[]>([]);
   const [newImages, setNewImages] = useState<NewFile[]>([]);
+
+  // 画像コメント（既存画像用）
+  const [imageComments, setImageComments] = useState<Record<number, string>>({});
 
   // チームアンサー（契約率チーム・物件数チーム専用、DB保存）
   const [teamAnswers, setTeamAnswers] = useState<TeamAnswers>(EMPTY_TEAM_ANSWERS);
@@ -134,6 +138,7 @@ export default function SharedItemDetailPage() {
     setStaffNotShared([]);
     setNewPdfs([]);
     setNewImages([]);
+    setImageComments({});
     setTeamAnswers(EMPTY_TEAM_ANSWERS);
     setInitialTeamAnswers(EMPTY_TEAM_ANSWERS);
     fetchItem();
@@ -160,6 +165,14 @@ export default function SharedItemDetailPage() {
         setInitialConfirmationDate(cd);
         setInitialStaffNotShared(sns);
         setInitialContent(ct);
+
+        // 画像コメントを読み込み（画像コメント１〜１０）
+        const comments: Record<number, string> = {};
+        for (let i = 1; i <= 10; i++) {
+          const key = `画像コメント${i === 1 ? '１' : i === 2 ? '２' : i === 3 ? '３' : i === 4 ? '４' : i === 5 ? '５' : i === 6 ? '６' : i === 7 ? '７' : i === 8 ? '８' : i === 9 ? '９' : '１０'}`;
+          comments[i] = (foundItem[key] as string) || '';
+        }
+        setImageComments(comments);
 
         // 契約率チーム・物件数チームの場合はチームアンサーも取得
         if (TEAM_MODES.includes(foundItem['共有場'])) {
@@ -261,11 +274,20 @@ export default function SharedItemDetailPage() {
     setApiError('');
     setSaveSuccess(false);
     try {
-      const pdfUrls = [1, 2, 3, 4].map((n) => item[`PDF${n}`] || '');
-      const imageUrls = [1, 2, 3, 4].map((n) => item[`画像${n === 1 ? '１' : n === 2 ? '２' : n === 3 ? '３' : '４'}`] || '');
+      const pdfUrls = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => item[`PDF${n}`] || '');
+      const imageUrls = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => {
+        const key = `画像${n === 1 ? '１' : n === 2 ? '２' : n === 3 ? '３' : n === 4 ? '４' : n === 5 ? '５' : n === 6 ? '６' : n === 7 ? '７' : n === 8 ? '８' : n === 9 ? '９' : '１０'}`;
+        return item[key] || '';
+      });
       const payload: Record<string, string> = {
-        'PDF1': pdfUrls[0], 'PDF2': pdfUrls[1], 'PDF3': pdfUrls[2], 'PDF4': pdfUrls[3],
-        '画像１': imageUrls[0], '画像２': imageUrls[1], '画像３': imageUrls[2], '画像４': imageUrls[3],
+        'PDF1': pdfUrls[0], 'PDF2': pdfUrls[1], 'PDF3': pdfUrls[2], 'PDF4': pdfUrls[3], 'PDF5': pdfUrls[4],
+        'PDF6': pdfUrls[5], 'PDF7': pdfUrls[6], 'PDF8': pdfUrls[7], 'PDF9': pdfUrls[8], 'PDF10': pdfUrls[9],
+        '画像１': imageUrls[0], '画像２': imageUrls[1], '画像３': imageUrls[2], '画像４': imageUrls[3], '画像５': imageUrls[4],
+        '画像６': imageUrls[5], '画像７': imageUrls[6], '画像８': imageUrls[7], '画像９': imageUrls[8], '画像１０': imageUrls[9],
+        '画像コメント１': imageComments[1] || '', '画像コメント２': imageComments[2] || '', '画像コメント３': imageComments[3] || '',
+        '画像コメント４': imageComments[4] || '', '画像コメント５': imageComments[5] || '', '画像コメント６': imageComments[6] || '',
+        '画像コメント７': imageComments[7] || '', '画像コメント８': imageComments[8] || '', '画像コメント９': imageComments[9] || '',
+        '画像コメント１０': imageComments[10] || '',
         '共有日': today,
         '確認日': confirmationDate,
         '共有できていない': staffNotShared.join(','),
@@ -276,7 +298,7 @@ export default function SharedItemDetailPage() {
       // PDF/画像フィールドの空文字はsetItemに渡さない（hasChanges の誤検知を防ぐ）
       const payloadForState = Object.fromEntries(
         Object.entries(payload).filter(([k, v]) => !(
-          (/^PDF\d$/.test(k) || /^画像[１２３４]$/.test(k)) && v === ''
+          (/^PDF\d+$/.test(k) || /^画像[１-９１０]+$/.test(k) || /^画像コメント[１-９１０]+$/.test(k)) && v === ''
         ))
       );
       setItem((prev) => (prev ? { ...prev, ...payloadForState } : prev));
@@ -328,17 +350,20 @@ export default function SharedItemDetailPage() {
 
   const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const existingCount = [1, 2, 3, 4].filter((n) => item && item[`PDF${n}`]).length;
-    const remaining = 4 - existingCount - newPdfs.length;
+    const existingCount = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter((n) => item && item[`PDF${n}`]).length;
+    const remaining = 10 - existingCount - newPdfs.length;
     setNewPdfs((prev) => [...prev, ...files.slice(0, remaining).map((f) => ({ file: f, name: f.name }))]);
     e.target.value = '';
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const existingCount = ['１', '２', '３', '４'].filter((n) => item && item[`画像${n}`]).length;
-    const remaining = 4 - existingCount - newImages.length;
-    setNewImages((prev) => [...prev, ...files.slice(0, remaining).map((f) => ({ file: f, name: f.name }))]);
+    const existingCount = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter((n) => {
+      const key = `画像${n === 1 ? '１' : n === 2 ? '２' : n === 3 ? '３' : n === 4 ? '４' : n === 5 ? '５' : n === 6 ? '６' : n === 7 ? '７' : n === 8 ? '８' : n === 9 ? '９' : '１０'}`;
+      return item && item[key];
+    }).length;
+    const remaining = 10 - existingCount - newImages.length;
+    setNewImages((prev) => [...prev, ...files.slice(0, remaining).map((f) => ({ file: f, name: f.name, comment: '' }))]);
     e.target.value = '';
   };
 
@@ -346,7 +371,7 @@ export default function SharedItemDetailPage() {
     setItem((prev) => {
       if (!prev) return prev;
       const updated = { ...prev };
-      for (let n = 1; n <= 4; n++) {
+      for (let n = 1; n <= 10; n++) {
         if (updated[`PDF${n}`] === url) updated[`PDF${n}`] = '';
       }
       return updated;
@@ -357,8 +382,9 @@ export default function SharedItemDetailPage() {
     setItem((prev) => {
       if (!prev) return prev;
       const updated = { ...prev };
-      for (const n of ['１', '２', '３', '４']) {
-        if (updated[`画像${n}`] === url) updated[`画像${n}`] = '';
+      for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
+        const key = `画像${n === 1 ? '１' : n === 2 ? '２' : n === 3 ? '３' : n === 4 ? '４' : n === 5 ? '５' : n === 6 ? '６' : n === 7 ? '７' : n === 8 ? '８' : n === 9 ? '９' : '１０'}`;
+        if (updated[key] === url) updated[key] = '';
       }
       return updated;
     });
@@ -371,8 +397,11 @@ export default function SharedItemDetailPage() {
     setSaveSuccess(false);
 
     try {
-      const pdfUrls = [1, 2, 3, 4].map((n) => item[`PDF${n}`] || '');
-      const imageUrls = [1, 2, 3, 4].map((n) => item[`画像${n === 1 ? '１' : n === 2 ? '２' : n === 3 ? '３' : '４'}`] || '');
+      const pdfUrls = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => item[`PDF${n}`] || '');
+      const imageUrls = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => {
+        const key = `画像${n === 1 ? '１' : n === 2 ? '２' : n === 3 ? '３' : n === 4 ? '４' : n === 5 ? '５' : n === 6 ? '６' : n === 7 ? '７' : n === 8 ? '８' : n === 9 ? '９' : '１０'}`;
+        return item[key] || '';
+      });
 
       for (const newPdf of newPdfs) {
         const url = await uploadFileToStorage(newPdf.file, 'pdf');
@@ -383,7 +412,13 @@ export default function SharedItemDetailPage() {
       for (const newImg of newImages) {
         const url = await uploadFileToStorage(newImg.file, 'image');
         const emptyIdx = imageUrls.findIndex((u) => !u);
-        if (emptyIdx !== -1) imageUrls[emptyIdx] = url;
+        if (emptyIdx !== -1) {
+          imageUrls[emptyIdx] = url;
+          // 新規画像のコメントも保存
+          if (newImg.comment) {
+            imageComments[emptyIdx + 1] = newImg.comment;
+          }
+        }
       }
 
       const payload: Record<string, string> = {
@@ -391,10 +426,32 @@ export default function SharedItemDetailPage() {
         'PDF2': pdfUrls[1],
         'PDF3': pdfUrls[2],
         'PDF4': pdfUrls[3],
+        'PDF5': pdfUrls[4],
+        'PDF6': pdfUrls[5],
+        'PDF7': pdfUrls[6],
+        'PDF8': pdfUrls[7],
+        'PDF9': pdfUrls[8],
+        'PDF10': pdfUrls[9],
         '画像１': imageUrls[0],
         '画像２': imageUrls[1],
         '画像３': imageUrls[2],
         '画像４': imageUrls[3],
+        '画像５': imageUrls[4],
+        '画像６': imageUrls[5],
+        '画像７': imageUrls[6],
+        '画像８': imageUrls[7],
+        '画像９': imageUrls[8],
+        '画像１０': imageUrls[9],
+        '画像コメント１': imageComments[1] || '',
+        '画像コメント２': imageComments[2] || '',
+        '画像コメント３': imageComments[3] || '',
+        '画像コメント４': imageComments[4] || '',
+        '画像コメント５': imageComments[5] || '',
+        '画像コメント６': imageComments[6] || '',
+        '画像コメント７': imageComments[7] || '',
+        '画像コメント８': imageComments[8] || '',
+        '画像コメント９': imageComments[9] || '',
+        '画像コメント１０': imageComments[10] || '',
         '共有日': sharingDate,
         '確認日': confirmationDate,
         '共有できていない': staffNotShared.join(','),
@@ -407,7 +464,7 @@ export default function SharedItemDetailPage() {
       // PDF/画像フィールドの空文字はsetItemに渡さない（hasChanges の誤検知を防ぐ）
       const payloadForState = Object.fromEntries(
         Object.entries(payload).filter(([k, v]) => !(
-          (/^PDF\d$/.test(k) || /^画像[１２３４]$/.test(k)) && v === ''
+          (/^PDF\d+$/.test(k) || /^画像[１-９１０]+$/.test(k) || /^画像コメント[１-９１０]+$/.test(k)) && v === ''
         ))
       );
       setItem((prev) => (prev ? { ...prev, ...payloadForState } : prev));
@@ -443,16 +500,22 @@ export default function SharedItemDetailPage() {
     );
   }
 
-  const existingPdfUrls = [1, 2, 3, 4].map((n) => item[`PDF${n}`]).filter(Boolean);
-  const existingImageUrls = ['１', '２', '３', '４'].map((n) => item[`画像${n}`]).filter(Boolean);
-  const canAddPdf = existingPdfUrls.length + newPdfs.length < 4;
-  const canAddImage = existingImageUrls.length + newImages.length < 4;
+  const existingPdfUrls = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => item[`PDF${n}`]).filter(Boolean);
+  const existingImageUrls = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => {
+    const key = `画像${n === 1 ? '１' : n === 2 ? '２' : n === 3 ? '３' : n === 4 ? '４' : n === 5 ? '５' : n === 6 ? '６' : n === 7 ? '７' : n === 8 ? '８' : n === 9 ? '９' : '１０'}`;
+    return item[key];
+  }).filter(Boolean);
+  const canAddPdf = existingPdfUrls.length + newPdfs.length < 10;
+  const canAddImage = existingImageUrls.length + newImages.length < 10;
 
   const hasChanges =
     newPdfs.length > 0 ||
     newImages.length > 0 ||
-    [1, 2, 3, 4].some((n) => item[`PDF${n}`] === '') ||
-    ['１', '２', '３', '４'].some((n) => item[`画像${n}`] === '') ||
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].some((n) => item[`PDF${n}`] === '') ||
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].some((n) => {
+      const key = `画像${n === 1 ? '１' : n === 2 ? '２' : n === 3 ? '３' : n === 4 ? '４' : n === 5 ? '５' : n === 6 ? '６' : n === 7 ? '７' : n === 8 ? '８' : n === 9 ? '９' : '１０'}`;
+      return item[key] === '';
+    }) ||
     content !== initialContent ||
     sharingDate !== initialSharingDate ||
     confirmationDate !== initialConfirmationDate ||
@@ -723,35 +786,80 @@ export default function SharedItemDetailPage() {
           <Grid item xs={12}>
             <Typography variant="caption" color="text.secondary">画像</Typography>
             <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {existingImageUrls.map((url, i) => (
-                <Box key={i} sx={{ border: '1px solid #e0e0e0', borderRadius: 1, overflow: 'hidden' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1, bgcolor: '#fafafa', borderBottom: '1px solid #e0e0e0' }}>
-                    <Typography sx={{ fontSize: '0.85rem', flex: 1, color: color.main, wordBreak: 'break-all' }}>
-                      🖼️ {decodeURIComponent(url.split('/').pop() || `画像${i + 1}`)}
+              {existingImageUrls.map((url, i) => {
+                const imageIndex = i + 1;
+                return (
+                  <Box key={i} sx={{ border: '1px solid #e0e0e0', borderRadius: 1, overflow: 'hidden' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1, bgcolor: '#fafafa', borderBottom: '1px solid #e0e0e0' }}>
+                      <Typography sx={{ fontSize: '0.85rem', flex: 1, color: color.main, wordBreak: 'break-all', fontWeight: 'bold' }}>
+                        🖼️ 画像 {imageIndex}: {decodeURIComponent(url.split('/').pop() || `画像${imageIndex}`)}
+                      </Typography>
+                      <a href={url} target="_blank" rel="noopener noreferrer"
+                        style={{ color: color.main, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                        別タブで開く
+                      </a>
+                      <IconButton size="small" onClick={() => handleDeleteExistingImage(url)}
+                        sx={{ color: '#f44336', flexShrink: 0 }} title="削除">
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                    <Box sx={{ p: 2, bgcolor: '#f5f5f5', textAlign: 'center' }}>
+                      <img src={url} alt={`画像${imageIndex}`}
+                        style={{ maxWidth: '100%', maxHeight: '600px', objectFit: 'contain', borderRadius: 4, display: 'block', margin: '0 auto' }}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    </Box>
+                    <Box sx={{ p: 1.5, bgcolor: '#fff', borderTop: '1px solid #e0e0e0' }}>
+                      <Typography variant="caption" color="text.secondary" fontWeight="bold">コメント</Typography>
+                      <TextField
+                        fullWidth
+                        placeholder={`画像 ${imageIndex} のコメントを入力`}
+                        value={imageComments[imageIndex] || ''}
+                        onChange={(e) => setImageComments((prev) => ({ ...prev, [imageIndex]: e.target.value }))}
+                        size="small"
+                        multiline
+                        rows={2}
+                        sx={{ 
+                          mt: 0.5,
+                          '& .MuiOutlinedInput-root': { 
+                            bgcolor: '#fafafa',
+                            fontSize: '0.9rem',
+                          }
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                );
+              })}
+              {newImages.map((f, i) => (
+                <Box key={i} sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 1.5, bgcolor: '#fafafa' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="body2" fontWeight="bold" sx={{ color: color.main }}>
+                      新規画像 {i + 1}: {f.name}
                     </Typography>
-                    <a href={url} target="_blank" rel="noopener noreferrer"
-                      style={{ color: color.main, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
-                      別タブで開く
-                    </a>
-                    <IconButton size="small" onClick={() => handleDeleteExistingImage(url)}
-                      sx={{ color: '#f44336', flexShrink: 0 }} title="削除">
+                    <IconButton size="small" onClick={() => setNewImages((prev) => prev.filter((_, idx) => idx !== i))} sx={{ color: '#f44336' }}>
                       <CloseIcon fontSize="small" />
                     </IconButton>
                   </Box>
-                  <Box sx={{ p: 1, bgcolor: '#f5f5f5', textAlign: 'center' }}>
-                    <img src={url} alt={`画像${i + 1}`}
-                      style={{ maxWidth: '100%', objectFit: 'contain', borderRadius: 4, display: 'block', margin: '0 auto' }}
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  </Box>
+                  <TextField
+                    fullWidth
+                    placeholder={`画像 ${i + 1} のコメントを入力`}
+                    value={f.comment || ''}
+                    onChange={(e) => setNewImages((prev) => 
+                      prev.map((img, idx) => idx === i ? { ...img, comment: e.target.value } : img)
+                    )}
+                    size="small"
+                    multiline
+                    rows={2}
+                    sx={{ 
+                      mt: 1,
+                      '& .MuiOutlinedInput-root': { 
+                        bgcolor: '#fff',
+                        fontSize: '0.9rem',
+                      }
+                    }}
+                  />
                 </Box>
-              ))}
-              {newImages.map((f, i) => (
-                <Chip key={i} label={f.name} size="small"
-                  onDelete={() => setNewImages((prev) => prev.filter((_, idx) => idx !== i))}
-                  deleteIcon={<CloseIcon />}
-                  sx={{ bgcolor: `${color.main}15`, alignSelf: 'flex-start' }}
-                />
               ))}
               {canAddImage && (
                 <Button component="label" variant="outlined" startIcon={<AttachFileIcon />} size="small"
