@@ -824,6 +824,10 @@ export default function SharedItemDetailPage() {
                           '& .MuiOutlinedInput-root': { 
                             bgcolor: '#fafafa',
                             fontSize: '0.9rem',
+                          },
+                          '& .MuiInputBase-input': {
+                            color: '#d32f2f',
+                            fontWeight: '600',
                           }
                         }}
                       />
@@ -856,6 +860,10 @@ export default function SharedItemDetailPage() {
                       '& .MuiOutlinedInput-root': { 
                         bgcolor: '#fff',
                         fontSize: '0.9rem',
+                      },
+                      '& .MuiInputBase-input': {
+                        color: '#d32f2f',
+                        fontWeight: '600',
                       }
                     }}
                   />
