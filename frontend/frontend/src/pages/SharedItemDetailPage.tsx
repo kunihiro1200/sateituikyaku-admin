@@ -181,6 +181,19 @@ export default function SharedItemDetailPage() {
           setInitialImageComments({});
         }
 
+        // 画像5〜10をDBから読み込み
+        try {
+          const imagesResponse = await api.get(`/api/shared-items/${foundItem.id}/images`);
+          const dbImages: Record<number, string> = imagesResponse.data.data || {};
+          // DBから取得した画像5〜10をfoundItemにマージ
+          Object.entries(dbImages).forEach(([num, url]) => {
+            const key = `画像${num === '5' ? '５' : num === '6' ? '６' : num === '7' ? '７' : num === '8' ? '８' : num === '9' ? '９' : '１０'}`;
+            foundItem[key] = url;
+          });
+        } catch (imageError) {
+          console.error('Failed to fetch images 5-10:', imageError);
+        }
+
         // 契約率チーム・物件数チームの場合はチームアンサーも取得
         if (TEAM_MODES.includes(foundItem['共有場'])) {
           fetchTeamAnswers(foundItem.id);
@@ -289,8 +302,7 @@ export default function SharedItemDetailPage() {
       const payload: Record<string, string> = {
         'PDF1': pdfUrls[0], 'PDF2': pdfUrls[1], 'PDF3': pdfUrls[2], 'PDF4': pdfUrls[3], 'PDF5': pdfUrls[4],
         'PDF6': pdfUrls[5], 'PDF7': pdfUrls[6], 'PDF8': pdfUrls[7], 'PDF9': pdfUrls[8], 'PDF10': pdfUrls[9],
-        '画像１': imageUrls[0], '画像２': imageUrls[1], '画像３': imageUrls[2], '画像４': imageUrls[3], '画像５': imageUrls[4],
-        '画像６': imageUrls[5], '画像７': imageUrls[6], '画像８': imageUrls[7], '画像９': imageUrls[8], '画像１０': imageUrls[9],
+        '画像１': imageUrls[0], '画像２': imageUrls[1], '画像３': imageUrls[2], '画像４': imageUrls[3],
         '共有日': today,
         '確認日': confirmationDate,
         '共有できていない': staffNotShared.join(','),
@@ -304,6 +316,22 @@ export default function SharedItemDetailPage() {
       } catch (commentError) {
         console.error('Failed to save image comments:', commentError);
         // コメント保存失敗は全体の保存を止めない
+      }
+
+      // 画像5〜10は別途DBに保存
+      try {
+        const dbImages: Record<number, string> = {
+          5: imageUrls[4],
+          6: imageUrls[5],
+          7: imageUrls[6],
+          8: imageUrls[7],
+          9: imageUrls[8],
+          10: imageUrls[9],
+        };
+        await api.put(`/api/shared-items/${item.id}/images`, { images: dbImages });
+      } catch (imageError) {
+        console.error('Failed to save images 5-10:', imageError);
+        // 画像保存失敗は全体の保存を止めない
       }
       pageDataCache.invalidate(CACHE_KEYS.SHARED_ITEMS);
       // PDF/画像フィールドの空文字はsetItemに渡さない（hasChanges の誤検知を防ぐ）
@@ -448,12 +476,6 @@ export default function SharedItemDetailPage() {
         '画像２': imageUrls[1],
         '画像３': imageUrls[2],
         '画像４': imageUrls[3],
-        '画像５': imageUrls[4],
-        '画像６': imageUrls[5],
-        '画像７': imageUrls[6],
-        '画像８': imageUrls[7],
-        '画像９': imageUrls[8],
-        '画像１０': imageUrls[9],
         '共有日': sharingDate,
         '確認日': confirmationDate,
         '共有できていない': staffNotShared.join(','),
@@ -468,6 +490,22 @@ export default function SharedItemDetailPage() {
       } catch (commentError) {
         console.error('Failed to save image comments:', commentError);
         // コメント保存失敗は全体の保存を止めない
+      }
+
+      // 画像5〜10は別途DBに保存
+      try {
+        const dbImages: Record<number, string> = {
+          5: imageUrls[4],
+          6: imageUrls[5],
+          7: imageUrls[6],
+          8: imageUrls[7],
+          9: imageUrls[8],
+          10: imageUrls[9],
+        };
+        await api.put(`/api/shared-items/${item.id}/images`, { images: dbImages });
+      } catch (imageError) {
+        console.error('Failed to save images 5-10:', imageError);
+        // 画像保存失敗は全体の保存を止めない
       }
 
       pageDataCache.invalidate(CACHE_KEYS.SHARED_ITEMS);

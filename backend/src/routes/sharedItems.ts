@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { SharedItemsService } from '../services/SharedItemsService';
 import { SharedItemImageCommentsService } from '../services/SharedItemImageCommentsService';
+import { SharedItemImagesService } from '../services/SharedItemImagesService';
 import { EmailService } from '../services/EmailService';
 import multer from 'multer';
 import { createClient } from '@supabase/supabase-js';
@@ -9,6 +10,7 @@ import pool from '../config/database';
 const router = Router();
 const sharedItemsService = new SharedItemsService();
 const imageCommentsService = new SharedItemImageCommentsService();
+const imagesService = new SharedItemImagesService();
 const emailService = new EmailService();
 
 // multer のメモリストレージ設定（ファイルをバッファとして保持）
@@ -419,6 +421,37 @@ router.put('/:id/image-comments', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Failed to save image comments:', error);
     res.status(500).json({ error: '画像コメントの保存に失敗しました' });
+  }
+});
+
+/**
+ * GET /api/shared-items/:id/images - 画像5〜10取得
+ */
+router.get('/:id/images', async (req: Request, res: Response) => {
+  try {
+    const images = await imagesService.getImages(req.params.id);
+    res.json({ data: images });
+  } catch (error: any) {
+    console.error('Failed to fetch images:', error);
+    res.status(500).json({ error: '画像の取得に失敗しました' });
+  }
+});
+
+/**
+ * PUT /api/shared-items/:id/images - 画像5〜10保存
+ */
+router.put('/:id/images', async (req: Request, res: Response) => {
+  try {
+    const { images } = req.body;
+    if (!images || typeof images !== 'object') {
+      return res.status(400).json({ error: '画像データが不正です' });
+    }
+    
+    await imagesService.saveImages(req.params.id, images);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Failed to save images:', error);
+    res.status(500).json({ error: '画像の保存に失敗しました' });
   }
 });
 

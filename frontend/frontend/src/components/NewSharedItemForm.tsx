@@ -192,12 +192,6 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
         '画像２': imageUrls[1] || '',
         '画像３': imageUrls[2] || '',
         '画像４': imageUrls[3] || '',
-        '画像５': imageUrls[4] || '',
-        '画像６': imageUrls[5] || '',
-        '画像７': imageUrls[6] || '',
-        '画像８': imageUrls[7] || '',
-        '画像９': imageUrls[8] || '',
-        '画像１０': imageUrls[9] || '',
         'URL': url,
         '打ち合わせ内容': meetingContent,
       };
@@ -217,6 +211,24 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
         } catch (commentError) {
           console.error('Failed to save image comments:', commentError);
           // コメント保存失敗は全体の保存を止めない
+        }
+      }
+
+      // 画像5〜10は別途DBに保存
+      if (imageUrls.slice(4).some(url => url)) {
+        const dbImages: Record<number, string> = {
+          5: imageUrls[4] || '',
+          6: imageUrls[5] || '',
+          7: imageUrls[6] || '',
+          8: imageUrls[7] || '',
+          9: imageUrls[8] || '',
+          10: imageUrls[9] || '',
+        };
+        try {
+          await api.put(`/api/shared-items/${nextId}/images`, { images: dbImages });
+        } catch (imageError) {
+          console.error('Failed to save images 5-10:', imageError);
+          // 画像保存失敗は全体の保存を止めない
         }
       }
 

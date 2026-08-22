@@ -95,12 +95,6 @@ export class SharedItemsService {
     'image2': '画像２',
     'image3': '画像３',
     'image4': '画像４',
-    'image5': '画像５',
-    'image6': '画像６',
-    'image7': '画像７',
-    'image8': '画像８',
-    'image9': '画像９',
-    'image10': '画像１０',
     'url': 'URL',
     'meeting_content': '打ち合わせ内容',
   };
