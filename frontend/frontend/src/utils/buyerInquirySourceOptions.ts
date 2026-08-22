@@ -24,6 +24,7 @@ export const INQUIRY_SOURCE_OPTIONS: InquirySourceOption[] = [
   { value: '電話(いふうHP)', label: '電話(いふうHP)', category: '電話系' },
   { value: '電話(看板)', label: '電話(看板)', category: '電話系' },
   { value: '電話(チラシ)', label: '電話(チラシ)', category: '電話系' },
+  { value: '電話(ふれんず)', label: '電話(ふれんず)', category: '電話系' },
   { value: '電話(流入元不明)', label: '電話(流入元不明)', category: '電話系' },
   { value: '電話(業者)', label: '電話(業者)', category: '電話系' },
   
