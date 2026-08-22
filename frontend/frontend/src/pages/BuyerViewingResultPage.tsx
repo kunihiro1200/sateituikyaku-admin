@@ -32,6 +32,7 @@ import { useAuthStore } from '../store/authStore';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 import { OfferFailedChatSentPopup } from '../components/OfferFailedChatSentPopup';
 import CompactBuyerListForProperty from '../components/CompactBuyerListForProperty';
+import MatchingUpdatePromptDialog from '../components/MatchingUpdatePromptDialog';
 
 /**
  * カレンダーイベントのタイトルを生成する
@@ -284,6 +285,8 @@ export default function BuyerViewingResultPage() {
   const [propertyBuyersLoading, setPropertyBuyersLoading] = useState(false);
   // ダブルブッキング警告からスクロールするための ref
   const buyerListSectionRef = useRef<HTMLDivElement>(null);
+  // マッチング更新促進ダイアログ
+  const [matchingUpdatePromptOpen, setMatchingUpdatePromptOpen] = useState(false);
 
   useEffect(() => {
     if (buyer_number) {
@@ -718,11 +721,32 @@ export default function BuyerViewingResultPage() {
       setViewingResultEditValue(result.buyer.viewing_result_follow_up || '');
       const syncMsg = result.syncStatus === 'synced' ? '（スプシ同期済み）' : result.syncStatus === 'pending' ? '（スプシ同期保留中）' : '';
       setSnackbar({ open: true, message: `内覧結果・後続対応を保存しました${syncMsg}`, severity: result.syncStatus === 'synced' ? 'success' : 'warning' });
+      
+      // マッチング更新促進ダイアログの表示判定
+      const shouldShowMatchingPrompt = checkShouldShowMatchingPrompt(result.buyer);
+      if (shouldShowMatchingPrompt) {
+        setMatchingUpdatePromptOpen(true);
+      }
     } catch (error: any) {
       setSnackbar({ open: true, message: error.response?.data?.error || '保存に失敗しました', severity: 'error' });
     } finally {
       setViewingResultSaving(false);
     }
+  };
+
+  // マッチング更新促進ダイアログを表示すべきかチェック
+  const checkShouldShowMatchingPrompt = (updatedBuyer: Buyer): boolean => {
+    // 受付日が2026/8/22以降かチェック
+    const receptionDate = updatedBuyer.reception_date ? new Date(updatedBuyer.reception_date) : null;
+    const cutoffDate = new Date('2026-08-22');
+    const isReceptionDateAfterCutoff = receptionDate && receptionDate >= cutoffDate;
+
+    // 内覧日が2026/8/22以降かチェック
+    const viewingDate = updatedBuyer.viewing_date ? new Date(updatedBuyer.viewing_date) : null;
+    const isViewingDateAfterCutoff = viewingDate && viewingDate >= cutoffDate;
+
+    // どちらかの条件を満たす場合のみダイアログを表示
+    return isReceptionDateAfterCutoff || isViewingDateAfterCutoff;
   };
 
   const handleViewingResultQuickInput = (text: string) => {
@@ -2705,6 +2729,17 @@ export default function BuyerViewingResultPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* マッチング更新促進ダイアログ */}
+      <MatchingUpdatePromptDialog
+        open={matchingUpdatePromptOpen}
+        onClose={() => setMatchingUpdatePromptOpen(false)}
+        onUpdate={() => {
+          setMatchingUpdatePromptOpen(false);
+          navigate(`/buyers/${buyer_number}/desired-conditions`);
+        }}
+        onSkip={() => setMatchingUpdatePromptOpen(false)}
+      />
     </Container>
   );
 }
