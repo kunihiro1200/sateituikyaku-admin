@@ -3246,6 +3246,70 @@ router.get('/:id/match-candidates', async (req: Request, res: Response) => {
 });
 
 /**
+ * 売主の物件住所から配信エリアを自動計算
+ * POST /api/sellers/:id/calculate-distribution-areas
+ * 物件リストの「配信エリア番号」と同じロジックを使用
+ */
+router.post('/:id/calculate-distribution-areas', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    // 売主情報を取得
+    const seller = await sellerService.getSeller(id);
+    if (!seller) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+
+    // 物件情報を取得（property_addressとgoogle_map_urlが必要）
+    const propertyAddress = seller.propertyAddress || '';
+    const googleMapUrl = seller.googleMapUrl || '';
+
+    if (!propertyAddress && !googleMapUrl) {
+      return res.status(400).json({ 
+        error: 'Property address or Google Map URL is required',
+        message: '物件住所またはGoogle Map URLが必要です'
+      });
+    }
+
+    // 市名を抽出
+    const city = cityExtractor.extractCityName(propertyAddress) || null;
+
+    // 配信エリアを計算
+    const result = await distributionCalculator.calculateDistributionAreas(
+      googleMapUrl || null,
+      city,
+      propertyAddress || null,
+      seller.latitude && seller.longitude 
+        ? { lat: seller.latitude, lng: seller.longitude }
+        : null
+    );
+
+    console.log(`[Calculate Distribution Areas] Seller ${seller.sellerNumber}:`, {
+      propertyAddress,
+      city,
+      areas: result.areas,
+      formatted: result.formatted
+    });
+
+    res.json({
+      success: true,
+      areas: result.areas,
+      formatted: result.formatted,
+      radiusAreas: result.radiusAreas,
+      cityWideAreas: result.cityWideAreas,
+      propertyAddress,
+      city
+    });
+  } catch (error: any) {
+    console.error('[Calculate Distribution Areas Error]', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to calculate distribution areas',
+      message: '配信エリアの計算に失敗しました'
+    });
+  }
+});
+
+/**
  * 売主の「買いたい」マッチング入力欄（エリア/時期/金額）を更新
  * PUT /api/sellers/:id/buy-match-intent
  */

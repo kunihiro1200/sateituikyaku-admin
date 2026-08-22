@@ -114,6 +114,10 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
   const [hasSearched, setHasSearched] = useState(false);
   const [contactSaving, setContactSaving] = useState<Record<string, boolean>>({});
 
+  // エリア自動計算用の状態
+  const [calculatingAreas, setCalculatingAreas] = useState(false);
+  const [areaCalculationError, setAreaCalculationError] = useState<string | null>(null);
+
   // entityId/direction（表示対象そのもの）が変わった時だけ入力欄をリセットする。
   // initialData は呼び出し元（CallModePage等）で毎レンダリングごとに新しいオブジェクトとして
   // 生成されるため、依存配列に入れると親の再レンダリングだけで入力中の値が上書きされてしまう
@@ -228,6 +232,39 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
   // 「買いたい」方向の場合、相手は必ず「売りたい」売主（entityTypeに関係なく）
   const counterpartLabel = direction === 'buy' ? '売主' : (entityType === 'seller' ? '買主' : '売主');
 
+  // エリア自動計算（売りたい方向かつseller entityTypeの場合のみ有効）
+  const handleCalculateAreas = useCallback(async () => {
+    if (direction !== 'sell' || entityType !== 'seller') return;
+    
+    setCalculatingAreas(true);
+    setAreaCalculationError(null);
+    try {
+      const res = await api.post(`/api/sellers/${entityId}/calculate-distribution-areas`);
+      if (res.data.success && res.data.areas && res.data.areas.length > 0) {
+        // 計算されたエリアを設定
+        setAreas(res.data.areas);
+        // 成功メッセージを表示（オプション）
+        console.log('[Area Calculation Success]', {
+          areas: res.data.areas,
+          formatted: res.data.formatted,
+          propertyAddress: res.data.propertyAddress,
+          city: res.data.city
+        });
+      } else {
+        setAreaCalculationError('エリアの計算に失敗しました。物件住所またはGoogle Map URLを確認してください。');
+      }
+    } catch (e: any) {
+      console.error('[Area Calculation Error]', e);
+      setAreaCalculationError(
+        e?.response?.data?.message || 
+        e?.response?.data?.error || 
+        'エリアの自動計算に失敗しました'
+      );
+    } finally {
+      setCalculatingAreas(false);
+    }
+  }, [direction, entityType, entityId]);
+
   return (
     <Box>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
@@ -238,21 +275,48 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
         {/* エリア */}
-        <Autocomplete
-          multiple
-          size="small"
-          options={ALL_AREA_OPTIONS.map((o) => o.value)}
-          value={areas}
-          onChange={(_, newValue) => setAreas(newValue)}
-          renderTags={(value, getTagProps) =>
-            value.map((option, index) => (
-              <Chip {...getTagProps({ index })} key={option} label={option} size="small" />
-            ))
-          }
-          renderInput={(params) => (
-            <TextField {...params} label="エリア（既存エリアから選択）" placeholder="エリアを選択" />
+        <Box>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', mb: 1 }}>
+            <Autocomplete
+              multiple
+              size="small"
+              options={ALL_AREA_OPTIONS.map((o) => o.value)}
+              value={areas}
+              onChange={(_, newValue) => setAreas(newValue)}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip {...getTagProps({ index })} key={option} label={option} size="small" />
+                ))
+              }
+              renderInput={(params) => (
+                <TextField {...params} label="エリア（既存エリアから選択）" placeholder="エリアを選択" />
+              )}
+              sx={{ flex: 1 }}
+            />
+            {/* 売りたい方向の場合のみエリア自動計算ボタンを表示 */}
+            {direction === 'sell' && entityType === 'seller' && (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleCalculateAreas}
+                disabled={calculatingAreas}
+                sx={{ minWidth: '120px', height: '40px' }}
+              >
+                {calculatingAreas ? <CircularProgress size={18} /> : '物件住所から自動'}
+              </Button>
+            )}
+          </Box>
+          {areaCalculationError && (
+            <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+              {areaCalculationError}
+            </Typography>
           )}
-        />
+          {direction === 'sell' && entityType === 'seller' && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+              ヒント: 「物件住所から自動」ボタンで物件リストの配信エリア番号と同じロジックでエリアを自動選択できます
+            </Typography>
+          )}
+        </Box>
         <TextField
           size="small"
           label="エリア（自由入力・既存選択肢にない地名）"
