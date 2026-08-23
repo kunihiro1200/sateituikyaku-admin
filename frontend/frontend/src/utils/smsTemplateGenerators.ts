@@ -566,3 +566,105 @@ export const generateAskEmailSMS = (
 export const convertLineBreaks = (message: string): string => {
   return message.replace(/\[改行\]/g, '\n');
 };
+
+/**
+ * 進捗①の返信
+ * 売却を検討中とのこと承知、査定価格の根拠や税金関係について説明
+ * FI: くじら不動産、非FI: 株式会社いふう
+ */
+export const generateProgressStep1ReplySMS = (
+  seller: Seller,
+  property: PropertyInfo | null,
+  staffLastName?: string
+): string => {
+  const name = seller.name || '';
+  const accountName = staffLastName || '';
+
+  // FI判定で会社名を決定
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const hasFI = sellerNumber.includes('FI');
+  const companyName = hasFI ? 'くじら不動産' : '株式会社いふう';
+
+  const message = [
+    `${name}様`,
+    ``,
+    `ご返信ありがとうございます。${companyName}の${accountName}です。`,
+    `売却をご検討中とのこと、承知いたしました。`,
+    `査定価格の根拠や、税金関係、今後の売却の進め方について簡単にご説明できればと思います。`,
+    `5分程度で構いませんので、お電話可能な曜日や時間帯を教えていただけますでしょうか？`,
+    `「平日夕方」「土日」など、大まかで結構です。`,
+    `よろしくお願いいたします。`,
+  ].join('[改行]');
+
+  return message;
+};
+
+/**
+ * 進捗②の返信
+ * 売却時期が未定の段階でも気軽に相談を、市場状況に合わせた査定額をメールで送付
+ * FI: くじら不動産、非FI: 株式会社いふう
+ */
+export const generateProgressStep2ReplySMS = (
+  seller: Seller,
+  property: PropertyInfo | null,
+  staffLastName?: string
+): string => {
+  const name = seller.name || '';
+  const accountName = staffLastName || '';
+
+  // FI判定で会社名を決定
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const hasFI = sellerNumber.includes('FI');
+  const companyName = hasFI ? 'くじら不動産' : '株式会社いふう';
+
+  const message = [
+    `${name}様`,
+    ``,
+    `ご返信ありがとうございます。${companyName}の${accountName}です。`,
+    ``,
+    `承知いたしました。`,
+    ``,
+    `売却時期がまだお決まりでない段階でも、今後の参考として価格や売却方法などお気軽にご相談ください。`,
+    `また、その時々の市場状況に合わせた査定額もメールでお送りできればと思っております。`,
+    `差し支えなければ、現時点ではいつ頃を目処に売却をお考えでしょうか？`,
+    `「半年以内」「1年くらい」「2〜3年後」など、大まかで結構です。`,
+    `今後ともよろしくお願いいたします。`,
+  ].join('[改行]');
+
+  return message;
+};
+
+/**
+ * 進捗③の返信
+ * 不動産価格の変動に応じた定期的な査定額のメール送付を提案
+ * FI: くじら不動産、非FI: 株式会社いふう
+ */
+export const generateProgressStep3ReplySMS = (
+  seller: Seller,
+  property: PropertyInfo | null,
+  staffLastName?: string
+): string => {
+  const name = seller.name || '';
+  const accountName = staffLastName || '';
+
+  // FI判定で会社名を決定
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const hasFI = sellerNumber.includes('FI');
+  const companyName = hasFI ? 'くじら不動産' : '株式会社いふう';
+
+  const message = [
+    `${name}様`,
+    ``,
+    `ご返信ありがとうございます。${companyName}の${accountName}です。`,
+    ``,
+    `承知いたしました。`,
+    ``,
+    `ただ、不動産価格は市場状況によって変動しますので、今後の参考として、その時点での査定額を定期的にメールでお送りすることも可能です。`,
+    `もし差し支えなければ、次回は「半年後」「1年後」など、いつ頃の査定をご希望か教えていただけますでしょうか？`,
+    ``,
+    `もちろん、査定のご案内も不要でしたら、その旨お申し付けください。`,
+    `よろしくお願いいたします。`,
+  ].join('[改行]');
+
+  return message;
+};
