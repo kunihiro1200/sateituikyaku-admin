@@ -562,6 +562,8 @@ router.get(
     // 次電日フィルター
     query('nextCallDateFrom').optional().isISO8601().withMessage('Next call date from must be a valid date'),
     query('nextCallDateTo').optional().isISO8601().withMessage('Next call date to must be a valid date'),
+    // 地名フィルター（物件住所の部分一致検索用）
+    query('addressKeyword').optional().isString().withMessage('Address keyword must be a string'),
   ],
   async (req: Request, res: Response) => {
     try {
@@ -622,6 +624,8 @@ router.get(
         valuationAmountMax: req.query.valuationAmountMax ? parseFloat(req.query.valuationAmountMax as string) : undefined,
         // 営業担当フィルター（visit_assignee）：複数選択対応
         visitAssignee: toStringArray(req.query.visitAssignee),
+        // 地名フィルター（物件住所の部分一致検索用）
+        addressKeyword: req.query.addressKeyword as string,
       };
 
       const result = await sellerService.listSellers(params);

@@ -350,6 +350,8 @@ export default function SellersPage() {
   const [nextCallDateValue, setNextCallDateValue] = useState('');
   // 営業担当フィルター（visit_assignee、複数選択対応）
   const [visitAssigneeFilter, setVisitAssigneeFilter] = useState<string[]>([]);
+  // 地名フィルター（物件住所の部分一致検索用）
+  const [addressKeywordFilter, setAddressKeywordFilter] = useState('');
   // サイドバー一時追加フィルター
   const [sidebarTempFilters, setSidebarTempFilters] = useState<Array<{
     id: string;
@@ -614,6 +616,10 @@ export default function SellersPage() {
         }
       }
       if (visitAssigneeFilter.length > 0) filtersToSave.visitAssignee = visitAssigneeFilter;
+      // 地名フィルター（物件住所の部分一致検索用）
+      if (addressKeywordFilter.trim()) filtersToSave.addressKeyword = addressKeywordFilter.trim();
+      // 検索バーの内容も保存（物件住所・売主名などのキーワード検索用）
+      if (searchQuery.trim()) filtersToSave.searchQuery = searchQuery.trim();
 
       const response = await api.post('/api/sellers/sidebar-temp-filters', {
         label: tempFilterLabel.trim(),
@@ -668,6 +674,7 @@ export default function SellersPage() {
     setNextCallDateMode('');
     setNextCallDateValue('');
     setVisitAssigneeFilter([]);
+    setAddressKeywordFilter(''); // 地名フィルターもリセット
 
     const f = tempFilter.filters || {};
     // フィルター値を配列に正規化（単一値も配列に変換）
@@ -697,6 +704,8 @@ export default function SellersPage() {
       setNextCallDateValue(f.nextCallDateTo);
     }
     if (f.visitAssignee) setVisitAssigneeFilter(toArr(f.visitAssignee));
+    // 地名フィルターを復元
+    if (f.addressKeyword) setAddressKeywordFilter(f.addressKeyword);
 
     setSelectedTempFilterId(tempFilter.id);
     setSelectedCategory('all'); // サイドバーの固定カテゴリとは独立させる
@@ -831,6 +840,10 @@ export default function SellersPage() {
       }
       if (visitAssigneeFilter.length > 0) {
         params.visitAssignee = visitAssigneeFilter;
+      }
+      // 地名フィルター（物件住所の部分一致検索用）
+      if (addressKeywordFilter.trim()) {
+        params.addressKeyword = addressKeywordFilter.trim();
       }
 
       // キャッシュキー（パラメータを含む）
@@ -1499,6 +1512,16 @@ export default function SellersPage() {
                   ))}
                 </Select>
               </FormControl>
+
+              {/* 地名フィルター（物件住所の部分一致検索用） */}
+              <TextField
+                label="地名・町名"
+                value={addressKeywordFilter}
+                onChange={(e) => setAddressKeywordFilter(e.target.value)}
+                placeholder="例: 石垣"
+                sx={{ minWidth: 150 }}
+                size="small"
+              />
               
               <Button
                 variant="text"
@@ -1516,6 +1539,7 @@ export default function SellersPage() {
                   setNextCallDateMode('');
                   setNextCallDateValue('');
                   setVisitAssigneeFilter([]);
+                  setAddressKeywordFilter(''); // 地名フィルターもクリア
                   setSelectedTempFilterId(null);
                 }}
                 size="small"
