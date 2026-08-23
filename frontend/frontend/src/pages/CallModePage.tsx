@@ -7042,7 +7042,7 @@ HP：https://ifoo-oita.com/
                             size="small"
                             onClick={() => {
                               const searchQuery = encodeURIComponent(displayAddress);
-                              window.open(`https://www.at-bb.jp/result?search=${searchQuery}`, '_blank');
+                              window.open(`https://atbb.athome.jp/?searchterms=${searchQuery}`, '_blank');
                             }}
                             title="at-bbで検索"
                           >
