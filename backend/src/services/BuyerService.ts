@@ -628,6 +628,93 @@ export class BuyerService {
   }
 
   /**
+   * 問合せ元の月次統計を取得（福岡・大分別）
+   * 問合せ元（athome、スーモ等）ごとに電話・メールの内訳を表示
+   */
+  async getInquirySourceMonthlyStats(): Promise<{
+    fukuoka: Array<{ month: string; sources: Record<string, { phone: number; email: number }> }>;
+    oita: Array<{ month: string; sources: Record<string, { phone: number; email: number }> }>;
+  }> {
+    // 全買主データを取得（reception_date と inquiry_source と buyer_number のみ）
+    const { data: buyers, error } = await this.supabase
+      .from('buyers')
+      .select('reception_date, inquiry_source, buyer_number')
+      .not('reception_date', 'is', null)
+      .not('inquiry_source', 'is', null)
+      .order('reception_date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching buyers for inquiry source stats:', error);
+      throw error;
+    }
+
+    console.log(`[InquirySourceStats] Total buyers: ${buyers?.length}`);
+    // 最初の5件のサンプルをログ出力
+    buyers?.slice(0, 5).forEach(b => {
+      console.log(`[InquirySourceStats] Sample: ${b.buyer_number} - ${b.inquiry_source}`);
+    });
+
+    // 福岡と大分に振り分け
+    const fukuokaStats: Record<string, Record<string, { phone: number; email: number }>> = {};
+    const oitaStats: Record<string, Record<string, { phone: number; email: number }>> = {};
+
+    buyers?.forEach(buyer => {
+      const month = buyer.reception_date.substring(0, 7); // YYYY-MM
+      const source = buyer.inquiry_source || '未設定';
+      const isFukuoka = buyer.buyer_number?.startsWith('FK');
+
+      const targetStats = isFukuoka ? fukuokaStats : oitaStats;
+
+      if (!targetStats[month]) {
+        targetStats[month] = {};
+      }
+
+      // 問合せ元を抽出（例: 「電話(athome)」→「athome」、「メール(スーモ)」→「スーモ」）
+      let sourceName = '未分類';
+      let isPhone = false;
+      let isEmail = false;
+
+      if (source.includes('電話')) {
+        isPhone = true;
+        const match = source.match(/電話[（(](.+?)[）)]/);
+        sourceName = match ? match[1] : '電話（サイト不明）';
+      } else if (source.includes('メール')) {
+        isEmail = true;
+        const match = source.match(/メール[（(](.+?)[）)]/);
+        sourceName = match ? match[1] : 'メール（サイト不明）';
+      }
+
+      if (!targetStats[month][sourceName]) {
+        targetStats[month][sourceName] = { phone: 0, email: 0 };
+      }
+
+      if (isPhone) {
+        targetStats[month][sourceName].phone++;
+      } else if (isEmail) {
+        targetStats[month][sourceName].email++;
+      }
+    });
+
+    console.log(`[InquirySourceStats] Oita months: ${Object.keys(oitaStats).length}`);
+    console.log(`[InquirySourceStats] Fukuoka months: ${Object.keys(fukuokaStats).length}`);
+
+    // 月の降順でソート
+    const sortMonths = (stats: Record<string, Record<string, { phone: number; email: number }>>) => {
+      return Object.keys(stats)
+        .sort((a, b) => b.localeCompare(a))
+        .map(month => ({
+          month,
+          sources: stats[month]
+        }));
+    };
+
+    return {
+      fukuoka: sortMonths(fukuokaStats),
+      oita: sortMonths(oitaStats)
+    };
+  }
+
+  /**
    * 新規買主を作成
    */
   /**

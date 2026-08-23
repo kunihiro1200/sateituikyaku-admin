@@ -93,6 +93,17 @@ router.get('/stats', async (_req: Request, res: Response) => {
   }
 });
 
+// 問合せ元の月次統計取得（福岡・大分別）
+router.get('/inquiry-source-monthly-stats', async (_req: Request, res: Response) => {
+  try {
+    const stats = await buyerService.getInquirySourceMonthlyStats();
+    res.json(stats);
+  } catch (error: any) {
+    console.error('Error fetching inquiry source monthly stats:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 物件番号バリデーション（/:id よりも前に定義）
 router.get('/validate-property-number', async (req: Request, res: Response) => {
   const { number } = req.query;

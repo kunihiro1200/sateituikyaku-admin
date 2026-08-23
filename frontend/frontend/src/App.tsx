@@ -29,6 +29,7 @@ import BuyerInquiryHistoryPage from './pages/BuyerInquiryHistoryPage';
 import BuyerDesiredConditionsPage from './pages/BuyerDesiredConditionsPage';
 import BuyerViewingResultPage from './pages/BuyerViewingResultPage';
 import BuyerPurchaseRateStatisticsPage from './pages/BuyerPurchaseRateStatisticsPage';
+import BuyerInquirySourceStatsPage from './pages/BuyerInquirySourceStatsPage';
 import PublicPropertyListingPage from './pages/PublicPropertyListingPage';
 import PublicPropertiesPage from './pages/PublicPropertiesPage';
 import PublicPropertyDetailPage from './pages/PublicPropertyDetailPage';
@@ -312,6 +313,14 @@ function App() {
         element={
           <ProtectedRoute>
             <BuyersPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/buyers/inquiry-source-stats"
+        element={
+          <ProtectedRoute>
+            <BuyerInquirySourceStatsPage />
           </ProtectedRoute>
         }
       />

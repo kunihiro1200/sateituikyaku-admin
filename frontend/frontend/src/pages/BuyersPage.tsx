@@ -45,6 +45,7 @@ interface Buyer {
   initial_assignee: string;
   follow_up_assignee: string;
   inquiry_confidence: string;
+  inquiry_source?: string;
   reception_date: string;
   next_call_date: string;
   viewing_date: string;
@@ -586,6 +587,8 @@ export default function BuyersPage() {
 
   const extractConfidencePrefix = (confidence: string | null | undefined) => {
     if (!confidence) return '-';
+    // 「不明（聞き取れず）」は「不明」のみ表示
+    if (confidence === '不明（聞き取れず）') return '不明';
     const match = confidence.match(/^([A-Z]+)/);
     return match ? match[1] : confidence;
   };
@@ -627,6 +630,34 @@ export default function BuyersPage() {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.buyer.main }}>買主リスト</Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            onClick={() => window.open('https://ivry.jp/home/', '_blank')}
+            sx={{
+              borderColor: '#9c27b0',
+              color: '#9c27b0',
+              '&:hover': {
+                borderColor: '#7b1fa2',
+                backgroundColor: '#9c27b015',
+              },
+            }}
+          >
+            📞 自動電話
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => navigate('/buyers/inquiry-source-stats')}
+            sx={{
+              borderColor: '#ff9800',
+              color: '#ff9800',
+              '&:hover': {
+                borderColor: '#f57c00',
+                backgroundColor: '#ff980015',
+              },
+            }}
+          >
+            📊 問合せ元統計
+          </Button>
           <Button
             variant="outlined"
             onClick={() => navigate('/buyers/nearby-map')}
@@ -924,7 +955,13 @@ export default function BuyersPage() {
                   <TableCell>物件担当</TableCell>
                   <TableCell>種別</TableCell>
                   <TableCell>atbb_status</TableCell>
-                  <TableCell>確度</TableCell>
+                  <TableCell>
+                    確度
+                    <br />
+                    <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+                      問合せ元
+                    </Typography>
+                  </TableCell>
                   <TableCell>受付日</TableCell>
                   <TableCell>次電日</TableCell>
                 </TableRow>
@@ -978,13 +1015,20 @@ export default function BuyersPage() {
                         <TableCell>{buyer.property_type || '-'}</TableCell>
                         <TableCell>{formatAtbbStatus(buyer.atbb_status)}</TableCell>
                         <TableCell>
-                          {displayConfidence && (
-                            <Chip
-                              label={displayConfidence.label}
-                              size="small"
-                              sx={{ height: 20, fontSize: '0.75rem', ...displayConfidence.sx }}
-                            />
-                          )}
+                          <Box>
+                            {displayConfidence && (
+                              <Chip
+                                label={displayConfidence.label}
+                                size="small"
+                                sx={{ height: 20, fontSize: '0.75rem', ...displayConfidence.sx }}
+                              />
+                            )}
+                            {buyer.inquiry_source && (
+                              <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', display: 'block', mt: 0.5 }}>
+                                {buyer.inquiry_source}
+                              </Typography>
+                            )}
+                          </Box>
                         </TableCell>
                         <TableCell>{formatDate(buyer.reception_date)}</TableCell>
                         <TableCell>{formatDate(buyer.next_call_date)}</TableCell>
