@@ -6,7 +6,6 @@ import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import { SellerService } from '../services/SellerService.supabase';
-import { PropertyService } from '../services/PropertyService.supabase';
 import { EmailService } from '../services/EmailService';
 import { authenticate } from '../middleware/auth';
 import { CreateSellerRequest, ListSellersParams } from '../types';
@@ -22,7 +21,6 @@ import { MatchingSidebarService } from '../services/MatchingSidebarService';
 
 const router = Router();
 const sellerService = new SellerService();
-const propertyService = new PropertyService();
 const matchingIntentService = new MatchingIntentService();
 const matchingSidebarService = new MatchingSidebarService();
 
@@ -3262,14 +3260,9 @@ router.post('/:id/calculate-distribution-areas', async (req: Request, res: Respo
       return res.status(404).json({ error: 'Seller not found' });
     }
 
-    // 物件情報を取得
-    const property = await propertyService.getPropertyBySellerId(id);
-    if (!property) {
-      return res.status(404).json({ error: 'Property not found' });
-    }
-
-    const propertyAddress = property.address || seller.address || '';
-    const googleMapUrl = property.googleMapUrl || '';
+    // 物件情報を取得（property_addressとgoogle_map_urlが必要）
+    const propertyAddress = seller.address || '';
+    const googleMapUrl = '';
 
     if (!propertyAddress && !googleMapUrl) {
       return res.status(400).json({ 
@@ -3286,9 +3279,7 @@ router.post('/:id/calculate-distribution-areas', async (req: Request, res: Respo
       googleMapUrl || null,
       city,
       propertyAddress || null,
-      property.latitude && property.longitude 
-        ? { lat: property.latitude, lng: property.longitude }
-        : null
+      null
     );
 
     console.log(`[Calculate Distribution Areas] Seller ${seller.sellerNumber}:`, {
