@@ -1342,6 +1342,16 @@ export default function SellersPage() {
                 </Select>
               </FormControl>
 
+              {/* 地名・町名フィルター（物件住所の部分一致検索用） */}
+              <TextField
+                label="地名・町名"
+                value={addressKeywordFilter}
+                onChange={(e) => setAddressKeywordFilter(e.target.value)}
+                placeholder="例: 石垣"
+                sx={{ minWidth: 150 }}
+                size="small"
+              />
+
               {/* 確度（複数選択） */}
               <FormControl size="small" sx={{ minWidth: 130 }}>
                 <InputLabel>確度</InputLabel>
@@ -1512,16 +1522,6 @@ export default function SellersPage() {
                   ))}
                 </Select>
               </FormControl>
-
-              {/* 地名フィルター（物件住所の部分一致検索用） */}
-              <TextField
-                label="地名・町名"
-                value={addressKeywordFilter}
-                onChange={(e) => setAddressKeywordFilter(e.target.value)}
-                placeholder="例: 石垣"
-                sx={{ minWidth: 150 }}
-                size="small"
-              />
               
               <Button
                 variant="text"
@@ -1551,7 +1551,31 @@ export default function SellersPage() {
                 variant="outlined"
                 size="small"
                 startIcon={<PushPinIcon fontSize="small" />}
-                onClick={() => setTempFilterDialogOpen(true)}
+                onClick={() => {
+                  // デフォルトラベルを生成（地域 町名 状況（当社））
+                  const labelParts: string[] = [];
+                  
+                  // 地域（大分/福岡）
+                  if (regionFilter.length === 1) {
+                    labelParts.push(regionFilter[0] === 'oita' ? '大分' : '福岡');
+                  } else if (regionFilter.length === 2) {
+                    labelParts.push('大分・福岡');
+                  }
+                  
+                  // 地名・町名
+                  if (addressKeywordFilter.trim()) {
+                    labelParts.push(addressKeywordFilter.trim());
+                  }
+                  
+                  // 状況（当社）
+                  if (statusFilterValue.length > 0) {
+                    labelParts.push(statusFilterValue.join('・'));
+                  }
+                  
+                  // デフォルトラベルを設定
+                  setTempFilterLabel(labelParts.join(' '));
+                  setTempFilterDialogOpen(true);
+                }}
               >
                 サイドバーに一時追加
               </Button>
