@@ -561,6 +561,107 @@ export const generateAskEmailSMS = (
 };
 
 /**
+ * 10. 他決→3ヶ月後追客
+ * 他社媒介契約から3ヶ月経過後のフォローアップ
+ * FI → くじら不動産、AA → 株式会社いふう
+ * 物件住所から丁目以降（数字）を省略してエリア名として使用
+ * @param staffLastName 送信者の名字（例: 「国広」）
+ */
+export const generateOtherDecisionThreeMonthsFollowUpSMS = (
+  seller: Seller,
+  property: PropertyInfo | null,
+  staffLastName?: string
+): string => {
+  const name = seller.name || '';
+  const accountName = staffLastName || '';
+
+  // 売主番号でFI/AA判定
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? 'くじら不動産' : '株式会社いふう';
+
+  // 物件住所から丁目以降の数字を省略（例: 「大分市中央町3丁目4-5」→「大分市中央町」）
+  const fullAddress = property?.address || seller.propertyAddress || '';
+  // 「●丁目」または「●-」または「●－」の直前までを抽出
+  let addressArea = fullAddress.replace(/\d+[丁目\-－].*$/, '').trim();
+  // 万が一残っている場合の追加処理：数字で終わる場合はその数字も削除
+  if (/\d+$/.test(addressArea)) {
+    addressArea = addressArea.replace(/\d+$/, '').trim();
+  }
+
+  const message = [
+    `${name}様`,
+    ``,
+    `ご無沙汰しております。${companyName}の${accountName}です。`,
+    ``,
+    `本日、${addressArea}エリアで物件をお探しのお客様からお問い合わせがあり、ご連絡いたしました。`,
+    ``,
+    `他社様との媒介契約から3か月ほど経過しましたが、その後ご売却状況はいかがでしょうか？`,
+    ``,
+    `現在の広告も拝見しましたが、写真が全体的に少し暗く、物件本来の良さが十分に伝わっていない点が少しもったいないと感じました。`,
+    ``,
+    `当社でしたら写真の撮り直し・画像調整を含め、広告の見せ方から販売戦略を組み直します。`,
+    ``,
+    `ちょうど媒介契約の更新時期かと思いますので、「今のままで良いのか」というご相談だけでも結構です。`,
+    ``,
+    `よろしければ一度お話しできれば幸いです。`,
+  ].join('[改行]');
+
+  // プレースホルダー置換
+  return replacePlaceholders(message, seller, staffLastName);
+};
+
+/**
+ * 11. 他決→追客（6ヶ月後）
+ * 他社で販売開始から6ヶ月経過後の販売戦略見直し提案
+ * FI → くじら不動産、AA → 株式会社いふう
+ * 物件住所から丁目以降（数字）を省略してエリア名として使用
+ * @param staffLastName 送信者の名字（例: 「国広」）
+ */
+export const generateOtherDecisionSixMonthsFollowUpSMS = (
+  seller: Seller,
+  property: PropertyInfo | null,
+  staffLastName?: string
+): string => {
+  const name = seller.name || '';
+  const accountName = staffLastName || '';
+
+  // 売主番号でFI/AA判定
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? 'くじら不動産' : '株式会社いふう';
+
+  // 物件住所から丁目以降の数字を省略（例: 「大分市中央町3丁目4-5」→「大分市中央町」）
+  const fullAddress = property?.address || seller.propertyAddress || '';
+  // 「●丁目」または「●-」または「●－」の直前までを抽出
+  let addressArea = fullAddress.replace(/\d+[丁目\-－].*$/, '').trim();
+  // 万が一残っている場合の追加処理：数字で終わる場合はその数字も削除
+  if (/\d+$/.test(addressArea)) {
+    addressArea = addressArea.replace(/\d+$/, '').trim();
+  }
+
+  const message = [
+    `${name}様`,
+    ``,
+    `ご無沙汰しております。${companyName}の${accountName}です。`,
+    ``,
+    `弊社のお客様で、${addressArea}エリアで物件をお探しの方がおり、ご連絡いたしました。`,
+    ``,
+    `他社様で販売を開始されて半年ほど経過しましたが、その後ご状況はいかがでしょうか？`,
+    ``,
+    `売却が長期化する場合、価格だけでなく「写真の見せ方」「広告の出し方」「物件の魅力の伝え方」など、販売戦略を変えることで反響が変わることがあります。`,
+    ``,
+    `現在の掲載状況も拝見しましたが、まだ改善できる部分があるように感じております。`,
+    ``,
+    `もし今の販売活動に少しでも不安がございましたら、当社でしたらどのように販売するか、具体的にご提案させてください。`,
+    ``,
+    `今の会社様との比較だけでも結構です。`,
+    `一度お話しする機会をいただけましたら幸いです。`,
+  ].join('[改行]');
+
+  // プレースホルダー置換
+  return replacePlaceholders(message, seller, staffLastName);
+};
+
+/**
  * 改行プレースホルダーを実際の改行文字に変換
  */
 export const convertLineBreaks = (message: string): string => {

@@ -74,6 +74,8 @@ import {
   generateProgressStep1ReplySMS,
   generateProgressStep2ReplySMS,
   generateProgressStep3ReplySMS,
+  generateOtherDecisionThreeMonthsFollowUpSMS,
+  generateOtherDecisionSixMonthsFollowUpSMS,
   convertLineBreaks,
   replacePlaceholders,
 } from '../utils/smsTemplateGenerators';
@@ -1531,6 +1533,16 @@ const CallModePage = () => {
       id: 'greeting',
       label: '空',
       generator: generateGreetingSMS,
+    },
+    {
+      id: 'other_decision_three_months_followup',
+      label: '他決→3ヶ月後追客',
+      generator: generateOtherDecisionThreeMonthsFollowUpSMS,
+    },
+    {
+      id: 'other_decision_six_months_followup',
+      label: '他決→追客（6ヶ月後）',
+      generator: generateOtherDecisionSixMonthsFollowUpSMS,
     },
     {
       id: 'progress_step1_reply',
@@ -4683,7 +4695,9 @@ HP：https://ifoo-oita.com/
            template.id === 'unreachable_after_valuation_check' ||
            template.id === 'progress_step1_reply' ||
            template.id === 'progress_step2_reply' ||
-           template.id === 'progress_step3_reply')
+           template.id === 'progress_step3_reply' ||
+           template.id === 'other_decision_three_months_followup' ||
+           template.id === 'other_decision_six_months_followup')
           ? template.generator(seller!, property, myLastName)
           : template.generator(seller!, property);
       
