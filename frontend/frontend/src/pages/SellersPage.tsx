@@ -1567,34 +1567,82 @@ export default function SellersPage() {
                 size="small"
                 startIcon={<PushPinIcon fontSize="small" />}
                 onClick={() => {
-                  // デフォルトラベルを生成（イニシャル 地域 町名 種別 状況（当社））
+                  // デフォルトラベルを生成（選択した全フィルタを含める）
                   const labelParts: string[] = [];
                   
-                  // イニシャル（ログインユーザー）
+                  // 1. イニシャル（ログインユーザー）← 最初
                   if (myInitials) {
                     labelParts.push(myInitials);
                   }
                   
-                  // 地域（大分/福岡）
+                  // 2. 地域（大分/福岡）
                   if (regionFilter.length === 1) {
                     labelParts.push(regionFilter[0] === 'oita' ? '大分' : '福岡');
                   } else if (regionFilter.length === 2) {
                     labelParts.push('大分・福岡');
                   }
                   
-                  // 地名・町名
+                  // 3. 地名・町名
                   if (addressKeywordFilter.trim()) {
                     labelParts.push(addressKeywordFilter.trim());
                   }
                   
-                  // 種別（マンション、戸建て、土地など）
+                  // 4. 種別（マンション、戸建て、土地など）
                   if (propertyTypeFilter.length > 0) {
                     labelParts.push(propertyTypeFilter.join('・'));
                   }
                   
-                  // 状況（当社）
+                  // 5. 確度
+                  if (confidenceLevelFilter.length > 0) {
+                    labelParts.push(`確度${confidenceLevelFilter.join('・')}`);
+                  }
+                  
+                  // 6. サイト
+                  if (inquirySiteFilter.length > 0) {
+                    labelParts.push(inquirySiteFilter.join('・'));
+                  }
+                  
+                  // 7. 状況（当社）
                   if (statusFilterValue.length > 0) {
                     labelParts.push(statusFilterValue.join('・'));
+                  }
+                  
+                  // 8. 状況（売主）
+                  if (currentStatusFilterValue.length > 0) {
+                    labelParts.push(`売主${currentStatusFilterValue.join('・')}`);
+                  }
+                  
+                  // 9. 反響日付
+                  if (inquiryDateFromFilter || inquiryDateToFilter) {
+                    if (inquiryDateFromFilter && inquiryDateToFilter) {
+                      labelParts.push(`${inquiryDateFromFilter}～${inquiryDateToFilter}`);
+                    } else if (inquiryDateFromFilter) {
+                      labelParts.push(`${inquiryDateFromFilter}以降`);
+                    } else if (inquiryDateToFilter) {
+                      labelParts.push(`～${inquiryDateToFilter}`);
+                    }
+                  }
+                  
+                  // 10. 査定額
+                  if (valuationAmountMinFilter || valuationAmountMaxFilter) {
+                    if (valuationAmountMinFilter && valuationAmountMaxFilter) {
+                      labelParts.push(`${valuationAmountMinFilter}～${valuationAmountMaxFilter}万`);
+                    } else if (valuationAmountMinFilter) {
+                      labelParts.push(`${valuationAmountMinFilter}万以上`);
+                    } else if (valuationAmountMaxFilter) {
+                      labelParts.push(`～${valuationAmountMaxFilter}万`);
+                    }
+                  }
+                  
+                  // 11. 次電日
+                  if (nextCallDateMode && nextCallDateValue) {
+                    const modeLabel = nextCallDateMode === 'onOrAfter' ? '以降' : nextCallDateMode === 'exact' ? '' : '以前';
+                    labelParts.push(`次電${nextCallDateValue}${modeLabel}`);
+                  }
+                  
+                  // 12. 営業担当
+                  if (visitAssigneeFilter.length > 0) {
+                    labelParts.push(`営担${visitAssigneeFilter.join('・')}`);
                   }
                   
                   // デフォルトラベルを設定
