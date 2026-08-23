@@ -554,6 +554,9 @@ const CallModePage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { employee } = useAuthStore();
+  
+  // ログインユーザーの名字を取得（SMS差出人名表示用）
+  const myLastName = employee?.last_name || '';
 
   // モバイル判定
   const theme = useTheme();
