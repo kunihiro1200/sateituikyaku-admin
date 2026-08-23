@@ -3260,9 +3260,14 @@ router.post('/:id/calculate-distribution-areas', async (req: Request, res: Respo
       return res.status(404).json({ error: 'Seller not found' });
     }
 
-    // 物件情報を取得（property_addressとgoogle_map_urlが必要）
-    const propertyAddress = seller.propertyAddress || '';
-    const googleMapUrl = seller.googleMapUrl || '';
+    // 物件情報を取得
+    const property = await propertyService.getPropertyBySellerId(id);
+    if (!property) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
+
+    const propertyAddress = property.address || seller.address || '';
+    const googleMapUrl = property.googleMapUrl || '';
 
     if (!propertyAddress && !googleMapUrl) {
       return res.status(400).json({ 
@@ -3272,15 +3277,15 @@ router.post('/:id/calculate-distribution-areas', async (req: Request, res: Respo
     }
 
     // 市名を抽出
-    const city = cityExtractor.extractCityName(propertyAddress) || null;
+    const city = cityExtractor.extractCityFromAddress(propertyAddress) || null;
 
     // 配信エリアを計算
     const result = await distributionCalculator.calculateDistributionAreas(
       googleMapUrl || null,
       city,
       propertyAddress || null,
-      seller.latitude && seller.longitude 
-        ? { lat: seller.latitude, lng: seller.longitude }
+      property.latitude && property.longitude 
+        ? { lat: property.latitude, lng: property.longitude }
         : null
     );
 
