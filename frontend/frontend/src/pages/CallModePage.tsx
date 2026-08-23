@@ -7038,16 +7038,27 @@ HP：https://ifoo-oita.com/
                           >
                             <ContentCopyIcon fontSize="small" />
                           </IconButton>
-                          <IconButton
+                          <Button
                             size="small"
+                            variant="outlined"
                             onClick={() => {
                               const searchQuery = encodeURIComponent(displayAddress);
                               window.open(`https://atbb.athome.jp/?searchterms=${searchQuery}`, '_blank');
                             }}
-                            title="at-bbで検索"
+                            sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
                           >
-                            <SearchIcon fontSize="small" />
-                          </IconButton>
+                            atbb
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => {
+                              window.open('https://www.nishinihon-reins.or.jp/', '_blank');
+                            }}
+                            sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                          >
+                            レインズ
+                          </Button>
                         </Box>
                       </Grid>
                     )}
