@@ -9857,6 +9857,35 @@ HP：https://ifoo-oita.com/
                   ⚠️ 市街化調整区域？　再建築可能かを要確認
                 </Box>
               )}
+              {/* 福岡市西区の市街化調整区域：再建築確認ボタン */}
+              {(youtoChiiki1 === '市街化調整区域' || youtoChiiki2 === '市街化調整区域') &&
+                propInfo.address &&
+                propInfo.address.includes('福岡') &&
+                propInfo.address.includes('西区') && (
+                <Box sx={{ mb: 1 }}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    href="https://www.city.fukuoka.lg.jp/jutaku-toshi/morido/netdetetsuduki/34_12_kuikisiteizu.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{
+                      backgroundColor: '#1976d2',
+                      color: '#fff',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      px: 2,
+                      py: 0.75,
+                      textTransform: 'none',
+                      '&:hover': {
+                        backgroundColor: '#1565c0',
+                      },
+                    }}
+                  >
+                    🔍 再建築可能か確認（福岡市西区）
+                  </Button>
+                </Box>
+              )}
               {(seller.emailSendDisabled || seller.smsSendDisabled || seller.phoneCallDisabled) && (
                 <Box
                   role="alert"
