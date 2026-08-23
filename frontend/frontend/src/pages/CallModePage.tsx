@@ -4674,10 +4674,15 @@ HP：https://ifoo-oita.com/
 
       // generator関数を使用してメッセージ内容を生成
       // 訪問後御礼メール・挨拶の場合は従業員データを渡す
-      // call_reminder の場合は担当者名字を渡す（リマインドSMS差出人名表示用）
+      // call_reminder, progress_step1/2/3 の場合は担当者名字を渡す
       const generatedContent = (template.id === 'post_visit_thank_you' || template.id === 'greeting')
         ? template.generator(seller!, property, employees)
-        : (template.id === 'call_reminder' || template.id === 'unvisited_other_decision' || template.id === 'unreachable_after_valuation_check')
+        : (template.id === 'call_reminder' || 
+           template.id === 'unvisited_other_decision' || 
+           template.id === 'unreachable_after_valuation_check' ||
+           template.id === 'progress_step1_reply' ||
+           template.id === 'progress_step2_reply' ||
+           template.id === 'progress_step3_reply')
           ? template.generator(seller!, property, myLastName)
           : template.generator(seller!, property);
       
