@@ -7011,20 +7011,44 @@ HP：https://ifoo-oita.com/
                   <Grid container spacing={1}>
                     {displayAddress && (
                       <Grid item xs={12}>
-                        <Typography variant="caption" color="text.secondary">物件住所</Typography>
-                        <Typography variant="body2">
-                          {displayAddress}
-                          {addressReading && (
-                            <Typography component="span" variant="body2" color="text.secondary">
-                              （{addressReading}）
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="caption" color="text.secondary">物件住所</Typography>
+                            <Typography variant="body2">
+                              {displayAddress}
+                              {addressReading && (
+                                <Typography component="span" variant="body2" color="text.secondary">
+                                  （{addressReading}）
+                                </Typography>
+                              )}
+                              {addressReadingLoading && (
+                                <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
+                                  <CircularProgress size={10} sx={{ verticalAlign: 'middle' }} />
+                                </Typography>
+                              )}
                             </Typography>
-                          )}
-                          {addressReadingLoading && (
-                            <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
-                              <CircularProgress size={10} sx={{ verticalAlign: 'middle' }} />
-                            </Typography>
-                          )}
-                        </Typography>
+                          </Box>
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              navigator.clipboard.writeText(displayAddress);
+                              setSnackbar({ open: true, message: '物件住所をコピーしました' });
+                            }}
+                            title="物件住所をコピー"
+                          >
+                            <ContentCopyIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              const searchQuery = encodeURIComponent(displayAddress);
+                              window.open(`https://www.at-bb.jp/result?search=${searchQuery}`, '_blank');
+                            }}
+                            title="at-bbで検索"
+                          >
+                            <SearchIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
                       </Grid>
                     )}
                     {displayPropertyType && (
