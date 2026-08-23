@@ -309,7 +309,9 @@ export default function SellersPage() {
   });
   const [sidebarLoading, setSidebarLoading] = useState(!pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS));
   // 担当者イニシャル一覧（スタッフスプレッドシートから取得）
-  const [assigneeInitials, setAssigneeInitials] = useState<string[]>([]);  
+  const [assigneeInitials, setAssigneeInitials] = useState<string[]>([]);
+  // ログインユーザーのイニシャル（一時フィルタのデフォルトラベル生成用）
+  const [myInitials, setMyInitials] = useState<string>('');  
   // ページ状態をsessionStorageから復元
   const [page, setPage] = useState(() => {
     const saved = sessionStorage.getItem('sellersPage');
@@ -548,6 +550,18 @@ export default function SellersPage() {
     }
   };
 
+  // ログインユーザーのイニシャルを取得
+  const fetchMyInitials = async () => {
+    try {
+      const response = await api.get('/api/employees/initials-by-email');
+      if (response.data?.initials) {
+        setMyInitials(response.data.initials);
+      }
+    } catch (error: any) {
+      console.error('[fetchMyInitials] Failed:', error?.response?.status, error?.response?.data || error?.message);
+    }
+  };
+
   // カテゴリ展開時に全件データを取得（カウントと展開リストのずれを解消）
   const fetchExpandedCategorySellers = async (category: string) => {
     // ローディング中は重複リクエストしない
@@ -727,6 +741,7 @@ export default function SellersPage() {
       setSidebarCounts(cached as any);
     }
     fetchAssigneeInitials();
+    fetchMyInitials();
     fetchSidebarTempFilters();
   }, []);
 
@@ -1552,8 +1567,13 @@ export default function SellersPage() {
                 size="small"
                 startIcon={<PushPinIcon fontSize="small" />}
                 onClick={() => {
-                  // デフォルトラベルを生成（地域 町名 状況（当社））
+                  // デフォルトラベルを生成（イニシャル 地域 町名 種別 状況（当社））
                   const labelParts: string[] = [];
+                  
+                  // イニシャル（ログインユーザー）
+                  if (myInitials) {
+                    labelParts.push(myInitials);
+                  }
                   
                   // 地域（大分/福岡）
                   if (regionFilter.length === 1) {
@@ -1565,6 +1585,11 @@ export default function SellersPage() {
                   // 地名・町名
                   if (addressKeywordFilter.trim()) {
                     labelParts.push(addressKeywordFilter.trim());
+                  }
+                  
+                  // 種別（マンション、戸建て、土地など）
+                  if (propertyTypeFilter.length > 0) {
+                    labelParts.push(propertyTypeFilter.join('・'));
                   }
                   
                   // 状況（当社）
