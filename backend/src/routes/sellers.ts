@@ -6,6 +6,7 @@ import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import { SellerService } from '../services/SellerService.supabase';
+import { PropertyService } from '../services/PropertyService.supabase';
 import { EmailService } from '../services/EmailService';
 import { authenticate } from '../middleware/auth';
 import { CreateSellerRequest, ListSellersParams } from '../types';
@@ -21,6 +22,7 @@ import { MatchingSidebarService } from '../services/MatchingSidebarService';
 
 const router = Router();
 const sellerService = new SellerService();
+const propertyService = new PropertyService();
 const matchingIntentService = new MatchingIntentService();
 const matchingSidebarService = new MatchingSidebarService();
 
