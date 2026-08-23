@@ -87,6 +87,7 @@ import { useCallModeQuickButtonState } from '../hooks/useCallModeQuickButtonStat
 import { pageDataCache, sellerDetailCacheKey, CACHE_KEYS } from '../store/pageDataCache';
 import PropertyMapSection from '../components/PropertyMapSection';
 import NearbyBuyersList from '../components/NearbyBuyersList';
+import MatchedBuyersList from '../components/MatchedBuyersList';
 import MatchingIntentPanel from '../components/MatchingIntentPanel';
 import { VisitPreparationButton } from '../components/VisitPreparationButton';
 import SaleScheduleModal from '../components/SaleScheduleModal';
@@ -10917,25 +10918,53 @@ HP：https://ifoo-oita.com/
               </div>
             )}
 
-            {/* マッチング（売主⇔買主・売りたい） */}
-            {seller?.id && (
-              <div ref={matchingSectionRef}>
-                <CollapsibleSection title="🔍 マッチング（売りたい）" defaultExpanded={false} forceExpanded={matchingSectionExpanded} headerColor="#f3e5f5">
-                  <MatchingIntentPanel
-                    entityType="seller"
-                    entityId={seller.id}
-                    direction="sell"
-                    initialData={{
-                      matchIntentType: (seller as any).matchIntentType,
-                      matchAreas: (seller as any).matchAreas,
-                      matchAreaFreeText: (seller as any).matchAreaFreeText,
-                      matchTiming: (seller as any).matchTiming,
-                      matchPriceMin: (seller as any).matchPriceMin,
-                      matchPriceMax: (seller as any).matchPriceMax,
-                      matchMemo: (seller as any).matchMemo,
-                      matchContactStatus: (seller as any).matchContactStatus,
-                    }}
-                  />
+            {/* マッチング（売りたい）ボタンのみ */}
+            <Box sx={{ mt: 2, mb: 2, display: 'flex', justifyContent: 'center' }}>
+              <Button
+                variant={(seller as any)?.matchUpdatedAt ? 'contained' : 'outlined'}
+                color="secondary"
+                size="small"
+                onClick={async () => {
+                  try {
+                    const isActive = !!(seller as any)?.matchUpdatedAt;
+                    if (isActive) {
+                      // 解除
+                      await api.delete(`/api/sellers/${seller.id}/match-intent`);
+                      const { data: updatedSeller } = await api.get(`/api/sellers/${seller.id}`);
+                      setSeller(updatedSeller);
+                    } else {
+                      // アクティブ化
+                      await api.put(`/api/sellers/${seller.id}/match-intent`, {
+                        matchIntentType: 'sell',
+                      });
+                      const { data: updatedSeller } = await api.get(`/api/sellers/${seller.id}`);
+                      setSeller(updatedSeller);
+                      
+                      // マッチング結果セクションまでスクロール
+                      setTimeout(() => {
+                        nearbyBuyersSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }, 300);
+                    }
+                  } catch (err: any) {
+                    if (err?.response?.data?.error?.code === 'AUTH_ERROR') {
+                      alert('ログインセッションが切れています。ページをリロードしてください。');
+                      window.location.reload();
+                      return;
+                    }
+                    alert(`マッチング状態の更新に失敗しました: ${err?.response?.data?.error?.message || err?.message || '不明なエラー'}`);
+                  }
+                }}
+                sx={{ fontSize: '0.85rem' }}
+              >
+                🏠 この物件と買主をマッチング{(seller as any)?.matchUpdatedAt ? '（解除）' : ''}
+              </Button>
+            </Box>
+
+            {/* マッチング結果セクション（matchUpdatedAtがある場合のみ表示） */}
+            {seller?.id && (seller as any)?.matchUpdatedAt && (
+              <div ref={nearbyBuyersSectionRef}>
+                <CollapsibleSection title="🎯 マッチング結果" defaultExpanded={true} headerColor="#f3e5f5">
+                  <MatchedBuyersList sellerId={seller.id} />
                 </CollapsibleSection>
               </div>
             )}
