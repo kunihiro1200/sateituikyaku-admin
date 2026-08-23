@@ -71,6 +71,9 @@ import {
   generateUnvisitedOtherDecisionSMS,
   generateUnreachableAfterValuationCheckSMS,
   generateGreetingSMS,
+  generateProgressStep1ReplySMS,
+  generateProgressStep2ReplySMS,
+  generateProgressStep3ReplySMS,
   convertLineBreaks,
   replacePlaceholders,
 } from '../utils/smsTemplateGenerators';
@@ -352,6 +355,7 @@ interface SMSTemplate {
   label: string;
   legacyLabels?: string[];
   generator: (seller: Seller, property: PropertyInfo | null, thirdArg?: any) => string;
+  highlight?: boolean; // 薄緑背景表示用フラグ
 }
 
 // ドロップダウンフィールドの選択肢定数
@@ -1526,6 +1530,24 @@ const CallModePage = () => {
       id: 'greeting',
       label: '空',
       generator: generateGreetingSMS,
+    },
+    {
+      id: 'progress_step1_reply',
+      label: '進捗①の返信',
+      generator: generateProgressStep1ReplySMS,
+      highlight: true, // 薄緑背景
+    },
+    {
+      id: 'progress_step2_reply',
+      label: '進捗②の返信',
+      generator: generateProgressStep2ReplySMS,
+      highlight: true, // 薄緑背景
+    },
+    {
+      id: 'progress_step3_reply',
+      label: '進捗③の返信',
+      generator: generateProgressStep3ReplySMS,
+      highlight: true, // 薄緑背景
     },
   ];
 
@@ -6307,15 +6329,22 @@ HP：https://ifoo-oita.com/
                 >
                   {smsTemplates.map((template) => {
                     const isSent = isSmsTemplateSent(template);
+                    
+                    // 薄緑背景（進捗①②③）
+                    const backgroundColor = template.highlight 
+                      ? (isSent ? '#c8e6c9' : '#e8f5e9')  // 送信済み: 濃い緑、未送信: 薄い緑
+                      : (isSent ? '#e0e0e0' : '#ffffff'); // 通常: グレーまたは白
 
                     return (
                       <MenuItem
                         key={template.id}
                         value={template.id}
                         sx={{
-                          backgroundColor: isSent ? '#e0e0e0' : '#ffffff',
+                          backgroundColor: backgroundColor,
                           '&:hover': {
-                            backgroundColor: isSent ? '#d6d6d6' : 'action.hover',
+                            backgroundColor: template.highlight
+                              ? (isSent ? '#a5d6a7' : '#c8e6c9')
+                              : (isSent ? '#d6d6d6' : 'action.hover'),
                           },
                         }}
                       >
