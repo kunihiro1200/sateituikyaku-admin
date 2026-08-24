@@ -195,6 +195,18 @@ export function areasOverlap(
     }
   }
 
+  // 物件住所同士の部分一致チェック（売主の物件住所 vs 買主の問合せ物件住所）
+  for (const addrA of listA) {
+    const normAddrA = normalizeAreaFreeText(addrA);
+    if (!normAddrA) continue;
+    for (const addrB of listB) {
+      const normAddrB = normalizeAreaFreeText(addrB);
+      if (normAddrB && (normAddrA.includes(normAddrB) || normAddrB.includes(normAddrA))) {
+        return { matched: true, reason: `エリア一致（物件住所同士）: 「${addrA}」⇔「${addrB}」` };
+      }
+    }
+  }
+
   return { matched: false, reason: null };
 }
 
