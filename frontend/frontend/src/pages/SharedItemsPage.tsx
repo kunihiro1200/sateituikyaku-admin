@@ -847,6 +847,7 @@ export default function SharedItemsPage() {
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: `${sharedItemsColor.light}20` }}>
+                <TableCell sx={{ whiteSpace: 'nowrap', width: 40 }}></TableCell>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>ID</TableCell>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>入力者</TableCell>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>共有日</TableCell>
@@ -859,7 +860,6 @@ export default function SharedItemsPage() {
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>画像4</TableCell>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>日付</TableCell>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>打ち合わせ内容</TableCell>
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>削除</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -892,6 +892,16 @@ export default function SharedItemsPage() {
                     onClick={() => handleRowClick(item.id)}
                     sx={{ cursor: 'pointer' }}
                   >
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={(e) => handleDeleteClick(e, item)}
+                        sx={{ '&:hover': { bgcolor: '#ffebee' } }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
                     <TableCell>
                       <Typography variant="body2" fontWeight="bold" sx={{ color: sharedItemsColor.main }}>
                         {item.id || '-'}
@@ -911,16 +921,6 @@ export default function SharedItemsPage() {
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDate(item['日付'])}</TableCell>
                     <TableCell sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item['打ち合わせ内容'] || '-'}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={(e) => handleDeleteClick(e, item)}
-                        sx={{ '&:hover': { bgcolor: '#ffebee' } }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
                     </TableCell>
                   </TableRow>
                 ))
