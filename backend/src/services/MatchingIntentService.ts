@@ -561,8 +561,8 @@ export class MatchingIntentService {
 
     // まず、既にマッチング済みの買主番号を取得
     const { data: matchedRecords } = await this.supabase
-      .from('seller_buyer_match_candidates')
-      .select('buyer_number, matched_at, contact_status')
+      .from('seller_buyer_match_contacts')
+      .select('buyer_number, contact_status')
       .eq('seller_id', sellerId);
 
     console.log('[findBuyerCandidatesForSeller] sellerId:', sellerId);
