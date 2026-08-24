@@ -858,6 +858,17 @@ export default function SharedItemsPage() {
                   sx={{ flex: 1, minWidth: 0 }}
                 />
               </ListItemButton>
+              {/* 経理スプレッドシートリンク */}
+              <ListItemButton
+                onClick={() => window.open('https://docs.google.com/spreadsheets/d/1M9uVzHWD2ipzoY5Om3h3a2-_uQa9D_UGhpB5U4_nyRc/edit?gid=1071753477#gid=1071753477', '_blank', 'noopener,noreferrer')}
+                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#bbdefb' } }}
+              >
+                <ListItemText
+                  primary="経理"
+                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#1565c0' }}
+                />
+                <OpenInNewIcon sx={{ fontSize: '0.9rem', color: '#1565c0', ml: 0.5 }} />
+              </ListItemButton>
               {/* ランキング表示ボタン */}
               <Box sx={{ px: 1, pt: 1, pb: 0.5 }}>
                 <Typography variant="caption" sx={{ px: 0.5, color: '#1565c0', fontWeight: 'bold' }}>
