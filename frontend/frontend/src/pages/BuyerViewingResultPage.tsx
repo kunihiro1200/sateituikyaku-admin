@@ -431,6 +431,8 @@ export default function BuyerViewingResultPage() {
       // 気づきフィールドの初期値をセット
       setInsightExecutorValue(res.data.viewing_insight_executor || '');
       setInsightCompanionValue(res.data.viewing_insight_companion || '');
+      // 10万円キャンペーンお渡し済みチェックの初期値をセット
+      setCampaignHandedOver(res.data.campaign_handed_over === true);
       // property_numberがあれば買主リストを取得（linkedPropertiesが空の場合のフォールバック）
       if (res.data.property_number) {
         fetchPropertyBuyers(res.data.property_number);
@@ -2050,7 +2052,15 @@ export default function BuyerViewingResultPage() {
                 type="checkbox"
                 id="campaign-handed-over-hearing"
                 checked={campaignHandedOver}
-                onChange={(e) => setCampaignHandedOver(e.target.checked)}
+                onChange={async (e) => {
+                  const checked = e.target.checked;
+                  setCampaignHandedOver(checked);
+                  try {
+                    await handleInlineFieldSave('campaign_handed_over', checked);
+                  } catch (err) {
+                    setCampaignHandedOver(!checked);
+                  }
+                }}
                 style={{ width: 18, height: 18, cursor: 'pointer' }}
               />
               <label htmlFor="campaign-handed-over-hearing" style={{ cursor: 'pointer', fontSize: '0.95rem', fontWeight: 'bold' }}>
@@ -2397,7 +2407,15 @@ export default function BuyerViewingResultPage() {
                   type="checkbox"
                   id="campaign-handed-over"
                   checked={campaignHandedOver}
-                  onChange={(e) => setCampaignHandedOver(e.target.checked)}
+                  onChange={async (e) => {
+                    const checked = e.target.checked;
+                    setCampaignHandedOver(checked);
+                    try {
+                      await handleInlineFieldSave('campaign_handed_over', checked);
+                    } catch (err) {
+                      setCampaignHandedOver(!checked);
+                    }
+                  }}
                   style={{ width: 18, height: 18, cursor: 'pointer' }}
                 />
                 <label htmlFor="campaign-handed-over" style={{ cursor: 'pointer', fontSize: '0.95rem', fontWeight: 'bold' }}>

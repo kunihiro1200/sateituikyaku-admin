@@ -711,6 +711,9 @@ export interface Buyer {
   is_deleted?: boolean;
   deleted_at?: string | Date;
   
+  // 10万円キャンペーンお渡し済み
+  campaign_handed_over?: boolean;
+
   // 近隣物件送付メール
   neighbor_property_email_sent?: string;
 
