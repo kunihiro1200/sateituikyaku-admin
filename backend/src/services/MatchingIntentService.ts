@@ -678,9 +678,9 @@ export class MatchingIntentService {
     while (true) {
       const { data, error } = await this.supabase
         .from('buyers')
-        .select('buyer_number, name, desired_area, desired_area_free_text, desired_timing, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, property_number')
+        .select('buyer_number, name, desired_area, desired_area_free_text, desired_timing, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, property_number, match_updated_at')
         .is('deleted_at', null)
-        .not('desired_area', 'is', null)
+        .not('match_updated_at', 'is', null)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
       if (error) throw new Error(`買主取得に失敗しました: ${error.message}`);
