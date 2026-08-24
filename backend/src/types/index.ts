@@ -158,6 +158,7 @@ export interface Seller {
   matchMemo?: string;
   matchContactStatus?: string;
   matchUpdatedAt?: string;
+  match_updated_at?: string; // snake_case版（DB互換用）
   
   // 重複管理
   pastOwnerInfo?: string;
