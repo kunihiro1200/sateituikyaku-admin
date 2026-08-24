@@ -65,12 +65,17 @@ const MatchedBuyersList: React.FC<MatchedBuyersListProps> = ({ sellerId }) => {
   const [contactSaving, setContactSaving] = useState<Record<string, boolean>>({});
 
   const loadCandidates = useCallback(async () => {
+    console.log('[MatchedBuyersList] loadCandidates開始 sellerId:', sellerId);
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get(`/api/sellers/${sellerId}/match-candidates`);
+      const url = `/api/sellers/${sellerId}/match-candidates`;
+      console.log('[MatchedBuyersList] APIリクエスト URL:', url);
+      const res = await api.get(url);
+      console.log('[MatchedBuyersList] APIレスポンス:', res.data);
       setCandidates(res.data.candidates || []);
     } catch (e: any) {
+      console.error('[MatchedBuyersList] APIエラー:', e);
       setError(e?.response?.data?.error?.message || e?.response?.data?.error || 'マッチング候補の取得に失敗しました');
     } finally {
       setLoading(false);
