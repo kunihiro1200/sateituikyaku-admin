@@ -559,10 +559,51 @@ export class MatchingIntentService {
       throw new Error('売主が見つかりませんでした');
     }
 
+    // まず、既にマッチング済みの買主番号を取得
+    const { data: matchedRecords } = await this.supabase
+      .from('seller_buyer_match_candidates')
+      .select('buyer_number, matched_at, contact_status')
+      .eq('seller_id', sellerId);
+
+    const matchedBuyerNumbers = new Set((matchedRecords || []).map(r => r.buyer_number));
+    const matchedContactStatus = new Map((matchedRecords || []).map(r => [r.buyer_number, r.contact_status]));
+
     const sellerAreas: string[] = Array.isArray(seller.match_areas) ? seller.match_areas : [];
-    // エリアの構造化入力（既存コード・自由入力）が両方未入力でも、物件住所があれば
-    // それを判定材料として使えるため、物件住所も有効な条件として扱う。
     const hasAnyCriteria = sellerAreas.length > 0 || !!seller.match_area_free_text || !!seller.property_address;
+    
+    // 既にマッチング済みの買主がいれば、それを優先して返す
+    if (matchedBuyerNumbers.size > 0) {
+      const buyers = await this.fetchAllBuyersWithDesiredConditions();
+      const matchedCandidates: MatchCandidate[] = [];
+      
+      for (const buyer of buyers) {
+        if (!matchedBuyerNumbers.has(buyer.buyer_number)) continue;
+
+        matchedCandidates.push({
+          type: 'buyer',
+          id: buyer.buyer_number,
+          number: buyer.buyer_number,
+          name: buyer.name,
+          matchAreas: buyer.desiredAreas,
+          matchAreaFreeText: buyer.desiredAreaFreeText,
+          matchTiming: buyer.desiredTiming,
+          matchPriceMin: buyer.priceRanges[0]?.min ?? null,
+          matchPriceMax: buyer.priceRanges[0]?.max ?? null,
+          matchMemo: null,
+          matchUpdatedAt: null,
+          matchReasons: ['既にマッチング済み'],
+          urgencyScore: timingUrgencyScore(buyer.desiredTiming),
+          contactStatus: matchedContactStatus.get(buyer.buyer_number) || '連絡未',
+          timingFreshness: getTimingFreshness(buyer.desiredTiming, buyer.receptionDate).freshness,
+        });
+      }
+
+      return {
+        source: { id: seller.id, number: seller.seller_number, name: null },
+        candidates: matchedCandidates,
+      };
+    }
+
     if (!hasAnyCriteria) {
       return {
         source: { id: seller.id, number: seller.seller_number, name: null },
