@@ -523,8 +523,8 @@ export interface ListSellersParams {
   includeDeleted?: boolean; // Default: false (exclude deleted sellers)
   // 営業担当フィルター（visit_assignee）
   visitAssignee?: string | string[];
-  // 地名フィルター（物件住所の部分一致検索用）
-  addressKeyword?: string;
+  // 町名フィルター（物件住所の部分一致検索用）
+  townName?: string;
   // サイドバーカテゴリフィルター
   statusCategory?: 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitScheduled' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'pinrichChangeRequired' | 'exclusive' | 'general' | 'visitOtherDecision' | 'unvisitedOtherDecision' | string;
 }

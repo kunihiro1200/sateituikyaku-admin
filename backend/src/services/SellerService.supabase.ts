@@ -1240,7 +1240,7 @@ export class SellerService extends BaseRepository {
       valuationAmountMin, // 査定額フィルター下限（万円単位）
       valuationAmountMax, // 査定額フィルター上限（万円単位）
       visitAssignee, // 営業担当フィルター（visit_assignee）
-      addressKeyword, // 地名フィルター（物件住所の部分一致検索用）
+      townName, // 町名フィルター（物件住所の部分一致検索用）
     } = params;
 
     // JST今日の日付を取得
@@ -1282,7 +1282,7 @@ export class SellerService extends BaseRepository {
       nextCallDateFrom || 'all',
       nextCallDateTo || 'all',
       toCacheKeyPart(visitAssignee),
-      addressKeyword || 'all' // 地名フィルターをキャッシュキーに追加
+      townName || 'all' // 町名フィルターをキャッシュキーに追加
     );
 
     // キャッシュをチェック（インメモリ優先、次にRedis）
@@ -1902,9 +1902,9 @@ export class SellerService extends BaseRepository {
       }
     }
 
-    // 地名フィルター（物件住所の部分一致検索用）
-    if (addressKeyword && addressKeyword.trim()) {
-      query = query.ilike('property_address', `%${addressKeyword.trim()}%`);
+    // 町名フィルター（物件住所の部分一致検索用）
+    if (townName && townName.trim()) {
+      query = query.ilike('property_address', `%${townName.trim()}%`);
     }
 
     // ソート（inquiry_dateがnullのものは最後に表示、同日の場合は売主番号が大きいほうを最新とする）
