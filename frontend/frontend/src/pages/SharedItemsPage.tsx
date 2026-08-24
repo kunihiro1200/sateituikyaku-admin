@@ -32,6 +32,7 @@ import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 import { SECTION_COLORS } from '../theme/sectionColors';
+import CallRankingDisplay from '../components/CallRankingDisplay';
 
 // 営業会議スプレッドシートURL
 const SALES_MEETING_SPREADSHEET_URL =
@@ -91,6 +92,14 @@ export default function SharedItemsPage() {
   const [exclusiveExpandedMonth, setExclusiveExpandedMonth] = useState<string | null>(null);
   // 他決月別セクション専用の展開state
   const [otherDecisionExpandedMonth, setOtherDecisionExpandedMonth] = useState<string | null>(null);
+  // 業務会議セクションの展開state
+  const [businessMeetingSectionExpanded, setBusinessMeetingSectionExpanded] = useState(false);
+  // 業務会議ランキングダイアログ
+  const [visitRankingDialogOpen, setVisitRankingDialogOpen] = useState(false);
+  const [visitRankingYearlyDialogOpen, setVisitRankingYearlyDialogOpen] = useState(false);
+  const [callTrackingRankingDialogOpen, setCallTrackingRankingDialogOpen] = useState(false);
+  const [callRankingDialogOpen, setCallRankingDialogOpen] = useState(false);
+  const [callRankingYearlyDialogOpen, setCallRankingYearlyDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchAllSharedItems();
@@ -394,7 +403,7 @@ export default function SharedItemsPage() {
           )}
           {/* 共有場カテゴリー */}
           {locationCategories
-            .filter(({ label }) => label !== '契約率チーム' && label !== '物件数チーム' && label !== '事務会議')
+            .filter(({ label }) => label !== '契約率チーム' && label !== '物件数チーム' && label !== '事務会議' && label !== '業務会議')
             .map(({ label, count }) => (
             <ListItemButton
               key={label}
@@ -818,6 +827,109 @@ export default function SharedItemsPage() {
             </ListItemButton>
           </Box>
 
+          {/* 業務会議セクション（ランキング表示付き） */}
+          <Box sx={{ mt: 0.5, pt: 0.5, bgcolor: '#fff3e0', borderRadius: 1, px: 0.5, pb: 0.5 }}>
+            <ListItemButton
+              onClick={() => setBusinessMeetingSectionExpanded((prev) => !prev)}
+              sx={{
+                py: 1,
+                borderRadius: 1,
+                '&:hover': { backgroundColor: '#ffe0b2' },
+              }}
+            >
+              <ListItemText
+                primary="業務会議"
+                primaryTypographyProps={{ variant: 'body2', fontWeight: 'bold', color: '#e65100' }}
+                sx={{ flex: 1, minWidth: 0 }}
+              />
+              <Badge
+                badgeContent={locationCategories.find(({ label }) => label === '業務会議')?.count || 0}
+                sx={{
+                  ml: 1,
+                  '& .MuiBadge-badge': { backgroundColor: '#e65100', color: '#fff' }
+                }}
+                max={9999}
+              />
+              {businessMeetingSectionExpanded ? (
+                <ExpandLess sx={{ color: '#e65100', ml: 0.5 }} />
+              ) : (
+                <ExpandMore sx={{ color: '#e65100', ml: 0.5 }} />
+              )}
+            </ListItemButton>
+            <Collapse in={businessMeetingSectionExpanded}>
+              {/* 業務会議の共有データ表示 */}
+              <ListItemButton
+                selected={selectedLocation === '業務会議' && !selectedUnconfirmedStaff}
+                onClick={() => { setSelectedLocation('業務会議'); setSelectedUnconfirmedStaff(null); setPage(0); }}
+                sx={{
+                  py: 0.75,
+                  pl: 3,
+                  borderRadius: 1,
+                  borderLeft: '4px solid #e65100',
+                  '&.Mui-selected': { backgroundColor: '#e6510015' },
+                  '&:hover': { backgroundColor: '#ffe0b2' },
+                }}
+              >
+                <ListItemText
+                  primary="共有データ一覧"
+                  primaryTypographyProps={{ variant: 'body2', color: '#e65100' }}
+                  sx={{ flex: 1, minWidth: 0 }}
+                />
+              </ListItemButton>
+              {/* ランキング表示ボタン */}
+              <Box sx={{ px: 1, pt: 1, pb: 0.5 }}>
+                <Typography variant="caption" sx={{ px: 0.5, color: '#e65100', fontWeight: 'bold' }}>
+                  🏆 ランキング
+                </Typography>
+              </Box>
+              <ListItemButton
+                onClick={() => setVisitRankingDialogOpen(true)}
+                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#ffe0b2' } }}
+              >
+                <ListItemText
+                  primary="訪問予約者月間ランキング"
+                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#bf360c' }}
+                />
+              </ListItemButton>
+              <ListItemButton
+                onClick={() => setVisitRankingYearlyDialogOpen(true)}
+                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#ffe0b2' } }}
+              >
+                <ListItemText
+                  primary="訪問予約者年間ランキング"
+                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#bf360c' }}
+                />
+              </ListItemButton>
+              <ListItemButton
+                onClick={() => setCallTrackingRankingDialogOpen(true)}
+                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#ffe0b2' } }}
+              >
+                <ListItemText
+                  primary="追客電話月間ランキング"
+                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#bf360c' }}
+                />
+              </ListItemButton>
+              <ListItemButton
+                onClick={() => setCallRankingDialogOpen(true)}
+                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#ffe0b2' } }}
+              >
+                <ListItemText
+                  primary="1番電話月間ランキング"
+                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#bf360c' }}
+                />
+              </ListItemButton>
+              <ListItemButton
+                onClick={() => setCallRankingYearlyDialogOpen(true)}
+                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#ffe0b2' } }}
+              >
+                <ListItemText
+                  primary="1番電話年間累計ランキング"
+                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#bf360c' }}
+                />
+              </ListItemButton>
+            </Collapse>
+          </Box>
+
         </Paper>
 
         {/* メインコンテンツ */}
@@ -1000,6 +1112,94 @@ export default function SharedItemsPage() {
           >
             {deleting ? '削除中...' : '削除する'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 訪問予約者月間ランキングダイアログ */}
+      <Dialog open={visitRankingDialogOpen} onClose={() => setVisitRankingDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          🏆 訪問予約者月間ランキング
+        </DialogTitle>
+        <DialogContent>
+          <CallRankingDisplay
+            key={visitRankingDialogOpen ? 'open' : 'closed'}
+            title="訪問予約者月間ランキング"
+            endpoint="/api/sellers/visit-ranking"
+            showAcquisitionRate={true}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setVisitRankingDialogOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 訪問予約者年間ランキングダイアログ */}
+      <Dialog open={visitRankingYearlyDialogOpen} onClose={() => setVisitRankingYearlyDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          🏆 訪問予約者年間ランキング
+        </DialogTitle>
+        <DialogContent>
+          <CallRankingDisplay
+            key={visitRankingYearlyDialogOpen ? 'open' : 'closed'}
+            title="訪問予約者年間ランキング"
+            endpoint="/api/sellers/visit-ranking-yearly"
+            yearlyMode={true}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setVisitRankingYearlyDialogOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 追客電話月間ランキングダイアログ */}
+      <Dialog open={callTrackingRankingDialogOpen} onClose={() => setCallTrackingRankingDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          🏆 追客電話月間ランキング
+        </DialogTitle>
+        <DialogContent>
+          <CallRankingDisplay
+            key={callTrackingRankingDialogOpen ? 'open' : 'closed'}
+            title="追客電話月間ランキング"
+            endpoint="/api/sellers/call-tracking-ranking"
+            showMonthSelector={true}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCallTrackingRankingDialogOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 1番電話月間ランキングダイアログ */}
+      <Dialog open={callRankingDialogOpen} onClose={() => setCallRankingDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          🏆 1番電話月間ランキング
+        </DialogTitle>
+        <DialogContent>
+          <CallRankingDisplay
+            key={callRankingDialogOpen ? 'open' : 'closed'}
+            showMonthSelector={true}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCallRankingDialogOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 1番電話年間累計ランキングダイアログ */}
+      <Dialog open={callRankingYearlyDialogOpen} onClose={() => setCallRankingYearlyDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          🏆 1番電話年間累計ランキング
+        </DialogTitle>
+        <DialogContent>
+          <CallRankingDisplay
+            key={callRankingYearlyDialogOpen ? 'open' : 'closed'}
+            title="1番電話年間累計ランキング"
+            endpoint="/api/sellers/call-ranking-yearly"
+            yearlyMode={true}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCallRankingYearlyDialogOpen(false)}>閉じる</Button>
         </DialogActions>
       </Dialog>
     </Container>
