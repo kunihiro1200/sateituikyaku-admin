@@ -560,8 +560,9 @@ export class MatchingIntentService {
     }
 
     const sellerAreas: string[] = Array.isArray(seller.match_areas) ? seller.match_areas : [];
+    // エリアの構造化入力（既存コード・自由入力）が両方未入力でも、物件住所があれば
+    // それを判定材料として使えるため、物件住所も有効な条件として扱う。
     const hasAnyCriteria = sellerAreas.length > 0 || !!seller.match_area_free_text || !!seller.property_address;
-    
     if (!hasAnyCriteria) {
       return {
         source: { id: seller.id, number: seller.seller_number, name: null },
@@ -572,31 +573,15 @@ export class MatchingIntentService {
     const sellerPropertyTypeCategories = parsePropertyTypeCategories(seller.property_type);
     const buyers = await this.fetchAllBuyersWithDesiredConditions();
 
-    console.log('[findBuyerCandidatesForSeller] 全買主数:', buyers.length);
-    console.log('[findBuyerCandidatesForSeller] 8562が含まれているか:', buyers.some(b => b.buyer_number === '8562'));
-
     const candidates: MatchCandidate[] = [];
     for (const buyer of buyers) {
-      const is8562 = buyer.buyer_number === '8562';
-      
-      if (buyer.desiredAreas.length === 0 && !buyer.desiredAreaFreeText && !buyer.inquiredPropertyAddress) {
-        if (is8562) console.log('[8562] 除外: エリア条件なし');
-        continue;
-      }
+      if (buyer.desiredAreas.length === 0 && !buyer.desiredAreaFreeText && !buyer.inquiredPropertyAddress) continue;
 
       const areaResult = areasOverlap(sellerAreas, seller.match_area_free_text, buyer.desiredAreas, buyer.desiredAreaFreeText, seller.property_address, buyer.inquiredPropertyAddress);
-      if (!areaResult.matched) {
-        if (is8562) console.log('[8562] 除外: エリア不一致', { sellerPropertyAddress: seller.property_address, buyerInquiredPropertyAddress: buyer.inquiredPropertyAddress });
-        continue;
-      }
+      if (!areaResult.matched) continue;
 
       const typeResult = propertyTypesOverlap(sellerPropertyTypeCategories, buyer.propertyTypeCategories);
-      if (!typeResult.matched) {
-        if (is8562) console.log('[8562] 除外: 種別不一致', { sellerType: seller.property_type, buyerTypes: Array.from(buyer.propertyTypeCategories) });
-        continue;
-      }
-
-      if (is8562) console.log('[8562] ✅ マッチング成功！');
+      if (!typeResult.matched) continue;
 
       const priceResult = buyer.priceRanges.length === 0
         ? { matched: true, reason: null as string | null }
@@ -695,7 +680,7 @@ export class MatchingIntentService {
         .from('buyers')
         .select('buyer_number, name, desired_area, desired_area_free_text, desired_timing, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, property_number')
         .is('deleted_at', null)
-        .not('match_updated_at', 'is', null)  // マッチングボタンを押している買主のみ
+        .not('desired_area', 'is', null)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
       if (error) throw new Error(`買主取得に失敗しました: ${error.message}`);
