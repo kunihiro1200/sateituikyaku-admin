@@ -159,51 +159,51 @@ const ReformEstimateSheet = React.forwardRef<HTMLDivElement, Record<string, neve
       >
         {/* ===== マンションリフォーム概算表 ===== */}
         <Typography sx={{ fontSize: '11pt', fontWeight: 'bold', textAlign: 'center', mb: 1, fontFamily: FONT }}>
-          マンションリフォーム概算表【税抜価格】
+          マンションリフォーム概算表【税込価格】
         </Typography>
 
         <Box sx={{ border: '1px solid #000', mb: 3 }}>
           {/* 水回り */}
-          <ReformRow isFirstInCategory category="水回り" item="●キッチン交換" price="170万円" notes={[]} />
-          <ReformRow item="●ユニットバス→ユニットバス交換" price="170万円" notes={[]} />
-          <ReformRow item="●洗面台交換" price="20万円" notes={['クッションフロア張替（+3万）', '壁紙張替（+4万）']} />
-          <ReformRow isLastInCategory item="●トイレ交換" price="25万円" notes={['クッションフロア張替（+2万）', '壁紙張替（+3万）']} />
+          <ReformRow isFirstInCategory category="水回り" item="●キッチン交換" price="110万円" notes={[]} />
+          <ReformRow item="●ユニットバス→ユニットバス交換" price="120万円" notes={[]} />
+          <ReformRow item="●洗面台交換" price="15万円" notes={['クッションフロア張替', '壁紙張替']} />
+          <ReformRow isLastInCategory item="●トイレ交換" price="20万円" notes={['クッションフロア張替', '壁紙張替']} />
 
           {/* 居室 */}
-          <ReformRow isFirstInCategory category="居室" item="●和室→洋室" price="70万円（6帖）" notes={['畳→フローリング', '押入→クローゼット', '壁紙張替']} />
+          <ReformRow isFirstInCategory category="居室" item="●和室→洋室" price="50万円（6帖）" notes={['畳→フローリング', '押入→クローゼット', '壁紙張替']} />
           <ReformRow item="●床上貼り" price="90万円（30坪）" notes={['フローリング']} />
           <ReformRow isLastInCategory item="●壁紙張替" price="70万円（30坪）" notes={['全室', '普及品']} />
 
           {/* 他 */}
-          <ReformRow isFirstInCategory isLastInCategory isLast category="他" item="●内窓設置" price="20万円" notes={['掃出し1箇所']} />
+          <ReformRow isFirstInCategory isLastInCategory isLast category="他" item="●内窓設置（W1800×H2200）" price="25万円" notes={['掃出し1箇所']} />
         </Box>
 
         {/* ===== 戸建リフォーム概算表 ===== */}
         <Typography sx={{ fontSize: '11pt', fontWeight: 'bold', textAlign: 'center', mb: 1, fontFamily: FONT }}>
-          戸建リフォーム概算表【税抜価格】
+          戸建リフォーム概算表【税込価格】
         </Typography>
 
         <Box sx={{ border: '1px solid #000', flex: 1 }}>
           {/* 水回り */}
-          <ReformRow isFirstInCategory category="水回り" item="●キッチン交換" price="170万円" notes={[]} />
-          <ReformRow item="●ユニットバス→ユニットバス交換" price="170万円" notes={[]} />
+          <ReformRow isFirstInCategory category="水回り" item="●キッチン交換" price="110万円" notes={[]} />
+          <ReformRow item="●ユニットバス→ユニットバス交換" price="120万円" notes={[]} />
           <ReformRow item="●ユニットバス以外→ユニットバス変更" price="200万円" notes={['例）タイル張浴室→ユニットバス']} />
-          <ReformRow item="●洗面台交換" price="20万円" notes={['クッションフロア張替（+3万）', '壁紙張替（+4万）']} />
-          <ReformRow isLastInCategory item="●トイレ交換" price="25万円" notes={['クッションフロア張替（+2万）', '壁紙張替（+3万）']} />
+          <ReformRow item="●洗面台交換" price="15万円" notes={['クッションフロア張替', '壁紙張替']} />
+          <ReformRow isLastInCategory item="●トイレ交換" price="20万円" notes={['クッションフロア張替', '壁紙張替']} />
 
           {/* 居室 */}
-          <ReformRow isFirstInCategory category="居室" item="●和室→洋室" price="80万円" notes={['畳→フローリング', '押入→クローゼット', '壁紙張替']} />
+          <ReformRow isFirstInCategory category="居室" item="●和室→洋室" price="50万円（6帖）" notes={['畳→フローリング', '押入→クローゼット', '壁紙張替']} />
           <ReformRow item="●床上貼り" price="90万円（30坪）" notes={['フローリング']} />
-          <ReformRow isLastInCategory item="●壁紙張替" price="120万円（30坪）" notes={['全室', '普及品']} />
+          <ReformRow isLastInCategory item="●壁紙張替" price="70万円（30坪）" notes={['全室', '普及品']} />
 
           {/* 他 */}
-          <ReformRow isFirstInCategory category="他" item="●外壁塗装" price={'140万円\n（30坪2階建）'} notes={['シリコン塗装', '耐用年数約15年', '普及品']} />
-          <ReformRow item="●屋根塗装" price="40万円" notes={['シリコン塗装', '耐用年数約15年', '普及品']} />
-          <ReformRow item="●屋根葺替え（ガルテクト 耐用年数20年）" price="140万円" notes={['陶器瓦（+50万 耐用年数50年以上）']} />
-          <ReformRow item="●足場設置" price="23万円" notes={['※外壁、屋根工事に必要']} />
-          <ReformRow item="●サッシ取替" price="30万円" notes={['掃出し1箇所', '※外壁補修費用込み']} />
-          <ReformRow item="●内窓設置" price="20万円" notes={['掃出し1箇所']} />
-          <ReformRow item="●庭→駐車場" price="70万円" notes={['1台分']} />
+          <ReformRow isFirstInCategory category="他" item="●外壁塗装" price={'130万円\n（30坪2階建）'} notes={['シリコン塗装', '耐用年数約10年', '普及品']} />
+          <ReformRow item="●屋根塗装" price="65万円" notes={['シリコン塗装', '耐用年数約10年', '普及品']} />
+          <ReformRow item="●屋根葺替え（ガルテクト 耐用年数20年）" price="180万円" notes={['陶器瓦（+50万 耐用年数50年以上）']} />
+          <ReformRow item="●足場設置" price="20万円" notes={['※外壁、屋根工事に必要']} />
+          <ReformRow item="●サッシ取替（W1700×H2030）" price="35万円" notes={['掃出し1箇所', '※外壁補修費用込み']} />
+          <ReformRow item="●内窓設置（W1700×H2020）" price="25万円" notes={['掃出し1箇所']} />
+          <ReformRow item="●庭→駐車場" price="60万円" notes={['1台分']} />
           <ReformRow isLastInCategory isLast item="●オール電化工事" price="100万円" notes={['エコキュート370L', 'IH取付']} />
         </Box>
 

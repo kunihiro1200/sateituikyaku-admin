@@ -734,37 +734,37 @@ export function generatePage5Html(): string {
     }).join('');
   }
   const manRows = reformRows([
-    {cat:'水回り',catRows:4,item:'●キッチン交換',price:'170万円',notes:[]},
-    {item:'●ユニットバス→ユニットバス交換',price:'170万円',notes:[]},
-    {item:'●洗面台交換',price:'20万円',notes:['クッションフロア張替（+3万）','壁紙張替（+4万）']},
-    {item:'●トイレ交換',price:'25万円',notes:['クッションフロア張替（+2万）','壁紙張替（+3万）']},
-    {cat:'居室',catRows:3,item:'●和室→洋室',price:'70万円（6帖）',notes:['畳→フローリング','押入→クローゼット','壁紙張替']},
+    {cat:'水回り',catRows:4,item:'●キッチン交換',price:'110万円',notes:[]},
+    {item:'●ユニットバス→ユニットバス交換',price:'120万円',notes:[]},
+    {item:'●洗面台交換',price:'15万円',notes:['クッションフロア張替','壁紙張替']},
+    {item:'●トイレ交換',price:'20万円',notes:['クッションフロア張替','壁紙張替']},
+    {cat:'居室',catRows:3,item:'●和室→洋室',price:'50万円（6帖）',notes:['畳→フローリング','押入→クローゼット','壁紙張替']},
     {item:'●床上貼り',price:'90万円（30坪）',notes:['フローリング']},
     {item:'●壁紙張替',price:'70万円（30坪）',notes:['全室','普及品']},
-    {cat:'他',catRows:1,item:'●内窓設置',price:'20万円',notes:['掃出し1箇所']},
+    {cat:'他',catRows:1,item:'●内窓設置（W1800×H2200）',price:'25万円',notes:['掃出し1箇所']},
   ]);
   const koRows = reformRows([
-    {cat:'水回り',catRows:5,item:'●キッチン交換',price:'170万円',notes:[]},
-    {item:'●ユニットバス→ユニットバス交換',price:'170万円',notes:[]},
+    {cat:'水回り',catRows:5,item:'●キッチン交換',price:'110万円',notes:[]},
+    {item:'●ユニットバス→ユニットバス交換',price:'120万円',notes:[]},
     {item:'●ユニットバス以外→ユニットバス変更',price:'200万円',notes:['例）タイル張浴室→ユニットバス']},
-    {item:'●洗面台交換',price:'20万円',notes:['クッションフロア張替（+3万）','壁紙張替（+4万）']},
-    {item:'●トイレ交換',price:'25万円',notes:['クッションフロア張替（+2万）','壁紙張替（+3万）']},
-    {cat:'居室',catRows:3,item:'●和室→洋室',price:'80万円',notes:['畳→フローリング','押入→クローゼット','壁紙張替']},
+    {item:'●洗面台交換',price:'15万円',notes:['クッションフロア張替','壁紙張替']},
+    {item:'●トイレ交換',price:'20万円',notes:['クッションフロア張替','壁紙張替']},
+    {cat:'居室',catRows:3,item:'●和室→洋室',price:'50万円（6帖）',notes:['畳→フローリング','押入→クローゼット','壁紙張替']},
     {item:'●床上貼り',price:'90万円（30坪）',notes:['フローリング']},
-    {item:'●壁紙張替',price:'120万円（30坪）',notes:['全室','普及品']},
-    {cat:'他',catRows:8,item:'●外壁塗装',price:'140万円（30坪2階建）',notes:['シリコン塗装','耐用年数約15年','普及品']},
-    {item:'●屋根塗装',price:'40万円',notes:['シリコン塗装','耐用年数約15年','普及品']},
-    {item:'●屋根葺替え（ガルテクト 耐用年数20年）',price:'140万円',notes:['陶器瓦（+50万 耐用年数50年以上）']},
-    {item:'●足場設置',price:'23万円',notes:['※外壁、屋根工事に必要']},
-    {item:'●サッシ取替',price:'30万円',notes:['掃出し1箇所','※外壁補修費用込み']},
-    {item:'●内窓設置',price:'20万円',notes:['掃出し1箇所']},
-    {item:'●庭→駐車場',price:'70万円',notes:['1台分']},
+    {item:'●壁紙張替',price:'70万円（30坪）',notes:['全室','普及品']},
+    {cat:'他',catRows:8,item:'●外壁塗装',price:'130万円（30坪2階建）',notes:['シリコン塗装','耐用年数約10年','普及品']},
+    {item:'●屋根塗装',price:'65万円',notes:['シリコン塗装','耐用年数約10年','普及品']},
+    {item:'●屋根葺替え（ガルテクト 耐用年数20年）',price:'180万円',notes:['陶器瓦（+50万 耐用年数50年以上）']},
+    {item:'●足場設置',price:'20万円',notes:['※外壁、屋根工事に必要']},
+    {item:'●サッシ取替（W1700×H2030）',price:'35万円',notes:['掃出し1箇所','※外壁補修費用込み']},
+    {item:'●内窓設置（W1700×H2020）',price:'25万円',notes:['掃出し1箇所']},
+    {item:'●庭→駐車場',price:'60万円',notes:['1台分']},
     {item:'●オール電化工事',price:'100万円',notes:['エコキュート370L','IH取付']},
   ]);
   return `<div style="width:100%;height:100%;padding:12mm 15mm;background:#fff;font-family:${FONT};font-size:9pt;color:#000;box-sizing:border-box;overflow:hidden;">
-    <div style="font-size:11pt;font-weight:bold;text-align:center;margin-bottom:8px;">マンションリフォーム概算表【税抜価格】</div>
+    <div style="font-size:11pt;font-weight:bold;text-align:center;margin-bottom:8px;">マンションリフォーム概算表【税込価格】</div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">${manRows}</table>
-    <div style="font-size:11pt;font-weight:bold;text-align:center;margin-bottom:8px;">戸建リフォーム概算表【税抜価格】</div>
+    <div style="font-size:11pt;font-weight:bold;text-align:center;margin-bottom:8px;">戸建リフォーム概算表【税込価格】</div>
     <table style="width:100%;border-collapse:collapse;">${koRows}</table>
     <div style="margin-top:12px;font-size:8pt;line-height:1.6;">※リフォーム概算につきましては、現在の資材価格の高騰等の影響もございますので、あくまで概算金額となります。実際の費用につきましては、現地確認や仕様等により変動する場合がございますので、あらかじめご了承ください。</div>
     <div style="text-align:right;margin-top:8px;font-size:8pt;color:#666;">last</div>
