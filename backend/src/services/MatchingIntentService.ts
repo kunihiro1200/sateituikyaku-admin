@@ -559,6 +559,9 @@ export class MatchingIntentService {
       throw new Error('売主が見つかりませんでした');
     }
 
+    // まず、既にマッチング済みの買主を seller_buyer_match_candidates テーブルから取得
+    const existingMatches = await this.getExistingMatchedBuyers(sellerId);
+
     const sellerAreas: string[] = Array.isArray(seller.match_areas) ? seller.match_areas : [];
     // エリアの構造化入力（既存コード・自由入力）が両方未入力でも、物件住所があれば
     // それを判定材料として使えるため、物件住所も有効な条件として扱う。
@@ -566,7 +569,7 @@ export class MatchingIntentService {
     if (!hasAnyCriteria) {
       return {
         source: { id: seller.id, number: seller.seller_number, name: null },
-        candidates: [],
+        candidates: existingMatches, // 既存のマッチングを返す
       };
     }
 
@@ -623,11 +626,79 @@ export class MatchingIntentService {
       c.contactStatus = contactStatusMap.get(c.number!) ?? '連絡未';
     }
 
-    candidates.sort((a, b) => b.urgencyScore - a.urgencyScore);
+    // 既存のマッチングと新規候補を統合（既存のマッチングを優先）
+    const existingBuyerNumbers = new Set(existingMatches.map(m => m.number));
+    const newCandidates = candidates.filter(c => !existingBuyerNumbers.has(c.number));
+    const allCandidates = [...existingMatches, ...newCandidates];
+
+    allCandidates.sort((a, b) => b.urgencyScore - a.urgencyScore);
 
     return {
       source: { id: seller.id, number: seller.seller_number, name: null },
-      candidates,
+      candidates: allCandidates,
+    };
+  }
+
+  /**
+   * 既にマッチング済みの買主を seller_buyer_match_candidates テーブルから取得
+   */
+  private async getExistingMatchedBuyers(sellerId: string): Promise<MatchCandidate[]> {
+    const { data, error } = await this.supabase
+      .from('seller_buyer_match_candidates')
+      .select(`
+        buyer_number,
+        matched_at,
+        contact_status,
+        buyers!inner(
+          buyer_number,
+          name,
+          desired_areas,
+          desired_area_free_text,
+          desired_timing,
+          desired_price_ranges,
+          reception_date
+        )
+      `)
+      .eq('seller_id', sellerId);
+
+    if (error) {
+      console.error('既存マッチングの取得エラー:', error);
+      return [];
+    }
+
+    const candidates: MatchCandidate[] = [];
+    for (const row of data || []) {
+      const buyer = row.buyers;
+      if (!buyer) continue;
+
+      const priceRanges: { min: number | null; max: number | null }[] =
+        Array.isArray(buyer.desired_price_ranges) ? buyer.desired_price_ranges : [];
+
+      candidates.push({
+        type: 'buyer',
+        id: buyer.buyer_number,
+        number: buyer.buyer_number,
+        name: buyer.name,
+        matchAreas: Array.isArray(buyer.desired_areas) ? buyer.desired_areas : [],
+        matchAreaFreeText: buyer.desired_area_free_text,
+        matchTiming: buyer.desired_timing,
+        matchPriceMin: priceRanges[0]?.min ?? null,
+        matchPriceMax: priceRanges[0]?.max ?? null,
+        matchMemo: null,
+        matchUpdatedAt: row.matched_at,
+        matchReasons: ['既にマッチング済み'],
+        urgencyScore: timingUrgencyScore(buyer.desired_timing),
+        contactStatus: row.contact_status || '連絡未',
+        timingFreshness: getTimingFreshness(buyer.desired_timing, buyer.reception_date).freshness,
+      });
+    }
+
+    return candidates;
+  }
+
+    return {
+      source: { id: seller.id, number: seller.seller_number, name: null },
+      candidates: allCandidates,
     };
   }
 
