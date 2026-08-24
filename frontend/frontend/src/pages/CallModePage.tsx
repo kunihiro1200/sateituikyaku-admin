@@ -840,6 +840,8 @@ const CallModePage = () => {
         } else if (f.nextCallDateTo) {
           params.nextCallDateTo = f.nextCallDateTo;
         }
+        if (f.townName) params.townName = f.townName;
+        if (f.visitAssignee) params.visitAssignee = toArr(f.visitAssignee);
 
         const sellersRes = await api.get('/api/sellers', { params });
         const ids: string[] = (sellersRes.data.data || []).map((s: any) => s.id);
