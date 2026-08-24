@@ -151,6 +151,8 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
       return sellers.filter(s => !isFiSeller(s) && isTodayCallNotStarted(s));
     case 'pinrichEmpty':
       return sellers.filter(isPinrichEmpty);
+    case 'matching':
+      return sellers.filter(s => s.matchUpdatedAt !== null && s.matchUpdatedAt !== undefined);
     case 'todayCallAssigned':
       return sellers.filter(isTodayCallAssigned);
     case 'visitDayBefore':
@@ -191,6 +193,8 @@ const getCategoryLabel = (category: StatusCategory): string => {
       return 'Pinrich要変更';
     case 'pinrichEmpty':
       return '⑧Pinrich空欄';
+    case 'matching':
+      return 'マッチング';
     case 'todayCallAssigned':
       return '当日TEL（担当）';
     case 'exclusive':
@@ -255,6 +259,8 @@ const getCategoryColor = (category: StatusCategory): string => {
       return '#e91e63';
     case 'pinrichEmpty':
       return '#795548';
+    case 'matching':
+      return '#9c27b0';
     case 'todayCallAssigned':
       return '#ff5722';
     case 'exclusive':
@@ -1182,6 +1188,7 @@ function SellerStatusSidebarComponent({
       {renderCategoryButton('mailingPending', '⑥査定（郵送）', '#0288d1')}
       {renderCategoryButton('pinrichChangeRequired', 'Pinrich要変更', '#e91e63')}
       {renderCategoryButton('pinrichEmpty', '⑧Pinrich空欄', '#795548')}
+      {renderCategoryButton('matching', 'マッチング', '#9c27b0')}
 
       {/* マッチング通知（追客中の売主 × 買主の希望条件）：福岡セクションの直前 */}
       <SellerMatchingSidebarSection />

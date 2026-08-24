@@ -48,6 +48,7 @@ const FIELD_TO_CATEGORIES: Record<string, string[]> = {
   contract_year_month: ['general', 'pinrichChangeRequired'],
   exclusive_other_decision_meeting: ['exclusive', 'general', 'visitOtherDecision', 'unvisitedOtherDecision'],
   visit_reminder_assignee: ['visitDayBefore'],
+  match_updated_at: ['matching'],
 };
 
 /**
@@ -501,6 +502,13 @@ export class SellerSidebarCountsUpdateService {
       }
       const pinrichEmptyCount = pinrichEmptyAllSellers.length;
 
+      // マッチングカウント（match_updated_atがnullでない売主）
+      const { count: matchingCount } = await this.supabase
+        .from('sellers')
+        .select('*', { count: 'exact', head: true })
+        .is('deleted_at', null)
+        .not('match_updated_at', 'is', null);
+
       const exclusiveSellers = exclusiveSellersResult.data || [];
       const exclusiveCount = exclusiveSellers.filter(s => {
         const meeting = s.exclusive_other_decision_meeting;
@@ -577,6 +585,7 @@ export class SellerSidebarCountsUpdateService {
         { category: 'mailingPending', count: mailingPendingCount, label: null, assignee: null },
         { category: 'todayCallNotStarted', count: todayCallNotStartedCount, label: null, assignee: null },
         { category: 'pinrichEmpty', count: pinrichEmptyCount, label: null, assignee: null },
+        { category: 'matching', count: matchingCount || 0, label: null, assignee: null },
         { category: 'pinrichChangeRequired', count: pinrichChangeRequiredCount, label: null, assignee: null },
         { category: 'exclusive', count: exclusiveCount, label: null, assignee: null },
         { category: 'general', count: generalCount, label: null, assignee: null },
@@ -676,6 +685,7 @@ export class SellerSidebarCountsUpdateService {
     const needsVisitOtherDecision = affected.has('visitOtherDecision');
     const needsUnvisitedOtherDecision = affected.has('unvisitedOtherDecision');
     const needsPinrichEmpty = affected.has('pinrichEmpty');
+    const needsMatching = affected.has('matching');
     const needsPinrichChange = affected.has('pinrichChangeRequired');
 
     if (needsTodayCallBase) {
@@ -800,6 +810,13 @@ export class SellerSidebarCountsUpdateService {
         .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
         .or('pinrich_status.is.null,pinrich_status.eq.')
         .gte('inquiry_date', '2026-01-01');
+    }
+    if (needsMatching) {
+      queries.matching = this.supabase
+        .from('sellers')
+        .select('id', { count: 'exact', head: true })
+        .is('deleted_at', null)
+        .not('match_updated_at', 'is', null);
     }
     if (needsPinrichChange) {
       queries.pinrichChange = this.supabase
@@ -1009,6 +1026,11 @@ export class SellerSidebarCountsUpdateService {
     // pinrichEmpty
     if (needsPinrichEmpty) {
       upsertRows.push({ category: 'pinrichEmpty', count: resultMap.pinrichEmpty?.count || 0, label: null, assignee: null });
+    }
+
+    // matching
+    if (needsMatching) {
+      upsertRows.push({ category: 'matching', count: resultMap.matching?.count || 0, label: null, assignee: null });
     }
 
     // pinrichChangeRequired
