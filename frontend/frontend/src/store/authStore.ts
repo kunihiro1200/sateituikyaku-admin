@@ -27,13 +27,14 @@ export const useAuthStore = create<AuthState>()(
       console.log('🔵 Redirect URL:', `${window.location.origin}/auth/callback`);
       
       // Supabase Authを使用してGoogleログイン
-      const { error } = await supabase.auth.signInWithOAuth({
+      // skipBrowserRedirect: true で URL を取得し、手動でリダイレクト（確実性のため）
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          skipBrowserRedirect: true,
           queryParams: {
             access_type: 'offline',
-            // promptを指定しない → Googleに既存セッションがあれば自動ログイン
           },
         },
       });
@@ -43,7 +44,14 @@ export const useAuthStore = create<AuthState>()(
         throw new Error(`ログインに失敗しました: ${error.message}`);
       }
 
-      console.log('✅ Supabase login initiated');
+      if (data?.url) {
+        console.log('✅ Supabase login initiated, redirecting to:', data.url.substring(0, 80) + '...');
+        // 手動でGoogleの認証画面にリダイレクト
+        window.location.href = data.url;
+      } else {
+        console.error('❌ No redirect URL returned from Supabase');
+        throw new Error('ログインURLの取得に失敗しました。もう一度お試しください。');
+      }
     } catch (error) {
       console.error('❌ Login failed:', error);
       throw error;
