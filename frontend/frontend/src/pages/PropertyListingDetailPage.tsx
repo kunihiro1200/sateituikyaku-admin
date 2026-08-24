@@ -281,6 +281,7 @@ export default function PropertyListingDetailPage() {
   const [atbbWarningDialog, setAtbbWarningDialog] = useState(false);
   const [eLabelWarningDialog, setELabelWarningDialog] = useState(false);
   const [preViewingNotesWarningDialog, setPreViewingNotesWarningDialog] = useState(false);
+  const [contactInfoWarningDialog, setContactInfoWarningDialog] = useState(false);
   const offerSectionRef = useRef<HTMLDivElement>(null);
   // 買付情報バリデーションエラー状態
   const [offerErrors, setOfferErrors] = useState<{
@@ -590,6 +591,32 @@ export default function PropertyListingDetailPage() {
     if (editedData.atbb_status !== undefined) {
       const prevAtbbStatus = data?.atbb_status;
       const nextAtbbStatus = editedData.atbb_status;
+
+      // 売主連絡先チェック: ATBB状況を「公開中」に変更する場合
+      // 元の状態に関わらず、「公開中」（専任・公開中、一般・公開中）に変更する際にチェック
+      const isChangingToPublic = 
+        nextAtbbStatus && 
+        nextAtbbStatus.includes('公開中') && 
+        prevAtbbStatus !== nextAtbbStatus; // 同じ値への変更は除外（編集モードで保存ボタンを押しただけの場合）
+
+      // 物件番号にCCが含まれる場合は警告をスキップ
+      const propertyNumberContainsCC = data?.property_number?.includes('CC') ?? false;
+
+      if (isChangingToPublic && !propertyNumberContainsCC) {
+        const currentSellerContact = editedData.seller_contact !== undefined
+          ? editedData.seller_contact
+          : (data?.seller_contact ?? '');
+        const currentSellerEmail = editedData.seller_email !== undefined
+          ? editedData.seller_email
+          : (data?.seller_email ?? '');
+
+        // 連絡先またはメールアドレスのどちらか一方でも空欄の場合、警告ダイアログを表示
+        if ((!currentSellerContact || currentSellerContact.trim() === '') ||
+            (!currentSellerEmail || currentSellerEmail.trim() === '')) {
+          setContactInfoWarningDialog(true);
+          return;
+        }
+      }
 
       // Eラベルチェック: 「一般・公開中」に変更された場合（もともと「一般・公開中」でない場合）
       if (nextAtbbStatus === '一般・公開中' && prevAtbbStatus !== '一般・公開中') {
@@ -3659,6 +3686,77 @@ export default function PropertyListingDetailPage() {
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setELabelWarningDialog(false)} variant="contained" color="error">
             閉じる
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 売主連絡先・メールアドレス警告ダイアログ */}
+      <Dialog open={contactInfoWarningDialog} onClose={() => setContactInfoWarningDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold', fontSize: '1.1rem' }}>
+          ⚠️ 連絡先情報が不足しています
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3, pb: 2 }}>
+          <Typography variant="body1" sx={{ fontWeight: 600, mb: 2 }}>
+            ATBB状況を<span style={{ color: '#e65100' }}>「公開中」</span>に変更する際、<br />
+            <span style={{ color: '#e65100' }}>売主の連絡先とメールアドレスの両方の入力が推奨</span>されます。
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            現在、売主の連絡先またはメールアドレスが空欄になっています。
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            このまま保存を続けるか、担当者へ連絡先情報の不足を連絡してください。
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
+          <Button 
+            onClick={async () => {
+              setContactInfoWarningDialog(false);
+              // 保存処理を実行
+              try {
+                await api.put(`/api/property-listings/${propertyNumber}`, editedData);
+                setSnackbar({
+                  open: true,
+                  message: 'サマリー情報を保存しました',
+                  severity: 'success',
+                });
+                pageDataCache.invalidate(CACHE_KEYS.PROPERTY_LISTINGS);
+                await fetchPropertyData(true);
+                setEditedData({});
+                setIsHeaderEditMode(false);
+              } catch (error) {
+                setSnackbar({
+                  open: true,
+                  message: '保存に失敗しました',
+                  severity: 'error',
+                });
+              }
+            }} 
+            variant="outlined" 
+            color="inherit"
+            fullWidth={window.innerWidth < 600}
+          >
+            このまま続ける
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={() => {
+              setContactInfoWarningDialog(false);
+              // チャットパネルを開き、デフォルトメッセージを設定
+              const defaultMessage = `【物件番号】${data?.property_number || ''}
+【物件住所】${data?.address || ''}
+【売主名】${data?.seller_name || '（未登録）'}
+
+のメールアドレス（電話番号）がありません。
+至急物件リストに登録お願いします。
+
+【物件URL】${window.location.href}`;
+              setChatToOfficeMessage(defaultMessage);
+              setChatToOfficePanelOpen(true);
+            }}
+            fullWidth={window.innerWidth < 600}
+          >
+            担当へメールアドレスがないことを連絡する
           </Button>
         </DialogActions>
       </Dialog>
