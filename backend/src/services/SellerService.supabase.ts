@@ -1829,22 +1829,7 @@ export class SellerService extends BaseRepository {
     if (inquirySiteList) {
       query = query.in('inquiry_site', inquirySiteList); // 修正: site → inquiry_site（正しいカラム名）
     }
-    const propertyTypeList = toArray(propertyTypeFilter);
-    if (propertyTypeList) {
-      // 種別は「戸建て」「戸建」「戸」のように表記が混在しているため、代表キーワードで部分一致検索する
-      const propertyTypeKeywordMap: Record<string, string> = {
-        '土地': '土',
-        '戸建': '戸',
-        'マンション': 'マ',
-        '事業用': '事業',
-      };
-      // 複数選択時はOR条件（いずれかのキーワードを含む）で絞り込む
-      const orConditions = propertyTypeList
-        .map((t) => propertyTypeKeywordMap[t] || t)
-        .map((keyword) => `property_type.ilike.%${keyword}%`)
-        .join(',');
-      query = query.or(orConditions);
-    }
+    // 種別フィルターはJS側で適用するため、ここではクエリしない（propertiesテーブルのカラムのため）
     const statusFilterList = toArray(statusFilter);
     if (statusFilterList) {
       // サイドバーカテゴリが選択されている場合、statusFilterは適用しない
@@ -2014,6 +1999,27 @@ export class SellerService extends BaseRepository {
 
     // todayCallWithInfo:xxx または fi:todayCallWithInfo:xxx の場合、ラベルでJS側フィルタリング
     let finalSellers = decryptedSellers;
+    
+    // 種別フィルター（JS側で適用）：propertiesテーブルのproperty_typeで絞り込む
+    const propertyTypeList = toArray(propertyTypeFilter);
+    if (propertyTypeList && propertyTypeList.length > 0) {
+      const propertyTypeKeywordMap: Record<string, string> = {
+        '土地': '土',
+        '戸建て': '戸',
+        '戸建': '戸',
+        'マンション': 'マ',
+        '事業用': '事業',
+      };
+      finalSellers = finalSellers.filter((s: any) => {
+        const propertyType = s.property?.propertyType || '';
+        // 複数選択時はOR条件（いずれかのキーワードを含む）
+        return propertyTypeList.some((t) => {
+          const keyword = propertyTypeKeywordMap[t] || t;
+          return propertyType.includes(keyword);
+        });
+      });
+    }
+    
     const isLabelFilter = (typeof statusCategory === 'string') &&
       (statusCategory.startsWith('todayCallWithInfo:') || statusCategory.startsWith('fi:todayCallWithInfo:'));
     if (isLabelFilter) {
@@ -2086,9 +2092,11 @@ export class SellerService extends BaseRepository {
     // 特に fi:todayCallNotStarted はunreachable_status等をJSで判定するため、
     // DBのcount（29件）とJSフィルタ後の実件数（0件など）が大きく乖離する場合がある
     // todayCallWithInfo:xxx はIDプリフェッチ方式に変更したため、DBのcountをそのまま使用可能
+    // 種別フィルターもJS側で適用するため、件数を再計算する
     const isFiCategory = typeof statusCategory === 'string' && statusCategory.startsWith('fi:');
     const isFiLabelFilter = (typeof statusCategory === 'string') && statusCategory.startsWith('fi:todayCallWithInfo:');
-    const totalCount = isFiCategory || isFiLabelFilter
+    const hasPropertyTypeFilter = propertyTypeList && propertyTypeList.length > 0;
+    const totalCount = (isFiCategory || isFiLabelFilter || hasPropertyTypeFilter)
       ? sellersWithCallDate.length
       : (count || 0);
 
