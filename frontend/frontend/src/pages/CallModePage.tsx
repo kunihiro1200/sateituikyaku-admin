@@ -11010,7 +11010,7 @@ HP：https://ifoo-oita.com/
 
             {/* マッチング結果セクション（matchUpdatedAtがある場合のみ表示） */}
             {(() => {
-              const hasMatchUpdatedAt = seller?.id && (seller as any)?.matchUpdatedAt;
+              const hasMatchUpdatedAt = !!(seller?.id && (seller as any)?.matchUpdatedAt);
               console.log('[CallModePage] マッチング結果表示判定:', {
                 sellerId: seller?.id,
                 matchUpdatedAt: (seller as any)?.matchUpdatedAt,
