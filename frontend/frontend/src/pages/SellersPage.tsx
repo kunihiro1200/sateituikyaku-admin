@@ -352,8 +352,8 @@ export default function SellersPage() {
   const [nextCallDateValue, setNextCallDateValue] = useState('');
   // 営業担当フィルター（visit_assignee、複数選択対応）
   const [visitAssigneeFilter, setVisitAssigneeFilter] = useState<string[]>([]);
-  // 地名フィルター（物件住所の部分一致検索用）
-  const [addressKeywordFilter, setAddressKeywordFilter] = useState('');
+  // 町名フィルター（物件住所の部分一致検索用）
+  const [townNameFilter, setTownNameFilter] = useState('');
   // サイドバー一時追加フィルター
   const [sidebarTempFilters, setSidebarTempFilters] = useState<Array<{
     id: string;
@@ -793,7 +793,7 @@ export default function SellersPage() {
 
   useEffect(() => {
     fetchSellers();
-  }, [page, rowsPerPage, confidenceLevelFilter, inquirySiteFilter, propertyTypeFilter, statusFilterValue, regionFilter, inquiryDateFromFilter, inquiryDateToFilter, currentStatusFilterValue, valuationAmountMinFilter, valuationAmountMaxFilter, nextCallDateMode, nextCallDateValue, visitAssigneeFilter, selectedCategory, sortBy, sortOrder]);
+  }, [page, rowsPerPage, confidenceLevelFilter, inquirySiteFilter, propertyTypeFilter, statusFilterValue, regionFilter, inquiryDateFromFilter, inquiryDateToFilter, currentStatusFilterValue, valuationAmountMinFilter, valuationAmountMaxFilter, nextCallDateMode, nextCallDateValue, visitAssigneeFilter, townNameFilter, selectedCategory, sortBy, sortOrder]);
 
   const fetchSellers = async () => {
     // このリクエストの連番を発行（後から解決した古いリクエストの結果を無視するため）
@@ -1360,8 +1360,8 @@ export default function SellersPage() {
               {/* 地名・町名フィルター（物件住所の部分一致検索用） */}
               <TextField
                 label="地名・町名"
-                value={addressKeywordFilter}
-                onChange={(e) => setAddressKeywordFilter(e.target.value)}
+                value={townNameFilter}
+                onChange={(e) => setTownNameFilter(e.target.value)}
                 placeholder="例: 石垣"
                 sx={{ minWidth: 150 }}
                 size="small"
@@ -1554,7 +1554,7 @@ export default function SellersPage() {
                   setNextCallDateMode('');
                   setNextCallDateValue('');
                   setVisitAssigneeFilter([]);
-                  setAddressKeywordFilter(''); // 地名フィルターもクリア
+                  setTownNameFilter(''); // 町名フィルターもクリア
                   setSelectedTempFilterId(null);
                 }}
                 size="small"
@@ -1583,8 +1583,8 @@ export default function SellersPage() {
                   }
                   
                   // 3. 地名・町名
-                  if (addressKeywordFilter.trim()) {
-                    labelParts.push(addressKeywordFilter.trim());
+                  if (townNameFilter.trim()) {
+                    labelParts.push(townNameFilter.trim());
                   }
                   
                   // 4. 種別（マンション、戸建て、土地など）
