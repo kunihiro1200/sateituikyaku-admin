@@ -20,8 +20,13 @@ import {
   Badge,
   Collapse,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
-import { Search as SearchIcon, Clear as ClearIcon, Add as AddIcon, ExpandLess, ExpandMore, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
+import { Search as SearchIcon, Clear as ClearIcon, Add as AddIcon, ExpandLess, ExpandMore, OpenInNew as OpenInNewIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
@@ -65,6 +70,10 @@ export default function SharedItemsPage() {
   );
   // 未確認フィルター用スタッフ名（null = 未確認フィルターなし）
   const [selectedUnconfirmedStaff, setSelectedUnconfirmedStaff] = useState<string | null>(null);
+  // 削除ダイアログ用
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTargetItem, setDeleteTargetItem] = useState<SharedItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // 専任媒介・月別サマリー（担当者別）
   const [exclusiveMonthlySummary, setExclusiveMonthlySummary] = useState<
@@ -256,6 +265,36 @@ export default function SharedItemsPage() {
     } catch {
       return dateStr;
     }
+  };
+
+  // 削除ハンドラー
+  const handleDeleteClick = (e: React.MouseEvent, item: SharedItem) => {
+    e.stopPropagation(); // 行クリック（詳細遷移）を防止
+    setDeleteTargetItem(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTargetItem) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/api/shared-items/${deleteTargetItem.id}`);
+      pageDataCache.invalidate(CACHE_KEYS.SHARED_ITEMS);
+      setDeleteDialogOpen(false);
+      setDeleteTargetItem(null);
+      // リストを再読み込み
+      await fetchAllSharedItems(true);
+    } catch (error: any) {
+      console.error('Delete error:', error);
+      alert(error.response?.data?.error || '削除に失敗しました。もう一度お試しください。');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setDeleteTargetItem(null);
   };
 
   return (
@@ -820,18 +859,19 @@ export default function SharedItemsPage() {
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>画像4</TableCell>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>日付</TableCell>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>打ち合わせ内容</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>削除</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={12} align="center">
+                  <TableCell colSpan={13} align="center">
                     読み込み中...
                   </TableCell>
                 </TableRow>
               ) : fetchError ? (
                 <TableRow>
-                  <TableCell colSpan={12} align="center">
+                  <TableCell colSpan={13} align="center">
                     <Typography color="error" variant="body2" sx={{ mb: 1 }}>{fetchError}</Typography>
                     <Button size="small" variant="outlined" onClick={() => fetchAllSharedItems(true)}>
                       再読み込み
@@ -840,7 +880,7 @@ export default function SharedItemsPage() {
                 </TableRow>
               ) : paginatedItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} align="center">
+                  <TableCell colSpan={13} align="center">
                     共有データが見つかりませんでした
                   </TableCell>
                 </TableRow>
@@ -872,6 +912,16 @@ export default function SharedItemsPage() {
                     <TableCell sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item['打ち合わせ内容'] || '-'}
                     </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={(e) => handleDeleteClick(e, item)}
+                        sx={{ '&:hover': { bgcolor: '#ffebee' } }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -891,6 +941,36 @@ export default function SharedItemsPage() {
         </TableContainer>
         </Box>
       </Box>
+
+      {/* 削除確認ダイアログ */}
+      <Dialog open={deleteDialogOpen} onClose={handleDeleteCancel}>
+        <DialogTitle>共有データの削除</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            以下のデータを削除しますか？この操作は元に戻せません。
+          </DialogContentText>
+          {deleteTargetItem && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+              <Typography variant="body2"><strong>ID:</strong> {deleteTargetItem.id}</Typography>
+              <Typography variant="body2"><strong>タイトル:</strong> {deleteTargetItem['タイトル'] || '-'}</Typography>
+              <Typography variant="body2"><strong>入力者:</strong> {deleteTargetItem['入力者'] || '-'}</Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel} disabled={deleting}>
+            キャンセル
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            color="error"
+            variant="contained"
+            disabled={deleting}
+          >
+            {deleting ? '削除中...' : '削除する'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }
