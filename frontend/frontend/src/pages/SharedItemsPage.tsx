@@ -100,6 +100,9 @@ export default function SharedItemsPage() {
   const [callTrackingRankingDialogOpen, setCallTrackingRankingDialogOpen] = useState(false);
   const [callRankingDialogOpen, setCallRankingDialogOpen] = useState(false);
   const [callRankingYearlyDialogOpen, setCallRankingYearlyDialogOpen] = useState(false);
+  // 買主電話ランキングダイアログ
+  const [buyerCallRankingDialogOpen, setBuyerCallRankingDialogOpen] = useState(false);
+  const [buyerCallRankingYearlyDialogOpen, setBuyerCallRankingYearlyDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchAllSharedItems();
@@ -896,6 +899,30 @@ export default function SharedItemsPage() {
                   primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#1565c0' }}
                 />
               </ListItemButton>
+              {/* 買主電話ランキング */}
+              <Box sx={{ px: 1, pt: 1, pb: 0.5 }}>
+                <Typography variant="caption" sx={{ px: 0.5, color: '#2e7d32', fontWeight: 'bold' }}>
+                  🏆 買主ランキング
+                </Typography>
+              </Box>
+              <ListItemButton
+                onClick={() => setBuyerCallRankingDialogOpen(true)}
+                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#bbdefb' } }}
+              >
+                <ListItemText
+                  primary="買主 月間電話ランキング"
+                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#2e7d32' }}
+                />
+              </ListItemButton>
+              <ListItemButton
+                onClick={() => setBuyerCallRankingYearlyDialogOpen(true)}
+                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#bbdefb' } }}
+              >
+                <ListItemText
+                  primary="買主 年間電話ランキング"
+                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#2e7d32' }}
+                />
+              </ListItemButton>
             </Collapse>
           </Box>
 
@@ -1169,6 +1196,42 @@ export default function SharedItemsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCallRankingYearlyDialogOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 買主月間電話ランキングダイアログ */}
+      <Dialog open={buyerCallRankingDialogOpen} onClose={() => setBuyerCallRankingDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          🏆 買主 月間電話ランキング
+        </DialogTitle>
+        <DialogContent>
+          <CallRankingDisplay
+            key={buyerCallRankingDialogOpen ? 'open' : 'closed'}
+            title="月間電話ランキング"
+            endpoint="/api/buyers/call-ranking"
+            showMonthSelector={true}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBuyerCallRankingDialogOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 買主年間電話ランキングダイアログ */}
+      <Dialog open={buyerCallRankingYearlyDialogOpen} onClose={() => setBuyerCallRankingYearlyDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          🏆 買主 年間電話ランキング
+        </DialogTitle>
+        <DialogContent>
+          <CallRankingDisplay
+            key={buyerCallRankingYearlyDialogOpen ? 'open' : 'closed'}
+            title="年間電話ランキング"
+            endpoint="/api/buyers/call-ranking-yearly"
+            yearlyMode={true}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBuyerCallRankingYearlyDialogOpen(false)}>閉じる</Button>
         </DialogActions>
       </Dialog>
     </Container>
