@@ -851,7 +851,7 @@ export default function SharedItemsPage() {
               {/* ランキング表示ボタン */}
               <Box sx={{ px: 1, pt: 1, pb: 0.5 }}>
                 <Typography variant="caption" sx={{ px: 0.5, color: '#1565c0', fontWeight: 'bold' }}>
-                  🏆 ランキング
+                  🏆 売主ランキング
                 </Typography>
               </Box>
               <ListItemButton
