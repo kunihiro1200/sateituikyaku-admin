@@ -11009,26 +11009,13 @@ HP：https://ifoo-oita.com/
             )}
 
             {/* マッチング結果セクション（matchUpdatedAtがある場合のみ表示） */}
-            {(() => {
-              const hasMatchUpdatedAt = !!(seller?.id && (seller as any)?.matchUpdatedAt);
-              console.log('[CallModePage] マッチング結果表示判定:', {
-                sellerId: seller?.id,
-                matchUpdatedAt: (seller as any)?.matchUpdatedAt,
-                hasMatchUpdatedAt
-              });
-              if (hasMatchUpdatedAt) {
-                console.log('[CallModePage] ✅ マッチング結果セクションを表示します');
-              } else {
-                console.log('[CallModePage] ❌ マッチング結果セクションを表示しません');
-              }
-              return hasMatchUpdatedAt ? (
-                <div>
-                  <CollapsibleSection title="🎯 マッチング結果" defaultExpanded={true} headerColor="#f3e5f5">
-                    <MatchedBuyersList sellerId={seller.id} />
-                  </CollapsibleSection>
-                </div>
-              ) : null;
-            })()}
+            {seller?.id && (seller as any)?.matchUpdatedAt && (
+              <div ref={nearbyBuyersSectionRef}>
+                <CollapsibleSection title="🎯 マッチング結果" defaultExpanded={true} headerColor="#f3e5f5">
+                  <MatchedBuyersList sellerId={seller.id} />
+                </CollapsibleSection>
+              </div>
+            )}
 
             {/* マッチング（売主⇔売主・買いたい。買い替え等で購入希望も持つ場合） */}
             {seller?.id && (
