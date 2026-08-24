@@ -200,11 +200,13 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
 
     // Priority 8.5: 売主内覧連絡未
     // 条件: seller_viewing_date_contact = '未' かつ 内覧日が2026-04-29以降
+    // ただし、次電日が今日以前の場合は当日TELを優先するためスキップ
     if (
       and(
         equals(buyer.seller_viewing_date_contact, '未'),
         isNotBlank(buyer.viewing_date),
-        isAfterOrEqual(buyer.viewing_date, '2026-04-29')
+        isAfterOrEqual(buyer.viewing_date, '2026-04-29'),
+        not(and(isNotBlank(buyer.next_call_date), isTodayOrPast(buyer.next_call_date)))
       )
     ) {
       const status = '売主内覧連絡未';
