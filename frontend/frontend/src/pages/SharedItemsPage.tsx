@@ -796,18 +796,13 @@ export default function SharedItemsPage() {
           })()}
           </Collapse>
 
-          {/* 事務会議セクション（営業会議の下に独立表示） */}
+          {/* 事務会議セクション（展開式・ランキング表示付き） */}
           <Box sx={{ mt: 0.5, pt: 0.5, bgcolor: '#e3f2fd', borderRadius: 1, px: 0.5, pb: 0.5 }}>
             <ListItemButton
-              selected={selectedLocation === '事務会議' && !selectedUnconfirmedStaff}
-              onClick={() => { setSelectedLocation('事務会議'); setSelectedUnconfirmedStaff(null); setPage(0); }}
+              onClick={() => setBusinessMeetingSectionExpanded((prev) => !prev)}
               sx={{
                 py: 1,
                 borderRadius: 1,
-                borderLeft: '4px solid #1565c0',
-                '&.Mui-selected': {
-                  backgroundColor: '#1565c015',
-                },
                 '&:hover': { backgroundColor: '#bbdefb' },
               }}
             >
@@ -824,16 +819,98 @@ export default function SharedItemsPage() {
                 }}
                 max={9999}
               />
+              {businessMeetingSectionExpanded ? (
+                <ExpandLess sx={{ color: '#1565c0', ml: 0.5 }} />
+              ) : (
+                <ExpandMore sx={{ color: '#1565c0', ml: 0.5 }} />
+              )}
             </ListItemButton>
+            <Collapse in={businessMeetingSectionExpanded}>
+              {/* 事務会議の共有データ表示 */}
+              <ListItemButton
+                selected={selectedLocation === '事務会議' && !selectedUnconfirmedStaff}
+                onClick={() => { setSelectedLocation('事務会議'); setSelectedUnconfirmedStaff(null); setPage(0); }}
+                sx={{
+                  py: 0.75,
+                  pl: 3,
+                  borderRadius: 1,
+                  borderLeft: '4px solid #1565c0',
+                  '&.Mui-selected': { backgroundColor: '#1565c015' },
+                  '&:hover': { backgroundColor: '#bbdefb' },
+                }}
+              >
+                <ListItemText
+                  primary="共有データ一覧"
+                  primaryTypographyProps={{ variant: 'body2', color: '#1565c0' }}
+                  sx={{ flex: 1, minWidth: 0 }}
+                />
+              </ListItemButton>
+              {/* ランキング表示ボタン */}
+              <Box sx={{ px: 1, pt: 1, pb: 0.5 }}>
+                <Typography variant="caption" sx={{ px: 0.5, color: '#1565c0', fontWeight: 'bold' }}>
+                  🏆 ランキング
+                </Typography>
+              </Box>
+              <ListItemButton
+                onClick={() => setVisitRankingDialogOpen(true)}
+                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#bbdefb' } }}
+              >
+                <ListItemText
+                  primary="訪問予約者月間ランキング"
+                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#1565c0' }}
+                />
+              </ListItemButton>
+              <ListItemButton
+                onClick={() => setVisitRankingYearlyDialogOpen(true)}
+                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#bbdefb' } }}
+              >
+                <ListItemText
+                  primary="訪問予約者年間ランキング"
+                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#1565c0' }}
+                />
+              </ListItemButton>
+              <ListItemButton
+                onClick={() => setCallTrackingRankingDialogOpen(true)}
+                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#bbdefb' } }}
+              >
+                <ListItemText
+                  primary="追客電話月間ランキング"
+                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#1565c0' }}
+                />
+              </ListItemButton>
+              <ListItemButton
+                onClick={() => setCallRankingDialogOpen(true)}
+                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#bbdefb' } }}
+              >
+                <ListItemText
+                  primary="1番電話月間ランキング"
+                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#1565c0' }}
+                />
+              </ListItemButton>
+              <ListItemButton
+                onClick={() => setCallRankingYearlyDialogOpen(true)}
+                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#bbdefb' } }}
+              >
+                <ListItemText
+                  primary="1番電話年間累計ランキング"
+                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#1565c0' }}
+                />
+              </ListItemButton>
+            </Collapse>
           </Box>
 
-          {/* 業務会議セクション（ランキング表示付き） */}
+          {/* 業務会議セクション */}
           <Box sx={{ mt: 0.5, pt: 0.5, bgcolor: '#fff3e0', borderRadius: 1, px: 0.5, pb: 0.5 }}>
             <ListItemButton
-              onClick={() => setBusinessMeetingSectionExpanded((prev) => !prev)}
+              selected={selectedLocation === '業務会議' && !selectedUnconfirmedStaff}
+              onClick={() => { setSelectedLocation('業務会議'); setSelectedUnconfirmedStaff(null); setPage(0); }}
               sx={{
                 py: 1,
                 borderRadius: 1,
+                borderLeft: '4px solid #e65100',
+                '&.Mui-selected': {
+                  backgroundColor: '#e6510015',
+                },
                 '&:hover': { backgroundColor: '#ffe0b2' },
               }}
             >
@@ -850,84 +927,7 @@ export default function SharedItemsPage() {
                 }}
                 max={9999}
               />
-              {businessMeetingSectionExpanded ? (
-                <ExpandLess sx={{ color: '#e65100', ml: 0.5 }} />
-              ) : (
-                <ExpandMore sx={{ color: '#e65100', ml: 0.5 }} />
-              )}
             </ListItemButton>
-            <Collapse in={businessMeetingSectionExpanded}>
-              {/* 業務会議の共有データ表示 */}
-              <ListItemButton
-                selected={selectedLocation === '業務会議' && !selectedUnconfirmedStaff}
-                onClick={() => { setSelectedLocation('業務会議'); setSelectedUnconfirmedStaff(null); setPage(0); }}
-                sx={{
-                  py: 0.75,
-                  pl: 3,
-                  borderRadius: 1,
-                  borderLeft: '4px solid #e65100',
-                  '&.Mui-selected': { backgroundColor: '#e6510015' },
-                  '&:hover': { backgroundColor: '#ffe0b2' },
-                }}
-              >
-                <ListItemText
-                  primary="共有データ一覧"
-                  primaryTypographyProps={{ variant: 'body2', color: '#e65100' }}
-                  sx={{ flex: 1, minWidth: 0 }}
-                />
-              </ListItemButton>
-              {/* ランキング表示ボタン */}
-              <Box sx={{ px: 1, pt: 1, pb: 0.5 }}>
-                <Typography variant="caption" sx={{ px: 0.5, color: '#e65100', fontWeight: 'bold' }}>
-                  🏆 ランキング
-                </Typography>
-              </Box>
-              <ListItemButton
-                onClick={() => setVisitRankingDialogOpen(true)}
-                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#ffe0b2' } }}
-              >
-                <ListItemText
-                  primary="訪問予約者月間ランキング"
-                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#bf360c' }}
-                />
-              </ListItemButton>
-              <ListItemButton
-                onClick={() => setVisitRankingYearlyDialogOpen(true)}
-                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#ffe0b2' } }}
-              >
-                <ListItemText
-                  primary="訪問予約者年間ランキング"
-                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#bf360c' }}
-                />
-              </ListItemButton>
-              <ListItemButton
-                onClick={() => setCallTrackingRankingDialogOpen(true)}
-                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#ffe0b2' } }}
-              >
-                <ListItemText
-                  primary="追客電話月間ランキング"
-                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#bf360c' }}
-                />
-              </ListItemButton>
-              <ListItemButton
-                onClick={() => setCallRankingDialogOpen(true)}
-                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#ffe0b2' } }}
-              >
-                <ListItemText
-                  primary="1番電話月間ランキング"
-                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#bf360c' }}
-                />
-              </ListItemButton>
-              <ListItemButton
-                onClick={() => setCallRankingYearlyDialogOpen(true)}
-                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#ffe0b2' } }}
-              >
-                <ListItemText
-                  primary="1番電話年間累計ランキング"
-                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#bf360c' }}
-                />
-              </ListItemButton>
-            </Collapse>
           </Box>
 
         </Paper>
