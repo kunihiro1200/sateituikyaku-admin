@@ -919,6 +919,7 @@ router.get('/call-ranking-yearly', async (req: Request, res: Response) => {
  * 訪問予約者月間ランキングを取得
  * GET /api/sellers/visit-ranking
  * 当月（JST）の visit_valuation_acquirer 件数をスタッフ別に集計して返す
+ * 追客電話件数も合わせて取得し、取得率（訪問予約÷電話件数）を算出可能にする
  */
 router.get('/visit-ranking', async (req: Request, res: Response) => {
   try {
@@ -959,9 +960,114 @@ router.get('/visit-ranking', async (req: Request, res: Response) => {
       counts.set(initial, (counts.get(initial) || 0) + 1);
     }
 
-    // count DESC, initial ASC でソート
+    // 追客電話件数を取得（Google Sheets「売主追客ログ」から当月分を集計）
+    let callCounts = new Map<string, number>();
+    try {
+      const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
+      const { sheetsRateLimiter } = await import('../services/RateLimiter');
+
+      const sheetsClient = new GoogleSheetsClient({
+        spreadsheetId: '1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I',
+        sheetName: '売主追客ログ',
+        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+      });
+
+      await sheetsClient.authenticate();
+
+      const rawData = await sheetsRateLimiter.executeRequest(async () => {
+        return await sheetsClient.readRawRange('A:G');
+      });
+
+      if (rawData && rawData.length > 0) {
+        const headers = rawData[0];
+        const dateColIdx = headers.findIndex((h: string) => h === '日付');
+        const sellerColIdx = headers.findIndex((h: string) => h === '売主番号');
+        const firstHalfColIdx = headers.findIndex((h: string) => h === '担当（前半）');
+        const secondHalfColIdx = headers.findIndex((h: string) => h === '担当（後半）');
+
+        const effectiveDateIdx = dateColIdx >= 0 ? dateColIdx : 0;
+        const effectiveSellerIdx = sellerColIdx >= 0 ? sellerColIdx : 2;
+        const effectiveFirstHalfIdx = firstHalfColIdx >= 0 ? firstHalfColIdx : 4;
+        const effectiveSecondHalfIdx = secondHalfColIdx >= 0 ? secondHalfColIdx : 5;
+
+        const dataRows = rawData.slice(1);
+        const seenKeys = new Set<string>();
+        const currentMonthStart = new Date(year, month, 1);
+        const currentMonthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+        for (const row of dataRows) {
+          const dateStr = row[effectiveDateIdx];
+          const sellerNumber = row[effectiveSellerIdx];
+          const initial1 = row[effectiveFirstHalfIdx];
+          const initial2 = row[effectiveSecondHalfIdx];
+
+          if (!dateStr) continue;
+
+          let date: Date;
+          let hour: number = 0;
+          try {
+            const dateStrNorm = String(dateStr).trim();
+            const slashParts = dateStrNorm.split('/');
+            if (slashParts.length >= 3) {
+              const y = parseInt(slashParts[0], 10);
+              const m = parseInt(slashParts[1], 10) - 1;
+              const dayAndTime = slashParts[2].split(' ');
+              const d = parseInt(dayAndTime[0], 10);
+              date = new Date(y, m, d);
+              if (dayAndTime[1]) {
+                hour = parseInt(dayAndTime[1].split(':')[0], 10);
+              }
+            } else {
+              const datePart = dateStrNorm.substring(0, 10);
+              const [y, m, d] = datePart.split('-').map(Number);
+              date = new Date(y, m - 1, d);
+              const timePart = dateStrNorm.substring(11, 13);
+              if (timePart) {
+                hour = parseInt(timePart, 10) || 0;
+              }
+            }
+
+            if (isNaN(date.getTime())) continue;
+          } catch {
+            continue;
+          }
+
+          if (date < currentMonthStart || date > currentMonthEnd) continue;
+
+          const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+          const sellerKey = sellerNumber ? String(sellerNumber).trim() : '';
+
+          if (initial1 && String(initial1).trim() !== '') {
+            const initial = normalizeInitial(String(initial1).trim());
+            const dedupeKey = `${initial}_${sellerKey}_${dateKey}_${hour}`;
+            if (!seenKeys.has(dedupeKey)) {
+              seenKeys.add(dedupeKey);
+              callCounts.set(initial, (callCounts.get(initial) || 0) + 1);
+            }
+          }
+
+          if (initial2 && String(initial2).trim() !== '') {
+            const initial = normalizeInitial(String(initial2).trim());
+            const dedupeKey = `${initial}_${sellerKey}_${dateKey}_${hour}`;
+            if (!seenKeys.has(dedupeKey)) {
+              seenKeys.add(dedupeKey);
+              callCounts.set(initial, (callCounts.get(initial) || 0) + 1);
+            }
+          }
+        }
+      }
+    } catch (callErr) {
+      console.warn('[VisitRanking] Failed to fetch call tracking data (non-fatal):', callErr);
+      // 電話件数取得に失敗してもランキング自体は返す
+    }
+
+    // count DESC, initial ASC でソート（callCountも付与）
     const rankings = Array.from(counts.entries())
-      .map(([initial, count]) => ({ initial, count }))
+      .map(([initial, count]) => ({
+        initial,
+        count,
+        callCount: callCounts.get(initial) || 0,
+      }))
       .sort((a, b) => b.count - a.count || a.initial.localeCompare(b.initial));
 
     res.json({

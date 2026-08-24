@@ -11484,6 +11484,7 @@ HP：https://ifoo-oita.com/
             title="訪問予約者月間ランキング"
             endpoint="/api/sellers/visit-ranking"
             allowedInitials={normalInitials}
+            showAcquisitionRate={true}
           />
         </DialogContent>
         <DialogActions>

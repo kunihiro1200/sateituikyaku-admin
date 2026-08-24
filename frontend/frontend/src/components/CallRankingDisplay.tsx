@@ -23,6 +23,7 @@ import api from '../services/api';
 interface RankingEntry {
   initial: string;
   count: number;
+  callCount?: number;
 }
 
 interface RankingData {
@@ -42,6 +43,8 @@ interface CallRankingDisplayProps {
   yearlyMode?: boolean;
   /** 月選択プルダウンを表示するか（デフォルト: false） */
   showMonthSelector?: boolean;
+  /** 電話件数と取得率を表示するか（デフォルト: false） */
+  showAcquisitionRate?: boolean;
 }
 
 // 順位ごとの色設定
@@ -94,7 +97,7 @@ function generateMonthOptions(): { value: string; label: string }[] {
   return options.reverse();
 }
 
-const CallRankingDisplay = ({ title = '1番電話月間ランキング', endpoint = '/api/sellers/call-ranking', allowedInitials, yearlyMode = false, showMonthSelector = false }: CallRankingDisplayProps) => {
+const CallRankingDisplay = ({ title = '1番電話月間ランキング', endpoint = '/api/sellers/call-ranking', allowedInitials, yearlyMode = false, showMonthSelector = false, showAcquisitionRate = false }: CallRankingDisplayProps) => {
   const [data, setData] = useState<RankingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -349,10 +352,16 @@ const CallRankingDisplay = ({ title = '1番電話月間ランキング', endpoin
                 <Typography variant="body2" sx={{ fontWeight: rank <= 3 ? 'bold' : 'normal', flex: 1 }}>
                   {entry.initial}
                 </Typography>
-                {/* 件数 */}
-                <Typography variant="body2" sx={{ fontWeight: 'bold', color: color.text }}>
-                  {entry.count}件
-                </Typography>
+                {/* 件数と取得率 */}
+                {showAcquisitionRate && entry.callCount != null && entry.callCount > 0 ? (
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: color.text }}>
+                    {entry.count}件/{entry.callCount}件（{((entry.count / entry.callCount) * 100).toFixed(1)}%）
+                  </Typography>
+                ) : (
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: color.text }}>
+                    {entry.count}件
+                  </Typography>
+                )}
               </Box>
               {/* 件数バー */}
               <LinearProgress
