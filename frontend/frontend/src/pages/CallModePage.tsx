@@ -2357,6 +2357,9 @@ const CallModePage = () => {
         // キャッシュなし → 通常通り API を呼び出す
         const sellerResponse = await api.get(`/api/sellers/${id}`);
         sellerData = sellerResponse.data;
+        
+        // デバッグ：matchUpdatedAtを確認
+        console.log('[CallModePage] API Response matchUpdatedAt:', sellerData.matchUpdatedAt);
       }
 
       // 売主データが存在することを確認
@@ -2364,6 +2367,7 @@ const CallModePage = () => {
         throw new Error('売主データが取得できませんでした');
       }
       
+      console.log('[CallModePage] setSeller前 matchUpdatedAt:', sellerData.matchUpdatedAt);
       setSeller(sellerData);
       setUnreachableStatus(sellerData.unreachableStatus || null);
       setSavedUnreachableStatus(sellerData.unreachableStatus || null);
