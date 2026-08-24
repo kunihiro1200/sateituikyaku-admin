@@ -560,7 +560,10 @@ export class MatchingIntentService {
   async findBuyerCandidatesForSeller(sellerId: string): Promise<{
     source: { id: string; number: string | null; name: string | null } | null;
     candidates: MatchCandidate[];
+    debug?: any;
   }> {
+    const debug: any = {};
+    
     const { data: seller, error } = await this.supabase
       .from('sellers')
       .select('id, seller_number, name, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, property_address, property_type')
@@ -570,6 +573,12 @@ export class MatchingIntentService {
     if (error || !seller) {
       throw new Error('売主が見つかりませんでした');
     }
+
+    debug.seller = {
+      number: seller.seller_number,
+      property_address: seller.property_address,
+      property_type: seller.property_type,
+    };
 
     const sellerAreas: string[] = Array.isArray(seller.match_areas) ? seller.match_areas : [];
     // エリアの構造化入力（既存コード・自由入力）が両方未入力でも、物件住所があれば
@@ -654,9 +663,13 @@ export class MatchingIntentService {
 
     candidates.sort((a, b) => b.urgencyScore - a.urgencyScore);
 
+    debug.buyersCount = buyers.length;
+    debug.candidatesCount = candidates.length;
+
     return {
       source: { id: seller.id, number: seller.seller_number, name: null },
       candidates,
+      debug,
     };
   }
 
