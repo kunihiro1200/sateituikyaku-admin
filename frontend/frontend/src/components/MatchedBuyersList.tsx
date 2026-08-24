@@ -57,6 +57,8 @@ const formatManYen = (yen: number | null | undefined): string => {
  * （マッチング条件の入力UI は含まない）
  */
 const MatchedBuyersList: React.FC<MatchedBuyersListProps> = ({ sellerId }) => {
+  console.log('[MatchedBuyersList] コンポーネントがマウントされました sellerId:', sellerId);
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<MatchCandidate[]>([]);

@@ -11016,6 +11016,11 @@ HP：https://ifoo-oita.com/
                 matchUpdatedAt: (seller as any)?.matchUpdatedAt,
                 hasMatchUpdatedAt
               });
+              if (hasMatchUpdatedAt) {
+                console.log('[CallModePage] ✅ マッチング結果セクションを表示します');
+              } else {
+                console.log('[CallModePage] ❌ マッチング結果セクションを表示しません');
+              }
               return hasMatchUpdatedAt ? (
                 <div ref={nearbyBuyersSectionRef}>
                   <CollapsibleSection title="🎯 マッチング結果" defaultExpanded={true} headerColor="#f3e5f5">
