@@ -856,9 +856,9 @@ export default function SellersPage() {
       if (visitAssigneeFilter.length > 0) {
         params.visitAssignee = visitAssigneeFilter;
       }
-      // 地名フィルター（物件住所の部分一致検索用）
-      if (addressKeywordFilter.trim()) {
-        params.addressKeyword = addressKeywordFilter.trim();
+      // 町名フィルター（物件住所の部分一致検索用）
+      if (townNameFilter.trim()) {
+        params.townName = townNameFilter.trim();
       }
 
       // キャッシュキー（パラメータを含む）
