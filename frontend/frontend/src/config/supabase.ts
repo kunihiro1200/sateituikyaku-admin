@@ -1,25 +1,43 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-// ビルド時はダミー値を使用、実行時にチェック
-export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key',
-  {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
-    },
-    realtime: {
-      params: {
-        eventsPerSecond: 10,
-      },
-    },
+// シングルトン保証：window上に1つだけインスタンスを保持
+// 複数のGoTrueClientインスタンスが同じストレージロックを奪い合い、
+// ログイン時のリダイレクトがブロックされる問題を防止する
+const GLOBAL_KEY = '__supabase_client__';
+
+function getOrCreateClient(): SupabaseClient {
+  if (typeof window !== 'undefined' && (window as any)[GLOBAL_KEY]) {
+    return (window as any)[GLOBAL_KEY];
   }
-);
+
+  const client = createClient(
+    supabaseUrl || 'https://placeholder.supabase.co',
+    supabaseAnonKey || 'placeholder-key',
+    {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 10,
+        },
+      },
+    }
+  );
+
+  if (typeof window !== 'undefined') {
+    (window as any)[GLOBAL_KEY] = client;
+  }
+
+  return client;
+}
+
+export const supabase = getOrCreateClient();
 
 // ⚠️ 重要：supabase-jsのautoRefreshTokenとaxios用localStorageコピーの同期
 //
