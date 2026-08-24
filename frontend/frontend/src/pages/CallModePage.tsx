@@ -11010,7 +11010,7 @@ HP：https://ifoo-oita.com/
 
             {/* マッチング結果セクション（matchUpdatedAtがある場合のみ表示） */}
             {seller?.id && (seller as any)?.matchUpdatedAt && (
-              <div ref={nearbyBuyersSectionRef}>
+              <div>
                 <CollapsibleSection title="🎯 マッチング結果" defaultExpanded={true} headerColor="#f3e5f5">
                   <MatchedBuyersList sellerId={seller.id} />
                 </CollapsibleSection>
