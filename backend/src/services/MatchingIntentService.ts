@@ -565,8 +565,13 @@ export class MatchingIntentService {
       .select('buyer_number, matched_at, contact_status')
       .eq('seller_id', sellerId);
 
+    console.log('[findBuyerCandidatesForSeller] sellerId:', sellerId);
+    console.log('[findBuyerCandidatesForSeller] matchedRecords:', matchedRecords);
+
     const matchedBuyerNumbers = new Set((matchedRecords || []).map(r => r.buyer_number));
     const matchedContactStatus = new Map((matchedRecords || []).map(r => [r.buyer_number, r.contact_status]));
+
+    console.log('[findBuyerCandidatesForSeller] matchedBuyerNumbers:', Array.from(matchedBuyerNumbers));
 
     const sellerAreas: string[] = Array.isArray(seller.match_areas) ? seller.match_areas : [];
     const hasAnyCriteria = sellerAreas.length > 0 || !!seller.match_area_free_text || !!seller.property_address;
@@ -574,10 +579,14 @@ export class MatchingIntentService {
     // 既にマッチング済みの買主がいれば、それを優先して返す
     if (matchedBuyerNumbers.size > 0) {
       const buyers = await this.fetchAllBuyersWithDesiredConditions();
+      console.log('[findBuyerCandidatesForSeller] 全買主数:', buyers.length);
+      
       const matchedCandidates: MatchCandidate[] = [];
       
       for (const buyer of buyers) {
         if (!matchedBuyerNumbers.has(buyer.buyer_number)) continue;
+
+        console.log('[findBuyerCandidatesForSeller] マッチした買主:', buyer.buyer_number, buyer.name);
 
         matchedCandidates.push({
           type: 'buyer',
@@ -597,6 +606,8 @@ export class MatchingIntentService {
           timingFreshness: getTimingFreshness(buyer.desiredTiming, buyer.receptionDate).freshness,
         });
       }
+
+      console.log('[findBuyerCandidatesForSeller] matchedCandidates数:', matchedCandidates.length);
 
       return {
         source: { id: seller.id, number: seller.seller_number, name: null },
