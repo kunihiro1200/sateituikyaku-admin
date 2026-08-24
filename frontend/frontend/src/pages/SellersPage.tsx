@@ -630,8 +630,8 @@ export default function SellersPage() {
         }
       }
       if (visitAssigneeFilter.length > 0) filtersToSave.visitAssignee = visitAssigneeFilter;
-      // 地名フィルター（物件住所の部分一致検索用）
-      if (addressKeywordFilter.trim()) filtersToSave.addressKeyword = addressKeywordFilter.trim();
+      // 町名フィルター（物件住所の部分一致検索用）
+      if (townNameFilter.trim()) filtersToSave.townName = townNameFilter.trim();
       // 検索バーの内容も保存（物件住所・売主名などのキーワード検索用）
       if (searchQuery.trim()) filtersToSave.searchQuery = searchQuery.trim();
 
@@ -688,7 +688,7 @@ export default function SellersPage() {
     setNextCallDateMode('');
     setNextCallDateValue('');
     setVisitAssigneeFilter([]);
-    setAddressKeywordFilter(''); // 地名フィルターもリセット
+    setTownNameFilter(''); // 町名フィルターもリセット
 
     const f = tempFilter.filters || {};
     // フィルター値を配列に正規化（単一値も配列に変換）
@@ -718,8 +718,8 @@ export default function SellersPage() {
       setNextCallDateValue(f.nextCallDateTo);
     }
     if (f.visitAssignee) setVisitAssigneeFilter(toArr(f.visitAssignee));
-    // 地名フィルターを復元
-    if (f.addressKeyword) setAddressKeywordFilter(f.addressKeyword);
+    // 町名フィルターを復元
+    if (f.townName) setTownNameFilter(f.townName);
 
     setSelectedTempFilterId(tempFilter.id);
     setSelectedCategory('all'); // サイドバーの固定カテゴリとは独立させる
