@@ -5765,6 +5765,7 @@ HP：https://ifoo-oita.com/
               label = `未訪問他決【${y}年${parseInt(m)}月】`;
             }
             else if (selectedCategory === 'pinrichChangeRequired') label = 'Pinrich要変更';
+            else if (selectedCategory === 'matching') label = 'マッチング';
             else if (selectedCategory === 'fi:todayCall') label = '福岡 当日TEL分';
             else if (selectedCategory === 'fi:todayCallNotStarted') label = '福岡 当日TEL_未着手';
             else if (selectedCategory === 'fi:todayCallWithInfo') label = '福岡 当日TEL（内容）';

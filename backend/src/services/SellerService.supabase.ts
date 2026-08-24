@@ -1627,6 +1627,11 @@ export class SellerService extends BaseRepository {
             .in('status', ['他決→追客', '他決→追客不要', '一般→他決', '他社買取'])
             .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す');
           break;
+        case 'matching':
+          // マッチングカテゴリー：マッチングボタンを押した売主のみ表示
+          // match_updated_atがnullでない売主のみを取得（軽量実装）
+          query = query.not('match_updated_at', 'is', null);
+          break;
         default: {
           // visitAssigned:xxx または todayCallAssigned:xxx または todayCallWithInfo:xxx または fi:xxx の動的カテゴリ
           const dynamicCategory = statusCategory as string;
