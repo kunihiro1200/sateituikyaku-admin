@@ -126,25 +126,26 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
 
     // Priority 1.5: 業者問い合わせ かつ 次電日が今日以前 → 当日TELを優先
     // 業者問い合わせで内覧日が入っている場合でも次電日を反映させる
+    // ※ broker_inquiryの有無に関わらず、内覧日が設定されていて次電日が今日以前なら当日TELを優先
     if (
       and(
-        isNotBlank(buyer.broker_inquiry),
         isNotBlank(buyer.next_call_date),
-        isTodayOrPast(buyer.next_call_date)
+        isTodayOrPast(buyer.next_call_date),
+        isNotBlank(buyer.viewing_date)
       )
     ) {
       const effectiveAssignee = buyer.follow_up_assignee || buyer.project_assignee;
       if (isNotBlank(effectiveAssignee)) {
         const status = `当日TEL(${effectiveAssignee})`;
-        return { status, priority: 6, matchedCondition: `業者問合せ: 次電日が当日以前（担当${effectiveAssignee}）`, color: getStatusColor('当日TEL') };
+        return { status, priority: 6, matchedCondition: `内覧日あり: 次電日が当日以前（担当${effectiveAssignee}）`, color: getStatusColor('当日TEL') };
       } else {
         const hasCommInfo = hasBuyerContactInfo(buyer);
         if (hasCommInfo) {
           const label = getBuyerTodayCallWithInfoLabel(buyer);
-          return { status: label, priority: 6, matchedCondition: '業者問合せ: 次電日が当日以前（担当なし・コミュニケーション情報あり）', color: getStatusColor('当日TEL（内容）') };
+          return { status: label, priority: 6, matchedCondition: '内覧日あり: 次電日が当日以前（担当なし・コミュニケーション情報あり）', color: getStatusColor('当日TEL（内容）') };
         }
         const status = '当日TEL';
-        return { status, priority: 6, matchedCondition: '業者問合せ: 次電日が当日以前（担当なし）', color: getStatusColor('当日TEL') };
+        return { status, priority: 6, matchedCondition: '内覧日あり: 次電日が当日以前（担当なし）', color: getStatusColor('当日TEL') };
       }
     }
 
