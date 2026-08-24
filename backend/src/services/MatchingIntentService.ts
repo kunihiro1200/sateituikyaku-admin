@@ -679,7 +679,6 @@ export class MatchingIntentService {
         .from('buyers')
         .select('buyer_number, name, desired_area, desired_area_free_text, desired_timing, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, property_number')
         .is('deleted_at', null)
-        .not('desired_area', 'is', null)
         .not('match_updated_at', 'is', null)  // マッチングボタンを押している買主のみ
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
