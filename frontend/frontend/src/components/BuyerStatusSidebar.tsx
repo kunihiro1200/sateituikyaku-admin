@@ -466,14 +466,7 @@ export default function BuyerStatusSidebar({
         {categoryList.map(renderCategoryItem)}
       </Box>
 
-      {/* 📊 統計フォルダ（持ち家ヒアリング統計 + 買付統計） */}
-      <Accordion disableGutters defaultExpanded sx={{ '&:before': { display: 'none' }, boxShadow: 'none', borderTop: '2px solid #ccc' }}>
-        <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 18 }} />} sx={{ minHeight: 36, backgroundColor: '#e0e0e0', '& .MuiAccordionSummary-content': { my: 0.5 } }}>
-          <Typography variant="caption" fontWeight="bold" sx={{ color: '#333', fontSize: '0.75rem' }}>📊 統計</Typography>
-        </AccordionSummary>
-        <AccordionDetails sx={{ p: 0 }}>
-
-      {/* 🆕 持ち家ヒアリング統計セクション（月別アコーディオン） */}
+      {/* 持家ヒアリング統計（親フォルダ） */}
       {hasMonthlyStats && (() => {
         const currentYear = new Date().getFullYear().toString();
         const currentYearMonths = sortedMonths.filter(m => m.startsWith(currentYear));
@@ -598,12 +591,13 @@ export default function BuyerStatusSidebar({
         };
 
         return (
-          <Box sx={{ borderTop: '2px solid #ccc' }}>
-            <Box sx={{ p: 1, backgroundColor: '#f5f5f5' }}>
+          <Accordion disableGutters sx={{ '&:before': { display: 'none' }, boxShadow: 'none', borderTop: '2px solid #ccc' }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 16 }} />} sx={{ minHeight: 36, backgroundColor: '#f5f5f5', '& .MuiAccordionSummary-content': { my: 0.5 } }}>
               <Typography variant="caption" fontWeight="bold" sx={{ color: '#333' }}>
                 持家ヒアリング統計（月別）
               </Typography>
-            </Box>
+            </AccordionSummary>
+            <AccordionDetails sx={{ p: 0 }}>
             {/* 今年の月（直接表示） */}
             {currentYearMonths.map(renderMonthAccordion)}
             {/* 過去年（年ごとにアコーディオンで折りたたみ） */}
@@ -617,7 +611,8 @@ export default function BuyerStatusSidebar({
                 </AccordionDetails>
               </Accordion>
             ))}
-          </Box>
+            </AccordionDetails>
+          </Accordion>
         );
       })()}
 
@@ -699,12 +694,13 @@ export default function BuyerStatusSidebar({
         };
 
         return (
-          <Box sx={{ borderTop: '2px solid #ccc' }}>
-            <Box sx={{ p: 1, backgroundColor: '#f5f5f5' }}>
+          <Accordion disableGutters sx={{ '&:before': { display: 'none' }, boxShadow: 'none', borderTop: '2px solid #ccc' }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 16 }} />} sx={{ minHeight: 36, backgroundColor: '#f5f5f5', '& .MuiAccordionSummary-content': { my: 0.5 } }}>
               <Typography variant="caption" fontWeight="bold" sx={{ color: '#333' }}>
                 買付統計（内覧日月別×後続担当）
               </Typography>
-            </Box>
+            </AccordionSummary>
+            <AccordionDetails sx={{ p: 0 }}>
             {currentYearMonths.map(renderPurchaseMonthAccordion)}
             {pastYearKeys.map(year => (
               <Accordion key={year} disableGutters sx={{ '&:before': { display: 'none' }, boxShadow: 'none', borderTop: '1px solid #ddd' }}>
@@ -716,12 +712,10 @@ export default function BuyerStatusSidebar({
                 </AccordionDetails>
               </Accordion>
             ))}
-          </Box>
+            </AccordionDetails>
+          </Accordion>
         );
       })()}
-
-        </AccordionDetails>
-      </Accordion>
     </Box>
   );
 }
