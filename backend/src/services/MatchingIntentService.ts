@@ -559,62 +559,9 @@ export class MatchingIntentService {
       throw new Error('売主が見つかりませんでした');
     }
 
-    // まず、既にマッチング済みの買主番号を取得
-    const { data: matchedRecords } = await this.supabase
-      .from('seller_buyer_match_contacts')
-      .select('buyer_number, contact_status')
-      .eq('seller_id', sellerId);
-
-    console.log('[findBuyerCandidatesForSeller] sellerId:', sellerId);
-    console.log('[findBuyerCandidatesForSeller] matchedRecords:', matchedRecords);
-
-    const matchedBuyerNumbers = new Set((matchedRecords || []).map(r => r.buyer_number));
-    const matchedContactStatus = new Map((matchedRecords || []).map(r => [r.buyer_number, r.contact_status]));
-
-    console.log('[findBuyerCandidatesForSeller] matchedBuyerNumbers:', Array.from(matchedBuyerNumbers));
-
     const sellerAreas: string[] = Array.isArray(seller.match_areas) ? seller.match_areas : [];
     const hasAnyCriteria = sellerAreas.length > 0 || !!seller.match_area_free_text || !!seller.property_address;
     
-    // 既にマッチング済みの買主がいれば、それを優先して返す
-    if (matchedBuyerNumbers.size > 0) {
-      const buyers = await this.fetchAllBuyersWithDesiredConditions();
-      console.log('[findBuyerCandidatesForSeller] 全買主数:', buyers.length);
-      
-      const matchedCandidates: MatchCandidate[] = [];
-      
-      for (const buyer of buyers) {
-        if (!matchedBuyerNumbers.has(buyer.buyer_number)) continue;
-
-        console.log('[findBuyerCandidatesForSeller] マッチした買主:', buyer.buyer_number, buyer.name);
-
-        matchedCandidates.push({
-          type: 'buyer',
-          id: buyer.buyer_number,
-          number: buyer.buyer_number,
-          name: buyer.name,
-          matchAreas: buyer.desiredAreas,
-          matchAreaFreeText: buyer.desiredAreaFreeText,
-          matchTiming: buyer.desiredTiming,
-          matchPriceMin: buyer.priceRanges[0]?.min ?? null,
-          matchPriceMax: buyer.priceRanges[0]?.max ?? null,
-          matchMemo: null,
-          matchUpdatedAt: null,
-          matchReasons: ['既にマッチング済み'],
-          urgencyScore: timingUrgencyScore(buyer.desiredTiming),
-          contactStatus: matchedContactStatus.get(buyer.buyer_number) || '連絡未',
-          timingFreshness: getTimingFreshness(buyer.desiredTiming, buyer.receptionDate).freshness,
-        });
-      }
-
-      console.log('[findBuyerCandidatesForSeller] matchedCandidates数:', matchedCandidates.length);
-
-      return {
-        source: { id: seller.id, number: seller.seller_number, name: null },
-        candidates: matchedCandidates,
-      };
-    }
-
     if (!hasAnyCriteria) {
       return {
         source: { id: seller.id, number: seller.seller_number, name: null },
@@ -733,6 +680,7 @@ export class MatchingIntentService {
         .select('buyer_number, name, desired_area, desired_area_free_text, desired_timing, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, property_number')
         .is('deleted_at', null)
         .not('desired_area', 'is', null)
+        .not('match_updated_at', 'is', null)  // マッチングボタンを押している買主のみ
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
       if (error) throw new Error(`買主取得に失敗しました: ${error.message}`);
