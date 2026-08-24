@@ -11022,7 +11022,7 @@ HP：https://ifoo-oita.com/
                 console.log('[CallModePage] ❌ マッチング結果セクションを表示しません');
               }
               return hasMatchUpdatedAt ? (
-                <div ref={nearbyBuyersSectionRef}>
+                <div>
                   <CollapsibleSection title="🎯 マッチング結果" defaultExpanded={true} headerColor="#f3e5f5">
                     <MatchedBuyersList sellerId={seller.id} />
                   </CollapsibleSection>
