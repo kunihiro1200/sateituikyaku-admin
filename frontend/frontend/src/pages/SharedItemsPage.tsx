@@ -814,6 +814,16 @@ export default function SharedItemsPage() {
                 primaryTypographyProps={{ variant: 'body2', fontWeight: 'bold', color: '#1565c0' }}
                 sx={{ flex: 1, minWidth: 0 }}
               />
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open('https://docs.google.com/spreadsheets/d/1Lzv0q8JS1FsDpWaiQiHfNUo2DP2irSvdyNzVCszBz9o/edit?gid=1131908438#gid=1131908438', '_blank', 'noopener,noreferrer');
+                }}
+                sx={{ p: 0.25, mr: 0.25 }}
+              >
+                <OpenInNewIcon sx={{ fontSize: '1rem', color: '#1565c0' }} />
+              </IconButton>
               <Badge
                 badgeContent={locationCategories.find(({ label }) => label === '事務会議')?.count || 0}
                 sx={{
