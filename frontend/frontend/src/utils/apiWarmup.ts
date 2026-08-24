@@ -8,7 +8,10 @@ let warmedUp = false;
 export async function warmupApi(): Promise<void> {
   if (warmedUp) return;
 
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  // 本番環境ではapi.tsと同じURLを使用
+  const apiUrl = import.meta.env.MODE === 'production'
+    ? 'https://sateituikyaku-admin-backend.vercel.app'
+    : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
 
   // healthエンドポイントと主要APIを並列でウォームアップ
   // レスポンスは使わない（サーバーを起こすだけ）
