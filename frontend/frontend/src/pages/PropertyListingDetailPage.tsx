@@ -750,6 +750,17 @@ export default function PropertyListingDetailPage() {
     if (Object.keys(editedData).length === 0) {
       throw new Error('no_changes');
     }
+
+    // 内覧前伝達事項に「●●●」が含まれているかチェック
+    const preViewingNotes = editedData.pre_viewing_notes !== undefined
+      ? editedData.pre_viewing_notes
+      : (data?.pre_viewing_notes ?? '');
+    
+    if (preViewingNotes && preViewingNotes.includes('●●●')) {
+      setPreViewingNotesWarningDialog(true);
+      return; // 保存処理を中断
+    }
+
     try {
       await api.put(`/api/property-listings/${propertyNumber}`, editedData);
       setSnackbar({
@@ -757,10 +768,6 @@ export default function PropertyListingDetailPage() {
         message: 'よく聞かれる項目を保存しました',
         severity: 'success',
       });
-      // 内覧前伝達事項が変更された場合、DN列確認ポップアップを表示
-      if (editedData.pre_viewing_notes !== undefined) {
-        setPreViewingNotesWarningDialog(true);
-      }
       await fetchPropertyData(true);
       setEditedData({});
     } catch (error) {
@@ -3803,14 +3810,15 @@ export default function PropertyListingDetailPage() {
         </DialogActions>
       </Dialog>
 
-      {/* 内覧前伝達事項変更時 DN列確認ダイアログ */}
+      {/* 内覧前伝達事項に「●●●」が含まれる場合の警告ダイアログ */}
       <Dialog open={preViewingNotesWarningDialog} onClose={() => setPreViewingNotesWarningDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold', fontSize: '1.1rem' }}>
-          ⚠️ 確認
+          ⚠️ 警告
         </DialogTitle>
         <DialogContent sx={{ pt: 3, pb: 2 }}>
-          <Typography variant="body1" sx={{ lineHeight: 1.8 }}>
-            物件リストの DN列の変更は必要ではないですか？業者向けに自動案内メールが行くので確認お願いします。
+          <Typography variant="body1" sx={{ lineHeight: 1.8, fontWeight: 'bold', color: '#e65100', mb: 2 }}>
+            内覧前伝達事項に「●●●」という文字が含まれています。<br />
+            ここと物件スプシのDN列を必ず変更してください。
           </Typography>
           <Link
             href="https://docs.google.com/spreadsheets/d/1tI_iXaiLuWBggs5y0RH7qzkbHs9wnLLdRekAmjkhcLY/edit?gid=290420661#gid=290420661"
