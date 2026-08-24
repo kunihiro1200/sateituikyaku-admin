@@ -574,19 +574,36 @@ export class MatchingIntentService {
     const buyers = await this.fetchAllBuyersWithDesiredConditions();
 
     const candidates: MatchCandidate[] = [];
+    console.log(`[MatchingIntent] 売主${seller.seller_number} 買主候補数: ${buyers.length}`);
     for (const buyer of buyers) {
-      if (buyer.desiredAreas.length === 0 && !buyer.desiredAreaFreeText && !buyer.inquiredPropertyAddress) continue;
+      console.log(`[MatchingIntent] 買主${buyer.buyer_number} チェック開始`);
+      
+      if (buyer.desiredAreas.length === 0 && !buyer.desiredAreaFreeText && !buyer.inquiredPropertyAddress) {
+        console.log(`[MatchingIntent] 買主${buyer.buyer_number} 除外: エリア条件なし`);
+        continue;
+      }
 
       const areaResult = areasOverlap(sellerAreas, seller.match_area_free_text, buyer.desiredAreas, buyer.desiredAreaFreeText, seller.property_address, buyer.inquiredPropertyAddress);
-      if (!areaResult.matched) continue;
+      if (!areaResult.matched) {
+        console.log(`[MatchingIntent] 買主${buyer.buyer_number} 除外: エリア不一致`, { sellerAreas, buyerAreas: buyer.desiredAreas, sellerAddress: seller.property_address, buyerAddress: buyer.inquiredPropertyAddress });
+        continue;
+      }
 
       const typeResult = propertyTypesOverlap(sellerPropertyTypeCategories, buyer.propertyTypeCategories);
-      if (!typeResult.matched) continue;
+      if (!typeResult.matched) {
+        console.log(`[MatchingIntent] 買主${buyer.buyer_number} 除外: 種別不一致`, { sellerType: Array.from(sellerPropertyTypeCategories), buyerType: Array.from(buyer.propertyTypeCategories) });
+        continue;
+      }
 
       const priceResult = buyer.priceRanges.length === 0
         ? { matched: true, reason: null as string | null }
         : priceRangesOverlapAny(buyer.priceRanges, seller.match_price_min, seller.match_price_max);
-      if (!priceResult.matched) continue;
+      if (!priceResult.matched) {
+        console.log(`[MatchingIntent] 買主${buyer.buyer_number} 除外: 価格不一致`, { buyerRanges: buyer.priceRanges, sellerMin: seller.match_price_min, sellerMax: seller.match_price_max });
+        continue;
+      }
+      
+      console.log(`[MatchingIntent] 買主${buyer.buyer_number} マッチ成功！`);
 
       // 買主の希望時期の陳腐化判定（受付日を基準日として使用）
       const freshnessResult = getTimingFreshness(buyer.desiredTiming, buyer.receptionDate);
