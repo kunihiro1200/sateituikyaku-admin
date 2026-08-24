@@ -466,6 +466,13 @@ export default function BuyerStatusSidebar({
         {categoryList.map(renderCategoryItem)}
       </Box>
 
+      {/* 📊 統計フォルダ（持ち家ヒアリング統計 + 買付統計） */}
+      <Accordion disableGutters defaultExpanded sx={{ '&:before': { display: 'none' }, boxShadow: 'none', borderTop: '2px solid #ccc' }}>
+        <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 18 }} />} sx={{ minHeight: 36, backgroundColor: '#e0e0e0', '& .MuiAccordionSummary-content': { my: 0.5 } }}>
+          <Typography variant="caption" fontWeight="bold" sx={{ color: '#333', fontSize: '0.75rem' }}>📊 統計</Typography>
+        </AccordionSummary>
+        <AccordionDetails sx={{ p: 0 }}>
+
       {/* 🆕 持ち家ヒアリング統計セクション（月別アコーディオン） */}
       {hasMonthlyStats && (() => {
         const currentYear = new Date().getFullYear().toString();
@@ -712,6 +719,9 @@ export default function BuyerStatusSidebar({
           </Box>
         );
       })()}
+
+        </AccordionDetails>
+      </Accordion>
     </Box>
   );
 }
