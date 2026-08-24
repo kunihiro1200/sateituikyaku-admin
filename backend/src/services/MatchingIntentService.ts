@@ -196,13 +196,27 @@ export function areasOverlap(
   }
 
   // 物件住所同士の部分一致チェック（売主の物件住所 vs 買主の問合せ物件住所）
+  // 共通の地名（例: 石垣東）があればマッチとする
   for (const addrA of listA) {
     const normAddrA = normalizeAreaFreeText(addrA);
-    if (!normAddrA) continue;
+    if (!normAddrA || normAddrA.length < 3) continue; // 短すぎる住所はスキップ
     for (const addrB of listB) {
       const normAddrB = normalizeAreaFreeText(addrB);
-      if (normAddrB && (normAddrA.includes(normAddrB) || normAddrB.includes(normAddrA))) {
+      if (!normAddrB || normAddrB.length < 3) continue; // 短すぎる住所はスキップ
+      
+      // 完全な部分一致
+      if (normAddrA.includes(normAddrB) || normAddrB.includes(normAddrA)) {
         return { matched: true, reason: `エリア一致（物件住所同士）: 「${addrA}」⇔「${addrB}」` };
+      }
+      
+      // 共通部分の抽出（最低3文字以上の共通部分があればマッチ）
+      for (let len = Math.min(normAddrA.length, normAddrB.length); len >= 3; len--) {
+        for (let i = 0; i <= normAddrA.length - len; i++) {
+          const subA = normAddrA.substring(i, i + len);
+          if (normAddrB.includes(subA)) {
+            return { matched: true, reason: `エリア一致（物件住所共通部分）: 「${addrA}」⇔「${addrB}」（共通: ${subA}）` };
+          }
+        }
       }
     }
   }
