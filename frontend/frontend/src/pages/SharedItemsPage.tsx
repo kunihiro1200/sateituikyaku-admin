@@ -403,7 +403,7 @@ export default function SharedItemsPage() {
           )}
           {/* 共有場カテゴリー */}
           {locationCategories
-            .filter(({ label }) => label !== '契約率チーム' && label !== '物件数チーム' && label !== '事務会議' && label !== '業務会議')
+            .filter(({ label }) => label !== '契約率チーム' && label !== '物件数チーム' && label !== '事務会議')
             .map(({ label, count }) => (
             <ListItemButton
               key={label}
@@ -897,37 +897,6 @@ export default function SharedItemsPage() {
                 />
               </ListItemButton>
             </Collapse>
-          </Box>
-
-          {/* 業務会議セクション */}
-          <Box sx={{ mt: 0.5, pt: 0.5, bgcolor: '#fff3e0', borderRadius: 1, px: 0.5, pb: 0.5 }}>
-            <ListItemButton
-              selected={selectedLocation === '業務会議' && !selectedUnconfirmedStaff}
-              onClick={() => { setSelectedLocation('業務会議'); setSelectedUnconfirmedStaff(null); setPage(0); }}
-              sx={{
-                py: 1,
-                borderRadius: 1,
-                borderLeft: '4px solid #e65100',
-                '&.Mui-selected': {
-                  backgroundColor: '#e6510015',
-                },
-                '&:hover': { backgroundColor: '#ffe0b2' },
-              }}
-            >
-              <ListItemText
-                primary="業務会議"
-                primaryTypographyProps={{ variant: 'body2', fontWeight: 'bold', color: '#e65100' }}
-                sx={{ flex: 1, minWidth: 0 }}
-              />
-              <Badge
-                badgeContent={locationCategories.find(({ label }) => label === '業務会議')?.count || 0}
-                sx={{
-                  ml: 1,
-                  '& .MuiBadge-badge': { backgroundColor: '#e65100', color: '#fff' }
-                }}
-                max={9999}
-              />
-            </ListItemButton>
           </Box>
 
         </Paper>
