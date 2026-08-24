@@ -572,15 +572,31 @@ export class MatchingIntentService {
     const sellerPropertyTypeCategories = parsePropertyTypeCategories(seller.property_type);
     const buyers = await this.fetchAllBuyersWithDesiredConditions();
 
+    console.log('[findBuyerCandidatesForSeller] 全買主数:', buyers.length);
+    console.log('[findBuyerCandidatesForSeller] 8562が含まれているか:', buyers.some(b => b.buyer_number === '8562'));
+
     const candidates: MatchCandidate[] = [];
     for (const buyer of buyers) {
-      if (buyer.desiredAreas.length === 0 && !buyer.desiredAreaFreeText && !buyer.inquiredPropertyAddress) continue;
+      const is8562 = buyer.buyer_number === '8562';
+      
+      if (buyer.desiredAreas.length === 0 && !buyer.desiredAreaFreeText && !buyer.inquiredPropertyAddress) {
+        if (is8562) console.log('[8562] 除外: エリア条件なし');
+        continue;
+      }
 
       const areaResult = areasOverlap(sellerAreas, seller.match_area_free_text, buyer.desiredAreas, buyer.desiredAreaFreeText, seller.property_address, buyer.inquiredPropertyAddress);
-      if (!areaResult.matched) continue;
+      if (!areaResult.matched) {
+        if (is8562) console.log('[8562] 除外: エリア不一致', { sellerPropertyAddress: seller.property_address, buyerInquiredPropertyAddress: buyer.inquiredPropertyAddress });
+        continue;
+      }
 
       const typeResult = propertyTypesOverlap(sellerPropertyTypeCategories, buyer.propertyTypeCategories);
-      if (!typeResult.matched) continue;
+      if (!typeResult.matched) {
+        if (is8562) console.log('[8562] 除外: 種別不一致', { sellerType: seller.property_type, buyerTypes: Array.from(buyer.propertyTypeCategories) });
+        continue;
+      }
+
+      if (is8562) console.log('[8562] ✅ マッチング成功！');
 
       const priceResult = buyer.priceRanges.length === 0
         ? { matched: true, reason: null as string | null }
