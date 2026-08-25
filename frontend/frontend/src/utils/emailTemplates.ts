@@ -33,16 +33,31 @@ const FI_URL_MAP: { [key: string]: string } = {
  * @returns 置換後のメール本文
  */
 export function replaceFIUrls(content: string, sellerNumber: string | null | undefined): string {
+  console.log('🔧 [replaceFIUrls] 売主番号:', sellerNumber);
+  console.log('🔧 [replaceFIUrls] 元のコンテンツ長:', content.length);
+  
   // 売主番号がFIで始まらない場合は何もしない
   if (!sellerNumber || !sellerNumber.startsWith('FI')) {
+    console.log('🔧 [replaceFIUrls] FI売主ではないため置換スキップ');
     return content;
   }
+
+  console.log('🔧 [replaceFIUrls] FI売主検出！URL置換を実行');
 
   // URL置換を実行
   let result = content;
   for (const [oldUrl, newUrl] of Object.entries(FI_URL_MAP)) {
-    result = result.replace(new RegExp(oldUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), newUrl);
+    const regex = new RegExp(oldUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    const beforeReplace = result;
+    result = result.replace(regex, newUrl);
+    
+    if (beforeReplace !== result) {
+      console.log('🔧 [replaceFIUrls] 置換成功:', oldUrl.substring(0, 50) + '...');
+    }
   }
+
+  console.log('🔧 [replaceFIUrls] 置換後のコンテンツ長:', result.length);
+  console.log('🔧 [replaceFIUrls] 置換実行:', content !== result ? '成功' : '失敗（マッチなし）');
 
   return result;
 }

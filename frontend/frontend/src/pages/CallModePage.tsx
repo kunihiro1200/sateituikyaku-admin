@@ -4596,7 +4596,11 @@ HP：https://ifoo-oita.com/
       // <<担当者名字あいさつ>> を担当者名字とFI判定で置換
       replacedContent = resolveStaffGreeting(replacedContent, seller?.sellerNumber || '', myLastName);
       // 📝 FI売主番号の場合、査定額案内メールのURLを置換する
+      console.log('📧 [handleEmailTemplateSelect] テンプレート:', sheetTemplate.name, 'ID:', sheetTemplate.id);
+      console.log('📧 [handleEmailTemplateSelect] 売主番号:', seller?.sellerNumber);
+      console.log('📧 [handleEmailTemplateSelect] isValuationNoticeTemplate:', isValuationNoticeTemplate(sheetTemplate.id, sheetTemplate.name));
       if (isValuationNoticeTemplate(sheetTemplate.id, sheetTemplate.name)) {
+        console.log('📧 [handleEmailTemplateSelect] FI URL置換を実行します');
         replacedContent = replaceFIUrls(replacedContent, seller?.sellerNumber);
       }
       const htmlContent = replacedContent.replace(/\n/g, '<br>');
