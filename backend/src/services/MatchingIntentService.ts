@@ -16,6 +16,7 @@
 //      「1年以上・様子見」同士は対象外にはしない（緊急度の判定はUI側で補助表示するのみ）。
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import OpenAI from 'openai';
 
 export type MatchIntentType = 'sell' | 'buy' | 'both';
 export type MatchTiming = '今すぐ' | '3ヶ月以内' | '半年以内' | '1年以内' | '1年以上・様子見';
@@ -146,12 +147,103 @@ function normalizeAreaFreeText(text: string | null | undefined): string | null {
   return text.trim().replace(/\s+/g, '');
 }
 
+// OpenAIクライアント（遅延初期化）
+let openaiClient: OpenAI | null = null;
+
+/**
+ * 住所から地名のみを抽出（建物名を除外）
+ * OpenAI APIを使用して、住所から「都道府県・市区町村・町名・丁目」までを抽出し、
+ * 建物名（マンション名、ビル名）を除外する
+ * 返り値: { prefecture: '福岡県', location: '福岡市中央区谷' }
+ */
+async function extractLocationFromAddress(address: string): Promise<{ prefecture: string; location: string } | null> {
+  if (!address || address.length < 3) return null;
+
+  // OpenAIクライアントの初期化（初回のみ）
+  if (!openaiClient) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.warn('[地名抽出] OPENAI_API_KEYが設定されていません。フォールバックします。');
+      return fallbackExtractLocation(address);
+    }
+    openaiClient = new OpenAI({ apiKey });
+  }
+
+  try {
+    const response = await openaiClient.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: '与えられた住所から、都道府県・市区町村・町名・丁目までを抽出してください。建物名（マンション名、ビル名、アパート名など）は除外してください。数字の番地・号も除外してください。結果のみを返し、説明は不要です。',
+        },
+        {
+          role: 'user',
+          content: address,
+        },
+      ],
+      temperature: 0,
+      max_tokens: 100,
+    });
+
+    const extracted = response.choices[0]?.message?.content?.trim();
+    if (!extracted) return fallbackExtractLocation(address);
+
+    return parsePrefectureAndLocation(extracted);
+  } catch (error) {
+    console.error('[地名抽出] OpenAI APIエラー:', error);
+    return fallbackExtractLocation(address);
+  }
+}
+
+/**
+ * 抽出された地名を都道府県と地名に分離
+ */
+function parsePrefectureAndLocation(fullLocation: string): { prefecture: string; location: string } | null {
+  const prefectures = ['北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県', '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県', '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県', '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県', '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'];
+
+  for (const pref of prefectures) {
+    if (fullLocation.startsWith(pref)) {
+      return {
+        prefecture: pref,
+        location: fullLocation.substring(pref.length),
+      };
+    }
+  }
+
+  // 都道府県が見つからない場合は空文字列
+  return { prefecture: '', location: fullLocation };
+}
+
+/**
+ * フォールバック：正規表現で地名を抽出
+ * 建物名の前（番地・号の後）で切り取る
+ */
+function fallbackExtractLocation(address: string): { prefecture: string; location: string } | null {
+  if (!address) return null;
+
+  // 番地・号の後の建物名を除去
+  // 例: 「福岡県福岡市中央区谷２丁目20-8サンブリック桜坂106」 → 「福岡県福岡市中央区谷２丁目」
+  const match = address.match(/^(.+?[都道府県市区町村][^0-9]+[0-9０-９]+丁目)/);
+  if (match) {
+    return parsePrefectureAndLocation(match[1]);
+  }
+
+  // 丁目がない場合は、市区町村＋町名まで
+  const match2 = address.match(/^(.+?[都道府県市区町村][^0-9]+)/);
+  if (match2) {
+    return parsePrefectureAndLocation(match2[1]);
+  }
+
+  return parsePrefectureAndLocation(address);
+}
+
 /**
  * エリアが一致するか判定する。
  * 1. 既存エリアコード配列（match_areas）が1つ以上重なる → 一致
  * 2. 自由入力地名同士が部分一致する（どちらかがどちらかを含む） → 一致
  */
-export function areasOverlap(
+export async function areasOverlap(
   areasA: string[],
   freeTextA: string | null,
   areasB: string[],
@@ -196,37 +288,35 @@ export function areasOverlap(
   }
 
   // 物件住所同士の部分一致チェック（売主の物件住所 vs 買主の問合せ物件住所）
-  // 共通の地名（例: 石垣東）があればマッチとする
+  // OpenAI APIで地名を抽出してから共通部分をチェック
+  // 都道府県が一致する場合のみマッチング
   for (const addrA of listA) {
-    const normAddrA = normalizeAreaFreeText(addrA);
-    if (!normAddrA || normAddrA.length < 3) continue; // 短すぎる住所はスキップ
+    const locA = await extractLocationFromAddress(addrA);
+    if (!locA || locA.location.length < 2) continue;
+    
     for (const addrB of listB) {
-      const normAddrB = normalizeAreaFreeText(addrB);
-      if (!normAddrB || normAddrB.length < 3) continue; // 短すぎる住所はスキップ
+      const locB = await extractLocationFromAddress(addrB);
+      if (!locB || locB.location.length < 2) continue;
+      
+      // 都道府県が一致しない場合はスキップ
+      if (locA.prefecture !== locB.prefecture) continue;
+      
+      const normLocA = normalizeAreaFreeText(locA.location);
+      const normLocB = normalizeAreaFreeText(locB.location);
+      if (!normLocA || !normLocB) continue;
       
       // 完全な部分一致
-      if (normAddrA.includes(normAddrB) || normAddrB.includes(normAddrA)) {
-        return { matched: true, reason: `エリア一致（物件住所同士）: 「${addrA}」⇔「${addrB}」` };
+      if (normLocA.includes(normLocB) || normLocB.includes(normLocA)) {
+        return { matched: true, reason: `エリア一致（地名一致）: 「${locA.prefecture}${locA.location}」⇔「${locB.prefecture}${locB.location}」` };
       }
       
       // 共通部分の抽出（最低2文字以上の共通部分があればマッチ）
-      // ただし、一般的すぎる単語（方角、建物名プレフィックスなど）は除外
-      const excludedCommonWords = ['東', '西', '南', '北', '中', '大', '小', '新', '旧', 'サン', 'メゾン', 'パレス', 'ハイツ', 'コーポ', 'マンション', 'ヴィラ', 'レジデンス'];
-      for (let len = Math.min(normAddrA.length, normAddrB.length); len >= 2; len--) {
-        for (let i = 0; i <= normAddrA.length - len; i++) {
-          const subA = normAddrA.substring(i, i + len);
-          if (normAddrB.includes(subA) && !excludedCommonWords.includes(subA)) {
-            return { matched: true, reason: `エリア一致（物件住所共通部分）: 「${addrA}」⇔「${addrB}」（共通: ${subA}）` };
+      for (let len = Math.min(normLocA.length, normLocB.length); len >= 2; len--) {
+        for (let i = 0; i <= normLocA.length - len; i++) {
+          const subA = normLocA.substring(i, i + len);
+          if (normLocB.includes(subA)) {
+            return { matched: true, reason: `エリア一致（地名共通部分）: 「${locA.prefecture}${locA.location}」⇔「${locB.prefecture}${locB.location}」（共通: ${subA}）` };
           }
-        }
-      }
-      
-      // 1文字の共通部分しかない場合は警告
-      for (let i = 0; i <= normAddrA.length - 1; i++) {
-        const subA = normAddrA.substring(i, i + 1);
-        if (normAddrB.includes(subA)) {
-          console.warn(`[マッチング警告] 1文字のみの共通部分でマッチしませんでした: 「${addrA}」⇔「${addrB}」（共通: ${subA}）`);
-          break;
         }
       }
     }
@@ -632,7 +722,7 @@ export class MatchingIntentService {
         continue;
       }
 
-      const areaResult = areasOverlap(sellerAreas, seller.match_area_free_text, buyer.desiredAreas, buyer.desiredAreaFreeText, seller.property_address, buyer.inquiredPropertyAddress);
+      const areaResult = await areasOverlap(sellerAreas, seller.match_area_free_text, buyer.desiredAreas, buyer.desiredAreaFreeText, seller.property_address, buyer.inquiredPropertyAddress);
       if (!areaResult.matched) {
         console.log(`[MatchingIntent] 買主${buyer.buyer_number} 除外: エリア不一致`, { sellerAreas, buyerAreas: buyer.desiredAreas, sellerAddress: seller.property_address, buyerAddress: buyer.inquiredPropertyAddress });
         debugFiltered.push({ 
@@ -893,7 +983,7 @@ export class MatchingIntentService {
       const sellerAreas: string[] = Array.isArray(seller.match_areas) ? seller.match_areas : [];
       if (sellerAreas.length === 0 && !seller.match_area_free_text) continue;
 
-      const areaResult = areasOverlap(buyerAreas, buyer.desired_area_free_text, sellerAreas, seller.match_area_free_text, inquiredInfo?.address || null, seller.property_address);
+      const areaResult = await areasOverlap(buyerAreas, buyer.desired_area_free_text, sellerAreas, seller.match_area_free_text, inquiredInfo?.address || null, seller.property_address);
       if (!areaResult.matched) continue;
 
       const typeResult = propertyTypesOverlap(buyerPropertyTypeCategories, parsePropertyTypeCategories(seller.property_type));
@@ -995,7 +1085,7 @@ export class MatchingIntentService {
       // 注意: buyerSeller.property_address（現在売却中の物件＝今住んでいる場所）は
       // 「次に買いたいエリア」とは意味が異なるため addressesA には渡さない（null）。
       // seller.property_address（相手＝売りたい側の実際の物件住所）は判定材料として使う。
-      const areaResult = areasOverlap(buyerAreas, buyerSeller.buy_match_area_free_text, sellerAreas, seller.match_area_free_text, null, seller.property_address);
+      const areaResult = await areasOverlap(buyerAreas, buyerSeller.buy_match_area_free_text, sellerAreas, seller.match_area_free_text, null, seller.property_address);
       if (!areaResult.matched) continue;
 
       const priceResult = priceRangesOverlap(buyerSeller.buy_match_price_min, buyerSeller.buy_match_price_max, seller.match_price_min, seller.match_price_max);
