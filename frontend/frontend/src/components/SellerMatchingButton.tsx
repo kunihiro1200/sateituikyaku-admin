@@ -74,10 +74,20 @@ const SellerMatchingButton: React.FC<SellerMatchingButtonProps> = ({ buyerNumber
       if (res.data.missingRequiredFields && res.data.missingRequiredFields.length > 0) {
         setError('「希望時期」が未入力です。プルダウンから選択して保存してから、再度お試しください。');
         setCandidates(null);
+        setOpen(true);
       } else {
-        setCandidates(res.data.candidates || []);
+        const matchedCandidates = res.data.candidates || [];
+        setCandidates(matchedCandidates);
+        
+        // 該当の売主が1件の場合は通話モードページを直接開く
+        if (matchedCandidates.length === 1) {
+          const candidate = matchedCandidates[0];
+          window.open(`/call-mode/${candidate.id}`, '_blank');
+        } else {
+          // 0件または2件以上の場合はダイアログを表示
+          setOpen(true);
+        }
       }
-      setOpen(true);
     } catch (e: any) {
       setError(e?.response?.data?.error || 'マッチング検索に失敗しました');
       setCandidates(null);
