@@ -133,83 +133,85 @@ const MatchedBuyersList: React.FC<MatchedBuyersListProps> = ({ sellerId }) => {
       <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, px: 2, pt: 2 }}>
         マッチングされた買主（{candidates.length}件）
       </Typography>
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>買主番号</TableCell>
-            <TableCell>時期</TableCell>
-            <TableCell>金額帯</TableCell>
-            <TableCell>マッチ根拠</TableCell>
-            <TableCell>連絡状況</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {candidates.map((c) => {
-            const isStaleWarning = c.timingFreshness === 'warning';
-            return (
-              <TableRow key={c.id} sx={isStaleWarning ? { bgcolor: '#fff8e1' } : undefined}>
-                <TableCell>
-                  <Typography
-                    variant="body2"
-                    fontWeight="bold"
-                    component="a"
-                    href={c.type === 'seller' ? `/sellers/${c.id}` : `/buyers/${c.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    sx={{ color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-                  >
-                    {c.number || c.id}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  {c.matchTiming && (
-                    <Chip
-                      label={c.matchTiming}
-                      size="small"
-                      sx={{
-                        bgcolor: TIMING_COLOR[c.matchTiming] || '#757575',
-                        color: '#fff',
-                        fontSize: '0.7rem',
+      <Box sx={{ overflowX: 'auto' }}>
+        <Table size="small" sx={{ minWidth: 650 }}>
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ minWidth: 80 }}>買主番号</TableCell>
+              <TableCell sx={{ minWidth: 90 }}>時期</TableCell>
+              <TableCell sx={{ minWidth: 100 }}>金額帯</TableCell>
+              <TableCell sx={{ minWidth: 200 }}>マッチ根拠</TableCell>
+              <TableCell sx={{ minWidth: 180 }}>連絡状況</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {candidates.map((c) => {
+              const isStaleWarning = c.timingFreshness === 'warning';
+              return (
+                <TableRow key={c.id} sx={isStaleWarning ? { bgcolor: '#fff8e1' } : undefined}>
+                  <TableCell>
+                    <Typography
+                      variant="body2"
+                      fontWeight="bold"
+                      component="a"
+                      href={c.type === 'seller' ? `/sellers/${c.id}` : `/buyers/${c.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{ color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                    >
+                      {c.number || c.id}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    {c.matchTiming && (
+                      <Chip
+                        label={c.matchTiming}
+                        size="small"
+                        sx={{
+                          bgcolor: TIMING_COLOR[c.matchTiming] || '#757575',
+                          color: '#fff',
+                          fontSize: '0.7rem',
+                        }}
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" fontSize="0.85rem" noWrap>
+                      {formatManYen(c.matchPriceMin)}〜{formatManYen(c.matchPriceMax)}万円
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                      {c.matchReasons.map((reason, idx) => (
+                        <Chip key={idx} label={reason} size="small" variant="outlined" sx={{ fontSize: '0.7rem' }} />
+                      ))}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <ToggleButtonGroup
+                      value={c.contactStatus || ''}
+                      exclusive
+                      onChange={(_, newStatus) => {
+                        if (newStatus !== null) {
+                          handleContactStatusChange(c, newStatus);
+                        }
                       }}
-                    />
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2" fontSize="0.85rem">
-                    {formatManYen(c.matchPriceMin)}〜{formatManYen(c.matchPriceMax)}万円
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                    {c.matchReasons.map((reason, idx) => (
-                      <Chip key={idx} label={reason} size="small" variant="outlined" sx={{ fontSize: '0.7rem' }} />
-                    ))}
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <ToggleButtonGroup
-                    value={c.contactStatus || ''}
-                    exclusive
-                    onChange={(_, newStatus) => {
-                      if (newStatus !== null) {
-                        handleContactStatusChange(c, newStatus);
-                      }
-                    }}
-                    size="small"
-                    disabled={contactSaving[c.id]}
-                  >
-                    {CONTACT_STATUS_OPTIONS.map((status) => (
-                      <ToggleButton key={status} value={status} sx={{ fontSize: '0.7rem', px: 1, py: 0.5 }}>
-                        {status}
-                      </ToggleButton>
-                    ))}
-                  </ToggleButtonGroup>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+                      size="small"
+                      disabled={contactSaving[c.id]}
+                    >
+                      {CONTACT_STATUS_OPTIONS.map((status) => (
+                        <ToggleButton key={status} value={status} sx={{ fontSize: '0.7rem', px: 1, py: 0.5 }}>
+                          {status}
+                        </ToggleButton>
+                      ))}
+                    </ToggleButtonGroup>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </Box>
     </Box>
   );
 };
