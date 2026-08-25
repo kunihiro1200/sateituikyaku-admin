@@ -99,7 +99,7 @@ interface BuyerDesiredConditions {
 
 const hasAnyMatchCriteria = (row: MatchIntentFields): boolean => {
   const areas = Array.isArray(row.match_areas) ? row.match_areas : [];
-  return areas.length > 0 || !!row.match_area_free_text;
+  return areas.length > 0 || !!row.match_area_free_text || !!row.property_address;
 };
 
 /**
