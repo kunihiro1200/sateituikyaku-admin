@@ -748,15 +748,23 @@ export default function SellersPage() {
     const searchParams = new URLSearchParams(location.search);
     const buyerMatchingNumber = searchParams.get('buyerMatching');
     if (buyerMatchingNumber) {
+      console.log('[SellersPage] Buyer matching detected:', buyerMatchingNumber);
       // 買主マッチングの場合、マッチした売主を取得
       fetch(`/api/buyers/${buyerMatchingNumber}/match-candidates`)
-        .then(res => res.json())
+        .then(res => {
+          console.log('[SellersPage] Match candidates response status:', res.status);
+          return res.json();
+        })
         .then(data => {
+          console.log('[SellersPage] Match candidates data:', data);
           if (data.sellers && data.sellers.length === 1) {
             // 1件だけの場合は通話モードに自動遷移
             const seller = data.sellers[0];
             const sellerId = seller.id || seller.seller_id;
+            console.log('[SellersPage] Navigating to call mode:', sellerId);
             navigate(`/sellers/${sellerId}/call`);
+          } else {
+            console.log('[SellersPage] Multiple or zero matches, showing list');
           }
           // 0件または複数件の場合は何もしない（通常の売主リストを表示）
         })
@@ -765,7 +773,7 @@ export default function SellersPage() {
           // エラーの場合は何もしない（通常の売主リストを表示）
         });
     }
-  }, []);
+  }, [location.search, navigate]);
 
   // 一時フィルターIDが復元された場合、sidebarTempFiltersロード後にフィルター条件を適用
   useEffect(() => {
