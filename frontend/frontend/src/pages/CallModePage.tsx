@@ -3343,6 +3343,12 @@ const CallModePage = () => {
       }
     }
 
+    // バリデーション：対策・反省点が必要な場合は入力を要求（ポップアップ表示）
+    if (shouldRequireUnvisitedMemo(editedStatus, editedExclusiveDecisionDate) && !editedUnvisitedOtherDecisionMemo.trim()) {
+      setUnvisitedMemoPopupOpen(true);
+      return;
+    }
+
     try {
       setSavingStatus(true);
       setError(null);
@@ -10403,10 +10409,7 @@ HP：https://ifoo-oita.com/
                           setEditedExclusiveDecisionDate(newDate);
                           setStatusChanged(true);
                           statusChangedRef.current = true;
-                          // 決定日を入力/変更した時点で基準日以降なら対策・反省点ポップアップを表示
-                          if (shouldRequireUnvisitedMemo(editedStatus, newDate)) {
-                            setUnvisitedMemoPopupOpen(true);
-                          }
+                          // 決定日を入力/変更してもポップアップは表示しない（保存時にチェック）
                         }}
                         InputLabelProps={{ shrink: true }}
                         error={!editedExclusiveDecisionDate}
