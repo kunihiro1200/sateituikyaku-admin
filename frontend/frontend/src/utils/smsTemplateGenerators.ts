@@ -460,12 +460,23 @@ export const replacePlaceholders = (
       // chrome-extension://... プレフィックス付きのURL（valuation_inheritanceテンプレート）
       result = result.replace(
         /chrome-extension:\/\/efaidnbmnnnibpcajpcglclefindmkaj\/https:\/\/ifoo-oita\.com\/testsite\/wp-content\/uploads\/2020\/12\/d58af49c9c6dd87c7aee1845265204b6\.pdf/g,
-        'https://drive.google.com/file/d/1yo-tNvpLU0zYV0hR8NtlF5oUcH16TUeJ/view?usp=sharing'
+        'https://drive.google.com/file/d/19HxXMAvuHZWKIYNOTHIb8nH15D9J3sjJ/view?usp=sharing'
       );
       // プレフィックスなしのURL（valuation_non_inheritanceテンプレート）
       result = result.replace(
         /https:\/\/ifoo-oita\.com\/testsite\/wp-content\/uploads\/2020\/12\/d58af49c9c6dd87c7aee1845265204b6\.pdf/g,
-        'https://drive.google.com/file/d/1yo-tNvpLU0zYV0hR8NtlF5oUcH16TUeJ/view?usp=sharing'
+        'https://drive.google.com/file/d/19HxXMAvuHZWKIYNOTHIb8nH15D9J3sjJ/view?usp=sharing'
+      );
+      // スプレッドシートテンプレートで使用される既存のGoogle Drive URL（大分用）を福岡用に変更
+      // パターン1: fJqgP版
+      result = result.replace(
+        /https:\/\/drive\.google\.com\/file\/d\/1Ir2vafll3OQ3ALYR6BJI09xLkXLfJqgP\/view\?usp=sharing/g,
+        'https://drive.google.com/file/d/19HxXMAvuHZWKIYNOTHIb8nH15D9J3sjJ/view?usp=sharing'
+      );
+      // パターン2: fqgP版（Jなし）
+      result = result.replace(
+        /https:\/\/drive\.google\.com\/file\/d\/1Ir2vafll3OQ3ALYR6BJI09xLkXLfqgP\/view\?usp=sharing/g,
+        'https://drive.google.com/file/d/19HxXMAvuHZWKIYNOTHIb8nH15D9J3sjJ/view?usp=sharing'
       );
 
       // FI売主の場合は会社名を「株式会社くじら不動産」に変更
