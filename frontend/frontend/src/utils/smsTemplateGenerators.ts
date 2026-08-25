@@ -464,8 +464,7 @@ export const replacePlaceholders = (
       const urlPatterns = [
         { name: 'chrome-extension PDF', pattern: 'chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj' },
         { name: 'ifoo-oita PDF', pattern: 'ifoo-oita.com/testsite/wp-content/uploads/2020/12/d58af49c9c6dd87c7aee1845265204b6.pdf' },
-        { name: 'Google Drive fJqgP', pattern: '1Ir2vafll3OQ3ALYR6BJI09xLkXLfJqgP' },
-        { name: 'Google Drive fqgP', pattern: '1Ir2vafll3OQ3ALYR6BJI09xLkXLfqgP' }
+        { name: 'Google Drive (正確なID)', pattern: '1lr2vafII3OQ3ALYR6BJI09xLkXLfJqgP' }
       ];
       urlPatterns.forEach(({ name, pattern }) => {
         if (result.includes(pattern)) {
@@ -490,21 +489,13 @@ export const replacePlaceholders = (
       if (before2 !== result) console.log('[replacePlaceholders] ✅ ifoo-oita PDF URL置換成功');
 
       // スプレッドシートテンプレートで使用される既存のGoogle Drive URL（大分用）を福岡用に変更
-      // パターン1: fJqgP版
+      // 正確なファイルID: 1lr2vafII3OQ3ALYR6BJI09xLkXLfJqgP (注意: 1lr=数字1+小文字l+小文字r、II=大文字I×2)
       const before3 = result;
       result = result.replace(
-        /https:\/\/drive\.google\.com\/file\/d\/1Ir2vafll3OQ3ALYR6BJI09xLkXLfJqgP\/view\?usp=sharing/g,
+        /https:\/\/drive\.google\.com\/file\/d\/1lr2vafII3OQ3ALYR6BJI09xLkXLfJqgP\/view\?usp=sharing/g,
         'https://drive.google.com/file/d/19HxXMAvuHZWKIYNOTHIb8nH15D9J3sjJ/view?usp=sharing'
       );
-      if (before3 !== result) console.log('[replacePlaceholders] ✅ Google Drive URL (fJqgP) 置換成功');
-
-      // パターン2: fqgP版（Jなし）
-      const before4 = result;
-      result = result.replace(
-        /https:\/\/drive\.google\.com\/file\/d\/1Ir2vafll3OQ3ALYR6BJI09xLkXLfqgP\/view\?usp=sharing/g,
-        'https://drive.google.com/file/d/19HxXMAvuHZWKIYNOTHIb8nH15D9J3sjJ/view?usp=sharing'
-      );
-      if (before4 !== result) console.log('[replacePlaceholders] ✅ Google Drive URL (fqgP) 置換成功');
+      if (before3 !== result) console.log('[replacePlaceholders] ✅ Google Drive URL 置換成功');
 
       console.log(`[replacePlaceholders] 置換後テキスト（最初の500文字）: ${result.substring(0, 500)}`);
 
