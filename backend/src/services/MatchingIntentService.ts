@@ -210,10 +210,12 @@ export function areasOverlap(
       }
       
       // 共通部分の抽出（最低2文字以上の共通部分があればマッチ）
+      // ただし、一般的すぎる単語（方角など）は除外
+      const excludedCommonWords = ['東', '西', '南', '北', '中', '大', '小', '新', '旧'];
       for (let len = Math.min(normAddrA.length, normAddrB.length); len >= 2; len--) {
         for (let i = 0; i <= normAddrA.length - len; i++) {
           const subA = normAddrA.substring(i, i + len);
-          if (normAddrB.includes(subA)) {
+          if (normAddrB.includes(subA) && !excludedCommonWords.includes(subA)) {
             return { matched: true, reason: `エリア一致（物件住所共通部分）: 「${addrA}」⇔「${addrB}」（共通: ${subA}）` };
           }
         }
