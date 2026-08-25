@@ -465,7 +465,8 @@ export default function BuyerDesiredConditionsPage() {
                   buyer_number!,
                   { 
                     matching_required: required,
-                    desired_conditions_updated_at: new Date().toISOString()
+                    desired_conditions_updated_at: new Date().toISOString(),
+                    match_updated_at: required ? new Date().toISOString() : null
                   },
                   { sync: true }
                 );
