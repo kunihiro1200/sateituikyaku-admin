@@ -209,13 +209,22 @@ export function areasOverlap(
         return { matched: true, reason: `エリア一致（物件住所同士）: 「${addrA}」⇔「${addrB}」` };
       }
       
-      // 共通部分の抽出（最低3文字以上の共通部分があればマッチ）
-      for (let len = Math.min(normAddrA.length, normAddrB.length); len >= 3; len--) {
+      // 共通部分の抽出（最低2文字以上の共通部分があればマッチ）
+      for (let len = Math.min(normAddrA.length, normAddrB.length); len >= 2; len--) {
         for (let i = 0; i <= normAddrA.length - len; i++) {
           const subA = normAddrA.substring(i, i + len);
           if (normAddrB.includes(subA)) {
             return { matched: true, reason: `エリア一致（物件住所共通部分）: 「${addrA}」⇔「${addrB}」（共通: ${subA}）` };
           }
+        }
+      }
+      
+      // 1文字の共通部分しかない場合は警告
+      for (let i = 0; i <= normAddrA.length - 1; i++) {
+        const subA = normAddrA.substring(i, i + 1);
+        if (normAddrB.includes(subA)) {
+          console.warn(`[マッチング警告] 1文字のみの共通部分でマッチしませんでした: 「${addrA}」⇔「${addrB}」（共通: ${subA}）`);
+          break;
         }
       }
     }
