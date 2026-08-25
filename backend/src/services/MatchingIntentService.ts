@@ -210,8 +210,8 @@ export function areasOverlap(
       }
       
       // 共通部分の抽出（最低2文字以上の共通部分があればマッチ）
-      // ただし、一般的すぎる単語（方角など）は除外
-      const excludedCommonWords = ['東', '西', '南', '北', '中', '大', '小', '新', '旧'];
+      // ただし、一般的すぎる単語（方角、建物名プレフィックスなど）は除外
+      const excludedCommonWords = ['東', '西', '南', '北', '中', '大', '小', '新', '旧', 'サン', 'メゾン', 'パレス', 'ハイツ', 'コーポ', 'マンション', 'ヴィラ', 'レジデンス'];
       for (let len = Math.min(normAddrA.length, normAddrB.length); len >= 2; len--) {
         for (let i = 0; i <= normAddrA.length - len; i++) {
           const subA = normAddrA.substring(i, i + len);
