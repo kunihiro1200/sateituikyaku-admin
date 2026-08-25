@@ -80,7 +80,7 @@ import {
   replacePlaceholders,
 } from '../utils/smsTemplateGenerators';
 import { formatNetProceedsEmailSection } from '../utils/netProceedsCalculator';
-import { emailTemplates } from '../utils/emailTemplates';
+import { emailTemplates, replaceFIUrls, isValuationNoticeTemplate } from '../utils/emailTemplates';
 import SenderAddressSelector from '../components/SenderAddressSelector';
 import { getActiveEmployees, Employee } from '../services/employeeService';
 import SellerStatusSidebar from '../components/SellerStatusSidebar';
@@ -4882,13 +4882,19 @@ HP：https://ifoo-oita.com/
             } catch { /* ignore */ }
           }
 
+          // 📝 FI売主番号の場合、査定額案内メールのURLを置換する
+          let finalEmailBody = capturedEmailBody;
+          if (isValuationNoticeTemplate(template.id, template.label)) {
+            finalEmailBody = replaceFIUrls(capturedEmailBody, seller?.sellerNumber);
+          }
+
           const requestPayload = {
             templateId: template.id,
             templateName: template.label, // メール種別名（送信履歴の表示用）
             to: capturedEmailRecipient,
             subject: capturedEmailSubject,
-            content: capturedEmailBody,
-            htmlBody: capturedEmailBody, // 常にHTMLとして渡す（<br>がそのまま表示される問題を修正）
+            content: finalEmailBody,
+            htmlBody: finalEmailBody, // 常にHTMLとして渡す（<br>がそのまま表示される問題を修正）
             senderInitials: resolvedSenderInitials, // 送信者イニシャル（バックエンドで自動セット用）
             // tenant@以外が選択されている場合のみ replyTo を設定
             ...(capturedSenderAddress && capturedSenderAddress !== 'tenant@ifoo-oita.com'

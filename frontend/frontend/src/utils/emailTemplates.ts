@@ -12,6 +12,50 @@ export interface EmailTemplate {
   order: number; // 基本の表示順序
 }
 
+/**
+ * FI売主番号用のURL置換マップ
+ */
+const FI_URL_MAP: { [key: string]: string } = {
+  // 元のURL（査定額案内メールで使用）
+  'chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://ifoo-oita.com/testsite/wp-content/uploads/2020/12/d58af49c9c6dd87c7aee1845265204b6.pdf':
+    'https://drive.google.com/file/d/19HxXMAvuHZWKIYNOTHIb8nH15D9J3sjJ/view?usp=sharing',
+  'https://ifoo-oita.com/testsite/wp-content/uploads/2020/12/d58af49c9c6dd87c7aee1845265204b6.pdf':
+    'https://drive.google.com/file/d/19HxXMAvuHZWKIYNOTHIb8nH15D9J3sjJ/view?usp=sharing',
+};
+
+/**
+ * 売主番号がFIで始まる場合、査定額案内メールのURLを置換する
+ * @param content メール本文
+ * @param sellerNumber 売主番号
+ * @returns 置換後のメール本文
+ */
+export function replaceFIUrls(content: string, sellerNumber: string | null | undefined): string {
+  // 売主番号がFIで始まらない場合は何もしない
+  if (!sellerNumber || !sellerNumber.startsWith('FI')) {
+    return content;
+  }
+
+  // URL置換を実行
+  let result = content;
+  for (const [oldUrl, newUrl] of Object.entries(FI_URL_MAP)) {
+    result = result.replace(new RegExp(oldUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), newUrl);
+  }
+
+  return result;
+}
+
+/**
+ * 査定額案内メール系のテンプレートかどうかを判定
+ * @param templateId テンプレートID
+ * @param templateLabel テンプレートラベル
+ * @returns 査定額案内メール系の場合true
+ */
+export function isValuationNoticeTemplate(templateId: string, templateLabel: string): boolean {
+  return templateId === 'valuation_inheritance' || 
+         templateId === 'valuation_non_inheritance' ||
+         templateLabel.includes('査定額案内メール');
+}
+
 export const emailTemplates: EmailTemplate[] = [
   {
     id: 'visit_thank_you',
