@@ -37,10 +37,23 @@ export default function BuyerMatchingSelector({
       }
       // マッチング実行フラグを設定
       await onMatchingStatusChange(true);
-      // 売主マッチング画面に遷移
-      window.open(`/seller-matching?buyerNumber=${buyerNumber}`, '_blank');
+      
+      // マッチング結果を取得
+      const response = await fetch(`/api/buyers/${buyerNumber}/matching-sellers`);
+      const data = await response.json();
+      
+      if (data.total === 1 && data.sellers && data.sellers.length === 1) {
+        // マッチした売主が1件だけの場合は通話モードを直接開く
+        const sellerId = data.sellers[0].id || data.sellers[0].seller_id;
+        window.open(`/sellers/${sellerId}/call`, '_blank');
+      } else {
+        // 複数件または0件の場合は売主マッチング画面に遷移
+        window.open(`/seller-matching?buyerNumber=${buyerNumber}`, '_blank');
+      }
     } catch (error) {
       console.error('[Buyer Matching] Search error:', error);
+      // エラーの場合は売主マッチング画面に遷移
+      window.open(`/seller-matching?buyerNumber=${buyerNumber}`, '_blank');
     } finally {
       setSearching(false);
     }
