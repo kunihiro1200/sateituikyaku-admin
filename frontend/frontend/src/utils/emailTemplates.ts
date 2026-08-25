@@ -36,6 +36,13 @@ export function replaceFIUrls(content: string, sellerNumber: string | null | und
   console.log('🔧 [replaceFIUrls] 売主番号:', sellerNumber);
   console.log('🔧 [replaceFIUrls] 元のコンテンツ長:', content.length);
   
+  // コンテンツ内のすべてのGoogle Drive URLを抽出してログ出力
+  const driveUrlPattern = /https:\/\/drive\.google\.com\/file\/d\/[a-zA-Z0-9_-]+\/view\?usp=sharing/g;
+  const foundUrls = content.match(driveUrlPattern);
+  if (foundUrls) {
+    console.log('🔧 [replaceFIUrls] 検出されたGoogle Drive URL:', foundUrls);
+  }
+  
   // 売主番号がFIで始まらない場合は何もしない
   if (!sellerNumber || !sellerNumber.startsWith('FI')) {
     console.log('🔧 [replaceFIUrls] FI売主ではないため置換スキップ');
@@ -47,6 +54,7 @@ export function replaceFIUrls(content: string, sellerNumber: string | null | und
   // URL置換を実行
   let result = content;
   for (const [oldUrl, newUrl] of Object.entries(FI_URL_MAP)) {
+    console.log('🔧 [replaceFIUrls] 置換試行 - 検索URL:', oldUrl);
     const regex = new RegExp(oldUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
     const beforeReplace = result;
     result = result.replace(regex, newUrl);
