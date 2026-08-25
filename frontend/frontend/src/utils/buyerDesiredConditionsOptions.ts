@@ -38,6 +38,7 @@ export const FUKUOKA_AREA_OPTIONS = [
   { value: 'F9 春日市', label: 'F9 春日市' },
   { value: 'F10 大野城市', label: 'F10 大野城市' },
   { value: 'F11 福岡市全部', label: 'F11 福岡市全部' },
+  { value: 'F12 糸島市', label: 'F12 糸島市' },
 ];
 
 // 大分・別府エリアと福岡エリアを両方含むオプション
