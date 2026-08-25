@@ -3343,11 +3343,7 @@ const CallModePage = () => {
       }
     }
 
-    // バリデーション：対策・反省点が必要な場合は入力を要求（ポップアップ表示）
-    if (shouldRequireUnvisitedMemo(editedStatus, editedExclusiveDecisionDate) && !editedUnvisitedOtherDecisionMemo.trim()) {
-      setUnvisitedMemoPopupOpen(true);
-      return;
-    }
+    // 対策・反省点のチェックは自動保存ではスキップ（通知ボタン押下時にのみチェック）
 
     try {
       setSavingStatus(true);
@@ -5393,6 +5389,13 @@ HP：https://ifoo-oita.com/
             message: '「競合名、理由（他決、専任）」が入力されていません',
             subMessage: '通知を送る前に競合名や専任・他決になった理由を記入してください。',
           });
+          return;
+        }
+
+        // 対策・反省点のチェック（未訪問他決 + 決定日が基準日以降の場合のみ）
+        if (shouldRequireUnvisitedMemo(editedStatus, editedExclusiveDecisionDate) && !editedUnvisitedOtherDecisionMemo.trim()) {
+          setSendingChatNotification(false);
+          setUnvisitedMemoPopupOpen(true);
           return;
         }
 
