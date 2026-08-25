@@ -732,6 +732,8 @@ export default function SellersPage() {
   // 初回ロード時とキャッシュ無効化時にサイドバーカウントを即座に取得
   useEffect(() => {
     console.log('[SellersPage] Component mounted or cache invalidated');
+    console.log('[SellersPage] location.search:', location.search);
+    
     const cached = pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
     if (!cached) {
       console.log('[SellersPage] No cache found, fetching sidebar counts immediately');
@@ -747,6 +749,8 @@ export default function SellersPage() {
     // 買主マッチング用URLパラメータをチェック
     const searchParams = new URLSearchParams(location.search);
     const buyerMatchingNumber = searchParams.get('buyerMatching');
+    console.log('[SellersPage] buyerMatching param:', buyerMatchingNumber);
+    
     if (buyerMatchingNumber) {
       console.log('[SellersPage] Buyer matching detected:', buyerMatchingNumber);
       // 買主マッチングの場合、マッチした売主を取得
