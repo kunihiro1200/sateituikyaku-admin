@@ -99,7 +99,7 @@ interface BuyerDesiredConditions {
 
 const hasAnyMatchCriteria = (row: MatchIntentFields): boolean => {
   const areas = Array.isArray(row.match_areas) ? row.match_areas : [];
-  return areas.length > 0 || !!row.match_area_free_text || !!row.property_address;
+  return areas.length > 0 || !!row.match_area_free_text;
 };
 
 /**
@@ -295,6 +295,7 @@ export class MatchingSidebarService {
         .from('sellers')
         .select('id, seller_number, status, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, match_contact_status, name, property_address, property_type, match_updated_at')
         .is('deleted_at', null)
+        .not('match_updated_at', 'is', null)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
       if (error) throw new Error(`売主取得に失敗しました: ${error.message}`);
@@ -323,6 +324,7 @@ export class MatchingSidebarService {
         .from('sellers')
         .select('id, seller_number, status, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, match_updated_at')
         .is('deleted_at', null)
+        .not('match_updated_at', 'is', null)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
       if (error) throw new Error(`売主取得に失敗しました: ${error.message}`);
