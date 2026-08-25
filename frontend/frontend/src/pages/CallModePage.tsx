@@ -7087,6 +7087,26 @@ HP：https://ifoo-oita.com/
                           >
                             レインズ
                           </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => {
+                              window.open('https://app.zip-site.com/reos/app/index.htm', '_blank');
+                            }}
+                            sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                          >
+                            ぜんりん
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => {
+                              window.open('https://www.jtn-map.com/member/kiyaku.asp', '_blank');
+                            }}
+                            sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                          >
+                            謄本
+                          </Button>
                         </Box>
                       </Grid>
                     )}
