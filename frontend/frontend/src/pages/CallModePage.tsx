@@ -7077,100 +7077,103 @@ HP：https://ifoo-oita.com/
                     {displayAddress && (
                       <Grid item xs={12}>
                         <Typography variant="caption" color="text.secondary">物件住所</Typography>
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          {displayAddress}
-                          {addressReading && (
-                            <Typography component="span" variant="body2" color="text.secondary">
-                              （{addressReading}）
-                            </Typography>
-                          )}
-                          {addressReadingLoading && (
-                            <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
-                              <CircularProgress size={10} sx={{ verticalAlign: 'middle' }} />
-                            </Typography>
-                          )}
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 0.5, flexDirection: 'column' }}>
-                          {/* 1列目：コピー、atbb、レインズ */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <IconButton
-                              size="small"
-                              onClick={() => {
-                                navigator.clipboard.writeText(displayAddress);
-                                setSnackbar({ open: true, message: '物件住所をコピーしました' });
-                              }}
-                              title="物件住所をコピー"
-                              sx={{ p: 0.5 }}
-                            >
-                              <ContentCopyIcon fontSize="small" />
-                            </IconButton>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => {
-                                const searchQuery = encodeURIComponent(displayAddress);
-                                window.open(`https://atbb.athome.jp/?searchterms=${searchQuery}`, '_blank');
-                              }}
-                              sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
-                            >
-                              atbb
-                            </Button>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => {
-                                window.open('https://www.nishinihon-reins.or.jp/', '_blank');
-                              }}
-                              sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
-                            >
-                              レインズ
-                            </Button>
-                          </Box>
-                          {/* 2列目：ぜんりん、謄本、大分MAP/福岡MAP */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => {
-                                window.open('https://app.zip-site.com/reos/app/index.htm', '_blank');
-                              }}
-                              sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
-                            >
-                              ぜんりん
-                            </Button>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => {
-                                window.open('https://www.jtn-map.com/member/kiyaku.asp', '_blank');
-                              }}
-                              sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
-                            >
-                              謄本
-                            </Button>
-                            {seller?.sellerNumber?.toUpperCase().includes('FI') ? (
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => {
-                                  window.open('https://webmap.city.fukuoka.lg.jp/fukuoka/Agreement?IsPost=False&MapId=7&RequestPage=%2ffukuoka%2fPositionSelect%3fmid%3d7', '_blank');
-                                }}
-                                sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
-                              >
-                                福岡MAP
-                              </Button>
-                            ) : (
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => {
-                                  window.open('https://www2.wagmap.jp/oitacity/PositionSelect?mid=18', '_blank');
-                                }}
-                                sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
-                              >
-                                大分MAP
-                              </Button>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                          <Typography variant="body2" sx={{ flex: 1 }}>
+                            {displayAddress}
+                            {addressReading && (
+                              <Typography component="span" variant="body2" color="text.secondary">
+                                （{addressReading}）
+                              </Typography>
                             )}
+                            {addressReadingLoading && (
+                              <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
+                                <CircularProgress size={10} sx={{ verticalAlign: 'middle' }} />
+                              </Typography>
+                            )}
+                          </Typography>
+                          {/* ボタングループを右側に配置 */}
+                          <Box sx={{ display: 'flex', gap: 0.5, flexDirection: 'column', flexShrink: 0 }}>
+                            {/* 1列目：コピー、atbb、レインズ */}
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <IconButton
+                                size="small"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(displayAddress);
+                                  setSnackbar({ open: true, message: '物件住所をコピーしました' });
+                                }}
+                                title="物件住所をコピー"
+                                sx={{ p: 0.5 }}
+                              >
+                                <ContentCopyIcon fontSize="small" />
+                              </IconButton>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => {
+                                  const searchQuery = encodeURIComponent(displayAddress);
+                                  window.open(`https://atbb.athome.jp/?searchterms=${searchQuery}`, '_blank');
+                                }}
+                                sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                              >
+                                atbb
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => {
+                                  window.open('https://www.nishinihon-reins.or.jp/', '_blank');
+                                }}
+                                sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                              >
+                                レインズ
+                              </Button>
+                            </Box>
+                            {/* 2列目：ぜんりん、謄本、大分MAP/福岡MAP */}
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => {
+                                  window.open('https://app.zip-site.com/reos/app/index.htm', '_blank');
+                                }}
+                                sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                              >
+                                ぜんりん
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => {
+                                  window.open('https://www.jtn-map.com/member/kiyaku.asp', '_blank');
+                                }}
+                                sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                              >
+                                謄本
+                              </Button>
+                              {seller?.sellerNumber?.toUpperCase().includes('FI') ? (
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  onClick={() => {
+                                    window.open('https://webmap.city.fukuoka.lg.jp/fukuoka/Agreement?IsPost=False&MapId=7&RequestPage=%2ffukuoka%2fPositionSelect%3fmid%3d7', '_blank');
+                                  }}
+                                  sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                                >
+                                  福岡MAP
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  onClick={() => {
+                                    window.open('https://www2.wagmap.jp/oitacity/PositionSelect?mid=18', '_blank');
+                                  }}
+                                  sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                                >
+                                  大分MAP
+                                </Button>
+                              )}
+                            </Box>
                           </Box>
                         </Box>
                       </Grid>
