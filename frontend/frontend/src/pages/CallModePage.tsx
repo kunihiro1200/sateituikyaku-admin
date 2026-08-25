@@ -4589,6 +4589,10 @@ HP：https://ifoo-oita.com/
       let replacedContent = replaceEmailPlaceholders(sheetTemplate.body, currentEmployees);
       // <<担当者名字あいさつ>> を担当者名字とFI判定で置換
       replacedContent = resolveStaffGreeting(replacedContent, seller?.sellerNumber || '', myLastName);
+      // 📝 FI売主番号の場合、査定額案内メールのURLを置換する
+      if (isValuationNoticeTemplate(sheetTemplate.id, sheetTemplate.name)) {
+        replacedContent = replaceFIUrls(replacedContent, seller?.sellerNumber);
+      }
       const htmlContent = replacedContent.replace(/\n/g, '<br>');
 
       // 相続登記テンプレートの送信先・ラベル判定
@@ -4636,6 +4640,10 @@ HP：https://ifoo-oita.com/
     let replacedContent = replaceEmailPlaceholders(template.content, currentEmployees);
     // <<担当者名字あいさつ>> を担当者名字とFI判定で置換
     replacedContent = resolveStaffGreeting(replacedContent, seller?.sellerNumber || '', myLastName);
+    // 📝 FI売主番号の場合、査定額案内メールのURLを置換する
+    if (isValuationNoticeTemplate(template.id, template.label)) {
+      replacedContent = replaceFIUrls(replacedContent, seller?.sellerNumber);
+    }
 
     // 改行を<br>タグに変換してHTMLとして設定
     const htmlContent = replacedContent.replace(/\n/g, '<br>');
