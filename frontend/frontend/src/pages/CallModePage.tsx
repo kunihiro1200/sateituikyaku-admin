@@ -4536,7 +4536,7 @@ HP：https://ifoo-oita.com/
     }
     result = result.replace(/<<お客様紹介文言>>/g, customerIntroText);
 
-    // 売主番号に応じて、担当者あいさつ・会社名・住所・電話・HP・署名を一括変換する
+    // 売主番号に応じて、担当者あいさつ・会社名・住所・電話・HP・署名・URLを一括変換する
     // FIを含む売主番号には、既存メールと同じくじら不動産版を適用する
     result = replacePlaceholders(result, seller, myLastName);
 
@@ -7118,6 +7118,16 @@ HP：https://ifoo-oita.com/
                           >
                             ぜんりん
                           </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => {
+                              window.open('https://www.jtn-map.com/member/kiyaku.asp', '_blank');
+                            }}
+                            sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                          >
+                            謄本
+                          </Button>
                           {seller?.sellerNumber?.toUpperCase().includes('FI') ? (
                             <Button
                               size="small"
@@ -7141,16 +7151,6 @@ HP：https://ifoo-oita.com/
                               大分MAP
                             </Button>
                           )}
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => {
-                              window.open('https://www.jtn-map.com/member/kiyaku.asp', '_blank');
-                            }}
-                            sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
-                          >
-                            謄本
-                          </Button>
                         </Box>
                       </Grid>
                     )}
