@@ -1687,7 +1687,7 @@ const CallModePage = () => {
 
   /**
    * 除外サイトURLを計算する関数
-   * ロジック: IF([サイトURL] <> "",[サイトURL],IF([サイト] = "ウ","https://partner.ieul.jp/",IF([サイト] = "H","https://www.home4u.jp/member/sell/company/menu",IF([サイト] = "す","https://docs.google.com/forms/d/e/1FAIpQLSdXeFMcXhuANI78ARzN5WCbl8JMsdcUIP-J52lv5ShMOQeu5g/viewform",IF([サイト] = "L","https://lifull.secure.force.com/inquiryform/baikyakushinsei",IF([サイト] = "Y","https://login.bizmanager.yahoo.co.jp/loginMenu",""))))))
+   * ロジック: IF([サイトURL] <> "",[サイトURL],IF([サイト] = "ウ","https://partner.ieul.jp/",IF([サイト] = "H","https://www.home4u.jp/member/sell/company/menu",IF([サイト] = "す","https://sumai-step.com/partner/charge_reject_forms/new",IF([サイト] = "L","https://lifull.secure.force.com/inquiryform/baikyakushinsei",IF([サイト] = "Y","https://login.bizmanager.yahoo.co.jp/loginMenu",""))))))
    */
   const getExclusionSiteUrl = useCallback(() => {
     if (!seller) return '';
@@ -1705,7 +1705,7 @@ const CallModePage = () => {
       case 'H':
         return 'https://www.home4u.jp/member/sell/company/menu';
       case 'す':
-        return 'https://docs.google.com/forms/d/e/1FAIpQLSdXeFMcXhuANI78ARzN5WCbl8JMsdcUIP-J52lv5ShMOQeu5g/viewform';
+        return 'https://sumai-step.com/partner/charge_reject_forms/new';
       case 'L':
         return 'https://lifull.secure.force.com/inquiryform/baikyakushinsei';
       case 'Y':
