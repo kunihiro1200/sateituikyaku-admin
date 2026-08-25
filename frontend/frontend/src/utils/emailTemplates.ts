@@ -22,7 +22,7 @@ const FI_URL_MAP: { [key: string]: string } = {
   'https://ifoo-oita.com/testsite/wp-content/uploads/2020/12/d58af49c9c6dd87c7aee1845265204b6.pdf':
     'https://drive.google.com/file/d/19HxXMAvuHZWKIYNOTHIb8nH15D9J3sjJ/view?usp=sharing',
   // スプレッドシートテンプレートで使用される既存のGoogle Drive URL（大分用）
-  'https://drive.google.com/file/d/1Ir2vafll3OQ3ALYR6BJI09xLkXLfqgP/view?usp=sharing':
+  'https://drive.google.com/file/d/1Ir2vafll3OQ3ALYR6BJI09xLkXLfJqgP/view?usp=sharing':
     'https://drive.google.com/file/d/19HxXMAvuHZWKIYNOTHIb8nH15D9J3sjJ/view?usp=sharing',
 };
 
