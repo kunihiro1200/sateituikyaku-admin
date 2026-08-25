@@ -104,9 +104,9 @@ const hasAnyMatchCriteria = (row: MatchIntentFields): boolean => {
 /**
  * 追客中売主 と 買主の希望条件 のマッチング判定（売主視点サイドバー用）。
  */
-async function matchesSellerToBuyer(seller: MatchIntentFields, buyer: BuyerDesiredConditions): Promise<boolean> {
+function matchesSellerToBuyer(seller: MatchIntentFields, buyer: BuyerDesiredConditions): boolean {
   const sellerAreas = Array.isArray(seller.match_areas) ? seller.match_areas : [];
-  const areaResult = await areasOverlap(sellerAreas, seller.match_area_free_text, buyer.desiredAreas, buyer.desiredAreaFreeText, seller.property_address, buyer.inquiredPropertyAddress);
+  const areaResult = areasOverlap(sellerAreas, seller.match_area_free_text, buyer.desiredAreas, buyer.desiredAreaFreeText, seller.property_address, buyer.inquiredPropertyAddress);
   if (!areaResult.matched) return false;
 
   const typeResult = propertyTypesOverlap(parsePropertyTypeCategories(seller.property_type), buyer.propertyTypeCategories);
@@ -201,7 +201,7 @@ export class MatchingSidebarService {
       let topUrgencyScore = 0;
       for (const buyer of buyers) {
         if (buyer.desiredAreas.length === 0 && !buyer.desiredAreaFreeText && !buyer.inquiredPropertyAddress) continue;
-        if (!(await matchesSellerToBuyer(seller, buyer))) continue;
+        if (!matchesSellerToBuyer(seller, buyer)) continue;
         // このペアが連絡済み/連絡不要になっている場合はカウントしない
         if (resolvedPairs.has(`${seller.id}:${buyer.buyer_number}`)) continue;
         // 買主の希望時期が陳腐化（基準期間の2倍経過）している場合はカウントしない
@@ -254,7 +254,7 @@ export class MatchingSidebarService {
       let topUrgencyScore = 0;
       for (const seller of listedSellers) {
         if (!hasAnyMatchCriteria(seller)) continue;
-        if (!(await matchesSellerToBuyer(seller, buyer))) continue;
+        if (!matchesSellerToBuyer(seller, buyer)) continue;
         // このペアが連絡済み/連絡不要になっている場合はカウントしない
         if (resolvedPairs.has(`${seller.id}:${buyer.buyer_number}`)) continue;
         // 売主の時期が陳腐化（基準期間の2倍経過）している場合はカウントしない
