@@ -39,12 +39,13 @@ export default function BuyerMatchingSelector({
       await onMatchingStatusChange(true);
       
       // マッチング結果を取得
-      const response = await fetch(`/api/buyers/${buyerNumber}/matching-sellers`);
+      const response = await fetch(`/api/buyers/${buyerNumber}/match-candidates`);
       const data = await response.json();
       
-      if (data.total === 1 && data.sellers && data.sellers.length === 1) {
+      if (data.sellers && data.sellers.length === 1) {
         // マッチした売主が1件だけの場合は通話モードを直接開く
-        const sellerId = data.sellers[0].id || data.sellers[0].seller_id;
+        const seller = data.sellers[0];
+        const sellerId = seller.id || seller.seller_id;
         window.open(`/sellers/${sellerId}/call`, '_blank');
       } else {
         // 複数件または0件の場合は売主マッチング画面に遷移
