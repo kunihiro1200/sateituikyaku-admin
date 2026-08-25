@@ -1802,6 +1802,22 @@ const CallModePage = () => {
       try {
         const response = await api.get('/api/email-templates/seller');
         setSellerEmailTemplates(response.data);
+        // 📝 デバッグ: 査定額案内メールテンプレートのURL内容を確認
+        const valuationTemplates = response.data.filter((t: any) => 
+          t.name.includes('査定額案内') || t.id.includes('valuation')
+        );
+        valuationTemplates.forEach((t: any) => {
+          console.log(`[テンプレート読み込み] "${t.name}" (ID: ${t.id})`);
+          if (t.body.includes('drive.google.com')) {
+            const match = t.body.match(/https:\/\/drive\.google\.com\/file\/d\/([^\/\s]+)/);
+            if (match) {
+              console.log(`  ✅ Google DriveURL検出: ファイルID = ${match[1]}`);
+            }
+          }
+          if (t.body.includes('ifoo-oita.com')) {
+            console.log(`  ✅ ifoo-oita.com URL検出`);
+          }
+        });
       } catch (err) {
         console.error('売主テンプレート取得失敗:', err);
       } finally {
