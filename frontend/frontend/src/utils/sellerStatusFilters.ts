@@ -44,7 +44,7 @@ import { isVisitDayBefore as isVisitDayBeforeUtil, parseDate } from './sellerSta
 // general: 一般カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が一般媒介 + 契約年月 >= 2025/6/23）
 // visitOtherDecision: 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり）
 // unvisitedOtherDecision: 未訪問他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担なし）
-export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'pinrichChangeRequired' | 'exclusive' | 'general' | 'visitOtherDecision' | 'unvisitedOtherDecision'
+export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'pinrichChangeRequired' | 'exclusive' | 'general' | 'visitOtherDecision' | 'unvisitedOtherDecision' | 'matching'
   | `visitAssigned:${string}`        // 担当カテゴリー（例: visitAssigned:Y）
   | `todayCallAssigned:${string}`    // 当日TELサブカテゴリー（例: todayCallAssigned:Y）
   | `todayCallWithInfo:${string}`    // 当日TEL（内容）ラベル別カテゴリー（例: todayCallWithInfo:当日TEL(I・Eメール)）
@@ -1288,4 +1288,18 @@ export const filterSellersByCategory = (
     default:
       return sellers;
   }
+};
+
+/**
+ * マッチングカテゴリー判定
+ * 
+ * 条件:
+ * - match_updated_at が NULL でない（マッチングボタンが ON）
+ * 
+ * @param seller 売主データ
+ * @returns マッチングカテゴリー対象かどうか
+ */
+export const isMatching = (seller: Seller | any): boolean => {
+  const matchUpdatedAt = seller.matchUpdatedAt || seller.match_updated_at;
+  return !!matchUpdatedAt;
 };
