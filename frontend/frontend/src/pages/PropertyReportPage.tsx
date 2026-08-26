@@ -724,6 +724,38 @@ export default function PropertyReportPage() {
               >
                 Gmail送信
               </Button>
+              {/* atbbボタン */}
+              <Button
+                variant="outlined"
+                size="small"
+                href="https://atbb.athome.jp/"
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{
+                  borderColor: '#757575',
+                  color: '#757575',
+                  whiteSpace: 'nowrap',
+                  '&:hover': { borderColor: '#424242', backgroundColor: '#75757508' },
+                }}
+              >
+                atbb
+              </Button>
+              {/* SUUMOボタン */}
+              <Button
+                variant="outlined"
+                size="small"
+                href="https://manager.suumo.jp/chukai/tn00Xx0302.do"
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{
+                  borderColor: '#757575',
+                  color: '#757575',
+                  whiteSpace: 'nowrap',
+                  '&:hover': { borderColor: '#424242', backgroundColor: '#75757508' },
+                }}
+              >
+                SUUMO
+              </Button>
               {/* 坪単価計算ボタン */}
               <Button
                 variant="outlined"
