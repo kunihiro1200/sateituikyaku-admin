@@ -2501,6 +2501,7 @@ export class SellerService extends BaseRepository {
         matchTiming: seller.match_timing,
         matchPriceMin: seller.match_price_min,
         matchPriceMax: seller.match_price_max,
+        matchPropertyTypes: seller.match_property_types,
         matchMemo: seller.match_memo,
         matchContactStatus: seller.match_contact_status,
         matchUpdatedAt: seller.match_updated_at,
@@ -2510,6 +2511,7 @@ export class SellerService extends BaseRepository {
         buyMatchTiming: seller.buy_match_timing,
         buyMatchPriceMin: seller.buy_match_price_min,
         buyMatchPriceMax: seller.buy_match_price_max,
+        buyMatchPropertyTypes: seller.buy_match_property_types,
         buyMatchMemo: seller.buy_match_memo,
         buyMatchUpdatedAt: seller.buy_match_updated_at,
         // Property fields (物件関連フィールド)

@@ -155,10 +155,21 @@ export interface Seller {
   matchTiming?: string;
   matchPriceMin?: number;
   matchPriceMax?: number;
+  matchPropertyTypes?: string[]; // 物件種別配列
   matchMemo?: string;
   matchContactStatus?: string;
   matchUpdatedAt?: string;
   match_updated_at?: string; // snake_case版（DB互換用）
+  
+  // マッチング機能（購入側・買いたい意図）
+  buyMatchAreas?: string[];
+  buyMatchAreaFreeText?: string;
+  buyMatchTiming?: string;
+  buyMatchPriceMin?: number;
+  buyMatchPriceMax?: number;
+  buyMatchPropertyTypes?: string[]; // 物件種別配列
+  buyMatchMemo?: string;
+  buyMatchUpdatedAt?: string;
   
   // 重複管理
   pastOwnerInfo?: string;

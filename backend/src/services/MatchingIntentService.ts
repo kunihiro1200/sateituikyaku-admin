@@ -707,11 +707,12 @@ export class MatchingIntentService {
 
     const sellerPropertyTypeCategories = parsePropertyTypeCategories(seller.property_type);
     const buyers = await this.fetchAllBuyersWithDesiredConditions();
+    const buyerSellers = await this.fetchAllSellersWithBuyIntent();
 
     const candidates: MatchCandidate[] = [];
     const debugFiltered: any[] = [];
     
-    console.log(`[MatchingIntent] 売主${seller.seller_number} 買主候補数: ${buyers.length}`);
+    console.log(`[MatchingIntent] 売主${seller.seller_number} 買主候補数: ${buyers.length}, 買いたい売主候補数: ${buyerSellers.length}`);
     for (const buyer of buyers) {
       console.log(`[MatchingIntent] 買主${buyer.buyer_number} チェック開始`);
       
@@ -818,6 +819,52 @@ export class MatchingIntentService {
       candidates,
       debug,
     };
+  }
+
+  /**
+   * 「買いたい」条件（buy_match_areas / buy_match_property_types等）が入力済みの売主を全件取得し、
+   * 売主とのマッチング判定用の中間形式に変換する。
+   * 売主が「この物件と買主をマッチング」を押した際に、買主候補として表示するために使用。
+   */
+  private async fetchAllSellersWithBuyIntent(): Promise<Array<{
+    seller_id: string; seller_number: string; name: string | null; desiredAreas: string[]; desiredAreaFreeText: string | null;
+    priceRanges: Array<{ min: number; max: number }>; desiredTiming: string | null; matchUpdatedAt: string | null;
+    propertyTypeCategories: string[];
+  }>> {
+    const results: any[] = [];
+    const PAGE_SIZE = 1000;
+    let page = 0;
+    while (true) {
+      const { data, error } = await this.supabase
+        .from('sellers')
+        .select('id, seller_number, name, buy_match_areas, buy_match_area_free_text, buy_match_timing, buy_match_property_types, buy_match_price_min, buy_match_price_max, buy_match_updated_at')
+        .is('deleted_at', null)
+        .not('buy_match_updated_at', 'is', null)
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+      if (error) throw new Error(`売主（買いたい）取得に失敗しました: ${error.message}`);
+      if (!data || data.length === 0) break;
+      results.push(...data);
+      if (data.length < PAGE_SIZE) break;
+      page++;
+    }
+
+    return results
+      .map(s => ({
+        seller_id: s.id,
+        seller_number: s.seller_number,
+        name: s.name,
+        desiredAreas: Array.isArray(s.buy_match_areas) ? s.buy_match_areas : [],
+        desiredAreaFreeText: s.buy_match_area_free_text || null,
+        priceRanges: (s.buy_match_price_min != null || s.buy_match_price_max != null)
+          ? [{ min: s.buy_match_price_min ?? 0, max: s.buy_match_price_max ?? Number.MAX_SAFE_INTEGER }]
+          : [],
+        desiredTiming: s.buy_match_timing || null,
+        matchUpdatedAt: s.buy_match_updated_at || null,
+        propertyTypeCategories: Array.isArray(s.buy_match_property_types) ? s.buy_match_property_types : [],
+      }))
+      // エリアまたは種別のいずれかが入力されていれば候補とする
+      .filter(s => s.desiredAreas.length > 0 || !!s.desiredAreaFreeText);
   }
 
   /**
@@ -1087,14 +1134,28 @@ export class MatchingIntentService {
       if (sellerAreas.length === 0 && !seller.match_area_free_text) continue;
 
       // 種別: match_property_typesを優先、なければproperty_typeから抽出
-      const sellerPropertyTypes: string[] = Array.isArray(seller.match_property_types) && seller.match_property_types.length > 0
+      let sellerPropertyTypes: string[] = Array.isArray(seller.match_property_types) && seller.match_property_types.length > 0
         ? seller.match_property_types
         : [];
+      
+      // match_property_typesが空で、property_typeがある場合はそれを使用
+      if (sellerPropertyTypes.length === 0 && seller.property_type) {
+        const typeMap: Record<string, string> = {
+          'マ': 'マンション',
+          '戸': '戸建て',
+          '土': '土地',
+          '他': 'その他'
+        };
+        const mappedType = typeMap[seller.property_type];
+        if (mappedType) {
+          sellerPropertyTypes = [mappedType];
+        }
+      }
 
       // 注意: buyerSeller.property_address（現在売却中の物件＝今住んでいる場所）は
       // 「次に買いたいエリア」とは意味が異なるため addressesA には渡さない（null）。
       // seller.property_address（相手＝売りたい側の実際の物件住所）は判定材料として使う。
-      const areaResult = await areasOverlap(buyerAreas, buyerSeller.buy_match_area_free_text, sellerAreas, seller.match_area_free_text, null, seller.property_address);
+      const areaResult = areasOverlap(buyerAreas, buyerSeller.buy_match_area_free_text, sellerAreas, seller.match_area_free_text, null, seller.property_address);
       if (!areaResult.matched) continue;
 
       // 種別判定
