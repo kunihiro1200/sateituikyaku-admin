@@ -152,7 +152,11 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
     case 'pinrichEmpty':
       return sellers.filter(isPinrichEmpty);
     case 'matching':
-      return sellers.filter(s => s.matchUpdatedAt !== null && s.matchUpdatedAt !== undefined);
+      return sellers.filter(s => 
+        (s.matchUpdatedAt !== null && s.matchUpdatedAt !== undefined) || 
+        (s.buyMatchUpdatedAt !== null && s.buyMatchUpdatedAt !== undefined) ||
+        (s.buy_match_updated_at !== null && s.buy_match_updated_at !== undefined)
+      );
     case 'todayCallAssigned':
       return sellers.filter(isTodayCallAssigned);
     case 'visitDayBefore':
