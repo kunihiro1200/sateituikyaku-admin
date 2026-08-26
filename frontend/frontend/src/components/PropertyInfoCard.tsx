@@ -603,6 +603,47 @@ export default function PropertyInfoCard({
               </Box>
             )}
 
+            {/* atbb・SUUMOボタン */}
+            <Box sx={{ flex: '0 0 auto' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ visibility: 'hidden' }}>
+                リンク
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  href="https://atbb.athome.jp/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    minWidth: 'auto',
+                    px: 1.5,
+                    py: 0.5,
+                    fontSize: '0.75rem',
+                    textTransform: 'none'
+                  }}
+                >
+                  atbb
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  href="https://manager.suumo.jp/chukai/tn00Xx0302.do"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    minWidth: 'auto',
+                    px: 1.5,
+                    py: 0.5,
+                    fontSize: '0.75rem',
+                    textTransform: 'none'
+                  }}
+                >
+                  SUUMO
+                </Button>
+              </Box>
+            </Box>
+
             {/* 配信日 */}
             {property.distribution_date && (
               <Box sx={{ flex: '0 0 auto' }}>
