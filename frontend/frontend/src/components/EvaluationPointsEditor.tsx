@@ -548,8 +548,52 @@ export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
     }
   };
 
-  /** 印刷用ウィンドウを開く */
-  const handlePrint = () => {
+  /** 印刷用ウィンドウを開く（印刷前に自動保存） */
+  const handlePrint = async () => {
+    // データが変更されている場合は保存する
+    if (isDirty) {
+      try {
+        setSaving(true);
+        setError(null);
+
+        // 固定10 + 追加分に分ける
+        const saveData: SaveData = {
+          point_1: points[0] || null,
+          point_2: points[1] || null,
+          point_3: points[2] || null,
+          point_4: points[3] || null,
+          point_5: points[4] || null,
+          point_6: points[5] || null,
+          point_7: points[6] || null,
+          point_8: points[7] || null,
+          point_9: points[8] || null,
+          point_10: points[9] || null,
+          caution_1: cautions[0] || null,
+          caution_2: cautions[1] || null,
+          caution_3: cautions[2] || null,
+          caution_4: cautions[3] || null,
+          extra_points: points.slice(10).filter(p => p.trim() !== ''),
+          extra_cautions: cautions.slice(4).filter(c => c.trim() !== ''),
+        };
+
+        await api.put(`/api/sellers/${sellerId}/evaluation-points`, {
+          ...saveData,
+          updated_by: user?.name || user?.email || null,
+        });
+        setSuccess(true);
+        setIsDirty(false);
+        setTimeout(() => setSuccess(false), 3000);
+      } catch (err: any) {
+        console.error('Failed to save evaluation points:', err);
+        setError('保存に失敗しました');
+        setSaving(false);
+        return; // 保存失敗時は印刷しない
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    // 印刷処理
     const allPoints = points.filter(p => p.trim() !== '');
     const allCautions = cautions.filter(c => c.trim() !== '');
     const isFukuoka = sellerNumber?.startsWith('FI');
@@ -673,8 +717,13 @@ export const EvaluationPointsEditor: React.FC<EvaluationPointsEditorProps> = ({
       {/* 保存・印刷ボタン */}
       {!readOnly && (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
-            印刷
+          <Button 
+            variant="outlined" 
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <PrintIcon />} 
+            onClick={handlePrint}
+            disabled={saving}
+          >
+            {saving ? '保存中...' : '印刷'}
           </Button>
           <Button
             variant="contained"
