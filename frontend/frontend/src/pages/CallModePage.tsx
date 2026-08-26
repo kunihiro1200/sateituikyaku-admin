@@ -9925,9 +9925,40 @@ HP：https://ifoo-oita.com/
                       const { data: updatedSeller } = await api.get(`/api/sellers/${seller.id}`);
                       setSeller(updatedSeller);
                     } else {
-                      // アクティブ化
+                      // アクティブ化：物件情報から自動的にエリアと種別を設定
+                      
+                      // 1. エリアを自動計算
+                      let matchAreas: string[] = [];
+                      try {
+                        const areaRes = await api.post(`/api/sellers/${seller.id}/calculate-distribution-areas`);
+                        if (areaRes.data.success && areaRes.data.areas) {
+                          matchAreas = areaRes.data.areas;
+                        }
+                      } catch (err) {
+                        console.error('エリア自動計算エラー:', err);
+                      }
+                      
+                      // 2. 種別を物件種別から設定
+                      let matchPropertyTypes: string[] = [];
+                      if (seller.propertyType) {
+                        const typeMap: Record<string, string> = {
+                          'マンション': 'マンション',
+                          'マ': 'マンション',
+                          '戸建て': '戸建て',
+                          '戸': '戸建て',
+                          '土地': '土地',
+                          '土': '土地',
+                        };
+                        const mappedType = typeMap[seller.propertyType];
+                        if (mappedType) {
+                          matchPropertyTypes = [mappedType];
+                        }
+                      }
+                      
                       await api.put(`/api/sellers/${seller.id}/match-intent`, {
                         matchIntentType: 'sell',
+                        matchAreas,
+                        matchPropertyTypes,
                       });
                       const { data: updatedSeller } = await api.get(`/api/sellers/${seller.id}`);
                       setSeller(updatedSeller);
