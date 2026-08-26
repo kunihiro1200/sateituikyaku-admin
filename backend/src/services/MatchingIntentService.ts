@@ -237,19 +237,35 @@ export function areasOverlap(
   const listA = (Array.isArray(addressesA) ? addressesA : [addressesA]).filter((a): a is string => !!a);
   const listB = (Array.isArray(addressesB) ? addressesB : [addressesB]).filter((b): b is string => !!b);
 
-  if (normA) {
+  // 自由入力をカンマ・改行・スペースで分割して個別にチェック
+  const splitFreeText = (text: string | null): string[] => {
+    if (!text) return [];
+    return text.split(/[,、\n\s]+/).map(s => s.trim()).filter(Boolean);
+  };
+
+  const freeTextAParts = splitFreeText(freeTextA);
+  const freeTextBParts = splitFreeText(freeTextB);
+
+  // A側の自由入力の各部分 vs B側の物件住所
+  for (const part of freeTextAParts) {
+    const normPart = normalizeAreaFreeText(part);
+    if (!normPart || normPart.length < 2) continue;
     for (const addr of listB) {
       const normAddr = normalizeAreaFreeText(addr);
-      if (normAddr && normAddr.includes(normA)) {
-        return { matched: true, reason: `エリア一致（自由入力⇔物件住所）: 「${freeTextA}」⇔「${addr}」` };
+      if (normAddr && normAddr.includes(normPart)) {
+        return { matched: true, reason: `エリア一致（自由入力⇔物件住所）: 「${part}」⇔「${addr}」` };
       }
     }
   }
-  if (normB) {
+  
+  // B側の自由入力の各部分 vs A側の物件住所
+  for (const part of freeTextBParts) {
+    const normPart = normalizeAreaFreeText(part);
+    if (!normPart || normPart.length < 2) continue;
     for (const addr of listA) {
       const normAddr = normalizeAreaFreeText(addr);
-      if (normAddr && normAddr.includes(normB)) {
-        return { matched: true, reason: `エリア一致（自由入力⇔物件住所）: 「${freeTextB}」⇔「${addr}」` };
+      if (normAddr && normAddr.includes(normPart)) {
+        return { matched: true, reason: `エリア一致（自由入力⇔物件住所）: 「${part}」⇔「${addr}」` };
       }
     }
   }
