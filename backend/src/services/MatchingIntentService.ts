@@ -1116,7 +1116,8 @@ export class MatchingIntentService {
     // それは「現在売却中の物件の住所（＝今住んでいる場所）」であり、
     // 「次に買いたいエリア」とは意味が異なるため、購入希望エリアの構造化入力
     // （buy_match_areas / buy_match_area_free_text）のみを条件とする。
-    const hasAnyCriteria = buyerAreas.length > 0 || !!buyerSeller.buy_match_area_free_text;
+    // ただし、エリアまたは種別のいずれかが入力されていれば検索可能とする。
+    const hasAnyCriteria = buyerAreas.length > 0 || !!buyerSeller.buy_match_area_free_text || buyerPropertyTypes.length > 0;
     if (!hasAnyCriteria) {
       return {
         source: { id: buyerSeller.id, number: buyerSeller.seller_number, name: null },
@@ -1131,8 +1132,7 @@ export class MatchingIntentService {
       if (seller.id === buyerSeller.id) continue; // 自分自身は除外
 
       const sellerAreas: string[] = Array.isArray(seller.match_areas) ? seller.match_areas : [];
-      if (sellerAreas.length === 0 && !seller.match_area_free_text) continue;
-
+      
       // 種別: match_property_typesを優先、なければproperty_typeから抽出
       let sellerPropertyTypes: string[] = Array.isArray(seller.match_property_types) && seller.match_property_types.length > 0
         ? seller.match_property_types
@@ -1151,15 +1151,25 @@ export class MatchingIntentService {
           sellerPropertyTypes = [mappedType];
         }
       }
+      
+      // エリアまたは種別のいずれかが入力されている必要がある
+      if (sellerAreas.length === 0 && !seller.match_area_free_text && sellerPropertyTypes.length === 0 && !seller.property_address) continue;
 
       // 注意: buyerSeller.property_address（現在売却中の物件＝今住んでいる場所）は
       // 「次に買いたいエリア」とは意味が異なるため addressesA には渡さない（null）。
       // seller.property_address（相手＝売りたい側の実際の物件住所）は判定材料として使う。
-      const areaResult = areasOverlap(buyerAreas, buyerSeller.buy_match_area_free_text, sellerAreas, seller.match_area_free_text, null, seller.property_address);
+      // エリア条件がある場合のみチェック（どちらかが空の場合は制約しない）
+      const hasAreaCriteria = buyerAreas.length > 0 || !!buyerSeller.buy_match_area_free_text;
+      const areaResult = hasAreaCriteria
+        ? areasOverlap(buyerAreas, buyerSeller.buy_match_area_free_text, sellerAreas, seller.match_area_free_text, null, seller.property_address)
+        : { matched: true, reason: null };
       if (!areaResult.matched) continue;
 
-      // 種別判定
-      const typeResult = propertyTypesOverlap(buyerPropertyTypes, sellerPropertyTypes);
+      // 種別判定（種別条件がある場合のみチェック）
+      const hasTypeCriteria = buyerPropertyTypes.length > 0;
+      const typeResult = hasTypeCriteria
+        ? propertyTypesOverlap(buyerPropertyTypes, sellerPropertyTypes)
+        : { matched: true, reason: null };
       if (!typeResult.matched) continue;
 
       const priceResult = priceRangesOverlap(buyerSeller.buy_match_price_min, buyerSeller.buy_match_price_max, seller.match_price_min, seller.match_price_max);
