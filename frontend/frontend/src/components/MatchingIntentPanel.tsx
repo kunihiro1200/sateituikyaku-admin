@@ -470,7 +470,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
                       variant="body2"
                       fontWeight="bold"
                       component="a"
-                      href={c.type === 'seller' ? `/sellers/${c.id}` : `/buyers/${c.id}`}
+                      href={c.type === 'seller' ? `/sellers/${c.id}/call` : `/buyers/${c.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       sx={{ color: 'primary.main', textDecoration: 'underline', cursor: 'pointer' }}
