@@ -695,9 +695,8 @@ export class MatchingIntentService {
     const sellerPropertyTypes: string[] = Array.isArray(seller.match_property_types) && seller.match_property_types.length > 0
       ? seller.match_property_types
       : [];
-    // エリアの構造化入力（既存コード・自由入力）が両方未入力でも、物件住所があれば
-    // それを判定材料として使えるため、物件住所も有効な条件として扱う。
-    const hasAnyCriteria = sellerAreas.length > 0 || !!seller.match_area_free_text || !!seller.property_address;
+    // エリア（構造化入力・自由入力・物件住所）または種別のいずれかがあれば検索可能
+    const hasAnyCriteria = sellerAreas.length > 0 || !!seller.match_area_free_text || !!seller.property_address || sellerPropertyTypes.length > 0 || !!seller.property_type;
     if (!hasAnyCriteria) {
       return {
         source: { id: seller.id, number: seller.seller_number, name: null },
@@ -706,118 +705,99 @@ export class MatchingIntentService {
     }
 
     const sellerPropertyTypeCategories = parsePropertyTypeCategories(seller.property_type);
-    const buyers = await this.fetchAllBuyersWithDesiredConditions();
+    
+    // 「買いたい」意図を持つ売主のみを候補とする（買主テーブルは使用しない）
     const buyerSellers = await this.fetchAllSellersWithBuyIntent();
 
     const candidates: MatchCandidate[] = [];
     const debugFiltered: any[] = [];
     
-    console.log(`[MatchingIntent] 売主${seller.seller_number} 買主候補数: ${buyers.length}, 買いたい売主候補数: ${buyerSellers.length}`);
-    for (const buyer of buyers) {
-      console.log(`[MatchingIntent] 買主${buyer.buyer_number} チェック開始`);
+    console.log(`[MatchingIntent] 売主${seller.seller_number} 買いたい売主候補数: ${buyerSellers.length}`);
+    
+    // 買いたい売主をループ
+    for (const buyerSeller of buyerSellers) {
+      // 自分自身は除外
+      if (buyerSeller.seller_id === seller.id) continue;
       
-      if (buyer.desiredAreas.length === 0 && !buyer.desiredAreaFreeText && !buyer.inquiredPropertyAddress) {
-        console.log(`[MatchingIntent] 買主${buyer.buyer_number} 除外: エリア条件なし`);
-        debugFiltered.push({ buyer: buyer.buyer_number, reason: 'エリア条件なし' });
-        continue;
-      }
-
-      const areaResult = areasOverlap(sellerAreas, seller.match_area_free_text, buyer.desiredAreas, buyer.desiredAreaFreeText, seller.property_address, buyer.inquiredPropertyAddress);
+      console.log(`[MatchingIntent] 買いたい売主${buyerSeller.seller_number} チェック開始`);
+      
+      // エリア条件がある場合のみチェック
+      const hasBuyerAreaCriteria = buyerSeller.desiredAreas.length > 0 || !!buyerSeller.desiredAreaFreeText;
+      const areaResult = hasBuyerAreaCriteria
+        ? areasOverlap(sellerAreas, seller.match_area_free_text, buyerSeller.desiredAreas, buyerSeller.desiredAreaFreeText, seller.property_address, null)
+        : { matched: true, reason: null };
       if (!areaResult.matched) {
-        console.log(`[MatchingIntent] 買主${buyer.buyer_number} 除外: エリア不一致`, { sellerAreas, buyerAreas: buyer.desiredAreas, sellerAddress: seller.property_address, buyerAddress: buyer.inquiredPropertyAddress });
-        debugFiltered.push({ 
-          buyer: buyer.buyer_number, 
-          reason: 'エリア不一致',
-          details: {
-            sellerAreas,
-            sellerAddress: seller.property_address,
-            buyerAreas: buyer.desiredAreas,
-            buyerAddress: buyer.inquiredPropertyAddress
-          }
-        });
+        console.log(`[MatchingIntent] 買いたい売主${buyerSeller.seller_number} 除外: エリア不一致`);
+        debugFiltered.push({ seller: buyerSeller.seller_number, reason: 'エリア不一致' });
         continue;
       }
 
-      const typeResult = propertyTypesOverlap(sellerPropertyTypes, buyer.propertyTypeCategories);
+      // 種別チェック
+      const typeResult = propertyTypesOverlap(sellerPropertyTypes, buyerSeller.propertyTypeCategories);
       if (!typeResult.matched) {
-        console.log(`[MatchingIntent] 買主${buyer.buyer_number} 除外: 種別不一致`, { sellerType: sellerPropertyTypes, buyerType: Array.from(buyer.propertyTypeCategories) });
-        debugFiltered.push({ 
-          buyer: buyer.buyer_number, 
-          reason: '種別不一致',
-          details: {
-            sellerType: sellerPropertyTypes,
-            buyerType: Array.from(buyer.propertyTypeCategories)
-          }
-        });
+        console.log(`[MatchingIntent] 買いたい売主${buyerSeller.seller_number} 除外: 種別不一致`);
+        debugFiltered.push({ seller: buyerSeller.seller_number, reason: '種別不一致' });
         continue;
       }
 
-      const priceResult = buyer.priceRanges.length === 0
+      // 価格チェック
+      const priceResult = buyerSeller.priceRanges.length === 0
         ? { matched: true, reason: null as string | null }
-        : priceRangesOverlapAny(buyer.priceRanges, seller.match_price_min, seller.match_price_max);
+        : priceRangesOverlapAny(buyerSeller.priceRanges, seller.match_price_min, seller.match_price_max);
       if (!priceResult.matched) {
-        console.log(`[MatchingIntent] 買主${buyer.buyer_number} 除外: 価格不一致`, { buyerRanges: buyer.priceRanges, sellerMin: seller.match_price_min, sellerMax: seller.match_price_max });
-        debugFiltered.push({ 
-          buyer: buyer.buyer_number, 
-          reason: '価格不一致',
-          details: {
-            buyerRanges: buyer.priceRanges,
-            sellerMin: seller.match_price_min,
-            sellerMax: seller.match_price_max
-          }
-        });
+        console.log(`[MatchingIntent] 買いたい売主${buyerSeller.seller_number} 除外: 価格不一致`);
+        debugFiltered.push({ seller: buyerSeller.seller_number, reason: '価格不一致' });
         continue;
       }
       
-      console.log(`[MatchingIntent] 買主${buyer.buyer_number} マッチ成功！`);
+      console.log(`[MatchingIntent] 買いたい売主${buyerSeller.seller_number} マッチ成功！`);
 
-      // 買主の希望時期の陳腐化判定（受付日を基準日として使用）
-      const freshnessResult = getTimingFreshness(buyer.desiredTiming, buyer.receptionDate);
+      // 時期の陳腐化判定
+      const freshnessResult = getTimingFreshness(buyerSeller.desiredTiming, buyerSeller.matchUpdatedAt);
       if (freshnessResult.freshness === 'expired') continue;
 
-      const timingResult = timingIsCompatible(seller.match_timing, buyer.desiredTiming);
+      const timingResult = timingIsCompatible(seller.match_timing, buyerSeller.desiredTiming);
       const reasons = [areaResult.reason, typeResult.reason, priceResult.reason, timingResult.reason].filter((r): r is string => !!r);
-      if (freshnessResult.freshness === 'warning' && buyer.desiredTiming) {
-        reasons.push(timingFreshnessWarningReason(buyer.desiredTiming, freshnessResult.monthsElapsed));
+      if (freshnessResult.freshness === 'warning' && buyerSeller.desiredTiming) {
+        reasons.push(timingFreshnessWarningReason(buyerSeller.desiredTiming, freshnessResult.monthsElapsed));
       }
 
       candidates.push({
-        type: 'buyer',
-        id: buyer.buyer_number,
-        number: buyer.buyer_number,
-        name: buyer.name,
-        matchAreas: buyer.desiredAreas,
-        matchAreaFreeText: buyer.desiredAreaFreeText,
-        matchTiming: buyer.desiredTiming,
-        matchPriceMin: buyer.priceRanges[0]?.min ?? null,
-        matchPriceMax: buyer.priceRanges[0]?.max ?? null,
-        matchPropertyTypes: Array.from(buyer.propertyTypeCategories),
+        type: 'seller',
+        id: buyerSeller.seller_id,
+        number: buyerSeller.seller_number,
+        name: buyerSeller.name,
+        matchAreas: buyerSeller.desiredAreas,
+        matchAreaFreeText: buyerSeller.desiredAreaFreeText,
+        matchTiming: buyerSeller.desiredTiming,
+        matchPriceMin: buyerSeller.priceRanges[0]?.min ?? null,
+        matchPriceMax: buyerSeller.priceRanges[0]?.max ?? null,
+        matchPropertyTypes: buyerSeller.propertyTypeCategories,
         matchMemo: null,
-        matchUpdatedAt: null,
+        matchUpdatedAt: buyerSeller.matchUpdatedAt,
         matchReasons: reasons,
-        urgencyScore: timingUrgencyScore(buyer.desiredTiming),
+        urgencyScore: timingUrgencyScore(buyerSeller.desiredTiming),
         contactStatus: '連絡未',
         timingFreshness: freshnessResult.freshness,
       });
     }
 
-    // 売主×買主ペア単位の連絡状況を一括取得して各候補に反映する
-    const contactStatusMap = await this.getPairContactStatuses(seller.id, candidates.map(c => c.number!));
+    // 売主×売主ペア単位の連絡状況を一括取得
+    const contactStatusMap = await this.getSellerSellerPairContactStatuses(seller.id, candidates.map(c => c.id));
     for (const c of candidates) {
-      c.contactStatus = contactStatusMap.get(c.number!) ?? '連絡未';
+      c.contactStatus = contactStatusMap.get(c.id) ?? '連絡未';
     }
 
     candidates.sort((a, b) => b.urgencyScore - a.urgencyScore);
 
-    debug.buyersCount = buyers.length;
-    debug.candidatesCount = candidates.length;
-    debug.filtered = debugFiltered;
-    debug.buyerNumbers = buyers.map(b => b.buyer_number);
-
     return {
       source: { id: seller.id, number: seller.seller_number, name: null },
       candidates,
-      debug,
+      debug: {
+        buyerSellersCount: buyerSellers.length,
+        candidatesCount: candidates.length,
+        filtered: debugFiltered,
+      },
     };
   }
 
