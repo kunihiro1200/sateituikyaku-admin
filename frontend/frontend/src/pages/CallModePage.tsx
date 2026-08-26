@@ -11124,6 +11124,7 @@ HP：https://ifoo-oita.com/
                     matchPriceMin: (seller as any).buyMatchPriceMin,
                     matchPriceMax: (seller as any).buyMatchPriceMax,
                     matchMemo: (seller as any).buyMatchMemo,
+                    matchPropertyTypes: (seller as any).buyMatchPropertyTypes,
                   }}
                 />
               </CollapsibleSection>

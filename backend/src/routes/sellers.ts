@@ -3258,7 +3258,7 @@ router.get(
 router.put('/:id/match-intent', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { matchIntentType, matchAreas, matchAreaFreeText, matchTiming, matchPriceMin, matchPriceMax, matchMemo } = req.body;
+    const { matchIntentType, matchAreas, matchAreaFreeText, matchTiming, matchPriceMin, matchPriceMax, matchMemo, matchPropertyTypes } = req.body;
 
     if (matchTiming !== undefined && matchTiming !== null && !MATCH_TIMING_OPTIONS.includes(matchTiming)) {
       return res.status(400).json({
@@ -3270,6 +3270,11 @@ router.put('/:id/match-intent', async (req: Request, res: Response) => {
         error: { code: 'INVALID_MATCH_AREAS', message: 'matchAreas は配列で指定してください', retryable: false },
       });
     }
+    if (matchPropertyTypes !== undefined && matchPropertyTypes !== null && !Array.isArray(matchPropertyTypes)) {
+      return res.status(400).json({
+        error: { code: 'INVALID_MATCH_PROPERTY_TYPES', message: 'matchPropertyTypes は配列で指定してください', retryable: false },
+      });
+    }
 
     await matchingIntentService.updateSellerIntent(id, {
       matchIntentType,
@@ -3279,6 +3284,7 @@ router.put('/:id/match-intent', async (req: Request, res: Response) => {
       matchPriceMin,
       matchPriceMax,
       matchMemo,
+      matchPropertyTypes,
     });
 
     res.json({ success: true });
@@ -3424,7 +3430,7 @@ router.post('/:id/calculate-distribution-areas', async (req: Request, res: Respo
 router.put('/:id/buy-match-intent', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { matchAreas, matchAreaFreeText, matchTiming, matchPriceMin, matchPriceMax, matchMemo } = req.body;
+    const { matchAreas, matchAreaFreeText, matchTiming, matchPriceMin, matchPriceMax, matchMemo, matchPropertyTypes } = req.body;
 
     if (matchTiming !== undefined && matchTiming !== null && !MATCH_TIMING_OPTIONS.includes(matchTiming)) {
       return res.status(400).json({
@@ -3436,6 +3442,11 @@ router.put('/:id/buy-match-intent', async (req: Request, res: Response) => {
         error: { code: 'INVALID_MATCH_AREAS', message: 'matchAreas は配列で指定してください', retryable: false },
       });
     }
+    if (matchPropertyTypes !== undefined && matchPropertyTypes !== null && !Array.isArray(matchPropertyTypes)) {
+      return res.status(400).json({
+        error: { code: 'INVALID_MATCH_PROPERTY_TYPES', message: 'matchPropertyTypes は配列で指定してください', retryable: false },
+      });
+    }
 
     await matchingIntentService.updateSellerBuyIntent(id, {
       matchAreas,
@@ -3444,6 +3455,7 @@ router.put('/:id/buy-match-intent', async (req: Request, res: Response) => {
       matchPriceMin,
       matchPriceMax,
       matchMemo,
+      matchPropertyTypes,
     });
 
     res.json({ success: true });

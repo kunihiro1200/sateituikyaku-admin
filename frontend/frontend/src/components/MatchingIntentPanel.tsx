@@ -29,6 +29,9 @@ const CONTACT_STATUS_OPTIONS = ['連絡済み', '連絡不要', '連絡未'] as 
 
 export const MATCH_TIMING_OPTIONS = ['今すぐ', '3ヶ月以内', '半年以内', '1年以内', '1年以上・様子見'] as const;
 
+// 物件種別の選択肢
+export const PROPERTY_TYPE_OPTIONS = ['マンション', '戸建て', '土地', 'その他'] as const;
+
 const TIMING_COLOR: Record<string, string> = {
   '今すぐ': '#d32f2f',
   '3ヶ月以内': '#f57c00',
@@ -46,6 +49,7 @@ interface MatchIntentData {
   matchPriceMax?: number | null;
   matchMemo?: string | null;
   matchContactStatus?: string | null;
+  matchPropertyTypes?: string[]; // 物件種別配列
 }
 
 interface MatchCandidate {
@@ -58,6 +62,7 @@ interface MatchCandidate {
   matchTiming: string | null;
   matchPriceMin: number | null;
   matchPriceMax: number | null;
+  matchPropertyTypes: string[]; // 物件種別配列
   matchMemo: string | null;
   matchUpdatedAt: string | null;
   matchReasons: string[];
@@ -103,6 +108,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
   const [priceMin, setPriceMin] = useState<string>(formatManYen(initialData?.matchPriceMin));
   const [priceMax, setPriceMax] = useState<string>(formatManYen(initialData?.matchPriceMax));
   const [memo, setMemo] = useState<string>(initialData?.matchMemo || '');
+  const [propertyTypes, setPropertyTypes] = useState<string[]>(initialData?.matchPropertyTypes || []);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -130,6 +136,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     setPriceMin(formatManYen(initialData?.matchPriceMin));
     setPriceMax(formatManYen(initialData?.matchPriceMax));
     setMemo(initialData?.matchMemo || '');
+    setPropertyTypes(initialData?.matchPropertyTypes || []);
   }, [entityId, direction]);
 
   const basePath = entityType === 'seller' ? `/api/sellers/${entityId}` : `/api/buyers/${entityId}`;
@@ -153,6 +160,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
         matchPriceMin: parseManYenToYen(priceMin),
         matchPriceMax: parseManYenToYen(priceMax),
         matchMemo: memo.trim() || null,
+        matchPropertyTypes: propertyTypes,
       });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
@@ -161,7 +169,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     } finally {
       setSaving(false);
     }
-  }, [intentPath, areas, areaFreeText, timing, priceMin, priceMax, memo]);
+  }, [intentPath, areas, areaFreeText, timing, priceMin, priceMax, memo, propertyTypes]);
 
   const handleSearch = useCallback(async () => {
     setSearching(true);
@@ -175,6 +183,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
         matchPriceMin: parseManYenToYen(priceMin),
         matchPriceMax: parseManYenToYen(priceMax),
         matchMemo: memo.trim() || null,
+        matchPropertyTypes: propertyTypes,
       });
 
       const res = await api.get(candidatesPath);
@@ -186,7 +195,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     } finally {
       setSearching(false);
     }
-  }, [intentPath, candidatesPath, areas, areaFreeText, timing, priceMin, priceMax, memo]);
+  }, [intentPath, candidatesPath, areas, areaFreeText, timing, priceMin, priceMax, memo, propertyTypes]);
 
   // 保存済みの検索結果を取得する（GETのみ・保存はしない）。
   // ページを開いた時点で、既存のマッチング条件に対する候補を自動表示するために使う。
@@ -342,6 +351,28 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
           </Select>
         </FormControl>
 
+        {/* 種別（複数選択） */}
+        <Box>
+          <Autocomplete
+            multiple
+            size="small"
+            options={[...PROPERTY_TYPE_OPTIONS]}
+            value={propertyTypes}
+            onChange={(_, newValue) => setPropertyTypes(newValue)}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip {...getTagProps({ index })} key={option} label={option} size="small" />
+              ))
+            }
+            renderInput={(params) => (
+              <TextField {...params} label="種別（複数選択可）" placeholder="種別を選択" />
+            )}
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+            複数選択した場合、いずれかの種別が一致すればマッチングします
+          </Typography>
+        </Box>
+
         {/* 金額（万円） */}
         <Box sx={{ display: 'flex', gap: 1 }}>
           <TextField
@@ -424,7 +455,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
               <TableRow>
                 <TableCell>{counterpartLabel}番号</TableCell>
                 <TableCell>時期</TableCell>
-                <TableCell>金額帯</TableCell>
+                <TableCell>種別・金額帯</TableCell>
                 <TableCell>マッチ根拠</TableCell>
                 <TableCell>連絡状況</TableCell>
               </TableRow>
@@ -467,6 +498,21 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
                     )}
                   </TableCell>
                   <TableCell>
+                    {/* 種別 */}
+                    {c.matchPropertyTypes && c.matchPropertyTypes.length > 0 && (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 0.5 }}>
+                        {c.matchPropertyTypes.map((type, idx) => (
+                          <Chip
+                            key={idx}
+                            label={type}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontSize: '0.7rem' }}
+                          />
+                        ))}
+                      </Box>
+                    )}
+                    {/* 金額帯 */}
                     {(c.matchPriceMin || c.matchPriceMax) ? (
                       <Typography variant="caption">
                         {c.matchPriceMin ? `${formatManYen(c.matchPriceMin)}万` : '下限なし'} 〜 {c.matchPriceMax ? `${formatManYen(c.matchPriceMax)}万` : '上限なし'}
