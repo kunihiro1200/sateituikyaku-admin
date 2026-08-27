@@ -242,9 +242,18 @@ export function areasOverlap(
   addressesA?: (string | null | undefined)[] | string | null,
   addressesB?: (string | null | undefined)[] | string | null
 ): { matched: boolean; reason: string | null } {
+  // デバッグログ: 入力値を確認
+  console.log('[areasOverlap] areasA:', areasA);
+  console.log('[areasOverlap] areasB:', areasB);
+  console.log('[areasOverlap] freeTextA:', freeTextA);
+  console.log('[areasOverlap] freeTextB:', freeTextB);
+  console.log('[areasOverlap] addressesA:', addressesA);
+  console.log('[areasOverlap] addressesB:', addressesB);
+  
   const setB = new Set(areasB);
   const codeOverlap = areasA.filter(a => setB.has(a));
   if (codeOverlap.length > 0) {
+    console.log('[areasOverlap] エリアコード一致でマッチング:', codeOverlap);
     return { matched: true, reason: `エリア一致: ${codeOverlap.join(', ')}` };
   }
 
