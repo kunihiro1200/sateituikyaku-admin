@@ -7078,12 +7078,22 @@ HP：https://ifoo-oita.com/
                               </IconButton>
                               <Button
                                 size="small"
-                                variant="outlined"
+                                variant="contained"
                                 onClick={() => {
                                   const searchQuery = encodeURIComponent(displayAddress);
                                   window.open(`https://atbb.athome.jp/?searchterms=${searchQuery}`, '_blank');
                                 }}
-                                sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                                sx={{ 
+                                  minWidth: 'auto', 
+                                  px: 1, 
+                                  py: 0.5, 
+                                  fontSize: '0.75rem',
+                                  bgcolor: '#d32f2f',
+                                  color: '#fff',
+                                  '&:hover': {
+                                    bgcolor: '#b71c1c'
+                                  }
+                                }}
                               >
                                 atbb
                               </Button>
