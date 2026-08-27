@@ -26,13 +26,18 @@ import { areasOverlap, priceRangesOverlapAny, timingUrgencyScore, parseDesiredPr
 import { decrypt } from '../utils/encryption';
 
 /**
- * seller_buyer_match_contacts テーブルから、指定した売主×買主ペアのうち
+ * seller_buyer_match_contacts と seller_seller_match_contacts テーブルから、
  * 「連絡未」でない（連絡済み/連絡不要になっている）ペアの組み合わせキー集合を取得する。
- * キーは `${sellerId}:${buyerNumber}` の形式。
+ * 
+ * キー形式：
+ * - 売主×買主: `${sellerId}:${buyerNumber}`
+ * - 売主×売主: `${sellerId}:seller:${buyerSellerId}`
  */
 async function fetchResolvedPairKeys(supabase: SupabaseClient): Promise<Set<string>> {
   const resolved = new Set<string>();
   const PAGE_SIZE = 1000;
+  
+  // 1. 売主×買主ペアの連絡状況
   let page = 0;
   while (true) {
     const { data, error } = await supabase
@@ -49,6 +54,32 @@ async function fetchResolvedPairKeys(supabase: SupabaseClient): Promise<Set<stri
     if (data.length < PAGE_SIZE) break;
     page++;
   }
+  
+  // 2. 売主×売主ペアの連絡状況（買い替え案件）
+  page = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from('seller_seller_match_contacts')
+      .select('seller_seller_id, buyer_seller_id, contact_status')
+      .neq('contact_status', '連絡未')
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+    if (error) {
+      // テーブルが存在しない場合はスキップ
+      console.warn('seller_seller_match_contacts テーブルが存在しないか、取得に失敗しました:', error.message);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    for (const row of data) {
+      // seller_seller_id = 売りたい売主のID
+      // buyer_seller_id = 買いたい売主のID
+      // キーは `${売りたい売主ID}:seller:${買いたい売主ID}` 形式
+      resolved.add(`${row.seller_seller_id}:seller:${row.buyer_seller_id}`);
+    }
+    if (data.length < PAGE_SIZE) break;
+    page++;
+  }
+  
   return resolved;
 }
 

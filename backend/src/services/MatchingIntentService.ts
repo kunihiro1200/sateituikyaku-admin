@@ -390,32 +390,6 @@ export function priceRangesOverlap(
 }
 
 /**
- * 物件種別がオーバーラップするか判定する。
- * どちらかが未選択の場合は、その軸に制約がないとみなして通す。
- */
-export function propertyTypesOverlap(
-  typesA: string[] | null | undefined,
-  typesB: string[] | null | undefined
-): { matched: boolean; reason: string | null } {
-  const hasA = typesA && typesA.length > 0;
-  const hasB = typesB && typesB.length > 0;
-  
-  if (!hasA || !hasB) {
-    // どちらかが種別未選択 → 種別条件では制約しない
-    return { matched: true, reason: null };
-  }
-
-  const setA = new Set(typesA);
-  const setB = new Set(typesB);
-  const overlap = [...setA].filter(t => setB.has(t));
-
-  if (overlap.length > 0) {
-    return { matched: true, reason: `種別一致: ${overlap.join(', ')}` };
-  }
-  return { matched: false, reason: null };
-}
-
-/**
  * 時期条件を満たすか判定する。
  * 現時点では「両者に何らかの時期入力があるか」を軽い参考条件として扱い、
  * 未入力の場合は制約しない（時期は緊急度のソート表示に使うのが主目的）。
@@ -678,10 +652,12 @@ export class MatchingIntentService {
   /**
    * 指定した売主に対して、マッチする買主候補を検索する。
    *
-   * 買主側は希望条件ページの既存フィールド（desired_area / price_range_house,apartment,land /
-   * desired_timing）を使う。買主専用の match_* フィールドは使わない（廃止済み）。
-   * これにより、つうわモードページのマッチング結果と、サイドバーのカウント（MatchingSidebarService）が
-   * 同じデータソースを参照し、結果が一致するようにする。
+   * 🔄 2種類のマッチング候補を返す：
+   * 1. 買主テーブル（buyers）の希望条件とのマッチング
+   * 2. 売主テーブル（sellers）の「買いたい」条件とのマッチング（買い替え案件）
+   *
+   * ⚠️ 重要：通話モードページでは連絡済みのペアも含めて**全て**表示する
+   * サイドバーでは連絡済みのペアを除外するが、ここでは除外しない。
    */
   async findBuyerCandidatesForSeller(sellerId: string): Promise<{
     source: { id: string; number: string | null; name: string | null } | null;
@@ -722,20 +698,77 @@ export class MatchingIntentService {
 
     const sellerPropertyTypeCategories = parsePropertyTypeCategories(seller.property_type);
     
-    // 「買いたい」意図を持つ売主のみを候補とする（買主テーブルは使用しない）
-    const buyerSellers = await this.fetchAllSellersWithBuyIntent();
-
     const candidates: MatchCandidate[] = [];
     const debugFiltered: any[] = [];
     
+    // 🔵 1. 買主テーブル（buyers）からマッチング候補を取得
+    const buyers = await this.fetchAllBuyersWithDesiredConditions();
+    console.log(`[MatchingIntent] 売主${seller.seller_number} 買主候補数: ${buyers.length}`);
+    
+    for (const buyer of buyers) {
+      const hasBuyerAreaCriteria = buyer.desiredAreas.length > 0 || !!buyer.desiredAreaFreeText || !!buyer.inquiredPropertyAddress;
+      if (!hasBuyerAreaCriteria) continue;
+      
+      // エリアチェック
+      const areaResult = areasOverlap(sellerAreas, seller.match_area_free_text, buyer.desiredAreas, buyer.desiredAreaFreeText, seller.property_address, buyer.inquiredPropertyAddress);
+      if (!areaResult.matched) {
+        debugFiltered.push({ buyer: buyer.buyer_number, reason: 'エリア不一致' });
+        continue;
+      }
+
+      // 種別チェック
+      const typeResult = propertyTypesOverlap(sellerPropertyTypeCategories, buyer.propertyTypeCategories);
+      if (!typeResult.matched) {
+        debugFiltered.push({ buyer: buyer.buyer_number, reason: '種別不一致' });
+        continue;
+      }
+
+      // 価格チェック
+      const priceResult = buyer.priceRanges.length === 0
+        ? { matched: true, reason: null as string | null }
+        : priceRangesOverlapAny(buyer.priceRanges, seller.match_price_min, seller.match_price_max);
+      if (!priceResult.matched) {
+        debugFiltered.push({ buyer: buyer.buyer_number, reason: '価格不一致' });
+        continue;
+      }
+
+      // 時期の陳腐化判定（expired は除外、warning は表示継続）
+      const freshnessResult = getTimingFreshness(buyer.desiredTiming, buyer.receptionDate);
+      if (freshnessResult.freshness === 'expired') continue;
+
+      const timingResult = timingIsCompatible(seller.match_timing, buyer.desiredTiming);
+      const reasons = [areaResult.reason, typeResult.reason, priceResult.reason, timingResult.reason].filter((r): r is string => !!r);
+      if (freshnessResult.freshness === 'warning' && buyer.desiredTiming) {
+        reasons.push(timingFreshnessWarningReason(buyer.desiredTiming, freshnessResult.monthsElapsed));
+      }
+
+      candidates.push({
+        type: 'buyer',
+        id: buyer.buyer_number,
+        number: buyer.buyer_number,
+        name: buyer.name,
+        matchAreas: buyer.desiredAreas,
+        matchAreaFreeText: buyer.desiredAreaFreeText,
+        matchTiming: buyer.desiredTiming,
+        matchPriceMin: buyer.priceRanges[0]?.min ?? null,
+        matchPriceMax: buyer.priceRanges[0]?.max ?? null,
+        matchPropertyTypes: Array.from(buyer.propertyTypeCategories),
+        matchMemo: null,
+        matchUpdatedAt: buyer.receptionDate,
+        matchReasons: reasons,
+        urgencyScore: timingUrgencyScore(buyer.desiredTiming),
+        contactStatus: '連絡未', // 後で一括取得して上書き
+        timingFreshness: freshnessResult.freshness,
+      });
+    }
+    
+    // 🔵 2. 「買いたい」意図を持つ売主をマッチング候補に追加（買い替え案件）
+    const buyerSellers = await this.fetchAllSellersWithBuyIntent();
     console.log(`[MatchingIntent] 売主${seller.seller_number} 買いたい売主候補数: ${buyerSellers.length}`);
     
-    // 買いたい売主をループ
     for (const buyerSeller of buyerSellers) {
       // 自分自身は除外
       if (buyerSeller.seller_id === seller.id) continue;
-      
-      console.log(`[MatchingIntent] 買いたい売主${buyerSeller.seller_number} チェック開始`);
       
       // エリア条件がある場合のみチェック
       const hasBuyerAreaCriteria = buyerSeller.desiredAreas.length > 0 || !!buyerSeller.desiredAreaFreeText;
@@ -743,15 +776,13 @@ export class MatchingIntentService {
         ? areasOverlap(sellerAreas, seller.match_area_free_text, buyerSeller.desiredAreas, buyerSeller.desiredAreaFreeText, seller.property_address, null)
         : { matched: true, reason: null };
       if (!areaResult.matched) {
-        console.log(`[MatchingIntent] 買いたい売主${buyerSeller.seller_number} 除外: エリア不一致`);
         debugFiltered.push({ seller: buyerSeller.seller_number, reason: 'エリア不一致' });
         continue;
       }
 
       // 種別チェック
-      const typeResult = propertyTypesOverlap(sellerPropertyTypes, buyerSeller.propertyTypeCategories);
+      const typeResult = propertyTypesOverlap(sellerPropertyTypeCategories, new Set(buyerSeller.propertyTypeCategories as PropertyTypeCategory[]));
       if (!typeResult.matched) {
-        console.log(`[MatchingIntent] 買いたい売主${buyerSeller.seller_number} 除外: 種別不一致`);
         debugFiltered.push({ seller: buyerSeller.seller_number, reason: '種別不一致' });
         continue;
       }
@@ -761,12 +792,9 @@ export class MatchingIntentService {
         ? { matched: true, reason: null as string | null }
         : priceRangesOverlapAny(buyerSeller.priceRanges, seller.match_price_min, seller.match_price_max);
       if (!priceResult.matched) {
-        console.log(`[MatchingIntent] 買いたい売主${buyerSeller.seller_number} 除外: 価格不一致`);
         debugFiltered.push({ seller: buyerSeller.seller_number, reason: '価格不一致' });
         continue;
       }
-      
-      console.log(`[MatchingIntent] 買いたい売主${buyerSeller.seller_number} マッチ成功！`);
 
       // 時期の陳腐化判定
       const freshnessResult = getTimingFreshness(buyerSeller.desiredTiming, buyerSeller.matchUpdatedAt);
@@ -793,15 +821,24 @@ export class MatchingIntentService {
         matchUpdatedAt: buyerSeller.matchUpdatedAt,
         matchReasons: reasons,
         urgencyScore: timingUrgencyScore(buyerSeller.desiredTiming),
-        contactStatus: '連絡未',
+        contactStatus: '連絡未', // 後で一括取得して上書き
         timingFreshness: freshnessResult.freshness,
       });
     }
 
-    // 売主×売主ペア単位の連絡状況を一括取得
-    const contactStatusMap = await this.getSellerSellerPairContactStatuses(seller.id, candidates.map(c => c.id));
+    // 🔵 3. 連絡状況を一括取得して上書き（買主ペア・売主ペア両方）
+    const buyerNumbers = candidates.filter(c => c.type === 'buyer').map(c => c.number!);
+    const sellerSellerIds = candidates.filter(c => c.type === 'seller').map(c => c.id);
+    
+    const buyerContactStatusMap = await this.getPairContactStatuses(seller.id, buyerNumbers);
+    const sellerContactStatusMap = await this.getSellerSellerPairContactStatuses(seller.id, sellerSellerIds);
+    
     for (const c of candidates) {
-      c.contactStatus = contactStatusMap.get(c.id) ?? '連絡未';
+      if (c.type === 'buyer') {
+        c.contactStatus = buyerContactStatusMap.get(c.number!) ?? '連絡未';
+      } else {
+        c.contactStatus = sellerContactStatusMap.get(c.id) ?? '連絡未';
+      }
     }
 
     candidates.sort((a, b) => b.urgencyScore - a.urgencyScore);
@@ -810,6 +847,7 @@ export class MatchingIntentService {
       source: { id: seller.id, number: seller.seller_number, name: null },
       candidates,
       debug: {
+        buyersCount: buyers.length,
         buyerSellersCount: buyerSellers.length,
         candidatesCount: candidates.length,
         filtered: debugFiltered,
@@ -1057,6 +1095,7 @@ export class MatchingIntentService {
         matchTiming: seller.match_timing,
         matchPriceMin: seller.match_price_min,
         matchPriceMax: seller.match_price_max,
+        matchPropertyTypes: Array.from(parsePropertyTypeCategories(seller.property_type)), // 売主の物件種別
         matchMemo: seller.match_memo,
         matchUpdatedAt: seller.match_updated_at,
         matchReasons: reasons,
@@ -1164,7 +1203,7 @@ export class MatchingIntentService {
       // 種別判定（種別条件がある場合のみチェック）
       const hasTypeCriteria = buyerPropertyTypes.length > 0;
       const typeResult = hasTypeCriteria
-        ? propertyTypesOverlap(buyerPropertyTypes, sellerPropertyTypes)
+        ? propertyTypesOverlap(new Set(buyerPropertyTypes as PropertyTypeCategory[]), new Set(sellerPropertyTypes as PropertyTypeCategory[]))
         : { matched: true, reason: null };
       if (!typeResult.matched) continue;
 
