@@ -143,10 +143,12 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
   // 「買いたい」方向（売主が買い替え等で購入希望を持つケース）は独立したエンドポイント群を使う
   const intentPath = direction === 'buy' ? `${basePath}/buy-match-intent` : `${basePath}/match-intent`;
   const candidatesPath = direction === 'buy' ? `${basePath}/buy-match-candidates` : `${basePath}/match-candidates`;
-  const contactStatusPathFor = (candidateId: string) =>
+  const contactStatusPathFor = useCallback((candidateId: string) =>
     direction === 'buy'
       ? `${basePath}/buy-match-candidates/${candidateId}/contact-status`
-      : `${basePath}/match-candidates/${candidateId}/contact-status`;
+      : `${basePath}/match-candidates/${candidateId}/contact-status`,
+    [basePath, direction]
+  );
 
   const handleSave = useCallback(async () => {
     setSaving(true);
