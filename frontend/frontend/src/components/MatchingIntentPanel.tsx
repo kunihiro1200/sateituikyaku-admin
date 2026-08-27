@@ -110,6 +110,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
   const [priceMax, setPriceMax] = useState<string>(formatManYen(initialData?.matchPriceMax));
   const [memo, setMemo] = useState<string>(initialData?.matchMemo || '');
   const [propertyTypes, setPropertyTypes] = useState<string[]>(initialData?.matchPropertyTypes || []);
+  const [matchUpdatedAt, setMatchUpdatedAt] = useState<string | null>(initialData?.matchUpdatedAt || null);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -138,6 +139,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     setPriceMax(formatManYen(initialData?.matchPriceMax));
     setMemo(initialData?.matchMemo || '');
     setPropertyTypes(initialData?.matchPropertyTypes || []);
+    setMatchUpdatedAt(initialData?.matchUpdatedAt || null);
   }, [entityId, direction]);
 
   const basePath = entityType === 'seller' ? `/api/sellers/${entityId}` : `/api/buyers/${entityId}`;
@@ -178,8 +180,8 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     setSearching(true);
     setSearchError(null);
     try {
-      // 🚨 既にマッチングが有効（match_updated_atがある）な場合は、無効化する
-      if (initialData?.matchUpdatedAt) {
+      // 🚨 既にマッチングが有効（matchUpdatedAtがある）な場合は、無効化する
+      if (matchUpdatedAt) {
         // マッチングを無効化（削除）
         await api.delete(intentPath);
         setCandidates([]);
@@ -192,6 +194,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
         setPriceMax('');
         setMemo('');
         setPropertyTypes([]);
+        setMatchUpdatedAt(null); // マッチング無効化
         return;
       }
 
@@ -209,13 +212,14 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
       const res = await api.get(candidatesPath);
       setCandidates(res.data.candidates || []);
       setHasSearched(true);
+      setMatchUpdatedAt(new Date().toISOString()); // マッチング有効化
     } catch (e: any) {
       setSearchError(e?.response?.data?.error?.message || e?.response?.data?.error || 'マッチング検索に失敗しました');
       setHasSearched(true);
     } finally {
       setSearching(false);
     }
-  }, [intentPath, candidatesPath, areas, areaFreeText, timing, priceMin, priceMax, memo, propertyTypes, initialData?.matchUpdatedAt]);
+  }, [intentPath, candidatesPath, areas, areaFreeText, timing, priceMin, priceMax, memo, propertyTypes, matchUpdatedAt]);
 
   // 保存済みの検索結果を取得する（GETのみ・保存はしない）。
   // ページを開いた時点で、既存のマッチング条件に対する候補を自動表示するために使う。
@@ -436,12 +440,12 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
           <Button
             variant="contained"
             size="small"
-            color={initialData?.matchUpdatedAt ? "error" : "secondary"}
+            color={matchUpdatedAt ? "error" : "secondary"}
             startIcon={searching ? <CircularProgress size={14} sx={{ color: 'white' }} /> : <SearchIcon fontSize="small" />}
             onClick={handleSearch}
             disabled={searching}
           >
-            {initialData?.matchUpdatedAt ? '❌ マッチングを解除' : `🔍 ${counterpartLabel}をマッチング`}
+            {matchUpdatedAt ? '❌ マッチングを解除' : `🔍 ${counterpartLabel}をマッチング`}
           </Button>
           {saveSuccess && <Typography variant="caption" color="success.main">保存しました</Typography>}
           {saveError && <Typography variant="caption" color="error">{saveError}</Typography>}
