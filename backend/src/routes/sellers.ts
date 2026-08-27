@@ -3297,6 +3297,25 @@ router.put('/:id/match-intent', async (req: Request, res: Response) => {
 });
 
 /**
+ * 売主のマッチングを無効化（削除）
+ * DELETE /api/sellers/:id/match-intent
+ */
+router.delete('/:id/match-intent', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    await matchingIntentService.deleteSellerIntent(id);
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete seller match-intent error:', error);
+    res.status(500).json({
+      error: { code: 'MATCH_INTENT_DELETE_ERROR', message: error.message || 'マッチング情報の削除に失敗しました', retryable: true },
+    });
+  }
+});
+
+/**
  * 売主のマッチング連絡状況（連絡済み/連絡不要/連絡未）のみを更新
  * PUT /api/sellers/:id/match-contact-status
  */
@@ -3463,6 +3482,25 @@ router.put('/:id/buy-match-intent', async (req: Request, res: Response) => {
     console.error('Update seller buy-match-intent error:', error);
     res.status(500).json({
       error: { code: 'BUY_MATCH_INTENT_UPDATE_ERROR', message: error.message || '購入マッチング情報の更新に失敗しました', retryable: true },
+    });
+  }
+});
+
+/**
+ * 売主の「買いたい」マッチングを無効化（削除）
+ * DELETE /api/sellers/:id/buy-match-intent
+ */
+router.delete('/:id/buy-match-intent', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    await matchingIntentService.deleteSellerBuyIntent(id);
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete seller buy-match-intent error:', error);
+    res.status(500).json({
+      error: { code: 'BUY_MATCH_INTENT_DELETE_ERROR', message: error.message || '購入マッチング情報の削除に失敗しました', retryable: true },
     });
   }
 });

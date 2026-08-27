@@ -50,6 +50,7 @@ interface MatchIntentData {
   matchMemo?: string | null;
   matchContactStatus?: string | null;
   matchPropertyTypes?: string[]; // 物件種別配列
+  matchUpdatedAt?: string | null; // マッチング更新日時（これがあればマッチング有効）
 }
 
 interface MatchCandidate {
@@ -177,6 +178,23 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     setSearching(true);
     setSearchError(null);
     try {
+      // 🚨 既にマッチングが有効（match_updated_atがある）な場合は、無効化する
+      if (initialData?.matchUpdatedAt) {
+        // マッチングを無効化（削除）
+        await api.delete(intentPath);
+        setCandidates([]);
+        setHasSearched(true);
+        // 入力欄もクリア
+        setAreas([]);
+        setAreaFreeText('');
+        setTiming('');
+        setPriceMin('');
+        setPriceMax('');
+        setMemo('');
+        setPropertyTypes([]);
+        return;
+      }
+
       // 検索前に最新の入力内容を保存しておく（保存し忘れたまま検索するのを防ぐ）
       await api.put(intentPath, {
         matchAreas: areas,
@@ -197,7 +215,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     } finally {
       setSearching(false);
     }
-  }, [intentPath, candidatesPath, areas, areaFreeText, timing, priceMin, priceMax, memo, propertyTypes]);
+  }, [intentPath, candidatesPath, areas, areaFreeText, timing, priceMin, priceMax, memo, propertyTypes, initialData?.matchUpdatedAt]);
 
   // 保存済みの検索結果を取得する（GETのみ・保存はしない）。
   // ページを開いた時点で、既存のマッチング条件に対する候補を自動表示するために使う。
@@ -418,12 +436,12 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
           <Button
             variant="contained"
             size="small"
-            color="secondary"
+            color={initialData?.matchUpdatedAt ? "error" : "secondary"}
             startIcon={searching ? <CircularProgress size={14} sx={{ color: 'white' }} /> : <SearchIcon fontSize="small" />}
             onClick={handleSearch}
             disabled={searching}
           >
-            🔍 {counterpartLabel}をマッチング
+            {initialData?.matchUpdatedAt ? '❌ マッチングを解除' : `🔍 ${counterpartLabel}をマッチング`}
           </Button>
           {saveSuccess && <Typography variant="caption" color="success.main">保存しました</Typography>}
           {saveError && <Typography variant="caption" color="error">{saveError}</Typography>}

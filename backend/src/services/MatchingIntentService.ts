@@ -600,6 +600,28 @@ export class MatchingIntentService {
   }
 
   /**
+   * 売主のマッチング入力欄を削除（無効化）する
+   */
+  async deleteSellerIntent(sellerId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from('sellers')
+      .update({
+        match_areas: [],
+        match_area_free_text: null,
+        match_timing: null,
+        match_price_min: null,
+        match_price_max: null,
+        match_memo: null,
+        match_property_types: [],
+        match_updated_at: null, // マッチング無効化
+      })
+      .eq('id', sellerId);
+    if (error) {
+      throw new Error(`売主マッチング情報の削除に失敗しました: ${error.message}`);
+    }
+  }
+
+  /**
    * 売主の「買いたい」マッチング入力欄（購入条件）を更新する。
    * 売却条件（match_*）とは独立したカラム（buy_match_*）を使う。
    * 売主が買い替え等で同時に「買いたい」意図を持つケースに対応する。
@@ -612,6 +634,28 @@ export class MatchingIntentService {
       .eq('id', sellerId);
     if (error) {
       throw new Error(`売主の購入マッチング情報の更新に失敗しました: ${error.message}`);
+    }
+  }
+
+  /**
+   * 売主の「買いたい」マッチング入力欄を削除（無効化）する
+   */
+  async deleteSellerBuyIntent(sellerId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from('sellers')
+      .update({
+        buy_match_areas: [],
+        buy_match_area_free_text: null,
+        buy_match_timing: null,
+        buy_match_price_min: null,
+        buy_match_price_max: null,
+        buy_match_memo: null,
+        buy_match_property_types: [],
+        buy_match_updated_at: null, // 購入マッチング無効化
+      })
+      .eq('id', sellerId);
+    if (error) {
+      throw new Error(`売主の購入マッチング情報の削除に失敗しました: ${error.message}`);
     }
   }
 
