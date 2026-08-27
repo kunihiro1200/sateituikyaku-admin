@@ -276,6 +276,25 @@ export function areasOverlap(
     const detailAreas = extractDetailAreas(areaCode);
     for (const detailArea of detailAreas) {
       for (const addrB of listB) {
+        // 🚨 市区町村チェック: B側の住所から市区町村を抽出
+        const locB = extractLocationFromAddress(addrB);
+        if (!locB) continue;
+        
+        // 🚨 A側のエリアコードから市区町村を判定（エリアコードには通常含まれないため、他のA側住所から推定）
+        let aCityKnown = false;
+        let aCity = '';
+        for (const addrA of listA) {
+          const locA = extractLocationFromAddress(addrA);
+          if (locA && locA.city) {
+            aCityKnown = true;
+            aCity = locA.city;
+            break;
+          }
+        }
+        
+        // A側の市区町村が判定できて、かつB側と異なる場合はスキップ
+        if (aCityKnown && aCity !== locB.city) continue;
+        
         // 完全一致チェック
         if (addrB.includes(detailArea)) {
           return { matched: true, reason: `エリア一致（エリアコード詳細⇔物件住所）: 「${detailArea}」⇔「${addrB}」` };
@@ -303,6 +322,25 @@ export function areasOverlap(
     const detailAreas = extractDetailAreas(areaCode);
     for (const detailArea of detailAreas) {
       for (const addrA of listA) {
+        // 🚨 市区町村チェック: A側の住所から市区町村を抽出
+        const locA = extractLocationFromAddress(addrA);
+        if (!locA) continue;
+        
+        // 🚨 B側のエリアコードから市区町村を判定（エリアコードには通常含まれないため、他のB側住所から推定）
+        let bCityKnown = false;
+        let bCity = '';
+        for (const addrB of listB) {
+          const locB = extractLocationFromAddress(addrB);
+          if (locB && locB.city) {
+            bCityKnown = true;
+            bCity = locB.city;
+            break;
+          }
+        }
+        
+        // B側の市区町村が判定できて、かつA側と異なる場合はスキップ
+        if (bCityKnown && bCity !== locA.city) continue;
+        
         // 完全一致チェック
         if (addrA.includes(detailArea)) {
           return { matched: true, reason: `エリア一致（エリアコード詳細⇔物件住所）: 「${detailArea}」⇔「${addrA}」` };
@@ -341,6 +379,27 @@ export function areasOverlap(
     for (const addr of listB) {
       const normAddr = normalizeAreaFreeText(addr);
       if (normAddr && normAddr.includes(normPart)) {
+        // 🚨 市区町村チェック: A側とB側の市区町村が一致するか確認
+        const locB = extractLocationFromAddress(addr);
+        if (!locB) {
+          return { matched: true, reason: `エリア一致（自由入力⇔物件住所）: 「${part}」⇔「${addr}」` };
+        }
+        
+        // A側の市区町村を推定（listAから）
+        let aCityKnown = false;
+        let aCity = '';
+        for (const addrA of listA) {
+          const locA = extractLocationFromAddress(addrA);
+          if (locA && locA.city) {
+            aCityKnown = true;
+            aCity = locA.city;
+            break;
+          }
+        }
+        
+        // A側の市区町村が判定できて、かつB側と異なる場合はスキップ
+        if (aCityKnown && aCity !== locB.city) continue;
+        
         return { matched: true, reason: `エリア一致（自由入力⇔物件住所）: 「${part}」⇔「${addr}」` };
       }
     }
@@ -353,6 +412,27 @@ export function areasOverlap(
     for (const addr of listA) {
       const normAddr = normalizeAreaFreeText(addr);
       if (normAddr && normAddr.includes(normPart)) {
+        // 🚨 市区町村チェック: B側とA側の市区町村が一致するか確認
+        const locA = extractLocationFromAddress(addr);
+        if (!locA) {
+          return { matched: true, reason: `エリア一致（自由入力⇔物件住所）: 「${part}」⇔「${addr}」` };
+        }
+        
+        // B側の市区町村を推定（listBから）
+        let bCityKnown = false;
+        let bCity = '';
+        for (const addrB of listB) {
+          const locB = extractLocationFromAddress(addrB);
+          if (locB && locB.city) {
+            bCityKnown = true;
+            bCity = locB.city;
+            break;
+          }
+        }
+        
+        // B側の市区町村が判定できて、かつA側と異なる場合はスキップ
+        if (bCityKnown && bCity !== locA.city) continue;
+        
         return { matched: true, reason: `エリア一致（自由入力⇔物件住所）: 「${part}」⇔「${addr}」` };
       }
     }
