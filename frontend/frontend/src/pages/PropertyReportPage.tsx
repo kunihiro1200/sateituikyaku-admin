@@ -726,32 +726,32 @@ export default function PropertyReportPage() {
               </Button>
               {/* atbbボタン */}
               <Button
-                variant="outlined"
+                variant="contained"
                 size="small"
                 href="https://atbb.athome.jp/"
                 target="_blank"
                 rel="noopener noreferrer"
                 sx={{
-                  borderColor: '#757575',
-                  color: '#757575',
+                  bgcolor: '#d32f2f',
+                  color: '#fff',
                   whiteSpace: 'nowrap',
-                  '&:hover': { borderColor: '#424242', backgroundColor: '#75757508' },
+                  '&:hover': { bgcolor: '#b71c1c' },
                 }}
               >
                 atbb
               </Button>
               {/* SUUMOボタン */}
               <Button
-                variant="outlined"
+                variant="contained"
                 size="small"
                 href="https://manager.suumo.jp/chukai/tn00Xx0302.do"
                 target="_blank"
                 rel="noopener noreferrer"
                 sx={{
-                  borderColor: '#757575',
-                  color: '#757575',
+                  bgcolor: '#2e7d32',
+                  color: '#fff',
                   whiteSpace: 'nowrap',
-                  '&:hover': { borderColor: '#424242', backgroundColor: '#75757508' },
+                  '&:hover': { bgcolor: '#1b5e20' },
                 }}
               >
                 SUUMO

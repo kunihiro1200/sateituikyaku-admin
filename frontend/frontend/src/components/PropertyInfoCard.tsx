@@ -610,7 +610,7 @@ export default function PropertyInfoCard({
               </Typography>
               <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
                 <Button
-                  variant="outlined"
+                  variant="contained"
                   size="small"
                   href="https://atbb.athome.jp/"
                   target="_blank"
@@ -620,13 +620,18 @@ export default function PropertyInfoCard({
                     px: 1.5,
                     py: 0.5,
                     fontSize: '0.75rem',
-                    textTransform: 'none'
+                    textTransform: 'none',
+                    bgcolor: '#d32f2f',
+                    color: '#fff',
+                    '&:hover': {
+                      bgcolor: '#b71c1c'
+                    }
                   }}
                 >
                   atbb
                 </Button>
                 <Button
-                  variant="outlined"
+                  variant="contained"
                   size="small"
                   href="https://manager.suumo.jp/chukai/tn00Xx0302.do"
                   target="_blank"
@@ -636,7 +641,12 @@ export default function PropertyInfoCard({
                     px: 1.5,
                     py: 0.5,
                     fontSize: '0.75rem',
-                    textTransform: 'none'
+                    textTransform: 'none',
+                    bgcolor: '#2e7d32',
+                    color: '#fff',
+                    '&:hover': {
+                      bgcolor: '#1b5e20'
+                    }
                   }}
                 >
                   SUUMO
