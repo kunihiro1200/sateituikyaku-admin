@@ -1162,7 +1162,11 @@ export class MatchingIntentService {
 
     const sellers = await this.fetchAllWithMatchIntent('sellers', 'id, seller_number, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, match_property_types, match_memo, match_updated_at, property_address, property_type');
 
+    console.log(`[findSellerCandidatesForSellerBuyIntent] 買いたい売主${buyerSeller.seller_number} 売りたい売主候補数: ${sellers?.length || 0}`);
+    console.log(`[findSellerCandidatesForSellerBuyIntent] 買いたい売主条件 - エリア: ${JSON.stringify(buyerAreas)}, 種別: ${JSON.stringify(buyerPropertyTypes)}`);
+
     const candidates: MatchCandidate[] = [];
+    const debugFiltered: any[] = [];
     for (const seller of sellers || []) {
       if (seller.id === buyerSeller.id) continue; // 自分自身は除外
 
@@ -1188,7 +1192,12 @@ export class MatchingIntentService {
       }
       
       // エリアまたは種別のいずれかが入力されている必要がある
-      if (sellerAreas.length === 0 && !seller.match_area_free_text && sellerPropertyTypes.length === 0 && !seller.property_address) continue;
+      if (sellerAreas.length === 0 && !seller.match_area_free_text && sellerPropertyTypes.length === 0 && !seller.property_address) {
+        debugFiltered.push({ seller: seller.seller_number, reason: 'エリア・種別・物件住所が全て空' });
+        continue;
+      }
+
+      console.log(`[findSellerCandidatesForSellerBuyIntent] 売主${seller.seller_number} チェック - エリア: ${JSON.stringify(sellerAreas)}, 種別: ${JSON.stringify(sellerPropertyTypes)}, 物件住所: ${seller.property_address}, 物件種別: ${seller.property_type}`);
 
       // 注意: buyerSeller.property_address（現在売却中の物件＝今住んでいる場所）は
       // 「次に買いたいエリア」とは意味が異なるため addressesA には渡さない（null）。
@@ -1198,14 +1207,24 @@ export class MatchingIntentService {
       const areaResult = hasAreaCriteria
         ? areasOverlap(buyerAreas, buyerSeller.buy_match_area_free_text, sellerAreas, seller.match_area_free_text, null, seller.property_address)
         : { matched: true, reason: null };
-      if (!areaResult.matched) continue;
+      if (!areaResult.matched) {
+        debugFiltered.push({ seller: seller.seller_number, reason: 'エリア不一致' });
+        console.log(`[findSellerCandidatesForSellerBuyIntent] 売主${seller.seller_number} エリア不一致`);
+        continue;
+      }
 
       // 種別判定（種別条件がある場合のみチェック）
       const hasTypeCriteria = buyerPropertyTypes.length > 0;
       const typeResult = hasTypeCriteria
         ? propertyTypesOverlap(new Set(buyerPropertyTypes as PropertyTypeCategory[]), new Set(sellerPropertyTypes as PropertyTypeCategory[]))
         : { matched: true, reason: null };
-      if (!typeResult.matched) continue;
+      if (!typeResult.matched) {
+        debugFiltered.push({ seller: seller.seller_number, reason: '種別不一致' });
+        console.log(`[findSellerCandidatesForSellerBuyIntent] 売主${seller.seller_number} 種別不一致 - 買主: ${JSON.stringify(buyerPropertyTypes)}, 売主: ${JSON.stringify(sellerPropertyTypes)}`);
+        continue;
+      }
+
+      console.log(`[findSellerCandidatesForSellerBuyIntent] 売主${seller.seller_number} マッチング追加✓`);
 
       const priceResult = priceRangesOverlap(buyerSeller.buy_match_price_min, buyerSeller.buy_match_price_max, seller.match_price_min, seller.match_price_max);
       if (!priceResult.matched) continue;
@@ -1251,6 +1270,11 @@ export class MatchingIntentService {
     return {
       source: { id: buyerSeller.id, number: buyerSeller.seller_number, name: null },
       candidates,
+      debug: {
+        sellersCount: sellers?.length || 0,
+        candidatesCount: candidates.length,
+        filtered: debugFiltered,
+      },
     };
   }
 }
