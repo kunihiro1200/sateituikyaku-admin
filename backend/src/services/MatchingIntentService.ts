@@ -242,18 +242,9 @@ export function areasOverlap(
   addressesA?: (string | null | undefined)[] | string | null,
   addressesB?: (string | null | undefined)[] | string | null
 ): { matched: boolean; reason: string | null } {
-  // デバッグログ: 入力値を確認
-  console.log('[areasOverlap] areasA:', areasA);
-  console.log('[areasOverlap] areasB:', areasB);
-  console.log('[areasOverlap] freeTextA:', freeTextA);
-  console.log('[areasOverlap] freeTextB:', freeTextB);
-  console.log('[areasOverlap] addressesA:', addressesA);
-  console.log('[areasOverlap] addressesB:', addressesB);
-  
   const setB = new Set(areasB);
   const codeOverlap = areasA.filter(a => setB.has(a));
   if (codeOverlap.length > 0) {
-    console.log('[areasOverlap] エリアコード一致でマッチング:', codeOverlap);
     return { matched: true, reason: `エリア一致: ${codeOverlap.join(', ')}` };
   }
 
@@ -289,20 +280,19 @@ export function areasOverlap(
         const locB = extractLocationFromAddress(addrB);
         if (!locB) continue;
         
-        // 🚨 A側のエリアコードから市区町村を判定（エリアコードには通常含まれないため、他のA側住所から推定）
-        let aCityKnown = false;
+        // 🚨 A側のエリアコードから市区町村を判定（物件住所から推定）
         let aCity = '';
         for (const addrA of listA) {
           const locA = extractLocationFromAddress(addrA);
           if (locA && locA.city) {
-            aCityKnown = true;
             aCity = locA.city;
             break;
           }
         }
         
-        // A側の市区町村が判定できて、かつB側と異なる場合はスキップ
-        if (aCityKnown && aCity !== locB.city) continue;
+        // 🚨 重要: A側の市区町村が判定できて、かつB側と異なる場合はスキップ
+        // A側の市区町村が判定できない場合もスキップ（エリアコードからは市区町村が不明なため、安全側に倒す）
+        if (!aCity || (aCity && aCity !== locB.city)) continue;
         
         // 完全一致チェック
         if (addrB.includes(detailArea)) {
@@ -335,20 +325,19 @@ export function areasOverlap(
         const locA = extractLocationFromAddress(addrA);
         if (!locA) continue;
         
-        // 🚨 B側のエリアコードから市区町村を判定（エリアコードには通常含まれないため、他のB側住所から推定）
-        let bCityKnown = false;
+        // 🚨 B側のエリアコードから市区町村を判定（物件住所から推定）
         let bCity = '';
         for (const addrB of listB) {
           const locB = extractLocationFromAddress(addrB);
           if (locB && locB.city) {
-            bCityKnown = true;
             bCity = locB.city;
             break;
           }
         }
         
-        // B側の市区町村が判定できて、かつA側と異なる場合はスキップ
-        if (bCityKnown && bCity !== locA.city) continue;
+        // 🚨 重要: B側の市区町村が判定できて、かつA側と異なる場合はスキップ
+        // B側の市区町村が判定できない場合もスキップ（エリアコードからは市区町村が不明なため、安全側に倒す）
+        if (!bCity || (bCity && bCity !== locA.city)) continue;
         
         // 完全一致チェック
         if (addrA.includes(detailArea)) {
