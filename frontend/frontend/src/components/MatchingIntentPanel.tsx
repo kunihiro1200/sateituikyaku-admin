@@ -184,20 +184,8 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
       if (matchUpdatedAt) {
         // マッチングを無効化（削除）
         await api.delete(intentPath);
-        setCandidates([]);
-        setHasSearched(true);
-        // 入力欄もクリア
-        setAreas([]);
-        setAreaFreeText('');
-        setTiming('');
-        setPriceMin('');
-        setPriceMax('');
-        setMemo('');
-        setPropertyTypes([]);
-        setMatchUpdatedAt(null); // マッチング無効化
         
-        // 🚨 重要: 親コンポーネント（CallModePage）を強制的にリロードさせる
-        // キャッシュをクリアするため、現在のページをリロード
+        // 🚨 重要: 即座にリロード（他の処理を一切実行しない）
         window.location.reload();
         return;
       }
