@@ -470,11 +470,24 @@ export default function BuyerDesiredConditionsPage() {
                   { sync: true }
                 );
                 setBuyer(result.buyer);
-                setSnackbar({ 
-                  open: true, 
-                  message: required ? 'マッチング実行に設定しました' : 'マッチング不要に設定しました', 
-                  severity: 'success' 
-                });
+                
+                if (required) {
+                  // マッチングONの場合は通話モードページに遷移
+                  setSnackbar({ 
+                    open: true, 
+                    message: 'マッチング実行に設定しました。通話モードページに遷移します...', 
+                    severity: 'success' 
+                  });
+                  setTimeout(() => {
+                    navigate(`/buyers/${buyer_number}/call`);
+                  }, 1000);
+                } else {
+                  setSnackbar({ 
+                    open: true, 
+                    message: 'マッチング不要に設定しました', 
+                    severity: 'success' 
+                  });
+                }
               } catch (error: any) {
                 console.error('Failed to update matching status:', error);
                 setSnackbar({ 

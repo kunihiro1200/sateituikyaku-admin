@@ -236,7 +236,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     } finally {
       setContactSaving((prev) => ({ ...prev, [candidate.id]: false }));
     }
-  }, [basePath, direction]);
+  }, [contactStatusPathFor]);
 
   // 「買いたい」方向の場合、相手は必ず「売りたい」売主（entityTypeに関係なく）
   const counterpartLabel = direction === 'buy' ? '売主' : (entityType === 'seller' ? '買主' : '売主');
@@ -480,7 +480,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
                       variant="body2"
                       fontWeight="bold"
                       component="a"
-                      href={c.type === 'seller' ? `/sellers/${c.id}/call` : `/buyers/${c.id}`}
+                      href={c.type === 'seller' ? `/sellers/${c.number}/call` : `/buyers/${c.number}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       sx={{ color: 'primary.main', textDecoration: 'underline', cursor: 'pointer' }}
