@@ -2040,44 +2040,10 @@ const CallModePage = () => {
     return () => clearTimeout(timeoutId);
   }, [editableComments, savedComments, savingComments, unreachableConfirmOpen, unreachableStatus]);
 
-  // ステータスセクションの自動保存（状況・確度・次電日・専任他決関連フィールド等）
-  useEffect(() => {
-    if (!seller) return;
-
-    // 変更がない場合はスキップ
-    if (!statusChanged) return;
-
-    // 保存中の場合はスキップ
-    if (savingStatus) return;
-
-    // 確度警告ダイアログ表示中は自動保存しない（ユーザーの選択待ち）
-    if (statusConfidenceWarningOpen) return;
-
-    // 専任・他決関連のステータスで必須フィールド（決定日・競合・専任他決要因）が
-    // 未入力の間は自動保存しない。ここでバリデーションエラーを出すとページ全体が
-    // エラー画面に置き換わってしまうため、入力完了 or ページ遷移時までチェックを持ち越す。
-    if (requiresDecisionDate(editedStatus) && !hasRequiredDecisionFieldsFilled()) return;
-
-    // デバウンス処理（1.5秒後に保存）
-    const timeoutId = setTimeout(() => {
-      handleUpdateStatus();
-    }, 1500); // 1.5秒のデバウンス
-
-    return () => clearTimeout(timeoutId);
-  }, [
-    editedStatus,
-    editedConfidence,
-    editedNextCallDate,
-    editedExclusiveOtherDecisionMeeting,
-    editedExclusiveDecisionDate,
-    editedCompetitors.join(','),
-    editedExclusiveOtherDecisionFactors.join(','),
-    editedCompetitorNameAndReason,
-    editedPinrichStatus,
-    statusChanged,
-    savingStatus,
-    statusConfidenceWarningOpen,
-  ]);
+  // ステータスセクションの自動保存を削除
+  // 理由：「状況（当社）」を変更して保存中に「次電日」や「確度」を変更すると、
+  // 古い値で保存されてしまう問題があったため、明示的な保存ボタン押下のみに変更
+  // （2026/8/27 修正）
 
   // サイドバー用のカテゴリカウントを取得（APIから直接取得）
   const fetchSidebarCounts = useCallback(async () => {
@@ -2819,12 +2785,16 @@ const CallModePage = () => {
 
   /**
    * 未保存変更があるセクション名の一覧を返す
-   * ※ コメント・ステータスは自動保存（デバウンス1.5秒）になったため、この警告対象から除外
+   * ※ コメントは自動保存（デバウンス1.5秒）、ステータスは手動保存（2026/8/27修正）
    */
   const getUnsavedSections = (): string[] => {
     const sections: string[] = [];
     if (editingProperty && !savingProperty) sections.push('物件情報');
     if (editingSeller && !savingSeller) sections.push('売主情報');
+    
+    // ステータスセクションの未保存チェック（2026/8/27追加：自動保存を削除したため）
+    if (statusChanged) sections.push('ステータス');
+    
     return sections;
   };
 
@@ -10405,11 +10375,6 @@ HP：https://ifoo-oita.com/
                     value={editedNextCallDate}
                     onChange={(e) => { setEditedNextCallDate(e.target.value); setStatusChanged(true); statusChangedRef.current = true; }}
                     onClick={() => {
-                      // ⚠️ ここで setStatusChanged(true) を呼んではいけない。
-                      // クリック（カレンダーを開いただけ）の時点で自動保存の1.5秒デバウンスが
-                      // 発火してしまい、ユーザーが日付を選ぶ前に「古い次電日」で保存が完了してしまう。
-                      // その結果、実際に選んだ日付が保存されない/上書きされないケースが発生する。
-                      // statusChanged の更新は onChange（実際に値が変わった時）のみに任せる。
                       nextCallDateRef.current?.showPicker?.();
                     }}
                     InputLabelProps={{ 
