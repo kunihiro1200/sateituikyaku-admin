@@ -157,7 +157,7 @@ function normalizeAreaFreeText(text: string | null | undefined): string | null {
  * 正規表現で「都道府県・市区町村・町名・丁目」までを抽出
  * 返り値: { prefecture: '福岡県', location: '福岡市中央区谷' }
  */
-function extractLocationFromAddress(address: string): { prefecture: string; location: string } | null {
+function extractLocationFromAddress(address: string): { prefecture: string; city: string; location: string } | null {
   if (!address || address.length < 3) return null;
 
   // 番地・号の後の建物名を除去
@@ -178,24 +178,27 @@ function extractLocationFromAddress(address: string): { prefecture: string; loca
   const result = parsePrefectureAndLocation(extracted);
   if (!result) return null;
   
-  // 市区町村名を除去（「別府市亀川中央町」→「亀川中央町」）
-  // 政令指定都市の場合は区も除去（「福岡市中央区天神」→「天神」）
+  // 市区町村名を抽出（「別府市亀川中央町」→ city: "別府市", location: "亀川中央町"）
   let location = result.location;
+  let city = '';
   
-  // まず市区町村を除去
+  // まず市区町村を抽出
   const cityMatch = location.match(/^(.+?[市区町村])(.*)$/);
   if (cityMatch) {
+    city = cityMatch[1]; // 市区町村名（例: 「別府市」「福岡市」）
     location = cityMatch[2]; // 市区町村名以降
   }
   
   // 次に区を除去（政令指定都市対応）
   const wardMatch = location.match(/^(.+?区)(.*)$/);
   if (wardMatch) {
+    city = city + wardMatch[1]; // 市区町村名+区（例: 「福岡市中央区」）
     location = wardMatch[2]; // 区以降
   }
   
   return {
     prefecture: result.prefecture,
+    city: city, // 市区町村名（例: 「別府市」「福岡市中央区」「大分市」）
     location: location, // 市区町村名・区名を除いた地名のみ
   };
 }
@@ -357,7 +360,7 @@ export function areasOverlap(
 
   // 物件住所同士の部分一致チェック（売主の物件住所 vs 買主の問合せ物件住所）
   // 正規表現で地名を抽出してから共通部分をチェック
-  // 都道府県が一致する場合のみマッチング
+  // 都道府県と市区町村が一致する場合のみマッチング
   for (const addrA of listA) {
     const locA = extractLocationFromAddress(addrA);
     if (!locA || locA.location.length < 2) continue;
@@ -369,13 +372,17 @@ export function areasOverlap(
       // 都道府県が一致しない場合はスキップ
       if (locA.prefecture !== locB.prefecture) continue;
       
+      // 🚨 重要: 市区町村名も一致しない場合はスキップ
+      // 例: 「福岡市中央区」と「大分市中央町」は「中央」で一致するが、市が違うのでマッチングしない
+      if (locA.city !== locB.city) continue;
+      
       const normLocA = normalizeAreaFreeText(locA.location);
       const normLocB = normalizeAreaFreeText(locB.location);
       if (!normLocA || !normLocB) continue;
       
       // 完全な部分一致
       if (normLocA.includes(normLocB) || normLocB.includes(normLocA)) {
-        return { matched: true, reason: `エリア一致（地名一致）: 「${locA.prefecture}${locA.location}」⇔「${locB.prefecture}${locB.location}」` };
+        return { matched: true, reason: `エリア一致（地名一致）: 「${locA.prefecture}${locA.city}${locA.location}」⇔「${locB.prefecture}${locB.city}${locB.location}」` };
       }
       
       // 共通部分の抽出（最低2文字以上の共通部分があればマッチ）
@@ -383,7 +390,7 @@ export function areasOverlap(
         for (let i = 0; i <= normLocA.length - len; i++) {
           const subA = normLocA.substring(i, i + len);
           if (normLocB.includes(subA)) {
-            return { matched: true, reason: `エリア一致（地名共通部分）: 「${locA.prefecture}${locA.location}」⇔「${locB.prefecture}${locB.location}」（共通: ${subA}）` };
+            return { matched: true, reason: `エリア一致（地名共通部分）: 「${locA.prefecture}${locA.city}${locA.location}」⇔「${locB.prefecture}${locB.city}${locB.location}」（共通: ${subA}）` };
           }
         }
       }
