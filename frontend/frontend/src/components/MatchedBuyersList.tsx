@@ -168,7 +168,7 @@ const MatchedBuyersList: React.FC<MatchedBuyersListProps> = ({ sellerId }) => {
                       variant="body2"
                       fontWeight="bold"
                       component="a"
-                      href={c.type === 'seller' ? `/sellers/${c.id}` : `/buyers/${c.id}`}
+                      href={c.type === 'seller' ? `/sellers/${c.number}/call` : `/buyers/${c.number}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       sx={{ color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
