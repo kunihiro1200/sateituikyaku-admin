@@ -50,7 +50,6 @@ import { InquiryResponseEmailModal } from '../components/InquiryResponseEmailMod
 import RelatedBuyersSection from '../components/RelatedBuyersSection';
 import UnifiedInquiryHistoryTable from '../components/UnifiedInquiryHistoryTable';
 import RelatedBuyerNotificationBadge from '../components/RelatedBuyerNotificationBadge';
-import MatchContactStatusPanel from '../components/MatchContactStatusPanel';
 import { ConfirmationToAssignee } from '../components/ConfirmationToAssignee';
 import BuyerGmailSendButton from '../components/BuyerGmailSendButton';
 import { ViewingPreparationButton } from '../components/ViewingPreparationButton';
@@ -4353,15 +4352,7 @@ TEL：097-533-2022`;
             </Box>
           ))}
 
-          {/* マッチング連絡状況（売主リストの専任・一般媒介物件との自動マッチング結果に対する連絡状況） */}
-          {buyer_number && (
-            <Paper sx={{ p: 2, mb: 2 }}>
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-                🔍 マッチング連絡状況
-              </Typography>
-              <MatchContactStatusPanel entityType="buyer" entityId={buyer_number} initialStatus={buyer?.match_contact_status} />
-            </Paper>
-          )}
+
 
           </Box>{/* スマホ時買主情報開閉Box */}
         </Box>
