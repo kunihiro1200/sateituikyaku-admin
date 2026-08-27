@@ -11131,6 +11131,7 @@ HP：https://ifoo-oita.com/
                     matchPriceMax: (seller as any).buyMatchPriceMax,
                     matchMemo: (seller as any).buyMatchMemo,
                     matchPropertyTypes: (seller as any).buyMatchPropertyTypes,
+                    matchUpdatedAt: (seller as any).buyMatchUpdatedAt, // 🚨 重要: マッチング更新日時を追加
                   }}
                 />
               </CollapsibleSection>
