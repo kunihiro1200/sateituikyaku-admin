@@ -161,7 +161,6 @@ function extractLocationFromAddress(address: string): { prefecture: string; loca
   if (!address || address.length < 3) return null;
 
   // 番地・号の後の建物名を除去
-  // 例: 「福岡県福岡市中央区谷２丁目20-8サンブリック桜坂106」 → 「福岡県福岡市中央区谷２丁目」
   let extracted = address;
   
   // パターン1: 丁目まである場合
@@ -176,7 +175,29 @@ function extractLocationFromAddress(address: string): { prefecture: string; loca
     }
   }
 
-  return parsePrefectureAndLocation(extracted);
+  const result = parsePrefectureAndLocation(extracted);
+  if (!result) return null;
+  
+  // 市区町村名を除去（「別府市亀川中央町」→「亀川中央町」）
+  // 政令指定都市の場合は区も除去（「福岡市中央区天神」→「天神」）
+  let location = result.location;
+  
+  // まず市区町村を除去
+  const cityMatch = location.match(/^(.+?[市区町村])(.*)$/);
+  if (cityMatch) {
+    location = cityMatch[2]; // 市区町村名以降
+  }
+  
+  // 次に区を除去（政令指定都市対応）
+  const wardMatch = location.match(/^(.+?区)(.*)$/);
+  if (wardMatch) {
+    location = wardMatch[2]; // 区以降
+  }
+  
+  return {
+    prefecture: result.prefecture,
+    location: location, // 市区町村名・区名を除いた地名のみ
+  };
 }
 
 /**
