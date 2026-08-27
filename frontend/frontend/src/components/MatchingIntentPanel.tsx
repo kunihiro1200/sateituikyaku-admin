@@ -463,8 +463,18 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
             <TableBody>
               {candidates.map((c) => {
                 const isStaleWarning = c.timingFreshness === 'warning';
+                const isContacted = c.contactStatus !== '連絡未';
                 return (
-                <TableRow key={c.id} sx={isStaleWarning ? { bgcolor: '#fff8e1' } : undefined}>
+                <TableRow 
+                  key={c.id} 
+                  sx={
+                    isContacted 
+                      ? { bgcolor: '#f5f5f5', opacity: 0.6 } // 連絡済み・連絡不要はグレーアウト
+                      : isStaleWarning 
+                        ? { bgcolor: '#fff8e1' } // 連絡未で時期経過は黄色
+                        : undefined // 連絡未で通常は白
+                  }
+                >
                   <TableCell>
                     <Typography
                       variant="body2"
