@@ -237,12 +237,17 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
 
   // パネルが表示されたら、保存済みのマッチング条件に対する候補を自動的に表示する
   // （手動で「🔍 マッチング」ボタンを押さなくても、既存の結果がそのまま見られるようにする）。
+  // 🚨 重要: matchUpdatedAtがnullの場合（マッチング無効化）は候補を取得しない
   useEffect(() => {
     setHasSearched(false);
     setCandidates(null);
-    fetchExistingCandidates();
+    
+    // マッチングが有効な場合のみ候補を取得
+    if (matchUpdatedAt) {
+      fetchExistingCandidates();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entityId, direction]);
+  }, [entityId, direction, matchUpdatedAt]);
 
   // 各候補（相手）の連絡状況を更新する。相手ごとに個別のペアとして記録する。
   const handleContactStatusChange = useCallback(async (candidate: MatchCandidate, newStatus: string) => {
