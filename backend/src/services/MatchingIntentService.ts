@@ -1131,6 +1131,11 @@ export class MatchingIntentService {
   async findSellerCandidatesForSellerBuyIntent(buyerSellerId: string): Promise<{
     source: { id: string; number: string | null; name: string | null } | null;
     candidates: MatchCandidate[];
+    debug?: {
+      sellersCount: number;
+      candidatesCount: number;
+      filtered: any[];
+    };
   }> {
     const { data: buyerSeller, error } = await this.supabase
       .from('sellers')
@@ -1226,18 +1231,15 @@ export class MatchingIntentService {
 
       console.log(`[findSellerCandidatesForSellerBuyIntent] 売主${seller.seller_number} マッチング追加✓`);
 
-      const priceResult = priceRangesOverlap(buyerSeller.buy_match_price_min, buyerSeller.buy_match_price_max, seller.match_price_min, seller.match_price_max);
-      if (!priceResult.matched) continue;
-
-      // 売却側の時期の陳腐化判定（マッチング欄の最終保存日時 match_updated_at を基準日として使用）
-      const freshnessResult = getTimingFreshness(seller.match_timing, seller.match_updated_at);
-      if (freshnessResult.freshness === 'expired') continue;
+      // 注意: 売りたいマッチングでは価格・時期はチェックしない（エリアと種別のみ）
+      // 価格チェックを削除
+      // const priceResult = priceRangesOverlap(...);
+      
+      // 時期の陳腐化判定を削除（警告表示も不要）
+      // const freshnessResult = getTimingFreshness(...);
 
       const timingResult = timingIsCompatible(buyerSeller.buy_match_timing, seller.match_timing);
-      const reasons = [areaResult.reason, typeResult.reason, priceResult.reason, timingResult.reason].filter((r): r is string => !!r);
-      if (freshnessResult.freshness === 'warning' && seller.match_timing) {
-        reasons.push(timingFreshnessWarningReason(seller.match_timing, freshnessResult.monthsElapsed));
-      }
+      const reasons = [areaResult.reason, typeResult.reason, timingResult.reason].filter((r): r is string => !!r);
 
       candidates.push({
         type: 'seller',
@@ -1255,7 +1257,7 @@ export class MatchingIntentService {
         matchReasons: reasons,
         urgencyScore: timingUrgencyScore(seller.match_timing),
         contactStatus: '連絡未',
-        timingFreshness: freshnessResult.freshness,
+        timingFreshness: 'fresh', // 売りたいマッチングでは時期の陳腐化チェックをしない
       });
     }
 
