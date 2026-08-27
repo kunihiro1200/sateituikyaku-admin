@@ -142,6 +142,11 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     setMatchUpdatedAt(initialData?.matchUpdatedAt || null);
   }, [entityId, direction]);
 
+  // 🚨 重要: matchUpdatedAtは別のuseEffectで管理（親の再レンダリングでも常に最新の値を反映）
+  useEffect(() => {
+    setMatchUpdatedAt(initialData?.matchUpdatedAt || null);
+  }, [initialData?.matchUpdatedAt]);
+
   const basePath = entityType === 'seller' ? `/api/sellers/${entityId}` : `/api/buyers/${entityId}`;
   // 「買いたい」方向（売主が買い替え等で購入希望を持つケース）は独立したエンドポイント群を使う
   const intentPath = direction === 'buy' ? `${basePath}/buy-match-intent` : `${basePath}/match-intent`;
