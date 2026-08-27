@@ -258,6 +258,70 @@ export function areasOverlap(
   const listA = (Array.isArray(addressesA) ? addressesA : [addressesA]).filter((a): a is string => !!a);
   const listB = (Array.isArray(addressesB) ? addressesB : [addressesB]).filter((b): b is string => !!b);
 
+  // エリアコードのカッコ内の詳細地名を抽出する関数
+  // 例: '㊷別府駅周辺（中央町、駅前本町、上田の湯町、野口中町）' → ['中央町', '駅前本町', '上田の湯町', '野口中町']
+  const extractDetailAreas = (areaCode: string): string[] => {
+    const match = areaCode.match(/（(.+)）/);
+    if (match) {
+      return match[1].split(/[,、]/).map(s => s.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+  // A側のエリアコードのカッコ内地名 vs B側の物件住所
+  for (const areaCode of areasA) {
+    const detailAreas = extractDetailAreas(areaCode);
+    for (const detailArea of detailAreas) {
+      for (const addrB of listB) {
+        // 完全一致チェック
+        if (addrB.includes(detailArea)) {
+          return { matched: true, reason: `エリア一致（エリアコード詳細⇔物件住所）: 「${detailArea}」⇔「${addrB}」` };
+        }
+        
+        // 共通部分チェック（2文字以上）
+        const normDetail = normalizeAreaFreeText(detailArea);
+        const normAddr = normalizeAreaFreeText(addrB);
+        if (normDetail && normAddr && normDetail.length >= 2) {
+          for (let len = Math.min(normDetail.length, normAddr.length); len >= 2; len--) {
+            for (let i = 0; i <= normDetail.length - len; i++) {
+              const sub = normDetail.substring(i, i + len);
+              if (normAddr.includes(sub)) {
+                return { matched: true, reason: `エリア一致（エリアコード詳細⇔物件住所）: 「${detailArea}」⇔「${addrB}」（共通: ${sub}）` };
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // B側のエリアコードのカッコ内地名 vs A側の物件住所
+  for (const areaCode of areasB) {
+    const detailAreas = extractDetailAreas(areaCode);
+    for (const detailArea of detailAreas) {
+      for (const addrA of listA) {
+        // 完全一致チェック
+        if (addrA.includes(detailArea)) {
+          return { matched: true, reason: `エリア一致（エリアコード詳細⇔物件住所）: 「${detailArea}」⇔「${addrA}」` };
+        }
+        
+        // 共通部分チェック（2文字以上）
+        const normDetail = normalizeAreaFreeText(detailArea);
+        const normAddr = normalizeAreaFreeText(addrA);
+        if (normDetail && normAddr && normDetail.length >= 2) {
+          for (let len = Math.min(normDetail.length, normAddr.length); len >= 2; len--) {
+            for (let i = 0; i <= normDetail.length - len; i++) {
+              const sub = normDetail.substring(i, i + len);
+              if (normAddr.includes(sub)) {
+                return { matched: true, reason: `エリア一致（エリアコード詳細⇔物件住所）: 「${detailArea}」⇔「${addrA}」（共通: ${sub}）` };
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   // 自由入力をカンマ・改行・スペースで分割して個別にチェック
   const splitFreeText = (text: string | null): string[] => {
     if (!text) return [];
