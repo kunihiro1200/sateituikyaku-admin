@@ -442,12 +442,12 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
           <Button
             variant="contained"
             size="small"
-            color={matchUpdatedAt ? "error" : "secondary"}
+            color={matchUpdatedAt ? "success" : "secondary"}
             startIcon={searching ? <CircularProgress size={14} sx={{ color: 'white' }} /> : <SearchIcon fontSize="small" />}
             onClick={handleSearch}
             disabled={searching}
           >
-            {matchUpdatedAt ? '❌ マッチングを解除' : `🔍 ${counterpartLabel}をマッチング`}
+            {matchUpdatedAt ? `✅ マッチング中（押すと解除）` : `🔍 ${counterpartLabel}をマッチング`}
           </Button>
           {saveSuccess && <Typography variant="caption" color="success.main">保存しました</Typography>}
           {saveError && <Typography variant="caption" color="error">{saveError}</Typography>}
