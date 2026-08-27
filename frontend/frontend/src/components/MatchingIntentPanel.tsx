@@ -195,6 +195,10 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
         setMemo('');
         setPropertyTypes([]);
         setMatchUpdatedAt(null); // マッチング無効化
+        
+        // 🚨 重要: 親コンポーネント（CallModePage）を強制的にリロードさせる
+        // キャッシュをクリアするため、現在のページをリロード
+        window.location.reload();
         return;
       }
 
