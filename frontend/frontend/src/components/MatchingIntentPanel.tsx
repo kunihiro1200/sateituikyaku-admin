@@ -466,6 +466,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
               {candidates.map((c) => {
                 const isStaleWarning = c.timingFreshness === 'warning';
                 const isContacted = c.contactStatus !== '連絡未';
+                console.log(`[MatchingIntentPanel] Candidate ${c.number || c.id}: contactStatus="${c.contactStatus}", isContacted=${isContacted}`);
                 return (
                 <TableRow 
                   key={c.id} 
