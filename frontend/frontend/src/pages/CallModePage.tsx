@@ -6329,6 +6329,17 @@ HP：https://ifoo-oita.com/
               </Typography>
             </Box>
 
+            {/* イエウ共有ボタン */}
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              onClick={() => window.open('https://docs.google.com/spreadsheets/d/1O_tlaKTH6nYFaRr2HcuHdjiugMTWXQaztRXvI_ENP_o/edit?gid=0#gid=0', '_blank')}
+              sx={{ alignSelf: 'center' }}
+            >
+              イエウ共有
+            </Button>
+
             {/* SMSテンプレート選択 */}
             <Box sx={{ minWidth: 200, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
               <Box
