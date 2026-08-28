@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, useTransition } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -649,6 +649,9 @@ const CallModePage = () => {
   // sellerRefを常に最新に保つ（useCallback内でstaleなsellerを参照しないため）
   useEffect(() => { sellerRef.current = seller; }, [seller]);
   const [property, setProperty] = useState<PropertyInfo | null>(null);
+
+  // useTransitionを追加：ローカルステート更新を低優先度にしてUI応答性を向上
+  const [isPending, startTransition] = useTransition();
 
   // 物件住所の読み仮名
   const [addressReading, setAddressReading] = useState<string | null>(null);
@@ -3359,16 +3362,18 @@ const CallModePage = () => {
       setStatusChanged(false); // 保存成功後にリセット
       statusChangedRef.current = false;
       
-      // 保存した値をローカルステートに反映（loadAllData()を削除して画面フラッシュを防止）
-      setSavedStatus(editedStatus);
-      setSavedConfidence(editedConfidence);
-      setSavedExclusiveOtherDecisionMeeting(editedExclusiveOtherDecisionMeeting);
-      setSavedNextCallDate(editedNextCallDate);
-      setSavedExclusiveDecisionDate(editedExclusiveDecisionDate);
-      setSavedCompetitors(editedCompetitors);
-      setSavedExclusiveOtherDecisionFactors(editedExclusiveOtherDecisionFactors);
-      setSavedCompetitorNameAndReason(editedCompetitorNameAndReason);
-      setPageEdited(false); // 次電日を含むステータス保存後はリマインダーダイアログ不要
+      // 保存した値をローカルステートに反映（startTransitionで低優先度にしてUI応答性向上）
+      startTransition(() => {
+        setSavedStatus(editedStatus);
+        setSavedConfidence(editedConfidence);
+        setSavedExclusiveOtherDecisionMeeting(editedExclusiveOtherDecisionMeeting);
+        setSavedNextCallDate(editedNextCallDate);
+        setSavedExclusiveDecisionDate(editedExclusiveDecisionDate);
+        setSavedCompetitors(editedCompetitors);
+        setSavedExclusiveOtherDecisionFactors(editedExclusiveOtherDecisionFactors);
+        setSavedCompetitorNameAndReason(editedCompetitorNameAndReason);
+        setPageEdited(false); // 次電日を含むステータス保存後はリマインダーダイアログ不要
+      });
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'ステータスの更新に失敗しました');
     } finally {
