@@ -5273,6 +5273,21 @@ HP：https://ifoo-oita.com/
         senderName: employee?.name || '',
       });
       
+      // 追客ログを再読み込み
+      const activitiesResponse = await api.get(`/api/sellers/${seller.id}/activities`);
+      const convertedActivities = activitiesResponse.data.map((activity: any) => ({
+        id: activity.id,
+        sellerId: activity.seller_id || activity.sellerId,
+        employeeId: activity.employee_id || activity.employeeId,
+        type: activity.type,
+        content: activity.content,
+        result: activity.result,
+        metadata: activity.metadata,
+        createdAt: activity.created_at || activity.createdAt,
+        employee: activity.employee,
+      }));
+      setActivities(convertedActivities);
+      
       setAssigneeChatDialogOpen(false);
       setAssigneeChatMessage('');
       alert('営業担当へメール送信しました');

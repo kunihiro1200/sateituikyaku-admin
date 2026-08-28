@@ -760,6 +760,27 @@ ${String(message).trim()}
 
     console.log(`[send-email-to-assignee] Sent email to ${seller.visit_assignee} (${staff.email}) for seller ${seller.seller_number}`);
 
+    // 送信履歴をactivitiesテーブルに記録
+    try {
+      await supabase.from('activities').insert({
+        seller_id: seller.id,
+        type: 'email',
+        content: `営業担当（${seller.visit_assignee}）へメール送信`,
+        result: 'success',
+        metadata: {
+          to: staff.email,
+          subject: emailSubject,
+          body: emailBody,
+          sender: senderName || '不明',
+        },
+        created_at: new Date().toISOString(),
+      });
+      console.log(`[send-email-to-assignee] Activity logged for seller ${seller.seller_number}`);
+    } catch (activityError: any) {
+      console.error('[send-email-to-assignee] Failed to log activity:', activityError);
+      // 履歴記録の失敗はエラーにしない
+    }
+
     res.json({ success: true });
   } catch (error: any) {
     console.error('[send-email-to-assignee] Error:', error.message);
