@@ -737,8 +737,7 @@ ${senderName ? `送信者: ${senderName}` : ''}
 ${String(message).trim()}
     `.trim();
 
-    // メール送信（nodemailer + Gmail OAuth2を使用）
-    const nodemailer = require('nodemailer');
+    // メール送信（Gmail API使用、正しいエンコーディング）
     const { google } = require('googleapis');
     
     try {
@@ -753,35 +752,41 @@ ${String(message).trim()}
         refresh_token: process.env.GMAIL_REFRESH_TOKEN,
       });
       
-      // アクセストークンを取得
-      const accessToken = await oauth2Client.getAccessToken();
+      const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
       
-      if (!accessToken.token) {
-        throw new Error('Failed to obtain access token');
-      }
+      // メールメッセージを作成（マルチパート形式）
+      const boundary = '==boundary==';
+      const messageParts = [
+        `From: システム通知 <info@kujira-fudousan.com>`,
+        `To: ${staff.email}`,
+        `Subject: ${emailSubject}`,
+        'MIME-Version: 1.0',
+        `Content-Type: multipart/alternative; boundary="${boundary}"`,
+        '',
+        `--${boundary}`,
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: quoted-printable',
+        '',
+        emailBody,
+        `--${boundary}--`,
+      ];
       
-      // nodemailerトランスポーターを作成
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          type: 'OAuth2',
-          user: 'info@kujira-fudousan.com', // 固定値を使用
-          clientId: process.env.GMAIL_CLIENT_ID,
-          clientSecret: process.env.GMAIL_CLIENT_SECRET,
-          refreshToken: process.env.GMAIL_REFRESH_TOKEN,
-          accessToken: accessToken.token,
+      const message = messageParts.join('\r\n');
+      const encodedMessage = Buffer.from(message)
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+      
+      // Gmail APIでメール送信
+      await gmail.users.messages.send({
+        userId: 'me',
+        requestBody: {
+          raw: encodedMessage,
         },
       });
       
-      // メール送信
-      const info = await transporter.sendMail({
-        from: 'システム通知 <info@kujira-fudousan.com>',
-        to: staff.email,
-        subject: emailSubject,
-        text: emailBody,
-      });
-      
-      console.log(`[send-email-to-assignee] Sent email to ${seller.visit_assignee} (${staff.email}) for seller ${seller.seller_number}. Message ID: ${info.messageId}`);
+      console.log(`[send-email-to-assignee] Sent email to ${seller.visit_assignee} (${staff.email}) for seller ${seller.seller_number}`);
     } catch (emailError: any) {
       console.error('[send-email-to-assignee] Email sending error:', emailError.message, emailError.stack);
       res.status(500).json({ error: `メール送信に失敗しました: ${emailError.message}` });
