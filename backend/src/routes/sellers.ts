@@ -728,22 +728,27 @@ ${senderName ? `送信者: ${senderName}` : ''}
 ${String(message).trim()}
     `.trim();
 
-    // EmailService.supabaseを使用してメール送信（既存のsendValuationEmailと同じ方式）
+    // EmailService.supabaseを使用してメール送信
     const { EmailService: EmailServiceSupabase } = await import('../services/EmailService.supabase');
     const emailServiceSupabase = new EmailServiceSupabase();
     
     try {
-      // EmailService.supabaseのsendEmailメソッドを直接呼び出す
-      await emailServiceSupabase.sendEmail({
-        to: [staff.email],
+      // sendEmailWithCcAndAttachmentsメソッドを使用（既存のsend-valuation-emailと同じ方式）
+      const result = await emailServiceSupabase.sendEmailWithCcAndAttachments({
+        to: staff.email,
         subject: emailSubject,
         body: emailBody,
+        from: req.employee?.email || 'tenant@ifoo-oita.com',
+        isHtml: false,
       });
+      
+      if (!result.success) {
+        throw new Error(result.error || 'メール送信に失敗しました');
+      }
       
       console.log(`[send-email-to-assignee] Sent email to ${seller.visitAssignee} (${staff.email}) for seller ${seller.sellerNumber}`);
       
-      // activitiesテーブルに記録（EmailService.supabaseが自動で記録する場合があるため、手動記録は必要に応じて）
-      // sendValuationEmailでは自動記録されるので、ここでは明示的に記録
+      // activitiesテーブルに記録
       const supabase = createClient(
         process.env.SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_KEY!
