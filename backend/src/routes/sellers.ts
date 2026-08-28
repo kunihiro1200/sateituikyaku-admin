@@ -754,13 +754,18 @@ ${String(message).trim()}
       
       const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
       
+      // 件名をMIMEエンコード（日本語対応）
+      const encodedSubject = `=?UTF-8?B?${Buffer.from(emailSubject).toString('base64')}?=`;
+      
       // メールの内容を作成
       const emailLines = [
         `To: ${staff.email}`,
-        `Subject: ${emailSubject}`,
+        `Subject: ${encodedSubject}`,
+        'MIME-Version: 1.0',
         'Content-Type: text/plain; charset=utf-8',
+        'Content-Transfer-Encoding: base64',
         '',
-        emailBody,
+        Buffer.from(emailBody).toString('base64'),
       ];
       const email = emailLines.join('\r\n');
       const encodedEmail = Buffer.from(email).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
