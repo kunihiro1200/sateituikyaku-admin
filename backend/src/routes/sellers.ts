@@ -737,7 +737,7 @@ ${senderName ? `送信者: ${senderName}` : ''}
 ${String(message).trim()}
     `.trim();
 
-    // メール送信（Gmail API使用、正しいエンコーディング）
+    // メール送信（Gmail API使用、MIMEエンコーディング）
     const { google } = require('googleapis');
     
     try {
@@ -754,25 +754,28 @@ ${String(message).trim()}
       
       const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
       
-      // メールメッセージを作成（マルチパート形式）
-      const boundary = '==boundary==';
+      // 件名をMIMEエンコード
+      const utf8Subject = Buffer.from(emailSubject, 'utf-8');
+      const encodedSubject = `=?UTF-8?B?${utf8Subject.toString('base64')}?=`;
+      
+      // 本文をBase64エンコード
+      const utf8Body = Buffer.from(emailBody, 'utf-8');
+      const encodedBody = utf8Body.toString('base64').match(/.{1,76}/g)?.join('\r\n') || '';
+      
+      // メールメッセージを作成
       const messageParts = [
         `From: システム通知 <info@kujira-fudousan.com>`,
         `To: ${staff.email}`,
-        `Subject: ${emailSubject}`,
+        `Subject: ${encodedSubject}`,
         'MIME-Version: 1.0',
-        `Content-Type: multipart/alternative; boundary="${boundary}"`,
-        '',
-        `--${boundary}`,
         'Content-Type: text/plain; charset=UTF-8',
-        'Content-Transfer-Encoding: quoted-printable',
+        'Content-Transfer-Encoding: base64',
         '',
-        emailBody,
-        `--${boundary}--`,
+        encodedBody,
       ];
       
       const message = messageParts.join('\r\n');
-      const encodedMessage = Buffer.from(message)
+      const encodedMessage = Buffer.from(message, 'utf-8')
         .toString('base64')
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
