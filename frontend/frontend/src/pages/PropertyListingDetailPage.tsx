@@ -2128,6 +2128,52 @@ export default function PropertyListingDetailPage() {
                 </IconButton>
               </Tooltip>
 
+              {/* atbb・SUUMOボタン */}
+              <Box sx={{ display: 'flex', gap: 1, ml: 1 }}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  href="https://atbb.athome.jp/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    minWidth: 'auto',
+                    px: 1.5,
+                    py: 0.5,
+                    fontSize: '0.75rem',
+                    textTransform: 'none',
+                    bgcolor: '#d32f2f',
+                    color: '#fff',
+                    '&:hover': {
+                      bgcolor: '#b71c1c'
+                    }
+                  }}
+                >
+                  atbb
+                </Button>
+                <Button
+                  variant="contained"
+                  size="small"
+                  href="https://manager.suumo.jp/chukai/tn00Xx0302.do"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    minWidth: 'auto',
+                    px: 1.5,
+                    py: 0.5,
+                    fontSize: '0.75rem',
+                    textTransform: 'none',
+                    bgcolor: '#2e7d32',
+                    color: '#fff',
+                    '&:hover': {
+                      bgcolor: '#1b5e20'
+                    }
+                  }}
+                >
+                  SUUMO
+                </Button>
+              </Box>
+
               {/* 買主フィルター設定バー */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', ml: 1 }}>
                 {/* P台数フィルター（常時表示） */}
