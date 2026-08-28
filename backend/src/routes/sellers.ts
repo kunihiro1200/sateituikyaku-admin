@@ -737,7 +737,8 @@ ${senderName ? `送信者: ${senderName}` : ''}
 ${String(message).trim()}
     `.trim();
 
-    // メール送信（Gmail APIを使用）
+    // メール送信（nodemailer + Gmail OAuth2を使用）
+    const nodemailer = require('nodemailer');
     const { google } = require('googleapis');
     
     try {
@@ -752,37 +753,33 @@ ${String(message).trim()}
         refresh_token: process.env.GMAIL_REFRESH_TOKEN,
       });
       
-      const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+      // アクセストークンを取得
+      const accessToken = await oauth2Client.getAccessToken();
       
-      // メールの内容を作成（RFC 2822形式）
-      const emailContent = [
-        `From: システム通知 <${process.env.GMAIL_USER_EMAIL || 'noreply@kujira-fudousan.com'}>`,
-        `To: ${staff.email}`,
-        `Subject: ${emailSubject}`,
-        'MIME-Version: 1.0',
-        'Content-Type: text/plain; charset=UTF-8',
-        'Content-Transfer-Encoding: 8bit',
-        '',
-        emailBody,
-      ].join('\r\n');
-      
-      const encodedEmail = Buffer.from(emailContent, 'utf8')
-        .toString('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-      
-      // Gmail APIでメール送信
-      await gmail.users.messages.send({
-        userId: 'me',
-        requestBody: {
-          raw: encodedEmail,
+      // nodemailerトランスポーターを作成
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          type: 'OAuth2',
+          user: process.env.GMAIL_USER_EMAIL || 'info@kujira-fudousan.com',
+          clientId: process.env.GMAIL_CLIENT_ID,
+          clientSecret: process.env.GMAIL_CLIENT_SECRET,
+          refreshToken: process.env.GMAIL_REFRESH_TOKEN,
+          accessToken: accessToken.token,
         },
+      });
+      
+      // メール送信
+      await transporter.sendMail({
+        from: `システム通知 <${process.env.GMAIL_USER_EMAIL || 'info@kujira-fudousan.com'}>`,
+        to: staff.email,
+        subject: emailSubject,
+        text: emailBody,
       });
       
       console.log(`[send-email-to-assignee] Sent email to ${seller.visit_assignee} (${staff.email}) for seller ${seller.seller_number}`);
     } catch (emailError: any) {
-      console.error('[send-email-to-assignee] Gmail API error:', emailError);
+      console.error('[send-email-to-assignee] Email sending error:', emailError);
       res.status(500).json({ error: 'メール送信に失敗しました' });
       return;
     }
