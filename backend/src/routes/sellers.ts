@@ -664,6 +664,72 @@ router.get('/assignee-initials', async (req: Request, res: Response) => {
 });
 
 /**
+ * 営業担当へのChat送信エンドポイント
+ * スタッフ管理シートからWebhook URLを取得して送信
+ */
+router.post('/:id/send-chat-to-assignee', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { message, senderName } = req.body;
+
+    if (!message || !String(message).trim()) {
+      res.status(400).json({ error: 'メッセージを入力してください' });
+      return;
+    }
+
+    const { StaffManagementService } = require('../services/StaffManagementService');
+    const axios = require('axios');
+
+    // 売主情報を取得
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const { data: seller, error } = await supabase
+      .from('sellers')
+      .select('id, seller_number, name, property_address, visit_assignee')
+      .eq('id', id)
+      .single();
+
+    if (error || !seller) {
+      res.status(404).json({ error: '売主が見つかりませんでした' });
+      return;
+    }
+
+    // 営業担当がいない、または「外す」の場合はエラー
+    if (!seller.visit_assignee || seller.visit_assignee === '外す') {
+      res.status(400).json({ error: '営業担当が設定されていません' });
+      return;
+    }
+
+    // 担当者のWebhook URLを取得
+    const staffService = new StaffManagementService();
+    const result = await staffService.getWebhookUrl(seller.visit_assignee);
+    if (!result.success || !result.webhookUrl) {
+      res.status(404).json({ error: result.error || '担当者のChat webhook URLが見つかりませんでした' });
+      return;
+    }
+
+    // 通話モードページのURL
+    const sellerUrl = `https://sateituikyaku-admin-frontend.vercel.app/sellers/${seller.id}/call`;
+
+    // Google Chatにメッセージ送信
+    const senderLabel = senderName ? `送信者: ${senderName}` : null;
+
+    const chatMessage = `📩 *営業担当への連絡*\n\n売主番号: ${seller.seller_number || '未設定'}\n売主氏名: ${seller.name || '未設定'}\n物件所在地: ${seller.property_address || '未設定'}\n営業担当: ${seller.visit_assignee}\n売主URL: ${sellerUrl}\n${senderLabel ? senderLabel + '\n' : ''}\n${String(message).trim()}`;
+
+    await axios.post(result.webhookUrl, { text: chatMessage });
+
+    console.log(`[send-chat-to-assignee] Sent to ${seller.visit_assignee} for seller ${seller.seller_number}`);
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('[send-chat-to-assignee] Error:', error.message);
+    res.status(500).json({ error: error.message || 'チャット送信に失敗しました' });
+  }
+});
+
+/**
  * 次の売主番号を取得
  * 連番シート（ID: 19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs）のC2セル（AA用）またはD2セル（FI用）を読み取り、
  * プレフィックス + (n + 1) 形式で返す

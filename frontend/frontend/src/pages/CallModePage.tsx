@@ -1342,6 +1342,12 @@ const CallModePage = () => {
   const [yearlyRankingDialogOpen, setYearlyRankingDialogOpen] = useState(false); // 1番電話年間累計ランキングダイアログ
   const [visitRankingDialogOpen, setVisitRankingDialogOpen] = useState(false); // 訪問予約者月間ランキングダイアログ
   const [visitRankingYearlyDialogOpen, setVisitRankingYearlyDialogOpen] = useState(false); // 訪問予約者年間ランキングダイアログ
+  
+  // 営業担当へのChat送信用の状態
+  const [assigneeChatDialogOpen, setAssigneeChatDialogOpen] = useState(false);
+  const [assigneeChatMessage, setAssigneeChatMessage] = useState('');
+  const [sendingAssigneeChat, setSendingAssigneeChat] = useState(false);
+  
   // スマホ時のアコーディオン開閉状態
   const [mobileCommentOpen, setMobileCommentOpen] = useState(true); // コメント（デフォルト展開）
   const [mobilePropertyOpen, setMobilePropertyOpen] = useState(false); // 物件情報
@@ -5243,6 +5249,37 @@ HP：https://ifoo-oita.com/
     appointmentSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  // 営業担当へのChat送信ハンドラー
+  const handleSendAssigneeChat = async () => {
+    if (!seller || !assigneeChatMessage.trim()) return;
+    
+    // 営業担当が設定されているか確認
+    const assignee = seller.visitAssignee || seller.visitAssigneeInitials;
+    if (!assignee || assignee === '外す') {
+      alert('営業担当が設定されていません');
+      return;
+    }
+    
+    setSendingAssigneeChat(true);
+    
+    try {
+      await api.post(`/api/sellers/${seller.id}/send-chat-to-assignee`, {
+        message: assigneeChatMessage.trim(),
+        senderName: employee?.name || '',
+      });
+      
+      setAssigneeChatDialogOpen(false);
+      setAssigneeChatMessage('');
+      alert('営業担当へChat送信しました');
+    } catch (error: any) {
+      console.error('Chat送信エラー:', error);
+      const errorMessage = error.response?.data?.error || 'Chat送信に失敗しました';
+      alert(errorMessage);
+    } finally {
+      setSendingAssigneeChat(false);
+    }
+  };
+
   // 査定計算セクションへスクロール
   const scrollToValuationSection = () => {
     valuationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -7853,17 +7890,32 @@ HP：https://ifoo-oita.com/
                     {/* 訪問情報（2行グリッドレイアウト） */}
                     {(seller?.visitDate || seller?.visitAssignee || seller?.visitAssigneeInitials || seller?.visitValuationAcquirer || seller?.visitAcquisitionDate) && (
                       <Box sx={{ mb: 2, p: 2, bgcolor: 'info.lighter', borderRadius: 1 }}>
-                        {/* 1行目: 営担 */}
+                        {/* 1行目: 営担 + Chat送信ボタン */}
                         <Grid container spacing={2} sx={{ mb: 2 }}>
                           <Grid item xs={12}>
-                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', mb: 0.5 }}>
-                              営担
-                            </Typography>
-                            <Typography variant="body1" sx={{ fontSize: '0.875rem', fontWeight: 'bold' }}>
-                              {seller?.visitAssignee || seller?.assignedTo ? (
-                                employees.find(e => (e.initials || e.name || e.email) === (seller.visitAssignee || seller.assignedTo))?.name || (seller.visitAssignee || seller.assignedTo)
-                              ) : '未設定'}
-                            </Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Box sx={{ flex: 1 }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', mb: 0.5 }}>
+                                  営担
+                                </Typography>
+                                <Typography variant="body1" sx={{ fontSize: '0.875rem', fontWeight: 'bold' }}>
+                                  {seller?.visitAssignee || seller?.assignedTo ? (
+                                    employees.find(e => (e.initials || e.name || e.email) === (seller.visitAssignee || seller.assignedTo))?.name || (seller.visitAssignee || seller.assignedTo)
+                                  ) : '未設定'}
+                                </Typography>
+                              </Box>
+                              {/* Chat送信ボタン（営担が設定されている場合のみ表示） */}
+                              {(seller?.visitAssignee || seller?.visitAssigneeInitials) && (seller?.visitAssignee !== '外す') && (
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  onClick={() => setAssigneeChatDialogOpen(true)}
+                                  sx={{ minWidth: 'auto', px: 1.5 }}
+                                >
+                                  Chat送信
+                                </Button>
+                              )}
+                            </Box>
                           </Grid>
                         </Grid>
                         
@@ -11834,6 +11886,40 @@ HP：https://ifoo-oita.com/
             color="primary"
           >
             記入する
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 営業担当へのChat送信ダイアログ */}
+      <Dialog open={assigneeChatDialogOpen} onClose={() => setAssigneeChatDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>営業担当へChat送信</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              営業担当: {seller?.visitAssignee || seller?.visitAssigneeInitials || '未設定'}
+            </Typography>
+          </Box>
+          <TextField
+            autoFocus
+            multiline
+            rows={4}
+            fullWidth
+            label="メッセージ"
+            value={assigneeChatMessage}
+            onChange={(e) => setAssigneeChatMessage(e.target.value)}
+            placeholder="営業担当への連絡事項を入力してください"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAssigneeChatDialogOpen(false)}>
+            キャンセル
+          </Button>
+          <Button 
+            onClick={handleSendAssigneeChat}
+            variant="contained"
+            disabled={sendingAssigneeChat || !assigneeChatMessage.trim()}
+          >
+            {sendingAssigneeChat ? '送信中...' : '送信'}
           </Button>
         </DialogActions>
       </Dialog>
