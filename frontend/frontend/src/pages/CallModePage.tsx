@@ -11943,6 +11943,9 @@ HP：https://ifoo-oita.com/
             <Typography variant="body2" color="text.secondary">
               営業担当: {seller?.visitAssignee || seller?.visitAssigneeInitials || '未設定'}
             </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontStyle: 'italic' }}>
+              ※ 売主番号、売主名、物件住所、送信者は自動で入力されますので入力不要です
+            </Typography>
           </Box>
           <TextField
             autoFocus
