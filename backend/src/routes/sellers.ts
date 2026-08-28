@@ -677,43 +677,34 @@ router.post('/:id/send-email-to-assignee', async (req: Request, res: Response): 
       return;
     }
 
-    const { StaffManagementService } = require('../services/StaffManagementService');
+    // 売主情報を取得（SellerServiceを使用して正しくデコード）
+    const seller = await sellerService.getSeller(id);
 
-    // 売主情報を取得
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_KEY!
-    );
-    const { data: seller, error } = await supabase
-      .from('sellers')
-      .select('id, seller_number, name, property_address, visit_assignee')
-      .eq('id', id)
-      .single();
-
-    if (error || !seller) {
+    if (!seller) {
       res.status(404).json({ error: '売主が見つかりませんでした' });
       return;
     }
 
     // 営業担当がいない、または「外す」の場合はエラー
-    if (!seller.visit_assignee || seller.visit_assignee === '外す') {
+    if (!seller.visitAssignee || seller.visitAssignee === '外す') {
       res.status(400).json({ error: '営業担当が設定されていません' });
       return;
     }
 
     // 担当者のメールアドレスを取得
+    const { StaffManagementService } = await import('../services/StaffManagementService');
     const staffService = new StaffManagementService();
     const staffData = await staffService.fetchStaffData();
     const staff = staffData.find(
-      s => s.initials === seller.visit_assignee || s.name === seller.visit_assignee
+      s => s.initials === seller.visitAssignee || s.name === seller.visitAssignee
     ) || staffData.find(
-      s => s.name && s.name.includes(seller.visit_assignee)
+      s => s.name && s.name.includes(seller.visitAssignee)
     ) || staffData.find(
-      s => seller.visit_assignee && s.name && seller.visit_assignee.includes(s.name)
+      s => seller.visitAssignee && s.name && seller.visitAssignee.includes(s.name)
     );
 
     if (!staff || !staff.email) {
-      res.status(404).json({ error: `担当者「${seller.visit_assignee}」のメールアドレスが見つかりませんでした` });
+      res.status(404).json({ error: `担当者「${seller.visitAssignee}」のメールアドレスが見つかりませんでした` });
       return;
     }
 
@@ -721,15 +712,14 @@ router.post('/:id/send-email-to-assignee', async (req: Request, res: Response): 
     const sellerUrl = `https://sateituikyaku-admin-frontend.vercel.app/sellers/${seller.id}/call`;
 
     // メールの件名と本文を作成
-    console.log('[send-email-to-assignee] Seller name from DB:', seller.name, 'Length:', seller.name?.length, 'Bytes:', Buffer.from(seller.name || '').toString('hex'));
-    const emailSubject = `【営業担当への連絡】${seller.seller_number || '売主'}`;
+    const emailSubject = `【営業担当への連絡】${seller.sellerNumber || '売主'}`;
     const emailBody = `
 営業担当への連絡
 
-売主番号: ${seller.seller_number || '未設定'}
+売主番号: ${seller.sellerNumber || '未設定'}
 売主氏名: ${seller.name || '未設定'}
-物件所在地: ${seller.property_address || '未設定'}
-営業担当: ${seller.visit_assignee}
+物件所在地: ${seller.propertyAddress || '未設定'}
+営業担当: ${seller.visitAssignee}
 ${senderName ? `送信者: ${senderName}` : ''}
 
 売主URL: ${sellerUrl}
@@ -738,50 +728,52 @@ ${senderName ? `送信者: ${senderName}` : ''}
 ${String(message).trim()}
     `.trim();
 
-    // EmailServiceを使用してメール送信
-    const emailService = new EmailService();
+    // EmailService.supabaseを使用してメール送信（既存のsendValuationEmailと同じ方式）
+    const { EmailService: EmailServiceSupabase } = await import('../services/EmailService.supabase');
+    const emailServiceSupabase = new EmailServiceSupabase();
     
     try {
-      await emailService.sendEmail({
+      // EmailService.supabaseのsendEmailメソッドを直接呼び出す
+      await emailServiceSupabase.sendEmail({
         to: [staff.email],
         subject: emailSubject,
         body: emailBody,
       });
       
-      console.log(`[send-email-to-assignee] Sent email to ${seller.visit_assignee} (${staff.email}) for seller ${seller.seller_number}`);
-    } catch (emailError: any) {
-      console.error('[send-email-to-assignee] Email sending error:', emailError.message, emailError.stack);
-      res.status(500).json({ error: `メール送信に失敗しました: ${emailError.message}` });
-      return;
-    }
-
-    // 送信履歴をactivitiesテーブルに記録
-    try {
-      const { data: activityData, error: activityError} = await supabase.from('activities').insert({
+      console.log(`[send-email-to-assignee] Sent email to ${seller.visitAssignee} (${staff.email}) for seller ${seller.sellerNumber}`);
+      
+      // activitiesテーブルに記録（EmailService.supabaseが自動で記録する場合があるため、手動記録は必要に応じて）
+      // sendValuationEmailでは自動記録されるので、ここでは明示的に記録
+      const supabase = createClient(
+        process.env.SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_KEY!
+      );
+      
+      const { error: activityError } = await supabase.from('activities').insert({
         seller_id: seller.id,
+        employee_id: req.employee?.id || null,
         type: 'email',
-        content: `【営業担当への連絡】${seller.visit_assignee}宛にメール送信（送信者: ${senderName || '不明'}）`,
+        content: `【営業担当への連絡】${seller.visitAssignee}宛にメール送信`,
         result: 'success',
         metadata: {
           to: staff.email,
           subject: emailSubject,
           body: emailBody,
-          sender: senderName || '不明',
+          sender: senderName || req.employee?.name || '不明',
         },
         created_at: new Date().toISOString(),
-      }).select();
+      });
       
       if (activityError) {
         console.error('[send-email-to-assignee] Failed to log activity:', activityError);
-      } else {
-        console.log(`[send-email-to-assignee] Activity logged for seller ${seller.seller_number}:`, activityData);
       }
-    } catch (activityError: any) {
-      console.error('[send-email-to-assignee] Failed to log activity (exception):', activityError);
-      // 履歴記録の失敗はエラーにしない
+      
+      res.json({ success: true });
+    } catch (emailError: any) {
+      console.error('[send-email-to-assignee] Email sending error:', emailError.message, emailError.stack);
+      res.status(500).json({ error: `メール送信に失敗しました: ${emailError.message}` });
+      return;
     }
-
-    res.json({ success: true });
   } catch (error: any) {
     console.error('[send-email-to-assignee] Error:', error.message);
     res.status(500).json({ error: error.message || 'メール送信に失敗しました' });
