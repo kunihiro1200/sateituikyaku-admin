@@ -6174,8 +6174,8 @@ HP：https://ifoo-oita.com/
           )}
         </Box>
         
-        {/* イエウ共有ボタン */}
-        {seller && (
+        {/* イエウ共有ボタン（サイト＝"ウ"の時のみ表示） */}
+        {seller && seller.site === 'ウ' && (
           <Button
             variant="contained"
             color="primary"
