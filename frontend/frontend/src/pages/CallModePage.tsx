@@ -6019,6 +6019,28 @@ HP：https://ifoo-oita.com/
                   }}
                 />
               )}
+              {/* 営業担当へのメール送信ボタン（営担が設定されている場合のみ表示） */}
+              {seller?.visitAssignee && seller.visitAssignee !== '外す' && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setAssigneeChatDialogOpen(true)}
+                  sx={{
+                    fontSize: '0.75rem',
+                    py: 0.25,
+                    px: 1,
+                    minWidth: 'auto',
+                    borderColor: '#1565c0',
+                    color: '#1565c0',
+                    '&:hover': {
+                      borderColor: '#0d47a1',
+                      bgcolor: '#e3f2fd',
+                    },
+                  }}
+                >
+                  メール送信
+                </Button>
+              )}
               {seller?.sellerNumber && (
                 <>
                   {/* 資料生成・文字起ボタンを上下2段 */}
@@ -7910,32 +7932,17 @@ HP：https://ifoo-oita.com/
                     {/* 訪問情報（2行グリッドレイアウト） */}
                     {(seller?.visitDate || seller?.visitAssignee || seller?.visitAssigneeInitials || seller?.visitValuationAcquirer || seller?.visitAcquisitionDate) && (
                       <Box sx={{ mb: 2, p: 2, bgcolor: 'info.lighter', borderRadius: 1 }}>
-                        {/* 1行目: 営担 + Chat送信ボタン */}
+                        {/* 1行目: 営担 */}
                         <Grid container spacing={2} sx={{ mb: 2 }}>
                           <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Box sx={{ flex: 1 }}>
-                                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', mb: 0.5 }}>
-                                  営担
-                                </Typography>
-                                <Typography variant="body1" sx={{ fontSize: '0.875rem', fontWeight: 'bold' }}>
-                                  {seller?.visitAssignee || seller?.assignedTo ? (
-                                    employees.find(e => (e.initials || e.name || e.email) === (seller.visitAssignee || seller.assignedTo))?.name || (seller.visitAssignee || seller.assignedTo)
-                                  ) : '未設定'}
-                                </Typography>
-                              </Box>
-                              {/* メール送信ボタン（営担が設定されている場合のみ表示） */}
-                              {(seller?.visitAssignee || seller?.visitAssigneeInitials) && (seller?.visitAssignee !== '外す') && (
-                                <Button
-                                  variant="contained"
-                                  size="small"
-                                  onClick={() => setAssigneeChatDialogOpen(true)}
-                                  sx={{ minWidth: 'auto', px: 1.5 }}
-                                >
-                                  メール送信
-                                </Button>
-                              )}
-                            </Box>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', mb: 0.5 }}>
+                              営担
+                            </Typography>
+                            <Typography variant="body1" sx={{ fontSize: '0.875rem', fontWeight: 'bold' }}>
+                              {seller?.visitAssignee || seller?.assignedTo ? (
+                                employees.find(e => (e.initials || e.name || e.email) === (seller.visitAssignee || seller.assignedTo))?.name || (seller.visitAssignee || seller.assignedTo)
+                              ) : '未設定'}
+                            </Typography>
                           </Grid>
                         </Grid>
                         
