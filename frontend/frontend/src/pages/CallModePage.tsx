@@ -38,7 +38,7 @@ import {
   Popper,
   ClickAwayListener,
 } from '@mui/material';
-import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Sms as SmsIcon, OpenInNew as OpenInNewIcon, Print as PrintIcon } from '@mui/icons-material';
+import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Sms as SmsIcon, OpenInNew as OpenInNewIcon, Print as PrintIcon, LocationOn as LocationOnIcon } from '@mui/icons-material';
 import api, { emailImageApi } from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { Seller, PropertyInfo, Activity, SellerStatus, ConfidenceLevel, DuplicateMatch, SelectedImages, DriveImage } from '../types';
@@ -7200,27 +7200,24 @@ HP：https://ifoo-oita.com/
                               >
                                 レインズ
                               </Button>
-                              <Button
+                              <IconButton
                                 size="small"
-                                variant="outlined"
                                 onClick={() => {
                                   const searchQuery = encodeURIComponent(displayAddress);
                                   window.open(`https://www.google.com/maps/search/${searchQuery}`, '_blank');
                                 }}
+                                title="GoogleMapで開く"
                                 sx={{ 
-                                  minWidth: 'auto', 
-                                  px: 1, 
-                                  py: 0.5, 
-                                  fontSize: '0.75rem',
-                                  bgcolor: '#4285f4',
-                                  color: '#fff',
+                                  bgcolor: '#fff',
+                                  border: '1px solid #e0e0e0',
+                                  p: 0.5,
                                   '&:hover': {
-                                    bgcolor: '#1a73e8'
+                                    bgcolor: '#f5f5f5'
                                   }
                                 }}
                               >
-                                GoogleMap
-                              </Button>
+                                <LocationOnIcon fontSize="small" sx={{ color: '#EA4335' }} />
+                              </IconButton>
                             </Box>
                             {/* 2列目：ぜんりん、謄本、大分MAP/福岡MAP */}
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
