@@ -737,56 +737,15 @@ ${senderName ? `送信者: ${senderName}` : ''}
 ${String(message).trim()}
     `.trim();
 
-    // メール送信（Gmail API使用、MIMEエンコーディング）
-    const { google } = require('googleapis');
+    // EmailServiceを使用してメール送信
+    const { EmailService } = require('../services/EmailService');
+    const emailService = new EmailService();
     
     try {
-      // Gmail OAuth2クライアントを作成
-      const oauth2Client = new google.auth.OAuth2(
-        process.env.GMAIL_CLIENT_ID,
-        process.env.GMAIL_CLIENT_SECRET,
-        process.env.GMAIL_REDIRECT_URI
-      );
-      
-      oauth2Client.setCredentials({
-        refresh_token: process.env.GMAIL_REFRESH_TOKEN,
-      });
-      
-      const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-      
-      // 件名をMIMEエンコード
-      const utf8Subject = Buffer.from(emailSubject, 'utf-8');
-      const encodedSubject = `=?UTF-8?B?${utf8Subject.toString('base64')}?=`;
-      
-      // 本文をBase64エンコード
-      const utf8Body = Buffer.from(emailBody, 'utf-8');
-      const encodedBody = utf8Body.toString('base64').match(/.{1,76}/g)?.join('\r\n') || '';
-      
-      // メールメッセージを作成
-      const messageParts = [
-        `From: システム通知 <info@kujira-fudousan.com>`,
-        `To: ${staff.email}`,
-        `Subject: ${encodedSubject}`,
-        'MIME-Version: 1.0',
-        'Content-Type: text/plain; charset=UTF-8',
-        'Content-Transfer-Encoding: base64',
-        '',
-        encodedBody,
-      ];
-      
-      const message = messageParts.join('\r\n');
-      const encodedMessage = Buffer.from(message, 'utf-8')
-        .toString('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-      
-      // Gmail APIでメール送信
-      await gmail.users.messages.send({
-        userId: 'me',
-        requestBody: {
-          raw: encodedMessage,
-        },
+      await emailService.sendEmail({
+        to: [staff.email],
+        subject: emailSubject,
+        body: emailBody,
       });
       
       console.log(`[send-email-to-assignee] Sent email to ${seller.visit_assignee} (${staff.email}) for seller ${seller.seller_number}`);
