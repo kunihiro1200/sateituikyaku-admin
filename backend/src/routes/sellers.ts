@@ -756,12 +756,16 @@ ${String(message).trim()}
       // アクセストークンを取得
       const accessToken = await oauth2Client.getAccessToken();
       
+      if (!accessToken.token) {
+        throw new Error('Failed to obtain access token');
+      }
+      
       // nodemailerトランスポーターを作成
       const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
           type: 'OAuth2',
-          user: process.env.GMAIL_USER_EMAIL || 'info@kujira-fudousan.com',
+          user: 'info@kujira-fudousan.com', // 固定値を使用
           clientId: process.env.GMAIL_CLIENT_ID,
           clientSecret: process.env.GMAIL_CLIENT_SECRET,
           refreshToken: process.env.GMAIL_REFRESH_TOKEN,
@@ -770,17 +774,17 @@ ${String(message).trim()}
       });
       
       // メール送信
-      await transporter.sendMail({
-        from: `システム通知 <${process.env.GMAIL_USER_EMAIL || 'info@kujira-fudousan.com'}>`,
+      const info = await transporter.sendMail({
+        from: 'システム通知 <info@kujira-fudousan.com>',
         to: staff.email,
         subject: emailSubject,
         text: emailBody,
       });
       
-      console.log(`[send-email-to-assignee] Sent email to ${seller.visit_assignee} (${staff.email}) for seller ${seller.seller_number}`);
+      console.log(`[send-email-to-assignee] Sent email to ${seller.visit_assignee} (${staff.email}) for seller ${seller.seller_number}. Message ID: ${info.messageId}`);
     } catch (emailError: any) {
-      console.error('[send-email-to-assignee] Email sending error:', emailError);
-      res.status(500).json({ error: 'メール送信に失敗しました' });
+      console.error('[send-email-to-assignee] Email sending error:', emailError.message, emailError.stack);
+      res.status(500).json({ error: `メール送信に失敗しました: ${emailError.message}` });
       return;
     }
 
