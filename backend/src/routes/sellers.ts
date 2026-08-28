@@ -739,7 +739,6 @@ ${String(message).trim()}
     `.trim();
 
     // EmailServiceを使用してメール送信
-    const { EmailService } = require('../services/EmailService');
     const emailService = new EmailService();
     
     try {
