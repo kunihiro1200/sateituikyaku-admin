@@ -720,45 +720,48 @@ router.post('/:id/send-email-to-assignee', async (req: Request, res: Response): 
     // 通話モードページのURL
     const sellerUrl = `https://sateituikyaku-admin-frontend.vercel.app/sellers/${seller.id}/call`;
 
-    // メール送信（Resend APIを使用）
-    const axios = require('axios');
-    const resendApiKey = process.env.RESEND_API_KEY;
+    // メール送信（Gmail APIを使用）
+    const { google } = require('googleapis');
     
-    if (!resendApiKey) {
-      console.error('[send-email-to-assignee] RESEND_API_KEY is not set');
-      res.status(500).json({ error: 'メール送信の設定がされていません' });
+    try {
+      // Gmail OAuth2クライアントを作成
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.GMAIL_CLIENT_ID,
+        process.env.GMAIL_CLIENT_SECRET,
+        process.env.GMAIL_REDIRECT_URI
+      );
+      
+      oauth2Client.setCredentials({
+        refresh_token: process.env.GMAIL_REFRESH_TOKEN,
+      });
+      
+      const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+      
+      // メールの内容を作成
+      const emailLines = [
+        `To: ${staff.email}`,
+        `Subject: ${emailSubject}`,
+        'Content-Type: text/plain; charset=utf-8',
+        '',
+        emailBody,
+      ];
+      const email = emailLines.join('\r\n');
+      const encodedEmail = Buffer.from(email).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      
+      // Gmail APIでメール送信
+      await gmail.users.messages.send({
+        userId: 'me',
+        requestBody: {
+          raw: encodedEmail,
+        },
+      });
+      
+      console.log(`[send-email-to-assignee] Sent email to ${seller.visit_assignee} (${staff.email}) for seller ${seller.seller_number}`);
+    } catch (emailError: any) {
+      console.error('[send-email-to-assignee] Gmail API error:', emailError);
+      res.status(500).json({ error: 'メール送信に失敗しました' });
       return;
     }
-
-    const emailSubject = `【営業担当への連絡】${seller.seller_number || '売主'}`;
-    const emailBody = `
-営業担当への連絡
-
-売主番号: ${seller.seller_number || '未設定'}
-売主氏名: ${seller.name || '未設定'}
-物件所在地: ${seller.property_address || '未設定'}
-営業担当: ${seller.visit_assignee}
-${senderName ? `送信者: ${senderName}` : ''}
-
-売主URL: ${sellerUrl}
-
----
-${String(message).trim()}
-    `.trim();
-
-    await axios.post('https://api.resend.com/emails', {
-      from: 'システム通知 <system@kujira-fudousan.com>',
-      to: [staff.email],
-      subject: emailSubject,
-      text: emailBody,
-    }, {
-      headers: {
-        'Authorization': `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    console.log(`[send-email-to-assignee] Sent email to ${seller.visit_assignee} (${staff.email}) for seller ${seller.seller_number}`);
 
     // 送信履歴をactivitiesテーブルに記録
     try {
