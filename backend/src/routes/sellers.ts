@@ -754,21 +754,23 @@ ${String(message).trim()}
       
       const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
       
-      // 件名をMIMEエンコード（日本語対応）
-      const encodedSubject = `=?UTF-8?B?${Buffer.from(emailSubject).toString('base64')}?=`;
-      
-      // メールの内容を作成
-      const emailLines = [
+      // メールの内容を作成（RFC 2822形式）
+      const emailContent = [
+        `From: システム通知 <${process.env.GMAIL_USER_EMAIL || 'noreply@kujira-fudousan.com'}>`,
         `To: ${staff.email}`,
-        `Subject: ${encodedSubject}`,
+        `Subject: ${emailSubject}`,
         'MIME-Version: 1.0',
-        'Content-Type: text/plain; charset=utf-8',
-        'Content-Transfer-Encoding: base64',
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: 8bit',
         '',
-        Buffer.from(emailBody).toString('base64'),
-      ];
-      const email = emailLines.join('\r\n');
-      const encodedEmail = Buffer.from(email).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        emailBody,
+      ].join('\r\n');
+      
+      const encodedEmail = Buffer.from(emailContent, 'utf8')
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
       
       // Gmail APIでメール送信
       await gmail.users.messages.send({
@@ -787,7 +789,7 @@ ${String(message).trim()}
 
     // 送信履歴をactivitiesテーブルに記録
     try {
-      await supabase.from('activities').insert({
+      const { data: activityData, error: activityError } = await supabase.from('activities').insert({
         seller_id: seller.id,
         type: 'email',
         content: `営業担当（${seller.visit_assignee}）へメール送信`,
@@ -799,10 +801,15 @@ ${String(message).trim()}
           sender: senderName || '不明',
         },
         created_at: new Date().toISOString(),
-      });
-      console.log(`[send-email-to-assignee] Activity logged for seller ${seller.seller_number}`);
+      }).select();
+      
+      if (activityError) {
+        console.error('[send-email-to-assignee] Failed to log activity:', activityError);
+      } else {
+        console.log(`[send-email-to-assignee] Activity logged for seller ${seller.seller_number}:`, activityData);
+      }
     } catch (activityError: any) {
-      console.error('[send-email-to-assignee] Failed to log activity:', activityError);
+      console.error('[send-email-to-assignee] Failed to log activity (exception):', activityError);
       // 履歴記録の失敗はエラーにしない
     }
 
