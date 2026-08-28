@@ -6173,6 +6173,20 @@ HP：https://ifoo-oita.com/
             </Box>
           )}
         </Box>
+        
+        {/* イエウ共有ボタン */}
+        {seller && (
+          <Button
+            variant="contained"
+            color="primary"
+            size="small"
+            onClick={() => window.open('https://docs.google.com/spreadsheets/d/1O_tlaKTH6nYFaRr2HcuHdjiugMTWXQaztRXvI_ENP_o/edit?gid=0#gid=0', '_blank')}
+            sx={{ height: 'fit-content' }}
+          >
+            イエウ共有
+          </Button>
+        )}
+        
         {seller && (
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             {/* 訪問準備・画像ボタンを上下2段 */}
@@ -6328,17 +6342,6 @@ HP：https://ifoo-oita.com/
                 {seller.emailSendDisabled ? 'Email送信不可' : !seller.email ? 'Emailがないため送信不可' : '\u00a0'}
               </Typography>
             </Box>
-
-            {/* イエウ共有ボタン */}
-            <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              onClick={() => window.open('https://docs.google.com/spreadsheets/d/1O_tlaKTH6nYFaRr2HcuHdjiugMTWXQaztRXvI_ENP_o/edit?gid=0#gid=0', '_blank')}
-              sx={{ alignSelf: 'center' }}
-            >
-              イエウ共有
-            </Button>
 
             {/* SMSテンプレート選択 */}
             <Box sx={{ minWidth: 200, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
