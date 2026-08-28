@@ -7200,6 +7200,27 @@ HP：https://ifoo-oita.com/
                               >
                                 レインズ
                               </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => {
+                                  const searchQuery = encodeURIComponent(displayAddress);
+                                  window.open(`https://www.google.com/maps/search/${searchQuery}`, '_blank');
+                                }}
+                                sx={{ 
+                                  minWidth: 'auto', 
+                                  px: 1, 
+                                  py: 0.5, 
+                                  fontSize: '0.75rem',
+                                  bgcolor: '#4285f4',
+                                  color: '#fff',
+                                  '&:hover': {
+                                    bgcolor: '#1a73e8'
+                                  }
+                                }}
+                              >
+                                GoogleMap
+                              </Button>
                             </Box>
                             {/* 2列目：ぜんりん、謄本、大分MAP/福岡MAP */}
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
