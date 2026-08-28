@@ -721,6 +721,7 @@ router.post('/:id/send-email-to-assignee', async (req: Request, res: Response): 
     const sellerUrl = `https://sateituikyaku-admin-frontend.vercel.app/sellers/${seller.id}/call`;
 
     // メールの件名と本文を作成
+    console.log('[send-email-to-assignee] Seller name from DB:', seller.name, 'Length:', seller.name?.length, 'Bytes:', Buffer.from(seller.name || '').toString('hex'));
     const emailSubject = `【営業担当への連絡】${seller.seller_number || '売主'}`;
     const emailBody = `
 営業担当への連絡
@@ -757,10 +758,10 @@ ${String(message).trim()}
 
     // 送信履歴をactivitiesテーブルに記録
     try {
-      const { data: activityData, error: activityError } = await supabase.from('activities').insert({
+      const { data: activityData, error: activityError} = await supabase.from('activities').insert({
         seller_id: seller.id,
         type: 'email',
-        content: `営業担当（${seller.visit_assignee}）へメール送信`,
+        content: `【営業担当への連絡】${seller.visit_assignee}宛にメール送信（送信者: ${senderName || '不明'}）`,
         result: 'success',
         metadata: {
           to: staff.email,
