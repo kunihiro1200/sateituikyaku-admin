@@ -6038,7 +6038,7 @@ HP：https://ifoo-oita.com/
                     },
                   }}
                 >
-                  メール送信
+                  担当へEmail
                 </Button>
               )}
               {seller?.sellerNumber && (

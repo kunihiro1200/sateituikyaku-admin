@@ -720,6 +720,23 @@ router.post('/:id/send-email-to-assignee', async (req: Request, res: Response): 
     // 通話モードページのURL
     const sellerUrl = `https://sateituikyaku-admin-frontend.vercel.app/sellers/${seller.id}/call`;
 
+    // メールの件名と本文を作成
+    const emailSubject = `【営業担当への連絡】${seller.seller_number || '売主'}`;
+    const emailBody = `
+営業担当への連絡
+
+売主番号: ${seller.seller_number || '未設定'}
+売主氏名: ${seller.name || '未設定'}
+物件所在地: ${seller.property_address || '未設定'}
+営業担当: ${seller.visit_assignee}
+${senderName ? `送信者: ${senderName}` : ''}
+
+売主URL: ${sellerUrl}
+
+---
+${String(message).trim()}
+    `.trim();
+
     // メール送信（Gmail APIを使用）
     const { google } = require('googleapis');
     
