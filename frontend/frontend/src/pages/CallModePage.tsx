@@ -5254,7 +5254,7 @@ HP：https://ifoo-oita.com/
     appointmentSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // 営業担当へのChat送信ハンドラー
+  // 営業担当へのメール送信ハンドラー
   const handleSendAssigneeChat = async () => {
     if (!seller || !assigneeChatMessage.trim()) return;
     
@@ -5268,17 +5268,17 @@ HP：https://ifoo-oita.com/
     setSendingAssigneeChat(true);
     
     try {
-      await api.post(`/api/sellers/${seller.id}/send-chat-to-assignee`, {
+      await api.post(`/api/sellers/${seller.id}/send-email-to-assignee`, {
         message: assigneeChatMessage.trim(),
         senderName: employee?.name || '',
       });
       
       setAssigneeChatDialogOpen(false);
       setAssigneeChatMessage('');
-      alert('営業担当へChat送信しました');
+      alert('営業担当へメール送信しました');
     } catch (error: any) {
-      console.error('Chat送信エラー:', error);
-      const errorMessage = error.response?.data?.error || 'Chat送信に失敗しました';
+      console.error('メール送信エラー:', error);
+      const errorMessage = error.response?.data?.error || 'メール送信に失敗しました';
       alert(errorMessage);
     } finally {
       setSendingAssigneeChat(false);
@@ -7909,7 +7909,7 @@ HP：https://ifoo-oita.com/
                                   ) : '未設定'}
                                 </Typography>
                               </Box>
-                              {/* Chat送信ボタン（営担が設定されている場合のみ表示） */}
+                              {/* メール送信ボタン（営担が設定されている場合のみ表示） */}
                               {(seller?.visitAssignee || seller?.visitAssigneeInitials) && (seller?.visitAssignee !== '外す') && (
                                 <Button
                                   variant="contained"
@@ -7917,7 +7917,7 @@ HP：https://ifoo-oita.com/
                                   onClick={() => setAssigneeChatDialogOpen(true)}
                                   sx={{ minWidth: 'auto', px: 1.5 }}
                                 >
-                                  Chat送信
+                                  メール送信
                                 </Button>
                               )}
                             </Box>
@@ -11895,9 +11895,9 @@ HP：https://ifoo-oita.com/
         </DialogActions>
       </Dialog>
 
-      {/* 営業担当へのChat送信ダイアログ */}
+      {/* 営業担当へのメール送信ダイアログ */}
       <Dialog open={assigneeChatDialogOpen} onClose={() => setAssigneeChatDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>営業担当へChat送信</DialogTitle>
+        <DialogTitle>営業担当へメール送信</DialogTitle>
         <DialogContent>
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2" color="text.secondary">

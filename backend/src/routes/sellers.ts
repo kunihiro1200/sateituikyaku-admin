@@ -664,10 +664,10 @@ router.get('/assignee-initials', async (req: Request, res: Response) => {
 });
 
 /**
- * 営業担当へのChat送信エンドポイント
- * スタッフ管理シートからWebhook URLを取得して送信
+ * 営業担当へのメール送信エンドポイント
+ * スタッフ管理シートからメールアドレスを取得して送信
  */
-router.post('/:id/send-chat-to-assignee', async (req: Request, res: Response): Promise<void> => {
+router.post('/:id/send-email-to-assignee', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { message, senderName } = req.body;
@@ -678,7 +678,6 @@ router.post('/:id/send-chat-to-assignee', async (req: Request, res: Response): P
     }
 
     const { StaffManagementService } = require('../services/StaffManagementService');
-    const axios = require('axios');
 
     // 売主情報を取得
     const supabase = createClient(
@@ -702,30 +701,69 @@ router.post('/:id/send-chat-to-assignee', async (req: Request, res: Response): P
       return;
     }
 
-    // 担当者のWebhook URLを取得
+    // 担当者のメールアドレスを取得
     const staffService = new StaffManagementService();
-    const result = await staffService.getWebhookUrl(seller.visit_assignee);
-    if (!result.success || !result.webhookUrl) {
-      res.status(404).json({ error: result.error || '担当者のChat webhook URLが見つかりませんでした' });
+    const staffData = await staffService.fetchStaffData();
+    const staff = staffData.find(
+      s => s.initials === seller.visit_assignee || s.name === seller.visit_assignee
+    ) || staffData.find(
+      s => s.name && s.name.includes(seller.visit_assignee)
+    ) || staffData.find(
+      s => seller.visit_assignee && s.name && seller.visit_assignee.includes(s.name)
+    );
+
+    if (!staff || !staff.email) {
+      res.status(404).json({ error: `担当者「${seller.visit_assignee}」のメールアドレスが見つかりませんでした` });
       return;
     }
 
     // 通話モードページのURL
     const sellerUrl = `https://sateituikyaku-admin-frontend.vercel.app/sellers/${seller.id}/call`;
 
-    // Google Chatにメッセージ送信
-    const senderLabel = senderName ? `送信者: ${senderName}` : null;
+    // メール送信（Resend APIを使用）
+    const axios = require('axios');
+    const resendApiKey = process.env.RESEND_API_KEY;
+    
+    if (!resendApiKey) {
+      console.error('[send-email-to-assignee] RESEND_API_KEY is not set');
+      res.status(500).json({ error: 'メール送信の設定がされていません' });
+      return;
+    }
 
-    const chatMessage = `📩 *営業担当への連絡*\n\n売主番号: ${seller.seller_number || '未設定'}\n売主氏名: ${seller.name || '未設定'}\n物件所在地: ${seller.property_address || '未設定'}\n営業担当: ${seller.visit_assignee}\n売主URL: ${sellerUrl}\n${senderLabel ? senderLabel + '\n' : ''}\n${String(message).trim()}`;
+    const emailSubject = `【営業担当への連絡】${seller.seller_number || '売主'}`;
+    const emailBody = `
+営業担当への連絡
 
-    await axios.post(result.webhookUrl, { text: chatMessage });
+売主番号: ${seller.seller_number || '未設定'}
+売主氏名: ${seller.name || '未設定'}
+物件所在地: ${seller.property_address || '未設定'}
+営業担当: ${seller.visit_assignee}
+${senderName ? `送信者: ${senderName}` : ''}
 
-    console.log(`[send-chat-to-assignee] Sent to ${seller.visit_assignee} for seller ${seller.seller_number}`);
+売主URL: ${sellerUrl}
+
+---
+${String(message).trim()}
+    `.trim();
+
+    await axios.post('https://api.resend.com/emails', {
+      from: 'システム通知 <system@kujira-fudousan.com>',
+      to: [staff.email],
+      subject: emailSubject,
+      text: emailBody,
+    }, {
+      headers: {
+        'Authorization': `Bearer ${resendApiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    console.log(`[send-email-to-assignee] Sent email to ${seller.visit_assignee} (${staff.email}) for seller ${seller.seller_number}`);
 
     res.json({ success: true });
   } catch (error: any) {
-    console.error('[send-chat-to-assignee] Error:', error.message);
-    res.status(500).json({ error: error.message || 'チャット送信に失敗しました' });
+    console.error('[send-email-to-assignee] Error:', error.message);
+    res.status(500).json({ error: error.message || 'メール送信に失敗しました' });
   }
 });
 
