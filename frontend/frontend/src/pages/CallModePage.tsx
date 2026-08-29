@@ -2699,9 +2699,12 @@ const CallModePage = () => {
     if (cachedData) {
       try {
         const parsed = JSON.parse(cachedData);
-        setDuplicates(parsed);
-        console.log('Loaded duplicates from cache');
-        return;
+        // 空配列のキャッシュは信頼しない（住所重複判定の追加により再取得が必要なため）
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setDuplicates(parsed);
+          console.log('Loaded duplicates from cache');
+          return;
+        }
       } catch (e) {
         console.error('Failed to parse cached duplicates:', e);
       }
