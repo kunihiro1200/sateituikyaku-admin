@@ -1297,8 +1297,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
 
     // CWの方へ依頼メール（サイト登録）が未選択の場合は警告（保存は可能）
+    // サイト登録タブ（tabIndex === 1）で保存したときだけ表示する
     const cwRequestEmailSiteVal = getValue('cw_request_email_site');
-    if (!cwRequestEmailSiteVal) {
+    if (tabIndex === 1 && !cwRequestEmailSiteVal) {
       setValidationWarningDialog({
         open: true,
         title: '「CWの方へ依頼メール（サイト登録）」が未選択です。',
