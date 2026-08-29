@@ -68,8 +68,6 @@ import {
   INQUIRY_EMAIL_PHONE_OPTIONS, 
   INQUIRY_EMAIL_REPLY_OPTIONS,
   THREE_CALLS_CONFIRMED_OPTIONS,
-  ONE_WEEK_CALL_CONFIRMED_OPTIONS,
-  ONE_MONTH_CALL_CONFIRMED_OPTIONS,
   DISTRIBUTION_TYPE_OPTIONS,
 } from '../utils/buyerFieldOptions';
 import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../components/RichTextCommentEditor';
@@ -237,8 +235,6 @@ const SAVE_BUTTON_FIELDS = new Set([
   'pinrich',
   'vendor_survey',
   'three_calls_confirmed',
-  'one_week_call_confirmed',
-  'one_month_call_confirmed',
   'initial_assignee',
   'owned_home_hearing_inquiry',
   'owned_home_hearing_result',
@@ -287,8 +283,6 @@ const BUYER_FIELD_SECTIONS: BuyerFieldSection[] = [
       { key: 'inquiry_email_phone', label: '【問合メール】電話対応', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'inquiry_email_reply', label: '【問合メール】メール返信', inlineEditable: true, fieldType: 'buttonSelect' },
       { key: 'three_calls_confirmed', label: '3回架電確認済み', inlineEditable: true, fieldType: 'buttonSelect' },
-      { key: 'one_week_call_confirmed', label: '1週間架電確認済み', inlineEditable: true, fieldType: 'buttonSelect' },
-      { key: 'one_month_call_confirmed', label: '1か月後架電確認済み', inlineEditable: true, fieldType: 'buttonSelect' },
       { key: 'confirmation_to_assignee', label: '担当への確認事項', inlineEditable: true, fieldType: 'confirmationToAssignee' },
       { key: 'next_call_date', label: '次電日', type: 'date', inlineEditable: true },
       { key: 'owned_home_hearing_inquiry', label: '問合時持家ヒアリング', inlineEditable: true, fieldType: 'staffSelect' },
@@ -366,8 +360,6 @@ export default function BuyerDetailPage() {
     inquiry_email_phone: '【問合メール】電話対応',
     inquiry_email_reply: '【問合メール】メール返信',
     three_calls_confirmed: '3回架電確認済み',
-    one_week_call_confirmed: '1週間架電確認済み',
-    one_month_call_confirmed: '1か月後架電確認済み',
     desired_area: 'エリア（希望条件）',
     desired_property_type: '希望種別（希望条件）',
     price_range_house: '価格帯（戸建）',
@@ -3396,110 +3388,6 @@ TEL：097-533-2022`;
                                         return next;
                                       });
                                       // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
-                                    }}
-                                    sx={{
-                                      flex: 1,
-                                      py: 0.5,
-                                      fontWeight: isSelected ? 'bold' : 'normal',
-                                      borderRadius: 1,
-                                    }}
-                                  >
-                                    {opt}
-                                  </Button>
-                                );
-                              })}
-                            </Box>
-                          </Box>
-                        </Grid>
-                      );
-                    }
-
-                    // one_week_call_confirmedフィールドは特別処理（inquiry_email_phoneに値があれば常時表示）
-                    if (field.key === 'one_week_call_confirmed') {
-                      // inquiry_email_phone に値がない場合は非表示
-                      if (!buyer?.inquiry_email_phone) {
-                        return null;
-                      }
-                      const ONE_WEEK_BTNS = ['1週間架電OK', '1週間架電未', '他'];
-                      const isOneWeekUnsaved = sectionChangedFields[section.title]?.['one_week_call_confirmed'] !== undefined;
-                      return (
-                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Box sx={{
-                            display: 'flex', alignItems: 'center', gap: 1,
-                            border: isOneWeekUnsaved ? '2px solid #ff6d00' : 'none',
-                            borderRadius: isOneWeekUnsaved ? 1 : 0,
-                            p: isOneWeekUnsaved ? 0.5 : 0,
-                            bgcolor: isOneWeekUnsaved ? 'rgba(255,109,0,0.05)' : 'transparent',
-                            ...(isOneWeekUnsaved && { boxShadow: '0 0 6px rgba(255,109,0,0.4)' }),
-                          }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                              {field.label}
-                            </Typography>
-                            <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
-                              {ONE_WEEK_BTNS.map((opt) => {
-                                const isSelected = buyer?.[field.key] === opt;
-                                return (
-                                  <Button
-                                    key={opt}
-                                    size="small"
-                                    variant={isSelected ? 'contained' : 'outlined'}
-                                    color="primary"
-                                    onClick={async () => {
-                                      const newValue = isSelected ? '' : opt;
-                                      setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
-                                      handleFieldChange(section.title, field.key, newValue);
-                                    }}
-                                    sx={{
-                                      flex: 1,
-                                      py: 0.5,
-                                      fontWeight: isSelected ? 'bold' : 'normal',
-                                      borderRadius: 1,
-                                    }}
-                                  >
-                                    {opt}
-                                  </Button>
-                                );
-                              })}
-                            </Box>
-                          </Box>
-                        </Grid>
-                      );
-                    }
-
-                    // one_month_call_confirmedフィールドは特別処理（inquiry_email_phoneに値があれば常時表示）
-                    if (field.key === 'one_month_call_confirmed') {
-                      // inquiry_email_phone に値がない場合は非表示
-                      if (!buyer?.inquiry_email_phone) {
-                        return null;
-                      }
-                      const ONE_MONTH_BTNS = ['1か月架電OK', '1か月架電未', '他'];
-                      const isOneMonthUnsaved = sectionChangedFields[section.title]?.['one_month_call_confirmed'] !== undefined;
-                      return (
-                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Box sx={{
-                            display: 'flex', alignItems: 'center', gap: 1,
-                            border: isOneMonthUnsaved ? '2px solid #ff6d00' : 'none',
-                            borderRadius: isOneMonthUnsaved ? 1 : 0,
-                            p: isOneMonthUnsaved ? 0.5 : 0,
-                            bgcolor: isOneMonthUnsaved ? 'rgba(255,109,0,0.05)' : 'transparent',
-                            ...(isOneMonthUnsaved && { boxShadow: '0 0 6px rgba(255,109,0,0.4)' }),
-                          }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                              {field.label}
-                            </Typography>
-                            <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
-                              {ONE_MONTH_BTNS.map((opt) => {
-                                const isSelected = buyer?.[field.key] === opt;
-                                return (
-                                  <Button
-                                    key={opt}
-                                    size="small"
-                                    variant={isSelected ? 'contained' : 'outlined'}
-                                    color="primary"
-                                    onClick={async () => {
-                                      const newValue = isSelected ? '' : opt;
-                                      setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
-                                      handleFieldChange(section.title, field.key, newValue);
                                     }}
                                     sx={{
                                       flex: 1,
