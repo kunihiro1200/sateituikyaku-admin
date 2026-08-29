@@ -240,7 +240,7 @@ export interface Seller {
 
 export interface DuplicateMatch {
   sellerId: string;
-  matchType: 'phone' | 'email' | 'both';
+  matchType: 'phone' | 'email' | 'both' | 'address';
   sellerInfo: {
     name: string;
     phoneNumber: string;

@@ -2640,10 +2640,10 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
       process.env.SUPABASE_SERVICE_KEY!
     );
 
-    // 対象売主のハッシュを取得
+    // 対象売主のハッシュ + 物件住所を取得
     const { data: rawSeller, error: rawError } = await supabase
       .from('sellers')
-      .select('id, phone_number_hash, email_hash')
+      .select('id, phone_number_hash, email_hash, property_address')
       .eq('id', id)
       .is('deleted_at', null)
       .single();
@@ -2654,9 +2654,27 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
       });
     }
 
-    const { phone_number_hash, email_hash } = rawSeller;
+    const { phone_number_hash, email_hash, property_address } = rawSeller;
 
-    if (!phone_number_hash && !email_hash) {
+    // 物件住所を正規化（全角→半角・空白/記号除去）して比較用キーを作る
+    // 名前・電話番号・メールが全て異なっても、同じ住所なら重複扱いにするため
+    const normalizeAddress = (addr: string | null | undefined): string => {
+      if (!addr) return '';
+      let s = String(addr).trim();
+      if (s === '' || s === '未入力') return '';
+      // 全角英数字・記号を半角へ
+      s = s.replace(/[\uFF01-\uFF5E]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+      // 全角スペースを半角へ
+      s = s.replace(/\u3000/g, ' ');
+      // 空白・ハイフン類・括弧などの記号を除去して表記ゆれを吸収
+      s = s.replace(/[\s\-‐-‒–—―ー－()（）]/g, '');
+      // 「丁目」「番地」「番」「号」を除去（14-7 と 14番7号 を同一視）
+      s = s.replace(/丁目|番地|番|号/g, '');
+      return s.toLowerCase();
+    };
+    const normalizedTargetAddress = normalizeAddress(property_address);
+
+    if (!phone_number_hash && !email_hash && !normalizedTargetAddress) {
       return res.json({ duplicates: [] });
     }
 
@@ -2737,6 +2755,58 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
               propertyInfo: seller.property_address ? { address: seller.property_address, propertyType: '' } : undefined,
             });
           }
+        }
+      }
+    }
+
+    // 物件住所で検索（名前・電話・メールが違っても同じ住所なら重複扱い）
+    if (normalizedTargetAddress) {
+      // 完全一致は取りこぼしやすいので、まず前方一致で候補を絞り込み、正規化して厳密比較する
+      const prefix = (property_address || '').trim().slice(0, 6);
+      let addressQuery = supabase
+        .from('sellers')
+        .select('id, seller_number, name, phone_number, email, inquiry_date, confidence_level, status, next_call_date, valuation_amount_1, valuation_amount_2, valuation_amount_3, property_address, comments')
+        .neq('id', id)
+        .is('deleted_at', null)
+        .not('property_address', 'is', null);
+
+      if (prefix) {
+        addressQuery = addressQuery.ilike('property_address', `${prefix}%`);
+      }
+
+      const { data: addressMatches } = await addressQuery;
+
+      if (addressMatches) {
+        const { decrypt } = await import('../utils/encryption');
+        for (const seller of addressMatches) {
+          // 正規化した住所が一致する場合のみ重複とみなす
+          if (normalizeAddress(seller.property_address) !== normalizedTargetAddress) continue;
+
+          if (matchMap.has(seller.id)) {
+            // 既に電話/メールで一致している場合は matchType を維持
+            continue;
+          }
+          let decryptedName = '';
+          try { decryptedName = seller.name ? decrypt(seller.name) : ''; } catch { /* skip */ }
+          matchMap.set(seller.id, {
+            sellerId: seller.id,
+            matchType: 'address' as const,
+            sellerInfo: {
+              name: decryptedName,
+              phoneNumber: '',
+              inquiryDate: seller.inquiry_date ? new Date(seller.inquiry_date) : undefined,
+              sellerNumber: seller.seller_number,
+              confidenceLevel: seller.confidence_level,
+              status: seller.status,
+              nextCallDate: seller.next_call_date,
+              valuationAmount1: seller.valuation_amount_1,
+              valuationAmount2: seller.valuation_amount_2,
+              valuationAmount3: seller.valuation_amount_3,
+              propertyAddress: seller.property_address,
+              comments: seller.comments,
+            },
+            propertyInfo: seller.property_address ? { address: seller.property_address, propertyType: '' } : undefined,
+          });
         }
       }
     }

@@ -23,6 +23,7 @@ const DuplicateCard: React.FC<DuplicateCardProps> = ({ duplicate }) => {
       case 'phone': return '電話番号';
       case 'email': return 'メールアドレス';
       case 'both': return '電話番号・メールアドレス';
+      case 'address': return '物件住所';
       default: return matchType;
     }
   };
@@ -32,6 +33,7 @@ const DuplicateCard: React.FC<DuplicateCardProps> = ({ duplicate }) => {
       case 'both': return 'error';
       case 'phone': return 'warning';
       case 'email': return 'info';
+      case 'address': return 'warning';
       default: return 'default';
     }
   };
