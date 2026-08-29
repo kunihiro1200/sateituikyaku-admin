@@ -2766,14 +2766,23 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
     // 「大字」「町」の表記ゆれや全角/半角ハイフンの違いがあるため、DBの前方一致では取りこぼす。
     // property_address のみを全件取得して正規化比較（軽量な2カラムのみ・結果は60秒キャッシュ）
     if (normalizedTargetAddress) {
-      const { data: addressRows } = await supabase
-        .from('sellers')
-        .select('id, property_address')
-        .neq('id', id)
-        .is('deleted_at', null)
-        .not('property_address', 'is', null);
+      // Supabaseは1クエリ最大1000行のため、ページングして全件取得する
+      const addressRows: Array<{ id: string; property_address: string | null }> = [];
+      const PAGE_SIZE = 1000;
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data: page, error: pageError } = await supabase
+          .from('sellers')
+          .select('id, property_address')
+          .neq('id', id)
+          .is('deleted_at', null)
+          .not('property_address', 'is', null)
+          .range(from, from + PAGE_SIZE - 1);
+        if (pageError || !page || page.length === 0) break;
+        addressRows.push(...page);
+        if (page.length < PAGE_SIZE) break;
+      }
 
-      const matchedAddressIds = (addressRows || [])
+      const matchedAddressIds = addressRows
         .filter((row) => normalizeAddress(row.property_address) === normalizedTargetAddress)
         .map((row) => row.id);
 
