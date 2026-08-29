@@ -2656,20 +2656,23 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
 
     const { phone_number_hash, email_hash, property_address } = rawSeller;
 
-    // 物件住所を正規化（全角→半角・空白/記号除去）して比較用キーを作る
-    // 名前・電話番号・メールが全て異なっても、同じ住所なら重複扱いにするため
+    // 物件住所を正規化して比較用キーを作る
+    // 名前・電話番号・メールが全て異なっても、同じ住所なら重複扱いにするため。
+    // 例: 「大分市荏隈町2丁目14−7」と「大分市大字荏隈2-14-7」を同一とみなす
     const normalizeAddress = (addr: string | null | undefined): string => {
       if (!addr) return '';
       let s = String(addr).trim();
       if (s === '' || s === '未入力') return '';
       // 全角英数字・記号を半角へ
       s = s.replace(/[\uFF01-\uFF5E]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
-      // 全角スペースを半角へ
-      s = s.replace(/\u3000/g, ' ');
-      // 空白・ハイフン類・括弧などの記号を除去して表記ゆれを吸収
-      s = s.replace(/[\s\-‐-‒–—―ー－()（）]/g, '');
+      // 全角スペースを除去
+      s = s.replace(/\u3000/g, '');
+      // 各種ダッシュ・ハイフン・長音・空白・括弧を全て除去（U+2212 全角マイナス等も含む）
+      s = s.replace(/[-\u2010-\u2015\u2212\u30FC\uFF0D\uFF70\s()（）]/g, '');
       // 「丁目」「番地」「番」「号」を除去（14-7 と 14番7号 を同一視）
       s = s.replace(/丁目|番地|番|号/g, '');
+      // 町名の表記ゆれを吸収（大字・字・町 を除去）
+      s = s.replace(/大字|字|町/g, '');
       return s.toLowerCase();
     };
     const normalizedTargetAddress = normalizeAddress(property_address);
@@ -2760,53 +2763,54 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
     }
 
     // 物件住所で検索（名前・電話・メールが違っても同じ住所なら重複扱い）
+    // 「大字」「町」の表記ゆれや全角/半角ハイフンの違いがあるため、DBの前方一致では取りこぼす。
+    // property_address のみを全件取得して正規化比較（軽量な2カラムのみ・結果は60秒キャッシュ）
     if (normalizedTargetAddress) {
-      // 完全一致は取りこぼしやすいので、まず前方一致で候補を絞り込み、正規化して厳密比較する
-      const prefix = (property_address || '').trim().slice(0, 6);
-      let addressQuery = supabase
+      const { data: addressRows } = await supabase
         .from('sellers')
-        .select('id, seller_number, name, phone_number, email, inquiry_date, confidence_level, status, next_call_date, valuation_amount_1, valuation_amount_2, valuation_amount_3, property_address, comments')
+        .select('id, property_address')
         .neq('id', id)
         .is('deleted_at', null)
         .not('property_address', 'is', null);
 
-      if (prefix) {
-        addressQuery = addressQuery.ilike('property_address', `${prefix}%`);
-      }
+      const matchedAddressIds = (addressRows || [])
+        .filter((row) => normalizeAddress(row.property_address) === normalizedTargetAddress)
+        .map((row) => row.id);
 
-      const { data: addressMatches } = await addressQuery;
+      // まだ matchMap に無い（電話/メールで一致していない）売主だけ詳細を取得
+      const idsToFetch = matchedAddressIds.filter((mid) => !matchMap.has(mid));
 
-      if (addressMatches) {
-        const { decrypt } = await import('../utils/encryption');
-        for (const seller of addressMatches) {
-          // 正規化した住所が一致する場合のみ重複とみなす
-          if (normalizeAddress(seller.property_address) !== normalizedTargetAddress) continue;
+      if (idsToFetch.length > 0) {
+        const { data: addressMatches } = await supabase
+          .from('sellers')
+          .select('id, seller_number, name, phone_number, email, inquiry_date, confidence_level, status, next_call_date, valuation_amount_1, valuation_amount_2, valuation_amount_3, property_address, comments')
+          .in('id', idsToFetch);
 
-          if (matchMap.has(seller.id)) {
-            // 既に電話/メールで一致している場合は matchType を維持
-            continue;
+        if (addressMatches) {
+          const { decrypt } = await import('../utils/encryption');
+          for (const seller of addressMatches) {
+            let decryptedName = '';
+            try { decryptedName = seller.name ? decrypt(seller.name) : ''; } catch { /* skip */ }
+            matchMap.set(seller.id, {
+              sellerId: seller.id,
+              matchType: 'address' as const,
+              sellerInfo: {
+                name: decryptedName,
+                phoneNumber: '',
+                inquiryDate: seller.inquiry_date ? new Date(seller.inquiry_date) : undefined,
+                sellerNumber: seller.seller_number,
+                confidenceLevel: seller.confidence_level,
+                status: seller.status,
+                nextCallDate: seller.next_call_date,
+                valuationAmount1: seller.valuation_amount_1,
+                valuationAmount2: seller.valuation_amount_2,
+                valuationAmount3: seller.valuation_amount_3,
+                propertyAddress: seller.property_address,
+                comments: seller.comments,
+              },
+              propertyInfo: seller.property_address ? { address: seller.property_address, propertyType: '' } : undefined,
+            });
           }
-          let decryptedName = '';
-          try { decryptedName = seller.name ? decrypt(seller.name) : ''; } catch { /* skip */ }
-          matchMap.set(seller.id, {
-            sellerId: seller.id,
-            matchType: 'address' as const,
-            sellerInfo: {
-              name: decryptedName,
-              phoneNumber: '',
-              inquiryDate: seller.inquiry_date ? new Date(seller.inquiry_date) : undefined,
-              sellerNumber: seller.seller_number,
-              confidenceLevel: seller.confidence_level,
-              status: seller.status,
-              nextCallDate: seller.next_call_date,
-              valuationAmount1: seller.valuation_amount_1,
-              valuationAmount2: seller.valuation_amount_2,
-              valuationAmount3: seller.valuation_amount_3,
-              propertyAddress: seller.property_address,
-              comments: seller.comments,
-            },
-            propertyInfo: seller.property_address ? { address: seller.property_address, propertyType: '' } : undefined,
-          });
         }
       }
     }
