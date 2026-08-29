@@ -179,6 +179,8 @@ interface PropertyListing {
   private_mail_delivery?: string;
   // Eラベルチェック
   e_label_checked?: string;
+  // 物件資料処分済（ATBB状況が「非公開」の場合に表示）
+  document_disposed?: string;
   // ハウスメーカー（戸建て物件のみ）
   house_maker?: string;
 }
@@ -280,6 +282,7 @@ export default function PropertyListingDetailPage() {
   const [isOfferEditMode, setIsOfferEditMode] = useState(false);
   const [atbbWarningDialog, setAtbbWarningDialog] = useState(false);
   const [eLabelWarningDialog, setELabelWarningDialog] = useState(false);
+  const [documentDisposedWarningDialog, setDocumentDisposedWarningDialog] = useState(false);
   const [preViewingNotesWarningDialog, setPreViewingNotesWarningDialog] = useState(false);
   const [contactInfoWarningDialog, setContactInfoWarningDialog] = useState(false);
   const offerSectionRef = useRef<HTMLDivElement>(null);
@@ -629,6 +632,17 @@ export default function PropertyListingDetailPage() {
         }
       }
 
+      // 物件資料処分済チェック: ATBB状況が「非公開」の場合は「済」「未」のどちらか必須
+      if (nextAtbbStatus && nextAtbbStatus.startsWith('非公開')) {
+        const currentDocumentDisposed = editedData.document_disposed !== undefined
+          ? editedData.document_disposed
+          : (data?.document_disposed ?? '');
+        if (currentDocumentDisposed !== '済' && currentDocumentDisposed !== '未') {
+          setDocumentDisposedWarningDialog(true);
+          return;
+        }
+      }
+
       // 買付が必須になる条件:
       //   1. 変更後が「非公開（専任）」または「非公開（一般）」
       //   2. 「専任・公開中」→「一般・公開中」への変更
@@ -904,7 +918,7 @@ export default function PropertyListingDetailPage() {
 
     // ATBB変更フローから来た場合: editedDataにatbb_status等のヘッダーデータが含まれている
     // その場合はヘッダーデータも一緒に保存する（買付必須バリデーション通過後の保存）
-    const HEADER_FIELDS = ['atbb_status', 'e_label_checked'];
+    const HEADER_FIELDS = ['atbb_status', 'e_label_checked', 'document_disposed'];
     const headerData: Record<string, any> = {};
     for (const field of HEADER_FIELDS) {
       if (editedData[field] !== undefined) {
@@ -2418,6 +2432,44 @@ export default function PropertyListingDetailPage() {
             </Grid>
           )}
 
+          {/* 物件資料処分済: ATBB状況が「非公開」の場合のみ表示 */}
+          {isHeaderEditMode && (editedData.atbb_status !== undefined ? editedData.atbb_status : (data.atbb_status || '')).startsWith('非公開') && (
+            <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
+              <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>
+                物件資料処分済
+                <Typography component="span" color="error" sx={{ fontSize: '0.75rem', ml: 0.3 }}>*</Typography>
+              </Typography>
+              <Box sx={{ mt: 0.5, display: 'flex', gap: 0.5 }}>
+                <Button
+                  size="small"
+                  variant={
+                    (editedData.document_disposed !== undefined ? editedData.document_disposed : (data.document_disposed || '')) === '済'
+                      ? 'contained'
+                      : 'outlined'
+                  }
+                  color="success"
+                  onClick={() => handleFieldChange('document_disposed', '済')}
+                  sx={{ minWidth: 40, fontSize: '0.75rem', py: 0.3 }}
+                >
+                  済
+                </Button>
+                <Button
+                  size="small"
+                  variant={
+                    (editedData.document_disposed !== undefined ? editedData.document_disposed : (data.document_disposed || '')) === '未'
+                      ? 'contained'
+                      : 'outlined'
+                  }
+                  color="warning"
+                  onClick={() => handleFieldChange('document_disposed', '未')}
+                  sx={{ minWidth: 40, fontSize: '0.75rem', py: 0.3 }}
+                >
+                  未
+                </Button>
+              </Box>
+            </Grid>
+          )}
+
           <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
             <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>種別</Typography>
             {isHeaderEditMode ? (
@@ -3738,6 +3790,27 @@ export default function PropertyListingDetailPage() {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setELabelWarningDialog(false)} variant="contained" color="error">
+            閉じる
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 物件資料処分済 警告ダイアログ */}
+      <Dialog open={documentDisposedWarningDialog} onClose={() => setDocumentDisposedWarningDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ bgcolor: '#fce4ec', color: '#c62828', fontWeight: 'bold', fontSize: '1.1rem' }}>
+          ⚠️ 保存できません
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3, pb: 2 }}>
+          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+            ATBB状況を「非公開」に変更する場合、<br />
+            <span style={{ color: '#c62828' }}>「物件資料処分済」の選択が必須</span>です。
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+            「済」または「未」を選択してからもう一度保存してください。
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDocumentDisposedWarningDialog(false)} variant="contained" color="error">
             閉じる
           </Button>
         </DialogActions>
