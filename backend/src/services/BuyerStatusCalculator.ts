@@ -134,7 +134,9 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
         isNotBlank(buyer.viewing_date)
       )
     ) {
-      const effectiveAssignee = buyer.follow_up_assignee || buyer.project_assignee;
+      // 担当が「業者」の場合はサイドバーの担当カテゴリから除外されるため、担当なし扱いにする
+      const rawAssignee = buyer.follow_up_assignee || buyer.project_assignee;
+      const effectiveAssignee = rawAssignee === '業者' ? null : rawAssignee;
       if (isNotBlank(effectiveAssignee)) {
         const status = `当日TEL(${effectiveAssignee})`;
         return { status, priority: 6, matchedCondition: `内覧日あり: 次電日が当日以前（担当${effectiveAssignee}）`, color: getStatusColor('当日TEL') };
