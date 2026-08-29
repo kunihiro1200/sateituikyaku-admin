@@ -37,8 +37,12 @@ export default function BuyerMatchingSelector({
       }
       // マッチング実行フラグを設定
       await onMatchingStatusChange(true);
-      // 売主マッチング画面に遷移
-      window.open(`/seller-matching?buyerNumber=${buyerNumber}`, '_blank');
+      
+      // 売主リストページに遷移（buyerNumberパラメータ付き）
+      // 売主リストページ側で自動的にフィルタリング＆1件なら通話モードに遷移
+      const url = `/sellers?buyerMatching=${buyerNumber}`;
+      console.log('[BuyerMatchingSelector] Opening URL:', url);
+      window.open(url, '_blank');
     } catch (error) {
       console.error('[Buyer Matching] Search error:', error);
     } finally {

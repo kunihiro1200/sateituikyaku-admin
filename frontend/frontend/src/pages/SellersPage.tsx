@@ -352,8 +352,8 @@ export default function SellersPage() {
   const [nextCallDateValue, setNextCallDateValue] = useState('');
   // 営業担当フィルター（visit_assignee、複数選択対応）
   const [visitAssigneeFilter, setVisitAssigneeFilter] = useState<string[]>([]);
-  // 地名フィルター（物件住所の部分一致検索用）
-  const [addressKeywordFilter, setAddressKeywordFilter] = useState('');
+  // 町名フィルター（物件住所の部分一致検索用）
+  const [townNameFilter, setTownNameFilter] = useState('');
   // サイドバー一時追加フィルター
   const [sidebarTempFilters, setSidebarTempFilters] = useState<Array<{
     id: string;
@@ -630,8 +630,8 @@ export default function SellersPage() {
         }
       }
       if (visitAssigneeFilter.length > 0) filtersToSave.visitAssignee = visitAssigneeFilter;
-      // 地名フィルター（物件住所の部分一致検索用）
-      if (addressKeywordFilter.trim()) filtersToSave.addressKeyword = addressKeywordFilter.trim();
+      // 町名フィルター（物件住所の部分一致検索用）
+      if (townNameFilter.trim()) filtersToSave.townName = townNameFilter.trim();
       // 検索バーの内容も保存（物件住所・売主名などのキーワード検索用）
       if (searchQuery.trim()) filtersToSave.searchQuery = searchQuery.trim();
 
@@ -688,7 +688,7 @@ export default function SellersPage() {
     setNextCallDateMode('');
     setNextCallDateValue('');
     setVisitAssigneeFilter([]);
-    setAddressKeywordFilter(''); // 地名フィルターもリセット
+    setTownNameFilter(''); // 町名フィルターもリセット
 
     const f = tempFilter.filters || {};
     // フィルター値を配列に正規化（単一値も配列に変換）
@@ -718,8 +718,8 @@ export default function SellersPage() {
       setNextCallDateValue(f.nextCallDateTo);
     }
     if (f.visitAssignee) setVisitAssigneeFilter(toArr(f.visitAssignee));
-    // 地名フィルターを復元
-    if (f.addressKeyword) setAddressKeywordFilter(f.addressKeyword);
+    // 町名フィルターを復元
+    if (f.townName) setTownNameFilter(f.townName);
 
     setSelectedTempFilterId(tempFilter.id);
     setSelectedCategory('all'); // サイドバーの固定カテゴリとは独立させる
@@ -732,6 +732,8 @@ export default function SellersPage() {
   // 初回ロード時とキャッシュ無効化時にサイドバーカウントを即座に取得
   useEffect(() => {
     console.log('[SellersPage] Component mounted or cache invalidated');
+    console.log('[SellersPage] location.search:', location.search);
+    
     const cached = pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
     if (!cached) {
       console.log('[SellersPage] No cache found, fetching sidebar counts immediately');
@@ -743,7 +745,39 @@ export default function SellersPage() {
     fetchAssigneeInitials();
     fetchMyInitials();
     fetchSidebarTempFilters();
-  }, []);
+    
+    // 買主マッチング用URLパラメータをチェック
+    const searchParams = new URLSearchParams(location.search);
+    const buyerMatchingNumber = searchParams.get('buyerMatching');
+    console.log('[SellersPage] buyerMatching param:', buyerMatchingNumber);
+    
+    if (buyerMatchingNumber) {
+      console.log('[SellersPage] Buyer matching detected:', buyerMatchingNumber);
+      // 買主マッチングの場合、マッチした売主を取得
+      fetch(`/api/buyers/${buyerMatchingNumber}/match-candidates`)
+        .then(res => {
+          console.log('[SellersPage] Match candidates response status:', res.status);
+          return res.json();
+        })
+        .then(data => {
+          console.log('[SellersPage] Match candidates data:', data);
+          if (data.sellers && data.sellers.length === 1) {
+            // 1件だけの場合は通話モードに自動遷移
+            const seller = data.sellers[0];
+            const sellerId = seller.id || seller.seller_id;
+            console.log('[SellersPage] Navigating to call mode:', sellerId);
+            navigate(`/sellers/${sellerId}/call`);
+          } else {
+            console.log('[SellersPage] Multiple or zero matches, showing list');
+          }
+          // 0件または複数件の場合は何もしない（通常の売主リストを表示）
+        })
+        .catch(error => {
+          console.error('[SellersPage] Buyer matching error:', error);
+          // エラーの場合は何もしない（通常の売主リストを表示）
+        });
+    }
+  }, [location.search, navigate]);
 
   // 一時フィルターIDが復元された場合、sidebarTempFiltersロード後にフィルター条件を適用
   useEffect(() => {
@@ -793,7 +827,7 @@ export default function SellersPage() {
 
   useEffect(() => {
     fetchSellers();
-  }, [page, rowsPerPage, confidenceLevelFilter, inquirySiteFilter, propertyTypeFilter, statusFilterValue, regionFilter, inquiryDateFromFilter, inquiryDateToFilter, currentStatusFilterValue, valuationAmountMinFilter, valuationAmountMaxFilter, nextCallDateMode, nextCallDateValue, visitAssigneeFilter, selectedCategory, sortBy, sortOrder]);
+  }, [page, rowsPerPage, confidenceLevelFilter, inquirySiteFilter, propertyTypeFilter, statusFilterValue, regionFilter, inquiryDateFromFilter, inquiryDateToFilter, currentStatusFilterValue, valuationAmountMinFilter, valuationAmountMaxFilter, nextCallDateMode, nextCallDateValue, visitAssigneeFilter, townNameFilter, selectedCategory, sortBy, sortOrder]);
 
   const fetchSellers = async () => {
     // このリクエストの連番を発行（後から解決した古いリクエストの結果を無視するため）
@@ -856,9 +890,9 @@ export default function SellersPage() {
       if (visitAssigneeFilter.length > 0) {
         params.visitAssignee = visitAssigneeFilter;
       }
-      // 地名フィルター（物件住所の部分一致検索用）
-      if (addressKeywordFilter.trim()) {
-        params.addressKeyword = addressKeywordFilter.trim();
+      // 町名フィルター（物件住所の部分一致検索用）
+      if (townNameFilter.trim()) {
+        params.townName = townNameFilter.trim();
       }
 
       // キャッシュキー（パラメータを含む）
@@ -1360,8 +1394,8 @@ export default function SellersPage() {
               {/* 地名・町名フィルター（物件住所の部分一致検索用） */}
               <TextField
                 label="地名・町名"
-                value={addressKeywordFilter}
-                onChange={(e) => setAddressKeywordFilter(e.target.value)}
+                value={townNameFilter}
+                onChange={(e) => setTownNameFilter(e.target.value)}
                 placeholder="例: 石垣"
                 sx={{ minWidth: 150 }}
                 size="small"
@@ -1554,7 +1588,7 @@ export default function SellersPage() {
                   setNextCallDateMode('');
                   setNextCallDateValue('');
                   setVisitAssigneeFilter([]);
-                  setAddressKeywordFilter(''); // 地名フィルターもクリア
+                  setTownNameFilter(''); // 町名フィルターもクリア
                   setSelectedTempFilterId(null);
                 }}
                 size="small"
@@ -1583,8 +1617,8 @@ export default function SellersPage() {
                   }
                   
                   // 3. 地名・町名
-                  if (addressKeywordFilter.trim()) {
-                    labelParts.push(addressKeywordFilter.trim());
+                  if (townNameFilter.trim()) {
+                    labelParts.push(townNameFilter.trim());
                   }
                   
                   // 4. 種別（マンション、戸建て、土地など）

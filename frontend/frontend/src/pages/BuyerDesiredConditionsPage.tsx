@@ -233,7 +233,7 @@ export default function BuyerDesiredConditionsPage() {
         ? { 
             ...pendingChanges, 
             desired_conditions_updated_at: new Date().toISOString(),
-            matching_required: null  // 希望条件を編集したら再選択を促す
+            match_updated_at: null  // 希望条件を編集したら再マッチングが必要
           }
         : pendingChanges;
 
@@ -448,7 +448,7 @@ export default function BuyerDesiredConditionsPage() {
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           <BuyerMatchingSelector
             buyerNumber={buyer_number!}
-            matchingRequired={buyer.matching_required}
+            matchingRequired={buyer.match_updated_at != null}
             isDesiredTimingMissing={(() => {
               // 未保存の変更（プルダウンで選択したがまだ保存していない値）を優先してチェックする
               const effectiveTiming = pendingChanges.desired_timing !== undefined
@@ -464,17 +464,30 @@ export default function BuyerDesiredConditionsPage() {
                 const result = await buyerApi.update(
                   buyer_number!,
                   { 
-                    matching_required: required,
-                    desired_conditions_updated_at: new Date().toISOString()
+                    desired_conditions_updated_at: new Date().toISOString(),
+                    match_updated_at: required ? new Date().toISOString() : null
                   },
                   { sync: true }
                 );
                 setBuyer(result.buyer);
-                setSnackbar({ 
-                  open: true, 
-                  message: required ? 'マッチング実行に設定しました' : 'マッチング不要に設定しました', 
-                  severity: 'success' 
-                });
+                
+                if (required) {
+                  // マッチングONの場合は通話モードページに遷移
+                  setSnackbar({ 
+                    open: true, 
+                    message: 'マッチング実行に設定しました。通話モードページに遷移します...', 
+                    severity: 'success' 
+                  });
+                  setTimeout(() => {
+                    navigate(`/buyers/${buyer_number}/call`);
+                  }, 1000);
+                } else {
+                  setSnackbar({ 
+                    open: true, 
+                    message: 'マッチング不要に設定しました', 
+                    severity: 'success' 
+                  });
+                }
               } catch (error: any) {
                 console.error('Failed to update matching status:', error);
                 setSnackbar({ 

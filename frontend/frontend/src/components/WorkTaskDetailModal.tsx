@@ -2167,29 +2167,35 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   );
 
   // 編集可能ボタン選択
-  const EditableButtonSelect = ({ label, field, options, labelColor, required, highlight }: { label: string; field: string; options: string[]; labelColor?: 'error' | 'text.secondary'; required?: boolean; highlight?: boolean }) => (
-    <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5, ...(highlight ? { bgcolor: '#fff3e0', borderRadius: 1, p: 0.5, border: '2px solid #ff9800' } : {}) }}>
-      <Grid item xs={4}>
-        <Typography variant="body2" color={highlight ? 'warning.dark' : (labelColor || 'text.secondary')} sx={{ fontWeight: (highlight || labelColor === 'error') ? 700 : 500 }}>
-          {label}{required && !getValue(field) ? <span style={{ color: '#d32f2f', marginLeft: 2 }}>*（必須）</span> : null}
-        </Typography>
+  const EditableButtonSelect = ({ label, field, options, labelColor, required, highlight }: { label: string; field: string; options: string[]; labelColor?: 'error' | 'text.secondary'; required?: boolean; highlight?: boolean }) => {
+    // 数値型フィールドの場合、値を文字列に変換して比較
+    const currentValue = getValue(field);
+    const currentValueStr = currentValue != null ? String(currentValue) : null;
+    
+    return (
+      <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5, ...(highlight ? { bgcolor: '#fff3e0', borderRadius: 1, p: 0.5, border: '2px solid #ff9800' } : {}) }}>
+        <Grid item xs={4}>
+          <Typography variant="body2" color={highlight ? 'warning.dark' : (labelColor || 'text.secondary')} sx={{ fontWeight: (highlight || labelColor === 'error') ? 700 : 500 }}>
+            {label}{required && !currentValue ? <span style={{ color: '#d32f2f', marginLeft: 2 }}>*（必須）</span> : null}
+          </Typography>
+        </Grid>
+        <Grid item xs={8}>
+          <ButtonGroup size="small" variant="outlined">
+            {options.map((opt) => (
+              <Button
+                key={opt}
+                variant={currentValueStr === opt ? 'contained' : 'outlined'}
+                color={currentValueStr === opt ? 'primary' : 'inherit'}
+                onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange(field, currentValueStr === opt ? null : opt); }}
+              >
+                {opt}
+              </Button>
+            ))}
+          </ButtonGroup>
+        </Grid>
       </Grid>
-      <Grid item xs={8}>
-        <ButtonGroup size="small" variant="outlined">
-          {options.map((opt) => (
-            <Button
-              key={opt}
-              variant={getValue(field) === opt ? 'contained' : 'outlined'}
-              color={getValue(field) === opt ? 'primary' : 'inherit'}
-              onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange(field, getValue(field) === opt ? null : opt); }}
-            >
-              {opt}
-            </Button>
-          ))}
-        </ButtonGroup>
-      </Grid>
-    </Grid>
-  );
+    );
+  };
 
   // チャット送信付きN/Yボタン
   const ChatSendButton = ({

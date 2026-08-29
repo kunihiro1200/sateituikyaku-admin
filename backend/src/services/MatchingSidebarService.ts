@@ -26,13 +26,18 @@ import { areasOverlap, priceRangesOverlapAny, timingUrgencyScore, parseDesiredPr
 import { decrypt } from '../utils/encryption';
 
 /**
- * seller_buyer_match_contacts テーブルから、指定した売主×買主ペアのうち
+ * seller_buyer_match_contacts と seller_seller_match_contacts テーブルから、
  * 「連絡未」でない（連絡済み/連絡不要になっている）ペアの組み合わせキー集合を取得する。
- * キーは `${sellerId}:${buyerNumber}` の形式。
+ * 
+ * キー形式：
+ * - 売主×買主: `${sellerId}:${buyerNumber}`
+ * - 売主×売主: `${sellerId}:seller:${buyerSellerId}`
  */
 async function fetchResolvedPairKeys(supabase: SupabaseClient): Promise<Set<string>> {
   const resolved = new Set<string>();
   const PAGE_SIZE = 1000;
+  
+  // 1. 売主×買主ペアの連絡状況
   let page = 0;
   while (true) {
     const { data, error } = await supabase
@@ -49,6 +54,32 @@ async function fetchResolvedPairKeys(supabase: SupabaseClient): Promise<Set<stri
     if (data.length < PAGE_SIZE) break;
     page++;
   }
+  
+  // 2. 売主×売主ペアの連絡状況（買い替え案件）
+  page = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from('seller_seller_match_contacts')
+      .select('seller_seller_id, buyer_seller_id, contact_status')
+      .neq('contact_status', '連絡未')
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+    if (error) {
+      // テーブルが存在しない場合はスキップ
+      console.warn('seller_seller_match_contacts テーブルが存在しないか、取得に失敗しました:', error.message);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    for (const row of data) {
+      // seller_seller_id = 売りたい売主のID
+      // buyer_seller_id = 買いたい売主のID
+      // キーは `${売りたい売主ID}:seller:${買いたい売主ID}` 形式
+      resolved.add(`${row.seller_seller_id}:seller:${row.buyer_seller_id}`);
+    }
+    if (data.length < PAGE_SIZE) break;
+    page++;
+  }
+  
   return resolved;
 }
 
@@ -98,8 +129,7 @@ interface BuyerDesiredConditions {
 }
 
 const hasAnyMatchCriteria = (row: MatchIntentFields): boolean => {
-  const areas = Array.isArray(row.match_areas) ? row.match_areas : [];
-  return areas.length > 0 || !!row.match_area_free_text;
+  return !!row.property_address;
 };
 
 /**
@@ -154,6 +184,10 @@ export class MatchingSidebarService {
   /**
    * 追客中の売主のうち、マッチする買主がいる件数をサイドバー用に集計する。
    * 福岡（FI）と大分（それ以外）を分けて返す。
+   * 
+   * 🔄 売主同士のマッチング（買い替え案件）も含める：
+   * - 売主Aの「売りたい」× 買主の希望条件
+   * - 売主Aの「売りたい」× 売主Bの「買いたい」 ← 追加
    */
   async getSellerSidebarCounts(): Promise<{ fukuoka: number; oita: number }> {
     const items = await this.getSellerMatchItems();
@@ -186,12 +220,21 @@ export class MatchingSidebarService {
    * 追客中売主 × 買主の希望条件 の総当たりマッチングを計算する（売主視点）。
    * 売主×買主ペア単位の連絡状況（seller_buyer_match_contacts）が
    * '連絡済み'/'連絡不要' になっているペアはカウント対象から除外する。
+   * 
+   * 🔄 売主同士のマッチング（買い替え案件）も含める：
+   * - 売主Aの「売りたい」× 買主の希望条件
+   * - 売主Aの「売りたい」× 売主Bの「買いたい」 ← 追加
    */
   private async getSellerMatchItems(): Promise<SellerMatchSidebarItem[]> {
     const sellers = await this.fetchActiveSellers();
     if (sellers.length === 0) return [];
 
+    // 買主の希望条件を取得
     const buyers = await this.fetchBuyersWithDesiredConditions();
+    
+    // 🔄 売主の「買いたい」条件を取得（買い替え案件用）
+    const sellerBuyIntents = await this.fetchSellerBuyIntents();
+    
     const resolvedPairs = await fetchResolvedPairKeys(this.supabase);
 
     const items: SellerMatchSidebarItem[] = [];
@@ -200,6 +243,8 @@ export class MatchingSidebarService {
 
       let buyerMatchCount = 0;
       let topUrgencyScore = 0;
+      
+      // 1. 買主の希望条件とのマッチング
       for (const buyer of buyers) {
         if (buyer.desiredAreas.length === 0 && !buyer.desiredAreaFreeText && !buyer.inquiredPropertyAddress) continue;
         if (!matchesSellerToBuyer(seller, buyer)) continue;
@@ -209,6 +254,22 @@ export class MatchingSidebarService {
         if (getTimingFreshness(buyer.desiredTiming, buyer.receptionDate).freshness === 'expired') continue;
         buyerMatchCount++;
         const score = timingUrgencyScore(buyer.desiredTiming);
+        if (score > topUrgencyScore) topUrgencyScore = score;
+      }
+      
+      // 🔄 2. 売主の「買いたい」条件とのマッチング（買い替え案件）
+      for (const buyIntent of sellerBuyIntents) {
+        // 自分自身は除外
+        if (buyIntent.sellerId === seller.id) continue;
+        if (buyIntent.desiredAreas.length === 0 && !buyIntent.desiredAreaFreeText) continue;
+        if (!matchesSellerToBuyer(seller, buyIntent)) continue;
+        // このペアが連絡済み/連絡不要になっている場合はカウントしない
+        // 🔄 売主同士のペアは `seller:${sellerId}` 形式でキーを作る
+        if (resolvedPairs.has(`${seller.id}:seller:${buyIntent.sellerId}`)) continue;
+        // 売主の希望時期が陳腐化（基準期間の2倍経過）している場合はカウントしない
+        if (getTimingFreshness(buyIntent.desiredTiming, buyIntent.buyMatchUpdatedAt).freshness === 'expired') continue;
+        buyerMatchCount++;
+        const score = timingUrgencyScore(buyIntent.desiredTiming);
         if (score > topUrgencyScore) topUrgencyScore = score;
       }
 
@@ -403,6 +464,7 @@ export class MatchingSidebarService {
         .select('buyer_number, name, desired_area, desired_area_free_text, desired_timing, desired_property_type, price_range_house, price_range_apartment, price_range_land, match_contact_status, reception_date, property_number')
         .is('deleted_at', null)
         .not('desired_area', 'is', null)
+        .not('match_updated_at', 'is', null)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
       if (error) throw new Error(`買主取得に失敗しました: ${error.message}`);
@@ -445,5 +507,69 @@ export class MatchingSidebarService {
       // 希望条件ページの「売主をマッチング」ボタンを押した（= 希望時期を選択・保存した）買主のみを対象にする。
       // エリアは既存コード選択・自由入力・問合せ物件の住所のいずれかがあればよい。
       .filter(b => (b.desiredAreas.length > 0 || !!b.desiredAreaFreeText || !!b.inquiredPropertyAddress) && !!b.desiredTiming && MATCH_TIMING_OPTIONS.includes(b.desiredTiming as MatchTiming));
+  }
+  
+  /**
+   * 🔄 売主の「買いたい」条件を取得する（買い替え案件用）
+   * 
+   * sellers.buy_match_* フィールドから、買主の希望条件と同じ形式に変換する。
+   */
+  private async fetchSellerBuyIntents(): Promise<Array<BuyerDesiredConditions & { sellerId: string; buyMatchUpdatedAt: string | null }>> {
+    const results: any[] = [];
+    const PAGE_SIZE = 1000;
+    let page = 0;
+    while (true) {
+      const { data, error } = await this.supabase
+        .from('sellers')
+        .select('id, seller_number, name, buy_match_areas, buy_match_area_free_text, buy_match_timing, buy_match_property_types, buy_match_price_min, buy_match_price_max, buy_match_updated_at')
+        .is('deleted_at', null)
+        .not('buy_match_updated_at', 'is', null)
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+      if (error) throw new Error(`売主の買いたい条件取得に失敗しました: ${error.message}`);
+      if (!data || data.length === 0) break;
+      results.push(...data);
+      if (data.length < PAGE_SIZE) break;
+      page++;
+    }
+
+    return results
+      .map(s => {
+        const desiredAreas = Array.isArray(s.buy_match_areas)
+          ? s.buy_match_areas
+          : (s.buy_match_areas ? String(s.buy_match_areas).split('|').map((v: string) => v.trim()).filter(Boolean) : []);
+        
+        const propertyTypeCategories = new Set<PropertyTypeCategory>(
+          Array.isArray(s.buy_match_property_types)
+            ? s.buy_match_property_types
+            : []
+        );
+        
+        // 価格帯を priceRanges 形式に変換
+        const priceRanges: Array<{ min: number; max: number }> = [];
+        if (s.buy_match_price_min !== null && s.buy_match_price_max !== null) {
+          priceRanges.push({
+            min: s.buy_match_price_min,
+            max: s.buy_match_price_max,
+          });
+        }
+        
+        return {
+          sellerId: s.id,
+          buyer_number: `seller:${s.id}`, // 売主同士のペアを識別するための疑似買主番号
+          name: s.name,
+          match_contact_status: null, // 売主同士の連絡状況は別管理
+          desiredAreas,
+          desiredAreaFreeText: s.buy_match_area_free_text || null,
+          priceRanges,
+          desiredTiming: s.buy_match_timing || null,
+          receptionDate: null, // 売主の場合は受付日ではなく buy_match_updated_at を使う
+          inquiredPropertyAddress: null, // 売主の買いたいには問合せ物件はない
+          propertyTypeCategories,
+          buyMatchUpdatedAt: s.buy_match_updated_at || null,
+        };
+      })
+      // 「売主をマッチング」ボタンを押した（= 希望時期を選択・保存した）売主のみを対象にする
+      .filter(s => (s.desiredAreas.length > 0 || !!s.desiredAreaFreeText) && !!s.desiredTiming && MATCH_TIMING_OPTIONS.includes(s.desiredTiming as MatchTiming));
   }
 }

@@ -13,6 +13,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Check if backend files changed
+        id: backend_check
+        run: |
+          # 前回のコミットとの差分でbackendディレクトリが変更されているかチェック
+          if git diff --name-only HEAD^ HEAD | grep -q '^backend/'; then
+            echo "backend_changed=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Backend files changed in this commit"
+          else
+            echo "backend_changed=false" >> $GITHUB_OUTPUT
+            echo "✅ No backend changes detected"
+          fi
+
+      - name: Wait for backend deployment
+        if: steps.backend_check.outputs.backend_changed == 'true'
+        run: |
+          echo "🕐 Waiting for backend deployment to complete (3 minutes)..."
+          echo "This ensures the backend API is ready before deploying the frontend."
+          sleep 180
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

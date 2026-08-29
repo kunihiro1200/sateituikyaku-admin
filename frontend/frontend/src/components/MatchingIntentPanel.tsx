@@ -29,6 +29,9 @@ const CONTACT_STATUS_OPTIONS = ['連絡済み', '連絡不要', '連絡未'] as 
 
 export const MATCH_TIMING_OPTIONS = ['今すぐ', '3ヶ月以内', '半年以内', '1年以内', '1年以上・様子見'] as const;
 
+// 物件種別の選択肢
+export const PROPERTY_TYPE_OPTIONS = ['マンション', '戸建て', '土地', 'その他'] as const;
+
 const TIMING_COLOR: Record<string, string> = {
   '今すぐ': '#d32f2f',
   '3ヶ月以内': '#f57c00',
@@ -46,6 +49,8 @@ interface MatchIntentData {
   matchPriceMax?: number | null;
   matchMemo?: string | null;
   matchContactStatus?: string | null;
+  matchPropertyTypes?: string[]; // 物件種別配列
+  matchUpdatedAt?: string | null; // マッチング更新日時（これがあればマッチング有効）
 }
 
 interface MatchCandidate {
@@ -58,6 +63,7 @@ interface MatchCandidate {
   matchTiming: string | null;
   matchPriceMin: number | null;
   matchPriceMax: number | null;
+  matchPropertyTypes: string[]; // 物件種別配列
   matchMemo: string | null;
   matchUpdatedAt: string | null;
   matchReasons: string[];
@@ -103,6 +109,8 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
   const [priceMin, setPriceMin] = useState<string>(formatManYen(initialData?.matchPriceMin));
   const [priceMax, setPriceMax] = useState<string>(formatManYen(initialData?.matchPriceMax));
   const [memo, setMemo] = useState<string>(initialData?.matchMemo || '');
+  const [propertyTypes, setPropertyTypes] = useState<string[]>(initialData?.matchPropertyTypes || []);
+  const [matchUpdatedAt, setMatchUpdatedAt] = useState<string | null>(initialData?.matchUpdatedAt || null);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -130,16 +138,25 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     setPriceMin(formatManYen(initialData?.matchPriceMin));
     setPriceMax(formatManYen(initialData?.matchPriceMax));
     setMemo(initialData?.matchMemo || '');
+    setPropertyTypes(initialData?.matchPropertyTypes || []);
+    setMatchUpdatedAt(initialData?.matchUpdatedAt || null);
   }, [entityId, direction]);
+
+  // 🚨 重要: matchUpdatedAtは別のuseEffectで管理（親の再レンダリングでも常に最新の値を反映）
+  useEffect(() => {
+    setMatchUpdatedAt(initialData?.matchUpdatedAt || null);
+  }, [initialData?.matchUpdatedAt]);
 
   const basePath = entityType === 'seller' ? `/api/sellers/${entityId}` : `/api/buyers/${entityId}`;
   // 「買いたい」方向（売主が買い替え等で購入希望を持つケース）は独立したエンドポイント群を使う
   const intentPath = direction === 'buy' ? `${basePath}/buy-match-intent` : `${basePath}/match-intent`;
   const candidatesPath = direction === 'buy' ? `${basePath}/buy-match-candidates` : `${basePath}/match-candidates`;
-  const contactStatusPathFor = (candidateId: string) =>
+  const contactStatusPathFor = useCallback((candidateId: string) =>
     direction === 'buy'
       ? `${basePath}/buy-match-candidates/${candidateId}/contact-status`
-      : `${basePath}/match-candidates/${candidateId}/contact-status`;
+      : `${basePath}/match-candidates/${candidateId}/contact-status`,
+    [basePath, direction]
+  );
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -153,6 +170,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
         matchPriceMin: parseManYenToYen(priceMin),
         matchPriceMax: parseManYenToYen(priceMax),
         matchMemo: memo.trim() || null,
+        matchPropertyTypes: propertyTypes,
       });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
@@ -161,12 +179,22 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     } finally {
       setSaving(false);
     }
-  }, [intentPath, areas, areaFreeText, timing, priceMin, priceMax, memo]);
+  }, [intentPath, areas, areaFreeText, timing, priceMin, priceMax, memo, propertyTypes]);
 
   const handleSearch = useCallback(async () => {
     setSearching(true);
     setSearchError(null);
     try {
+      // 🚨 既にマッチングが有効（matchUpdatedAtがある）な場合は、無効化する
+      if (matchUpdatedAt) {
+        // マッチングを無効化（削除）
+        await api.delete(intentPath);
+        
+        // 🚨 重要: 即座にリロード（他の処理を一切実行しない）
+        window.location.reload();
+        return;
+      }
+
       // 検索前に最新の入力内容を保存しておく（保存し忘れたまま検索するのを防ぐ）
       await api.put(intentPath, {
         matchAreas: areas,
@@ -175,18 +203,20 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
         matchPriceMin: parseManYenToYen(priceMin),
         matchPriceMax: parseManYenToYen(priceMax),
         matchMemo: memo.trim() || null,
+        matchPropertyTypes: propertyTypes,
       });
 
       const res = await api.get(candidatesPath);
       setCandidates(res.data.candidates || []);
       setHasSearched(true);
+      setMatchUpdatedAt(new Date().toISOString()); // マッチング有効化
     } catch (e: any) {
       setSearchError(e?.response?.data?.error?.message || e?.response?.data?.error || 'マッチング検索に失敗しました');
       setHasSearched(true);
     } finally {
       setSearching(false);
     }
-  }, [intentPath, candidatesPath, areas, areaFreeText, timing, priceMin, priceMax, memo]);
+  }, [intentPath, candidatesPath, areas, areaFreeText, timing, priceMin, priceMax, memo, propertyTypes, matchUpdatedAt]);
 
   // 保存済みの検索結果を取得する（GETのみ・保存はしない）。
   // ページを開いた時点で、既存のマッチング条件に対する候補を自動表示するために使う。
@@ -207,12 +237,17 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
 
   // パネルが表示されたら、保存済みのマッチング条件に対する候補を自動的に表示する
   // （手動で「🔍 マッチング」ボタンを押さなくても、既存の結果がそのまま見られるようにする）。
+  // 🚨 重要: matchUpdatedAtがnullの場合（マッチング無効化）は候補を取得しない
   useEffect(() => {
     setHasSearched(false);
     setCandidates(null);
-    fetchExistingCandidates();
+    
+    // マッチングが有効な場合のみ候補を取得
+    if (matchUpdatedAt) {
+      fetchExistingCandidates();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entityId, direction]);
+  }, [entityId, direction, matchUpdatedAt]);
 
   // 各候補（相手）の連絡状況を更新する。相手ごとに個別のペアとして記録する。
   const handleContactStatusChange = useCallback(async (candidate: MatchCandidate, newStatus: string) => {
@@ -227,7 +262,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
     } finally {
       setContactSaving((prev) => ({ ...prev, [candidate.id]: false }));
     }
-  }, [basePath, direction]);
+  }, [contactStatusPathFor]);
 
   // 「買いたい」方向の場合、相手は必ず「売りたい」売主（entityTypeに関係なく）
   const counterpartLabel = direction === 'buy' ? '売主' : (entityType === 'seller' ? '買主' : '売主');
@@ -342,6 +377,28 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
           </Select>
         </FormControl>
 
+        {/* 種別（複数選択） */}
+        <Box>
+          <Autocomplete
+            multiple
+            size="small"
+            options={[...PROPERTY_TYPE_OPTIONS]}
+            value={propertyTypes}
+            onChange={(_, newValue) => setPropertyTypes(newValue)}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip {...getTagProps({ index })} key={option} label={option} size="small" />
+              ))
+            }
+            renderInput={(params) => (
+              <TextField {...params} label="種別（複数選択可）" placeholder="種別を選択" />
+            )}
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+            複数選択した場合、いずれかの種別が一致すればマッチングします
+          </Typography>
+        </Box>
+
         {/* 金額（万円） */}
         <Box sx={{ display: 'flex', gap: 1 }}>
           <TextField
@@ -385,12 +442,12 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
           <Button
             variant="contained"
             size="small"
-            color="secondary"
+            color={matchUpdatedAt ? "success" : "secondary"}
             startIcon={searching ? <CircularProgress size={14} sx={{ color: 'white' }} /> : <SearchIcon fontSize="small" />}
             onClick={handleSearch}
             disabled={searching}
           >
-            🔍 {counterpartLabel}をマッチング
+            {matchUpdatedAt ? `✅ マッチング中（押すと解除）` : `🔍 ${counterpartLabel}をマッチング`}
           </Button>
           {saveSuccess && <Typography variant="caption" color="success.main">保存しました</Typography>}
           {saveError && <Typography variant="caption" color="error">{saveError}</Typography>}
@@ -424,7 +481,7 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
               <TableRow>
                 <TableCell>{counterpartLabel}番号</TableCell>
                 <TableCell>時期</TableCell>
-                <TableCell>金額帯</TableCell>
+                <TableCell>種別・金額帯</TableCell>
                 <TableCell>マッチ根拠</TableCell>
                 <TableCell>連絡状況</TableCell>
               </TableRow>
@@ -432,14 +489,29 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
             <TableBody>
               {candidates.map((c) => {
                 const isStaleWarning = c.timingFreshness === 'warning';
+                const isContacted = c.contactStatus !== '連絡未';
+                console.log(`[MatchingIntentPanel] Candidate ${c.number || c.id}: contactStatus="${c.contactStatus}", isContacted=${isContacted}`);
                 return (
-                <TableRow key={c.id} sx={isStaleWarning ? { bgcolor: '#fff8e1' } : undefined}>
+                <TableRow 
+                  key={c.id} 
+                  sx={
+                    isContacted 
+                      ? { 
+                          bgcolor: '#f5f5f5 !important', 
+                          opacity: '0.6 !important',
+                          '& > *': { opacity: '0.6 !important' }
+                        } // 連絡済み・連絡不要はグレーアウト
+                      : isStaleWarning 
+                        ? { bgcolor: '#fff8e1' } // 連絡未で時期経過は黄色
+                        : undefined // 連絡未で通常は白
+                  }
+                >
                   <TableCell>
                     <Typography
                       variant="body2"
                       fontWeight="bold"
                       component="a"
-                      href={c.type === 'seller' ? `/sellers/${c.id}` : `/buyers/${c.id}`}
+                      href={c.type === 'seller' ? `/sellers/${c.number}/call` : `/buyers/${c.number}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       sx={{ color: 'primary.main', textDecoration: 'underline', cursor: 'pointer' }}
@@ -467,6 +539,21 @@ const MatchingIntentPanel: React.FC<MatchingIntentPanelProps> = ({ entityType, e
                     )}
                   </TableCell>
                   <TableCell>
+                    {/* 種別 */}
+                    {c.matchPropertyTypes && c.matchPropertyTypes.length > 0 && (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 0.5 }}>
+                        {c.matchPropertyTypes.map((type, idx) => (
+                          <Chip
+                            key={idx}
+                            label={type}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontSize: '0.7rem' }}
+                          />
+                        ))}
+                      </Box>
+                    )}
+                    {/* 金額帯 */}
                     {(c.matchPriceMin || c.matchPriceMax) ? (
                       <Typography variant="caption">
                         {c.matchPriceMin ? `${formatManYen(c.matchPriceMin)}万` : '下限なし'} 〜 {c.matchPriceMax ? `${formatManYen(c.matchPriceMax)}万` : '上限なし'}

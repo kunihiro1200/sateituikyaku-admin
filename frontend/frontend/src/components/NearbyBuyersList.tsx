@@ -24,6 +24,7 @@ import { ImageFile } from './ImageSelectorModal';
 import { AttachmentPayload } from '../types/email';
 import { buildPrintContent } from './nearbyBuyersPrintUtils';
 import { isLand, isDetachedHouse, isApartment } from '../utils/propertyTypeUtils';
+import { useAuthStore } from '../store/authStore';
 
 interface NearbyBuyer {
   buyer_number: string;
@@ -302,6 +303,72 @@ ${signature}`;
 ${signature}`;
 }
 
+// 買取メール本文テンプレート生成関数
+function buildBuybackEmailTemplate(params: {
+  buyerName: string | null;
+  address: string | null;
+  landArea: number | null;
+  buildingArea: number | null;
+  propertyType: string | null | undefined;
+  isFukuoka?: boolean;
+  accountName?: string;
+}): string {
+  const name = params.buyerName ?? '{氏名}';
+  const address = params.address ?? '';
+  const landArea = params.landArea != null ? String(params.landArea) : '';
+  const buildingArea = params.buildingArea != null ? String(params.buildingArea) : '';
+  const isMansion = params.propertyType === 'マ' || params.propertyType === 'マンション';
+
+  const companyName = params.isFukuoka ? '株式会社くじら不動産' : '株式会社いふう';
+  const accountName = params.accountName || 'アカウント名';
+
+  const signature = params.isFukuoka
+    ? `×××××××××××××××
+福岡市中央区舞鶴3－1－10
+株式会社くじら不動産
+TEL:092-401-5331
+×××××××××××××××`
+    : `×××××××××××××××
+大分市舞鶴町1-3-30
+株式会社いふう
+TEL:097-533-2022
+×××××××××××××××`;
+
+  if (isMansion) {
+    return `${name}様
+
+お世話になっております。${companyName}の${accountName}です。
+
+下記物件の買取査定のご依頼です。
+
+物件住所：${address}
+建物面積：${buildingArea}㎡
+
+もしご興味がございましたら、このメールにご返信頂ければと思います。
+
+よろしくお願いいたします。
+
+${signature}`;
+  }
+
+  return `${name}様
+
+お世話になっております。${companyName}の${accountName}です。
+
+下記物件の買取査定のご依頼です。
+
+物件住所：${address}
+土地面積：${landArea}㎡
+建物面積：${buildingArea}㎡
+
+ぜんりんを添付しておりますのでご参考ください。
+もしご興味がございましたら、このメールにご返信頂ければと思います。
+
+よろしくお願いいたします。
+
+${signature}`;
+}
+
 interface PropertyDetails {
   address: string | null;
   landArea: number | null;
@@ -313,6 +380,7 @@ interface PropertyDetails {
 }
 
 const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChange }: NearbyBuyersListProps) => {
+  const { employee } = useAuthStore();
   const [buyers, setBuyers] = useState<NearbyBuyer[]>([]);
   const [matchedAreas, setMatchedAreas] = useState<string[]>([]);
   const [propertyAddress, setPropertyAddress] = useState<string | null>(null);
@@ -692,6 +760,56 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
     }
   };
 
+  // 買取メール送信処理
+  const handleSendBuybackEmail = async () => {
+    if (selectedBuyers.size === 0) {
+      setSnackbar({ open: true, message: '買主を選択してください', severity: 'warning' });
+      return;
+    }
+    const selectedCandidates = sortedBuyers.filter(b => selectedBuyers.has(b.buyer_number));
+    const candidatesWithEmail = selectedCandidates.filter(
+      b => b.email && typeof b.email === 'string' && b.email.trim() !== ''
+    );
+    if (candidatesWithEmail.length === 0) {
+      setSnackbar({ open: true, message: '選択された買主にメールアドレスが登録されていません', severity: 'error' });
+      return;
+    }
+    const address = propertyAddress || '物件';
+    const subject = `${address}の買取査定のご依頼です`;
+    const landArea = resolveArea(propertyDetails?.landAreaVerified, propertyDetails?.landArea);
+    const buildingArea = resolveArea(propertyDetails?.buildingAreaVerified, propertyDetails?.buildingArea);
+    const effectivePropNum = propertyNumber || propertyNumberState;
+    const isFukuoka = effectivePropNum ? effectivePropNum.includes('FI') : false;
+    const accountName = employee?.name || employee?.initials || 'アカウント名';
+    
+    let bodyTemplate: string;
+    if (candidatesWithEmail.length === 1) {
+      const buyerName = candidatesWithEmail[0].name || null;
+      bodyTemplate = buildBuybackEmailTemplate({
+        buyerName,
+        address: propertyDetails?.address ?? null,
+        landArea,
+        buildingArea,
+        propertyType: effectivePropertyType,
+        isFukuoka,
+        accountName,
+      });
+    } else {
+      bodyTemplate = buildBuybackEmailTemplate({
+        buyerName: null,
+        address: propertyDetails?.address ?? null,
+        landArea,
+        buildingArea,
+        propertyType: effectivePropertyType,
+        isFukuoka,
+        accountName,
+      });
+    }
+    setEmailSubject(subject);
+    setEmailBody(bodyTemplate);
+    setEmailModalOpen(true);
+  };
+
   // SMS送信処理
   const handleSendSms = async () => {
     if (selectedBuyers.size === 0) {
@@ -779,6 +897,15 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
           disabled={selectedBuyers.size === 0}
         >
           メール送信 ({selectedBuyers.size})
+        </Button>
+        <Button
+          variant="contained"
+          startIcon={<EmailIcon />}
+          onClick={handleSendBuybackEmail}
+          disabled={selectedBuyers.size === 0}
+          sx={{ bgcolor: '#ff6f00', '&:hover': { bgcolor: '#e65100' } }}
+        >
+          メール送信（買取） ({selectedBuyers.size})
         </Button>
         <Button
           variant="contained"

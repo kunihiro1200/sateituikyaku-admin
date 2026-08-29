@@ -624,8 +624,8 @@ router.get(
         valuationAmountMax: req.query.valuationAmountMax ? parseFloat(req.query.valuationAmountMax as string) : undefined,
         // 営業担当フィルター（visit_assignee）：複数選択対応
         visitAssignee: toStringArray(req.query.visitAssignee),
-        // 地名フィルター（物件住所の部分一致検索用）
-        addressKeyword: req.query.addressKeyword as string,
+        // 町名フィルター（物件住所の部分一致検索用）
+        townName: req.query.townName as string,
       };
 
       const result = await sellerService.listSellers(params);
@@ -660,6 +660,128 @@ router.get('/assignee-initials', async (req: Request, res: Response) => {
         retryable: true,
       },
     });
+  }
+});
+
+/**
+ * 営業担当へのメール送信エンドポイント
+ * スタッフ管理シートからメールアドレスを取得して送信
+ */
+router.post('/:id/send-email-to-assignee', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { message, senderName } = req.body;
+
+    if (!message || !String(message).trim()) {
+      res.status(400).json({ error: 'メッセージを入力してください' });
+      return;
+    }
+
+    // 売主情報を取得（SellerServiceを使用して正しくデコード）
+    const seller = await sellerService.getSeller(id);
+
+    if (!seller) {
+      res.status(404).json({ error: '売主が見つかりませんでした' });
+      return;
+    }
+
+    // 営業担当がいない、または「外す」の場合はエラー
+    if (!seller.visitAssignee || seller.visitAssignee === '外す') {
+      res.status(400).json({ error: '営業担当が設定されていません' });
+      return;
+    }
+
+    // 担当者のメールアドレスを取得
+    const { StaffManagementService } = await import('../services/StaffManagementService');
+    const staffService = new StaffManagementService();
+    const staffData = await staffService.fetchStaffData();
+    const staff = staffData.find(
+      s => s.initials === seller.visitAssignee || s.name === seller.visitAssignee
+    ) || staffData.find(
+      s => s.name && s.name.includes(seller.visitAssignee)
+    ) || staffData.find(
+      s => seller.visitAssignee && s.name && seller.visitAssignee.includes(s.name)
+    );
+
+    if (!staff || !staff.email) {
+      res.status(404).json({ error: `担当者「${seller.visitAssignee}」のメールアドレスが見つかりませんでした` });
+      return;
+    }
+
+    // 通話モードページのURL
+    const sellerUrl = `https://sateituikyaku-admin-frontend.vercel.app/sellers/${seller.id}/call`;
+
+    // メールの件名と本文を作成
+    const emailSubject = `【営業担当への連絡】${seller.sellerNumber || '売主'}`;
+    const emailBody = `
+営業担当への連絡
+
+売主番号: ${seller.sellerNumber || '未設定'}
+売主氏名: ${seller.name || '未設定'}
+物件所在地: ${seller.propertyAddress || '未設定'}
+営業担当: ${seller.visitAssignee}
+${senderName ? `送信者: ${senderName}` : ''}
+
+売主URL: ${sellerUrl}
+
+---
+${String(message).trim()}
+    `.trim();
+
+    // EmailService.supabaseを使用してメール送信
+    const { EmailService: EmailServiceSupabase } = await import('../services/EmailService.supabase');
+    const emailServiceSupabase = new EmailServiceSupabase();
+    
+    try {
+      // sendEmailWithCcAndAttachmentsメソッドを使用（既存のsend-valuation-emailと同じ方式）
+      const result = await emailServiceSupabase.sendEmailWithCcAndAttachments({
+        to: staff.email,
+        subject: emailSubject,
+        body: emailBody,
+        from: req.employee?.email || 'tenant@ifoo-oita.com',
+        isHtml: false,
+      });
+      
+      if (!result.success) {
+        throw new Error(result.error || 'メール送信に失敗しました');
+      }
+      
+      console.log(`[send-email-to-assignee] Sent email to ${seller.visitAssignee} (${staff.email}) for seller ${seller.sellerNumber}`);
+      
+      // activitiesテーブルに記録
+      const supabase = createClient(
+        process.env.SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_KEY!
+      );
+      
+      const { error: activityError } = await supabase.from('activities').insert({
+        seller_id: seller.id,
+        employee_id: req.employee?.id || null,
+        type: 'email',
+        content: `【営業担当への連絡】${seller.visitAssignee}宛にメール送信`,
+        result: 'success',
+        metadata: {
+          to: staff.email,
+          subject: emailSubject,
+          body: emailBody,
+          sender: senderName || req.employee?.name || '不明',
+        },
+        created_at: new Date().toISOString(),
+      });
+      
+      if (activityError) {
+        console.error('[send-email-to-assignee] Failed to log activity:', activityError);
+      }
+      
+      res.json({ success: true });
+    } catch (emailError: any) {
+      console.error('[send-email-to-assignee] Email sending error:', emailError.message, emailError.stack);
+      res.status(500).json({ error: `メール送信に失敗しました: ${emailError.message}` });
+      return;
+    }
+  } catch (error: any) {
+    console.error('[send-email-to-assignee] Error:', error.message);
+    res.status(500).json({ error: error.message || 'メール送信に失敗しました' });
   }
 });
 
@@ -3258,7 +3380,7 @@ router.get(
 router.put('/:id/match-intent', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { matchIntentType, matchAreas, matchAreaFreeText, matchTiming, matchPriceMin, matchPriceMax, matchMemo } = req.body;
+    const { matchIntentType, matchAreas, matchAreaFreeText, matchTiming, matchPriceMin, matchPriceMax, matchMemo, matchPropertyTypes } = req.body;
 
     if (matchTiming !== undefined && matchTiming !== null && !MATCH_TIMING_OPTIONS.includes(matchTiming)) {
       return res.status(400).json({
@@ -3270,6 +3392,11 @@ router.put('/:id/match-intent', async (req: Request, res: Response) => {
         error: { code: 'INVALID_MATCH_AREAS', message: 'matchAreas は配列で指定してください', retryable: false },
       });
     }
+    if (matchPropertyTypes !== undefined && matchPropertyTypes !== null && !Array.isArray(matchPropertyTypes)) {
+      return res.status(400).json({
+        error: { code: 'INVALID_MATCH_PROPERTY_TYPES', message: 'matchPropertyTypes は配列で指定してください', retryable: false },
+      });
+    }
 
     await matchingIntentService.updateSellerIntent(id, {
       matchIntentType,
@@ -3279,6 +3406,7 @@ router.put('/:id/match-intent', async (req: Request, res: Response) => {
       matchPriceMin,
       matchPriceMax,
       matchMemo,
+      matchPropertyTypes,
     });
 
     res.json({ success: true });
@@ -3286,6 +3414,25 @@ router.put('/:id/match-intent', async (req: Request, res: Response) => {
     console.error('Update seller match-intent error:', error);
     res.status(500).json({
       error: { code: 'MATCH_INTENT_UPDATE_ERROR', message: error.message || 'マッチング情報の更新に失敗しました', retryable: true },
+    });
+  }
+});
+
+/**
+ * 売主のマッチングを無効化（削除）
+ * DELETE /api/sellers/:id/match-intent
+ */
+router.delete('/:id/match-intent', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    await matchingIntentService.deleteSellerIntent(id);
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete seller match-intent error:', error);
+    res.status(500).json({
+      error: { code: 'MATCH_INTENT_DELETE_ERROR', message: error.message || 'マッチング情報の削除に失敗しました', retryable: true },
     });
   }
 });
@@ -3424,7 +3571,7 @@ router.post('/:id/calculate-distribution-areas', async (req: Request, res: Respo
 router.put('/:id/buy-match-intent', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { matchAreas, matchAreaFreeText, matchTiming, matchPriceMin, matchPriceMax, matchMemo } = req.body;
+    const { matchAreas, matchAreaFreeText, matchTiming, matchPriceMin, matchPriceMax, matchMemo, matchPropertyTypes } = req.body;
 
     if (matchTiming !== undefined && matchTiming !== null && !MATCH_TIMING_OPTIONS.includes(matchTiming)) {
       return res.status(400).json({
@@ -3436,6 +3583,11 @@ router.put('/:id/buy-match-intent', async (req: Request, res: Response) => {
         error: { code: 'INVALID_MATCH_AREAS', message: 'matchAreas は配列で指定してください', retryable: false },
       });
     }
+    if (matchPropertyTypes !== undefined && matchPropertyTypes !== null && !Array.isArray(matchPropertyTypes)) {
+      return res.status(400).json({
+        error: { code: 'INVALID_MATCH_PROPERTY_TYPES', message: 'matchPropertyTypes は配列で指定してください', retryable: false },
+      });
+    }
 
     await matchingIntentService.updateSellerBuyIntent(id, {
       matchAreas,
@@ -3444,6 +3596,7 @@ router.put('/:id/buy-match-intent', async (req: Request, res: Response) => {
       matchPriceMin,
       matchPriceMax,
       matchMemo,
+      matchPropertyTypes,
     });
 
     res.json({ success: true });
@@ -3451,6 +3604,25 @@ router.put('/:id/buy-match-intent', async (req: Request, res: Response) => {
     console.error('Update seller buy-match-intent error:', error);
     res.status(500).json({
       error: { code: 'BUY_MATCH_INTENT_UPDATE_ERROR', message: error.message || '購入マッチング情報の更新に失敗しました', retryable: true },
+    });
+  }
+});
+
+/**
+ * 売主の「買いたい」マッチングを無効化（削除）
+ * DELETE /api/sellers/:id/buy-match-intent
+ */
+router.delete('/:id/buy-match-intent', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    await matchingIntentService.deleteSellerBuyIntent(id);
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete seller buy-match-intent error:', error);
+    res.status(500).json({
+      error: { code: 'BUY_MATCH_INTENT_DELETE_ERROR', message: error.message || '購入マッチング情報の削除に失敗しました', retryable: true },
     });
   }
 });

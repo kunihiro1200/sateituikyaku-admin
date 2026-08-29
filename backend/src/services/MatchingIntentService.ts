@@ -22,6 +22,10 @@ export type MatchTiming = '今すぐ' | '3ヶ月以内' | '半年以内' | '1年
 
 export const MATCH_TIMING_OPTIONS: MatchTiming[] = ['今すぐ', '3ヶ月以内', '半年以内', '1年以内', '1年以上・様子見'];
 
+// 物件種別の選択肢
+export const PROPERTY_TYPE_OPTIONS = ['マンション', '戸建て', '土地', 'その他'] as const;
+export type PropertyType = typeof PROPERTY_TYPE_OPTIONS[number];
+
 // 時期を緊急度スコアに変換（大きいほど緊急）。ソート・表示用。
 const TIMING_URGENCY_SCORE: Record<string, number> = {
   '今すぐ': 5,
@@ -114,6 +118,7 @@ export interface MatchIntentInput {
   matchPriceMin?: number | null;
   matchPriceMax?: number | null;
   matchMemo?: string | null;
+  matchPropertyTypes?: string[]; // 物件種別配列（["マンション","戸建て","土地"]等）
 }
 
 export interface MatchCandidate {
@@ -129,6 +134,7 @@ export interface MatchCandidate {
   matchPriceMax: number | null;
   matchMemo: string | null;
   matchUpdatedAt: string | null;
+  matchPropertyTypes: string[]; // 物件種別配列
   // マッチング判定の根拠（担当者に説明できるように明示する）
   matchReasons: string[];
   urgencyScore: number;
@@ -144,6 +150,83 @@ export type ContactStatus = typeof CONTACT_STATUS_OPTIONS[number];
 function normalizeAreaFreeText(text: string | null | undefined): string | null {
   if (!text) return null;
   return text.trim().replace(/\s+/g, '');
+}
+
+/**
+ * 住所から地名のみを抽出（建物名を除外）
+ * 正規表現で「都道府県・市区町村・町名・丁目」までを抽出
+ * 返り値: { prefecture: '福岡県', location: '福岡市中央区谷' }
+ */
+function extractLocationFromAddress(address: string): { prefecture: string; city: string; location: string } | null {
+  if (!address || address.length < 3) return null;
+
+  // 番地・号の後の建物名を除去
+  let extracted = address;
+  
+  // パターン1: 丁目まである場合
+  const match1 = address.match(/^(.+?[都道府県市区町村][^0-9]+[0-9０-９]+丁目)/);
+  if (match1) {
+    extracted = match1[1];
+  } else {
+    // パターン2: 丁目がない場合は、番地の前まで
+    const match2 = address.match(/^(.+?[都道府県市区町村][^0-9]+)/);
+    if (match2) {
+      extracted = match2[1];
+    }
+  }
+
+  const result = parsePrefectureAndLocation(extracted);
+  if (!result) return null;
+  
+  // 市区町村名を抽出（「別府市亀川中央町」→ city: "別府市", location: "亀川中央町"）
+  let location = result.location;
+  let city = '';
+  
+  // まず市区町村を抽出
+  const cityMatch = location.match(/^(.+?[市区町村])(.*)$/);
+  if (cityMatch) {
+    city = cityMatch[1]; // 市区町村名（例: 「別府市」「福岡市」）
+    location = cityMatch[2]; // 市区町村名以降
+  }
+  
+  // 次に区を除去（政令指定都市対応）
+  const wardMatch = location.match(/^(.+?区)(.*)$/);
+  if (wardMatch) {
+    city = city + wardMatch[1]; // 市区町村名+区（例: 「福岡市中央区」）
+    location = wardMatch[2]; // 区以降
+  }
+  
+  return {
+    prefecture: result.prefecture,
+    city: city, // 市区町村名（例: 「別府市」「福岡市中央区」「大分市」）
+    location: location, // 市区町村名・区名を除いた地名のみ
+  };
+}
+
+/**
+ * 抽出された地名を都道府県と地名に分離
+ */
+function parsePrefectureAndLocation(fullLocation: string): { prefecture: string; location: string } | null {
+  const prefectures = ['北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県', '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県', '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県', '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県', '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'];
+
+  for (const pref of prefectures) {
+    if (fullLocation.startsWith(pref)) {
+      return {
+        prefecture: pref,
+        location: fullLocation.substring(pref.length),
+      };
+    }
+  }
+
+  // 都道府県が見つからない場合は空文字列
+  return { prefecture: '', location: fullLocation };
+}
+
+/**
+ * フォールバック：正規表現で地名を抽出（現在はこれがメイン処理）
+ */
+function fallbackExtractLocation(address: string): { prefecture: string; location: string } | null {
+  return extractLocationFromAddress(address);
 }
 
 /**
@@ -178,19 +261,216 @@ export function areasOverlap(
   const listA = (Array.isArray(addressesA) ? addressesA : [addressesA]).filter((a): a is string => !!a);
   const listB = (Array.isArray(addressesB) ? addressesB : [addressesB]).filter((b): b is string => !!b);
 
-  if (normA) {
-    for (const addr of listB) {
-      const normAddr = normalizeAreaFreeText(addr);
-      if (normAddr && normAddr.includes(normA)) {
-        return { matched: true, reason: `エリア一致（自由入力⇔物件住所）: 「${freeTextA}」⇔「${addr}」` };
+  // エリアコードのカッコ内の詳細地名を抽出する関数
+  // 例: '㊷別府駅周辺（中央町、駅前本町、上田の湯町、野口中町）' → ['中央町', '駅前本町', '上田の湯町', '野口中町']
+  const extractDetailAreas = (areaCode: string): string[] => {
+    const match = areaCode.match(/（(.+)）/);
+    if (match) {
+      return match[1].split(/[,、]/).map(s => s.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+  // A側のエリアコードのカッコ内地名 vs B側の物件住所
+  for (const areaCode of areasA) {
+    const detailAreas = extractDetailAreas(areaCode);
+    for (const detailArea of detailAreas) {
+      for (const addrB of listB) {
+        // 🚨 市区町村チェック: B側の住所から市区町村を抽出
+        const locB = extractLocationFromAddress(addrB);
+        if (!locB) continue;
+        
+        // 🚨 A側のエリアコードから市区町村を判定（物件住所から推定）
+        let aCity = '';
+        for (const addrA of listA) {
+          const locA = extractLocationFromAddress(addrA);
+          if (locA && locA.city) {
+            aCity = locA.city;
+            break;
+          }
+        }
+        
+        // 🚨 重要: A側の市区町村が判定できて、かつB側と異なる場合はスキップ
+        // A側の市区町村が判定できない場合もスキップ（エリアコードからは市区町村が不明なため、安全側に倒す）
+        if (!aCity || (aCity && aCity !== locB.city)) continue;
+        
+        // 完全一致チェック
+        if (addrB.includes(detailArea)) {
+          return { matched: true, reason: `エリア一致（エリアコード詳細⇔物件住所）: 「${detailArea}」⇔「${addrB}」` };
+        }
+        
+        // 共通部分チェック（2文字以上）
+        const normDetail = normalizeAreaFreeText(detailArea);
+        const normAddr = normalizeAreaFreeText(addrB);
+        if (normDetail && normAddr && normDetail.length >= 2) {
+          for (let len = Math.min(normDetail.length, normAddr.length); len >= 2; len--) {
+            for (let i = 0; i <= normDetail.length - len; i++) {
+              const sub = normDetail.substring(i, i + len);
+              if (normAddr.includes(sub)) {
+                return { matched: true, reason: `エリア一致（エリアコード詳細⇔物件住所）: 「${detailArea}」⇔「${addrB}」（共通: ${sub}）` };
+              }
+            }
+          }
+        }
       }
     }
   }
-  if (normB) {
+
+  // B側のエリアコードのカッコ内地名 vs A側の物件住所
+  for (const areaCode of areasB) {
+    const detailAreas = extractDetailAreas(areaCode);
+    for (const detailArea of detailAreas) {
+      for (const addrA of listA) {
+        // 🚨 市区町村チェック: A側の住所から市区町村を抽出
+        const locA = extractLocationFromAddress(addrA);
+        if (!locA) continue;
+        
+        // 🚨 B側のエリアコードから市区町村を判定（物件住所から推定）
+        let bCity = '';
+        for (const addrB of listB) {
+          const locB = extractLocationFromAddress(addrB);
+          if (locB && locB.city) {
+            bCity = locB.city;
+            break;
+          }
+        }
+        
+        // 🚨 重要: B側の市区町村が判定できて、かつA側と異なる場合はスキップ
+        // B側の市区町村が判定できない場合もスキップ（エリアコードからは市区町村が不明なため、安全側に倒す）
+        if (!bCity || (bCity && bCity !== locA.city)) continue;
+        
+        // 完全一致チェック
+        if (addrA.includes(detailArea)) {
+          return { matched: true, reason: `エリア一致（エリアコード詳細⇔物件住所）: 「${detailArea}」⇔「${addrA}」` };
+        }
+        
+        // 共通部分チェック（2文字以上）
+        const normDetail = normalizeAreaFreeText(detailArea);
+        const normAddr = normalizeAreaFreeText(addrA);
+        if (normDetail && normAddr && normDetail.length >= 2) {
+          for (let len = Math.min(normDetail.length, normAddr.length); len >= 2; len--) {
+            for (let i = 0; i <= normDetail.length - len; i++) {
+              const sub = normDetail.substring(i, i + len);
+              if (normAddr.includes(sub)) {
+                return { matched: true, reason: `エリア一致（エリアコード詳細⇔物件住所）: 「${detailArea}」⇔「${addrA}」（共通: ${sub}）` };
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 自由入力をカンマ・改行・スペースで分割して個別にチェック
+  const splitFreeText = (text: string | null): string[] => {
+    if (!text) return [];
+    return text.split(/[,、\n\s]+/).map(s => s.trim()).filter(Boolean);
+  };
+
+  const freeTextAParts = splitFreeText(freeTextA);
+  const freeTextBParts = splitFreeText(freeTextB);
+
+  // A側の自由入力の各部分 vs B側の物件住所
+  for (const part of freeTextAParts) {
+    const normPart = normalizeAreaFreeText(part);
+    if (!normPart || normPart.length < 2) continue;
+    for (const addr of listB) {
+      const normAddr = normalizeAreaFreeText(addr);
+      if (normAddr && normAddr.includes(normPart)) {
+        // 🚨 市区町村チェック: A側とB側の市区町村が一致するか確認
+        const locB = extractLocationFromAddress(addr);
+        if (!locB) {
+          return { matched: true, reason: `エリア一致（自由入力⇔物件住所）: 「${part}」⇔「${addr}」` };
+        }
+        
+        // A側の市区町村を推定（listAから）
+        let aCityKnown = false;
+        let aCity = '';
+        for (const addrA of listA) {
+          const locA = extractLocationFromAddress(addrA);
+          if (locA && locA.city) {
+            aCityKnown = true;
+            aCity = locA.city;
+            break;
+          }
+        }
+        
+        // A側の市区町村が判定できて、かつB側と異なる場合はスキップ
+        if (aCityKnown && aCity !== locB.city) continue;
+        
+        return { matched: true, reason: `エリア一致（自由入力⇔物件住所）: 「${part}」⇔「${addr}」` };
+      }
+    }
+  }
+  
+  // B側の自由入力の各部分 vs A側の物件住所
+  for (const part of freeTextBParts) {
+    const normPart = normalizeAreaFreeText(part);
+    if (!normPart || normPart.length < 2) continue;
     for (const addr of listA) {
       const normAddr = normalizeAreaFreeText(addr);
-      if (normAddr && normAddr.includes(normB)) {
-        return { matched: true, reason: `エリア一致（自由入力⇔物件住所）: 「${freeTextB}」⇔「${addr}」` };
+      if (normAddr && normAddr.includes(normPart)) {
+        // 🚨 市区町村チェック: B側とA側の市区町村が一致するか確認
+        const locA = extractLocationFromAddress(addr);
+        if (!locA) {
+          return { matched: true, reason: `エリア一致（自由入力⇔物件住所）: 「${part}」⇔「${addr}」` };
+        }
+        
+        // B側の市区町村を推定（listBから）
+        let bCityKnown = false;
+        let bCity = '';
+        for (const addrB of listB) {
+          const locB = extractLocationFromAddress(addrB);
+          if (locB && locB.city) {
+            bCityKnown = true;
+            bCity = locB.city;
+            break;
+          }
+        }
+        
+        // B側の市区町村が判定できて、かつA側と異なる場合はスキップ
+        if (bCityKnown && bCity !== locA.city) continue;
+        
+        return { matched: true, reason: `エリア一致（自由入力⇔物件住所）: 「${part}」⇔「${addr}」` };
+      }
+    }
+  }
+
+  // 物件住所同士の部分一致チェック（売主の物件住所 vs 買主の問合せ物件住所）
+  // 正規表現で地名を抽出してから共通部分をチェック
+  // 都道府県と市区町村が一致する場合のみマッチング
+  for (const addrA of listA) {
+    const locA = extractLocationFromAddress(addrA);
+    if (!locA || locA.location.length < 2) continue;
+    
+    for (const addrB of listB) {
+      const locB = extractLocationFromAddress(addrB);
+      if (!locB || locB.location.length < 2) continue;
+      
+      // 都道府県が一致しない場合はスキップ
+      if (locA.prefecture !== locB.prefecture) continue;
+      
+      // 🚨 重要: 市区町村名も一致しない場合はスキップ
+      // 例: 「福岡市中央区」と「大分市中央町」は「中央」で一致するが、市が違うのでマッチングしない
+      if (locA.city !== locB.city) continue;
+      
+      const normLocA = normalizeAreaFreeText(locA.location);
+      const normLocB = normalizeAreaFreeText(locB.location);
+      if (!normLocA || !normLocB) continue;
+      
+      // 完全な部分一致
+      if (normLocA.includes(normLocB) || normLocB.includes(normLocA)) {
+        return { matched: true, reason: `エリア一致（地名一致）: 「${locA.prefecture}${locA.city}${locA.location}」⇔「${locB.prefecture}${locB.city}${locB.location}」` };
+      }
+      
+      // 共通部分の抽出（最低2文字以上の共通部分があればマッチ）
+      for (let len = Math.min(normLocA.length, normLocB.length); len >= 2; len--) {
+        for (let i = 0; i <= normLocA.length - len; i++) {
+          const subA = normLocA.substring(i, i + len);
+          if (normLocB.includes(subA)) {
+            return { matched: true, reason: `エリア一致（地名共通部分）: 「${locA.prefecture}${locA.city}${locA.location}」⇔「${locB.prefecture}${locB.city}${locB.location}」（共通: ${subA}）` };
+          }
+        }
       }
     }
   }
@@ -320,6 +600,28 @@ export class MatchingIntentService {
   }
 
   /**
+   * 売主のマッチング入力欄を削除（無効化）する
+   */
+  async deleteSellerIntent(sellerId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from('sellers')
+      .update({
+        match_areas: [],
+        match_area_free_text: null,
+        match_timing: null,
+        match_price_min: null,
+        match_price_max: null,
+        match_memo: null,
+        match_property_types: [],
+        match_updated_at: null, // マッチング無効化
+      })
+      .eq('id', sellerId);
+    if (error) {
+      throw new Error(`売主マッチング情報の削除に失敗しました: ${error.message}`);
+    }
+  }
+
+  /**
    * 売主の「買いたい」マッチング入力欄（購入条件）を更新する。
    * 売却条件（match_*）とは独立したカラム（buy_match_*）を使う。
    * 売主が買い替え等で同時に「買いたい」意図を持つケースに対応する。
@@ -332,6 +634,28 @@ export class MatchingIntentService {
       .eq('id', sellerId);
     if (error) {
       throw new Error(`売主の購入マッチング情報の更新に失敗しました: ${error.message}`);
+    }
+  }
+
+  /**
+   * 売主の「買いたい」マッチング入力欄を削除（無効化）する
+   */
+  async deleteSellerBuyIntent(sellerId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from('sellers')
+      .update({
+        buy_match_areas: [],
+        buy_match_area_free_text: null,
+        buy_match_timing: null,
+        buy_match_price_min: null,
+        buy_match_price_max: null,
+        buy_match_memo: null,
+        buy_match_property_types: [],
+        buy_match_updated_at: null, // 購入マッチング無効化
+      })
+      .eq('id', sellerId);
+    if (error) {
+      throw new Error(`売主の購入マッチング情報の削除に失敗しました: ${error.message}`);
     }
   }
 
@@ -489,6 +813,7 @@ export class MatchingIntentService {
     if (input.matchPriceMin !== undefined) updates.match_price_min = input.matchPriceMin;
     if (input.matchPriceMax !== undefined) updates.match_price_max = input.matchPriceMax;
     if (input.matchMemo !== undefined) updates.match_memo = input.matchMemo;
+    if (input.matchPropertyTypes !== undefined) updates.match_property_types = input.matchPropertyTypes;
     return updates;
   }
 
@@ -502,6 +827,7 @@ export class MatchingIntentService {
     if (input.matchPriceMin !== undefined) updates.buy_match_price_min = input.matchPriceMin;
     if (input.matchPriceMax !== undefined) updates.buy_match_price_max = input.matchPriceMax;
     if (input.matchMemo !== undefined) updates.buy_match_memo = input.matchMemo;
+    if (input.matchPropertyTypes !== undefined) updates.buy_match_property_types = input.matchPropertyTypes;
     return updates;
   }
 
@@ -540,18 +866,23 @@ export class MatchingIntentService {
   /**
    * 指定した売主に対して、マッチする買主候補を検索する。
    *
-   * 買主側は希望条件ページの既存フィールド（desired_area / price_range_house,apartment,land /
-   * desired_timing）を使う。買主専用の match_* フィールドは使わない（廃止済み）。
-   * これにより、つうわモードページのマッチング結果と、サイドバーのカウント（MatchingSidebarService）が
-   * 同じデータソースを参照し、結果が一致するようにする。
+   * 🔄 2種類のマッチング候補を返す：
+   * 1. 買主テーブル（buyers）の希望条件とのマッチング
+   * 2. 売主テーブル（sellers）の「買いたい」条件とのマッチング（買い替え案件）
+   *
+   * ⚠️ 重要：通話モードページでは連絡済みのペアも含めて**全て**表示する
+   * サイドバーでは連絡済みのペアを除外するが、ここでは除外しない。
    */
   async findBuyerCandidatesForSeller(sellerId: string): Promise<{
     source: { id: string; number: string | null; name: string | null } | null;
     candidates: MatchCandidate[];
+    debug?: any;
   }> {
+    const debug: any = {};
+    
     const { data: seller, error } = await this.supabase
       .from('sellers')
-      .select('id, seller_number, name, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, property_address, property_type')
+      .select('id, seller_number, name, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, match_property_types, property_address, property_type')
       .eq('id', sellerId)
       .single();
 
@@ -559,10 +890,19 @@ export class MatchingIntentService {
       throw new Error('売主が見つかりませんでした');
     }
 
+    debug.seller = {
+      number: seller.seller_number,
+      property_address: seller.property_address,
+      property_type: seller.property_type,
+    };
+
     const sellerAreas: string[] = Array.isArray(seller.match_areas) ? seller.match_areas : [];
-    // エリアの構造化入力（既存コード・自由入力）が両方未入力でも、物件住所があれば
-    // それを判定材料として使えるため、物件住所も有効な条件として扱う。
-    const hasAnyCriteria = sellerAreas.length > 0 || !!seller.match_area_free_text || !!seller.property_address;
+    // 種別: match_property_typesを優先、なければproperty_typeから抽出
+    const sellerPropertyTypes: string[] = Array.isArray(seller.match_property_types) && seller.match_property_types.length > 0
+      ? seller.match_property_types
+      : [];
+    // エリア（構造化入力・自由入力・物件住所）または種別のいずれかがあれば検索可能
+    const hasAnyCriteria = sellerAreas.length > 0 || !!seller.match_area_free_text || !!seller.property_address || sellerPropertyTypes.length > 0 || !!seller.property_type;
     if (!hasAnyCriteria) {
       return {
         source: { id: seller.id, number: seller.seller_number, name: null },
@@ -571,24 +911,42 @@ export class MatchingIntentService {
     }
 
     const sellerPropertyTypeCategories = parsePropertyTypeCategories(seller.property_type);
-    const buyers = await this.fetchAllBuyersWithDesiredConditions();
-
+    
     const candidates: MatchCandidate[] = [];
+    const debugFiltered: any[] = [];
+    
+    // 🔵 1. 買主テーブル（buyers）からマッチング候補を取得
+    const buyers = await this.fetchAllBuyersWithDesiredConditions();
+    console.log(`[MatchingIntent] 売主${seller.seller_number} 買主候補数: ${buyers.length}`);
+    
     for (const buyer of buyers) {
-      if (buyer.desiredAreas.length === 0 && !buyer.desiredAreaFreeText && !buyer.inquiredPropertyAddress) continue;
-
+      const hasBuyerAreaCriteria = buyer.desiredAreas.length > 0 || !!buyer.desiredAreaFreeText || !!buyer.inquiredPropertyAddress;
+      if (!hasBuyerAreaCriteria) continue;
+      
+      // エリアチェック
       const areaResult = areasOverlap(sellerAreas, seller.match_area_free_text, buyer.desiredAreas, buyer.desiredAreaFreeText, seller.property_address, buyer.inquiredPropertyAddress);
-      if (!areaResult.matched) continue;
+      if (!areaResult.matched) {
+        debugFiltered.push({ buyer: buyer.buyer_number, reason: 'エリア不一致' });
+        continue;
+      }
 
+      // 種別チェック
       const typeResult = propertyTypesOverlap(sellerPropertyTypeCategories, buyer.propertyTypeCategories);
-      if (!typeResult.matched) continue;
+      if (!typeResult.matched) {
+        debugFiltered.push({ buyer: buyer.buyer_number, reason: '種別不一致' });
+        continue;
+      }
 
+      // 価格チェック
       const priceResult = buyer.priceRanges.length === 0
         ? { matched: true, reason: null as string | null }
         : priceRangesOverlapAny(buyer.priceRanges, seller.match_price_min, seller.match_price_max);
-      if (!priceResult.matched) continue;
+      if (!priceResult.matched) {
+        debugFiltered.push({ buyer: buyer.buyer_number, reason: '価格不一致' });
+        continue;
+      }
 
-      // 買主の希望時期の陳腐化判定（受付日を基準日として使用）
+      // 時期の陳腐化判定（expired は除外、warning は表示継続）
       const freshnessResult = getTimingFreshness(buyer.desiredTiming, buyer.receptionDate);
       if (freshnessResult.freshness === 'expired') continue;
 
@@ -608,19 +966,93 @@ export class MatchingIntentService {
         matchTiming: buyer.desiredTiming,
         matchPriceMin: buyer.priceRanges[0]?.min ?? null,
         matchPriceMax: buyer.priceRanges[0]?.max ?? null,
+        matchPropertyTypes: Array.from(buyer.propertyTypeCategories),
         matchMemo: null,
-        matchUpdatedAt: null,
+        matchUpdatedAt: buyer.receptionDate,
         matchReasons: reasons,
         urgencyScore: timingUrgencyScore(buyer.desiredTiming),
-        contactStatus: '連絡未',
+        contactStatus: '連絡未', // 後で一括取得して上書き
+        timingFreshness: freshnessResult.freshness,
+      });
+    }
+    
+    // 🔵 2. 「買いたい」意図を持つ売主をマッチング候補に追加（買い替え案件）
+    const buyerSellers = await this.fetchAllSellersWithBuyIntent();
+    console.log(`[MatchingIntent] 売主${seller.seller_number} 買いたい売主候補数: ${buyerSellers.length}`);
+    
+    for (const buyerSeller of buyerSellers) {
+      // 自分自身は除外
+      if (buyerSeller.seller_id === seller.id) continue;
+      
+      // エリア条件がある場合のみチェック
+      const hasBuyerAreaCriteria = buyerSeller.desiredAreas.length > 0 || !!buyerSeller.desiredAreaFreeText;
+      const areaResult = hasBuyerAreaCriteria
+        ? areasOverlap(sellerAreas, seller.match_area_free_text, buyerSeller.desiredAreas, buyerSeller.desiredAreaFreeText, seller.property_address, null)
+        : { matched: true, reason: null };
+      if (!areaResult.matched) {
+        debugFiltered.push({ seller: buyerSeller.seller_number, reason: 'エリア不一致' });
+        continue;
+      }
+
+      // 種別チェック
+      const typeResult = propertyTypesOverlap(sellerPropertyTypeCategories, new Set(buyerSeller.propertyTypeCategories as PropertyTypeCategory[]));
+      if (!typeResult.matched) {
+        debugFiltered.push({ seller: buyerSeller.seller_number, reason: '種別不一致' });
+        continue;
+      }
+
+      // 価格チェック
+      const priceResult = buyerSeller.priceRanges.length === 0
+        ? { matched: true, reason: null as string | null }
+        : priceRangesOverlapAny(buyerSeller.priceRanges, seller.match_price_min, seller.match_price_max);
+      if (!priceResult.matched) {
+        debugFiltered.push({ seller: buyerSeller.seller_number, reason: '価格不一致' });
+        continue;
+      }
+
+      // 時期の陳腐化判定
+      const freshnessResult = getTimingFreshness(buyerSeller.desiredTiming, buyerSeller.matchUpdatedAt);
+      if (freshnessResult.freshness === 'expired') continue;
+
+      const timingResult = timingIsCompatible(seller.match_timing, buyerSeller.desiredTiming);
+      const reasons = [areaResult.reason, typeResult.reason, priceResult.reason, timingResult.reason].filter((r): r is string => !!r);
+      if (freshnessResult.freshness === 'warning' && buyerSeller.desiredTiming) {
+        reasons.push(timingFreshnessWarningReason(buyerSeller.desiredTiming, freshnessResult.monthsElapsed));
+      }
+
+      candidates.push({
+        type: 'seller',
+        id: buyerSeller.seller_id,
+        number: buyerSeller.seller_number,
+        name: buyerSeller.name,
+        matchAreas: buyerSeller.desiredAreas,
+        matchAreaFreeText: buyerSeller.desiredAreaFreeText,
+        matchTiming: buyerSeller.desiredTiming,
+        matchPriceMin: buyerSeller.priceRanges[0]?.min ?? null,
+        matchPriceMax: buyerSeller.priceRanges[0]?.max ?? null,
+        matchPropertyTypes: buyerSeller.propertyTypeCategories,
+        matchMemo: null,
+        matchUpdatedAt: buyerSeller.matchUpdatedAt,
+        matchReasons: reasons,
+        urgencyScore: timingUrgencyScore(buyerSeller.desiredTiming),
+        contactStatus: '連絡未', // 後で一括取得して上書き
         timingFreshness: freshnessResult.freshness,
       });
     }
 
-    // 売主×買主ペア単位の連絡状況を一括取得して各候補に反映する
-    const contactStatusMap = await this.getPairContactStatuses(seller.id, candidates.map(c => c.number!));
+    // 🔵 3. 連絡状況を一括取得して上書き（買主ペア・売主ペア両方）
+    const buyerNumbers = candidates.filter(c => c.type === 'buyer').map(c => c.number!);
+    const sellerSellerIds = candidates.filter(c => c.type === 'seller').map(c => c.id);
+    
+    const buyerContactStatusMap = await this.getPairContactStatuses(seller.id, buyerNumbers);
+    const sellerContactStatusMap = await this.getSellerSellerPairContactStatuses(seller.id, sellerSellerIds);
+    
     for (const c of candidates) {
-      c.contactStatus = contactStatusMap.get(c.number!) ?? '連絡未';
+      if (c.type === 'buyer') {
+        c.contactStatus = buyerContactStatusMap.get(c.number!) ?? '連絡未';
+      } else {
+        c.contactStatus = sellerContactStatusMap.get(c.id) ?? '連絡未';
+      }
     }
 
     candidates.sort((a, b) => b.urgencyScore - a.urgencyScore);
@@ -628,7 +1060,59 @@ export class MatchingIntentService {
     return {
       source: { id: seller.id, number: seller.seller_number, name: null },
       candidates,
+      debug: {
+        buyersCount: buyers.length,
+        buyerSellersCount: buyerSellers.length,
+        candidatesCount: candidates.length,
+        filtered: debugFiltered,
+      },
     };
+  }
+
+  /**
+   * 「買いたい」条件（buy_match_areas / buy_match_property_types等）が入力済みの売主を全件取得し、
+   * 売主とのマッチング判定用の中間形式に変換する。
+   * 売主が「この物件と買主をマッチング」を押した際に、買主候補として表示するために使用。
+   */
+  private async fetchAllSellersWithBuyIntent(): Promise<Array<{
+    seller_id: string; seller_number: string; name: string | null; desiredAreas: string[]; desiredAreaFreeText: string | null;
+    priceRanges: Array<{ min: number; max: number }>; desiredTiming: string | null; matchUpdatedAt: string | null;
+    propertyTypeCategories: string[];
+  }>> {
+    const results: any[] = [];
+    const PAGE_SIZE = 1000;
+    let page = 0;
+    while (true) {
+      const { data, error } = await this.supabase
+        .from('sellers')
+        .select('id, seller_number, name, buy_match_areas, buy_match_area_free_text, buy_match_timing, buy_match_property_types, buy_match_price_min, buy_match_price_max, buy_match_updated_at')
+        .is('deleted_at', null)
+        .not('buy_match_updated_at', 'is', null)
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+      if (error) throw new Error(`売主（買いたい）取得に失敗しました: ${error.message}`);
+      if (!data || data.length === 0) break;
+      results.push(...data);
+      if (data.length < PAGE_SIZE) break;
+      page++;
+    }
+
+    return results
+      .map(s => ({
+        seller_id: s.id,
+        seller_number: s.seller_number,
+        name: s.name,
+        desiredAreas: Array.isArray(s.buy_match_areas) ? s.buy_match_areas : [],
+        desiredAreaFreeText: s.buy_match_area_free_text || null,
+        priceRanges: (s.buy_match_price_min != null || s.buy_match_price_max != null)
+          ? [{ min: s.buy_match_price_min ?? 0, max: s.buy_match_price_max ?? Number.MAX_SAFE_INTEGER }]
+          : [],
+        desiredTiming: s.buy_match_timing || null,
+        matchUpdatedAt: s.buy_match_updated_at || null,
+        propertyTypeCategories: Array.isArray(s.buy_match_property_types) ? s.buy_match_property_types : [],
+      }))
+      // エリアまたは種別のいずれかが入力されていれば候補とする
+      .filter(s => s.desiredAreas.length > 0 || !!s.desiredAreaFreeText);
   }
 
   /**
@@ -678,9 +1162,9 @@ export class MatchingIntentService {
     while (true) {
       const { data, error } = await this.supabase
         .from('buyers')
-        .select('buyer_number, name, desired_area, desired_area_free_text, desired_timing, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, property_number')
+        .select('buyer_number, name, desired_area, desired_area_free_text, desired_timing, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, property_number, match_updated_at')
         .is('deleted_at', null)
-        .not('desired_area', 'is', null)
+        .not('match_updated_at', 'is', null)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
       if (error) throw new Error(`買主取得に失敗しました: ${error.message}`);
@@ -794,7 +1278,7 @@ export class MatchingIntentService {
       const sellerAreas: string[] = Array.isArray(seller.match_areas) ? seller.match_areas : [];
       if (sellerAreas.length === 0 && !seller.match_area_free_text) continue;
 
-      const areaResult = areasOverlap(buyerAreas, buyer.desired_area_free_text, sellerAreas, seller.match_area_free_text, inquiredInfo?.address || null, seller.property_address);
+      const areaResult = await areasOverlap(buyerAreas, buyer.desired_area_free_text, sellerAreas, seller.match_area_free_text, inquiredInfo?.address || null, seller.property_address);
       if (!areaResult.matched) continue;
 
       const typeResult = propertyTypesOverlap(buyerPropertyTypeCategories, parsePropertyTypeCategories(seller.property_type));
@@ -825,6 +1309,7 @@ export class MatchingIntentService {
         matchTiming: seller.match_timing,
         matchPriceMin: seller.match_price_min,
         matchPriceMax: seller.match_price_max,
+        matchPropertyTypes: Array.from(parsePropertyTypeCategories(seller.property_type)), // 売主の物件種別
         matchMemo: seller.match_memo,
         matchUpdatedAt: seller.match_updated_at,
         matchReasons: reasons,
@@ -863,7 +1348,7 @@ export class MatchingIntentService {
   }> {
     const { data: buyerSeller, error } = await this.supabase
       .from('sellers')
-      .select('id, seller_number, buy_match_areas, buy_match_area_free_text, buy_match_timing, buy_match_price_min, buy_match_price_max, property_address')
+      .select('id, seller_number, buy_match_areas, buy_match_area_free_text, buy_match_timing, buy_match_price_min, buy_match_price_max, buy_match_property_types, property_address')
       .eq('id', buyerSellerId)
       .single();
 
@@ -872,11 +1357,16 @@ export class MatchingIntentService {
     }
 
     const buyerAreas: string[] = Array.isArray(buyerSeller.buy_match_areas) ? buyerSeller.buy_match_areas : [];
+    // 種別: buy_match_property_typesを使用
+    const buyerPropertyTypes: string[] = Array.isArray(buyerSeller.buy_match_property_types) && buyerSeller.buy_match_property_types.length > 0
+      ? buyerSeller.buy_match_property_types
+      : [];
     // 注意: 「買いたい」条件のエリア判定には buyerSeller.property_address を使わない。
     // それは「現在売却中の物件の住所（＝今住んでいる場所）」であり、
     // 「次に買いたいエリア」とは意味が異なるため、購入希望エリアの構造化入力
     // （buy_match_areas / buy_match_area_free_text）のみを条件とする。
-    const hasAnyCriteria = buyerAreas.length > 0 || !!buyerSeller.buy_match_area_free_text;
+    // ただし、エリアまたは種別のいずれかが入力されていれば検索可能とする。
+    const hasAnyCriteria = buyerAreas.length > 0 || !!buyerSeller.buy_match_area_free_text || buyerPropertyTypes.length > 0;
     if (!hasAnyCriteria) {
       return {
         source: { id: buyerSeller.id, number: buyerSeller.seller_number, name: null },
@@ -884,20 +1374,52 @@ export class MatchingIntentService {
       };
     }
 
-    const sellers = await this.fetchAllWithMatchIntent('sellers', 'id, seller_number, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, match_memo, match_updated_at, property_address');
+    const sellers = await this.fetchAllWithMatchIntent('sellers', 'id, seller_number, match_areas, match_area_free_text, match_timing, match_price_min, match_price_max, match_property_types, match_memo, match_updated_at, property_address, property_type');
 
     const candidates: MatchCandidate[] = [];
     for (const seller of sellers || []) {
       if (seller.id === buyerSeller.id) continue; // 自分自身は除外
 
       const sellerAreas: string[] = Array.isArray(seller.match_areas) ? seller.match_areas : [];
-      if (sellerAreas.length === 0 && !seller.match_area_free_text) continue;
+      
+      // 種別: match_property_typesを優先、なければproperty_typeから抽出
+      let sellerPropertyTypes: string[] = Array.isArray(seller.match_property_types) && seller.match_property_types.length > 0
+        ? seller.match_property_types
+        : [];
+      
+      // match_property_typesが空で、property_typeがある場合はそれを使用
+      if (sellerPropertyTypes.length === 0 && seller.property_type) {
+        const typeMap: Record<string, string> = {
+          'マ': 'マンション',
+          '戸': '戸建て',
+          '土': '土地',
+          '他': 'その他'
+        };
+        const mappedType = typeMap[seller.property_type];
+        if (mappedType) {
+          sellerPropertyTypes = [mappedType];
+        }
+      }
+      
+      // エリアまたは種別のいずれかが入力されている必要がある
+      if (sellerAreas.length === 0 && !seller.match_area_free_text && sellerPropertyTypes.length === 0 && !seller.property_address) continue;
 
       // 注意: buyerSeller.property_address（現在売却中の物件＝今住んでいる場所）は
       // 「次に買いたいエリア」とは意味が異なるため addressesA には渡さない（null）。
       // seller.property_address（相手＝売りたい側の実際の物件住所）は判定材料として使う。
-      const areaResult = areasOverlap(buyerAreas, buyerSeller.buy_match_area_free_text, sellerAreas, seller.match_area_free_text, null, seller.property_address);
+      // エリア条件がある場合のみチェック（どちらかが空の場合は制約しない）
+      const hasAreaCriteria = buyerAreas.length > 0 || !!buyerSeller.buy_match_area_free_text;
+      const areaResult = hasAreaCriteria
+        ? areasOverlap(buyerAreas, buyerSeller.buy_match_area_free_text, sellerAreas, seller.match_area_free_text, null, seller.property_address)
+        : { matched: true, reason: null };
       if (!areaResult.matched) continue;
+
+      // 種別判定（種別条件がある場合のみチェック）
+      const hasTypeCriteria = buyerPropertyTypes.length > 0;
+      const typeResult = hasTypeCriteria
+        ? propertyTypesOverlap(new Set(buyerPropertyTypes as PropertyTypeCategory[]), new Set(sellerPropertyTypes as PropertyTypeCategory[]))
+        : { matched: true, reason: null };
+      if (!typeResult.matched) continue;
 
       const priceResult = priceRangesOverlap(buyerSeller.buy_match_price_min, buyerSeller.buy_match_price_max, seller.match_price_min, seller.match_price_max);
       if (!priceResult.matched) continue;
@@ -907,7 +1429,7 @@ export class MatchingIntentService {
       if (freshnessResult.freshness === 'expired') continue;
 
       const timingResult = timingIsCompatible(buyerSeller.buy_match_timing, seller.match_timing);
-      const reasons = [areaResult.reason, priceResult.reason, timingResult.reason].filter((r): r is string => !!r);
+      const reasons = [areaResult.reason, typeResult.reason, priceResult.reason, timingResult.reason].filter((r): r is string => !!r);
       if (freshnessResult.freshness === 'warning' && seller.match_timing) {
         reasons.push(timingFreshnessWarningReason(seller.match_timing, freshnessResult.monthsElapsed));
       }
@@ -922,6 +1444,7 @@ export class MatchingIntentService {
         matchTiming: seller.match_timing,
         matchPriceMin: seller.match_price_min,
         matchPriceMax: seller.match_price_max,
+        matchPropertyTypes: sellerPropertyTypes,
         matchMemo: seller.match_memo,
         matchUpdatedAt: seller.match_updated_at,
         matchReasons: reasons,

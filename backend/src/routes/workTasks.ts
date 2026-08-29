@@ -288,6 +288,17 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
       updates.contract_revision_exists = null;
     }
 
+    // 間取図修正回数：文字列を数値型に変換（INTEGER型カラムのため）
+    if ('floor_plan_revision_count' in updates) {
+      const value = updates.floor_plan_revision_count;
+      if (value === null || value === undefined || value === '') {
+        updates.floor_plan_revision_count = null;
+      } else {
+        const parsed = parseInt(String(value), 10);
+        updates.floor_plan_revision_count = isNaN(parsed) ? null : parsed;
+      }
+    }
+
     // 保存前の値を取得（メール通知の変更検知に使用）
     const beforeData = await workTaskService.getByPropertyNumber(propertyNumber);
 

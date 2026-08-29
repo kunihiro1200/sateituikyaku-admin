@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, useTransition } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -38,7 +38,7 @@ import {
   Popper,
   ClickAwayListener,
 } from '@mui/material';
-import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Sms as SmsIcon, OpenInNew as OpenInNewIcon, Print as PrintIcon } from '@mui/icons-material';
+import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Sms as SmsIcon, OpenInNew as OpenInNewIcon, Print as PrintIcon, LocationOn as LocationOnIcon } from '@mui/icons-material';
 import api, { emailImageApi } from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { Seller, PropertyInfo, Activity, SellerStatus, ConfidenceLevel, DuplicateMatch, SelectedImages, DriveImage } from '../types';
@@ -80,7 +80,7 @@ import {
   replacePlaceholders,
 } from '../utils/smsTemplateGenerators';
 import { formatNetProceedsEmailSection } from '../utils/netProceedsCalculator';
-import { emailTemplates } from '../utils/emailTemplates';
+import { emailTemplates, replaceFIUrls, isValuationNoticeTemplate } from '../utils/emailTemplates';
 import SenderAddressSelector from '../components/SenderAddressSelector';
 import { getActiveEmployees, Employee } from '../services/employeeService';
 import SellerStatusSidebar from '../components/SellerStatusSidebar';
@@ -650,6 +650,9 @@ const CallModePage = () => {
   useEffect(() => { sellerRef.current = seller; }, [seller]);
   const [property, setProperty] = useState<PropertyInfo | null>(null);
 
+  // useTransitionを追加：ローカルステート更新を低優先度にしてUI応答性を向上
+  const [isPending, startTransition] = useTransition();
+
   // 物件住所の読み仮名
   const [addressReading, setAddressReading] = useState<string | null>(null);
   const [addressReadingLoading, setAddressReadingLoading] = useState(false);
@@ -840,6 +843,8 @@ const CallModePage = () => {
         } else if (f.nextCallDateTo) {
           params.nextCallDateTo = f.nextCallDateTo;
         }
+        if (f.townName) params.townName = f.townName;
+        if (f.visitAssignee) params.visitAssignee = toArr(f.visitAssignee);
 
         const sellersRes = await api.get('/api/sellers', { params });
         const ids: string[] = (sellersRes.data.data || []).map((s: any) => s.id);
@@ -1340,6 +1345,12 @@ const CallModePage = () => {
   const [yearlyRankingDialogOpen, setYearlyRankingDialogOpen] = useState(false); // 1番電話年間累計ランキングダイアログ
   const [visitRankingDialogOpen, setVisitRankingDialogOpen] = useState(false); // 訪問予約者月間ランキングダイアログ
   const [visitRankingYearlyDialogOpen, setVisitRankingYearlyDialogOpen] = useState(false); // 訪問予約者年間ランキングダイアログ
+  
+  // 営業担当へのChat送信用の状態
+  const [assigneeChatDialogOpen, setAssigneeChatDialogOpen] = useState(false);
+  const [assigneeChatMessage, setAssigneeChatMessage] = useState('');
+  const [sendingAssigneeChat, setSendingAssigneeChat] = useState(false);
+  
   // スマホ時のアコーディオン開閉状態
   const [mobileCommentOpen, setMobileCommentOpen] = useState(true); // コメント（デフォルト展開）
   const [mobilePropertyOpen, setMobilePropertyOpen] = useState(false); // 物件情報
@@ -1685,7 +1696,7 @@ const CallModePage = () => {
 
   /**
    * 除外サイトURLを計算する関数
-   * ロジック: IF([サイトURL] <> "",[サイトURL],IF([サイト] = "ウ","https://partner.ieul.jp/",IF([サイト] = "H","https://www.home4u.jp/member/sell/company/menu",IF([サイト] = "す","https://docs.google.com/forms/d/e/1FAIpQLSdXeFMcXhuANI78ARzN5WCbl8JMsdcUIP-J52lv5ShMOQeu5g/viewform",IF([サイト] = "L","https://lifull.secure.force.com/inquiryform/baikyakushinsei",IF([サイト] = "Y","https://login.bizmanager.yahoo.co.jp/loginMenu",""))))))
+   * ロジック: IF([サイトURL] <> "",[サイトURL],IF([サイト] = "ウ","https://partner.ieul.jp/",IF([サイト] = "H","https://www.home4u.jp/member/sell/company/menu",IF([サイト] = "す","https://sumai-step.com/partner/charge_reject_forms/new",IF([サイト] = "L","https://lifull.secure.force.com/inquiryform/baikyakushinsei",IF([サイト] = "Y","https://login.bizmanager.yahoo.co.jp/loginMenu",""))))))
    */
   const getExclusionSiteUrl = useCallback(() => {
     if (!seller) return '';
@@ -1703,7 +1714,7 @@ const CallModePage = () => {
       case 'H':
         return 'https://www.home4u.jp/member/sell/company/menu';
       case 'す':
-        return 'https://docs.google.com/forms/d/e/1FAIpQLSdXeFMcXhuANI78ARzN5WCbl8JMsdcUIP-J52lv5ShMOQeu5g/viewform';
+        return 'https://sumai-step.com/partner/charge_reject_forms/new';
       case 'L':
         return 'https://lifull.secure.force.com/inquiryform/baikyakushinsei';
       case 'Y':
@@ -1800,6 +1811,22 @@ const CallModePage = () => {
       try {
         const response = await api.get('/api/email-templates/seller');
         setSellerEmailTemplates(response.data);
+        // 📝 デバッグ: 査定額案内メールテンプレートのURL内容を確認
+        const valuationTemplates = response.data.filter((t: any) => 
+          t.name.includes('査定額案内') || t.id.includes('valuation')
+        );
+        valuationTemplates.forEach((t: any) => {
+          console.log(`[テンプレート読み込み] "${t.name}" (ID: ${t.id})`);
+          if (t.body.includes('drive.google.com')) {
+            const match = t.body.match(/https:\/\/drive\.google\.com\/file\/d\/([^\/\s]+)/);
+            if (match) {
+              console.log(`  ✅ Google DriveURL検出: ファイルID = ${match[1]}`);
+            }
+          }
+          if (t.body.includes('ifoo-oita.com')) {
+            console.log(`  ✅ ifoo-oita.com URL検出`);
+          }
+        });
       } catch (err) {
         console.error('売主テンプレート取得失敗:', err);
       } finally {
@@ -2022,44 +2049,10 @@ const CallModePage = () => {
     return () => clearTimeout(timeoutId);
   }, [editableComments, savedComments, savingComments, unreachableConfirmOpen, unreachableStatus]);
 
-  // ステータスセクションの自動保存（状況・確度・次電日・専任他決関連フィールド等）
-  useEffect(() => {
-    if (!seller) return;
-
-    // 変更がない場合はスキップ
-    if (!statusChanged) return;
-
-    // 保存中の場合はスキップ
-    if (savingStatus) return;
-
-    // 確度警告ダイアログ表示中は自動保存しない（ユーザーの選択待ち）
-    if (statusConfidenceWarningOpen) return;
-
-    // 専任・他決関連のステータスで必須フィールド（決定日・競合・専任他決要因）が
-    // 未入力の間は自動保存しない。ここでバリデーションエラーを出すとページ全体が
-    // エラー画面に置き換わってしまうため、入力完了 or ページ遷移時までチェックを持ち越す。
-    if (requiresDecisionDate(editedStatus) && !hasRequiredDecisionFieldsFilled()) return;
-
-    // デバウンス処理（1.5秒後に保存）
-    const timeoutId = setTimeout(() => {
-      handleUpdateStatus();
-    }, 1500); // 1.5秒のデバウンス
-
-    return () => clearTimeout(timeoutId);
-  }, [
-    editedStatus,
-    editedConfidence,
-    editedNextCallDate,
-    editedExclusiveOtherDecisionMeeting,
-    editedExclusiveDecisionDate,
-    editedCompetitors.join(','),
-    editedExclusiveOtherDecisionFactors.join(','),
-    editedCompetitorNameAndReason,
-    editedPinrichStatus,
-    statusChanged,
-    savingStatus,
-    statusConfidenceWarningOpen,
-  ]);
+  // ステータスセクションの自動保存を削除
+  // 理由：「状況（当社）」を変更して保存中に「次電日」や「確度」を変更すると、
+  // 古い値で保存されてしまう問題があったため、明示的な保存ボタン押下のみに変更
+  // （2026/8/27 修正）
 
   // サイドバー用のカテゴリカウントを取得（APIから直接取得）
   const fetchSidebarCounts = useCallback(async () => {
@@ -2801,12 +2794,16 @@ const CallModePage = () => {
 
   /**
    * 未保存変更があるセクション名の一覧を返す
-   * ※ コメント・ステータスは自動保存（デバウンス1.5秒）になったため、この警告対象から除外
+   * ※ コメントは自動保存（デバウンス1.5秒）、ステータスは手動保存（2026/8/27修正）
    */
   const getUnsavedSections = (): string[] => {
     const sections: string[] = [];
     if (editingProperty && !savingProperty) sections.push('物件情報');
     if (editingSeller && !savingSeller) sections.push('売主情報');
+    
+    // ステータスセクションの未保存チェック（2026/8/27追加：自動保存を削除したため）
+    if (statusChanged) sections.push('ステータス');
+    
     return sections;
   };
 
@@ -3341,6 +3338,8 @@ const CallModePage = () => {
       }
     }
 
+    // 対策・反省点のチェックは自動保存ではスキップ（通知ボタン押下時にのみチェック）
+
     try {
       setSavingStatus(true);
       setError(null);
@@ -3363,16 +3362,18 @@ const CallModePage = () => {
       setStatusChanged(false); // 保存成功後にリセット
       statusChangedRef.current = false;
       
-      // 保存した値をローカルステートに反映（loadAllData()を削除して画面フラッシュを防止）
-      setSavedStatus(editedStatus);
-      setSavedConfidence(editedConfidence);
-      setSavedExclusiveOtherDecisionMeeting(editedExclusiveOtherDecisionMeeting);
-      setSavedNextCallDate(editedNextCallDate);
-      setSavedExclusiveDecisionDate(editedExclusiveDecisionDate);
-      setSavedCompetitors(editedCompetitors);
-      setSavedExclusiveOtherDecisionFactors(editedExclusiveOtherDecisionFactors);
-      setSavedCompetitorNameAndReason(editedCompetitorNameAndReason);
-      setPageEdited(false); // 次電日を含むステータス保存後はリマインダーダイアログ不要
+      // 保存した値をローカルステートに反映（startTransitionで低優先度にしてUI応答性向上）
+      startTransition(() => {
+        setSavedStatus(editedStatus);
+        setSavedConfidence(editedConfidence);
+        setSavedExclusiveOtherDecisionMeeting(editedExclusiveOtherDecisionMeeting);
+        setSavedNextCallDate(editedNextCallDate);
+        setSavedExclusiveDecisionDate(editedExclusiveDecisionDate);
+        setSavedCompetitors(editedCompetitors);
+        setSavedExclusiveOtherDecisionFactors(editedExclusiveOtherDecisionFactors);
+        setSavedCompetitorNameAndReason(editedCompetitorNameAndReason);
+        setPageEdited(false); // 次電日を含むステータス保存後はリマインダーダイアログ不要
+      });
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'ステータスの更新に失敗しました');
     } finally {
@@ -4532,7 +4533,7 @@ HP：https://ifoo-oita.com/
     }
     result = result.replace(/<<お客様紹介文言>>/g, customerIntroText);
 
-    // 売主番号に応じて、担当者あいさつ・会社名・住所・電話・HP・署名を一括変換する
+    // 売主番号に応じて、担当者あいさつ・会社名・住所・電話・HP・署名・URLを一括変換する
     // FIを含む売主番号には、既存メールと同じくじら不動産版を適用する
     result = replacePlaceholders(result, seller, myLastName);
 
@@ -4587,6 +4588,14 @@ HP：https://ifoo-oita.com/
       let replacedContent = replaceEmailPlaceholders(sheetTemplate.body, currentEmployees);
       // <<担当者名字あいさつ>> を担当者名字とFI判定で置換
       replacedContent = resolveStaffGreeting(replacedContent, seller?.sellerNumber || '', myLastName);
+      // 📝 FI売主番号の場合、査定額案内メールのURLを置換する
+      console.log('📧 [handleEmailTemplateSelect] テンプレート:', sheetTemplate.name, 'ID:', sheetTemplate.id);
+      console.log('📧 [handleEmailTemplateSelect] 売主番号:', seller?.sellerNumber);
+      console.log('📧 [handleEmailTemplateSelect] isValuationNoticeTemplate:', isValuationNoticeTemplate(sheetTemplate.id, sheetTemplate.name));
+      if (isValuationNoticeTemplate(sheetTemplate.id, sheetTemplate.name)) {
+        console.log('📧 [handleEmailTemplateSelect] FI URL置換を実行します');
+        replacedContent = replaceFIUrls(replacedContent, seller?.sellerNumber);
+      }
       const htmlContent = replacedContent.replace(/\n/g, '<br>');
 
       // 相続登記テンプレートの送信先・ラベル判定
@@ -4634,6 +4643,10 @@ HP：https://ifoo-oita.com/
     let replacedContent = replaceEmailPlaceholders(template.content, currentEmployees);
     // <<担当者名字あいさつ>> を担当者名字とFI判定で置換
     replacedContent = resolveStaffGreeting(replacedContent, seller?.sellerNumber || '', myLastName);
+    // 📝 FI売主番号の場合、査定額案内メールのURLを置換する
+    if (isValuationNoticeTemplate(template.id, template.label)) {
+      replacedContent = replaceFIUrls(replacedContent, seller?.sellerNumber);
+    }
 
     // 改行を<br>タグに変換してHTMLとして設定
     const htmlContent = replacedContent.replace(/\n/g, '<br>');
@@ -4880,13 +4893,19 @@ HP：https://ifoo-oita.com/
             } catch { /* ignore */ }
           }
 
+          // 📝 FI売主番号の場合、査定額案内メールのURLを置換する
+          let finalEmailBody = capturedEmailBody;
+          if (isValuationNoticeTemplate(template.id, template.label)) {
+            finalEmailBody = replaceFIUrls(capturedEmailBody, seller?.sellerNumber);
+          }
+
           const requestPayload = {
             templateId: template.id,
             templateName: template.label, // メール種別名（送信履歴の表示用）
             to: capturedEmailRecipient,
             subject: capturedEmailSubject,
-            content: capturedEmailBody,
-            htmlBody: capturedEmailBody, // 常にHTMLとして渡す（<br>がそのまま表示される問題を修正）
+            content: finalEmailBody,
+            htmlBody: finalEmailBody, // 常にHTMLとして渡す（<br>がそのまま表示される問題を修正）
             senderInitials: resolvedSenderInitials, // 送信者イニシャル（バックエンドで自動セット用）
             // tenant@以外が選択されている場合のみ replyTo を設定
             ...(capturedSenderAddress && capturedSenderAddress !== 'tenant@ifoo-oita.com'
@@ -5235,6 +5254,52 @@ HP：https://ifoo-oita.com/
     appointmentSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  // 営業担当へのメール送信ハンドラー
+  const handleSendAssigneeChat = async () => {
+    if (!seller || !assigneeChatMessage.trim()) return;
+    
+    // 営業担当が設定されているか確認
+    const assignee = seller.visitAssignee || seller.visitAssigneeInitials;
+    if (!assignee || assignee === '外す') {
+      alert('営業担当が設定されていません');
+      return;
+    }
+    
+    setSendingAssigneeChat(true);
+    
+    try {
+      await api.post(`/api/sellers/${seller.id}/send-email-to-assignee`, {
+        message: assigneeChatMessage.trim(),
+        senderName: employee?.name || '',
+      });
+      
+      // 追客ログを再読み込み
+      const activitiesResponse = await api.get(`/api/sellers/${seller.id}/activities`);
+      const convertedActivities = activitiesResponse.data.map((activity: any) => ({
+        id: activity.id,
+        sellerId: activity.seller_id || activity.sellerId,
+        employeeId: activity.employee_id || activity.employeeId,
+        type: activity.type,
+        content: activity.content,
+        result: activity.result,
+        metadata: activity.metadata,
+        createdAt: activity.created_at || activity.createdAt,
+        employee: activity.employee,
+      }));
+      setActivities(convertedActivities);
+      
+      setAssigneeChatDialogOpen(false);
+      setAssigneeChatMessage('');
+      alert('営業担当へメール送信しました');
+    } catch (error: any) {
+      console.error('メール送信エラー:', error);
+      const errorMessage = error.response?.data?.error || 'メール送信に失敗しました';
+      alert(errorMessage);
+    } finally {
+      setSendingAssigneeChat(false);
+    }
+  };
+
   // 査定計算セクションへスクロール
   const scrollToValuationSection = () => {
     valuationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -5367,6 +5432,13 @@ HP：https://ifoo-oita.com/
             message: '「競合名、理由（他決、専任）」が入力されていません',
             subMessage: '通知を送る前に競合名や専任・他決になった理由を記入してください。',
           });
+          return;
+        }
+
+        // 対策・反省点のチェック（未訪問他決 + 決定日が基準日以降の場合のみ）
+        if (shouldRequireUnvisitedMemo(editedStatus, editedExclusiveDecisionDate) && !editedUnvisitedOtherDecisionMemo.trim()) {
+          setSendingChatNotification(false);
+          setUnvisitedMemoPopupOpen(true);
           return;
         }
 
@@ -5947,6 +6019,28 @@ HP：https://ifoo-oita.com/
                   }}
                 />
               )}
+              {/* 営業担当へのメール送信ボタン（営担が設定されている場合のみ表示） */}
+              {seller?.visitAssignee && seller.visitAssignee !== '外す' && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setAssigneeChatDialogOpen(true)}
+                  sx={{
+                    fontSize: '0.75rem',
+                    py: 0.25,
+                    px: 1,
+                    minWidth: 'auto',
+                    borderColor: '#1565c0',
+                    color: '#1565c0',
+                    '&:hover': {
+                      borderColor: '#0d47a1',
+                      bgcolor: '#e3f2fd',
+                    },
+                  }}
+                >
+                  担当へEmail
+                </Button>
+              )}
               {seller?.sellerNumber && (
                 <>
                   {/* 資料生成・文字起ボタンを上下2段 */}
@@ -6158,6 +6252,20 @@ HP：https://ifoo-oita.com/
             </Box>
           )}
         </Box>
+        
+        {/* イエウ共有ボタン（サイト＝"ウ"の時のみ表示） */}
+        {seller && seller.site === 'ウ' && (
+          <Button
+            variant="contained"
+            color="primary"
+            size="small"
+            onClick={() => window.open('https://docs.google.com/spreadsheets/d/1O_tlaKTH6nYFaRr2HcuHdjiugMTWXQaztRXvI_ENP_o/edit?gid=0#gid=0', '_blank')}
+            sx={{ height: 'fit-content' }}
+          >
+            イエウ共有
+          </Button>
+        )}
+        
         {seller && (
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             {/* 訪問準備・画像ボタンを上下2段 */}
@@ -7031,54 +7139,133 @@ HP：https://ifoo-oita.com/
                   <Grid container spacing={1}>
                     {displayAddress && (
                       <Grid item xs={12}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Box sx={{ flex: 1 }}>
-                            <Typography variant="caption" color="text.secondary">物件住所</Typography>
-                            <Typography variant="body2">
-                              {displayAddress}
-                              {addressReading && (
-                                <Typography component="span" variant="body2" color="text.secondary">
-                                  （{addressReading}）
-                                </Typography>
+                        <Typography variant="caption" color="text.secondary">物件住所</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                          <Typography variant="body2" sx={{ flex: 1 }}>
+                            {displayAddress}
+                            {addressReading && (
+                              <Typography component="span" variant="body2" color="text.secondary">
+                                （{addressReading}）
+                              </Typography>
+                            )}
+                            {addressReadingLoading && (
+                              <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
+                                <CircularProgress size={10} sx={{ verticalAlign: 'middle' }} />
+                              </Typography>
+                            )}
+                          </Typography>
+                          {/* ボタングループを右側に配置 */}
+                          <Box sx={{ display: 'flex', gap: 0.5, flexDirection: 'column', flexShrink: 0 }}>
+                            {/* 1列目：コピー、atbb、レインズ */}
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <IconButton
+                                size="small"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(displayAddress);
+                                  setSnackbar({ open: true, message: '物件住所をコピーしました' });
+                                }}
+                                title="物件住所をコピー"
+                                sx={{ p: 0.5 }}
+                              >
+                                <ContentCopyIcon fontSize="small" />
+                              </IconButton>
+                              <Button
+                                size="small"
+                                variant="contained"
+                                onClick={() => {
+                                  const searchQuery = encodeURIComponent(displayAddress);
+                                  window.open(`https://atbb.athome.jp/?searchterms=${searchQuery}`, '_blank');
+                                }}
+                                sx={{ 
+                                  minWidth: 'auto', 
+                                  px: 1, 
+                                  py: 0.5, 
+                                  fontSize: '0.75rem',
+                                  bgcolor: '#d32f2f',
+                                  color: '#fff',
+                                  '&:hover': {
+                                    bgcolor: '#b71c1c'
+                                  }
+                                }}
+                              >
+                                atbb
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => {
+                                  window.open('https://www.nishinihon-reins.or.jp/', '_blank');
+                                }}
+                                sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                              >
+                                レインズ
+                              </Button>
+                              <IconButton
+                                size="small"
+                                onClick={() => {
+                                  const searchQuery = encodeURIComponent(displayAddress);
+                                  window.open(`https://www.google.com/maps/search/${searchQuery}`, '_blank');
+                                }}
+                                title="GoogleMapで開く"
+                                sx={{ 
+                                  bgcolor: '#fff',
+                                  border: '1px solid #e0e0e0',
+                                  p: 0.5,
+                                  '&:hover': {
+                                    bgcolor: '#f5f5f5'
+                                  }
+                                }}
+                              >
+                                <LocationOnIcon fontSize="small" sx={{ color: '#EA4335' }} />
+                              </IconButton>
+                            </Box>
+                            {/* 2列目：ぜんりん、謄本、大分MAP/福岡MAP */}
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => {
+                                  window.open('https://app.zip-site.com/reos/app/index.htm', '_blank');
+                                }}
+                                sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                              >
+                                ぜんりん
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => {
+                                  window.open('https://www.jtn-map.com/member/kiyaku.asp', '_blank');
+                                }}
+                                sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                              >
+                                謄本
+                              </Button>
+                              {seller?.sellerNumber?.toUpperCase().includes('FI') ? (
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  onClick={() => {
+                                    window.open('https://webmap.city.fukuoka.lg.jp/fukuoka/Agreement?IsPost=False&MapId=7&RequestPage=%2ffukuoka%2fPositionSelect%3fmid%3d7', '_blank');
+                                  }}
+                                  sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                                >
+                                  福岡MAP
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  onClick={() => {
+                                    window.open('https://www2.wagmap.jp/oitacity/PositionSelect?mid=18', '_blank');
+                                  }}
+                                  sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                                >
+                                  大分MAP
+                                </Button>
                               )}
-                              {addressReadingLoading && (
-                                <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
-                                  <CircularProgress size={10} sx={{ verticalAlign: 'middle' }} />
-                                </Typography>
-                              )}
-                            </Typography>
+                            </Box>
                           </Box>
-                          <IconButton
-                            size="small"
-                            onClick={() => {
-                              navigator.clipboard.writeText(displayAddress);
-                              setSnackbar({ open: true, message: '物件住所をコピーしました' });
-                            }}
-                            title="物件住所をコピー"
-                          >
-                            <ContentCopyIcon fontSize="small" />
-                          </IconButton>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => {
-                              const searchQuery = encodeURIComponent(displayAddress);
-                              window.open(`https://atbb.athome.jp/?searchterms=${searchQuery}`, '_blank');
-                            }}
-                            sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
-                          >
-                            atbb
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => {
-                              window.open('https://www.nishinihon-reins.or.jp/', '_blank');
-                            }}
-                            sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
-                          >
-                            レインズ
-                          </Button>
                         </Box>
                       </Grid>
                     )}
@@ -9829,9 +10016,40 @@ HP：https://ifoo-oita.com/
                       const { data: updatedSeller } = await api.get(`/api/sellers/${seller.id}`);
                       setSeller(updatedSeller);
                     } else {
-                      // アクティブ化
+                      // アクティブ化：物件情報から自動的にエリアと種別を設定
+                      
+                      // 1. エリアを自動計算
+                      let matchAreas: string[] = [];
+                      try {
+                        const areaRes = await api.post(`/api/sellers/${seller.id}/calculate-distribution-areas`);
+                        if (areaRes.data.success && areaRes.data.areas) {
+                          matchAreas = areaRes.data.areas;
+                        }
+                      } catch (err) {
+                        console.error('エリア自動計算エラー:', err);
+                      }
+                      
+                      // 2. 種別を物件種別から設定
+                      let matchPropertyTypes: string[] = [];
+                      if (seller.propertyType) {
+                        const typeMap: Record<string, string> = {
+                          'マンション': 'マンション',
+                          'マ': 'マンション',
+                          '戸建て': '戸建て',
+                          '戸': '戸建て',
+                          '土地': '土地',
+                          '土': '土地',
+                        };
+                        const mappedType = typeMap[seller.propertyType];
+                        if (mappedType) {
+                          matchPropertyTypes = [mappedType];
+                        }
+                      }
+                      
                       await api.put(`/api/sellers/${seller.id}/match-intent`, {
                         matchIntentType: 'sell',
+                        matchAreas,
+                        matchPropertyTypes,
                       });
                       const { data: updatedSeller } = await api.get(`/api/sellers/${seller.id}`);
                       setSeller(updatedSeller);
@@ -10278,11 +10496,6 @@ HP：https://ifoo-oita.com/
                     value={editedNextCallDate}
                     onChange={(e) => { setEditedNextCallDate(e.target.value); setStatusChanged(true); statusChangedRef.current = true; }}
                     onClick={() => {
-                      // ⚠️ ここで setStatusChanged(true) を呼んではいけない。
-                      // クリック（カレンダーを開いただけ）の時点で自動保存の1.5秒デバウンスが
-                      // 発火してしまい、ユーザーが日付を選ぶ前に「古い次電日」で保存が完了してしまう。
-                      // その結果、実際に選んだ日付が保存されない/上書きされないケースが発生する。
-                      // statusChanged の更新は onChange（実際に値が変わった時）のみに任せる。
                       nextCallDateRef.current?.showPicker?.();
                     }}
                     InputLabelProps={{ 
@@ -10367,10 +10580,7 @@ HP：https://ifoo-oita.com/
                           setEditedExclusiveDecisionDate(newDate);
                           setStatusChanged(true);
                           statusChangedRef.current = true;
-                          // 決定日を入力/変更した時点で基準日以降なら対策・反省点ポップアップを表示
-                          if (shouldRequireUnvisitedMemo(editedStatus, newDate)) {
-                            setUnvisitedMemoPopupOpen(true);
-                          }
+                          // 決定日を入力/変更してもポップアップは表示しない（保存時にチェック）
                         }}
                         InputLabelProps={{ shrink: true }}
                         error={!editedExclusiveDecisionDate}
@@ -11010,7 +11220,7 @@ HP：https://ifoo-oita.com/
 
             {/* マッチング結果セクション（matchUpdatedAtがある場合のみ表示） */}
             {seller?.id && (seller as any)?.matchUpdatedAt && (
-              <div ref={nearbyBuyersSectionRef}>
+              <div>
                 <CollapsibleSection title="🎯 マッチング結果" defaultExpanded={true} headerColor="#f3e5f5">
                   <MatchedBuyersList sellerId={seller.id} />
                 </CollapsibleSection>
@@ -11031,6 +11241,8 @@ HP：https://ifoo-oita.com/
                     matchPriceMin: (seller as any).buyMatchPriceMin,
                     matchPriceMax: (seller as any).buyMatchPriceMax,
                     matchMemo: (seller as any).buyMatchMemo,
+                    matchPropertyTypes: (seller as any).buyMatchPropertyTypes,
+                    matchUpdatedAt: (seller as any).buyMatchUpdatedAt, // 🚨 重要: マッチング更新日時を追加
                   }}
                 />
               </CollapsibleSection>
@@ -11719,6 +11931,43 @@ HP：https://ifoo-oita.com/
             color="primary"
           >
             記入する
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 営業担当へのメール送信ダイアログ */}
+      <Dialog open={assigneeChatDialogOpen} onClose={() => setAssigneeChatDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>営業担当へメール送信</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              営業担当: {seller?.visitAssignee || seller?.visitAssigneeInitials || '未設定'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontStyle: 'italic' }}>
+              ※ 売主番号、売主名、物件住所、送信者は自動で入力されますので入力不要です
+            </Typography>
+          </Box>
+          <TextField
+            autoFocus
+            multiline
+            rows={4}
+            fullWidth
+            label="メッセージ"
+            value={assigneeChatMessage}
+            onChange={(e) => setAssigneeChatMessage(e.target.value)}
+            placeholder="営業担当への連絡事項を入力してください"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAssigneeChatDialogOpen(false)}>
+            キャンセル
+          </Button>
+          <Button 
+            onClick={handleSendAssigneeChat}
+            variant="contained"
+            disabled={sendingAssigneeChat || !assigneeChatMessage.trim()}
+          >
+            {sendingAssigneeChat ? '送信中...' : '送信'}
           </Button>
         </DialogActions>
       </Dialog>

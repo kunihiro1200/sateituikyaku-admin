@@ -1240,7 +1240,7 @@ export class SellerService extends BaseRepository {
       valuationAmountMin, // 査定額フィルター下限（万円単位）
       valuationAmountMax, // 査定額フィルター上限（万円単位）
       visitAssignee, // 営業担当フィルター（visit_assignee）
-      addressKeyword, // 地名フィルター（物件住所の部分一致検索用）
+      townName, // 町名フィルター（物件住所の部分一致検索用）
     } = params;
 
     // JST今日の日付を取得
@@ -1282,7 +1282,7 @@ export class SellerService extends BaseRepository {
       nextCallDateFrom || 'all',
       nextCallDateTo || 'all',
       toCacheKeyPart(visitAssignee),
-      addressKeyword || 'all' // 地名フィルターをキャッシュキーに追加
+      townName || 'all' // 町名フィルターをキャッシュキーに追加
     );
 
     // キャッシュをチェック（インメモリ優先、次にRedis）
@@ -1829,22 +1829,7 @@ export class SellerService extends BaseRepository {
     if (inquirySiteList) {
       query = query.in('inquiry_site', inquirySiteList); // 修正: site → inquiry_site（正しいカラム名）
     }
-    const propertyTypeList = toArray(propertyTypeFilter);
-    if (propertyTypeList) {
-      // 種別は「戸建て」「戸建」「戸」のように表記が混在しているため、代表キーワードで部分一致検索する
-      const propertyTypeKeywordMap: Record<string, string> = {
-        '土地': '土',
-        '戸建': '戸',
-        'マンション': 'マ',
-        '事業用': '事業',
-      };
-      // 複数選択時はOR条件（いずれかのキーワードを含む）で絞り込む
-      const orConditions = propertyTypeList
-        .map((t) => propertyTypeKeywordMap[t] || t)
-        .map((keyword) => `property_type.ilike.%${keyword}%`)
-        .join(',');
-      query = query.or(orConditions);
-    }
+    // 種別フィルターはJS側で適用するため、ここではクエリしない（propertiesテーブルのカラムのため）
     const statusFilterList = toArray(statusFilter);
     if (statusFilterList) {
       // サイドバーカテゴリが選択されている場合、statusFilterは適用しない
@@ -1917,9 +1902,9 @@ export class SellerService extends BaseRepository {
       }
     }
 
-    // 地名フィルター（物件住所の部分一致検索用）
-    if (addressKeyword && addressKeyword.trim()) {
-      query = query.ilike('property_address', `%${addressKeyword.trim()}%`);
+    // 町名フィルター（物件住所の部分一致検索用）
+    if (townName && townName.trim()) {
+      query = query.ilike('property_address', `%${townName.trim()}%`);
     }
 
     // ソート（inquiry_dateがnullのものは最後に表示、同日の場合は売主番号が大きいほうを最新とする）
@@ -2014,6 +1999,27 @@ export class SellerService extends BaseRepository {
 
     // todayCallWithInfo:xxx または fi:todayCallWithInfo:xxx の場合、ラベルでJS側フィルタリング
     let finalSellers = decryptedSellers;
+    
+    // 種別フィルター（JS側で適用）：propertiesテーブルのproperty_typeで絞り込む
+    const propertyTypeList = toArray(propertyTypeFilter);
+    if (propertyTypeList && propertyTypeList.length > 0) {
+      const propertyTypeKeywordMap: Record<string, string> = {
+        '土地': '土',
+        '戸建て': '戸',
+        '戸建': '戸',
+        'マンション': 'マ',
+        '事業用': '事業',
+      };
+      finalSellers = finalSellers.filter((s: any) => {
+        const propertyType = s.property?.propertyType || '';
+        // 複数選択時はOR条件（いずれかのキーワードを含む）
+        return propertyTypeList.some((t) => {
+          const keyword = propertyTypeKeywordMap[t] || t;
+          return propertyType.includes(keyword);
+        });
+      });
+    }
+    
     const isLabelFilter = (typeof statusCategory === 'string') &&
       (statusCategory.startsWith('todayCallWithInfo:') || statusCategory.startsWith('fi:todayCallWithInfo:'));
     if (isLabelFilter) {
@@ -2086,9 +2092,11 @@ export class SellerService extends BaseRepository {
     // 特に fi:todayCallNotStarted はunreachable_status等をJSで判定するため、
     // DBのcount（29件）とJSフィルタ後の実件数（0件など）が大きく乖離する場合がある
     // todayCallWithInfo:xxx はIDプリフェッチ方式に変更したため、DBのcountをそのまま使用可能
+    // 種別フィルターもJS側で適用するため、件数を再計算する
     const isFiCategory = typeof statusCategory === 'string' && statusCategory.startsWith('fi:');
     const isFiLabelFilter = (typeof statusCategory === 'string') && statusCategory.startsWith('fi:todayCallWithInfo:');
-    const totalCount = isFiCategory || isFiLabelFilter
+    const hasPropertyTypeFilter = propertyTypeList && propertyTypeList.length > 0;
+    const totalCount = (isFiCategory || isFiLabelFilter || hasPropertyTypeFilter)
       ? sellersWithCallDate.length
       : (count || 0);
 
@@ -2493,6 +2501,7 @@ export class SellerService extends BaseRepository {
         matchTiming: seller.match_timing,
         matchPriceMin: seller.match_price_min,
         matchPriceMax: seller.match_price_max,
+        matchPropertyTypes: seller.match_property_types,
         matchMemo: seller.match_memo,
         matchContactStatus: seller.match_contact_status,
         matchUpdatedAt: seller.match_updated_at,
@@ -2502,6 +2511,7 @@ export class SellerService extends BaseRepository {
         buyMatchTiming: seller.buy_match_timing,
         buyMatchPriceMin: seller.buy_match_price_min,
         buyMatchPriceMax: seller.buy_match_price_max,
+        buyMatchPropertyTypes: seller.buy_match_property_types,
         buyMatchMemo: seller.buy_match_memo,
         buyMatchUpdatedAt: seller.buy_match_updated_at,
         // Property fields (物件関連フィールド)

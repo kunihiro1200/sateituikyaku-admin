@@ -456,17 +456,48 @@ export const replacePlaceholders = (
       // \n に変換済みの場合（行頭スペースあり・なし両方対応）
       result = result.replace(/(\r?\n[ \t]*)HP[：:]https:\/\/ifoo-oita\.com\//g, '$1HP：https://kujira-fudosan.com/');
 
-      // FI売主の場合は売却の流れPDFのURLを新しいGoogle DriveのURLに変更
+      // FI売主の場合は査定額案内メールの「売却の流れPDF」URLを福岡用Google DriveのURLに変更
+      console.log(`[replacePlaceholders] FI売主のURL置換開始: ${seller?.sellerNumber}`);
+      console.log(`[replacePlaceholders] 置換前テキスト（最初の500文字）: ${result.substring(0, 500)}`);
+      
+      // テキスト内にURLパターンが存在するかチェック
+      const urlPatterns = [
+        { name: 'chrome-extension PDF', pattern: 'chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj' },
+        { name: 'ifoo-oita PDF', pattern: 'ifoo-oita.com/testsite/wp-content/uploads/2020/12/d58af49c9c6dd87c7aee1845265204b6.pdf' },
+        { name: 'Google Drive (正確なID)', pattern: '1lr2vafII3OQ3ALYR6BJI09xLkXLfJqgP' }
+      ];
+      urlPatterns.forEach(({ name, pattern }) => {
+        if (result.includes(pattern)) {
+          console.log(`[replacePlaceholders] ✅ 検出: ${name} (パターン: ${pattern})`);
+        }
+      });
+
       // chrome-extension://... プレフィックス付きのURL（valuation_inheritanceテンプレート）
+      const before1 = result;
       result = result.replace(
         /chrome-extension:\/\/efaidnbmnnnibpcajpcglclefindmkaj\/https:\/\/ifoo-oita\.com\/testsite\/wp-content\/uploads\/2020\/12\/d58af49c9c6dd87c7aee1845265204b6\.pdf/g,
-        'https://drive.google.com/file/d/1yo-tNvpLU0zYV0hR8NtlF5oUcH16TUeJ/view?usp=sharing'
+        'https://drive.google.com/file/d/19HxXMAvuHZWKIYNOTHIb8nH15D9J3sjJ/view?usp=sharing'
       );
+      if (before1 !== result) console.log('[replacePlaceholders] ✅ chrome-extension PDF URL置換成功');
+
       // プレフィックスなしのURL（valuation_non_inheritanceテンプレート）
+      const before2 = result;
       result = result.replace(
         /https:\/\/ifoo-oita\.com\/testsite\/wp-content\/uploads\/2020\/12\/d58af49c9c6dd87c7aee1845265204b6\.pdf/g,
-        'https://drive.google.com/file/d/1yo-tNvpLU0zYV0hR8NtlF5oUcH16TUeJ/view?usp=sharing'
+        'https://drive.google.com/file/d/19HxXMAvuHZWKIYNOTHIb8nH15D9J3sjJ/view?usp=sharing'
       );
+      if (before2 !== result) console.log('[replacePlaceholders] ✅ ifoo-oita PDF URL置換成功');
+
+      // スプレッドシートテンプレートで使用される既存のGoogle Drive URL（大分用）を福岡用に変更
+      // 正確なファイルID: 1lr2vafII3OQ3ALYR6BJI09xLkXLfJqgP (注意: 1lr=数字1+小文字l+小文字r、II=大文字I×2)
+      const before3 = result;
+      result = result.replace(
+        /https:\/\/drive\.google\.com\/file\/d\/1lr2vafII3OQ3ALYR6BJI09xLkXLfJqgP\/view\?usp=sharing/g,
+        'https://drive.google.com/file/d/19HxXMAvuHZWKIYNOTHIb8nH15D9J3sjJ/view?usp=sharing'
+      );
+      if (before3 !== result) console.log('[replacePlaceholders] ✅ Google Drive URL 置換成功');
+
+      console.log(`[replacePlaceholders] 置換後テキスト（最初の500文字）: ${result.substring(0, 500)}`);
 
       // FI売主の場合は会社名を「株式会社くじら不動産」に変更
       // ステップ1: 「〇〇にございます、不動産会社の"?株式会社 ?いふう"?です」パターンを

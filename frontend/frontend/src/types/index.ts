@@ -196,6 +196,18 @@ export interface Seller {
   // 関連データ
   property?: PropertyInfo; // 物件情報（APIレスポンスに含まれる場合）
   
+  // マッチング情報
+  matchUpdatedAt?: string | Date; // マッチング更新日時
+  match_updated_at?: string | null; // マッチング更新日時 - snake_case版
+  matchIntentType?: string; // マッチング意図タイプ
+  matchAreas?: string[]; // マッチングエリア
+  matchAreaFreeText?: string; // マッチングエリア（フリーテキスト）
+  matchTiming?: string; // マッチング時期
+  matchPriceMin?: number; // マッチング価格（最小）
+  matchPriceMax?: number; // マッチング価格（最大）
+  matchMemo?: string; // マッチングメモ
+  matchContactStatus?: string; // マッチング連絡状況
+  
   // Phase 1 backward compatibility
   inquirySource?: string; // alias for inquirySite
   inquiryDatetime?: string | Date; // alias for inquiryDetailedDateTime

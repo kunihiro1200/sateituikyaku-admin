@@ -378,10 +378,11 @@ export default function NewSellerPage() {
     if (!phoneNumber) missingFields.push('電話番号');
     if (!propertyAddress) missingFields.push('物件所在地');
     if (!propertyType) missingFields.push('物件種別');
-    if (!structure) missingFields.push('構造');
+    // 構造は必須ではない
     // マンションの場合は土地面積を必須としない
     if (propertyType !== 'apartment' && !landArea) missingFields.push('土地面積');
-    if (!buildYear) missingFields.push('築年');
+    // 土地の場合は築年を必須としない
+    if (propertyType !== 'land' && !buildYear) missingFields.push('築年');
     if (!confidence) missingFields.push('確度');
     if (!nextCallDate) missingFields.push('次電日');
 
@@ -763,7 +764,6 @@ export default function NewSellerPage() {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  required
                   select
                   label="構造"
                   value={structure}
@@ -780,11 +780,13 @@ export default function NewSellerPage() {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  required={propertyType !== 'apartment'}
+                  required={propertyType !== 'apartment' && propertyType !== 'land'}
                   label="土地面積（㎡）"
                   type="number"
                   value={landArea}
                   onChange={(e) => setLandArea(e.target.value)}
+                  disabled={propertyType === 'apartment'}
+                  helperText={propertyType === 'apartment' ? 'マンションの場合は不要' : ''}
                 InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
@@ -795,6 +797,8 @@ export default function NewSellerPage() {
                   type="number"
                   value={buildingArea}
                   onChange={(e) => setBuildingArea(e.target.value)}
+                  disabled={propertyType === 'land'}
+                  helperText={propertyType === 'land' ? '土地の場合は不要' : ''}
                 InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
@@ -831,12 +835,13 @@ export default function NewSellerPage() {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  required
                   label="築年"
                   type="number"
                   value={buildYear}
                   onChange={(e) => setBuildYear(e.target.value)}
                   placeholder="2000"
+                  disabled={propertyType === 'land'}
+                  helperText={propertyType === 'land' ? '土地の場合は不要' : ''}
                 InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>

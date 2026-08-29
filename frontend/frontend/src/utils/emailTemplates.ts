@@ -12,6 +12,80 @@ export interface EmailTemplate {
   order: number; // 基本の表示順序
 }
 
+/**
+ * FI売主番号用のURL置換マップ
+ */
+const FI_URL_MAP: { [key: string]: string } = {
+  // 元のURL（査定額案内メールで使用）
+  'chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://ifoo-oita.com/testsite/wp-content/uploads/2020/12/d58af49c9c6dd87c7aee1845265204b6.pdf':
+    'https://drive.google.com/file/d/19HxXMAvuHZWKIYNOTHIb8nH15D9J3sjJ/view?usp=sharing',
+  'https://ifoo-oita.com/testsite/wp-content/uploads/2020/12/d58af49c9c6dd87c7aee1845265204b6.pdf':
+    'https://drive.google.com/file/d/19HxXMAvuHZWKIYNOTHIb8nH15D9J3sjJ/view?usp=sharing',
+  // スプレッドシートテンプレートで使用される既存のGoogle Drive URL（大分用）
+  // パターン1: fJqgP版
+  'https://drive.google.com/file/d/1Ir2vafll3OQ3ALYR6BJI09xLkXLfJqgP/view?usp=sharing':
+    'https://drive.google.com/file/d/19HxXMAvuHZWKIYNOTHIb8nH15D9J3sjJ/view?usp=sharing',
+  // パターン2: fqgP版（Jなし）
+  'https://drive.google.com/file/d/1Ir2vafll3OQ3ALYR6BJI09xLkXLfqgP/view?usp=sharing':
+    'https://drive.google.com/file/d/19HxXMAvuHZWKIYNOTHIb8nH15D9J3sjJ/view?usp=sharing',
+};
+
+/**
+ * 売主番号がFIで始まる場合、査定額案内メールのURLを置換する
+ * @param content メール本文
+ * @param sellerNumber 売主番号
+ * @returns 置換後のメール本文
+ */
+export function replaceFIUrls(content: string, sellerNumber: string | null | undefined): string {
+  console.log('🔧 [replaceFIUrls] 売主番号:', sellerNumber);
+  console.log('🔧 [replaceFIUrls] 元のコンテンツ長:', content.length);
+  
+  // コンテンツ内のすべてのGoogle Drive URLを抽出してログ出力
+  const driveUrlPattern = /https:\/\/drive\.google\.com\/file\/d\/[a-zA-Z0-9_-]+\/view\?usp=sharing/g;
+  const foundUrls = content.match(driveUrlPattern);
+  if (foundUrls) {
+    console.log('🔧 [replaceFIUrls] 検出されたGoogle Drive URL:', foundUrls);
+  }
+  
+  // 売主番号がFIで始まらない場合は何もしない
+  if (!sellerNumber || !sellerNumber.startsWith('FI')) {
+    console.log('🔧 [replaceFIUrls] FI売主ではないため置換スキップ');
+    return content;
+  }
+
+  console.log('🔧 [replaceFIUrls] FI売主検出！URL置換を実行');
+
+  // URL置換を実行
+  let result = content;
+  for (const [oldUrl, newUrl] of Object.entries(FI_URL_MAP)) {
+    console.log('🔧 [replaceFIUrls] 置換試行 - 検索URL:', oldUrl);
+    const regex = new RegExp(oldUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    const beforeReplace = result;
+    result = result.replace(regex, newUrl);
+    
+    if (beforeReplace !== result) {
+      console.log('🔧 [replaceFIUrls] 置換成功:', oldUrl.substring(0, 50) + '...');
+    }
+  }
+
+  console.log('🔧 [replaceFIUrls] 置換後のコンテンツ長:', result.length);
+  console.log('🔧 [replaceFIUrls] 置換実行:', content !== result ? '成功' : '失敗（マッチなし）');
+
+  return result;
+}
+
+/**
+ * 査定額案内メール系のテンプレートかどうかを判定
+ * @param templateId テンプレートID
+ * @param templateLabel テンプレートラベル
+ * @returns 査定額案内メール系の場合true
+ */
+export function isValuationNoticeTemplate(templateId: string, templateLabel: string): boolean {
+  return templateId === 'valuation_inheritance' || 
+         templateId === 'valuation_non_inheritance' ||
+         templateLabel.includes('査定額案内メール');
+}
+
 export const emailTemplates: EmailTemplate[] = [
   {
     id: 'visit_thank_you',

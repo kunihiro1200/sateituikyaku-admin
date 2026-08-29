@@ -281,6 +281,7 @@ export default function PropertyListingDetailPage() {
   const [atbbWarningDialog, setAtbbWarningDialog] = useState(false);
   const [eLabelWarningDialog, setELabelWarningDialog] = useState(false);
   const [preViewingNotesWarningDialog, setPreViewingNotesWarningDialog] = useState(false);
+  const [contactInfoWarningDialog, setContactInfoWarningDialog] = useState(false);
   const offerSectionRef = useRef<HTMLDivElement>(null);
   // 買付情報バリデーションエラー状態
   const [offerErrors, setOfferErrors] = useState<{
@@ -591,6 +592,32 @@ export default function PropertyListingDetailPage() {
       const prevAtbbStatus = data?.atbb_status;
       const nextAtbbStatus = editedData.atbb_status;
 
+      // 売主連絡先チェック: ATBB状況を「公開中」に変更する場合
+      // 元の状態に関わらず、「公開中」（専任・公開中、一般・公開中）に変更する際にチェック
+      const isChangingToPublic = 
+        nextAtbbStatus && 
+        nextAtbbStatus.includes('公開中') && 
+        prevAtbbStatus !== nextAtbbStatus; // 同じ値への変更は除外（編集モードで保存ボタンを押しただけの場合）
+
+      // 物件番号にCCが含まれる場合は警告をスキップ
+      const propertyNumberContainsCC = data?.property_number?.includes('CC') ?? false;
+
+      if (isChangingToPublic && !propertyNumberContainsCC) {
+        const currentSellerContact = editedData.seller_contact !== undefined
+          ? editedData.seller_contact
+          : (data?.seller_contact ?? '');
+        const currentSellerEmail = editedData.seller_email !== undefined
+          ? editedData.seller_email
+          : (data?.seller_email ?? '');
+
+        // 連絡先またはメールアドレスのどちらか一方でも空欄の場合、警告ダイアログを表示
+        if ((!currentSellerContact || currentSellerContact.trim() === '') ||
+            (!currentSellerEmail || currentSellerEmail.trim() === '')) {
+          setContactInfoWarningDialog(true);
+          return;
+        }
+      }
+
       // Eラベルチェック: 「一般・公開中」に変更された場合（もともと「一般・公開中」でない場合）
       if (nextAtbbStatus === '一般・公開中' && prevAtbbStatus !== '一般・公開中') {
         const currentELabel = editedData.e_label_checked !== undefined
@@ -723,6 +750,17 @@ export default function PropertyListingDetailPage() {
     if (Object.keys(editedData).length === 0) {
       throw new Error('no_changes');
     }
+
+    // 内覧前伝達事項に「●●●」が含まれているかチェック
+    const preViewingNotes = editedData.pre_viewing_notes !== undefined
+      ? editedData.pre_viewing_notes
+      : (data?.pre_viewing_notes ?? '');
+    
+    if (preViewingNotes && preViewingNotes.includes('●●●')) {
+      setPreViewingNotesWarningDialog(true);
+      return; // 保存処理を中断
+    }
+
     try {
       await api.put(`/api/property-listings/${propertyNumber}`, editedData);
       setSnackbar({
@@ -730,10 +768,6 @@ export default function PropertyListingDetailPage() {
         message: 'よく聞かれる項目を保存しました',
         severity: 'success',
       });
-      // 内覧前伝達事項が変更された場合、DN列確認ポップアップを表示
-      if (editedData.pre_viewing_notes !== undefined) {
-        setPreViewingNotesWarningDialog(true);
-      }
       await fetchPropertyData(true);
       setEditedData({});
     } catch (error) {
@@ -2093,6 +2127,52 @@ export default function PropertyListingDetailPage() {
                   {copiedPropertyNumber ? <CheckIcon /> : <ContentCopyIcon />}
                 </IconButton>
               </Tooltip>
+
+              {/* atbb・SUUMOボタン */}
+              <Box sx={{ display: 'flex', gap: 1, ml: 1 }}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  href="https://atbb.athome.jp/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    minWidth: 'auto',
+                    px: 1.5,
+                    py: 0.5,
+                    fontSize: '0.75rem',
+                    textTransform: 'none',
+                    bgcolor: '#d32f2f',
+                    color: '#fff',
+                    '&:hover': {
+                      bgcolor: '#b71c1c'
+                    }
+                  }}
+                >
+                  atbb
+                </Button>
+                <Button
+                  variant="contained"
+                  size="small"
+                  href="https://manager.suumo.jp/chukai/tn00Xx0302.do"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    minWidth: 'auto',
+                    px: 1.5,
+                    py: 0.5,
+                    fontSize: '0.75rem',
+                    textTransform: 'none',
+                    bgcolor: '#2e7d32',
+                    color: '#fff',
+                    '&:hover': {
+                      bgcolor: '#1b5e20'
+                    }
+                  }}
+                >
+                  SUUMO
+                </Button>
+              </Box>
 
               {/* 買主フィルター設定バー */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', ml: 1 }}>
@@ -3663,6 +3743,77 @@ export default function PropertyListingDetailPage() {
         </DialogActions>
       </Dialog>
 
+      {/* 売主連絡先・メールアドレス警告ダイアログ */}
+      <Dialog open={contactInfoWarningDialog} onClose={() => setContactInfoWarningDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold', fontSize: '1.1rem' }}>
+          ⚠️ 連絡先情報が不足しています
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3, pb: 2 }}>
+          <Typography variant="body1" sx={{ fontWeight: 600, mb: 2 }}>
+            ATBB状況を<span style={{ color: '#e65100' }}>「公開中」</span>に変更する際、<br />
+            <span style={{ color: '#e65100' }}>売主の連絡先とメールアドレスの両方の入力が推奨</span>されます。
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            現在、売主の連絡先またはメールアドレスが空欄になっています。
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            このまま保存を続けるか、担当者へ連絡先情報の不足を連絡してください。
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
+          <Button 
+            onClick={async () => {
+              setContactInfoWarningDialog(false);
+              // 保存処理を実行
+              try {
+                await api.put(`/api/property-listings/${propertyNumber}`, editedData);
+                setSnackbar({
+                  open: true,
+                  message: 'サマリー情報を保存しました',
+                  severity: 'success',
+                });
+                pageDataCache.invalidate(CACHE_KEYS.PROPERTY_LISTINGS);
+                await fetchPropertyData(true);
+                setEditedData({});
+                setIsHeaderEditMode(false);
+              } catch (error) {
+                setSnackbar({
+                  open: true,
+                  message: '保存に失敗しました',
+                  severity: 'error',
+                });
+              }
+            }} 
+            variant="outlined" 
+            color="inherit"
+            fullWidth={window.innerWidth < 600}
+          >
+            このまま続ける
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={() => {
+              setContactInfoWarningDialog(false);
+              // チャットパネルを開き、デフォルトメッセージを設定
+              const defaultMessage = `【物件番号】${data?.property_number || ''}
+【物件住所】${data?.address || ''}
+【売主名】${data?.seller_name || '（未登録）'}
+
+のメールアドレス（電話番号）がありません。
+至急物件リストに登録お願いします。
+
+【物件URL】${window.location.href}`;
+              setChatToOfficeMessage(defaultMessage);
+              setChatToOfficePanelOpen(true);
+            }}
+            fullWidth={window.innerWidth < 600}
+          >
+            担当へメールアドレスがないことを連絡する
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* ドキュメント管理モーダル（画像ボタンから開く。業務依頼の画像ボタンと同じもの） */}
       {propertyNumber && (
         <DocumentModal
@@ -3705,14 +3856,15 @@ export default function PropertyListingDetailPage() {
         </DialogActions>
       </Dialog>
 
-      {/* 内覧前伝達事項変更時 DN列確認ダイアログ */}
+      {/* 内覧前伝達事項に「●●●」が含まれる場合の警告ダイアログ */}
       <Dialog open={preViewingNotesWarningDialog} onClose={() => setPreViewingNotesWarningDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold', fontSize: '1.1rem' }}>
-          ⚠️ 確認
+          ⚠️ 警告
         </DialogTitle>
         <DialogContent sx={{ pt: 3, pb: 2 }}>
-          <Typography variant="body1" sx={{ lineHeight: 1.8 }}>
-            物件リストの DN列の変更は必要ではないですか？業者向けに自動案内メールが行くので確認お願いします。
+          <Typography variant="body1" sx={{ lineHeight: 1.8, fontWeight: 'bold', color: '#e65100', mb: 2 }}>
+            内覧前伝達事項に「●●●」という文字が含まれています。<br />
+            ここと物件スプシのDN列を必ず変更してください。
           </Typography>
           <Link
             href="https://docs.google.com/spreadsheets/d/1tI_iXaiLuWBggs5y0RH7qzkbHs9wnLLdRekAmjkhcLY/edit?gid=290420661#gid=290420661"
