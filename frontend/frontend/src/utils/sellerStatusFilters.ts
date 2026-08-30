@@ -1,80 +1,36 @@
 /**
  * Seller Status Filter Utility Functions
  * 
- * 売主リストのサイドバーステータスフィルター用のユーティリティ関数
+ * 売主リスト�EサイドバースチE�Eタスフィルター用のユーチE��リチE��関数
  * 
- * 【サイドバーステータス定義】
+ * 【サイドバースチE�Eタス定義、E * 
+ * 1. 「当日TEL刁E��E *    - 条件: 状況E��当社�E�に「追客中」が含まれる AND 次電日が今日以剁E *    - 追加条件: コミュニケーション惁E���E�連絡方況E連絡取りめE��ぁE��閁E電話拁E��）が**全て空**
+ *    - 表示: コミュニケーション惁E��が�Eて空の売主のみ
  * 
- * 1. 「当日TEL分」
- *    - 条件: 状況（当社）に「追客中」が含まれる AND 次電日が今日以前
- *    - 追加条件: コミュニケーション情報（連絡方法/連絡取りやすい時間/電話担当）が**全て空**
- *    - 表示: コミュニケーション情報が全て空の売主のみ
+ * 2. 「当日TEL�E��E容�E�、E *    - 条件: 状況E��当社�E�に「追客中」が含まれる AND 次電日が今日以剁E *    - 追加条件: コミュニケーション惁E��のぁE��れかに入力がある
+ *    - 表示: 当日TEL(Eメール)、当日TEL(Y)など、�E容付きで表示
+ *    - 侁E AA13489�E�Eメール�E�、AA13507�E�E�E�E * 
+ * 3. 「未査定、E *    - 条件: 査定顁E,2,3が�Eて空 AND 反響日付が2025/12/8以陁EAND 営拁E��空
  * 
- * 2. 「当日TEL（内容）」
- *    - 条件: 状況（当社）に「追客中」が含まれる AND 次電日が今日以前
- *    - 追加条件: コミュニケーション情報のいずれかに入力がある
- *    - 表示: 当日TEL(Eメール)、当日TEL(Y)など、内容付きで表示
- *    - 例: AA13489（Eメール）、AA13507（Y）
- * 
- * 3. 「未査定」
- *    - 条件: 査定額1,2,3が全て空 AND 反響日付が2025/12/8以降 AND 営担が空
- * 
- * 4. 「査定（郵送）」
- *    - 条件: 郵送ステータスが「未」
- * 
+ * 4. 「査定（郵送E��、E *    - 条件: 郵送スチE�Eタスが「未、E * 
  * Requirements:
- * - 1.2: 当日TEL フィルター（コミュニケーション情報なし）
- * - 1.3: 当日TEL（内容）フィルター（コミュニケーション情報あり）
- * - 2.2: 未査定 フィルター
- * - 3.2: 査定（郵送） フィルター
+ * - 1.2: 当日TEL フィルター�E�コミュニケーション惁E��なし！E * - 1.3: 当日TEL�E��E容�E�フィルター�E�コミュニケーション惁E��あり�E�E * - 2.2: 未査宁Eフィルター
+ * - 3.2: 査定（郵送E��Eフィルター
  */
 
 import { Seller } from '../types';
 import { isVisitDayBefore as isVisitDayBeforeUtil, parseDate } from './sellerStatusUtils';
 
-// ステータスカテゴリの型定義
-// todayCall: コミュニケーション情報が全て空の当日TEL（営担なし）
-// todayCallWithInfo: コミュニケーション情報のいずれかに入力がある当日TEL（営担なし）
-// todayCallAssigned: 営担あり + 訪問日なし + 次電日が今日以前
-// visitDayBefore: 訪問日前日（訪問日が明日、または木曜訪問の場合は明後日）
-// visitCompleted: 訪問済み（営担に入力あり、訪問日が昨日以前）
-// todayCallNotStarted: 当日TEL_未着手（不通が空欄 + 反響日付が2026/1/1以降）
-// pinrichEmpty: Pinrich空欄（Pinrichカラムが空欄）
-// exclusive: 専任カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が専任媒介関連）
-// general: 一般カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が一般媒介 + 契約年月 >= 2025/6/23）
-// visitOtherDecision: 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり）
-// unvisitedOtherDecision: 未訪問他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担なし）
-export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'pinrichChangeRequired' | 'exclusive' | 'general' | 'visitOtherDecision' | 'unvisitedOtherDecision' | 'matching' | 'restored'
-  | `visitAssigned:${string}`        // 担当カテゴリー（例: visitAssigned:Y）
-  | `todayCallAssigned:${string}`    // 当日TELサブカテゴリー（例: todayCallAssigned:Y）
-  | `todayCallWithInfo:${string}`    // 当日TEL（内容）ラベル別カテゴリー（例: todayCallWithInfo:当日TEL(I・Eメール)）
-  | `visitThankYouPending:${string}`  // 訪問後御礼サブカテゴリー（例: visitThankYouPending:Y）
-  | `unvisitedOtherDecision:${string}`; // 未訪問他決の月別サブカテゴリー（例: unvisitedOtherDecision:2026-08）
-
-// カテゴリカウントのインターフェース
+// スチE�EタスカチE��リの型定義
+// todayCall: コミュニケーション惁E��が�Eて空の当日TEL�E�営拁E��し！E// todayCallWithInfo: コミュニケーション惁E��のぁE��れかに入力がある当日TEL�E�営拁E��し！E// todayCallAssigned: 営拁E��めE+ 訪問日なぁE+ 次電日が今日以剁E// visitDayBefore: 訪問日前日�E�訪問日が�E日、また�E木曜訪問�E場合�E明後日�E�E// visitCompleted: 訪問済み�E�営拁E��入力あり、訪問日が昨日以前！E// todayCallNotStarted: 当日TEL_未着手（不通が空欁E+ 反響日付が2026/1/1以降！E// pinrichEmpty: Pinrich空欁E��Einrichカラムが空欁E��E// exclusive: 専任カチE��リー�E�専任他決打合ぁE<> "完亁E + 次電日 <> TODAY() + 状況が専任媒介関連�E�E// general: 一般カチE��リー�E�専任他決打合ぁE<> "完亁E + 次電日 <> TODAY() + 状況が一般媒仁E+ 契紁E��朁E>= 2025/6/23�E�E// visitOtherDecision: 訪問後他決カチE��リー�E�専任他決打合ぁE<> "完亁E + 次電日 <> TODAY() + 状況が他決関連 + 営拁E��り！E// unvisitedOtherDecision: 未訪問他決カチE��リー�E�専任他決打合ぁE<> "完亁E + 次電日 <> TODAY() + 状況が他決関連 + 営拁E��し！Eexport type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'pinrichChangeRequired' | 'exclusive' | 'general' | 'visitOtherDecision' | 'unvisitedOtherDecision' | 'matching' | 'restored'
+  | `visitAssigned:${string}`        // 拁E��カチE��リー�E�侁E visitAssigned:Y�E�E  | `todayCallAssigned:${string}`    // 当日TELサブカチE��リー�E�侁E todayCallAssigned:Y�E�E  | `todayCallWithInfo:${string}`    // 当日TEL�E��E容�E�ラベル別カチE��リー�E�侁E todayCallWithInfo:当日TEL(I・Eメール)�E�E  | `visitThankYouPending:${string}`  // 訪問後御礼サブカチE��リー�E�侁E visitThankYouPending:Y�E�E  | `unvisitedOtherDecision:${string}`; // 未訪問他決の月別サブカチE��リー�E�侁E unvisitedOtherDecision:2026-08�E�E
+// カチE��リカウント�Eインターフェース
 export interface CategoryCounts {
   all: number;
-  todayCall: number;           // 当日TEL分（コミュニケーション情報なし、営担なし）
-  todayCallWithInfo: number;   // 当日TEL（内容）（コミュニケーション情報あり、営担なし）
-  todayCallAssigned: number;   // 当日TEL（担当）（営担あり、訪問日なし、次電日が今日以前）
-  visitDayBefore: number;      // 訪問日前日（訪問日が翌営業日）
-  visitCompleted: number;      // 訪問済み（営担に入力あり、訪問日が昨日以前）
-  unvaluated: number;
+  todayCall: number;           // 当日TEL刁E��コミュニケーション惁E��なし、営拁E��し！E  todayCallWithInfo: number;   // 当日TEL�E��E容�E�（コミュニケーション惁E��あり、営拁E��し！E  todayCallAssigned: number;   // 当日TEL�E�担当）（営拁E��り、訪問日なし、次電日が今日以前！E  visitDayBefore: number;      // 訪問日前日�E�訪問日が翌営業日�E�E  visitCompleted: number;      // 訪問済み�E�営拁E��入力あり、訪問日が昨日以前！E  unvaluated: number;
   mailingPending: number;
-  todayCallNotStarted: number; // 当日TEL_未着手（不通が空欄 + 反響日付が2026/1/1以降）
-  pinrichEmpty: number;        // Pinrich空欄（Pinrichカラムが空欄）
-  pinrichChangeRequired: number; // Pinrich要変更（条件A〜Dのいずれかを満たす）
-  exclusive: number;           // 専任カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が専任媒介関連）
-  general: number;             // 一般カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が一般媒介 + 契約年月 >= 2025/6/23）
-  visitOtherDecision: number;  // 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり（「外す」含む））
-  unvisitedOtherDecision: number; // 未訪問他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担なし）
-  restored: number;            // 復元カテゴリー（削除から復元されたレコード）
-  visitAssignedCounts?: Record<string, number>;     // 担当者別件数（全売主）
-  todayCallAssignedCounts?: Record<string, number>; // 担当者別当日TEL件数
-  todayCallWithInfoLabels?: string[];               // 当日TEL（内容）のユニークラベル一覧（全件対象）
-  todayCallWithInfoLabelCounts?: Record<string, number>; // ラベル別件数（全件対象）
-  // 福岡（FI）専用カウント
-  fi_todayCall?: number;
+  todayCallNotStarted: number; // 当日TEL_未着手（不通が空欁E+ 反響日付が2026/1/1以降！E  pinrichEmpty: number;        // Pinrich空欁E��Einrichカラムが空欁E��E  pinrichChangeRequired: number; // Pinrich要変更�E�条件A〜DのぁE��れかを満たす�E�E  exclusive: number;           // 専任カチE��リー�E�専任他決打合ぁE<> "完亁E + 次電日 <> TODAY() + 状況が専任媒介関連�E�E  general: number;             // 一般カチE��リー�E�専任他決打合ぁE<> "完亁E + 次電日 <> TODAY() + 状況が一般媒仁E+ 契紁E��朁E>= 2025/6/23�E�E  visitOtherDecision: number;  // 訪問後他決カチE��リー�E�専任他決打合ぁE<> "完亁E + 次電日 <> TODAY() + 状況が他決関連 + 営拁E��り（「外す」含む�E�！E  unvisitedOtherDecision: number; // 未訪問他決カチE��リー�E�専任他決打合ぁE<> "完亁E + 次電日 <> TODAY() + 状況が他決関連 + 営拁E��し！E  restored: number;            // 復允E��チE��リー�E�削除から復允E��れたレコード！E  visitAssignedCounts?: Record<string, number>;     // 拁E��老E��件数�E��E売主�E�E  todayCallAssignedCounts?: Record<string, number>; // 拁E��老E��当日TEL件数
+  todayCallWithInfoLabels?: string[];               // 当日TEL�E��E容�E��Eユニ�Eクラベル一覧�E��E件対象�E�E  todayCallWithInfoLabelCounts?: Record<string, number>; // ラベル別件数�E��E件対象�E�E  // 福岡�E�EI�E�専用カウンチE  fi_todayCall?: number;
   fi_todayCallNotStarted?: number;
   fi_todayCallWithInfo?: number;
   fi_unvaluated?: number;
@@ -83,9 +39,7 @@ export interface CategoryCounts {
 }
 
 /**
- * 日本時間（JST）で今日の日付文字列を取得（YYYY-MM-DD形式）
- * タイムゾーンに依存しない日付比較のため、文字列で比較する
- */
+ * 日本時間�E�EST�E�で今日の日付文字�Eを取得！EYYY-MM-DD形式！E * タイムゾーンに依存しなぁE��付比輁E�Eため、文字�Eで比輁E��めE */
 const getTodayJSTString = (): string => {
   const now = new Date();
   // UTCに変換してから9時間足してJSTにする
@@ -97,8 +51,7 @@ const getTodayJSTString = (): string => {
 };
 
 /**
- * 日付文字列を正規化（YYYY-MM-DD形式に変換）
- * タイムゾーンに依存しない日付比較のため
+ * 日付文字�Eを正規化�E�EYYY-MM-DD形式に変換�E�E * タイムゾーンに依存しなぁE��付比輁E�Eため
  */
 const normalizeDateString = (dateStr: string | Date | undefined | null): string | null => {
   if (!dateStr) return null;
@@ -107,9 +60,7 @@ const normalizeDateString = (dateStr: string | Date | undefined | null): string 
     let dateString: string;
     
     if (dateStr instanceof Date) {
-      // UTC基準で日付文字列を生成（Vercel UTC環境との一致を保証）
-      // getFullYear()はローカルタイム依存のため使用しない
-      const year = dateStr.getUTCFullYear();
+      // UTC基準で日付文字�Eを生成！Eercel UTC環墁E��の一致を保証�E�E      // getFullYear()はローカルタイム依存�Eため使用しなぁE      const year = dateStr.getUTCFullYear();
       const month = String(dateStr.getUTCMonth() + 1).padStart(2, '0');
       const day = String(dateStr.getUTCDate()).padStart(2, '0');
       dateString = `${year}-${month}-${day}`;
@@ -128,10 +79,9 @@ const normalizeDateString = (dateStr: string | Date | undefined | null): string 
       }
     }
     
-    // "2026-01-27" 形式の場合、日付部分のみ抽出
+    // "2026-01-27" 形式�E場合、日付部刁E�Eみ抽出
     if (dateString.includes('-')) {
-      // ISO形式（T区切り）またはスペース区切りの日時文字列（"2026-05-19 01:34:33"）に対応
-      const datePart = dateString.split('T')[0].split(' ')[0]; // 日付部分のみ抽出
+      // ISO形式！E区刁E���E�また�Eスペ�Eス区刁E��の日時文字�E�E�E2026-05-19 01:34:33"�E�に対忁E      const datePart = dateString.split('T')[0].split(' ')[0]; // 日付部刁E�Eみ抽出
       const parts = datePart.split('-');
       if (parts.length === 3) {
         const year = parts[0];
@@ -148,8 +98,7 @@ const normalizeDateString = (dateStr: string | Date | undefined | null): string 
 };
 
 /**
- * 安全な日付比較ヘルパー関数（後方互換性のため残す）
- * 無効な日付の場合はnullを返す
+ * 安�Eな日付比輁E�Eルパ�E関数�E�後方互換性のため残す�E�E * 無効な日付�E場合�Enullを返す
  */
 const safeParseDate = (dateStr: string | Date | undefined | null): Date | null => {
   const normalized = normalizeDateString(dateStr);
@@ -166,8 +115,7 @@ const safeParseDate = (dateStr: string | Date | undefined | null): Date | null =
 };
 
 /**
- * 日本時間（JST）で今日の日付を取得（後方互換性のため残す）
- */
+ * 日本時間�E�EST�E�で今日の日付を取得（後方互換性のため残す�E�E */
 const getTodayJST = (): Date => {
   const todayStr = getTodayJSTString();
   const parts = todayStr.split('-');
@@ -177,78 +125,58 @@ const getTodayJST = (): Date => {
 };
 
 /**
- * 日付が今日以前かどうかを判定（JST基準、文字列比較）
- * タイムゾーンに依存しない正確な比較
- */
+ * 日付が今日以前かどぁE��を判定！EST基準、文字�E比輁E��E * タイムゾーンに依存しなぁE��確な比輁E */
 const isTodayOrBefore = (dateStr: string | Date | undefined | null): boolean => {
   const normalized = normalizeDateString(dateStr);
   if (!normalized) return false;
   
   const todayStr = getTodayJSTString();
-  // 文字列比較（YYYY-MM-DD形式なので辞書順で比較可能）
-  return normalized <= todayStr;
+  // 斁E���E比輁E��EYYY-MM-DD形式なので辞書頁E��比輁E��能�E�E  return normalized <= todayStr;
 };
 
 /**
- * 日付が昨日以前かどうかを判定（JST基準、文字列比較）
- * タイムゾーンに依存しない正確な比較
- */
+ * 日付が昨日以前かどぁE��を判定！EST基準、文字�E比輁E��E * タイムゾーンに依存しなぁE��確な比輁E */
 const isYesterdayOrBefore = (dateStr: string | Date | undefined | null): boolean => {
   const normalized = normalizeDateString(dateStr);
   if (!normalized) return false;
   
   const todayStr = getTodayJSTString();
-  // 文字列比較（YYYY-MM-DD形式なので辞書順で比較可能）
-  // 昨日以前 = 今日より前
-  return normalized < todayStr;
+  // 斁E���E比輁E��EYYY-MM-DD形式なので辞書頁E��比輁E��能�E�E  // 昨日以剁E= 今日より剁E  return normalized < todayStr;
 };
 
 /**
- * 営担（visitAssignee）に有効な入力があるかどうかを判定
- * 「外す」は有効な営業担当の値として扱う
- */
+ * 営拁E��EisitAssignee�E�に有効な入力があるかどぁE��を判宁E * 「外す」�E有効な営業拁E���E値として扱ぁE */
 const hasVisitAssignee = (seller: Seller | any): boolean => {
-  // visitAssigneeInitials（元のイニシャル）を優先して確認
-  // visitAssigneeはフルネームに変換されている場合があるため
-  // visitAssignee（camelCase）も参照（APIレスポンスの形式に対応）
-  const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
-  // 空文字または「外す」の場合は担当なしとみなす
-  // 「外す」は営担を外す指示であり、実質的に担当なしと同じ扱い
-  if (!visitAssignee || visitAssignee.trim() === '' || visitAssignee.trim() === '外す') {
+  // visitAssigneeInitials�E��Eのイニシャル�E�を優先して確誁E  // visitAssigneeはフルネ�Eムに変換されてぁE��場合があるため
+  // visitAssignee�E�EamelCase�E�も参�E�E�EPIレスポンスの形式に対応！E  const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
+  // 空斁E��また�E「外す」�E場合�E拁E��なしとみなぁE  // 「外す」�E営拁E��外す持E��であり、実質皁E��拁E��なしと同じ扱ぁE  if (!visitAssignee || visitAssignee.trim() === '' || visitAssignee.trim() === '外す') {
     return false;
   }
   return true;
 };
 
 /**
- * 日付が今日以降かどうかを判定（JST基準、文字列比較）
- * タイムゾーンに依存しない正確な比較
- */
+ * 日付が今日以降かどぁE��を判定！EST基準、文字�E比輁E��E * タイムゾーンに依存しなぁE��確な比輁E */
 const isTodayOrAfter = (dateStr: string | Date | undefined | null): boolean => {
   const normalized = normalizeDateString(dateStr);
   if (!normalized) return false;
   
   const todayStr = getTodayJSTString();
-  // 文字列比較（YYYY-MM-DD形式なので辞書順で比較可能）
-  return normalized >= todayStr;
+  // 斁E���E比輁E��EYYY-MM-DD形式なので辞書頁E��比輁E��能�E�E  return normalized >= todayStr;
 };
 
 /**
- * 訪問日前日判定
- * 
- * 【サイドバー表示】「訪問日前日」
- * 
+ * 訪問日前日判宁E * 
+ * 【サイドバー表示】「訪問日前日、E * 
  * 条件:
- * - 営担（visitAssignee）に入力がある
+ * - 営拁E��EisitAssignee�E�に入力がある
  * - 今日が訪問日の「前営業日」である
- *   - 通常: 訪問日の1日前
- *   - 木曜訪問の場合: 2日前（水曜が定休日のため火曜に通知）
- * 
- * @param seller 売主データ
- * @returns 訪問日前日対象かどうか
+ *   - 通常: 訪問日の1日剁E *   - 木曜訪問�E場吁E 2日前（水曜が定休日のため火曜に通知�E�E * 
+ * @param seller 売主チE�Eタ
+ * @returns 訪問日前日対象かどぁE��
  */
 export const isVisitDayBefore = (seller: Seller | any): boolean => {
-  // デバッグログ
+  // チE��チE��ログ
   console.log('[isVisitDayBefore] Checking seller:', seller.sellerNumber || seller.seller_number);
   
   if (!hasVisitAssignee(seller)) {
@@ -264,28 +192,24 @@ export const isVisitDayBefore = (seller: Seller | any): boolean => {
   
   console.log('[isVisitDayBefore] Original visit_date:', visitDate);
   
-  // 🚨 TIMESTAMP型対応: visit_dateから日付部分のみを抽出
-  // visit_date は "YYYY-MM-DD HH:MM:SS" または "YYYY-MM-DDTHH:MM:SS.000Z" 形式
-  if (typeof visitDate === 'string') {
-    // スペースまたはTで分割して日付部分のみを取得
-    if (visitDate.includes(' ')) {
-      visitDate = visitDate.split(' ')[0]; // "YYYY-MM-DD HH:MM:SS" → "YYYY-MM-DD"
+  // 🚨 TIMESTAMP型対忁E visit_dateから日付部刁E�Eみを抽出
+  // visit_date は "YYYY-MM-DD HH:MM:SS" また�E "YYYY-MM-DDTHH:MM:SS.000Z" 形弁E  if (typeof visitDate === 'string') {
+    // スペ�Eスまた�ETで刁E��して日付部刁E�Eみを取征E    if (visitDate.includes(' ')) {
+      visitDate = visitDate.split(' ')[0]; // "YYYY-MM-DD HH:MM:SS" ↁE"YYYY-MM-DD"
     } else if (visitDate.includes('T')) {
-      visitDate = visitDate.split('T')[0]; // "YYYY-MM-DDTHH:MM:SS.000Z" → "YYYY-MM-DD"
+      visitDate = visitDate.split('T')[0]; // "YYYY-MM-DDTHH:MM:SS.000Z" ↁE"YYYY-MM-DD"
     }
   }
   
   console.log('[isVisitDayBefore] Extracted visit_date:', visitDate);
   
-  // visitReminderAssigneeに値がある場合は除外（通知担当が既に割り当て済み）
-  const visitReminderAssignee = seller.visitReminderAssignee || seller.visit_reminder_assignee || '';
+  // visitReminderAssigneeに値がある場合�E除外（通知拁E��が既に割り当て済み�E�E  const visitReminderAssignee = seller.visitReminderAssignee || seller.visit_reminder_assignee || '';
   if (visitReminderAssignee.trim() !== '') {
     console.log('[isVisitDayBefore] Visit reminder assignee already set');
     return false;
   }
   
-  // sellerStatusUtils の実装を使用（水曜定休・木曜2日前ロジック）
-  const todayStr = getTodayJSTString();
+  // sellerStatusUtils の実裁E��使用�E�水曜定休�E木曁E日前ロジチE���E�E  const todayStr = getTodayJSTString();
   const todayParts = todayStr.split('-');
   const todayDate = new Date(
     parseInt(todayParts[0]),
@@ -296,8 +220,7 @@ export const isVisitDayBefore = (seller: Seller | any): boolean => {
   
   console.log('[isVisitDayBefore] Today:', todayStr, todayDate);
   
-  // 日付形式が不正な場合はfalseを返す（防御的プログラミング）
-  try {
+  // 日付形式が不正な場合�Efalseを返す�E�防御皁E�Eログラミング�E�E  try {
     const result = isVisitDayBeforeUtil(String(visitDate), todayDate);
     console.log('[isVisitDayBefore] Result:', result);
     return result;
@@ -307,20 +230,16 @@ export const isVisitDayBefore = (seller: Seller | any): boolean => {
   }
 };
 
-// 後方互換性のためのエイリアス（旧 isVisitScheduled）
-export const isVisitScheduled = isVisitDayBefore;
+// 後方互換性のためのエイリアス�E�旧 isVisitScheduled�E�Eexport const isVisitScheduled = isVisitDayBefore;
 
 /**
- * 訪問済み判定（営担に入力あり、訪問日が昨日以前）
- * 
- * 【サイドバー表示】「訪問済み（イニシャル）」
- * 
+ * 訪問済み判定（営拁E��入力あり、訪問日が昨日以前！E * 
+ * 【サイドバー表示】「訪問済み�E�イニシャル�E�、E * 
  * 条件:
- * - 営担（visitAssignee）に入力がある
- * - 訪問日（visitDate）が昨日以前
- * 
- * @param seller 売主データ
- * @returns 訪問済み対象かどうか
+ * - 営拁E��EisitAssignee�E�に入力がある
+ * - 訪問日�E�EisitDate�E�が昨日以剁E * 
+ * @param seller 売主チE�Eタ
+ * @returns 訪問済み対象かどぁE��
  */
 export const isVisitCompleted = (seller: Seller | any): boolean => {
   if (!hasVisitAssignee(seller)) {
@@ -335,28 +254,21 @@ export const isVisitCompleted = (seller: Seller | any): boolean => {
   return isYesterdayOrBefore(visitDate);
 };
 
-// 訪問後御礼の対象開始日（この日以降の訪問が対象）
-const VISIT_THANK_YOU_CUTOFF = '2026-05-28';
+// 訪問後御礼の対象開始日�E�この日以降�E訪問が対象�E�Econst VISIT_THANK_YOU_CUTOFF = '2026-05-28';
 
 /**
- * 訪問後御礼メール未送信判定
- * 
- * 【サイドバー表示】「↳ 訪問後御礼(イニシャル)」
- * 
+ * 訪問後御礼メール未送信判宁E * 
+ * 【サイドバー表示】「�E 訪問後御礼(イニシャル)、E * 
  * 条件:
- * - 営担（visitAssignee）に入力がある
- * - 訪問日（visitDate）が 2026/5/28 以降かつ今日以前（訪問済み）
- * - visitThankYouSent フラグが false（バックエンドから付与）
- * 
- * @param seller 売主データ（visitThankYouSent フィールドを含む）
- * @returns 訪問後御礼メール未送信かどうか
+ * - 営拁E��EisitAssignee�E�に入力がある
+ * - 訪問日�E�EisitDate�E�が 2026/5/28 以降かつ今日以前（訪問済み�E�E * - visitThankYouSent フラグぁEfalse�E�バチE��エンドから付与！E * 
+ * @param seller 売主チE�Eタ�E�EisitThankYouSent フィールドを含む�E�E * @returns 訪問後御礼メール未送信かどぁE��
  */
 export const isVisitThankYouPending = (seller: Seller | any): boolean => {
-  // 営担がない場合は対象外
-  if (!hasVisitAssignee(seller)) {
+  // 営拁E��なぁE��合�E対象夁E  if (!hasVisitAssignee(seller)) {
     return false;
   }
-  // 訪問日を取得・正規化
+  // 訪問日を取得�E正規化
   let visitDate = seller.visitDate || seller.visit_date;
   if (!visitDate) {
     return false;
@@ -365,25 +277,20 @@ export const isVisitThankYouPending = (seller: Seller | any): boolean => {
   if (!normalized) {
     return false;
   }
-  // 訪問日が 2026-05-28 以降かつ今日以前（訪問済み）
-  const todayStr = getTodayJSTString();
+  // 訪問日ぁE2026-05-28 以降かつ今日以前（訪問済み�E�E  const todayStr = getTodayJSTString();
   if (normalized < VISIT_THANK_YOU_CUTOFF || normalized > todayStr) {
     return false;
   }
-  // バックエンドから付与された「御礼メール送信済み」フラグで判定
-  // visitThankYouSent が true なら送信済み → 対象外
-  if (seller.visitThankYouSent === true) {
+  // バックエンドから付与された「御礼メール送信済み」フラグで判宁E  // visitThankYouSent ぁEtrue なら送信済み ↁE対象夁E  if (seller.visitThankYouSent === true) {
     return false;
   }
   return true;
 };
 
 /**
- * 訪問後御礼の表示ラベルを取得
- * 
- * @param seller 売主データ
- * @returns 表示ラベル（例: "訪問後御礼(Y)"）
- */
+ * 訪問後御礼の表示ラベルを取征E * 
+ * @param seller 売主チE�Eタ
+ * @returns 表示ラベル�E�侁E "訪問後御礼(Y)"�E�E */
 export const getVisitThankYouPendingLabel = (seller: Seller | any): string => {
   const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
   if (visitAssignee && visitAssignee.trim() !== '') {
@@ -393,15 +300,13 @@ export const getVisitThankYouPendingLabel = (seller: Seller | any): string => {
 };
 
 /**
- * 訪問予定/訪問済みの表示ラベルを取得
- * 
- * @param seller 売主データ
+ * 訪問予宁E訪問済みの表示ラベルを取征E * 
+ * @param seller 売主チE�Eタ
  * @param type 'scheduled' | 'completed'
- * @returns 表示ラベル（例: "訪問予定(Y)"、"訪問済み(I)"）
- */
+ * @returns 表示ラベル�E�侁E "訪問予宁EY)"、E訪問済み(I)"�E�E */
 export const getVisitStatusLabel = (seller: Seller | any, type: 'scheduled' | 'completed'): string => {
   const visitAssignee = seller.visitAssignee || seller.visit_assignee || '';
-  const prefix = type === 'scheduled' ? '訪問予定' : '訪問済み';
+  const prefix = type === 'scheduled' ? '訪問予宁E : '訪問済み';
   
   if (visitAssignee && visitAssignee.trim() !== '') {
     return `${prefix}(${visitAssignee})`;
@@ -411,16 +316,14 @@ export const getVisitStatusLabel = (seller: Seller | any, type: 'scheduled' | 'c
 };
 
 /**
- * 担当分判定（営担に入力あり、訪問日なし）
- * 
- * 【サイドバー表示】「担当分（イニシャル）」
- * 
+ * 拁E���E判定（営拁E��入力あり、訪問日なし！E * 
+ * 【サイドバー表示】「担当�E�E�イニシャル�E�、E * 
  * 条件:
- * - 営担（visitAssignee）に入力がある
- * - 訪問日（visitDate）が空
+ * - 営拁E��EisitAssignee�E�に入力がある
+ * - 訪問日�E�EisitDate�E�が空
  * 
- * @param seller 売主データ
- * @returns 担当分対象かどうか
+ * @param seller 売主チE�Eタ
+ * @returns 拁E���E対象かどぁE��
  */
 export const isAssignedNoVisitDate = (seller: Seller | any): boolean => {
   if (!hasVisitAssignee(seller)) {
@@ -428,68 +331,58 @@ export const isAssignedNoVisitDate = (seller: Seller | any): boolean => {
   }
   
   const visitDate = seller.visitDate || seller.visit_date;
-  // 訪問日が空の場合のみ「担当分」
-  return !visitDate || (typeof visitDate === 'string' && visitDate.trim() === '');
+  // 訪問日が空の場合�Eみ「担当�E、E  return !visitDate || (typeof visitDate === 'string' && visitDate.trim() === '');
 };
 
 /**
- * 担当分の表示ラベルを取得
- * 
- * @param seller 売主データ
- * @returns 表示ラベル（例: "担当分(Y)"、"担当分(I)"）
- */
+ * 拁E���Eの表示ラベルを取征E * 
+ * @param seller 売主チE�Eタ
+ * @returns 表示ラベル�E�侁E "拁E���E(Y)"、E拁E���E(I)"�E�E */
 export const getAssignedNoVisitDateLabel = (seller: Seller | any): string => {
   const visitAssignee = seller.visitAssignee || seller.visit_assignee || '';
   
   if (visitAssignee && visitAssignee.trim() !== '') {
-    return `担当分(${visitAssignee})`;
+    return `拁E���E(${visitAssignee})`;
   }
   
-  return '担当分';
+  return '拁E���E';
 };
 
 /**
- * 当日TEL（担当）判定（営担あり + 次電日が今日以前）
- * 
- * 【サイドバー表示】「当日TEL（イニシャル）」
- * 
+ * 当日TEL�E�担当）判定（営拁E��めE+ 次電日が今日以前！E * 
+ * 【サイドバー表示】「当日TEL�E�イニシャル�E�、E * 
  * 条件:
- * - 営担（visitAssignee）に入力がある
- * - 次電日が今日以前
+ * - 営拁E��EisitAssignee�E�に入力がある
+ * - 次電日が今日以剁E * 
+ * 注愁E 訪問日の有無に関係なく、次電日が今日以前であれば対象
  * 
- * 注意: 訪問日の有無に関係なく、次電日が今日以前であれば対象
- * 
- * @param seller 売主データ
- * @returns 当日TEL（担当）対象かどうか
+ * @param seller 売主チE�Eタ
+ * @returns 当日TEL�E�担当）対象かどぁE��
  */
 export const isTodayCallAssigned = (seller: Seller | any): boolean => {
-  // 営担がない場合は対象外
-  if (!hasVisitAssignee(seller)) {
+  // 営拁E��なぁE��合�E対象夁E  if (!hasVisitAssignee(seller)) {
     return false;
   }
   
-  // 状況（当社）に「追客中」が含まれるかチェック
+  // 状況E��当社�E�に「追客中」が含まれるかチェチE��
   const status = seller.status || '';
   if (!status.includes('追客中')) {
     return false;
   }
   
-  // 追客不要、専任媒介、一般媒介が含まれる場合は対象外
-  if (status.includes('追客不要') || status.includes('専任媒介') || status.includes('一般媒介')) {
+  // 追客不要、専任媒介、一般媒介が含まれる場合�E対象夁E  if (status.includes('追客不要E) || status.includes('専任媒仁E) || status.includes('一般媒仁E)) {
     return false;
   }
   
-  // 次電日が今日以前かチェック
+  // 次電日が今日以前かチェチE��
   const nextCallDate = seller.nextCallDate || seller.next_call_date;
   return isTodayOrBefore(nextCallDate);
 };
 
 /**
- * 当日TEL（担当）の表示ラベルを取得
- * 
- * @param seller 売主データ
- * @returns 表示ラベル（例: "当日TEL(Y)"、"当日TEL(I)"）
- */
+ * 当日TEL�E�担当）�E表示ラベルを取征E * 
+ * @param seller 売主チE�Eタ
+ * @returns 表示ラベル�E�侁E "当日TEL(Y)"、E当日TEL(I)"�E�E */
 export const getTodayCallAssignedLabel = (seller: Seller | any): string => {
   const visitAssignee = seller.visitAssignee || seller.visit_assignee || '';
   
@@ -497,35 +390,28 @@ export const getTodayCallAssignedLabel = (seller: Seller | any): string => {
     return `当日TEL(${visitAssignee})`;
   }
   
-  return '当日TEL（担当）';
+  return '当日TEL�E�担当！E;
 };
 
 /**
- * 当日TELの共通条件を判定
- * 
- * 修正後の条件:
- * - 状況（当社）に「追客」という文字列が含まれる（部分一致）
- * - ただし「追客不要」「専任媒介」「一般媒介」を含む場合は除外
- * - 次電日が今日以前（かつ空でない）
- * 
- * @param seller 売主データ
- * @returns 当日TELの共通条件を満たすかどうか
+ * 当日TELの共通条件を判宁E * 
+ * 修正後�E条件:
+ * - 状況E��当社�E�に「追客」とぁE��斁E���Eが含まれる�E�部刁E��致�E�E * - ただし「追客不要」「専任媒介」「一般媒介」を含む場合�E除夁E * - 次電日が今日以前（かつ空でなぁE��E * 
+ * @param seller 売主チE�Eタ
+ * @returns 当日TELの共通条件を満たすかどぁE��
  */
 const isTodayCallBase = (seller: Seller | any): boolean => {
-  // 状況（当社）に「追客」が含まれるかチェック（部分一致）
-  const status = seller.status || seller.situation_company || '';
+  // 状況E��当社�E�に「追客」が含まれるかチェチE���E�部刁E��致�E�E  const status = seller.status || seller.situation_company || '';
   
-  // 「追客」が含まれない場合は対象外
-  if (typeof status !== 'string' || !status.includes('追客')) {
+  // 「追客」が含まれなぁE��合�E対象夁E  if (typeof status !== 'string' || !status.includes('追客')) {
     return false;
   }
   
-  // 「追客不要」「専任媒介」「一般媒介」が含まれる場合は対象外
-  if (status.includes('追客不要') || status.includes('専任媒介') || status.includes('一般媒介')) {
+  // 「追客不要」「専任媒介」「一般媒介」が含まれる場合�E対象夁E  if (status.includes('追客不要E) || status.includes('専任媒仁E) || status.includes('一般媒仁E)) {
     return false;
   }
   
-  // 次電日が空でないかつ今日以前かチェック
+  // 次電日が空でなぁE��つ今日以前かチェチE��
   const nextCallDate = seller.nextCallDate || seller.next_call_date;
   if (!nextCallDate) return false;
   
@@ -533,200 +419,163 @@ const isTodayCallBase = (seller: Seller | any): boolean => {
 };
 
 /**
- * コミュニケーション情報があるかどうかを判定
+ * コミュニケーション惁E��があるかどぁE��を判宁E * 
+ * コミュニケーション惁E��の3つのフィールチE
+ * 1. 連絡方況E(contact_method)
+ * 2. 連絡取りめE��ぁE��閁E(preferred_contact_time)
+ * 3. 電話拁E��E(phone_contact_person)
  * 
- * コミュニケーション情報の3つのフィールド:
- * 1. 連絡方法 (contact_method)
- * 2. 連絡取りやすい時間 (preferred_contact_time)
- * 3. 電話担当 (phone_contact_person)
- * 
- * @param seller 売主データ
- * @returns コミュニケーション情報のいずれかに入力があるかどうか
+ * @param seller 売主チE�Eタ
+ * @returns コミュニケーション惁E��のぁE��れかに入力があるかどぁE��
  */
 const hasContactInfo = (seller: Seller | any): boolean => {
   const contactMethod = seller.contactMethod || seller.contact_method || '';
   const preferredContactTime = seller.preferredContactTime || seller.preferred_contact_time || '';
   const phoneContactPerson = seller.phoneContactPerson || seller.phone_contact_person || '';
   
-  // "null" 文字列も空扱い
-  const isValid = (v: string): boolean => !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
+  // "null" 斁E���Eも空扱ぁE  const isValid = (v: string): boolean => !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
   
   return isValid(contactMethod) || isValid(preferredContactTime) || isValid(phoneContactPerson);
 };
 
 /**
- * 当日TEL分判定（コミュニケーション情報が全て空の売主のみ）
- * 
- * 【サイドバー表示】「当日TEL分」
- * 
+ * 当日TEL刁E��定（コミュニケーション惁E��が�Eて空の売主のみ�E�E * 
+ * 【サイドバー表示】「当日TEL刁E��E * 
  * 条件:
- * - 状況（当社）に「追客中」が含まれる
- * - 次電日が今日以前
- * - コミュニケーション情報（連絡方法/連絡取りやすい時間/電話担当）が**全て空**
- * - 営担（visitAssignee）が空（営業担当が設定されている売主は除外）
+ * - 状況E��当社�E�に「追客中」が含まれる
+ * - 次電日が今日以剁E * - コミュニケーション惁E���E�連絡方況E連絡取りめE��ぁE��閁E電話拁E��）が**全て空**
+ * - 営拁E��EisitAssignee�E�が空�E�営業拁E��が設定されてぁE��売主は除外！E * 
+ * 注愁E コミュニケーション惁E��のぁE��れかに入力がある売主は
+ * 「当日TEL刁E��としてカウントしなぁEↁE「当日TEL�E��E容�E�」に刁E��される
  * 
- * 注意: コミュニケーション情報のいずれかに入力がある売主は
- * 「当日TEL分」としてカウントしない → 「当日TEL（内容）」に分類される
+ * 【優先頁E��、E * 1. 営拁E��めEↁE当日TEL刁E��ら除外（訪問日の有無に関係なく！E * 2. 当日TEL刁E当日TEL�E��E容�E��E 営拁E��空の場合�Eみ
  * 
- * 【優先順位】
- * 1. 営担あり → 当日TEL分から除外（訪問日の有無に関係なく）
- * 2. 当日TEL分/当日TEL（内容）← 営担が空の場合のみ
- * 
- * @param seller 売主データ
- * @returns 当日TEL分対象かどうか
+ * @param seller 売主チE�Eタ
+ * @returns 当日TEL刁E��象かどぁE��
  * 
  * Requirements: 1.2
  */
 export const isTodayCall = (seller: Seller | any): boolean => {
-  // 営担に入力がある売主は当日TELから除外（訪問日の有無に関係なく）
-  if (hasVisitAssignee(seller)) {
+  // 営拁E��入力がある売主は当日TELから除外（訪問日の有無に関係なく！E  if (hasVisitAssignee(seller)) {
     return false;
   }
   
-  // 共通条件をチェック
+  // 共通条件をチェチE��
   if (!isTodayCallBase(seller)) {
     return false;
   }
   
-  // コミュニケーション情報が全て空の場合のみ「当日TEL分」としてカウント
-  return !hasContactInfo(seller);
+  // コミュニケーション惁E��が�Eて空の場合�Eみ「当日TEL刁E��としてカウンチE  return !hasContactInfo(seller);
 };
 
 /**
- * 当日TEL（内容）判定（コミュニケーション情報のいずれかに入力がある売主）
- * 
- * 【サイドバー表示】「当日TEL（内容）」
- * 
+ * 当日TEL�E��E容�E�判定（コミュニケーション惁E��のぁE��れかに入力がある売主�E�E * 
+ * 【サイドバー表示】「当日TEL�E��E容�E�、E * 
  * 条件:
- * - 状況（当社）に「追客中」が含まれる
- * - 次電日が今日以前
- * - コミュニケーション情報（連絡方法/連絡取りやすい時間/電話担当）の**いずれかに入力がある**
- * - 営担（visitAssignee）が空（営業担当が設定されている売主は除外）
+ * - 状況E��当社�E�に「追客中」が含まれる
+ * - 次電日が今日以剁E * - コミュニケーション惁E���E�連絡方況E連絡取りめE��ぁE��閁E電話拁E��）�E**ぁE��れかに入力がある**
+ * - 営拁E��EisitAssignee�E�が空�E�営業拁E��が設定されてぁE��売主は除外！E * 
+ * 侁E
+ * - AA13489: contact_method = "Eメール" ↁE当日TEL(Eメール)
+ * - AA13507: phone_contact_person = "Y" ↁE当日TEL(Y)
  * 
- * 例:
- * - AA13489: contact_method = "Eメール" → 当日TEL(Eメール)
- * - AA13507: phone_contact_person = "Y" → 当日TEL(Y)
+ * 【優先頁E��、E * 1. 営拁E��めEↁE当日TEL�E��E容�E�から除外（訪問日の有無に関係なく！E * 2. 当日TEL刁E当日TEL�E��E容�E��E 営拁E��空の場合�Eみ
  * 
- * 【優先順位】
- * 1. 営担あり → 当日TEL（内容）から除外（訪問日の有無に関係なく）
- * 2. 当日TEL分/当日TEL（内容）← 営担が空の場合のみ
- * 
- * @param seller 売主データ
- * @returns 当日TEL（内容）対象かどうか
+ * @param seller 売主チE�Eタ
+ * @returns 当日TEL�E��E容�E�対象かどぁE��
  * 
  * Requirements: 1.3
  */
 export const isTodayCallWithInfo = (seller: Seller | any): boolean => {
-  // 営担に入力がある売主は当日TELから除外（訪問日の有無に関係なく）
-  if (hasVisitAssignee(seller)) {
+  // 営拁E��入力がある売主は当日TELから除外（訪問日の有無に関係なく！E  if (hasVisitAssignee(seller)) {
     return false;
   }
   
-  // 共通条件をチェック
+  // 共通条件をチェチE��
   if (!isTodayCallBase(seller)) {
     return false;
   }
   
-  // コミュニケーション情報のいずれかに入力がある場合「当日TEL（内容）」としてカウント
-  return hasContactInfo(seller);
+  // コミュニケーション惁E��のぁE��れかに入力がある場合「当日TEL�E��E容�E�」としてカウンチE  return hasContactInfo(seller);
 };
 
 /**
- * 当日TEL（内容）の表示ラベルを取得
+ * 当日TEL�E��E容�E��E表示ラベルを取征E * 
+ * コミュニケーション惁E��の表示頁E
+ * 1. 電話拁E��E(phone_contact_person) ↁE当日TEL(Y)
+ * 2. 連絡取りめE��ぁE��閁E(preferred_contact_time) ↁE当日TEL(午前中)
+ * 3. 連絡方況E(contact_method) ↁE当日TEL(Eメール)
  * 
- * コミュニケーション情報の表示順:
- * 1. 電話担当 (phone_contact_person) → 当日TEL(Y)
- * 2. 連絡取りやすい時間 (preferred_contact_time) → 当日TEL(午前中)
- * 3. 連絡方法 (contact_method) → 当日TEL(Eメール)
+ * 褁E��のフィールドに値がある場合�E・で結合して表示する
+ * 侁E phone_contact_person="I", contact_method="Eメール" ↁE当日TEL(I・Eメール)
  * 
- * 複数のフィールドに値がある場合は・で結合して表示する
- * 例: phone_contact_person="I", contact_method="Eメール" → 当日TEL(I・Eメール)
- * 
- * @param seller 売主データ
- * @returns 表示ラベル（例: "当日TEL(I・Eメール)"）
- */
+ * @param seller 売主チE�Eタ
+ * @returns 表示ラベル�E�侁E "当日TEL(I・Eメール)"�E�E */
 export const getTodayCallWithInfoLabel = (seller: Seller | any): string => {
   const contactMethod = seller.contactMethod || seller.contact_method || '';
   const preferredContactTime = seller.preferredContactTime || seller.preferred_contact_time || '';
   const phoneContactPerson = seller.phoneContactPerson || seller.phone_contact_person || '';
 
-  // "null" 文字列も空扱い
-  const isValid = (v: string): boolean => !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
+  // "null" 斁E���Eも空扱ぁE  const isValid = (v: string): boolean => !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
 
-  // 表示順: 電話担当・連絡取りやすい時間・連絡方法
-  const parts: string[] = [];
+  // 表示頁E 電話拁E���E連絡取りめE��ぁE��間�E連絡方況E  const parts: string[] = [];
   if (isValid(phoneContactPerson)) parts.push(phoneContactPerson);
   if (isValid(preferredContactTime)) parts.push(preferredContactTime);
   if (isValid(contactMethod)) parts.push(contactMethod);
 
   if (parts.length === 0) {
-    return '当日TEL（内容）';
+    return '当日TEL�E��E容�E�E;
   }
 
   return `当日TEL(${parts.join('・')})`;
 };
 
 /**
- * 査定不要かどうかを判定
- * 査定方法が「不要」の場合は査定不要とみなす
- */
+ * 査定不要かどぁE��を判宁E * 査定方法が「不要」�E場合�E査定不要とみなぁE */
 const isValuationNotRequired = (seller: Seller | any): boolean => {
-  // valuationMethodが「不要」の場合は査定不要
-  // 🚨 重要: mailingStatus（郵送ステータス）ではなく、valuationMethod（査定方法）をチェック
-  if (seller.valuationMethod === '不要' || seller.valuation_method === '不要') return true;
+  // valuationMethodが「不要」�E場合�E査定不要E  // 🚨 重要E mailingStatus�E�郵送スチE�Eタス�E�ではなく、valuationMethod�E�査定方法）をチェチE��
+  if (seller.valuationMethod === '不要E || seller.valuation_method === '不要E) return true;
   
-  // 他の査定不要条件があればここに追加
-  // 例: seller.valuationNotRequired === true
+  // 他�E査定不要条件があれ�Eここに追加
+  // 侁E seller.valuationNotRequired === true
   
   return false;
 };
 
 /**
- * 当日TEL_未着手判定
- * 
- * APPSHEETの「当日TEL分_未着手」条件:
- * - 反響日付 >= 2026/1/1（独自設定）
- * - 状況（当社）= "追客中"（完全一致）
- * - 営担 = ""（isTodayCallで担保）
- * - 不通 = ""（空欄）
- * - 確度 <> "ダブり"
+ * 当日TEL_未着手判宁E * 
+ * APPSHEETの「当日TEL刁E未着手」条件:
+ * - 反響日仁E>= 2026/1/1�E�独自設定！E * - 状況E��当社�E�E "追客中"�E�完�E一致�E�E * - 営拁E= ""�E�EsTodayCallで拁E��！E * - 不送E= ""�E�空欁E��E * - 確度 <> "ダブり"
  * - 確度 <> "D"
- * - 確度 <> "AI査定"
- * - 次電日 <= TODAY()（isTodayCallBaseで担保）
- * - コミュニケーション情報が全て空（isTodayCallで担保）
- * - 除外日にすること = ""（空）
- * 
- * @param seller 売主データ
- * @returns 当日TEL_未着手対象かどうか
+ * - 確度 <> "AI査宁E
+ * - 次電日 <= TODAY()�E�EsTodayCallBaseで拁E��！E * - コミュニケーション惁E��が�Eて空�E�EsTodayCallで拁E��！E * - 除外日にすること = ""�E�空�E�E * 
+ * @param seller 売主チE�Eタ
+ * @returns 当日TEL_未着手対象かどぁE��
  */
 export const isTodayCallNotStarted = (seller: Seller | any): boolean => {
   const CUTOFF_DATE_STR = '2026-01-01';
   
-  // まず当日TEL分の条件を満たすかチェック（営担なし + 追客中系 + 次電日今日以前 + コミュニケーション情報なし）
-  if (!isTodayCall(seller)) {
+  // まず当日TEL刁E�E条件を満たすかチェチE���E�営拁E��ぁE+ 追客中系 + 次電日今日以剁E+ コミュニケーション惁E��なし！E  if (!isTodayCall(seller)) {
     return false;
   }
   
-  // 状況が「追客中」のみ（完全一致）
-  // 「除外後追客中」「他決→追客」は当日TEL_未着手の対象外
-  const status = seller.status || '';
+  // 状況が「追客中」�Eみ�E�完�E一致�E�E  // 「除外後追客中」「他決→追客」�E当日TEL_未着手�E対象夁E  const status = seller.status || '';
   if (status !== '追客中') {
     return false;
   }
   
-  // 不通カラムが空欄かチェック
+  // 不通カラムが空欁E��チェチE��
   const unreachableStatus = seller.unreachableStatus || seller.unreachable_status || '';
   if (unreachableStatus && unreachableStatus.trim() !== '') {
     return false;
   }
   
-  // 確度が「ダブり」「D」「AI査定」の場合は除外
-  const confidence = seller.confidence || seller.confidenceLevel || seller.confidence_level || '';
-  if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') {
+  // 確度が「ダブり」「D」「AI査定」�E場合�E除夁E  const confidence = seller.confidence || seller.confidenceLevel || seller.confidence_level || '';
+  if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査宁E) {
     return false;
   }
   
-  // 反響日付が2026/1/1以降かチェック
+  // 反響日付が2026/1/1以降かチェチE��
   const inquiryDate = seller.inquiryDate || seller.inquiry_date || seller.inquiryDetailedDatetime;
   const normalizedInquiryDate = normalizeDateString(inquiryDate);
   
@@ -738,48 +587,37 @@ export const isTodayCallNotStarted = (seller: Seller | any): boolean => {
 };
 
 /**
- * 未査定判定
- * 
+ * 未査定判宁E * 
  * 条件:
- * - 査定額1, 2, 3が全て空欄（自動計算と手動入力の両方）
- * - 反響日付が2025/12/8以降
- * - 査定不要ではない
- * - 営担（visitAssignee）が空欄
- * - 状況（当社）に「追客中」が含まれる
+ * - 査定顁E, 2, 3が�Eて空欁E���E動計算と手動入力�E両方�E�E * - 反響日付が2025/12/8以陁E * - 査定不要ではなぁE * - 営拁E��EisitAssignee�E�が空欁E * - 状況E��当社�E�に「追客中」が含まれる
  * 
- * @param seller 売主データ
- * @returns 未査定対象かどうか
+ * @param seller 売主チE�Eタ
+ * @returns 未査定対象かどぁE��
  * 
  * Requirements: 2.2
  */
 export const isUnvaluated = (seller: Seller | any): boolean => {
-  // 未査定の基準日: 2025/12/8（文字列比較用）
-  const CUTOFF_DATE_STR = '2025-12-08';
+  // 未査定�E基準日: 2025/12/8�E�文字�E比輁E���E�E  const CUTOFF_DATE_STR = '2025-12-08';
   
-  // 査定不要の場合は未査定として表示しない
-  if (isValuationNotRequired(seller)) {
+  // 査定不要�E場合�E未査定として表示しなぁE  if (isValuationNotRequired(seller)) {
     return false;
   }
   
-  // 状況（当社）に「追客中」が含まれるかチェック
+  // 状況E��当社�E�に「追客中」が含まれるかチェチE��
   const status = seller.status || seller.situation_company || '';
   const isFollowingUp = typeof status === 'string' && status.includes('追客中');
   if (!isFollowingUp) {
     return false;
   }
   
-  // 営担に値がある場合は未査定として表示しない
-  const hasAssignee = (seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee) && 
+  // 営拁E��値がある場合�E未査定として表示しなぁE  const hasAssignee = (seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee) && 
                       typeof (seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee) === 'string' && 
                       (seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee).trim() !== '';
   if (hasAssignee) {
     return false;
   }
   
-  // 査定額が全て空欄かチェック（自動計算と手動入力の両方）
-  // valuationAmount1/2/3: 通常の査定額（手動入力優先、なければ自動計算）
-  // manualValuationAmount1/2/3: 手動入力査定額（存在する場合）
-  const hasNoValuation = !seller.valuationAmount1 && 
+  // 査定額が全て空欁E��チェチE���E��E動計算と手動入力�E両方�E�E  // valuationAmount1/2/3: 通常の査定額（手動�E力優先、なければ自動計算！E  // manualValuationAmount1/2/3: 手動入力査定額（存在する場合！E  const hasNoValuation = !seller.valuationAmount1 && 
                          !seller.valuationAmount2 && 
                          !seller.valuationAmount3 &&
                          !seller.manualValuationAmount1 &&
@@ -790,9 +628,7 @@ export const isUnvaluated = (seller: Seller | any): boolean => {
     return false;
   }
   
-  // 反響日付が基準日以降かチェック（文字列比較）
-  // inquiryDate（inquiry_date）を優先する（バックエンドのカウントロジックと一致）
-  // inquiryDetailedDatetime は詳細日時のため、日付比較には inquiry_date を使用
+  // 反響日付が基準日以降かチェチE���E�文字�E比輁E��E  // inquiryDate�E�Enquiry_date�E�を優先する（バチE��エンド�EカウントロジチE��と一致�E�E  // inquiryDetailedDatetime は詳細日時�Eため、日付比輁E��は inquiry_date を使用
   const inquiryDate = seller.inquiryDate || seller.inquiry_date || seller.inquiryDetailedDatetime;
   const normalizedInquiryDate = normalizeDateString(inquiryDate);
   
@@ -800,8 +636,7 @@ export const isUnvaluated = (seller: Seller | any): boolean => {
     return false;
   }
   
-  // 当日TEL_未着手の条件を満たす場合は未査定から除外（未着手が優先）
-  if (isTodayCallNotStarted(seller)) {
+  // 当日TEL_未着手�E条件を満たす場合�E未査定から除外（未着手が優先！E  if (isTodayCallNotStarted(seller)) {
     return false;
   }
 
@@ -809,13 +644,11 @@ export const isUnvaluated = (seller: Seller | any): boolean => {
 };
 
 /**
- * 査定（郵送）判定
- * 
+ * 査定（郵送E��判宁E * 
  * 条件:
- * - 郵送ステータス（mailingStatus）が「未」
- * 
- * @param seller 売主データ
- * @returns 査定（郵送）対象かどうか
+ * - 郵送スチE�Eタス�E�EailingStatus�E�が「未、E * 
+ * @param seller 売主チE�Eタ
+ * @returns 査定（郵送E��対象かどぁE��
  * 
  * Requirements: 3.2
  */
@@ -824,7 +657,7 @@ export const isMailingPending = (seller: Seller | any): boolean => {
 };
 
 /**
- * 復元フィルター
+ * 復允E��ィルター
  * 
  * 条件: is_restored = true
  */
@@ -833,32 +666,25 @@ export const isRestored = (seller: Seller | any): boolean => {
 };
 
 /**
- * Pinrich空欄判定
- * 
+ * Pinrich空欁E��宁E * 
  * 条件:
- * - 状況（当社）に「追客中」が含まれる（部分一致）
- * - Pinrichカラム（pinrichStatus）が空欄
- * - 反響日付が2026/1/1以降
- * - 営担（visitAssignee）が空欄
- * ※ 次電日は条件に含まない
- * 
- * @param seller 売主データ
- * @returns Pinrich空欄対象かどうか
+ * - 状況E��当社�E�に「追客中」が含まれる�E�部刁E��致�E�E * - Pinrichカラム�E�EinrichStatus�E�が空欁E * - 反響日付が2026/1/1以陁E * - 営拁E��EisitAssignee�E�が空欁E * ※ 次電日は条件に含まなぁE * 
+ * @param seller 売主チE�Eタ
+ * @returns Pinrich空欁E��象かどぁE��
  */
 export const isPinrichEmpty = (seller: Seller | any): boolean => {
-  // 状況（当社）に「追客中」が含まれるかチェック（部分一致）
-  const status = seller.status || seller.situation_company || '';
+  // 状況E��当社�E�に「追客中」が含まれるかチェチE���E�部刁E��致�E�E  const status = seller.status || seller.situation_company || '';
   if (typeof status !== 'string' || !status.includes('追客')) return false;
-  if (status.includes('追客不要') || status.includes('専任媒介') || status.includes('一般媒介')) return false;
+  if (status.includes('追客不要E) || status.includes('専任媒仁E) || status.includes('一般媒仁E)) return false;
 
-  // 営担が空欄かチェック
+  // 営拁E��空欁E��チェチE��
   if (hasVisitAssignee(seller)) return false;
 
-  // Pinrichカラムが空欄かチェック
+  // Pinrichカラムが空欁E��チェチE��
   const pinrichStatus = seller.pinrichStatus || seller.pinrich_status || '';
   if (pinrichStatus && pinrichStatus.trim() !== '') return false;
 
-  // 反響日付が2026/1/1以降かチェック
+  // 反響日付が2026/1/1以降かチェチE��
   const inquiryDate = seller.inquiryDate || seller.inquiry_date || '';
   const normalizedInquiry = normalizeDateString(inquiryDate);
   if (!normalizedInquiry || normalizedInquiry < '2026-01-01') return false;
@@ -867,15 +693,13 @@ export const isPinrichEmpty = (seller: Seller | any): boolean => {
 };
 
 /**
- * Pinrich要変更カテゴリー判定（新条件）
- * 
+ * Pinrich要変更カチE��リー判定（新条件�E�E * 
  * 条件:
  * - pinrichStatus === '配信中'
- * - visitAssignee に有効な値がある（空・null・'外す' は除外）
- * - inquiryDate >= '2026-01-01'
+ * - visitAssignee に有効な値がある（空・null・'外す' は除外！E * - inquiryDate >= '2026-01-01'
  * 
- * @param seller 売主データ
- * @returns Pinrich要変更対象かどうか
+ * @param seller 売主チE�Eタ
+ * @returns Pinrich要変更対象かどぁE��
  * 
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 4.1
  */
@@ -894,16 +718,14 @@ export const isPinrichNeedsChange = (seller: Seller | any): boolean => {
 };
 
 /**
- * Pinrich要変更カテゴリー判定
- * 
- * 条件（A〜Dのいずれかを満たす）:
+ * Pinrich要変更カチE��リー判宁E * 
+ * 条件�E�E〜DのぁE��れかを満たす�E�E
  * - 条件A: visit_assignee = "外す" AND pinrich_status = "クローズ" AND status = "追客中"
- * - 条件B: confidence_level = "D" AND pinrich_status が除外リスト外
- * - 条件C: visit_date が空欄でない AND pinrich_status = "配信中" AND visit_assignee が空欄でない AND status が特定ステータスのいずれか
- * - 条件D: status が特定ステータスのいずれか AND pinrich_status = "クローズ" AND contract_year_month >= "2025-05-01"
+ * - 条件B: confidence_level = "D" AND pinrich_status が除外リスト夁E * - 条件C: visit_date が空欁E��なぁEAND pinrich_status = "配信中" AND visit_assignee が空欁E��なぁEAND status が特定スチE�EタスのぁE��れか
+ * - 条件D: status が特定スチE�EタスのぁE��れか AND pinrich_status = "クローズ" AND contract_year_month >= "2025-05-01"
  * 
- * @param seller 売主データ
- * @returns Pinrich要変更対象かどうか
+ * @param seller 売主チE�Eタ
+ * @returns Pinrich要変更対象かどぁE��
  * 
  * Requirements: 2.1, 2.2
  */
@@ -920,19 +742,18 @@ export const isPinrichChangeRequired = (seller: Seller | any): boolean => {
     && pinrichStatus === 'クローズ'
     && status === '追客中';
 
-  // 条件B: confidence_level = "D" AND pinrich_status が除外リスト外
-  const excludedPinrichB = new Set([
+  // 条件B: confidence_level = "D" AND pinrich_status が除外リスト夁E  const excludedPinrichB = new Set([
     'クローズ',
-    '登録不要',
+    '登録不要E,
     'アドレスエラー',
-    '配信不要（他決後、訪問後、担当付）',
+    '配信不要E��他決後、訪問後、担当付！E,
     '△配信停止',
   ]);
   const conditionB = confidenceLevel === 'D'
     && !excludedPinrichB.has(pinrichStatus);
 
-  // 条件C: visit_date が空欄でない AND pinrich_status = "配信中" AND visit_assignee が空欄でない AND status が特定ステータスのいずれか
-  const validStatusC = new Set(['専任媒介', '追客中', '除外後追客中']);
+  // 条件C: visit_date が空欁E��なぁEAND pinrich_status = "配信中" AND visit_assignee が空欁E��なぁEAND status が特定スチE�EタスのぁE��れか
+  const validStatusC = new Set(['専任媒仁E, '追客中', '除外後追客中']);
   const hasVisitDate = visitDate !== null && visitDate !== undefined && String(visitDate).trim() !== '';
   const hasVisitAssigneeC = visitAssignee !== null && visitAssignee !== undefined && String(visitAssignee).trim() !== '';
   const conditionC = hasVisitDate
@@ -940,8 +761,8 @@ export const isPinrichChangeRequired = (seller: Seller | any): boolean => {
     && hasVisitAssigneeC
     && validStatusC.has(status);
 
-  // 条件D: status が特定ステータスのいずれか AND pinrich_status = "クローズ" AND contract_year_month >= "2025-05-01"
-  const validStatusD = new Set(['他決→追客', '他決→追客不要', '一般媒介']);
+  // 条件D: status が特定スチE�EタスのぁE��れか AND pinrich_status = "クローズ" AND contract_year_month >= "2025-05-01"
+  const validStatusD = new Set(['他決→追客', '他決→追客不要E, '一般媒仁E]);
   const normalizedContractDate = contractYearMonth ? String(contractYearMonth).substring(0, 10) : '';
   const conditionD = validStatusD.has(status)
     && pinrichStatus === 'クローズ'
@@ -951,74 +772,68 @@ export const isPinrichChangeRequired = (seller: Seller | any): boolean => {
 };
 
 /**
- * 専任カテゴリー判定
- * 
+ * 専任カチE��リー判宁E * 
  * 条件:
- * - exclusive_other_decision_meeting <> "完了"
+ * - exclusive_other_decision_meeting <> "完亁E
  * - next_call_date <> TODAY()
- * - status IN ("専任媒介", "他決→専任", "リースバック（専任）")
+ * - status IN ("専任媒仁E, "他決→専任", "リースバック�E�専任�E�E)
  * 
- * @param seller 売主データ
- * @returns 専任カテゴリー対象かどうか
+ * @param seller 売主チE�Eタ
+ * @returns 専任カチE��リー対象かどぁE��
  * 
  * Requirements: 1.2
  */
 export const isExclusive = (seller: Seller | any): boolean => {
-  // 専任他決打合せが「完了」の場合は除外
-  const exclusiveOtherDecisionMeeting = seller.exclusiveOtherDecisionMeeting || seller.exclusive_other_decision_meeting || '';
-  if (exclusiveOtherDecisionMeeting === '完了') {
+  // 専任他決打合せが「完亁E���E場合�E除夁E  const exclusiveOtherDecisionMeeting = seller.exclusiveOtherDecisionMeeting || seller.exclusive_other_decision_meeting || '';
+  if (exclusiveOtherDecisionMeeting === '完亁E) {
     return false;
   }
   
-  // 次電日が今日の場合は除外
-  const nextCallDate = seller.nextCallDate || seller.next_call_date;
+  // 次電日が今日の場合�E除夁E  const nextCallDate = seller.nextCallDate || seller.next_call_date;
   const todayStr = getTodayJSTString();
   const normalizedNextCallDate = normalizeDateString(nextCallDate);
   if (!normalizedNextCallDate || normalizedNextCallDate === todayStr) {
     return false;
   }
   
-  // 状況（当社）が専任媒介関連かチェック
+  // 状況E��当社�E�が専任媒介関連かチェチE��
   const status = seller.status || '';
-  return status === '専任媒介' || status === '他決→専任' || status === 'リースバック（専任）';
+  return status === '専任媒仁E || status === '他決→専任' || status === 'リースバック�E�専任�E�E;
 };
 
 /**
- * 一般カテゴリー判定
- * 
+ * 一般カチE��リー判宁E * 
  * 条件:
- * - exclusive_other_decision_meeting <> "完了"
+ * - exclusive_other_decision_meeting <> "完亁E
  * - next_call_date <> TODAY()
- * - status = "一般媒介"
+ * - status = "一般媒仁E
  * - contract_year_month >= "2025/6/23"
  * 
- * @param seller 売主データ
- * @returns 一般カテゴリー対象かどうか
+ * @param seller 売主チE�Eタ
+ * @returns 一般カチE��リー対象かどぁE��
  * 
  * Requirements: 2.2
  */
 export const isGeneral = (seller: Seller | any): boolean => {
-  // 専任他決打合せが「完了」の場合は除外
-  const exclusiveOtherDecisionMeeting = seller.exclusiveOtherDecisionMeeting || seller.exclusive_other_decision_meeting || '';
-  if (exclusiveOtherDecisionMeeting === '完了') {
+  // 専任他決打合せが「完亁E���E場合�E除夁E  const exclusiveOtherDecisionMeeting = seller.exclusiveOtherDecisionMeeting || seller.exclusive_other_decision_meeting || '';
+  if (exclusiveOtherDecisionMeeting === '完亁E) {
     return false;
   }
   
-  // 次電日が今日の場合は除外
-  const nextCallDate = seller.nextCallDate || seller.next_call_date;
+  // 次電日が今日の場合�E除夁E  const nextCallDate = seller.nextCallDate || seller.next_call_date;
   const todayStr = getTodayJSTString();
   const normalizedNextCallDate = normalizeDateString(nextCallDate);
   if (!normalizedNextCallDate || normalizedNextCallDate === todayStr) {
     return false;
   }
   
-  // 状況（当社）が一般媒介かチェック
+  // 状況E��当社�E�が一般媒介かチェチE��
   const status = seller.status || '';
-  if (status !== '一般媒介') {
+  if (status !== '一般媒仁E) {
     return false;
   }
   
-  // 契約年月が2025/6/23以降かチェック
+  // 契紁E��月が2025/6/23以降かチェチE��
   const contractYearMonth = seller.contractYearMonth || seller.contract_year_month;
   if (!contractYearMonth) {
     return false;
@@ -1034,47 +849,42 @@ export const isGeneral = (seller: Seller | any): boolean => {
 };
 
 /**
- * 訪問後他決カテゴリー判定
- * 
+ * 訪問後他決カチE��リー判宁E * 
  * 条件:
- * - exclusive_other_decision_meeting <> "完了"
+ * - exclusive_other_decision_meeting <> "完亁E
  * - next_call_date <> TODAY()
- * - status IN ("他決→追客", "他決→追客不要", "一般→他決", "他社買取")
- * - visit_assignee <> "" （「外す」は担当ありとして扱う）
- * 
- * @param seller 売主データ
- * @returns 訪問後他決カテゴリー対象かどうか
+ * - status IN ("他決→追客", "他決→追客不要E, "一般→他決", "他社買叁E)
+ * - visit_assignee <> "" �E�「外す」�E拁E��ありとして扱ぁE��E * 
+ * @param seller 売主チE�Eタ
+ * @returns 訪問後他決カチE��リー対象かどぁE��
  * 
  * Requirements: 3.2
  */
 export const isVisitOtherDecision = (seller: Seller | any): boolean => {
-  // 専任他決打合せが「完了」の場合は除外
-  const exclusiveOtherDecisionMeeting = seller.exclusiveOtherDecisionMeeting || seller.exclusive_other_decision_meeting || '';
-  if (exclusiveOtherDecisionMeeting === '完了') {
+  // 専任他決打合せが「完亁E���E場合�E除夁E  const exclusiveOtherDecisionMeeting = seller.exclusiveOtherDecisionMeeting || seller.exclusive_other_decision_meeting || '';
+  if (exclusiveOtherDecisionMeeting === '完亁E) {
     return false;
   }
   
-  // 次電日が今日の場合は除外
-  const nextCallDate = seller.nextCallDate || seller.next_call_date;
+  // 次電日が今日の場合�E除夁E  const nextCallDate = seller.nextCallDate || seller.next_call_date;
   const todayStr = getTodayJSTString();
   const normalizedNextCallDate = normalizeDateString(nextCallDate);
   if (!normalizedNextCallDate || normalizedNextCallDate === todayStr) {
     return false;
   }
   
-  // 状況（当社）が他決関連かチェック
+  // 状況E��当社�E�が他決関連かチェチE��
   const status = seller.status || '';
   const isOtherDecisionStatus = 
     status === '他決→追客' || 
-    status === '他決→追客不要' || 
+    status === '他決→追客不要E || 
     status === '一般→他決' || 
-    status === '他社買取';
+    status === '他社買叁E;
   if (!isOtherDecisionStatus) {
     return false;
   }
   
-  // 営担に入力があるかチェック（「外す」は担当ありとして扱う）
-  const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
+  // 営拁E��入力があるかチェチE���E�「外す」�E拁E��ありとして扱ぁE��E  const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
   if (!visitAssignee || visitAssignee.trim() === '') {
     return false;
   }
@@ -1083,49 +893,43 @@ export const isVisitOtherDecision = (seller: Seller | any): boolean => {
 };
 
 /**
- * 未訪問他決カテゴリー判定
- * 
+ * 未訪問他決カチE��リー判宁E * 
  * 条件:
- * - exclusive_other_decision_meeting <> "完了"
+ * - exclusive_other_decision_meeting <> "完亁E
  * - next_call_date <> TODAY()
- * - status IN ("他決→追客", "他決→追客不要", "一般→他決", "他社買取")
- * - visit_assignee = "" （営担なし）
- * 
- * @param seller 売主データ
- * @returns 未訪問他決カテゴリー対象かどうか
+ * - status IN ("他決→追客", "他決→追客不要E, "一般→他決", "他社買叁E)
+ * - visit_assignee = "" �E�営拁E��し！E * 
+ * @param seller 売主チE�Eタ
+ * @returns 未訪問他決カチE��リー対象かどぁE��
  */
 export const isUnvisitedOtherDecision = (seller: Seller | any): boolean => {
-  // 専任他決打合せが「完了」の場合は除外
-  const exclusiveOtherDecisionMeeting = seller.exclusiveOtherDecisionMeeting || seller.exclusive_other_decision_meeting || '';
-  if (exclusiveOtherDecisionMeeting === '完了') {
+  // 専任他決打合せが「完亁E���E場合�E除夁E  const exclusiveOtherDecisionMeeting = seller.exclusiveOtherDecisionMeeting || seller.exclusive_other_decision_meeting || '';
+  if (exclusiveOtherDecisionMeeting === '完亁E) {
     return false;
   }
   
-  // 次電日が今日以前の場合は除外（GAS・バックエンドと条件を統一）
-  // バックエンド: .gt('next_call_date', todayJST) = 次電日 > 今日
+  // 次電日が今日以前�E場合�E除外！EAS・バックエンドと条件を統一�E�E  // バックエンチE .gt('next_call_date', todayJST) = 次電日 > 今日
   // GAS: nextCallDate !== todayStr = 次電日 ≠ 今日
-  // フロントエンド: 次電日 > 今日（今日以前を除外）
-  const nextCallDate = seller.nextCallDate || seller.next_call_date;
+  // フロントエンチE 次電日 > 今日�E�今日以前を除外！E  const nextCallDate = seller.nextCallDate || seller.next_call_date;
   const todayStr = getTodayJSTString();
   const normalizedNextCallDate = normalizeDateString(nextCallDate);
   
-  // 次電日が空、または今日以前の場合は除外
-  if (!normalizedNextCallDate || normalizedNextCallDate <= todayStr) {
+  // 次電日が空、また�E今日以前�E場合�E除夁E  if (!normalizedNextCallDate || normalizedNextCallDate <= todayStr) {
     return false;
   }
   
-  // 状況（当社）が他決関連かチェック
+  // 状況E��当社�E�が他決関連かチェチE��
   const status = seller.status || '';
   const isOtherDecisionStatus = 
     status === '他決→追客' || 
-    status === '他決→追客不要' || 
+    status === '他決→追客不要E || 
     status === '一般→他決' || 
-    status === '他社買取';
+    status === '他社買叁E;
   if (!isOtherDecisionStatus) {
     return false;
   }
   
-  // 営担が空かチェック
+  // 営拁E��空かチェチE��
   const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
   if (visitAssignee && visitAssignee.trim() !== '') {
     return false;
@@ -1135,74 +939,61 @@ export const isUnvisitedOtherDecision = (seller: Seller | any): boolean => {
 };
 
 /**
- * 特定の担当者（イニシャル）に該当する売主を判定
- * 
- * @param seller 売主データ
- * @param assignee 担当者イニシャル
- * @returns 指定した担当者に割り当てられているかどうか
+ * 特定�E拁E��老E��イニシャル�E�に該当する売主を判宁E * 
+ * @param seller 売主チE�Eタ
+ * @param assignee 拁E��老E��ニシャル
+ * @returns 持E��した担当老E��割り当てられてぁE��かどぁE��
  */
 export const isVisitAssignedTo = (seller: Seller | any, assignee: string): boolean => {
-  // 空文字は担当なしと同じ扱い
-  if (!assignee || assignee.trim() === '') {
+  // 空斁E���E拁E��なしと同じ扱ぁE  if (!assignee || assignee.trim() === '') {
     return false;
   }
   
-  // 「他社買取」を含む売主を除外
-  const status = seller.status || '';
-  if (typeof status === 'string' && status.includes('他社買取')) {
+  // 「他社買取」を含む売主を除夁E  const status = seller.status || '';
+  if (typeof status === 'string' && status.includes('他社買叁E)) {
     return false;
   }
   
-  // visitAssigneeInitials（元のイニシャル）を優先して比較
-  // visitAssigneeはフルネームに変換されている場合があるため
-  // visitAssignee（camelCase）も参照（APIレスポンスの形式に対応）
-  const visitAssigneeInitials = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
+  // visitAssigneeInitials�E��Eのイニシャル�E�を優先して比輁E  // visitAssigneeはフルネ�Eムに変換されてぁE��場合があるため
+  // visitAssignee�E�EamelCase�E�も参�E�E�EPIレスポンスの形式に対応！E  const visitAssigneeInitials = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
   return visitAssigneeInitials.trim() === assignee;
 };
 
 /**
- * 特定の担当者の当日TEL対象かどうかを判定
- * 
+ * 特定�E拁E��老E�E当日TEL対象かどぁE��を判宁E * 
  * 条件:
- * - 指定した担当者（イニシャル）に割り当てられている
- * - 次電日が今日以前（isTodayCallAssigned の条件）
- * 
- * @param seller 売主データ
- * @param assignee 担当者イニシャル
- * @returns 指定した担当者の当日TEL対象かどうか
+ * - 持E��した担当老E��イニシャル�E�に割り当てられてぁE��
+ * - 次電日が今日以前！EsTodayCallAssigned の条件�E�E * 
+ * @param seller 売主チE�Eタ
+ * @param assignee 拁E��老E��ニシャル
+ * @returns 持E��した担当老E�E当日TEL対象かどぁE��
  */
 export const isTodayCallAssignedTo = (seller: Seller | any, assignee: string): boolean => {
   return isVisitAssignedTo(seller, assignee) && isTodayCallAssigned(seller);
 };
 
 /**
- * 売主リストからユニークな担当者イニシャルを取得
- * 「外す」と空文字を除外し、重複を排除してソートして返す
+ * 売主リストからユニ�Eクな拁E��老E��ニシャルを取征E * 「外す」と空斁E��を除外し、E��褁E��排除してソートして返す
  * 
- * @param sellers 売主リスト
- * @returns ユニークな担当者イニシャルの配列（ソート済み）
- */
+ * @param sellers 売主リスチE * @returns ユニ�Eクな拁E��老E��ニシャルの配�E�E�ソート済み�E�E */
 export const getUniqueAssignees = (sellers: (Seller | any)[]): string[] => {
-  // 「他社買取」を含む売主を除外してから担当者を抽出
+  // 「他社買取」を含む売主を除外してから拁E��老E��抽出
   const filteredSellers = sellers.filter(s => {
     const status = s.status || '';
-    return !(typeof status === 'string' && status.includes('他社買取'));
+    return !(typeof status === 'string' && status.includes('他社買叁E));
   });
   
-  // visitAssigneeInitials（元のイニシャル）を優先して使用
-  // visitAssigneeはフルネームに変換されている場合があるため
-  // visitAssignee（camelCase）も参照（APIレスポンスの形式に対応）
-  const assignees = filteredSellers
+  // visitAssigneeInitials�E��Eのイニシャル�E�を優先して使用
+  // visitAssigneeはフルネ�Eムに変換されてぁE��場合があるため
+  // visitAssignee�E�EamelCase�E�も参�E�E�EPIレスポンスの形式に対応！E  const assignees = filteredSellers
     .map(s => s.visitAssigneeInitials || s.visit_assignee || s.visitAssignee || '')
     .filter(a => a && a.trim() !== '');
   return [...new Set(assignees)].sort();
 };
 
 /**
- * カテゴリ別の売主数をカウント
- * 
- * @param sellers 売主リスト
- * @returns 各カテゴリの件数
+ * カチE��リ別の売主数をカウンチE * 
+ * @param sellers 売主リスチE * @returns 吁E��チE��リの件数
  * 
  * Requirements: 4.1, 4.2, 4.3, 1.3, 2.3, 3.3
  */
@@ -1227,24 +1018,21 @@ export const getCategoryCounts = (sellers: (Seller | any)[]): CategoryCounts => 
 };
 
 /**
- * カテゴリ別にフィルタリング
+ * カチE��リ別にフィルタリング
  * 
- * @param sellers 売主リスト
- * @param category 選択されたカテゴリ
- * @returns フィルタリングされた売主リスト
- * 
+ * @param sellers 売主リスチE * @param category 選択されたカチE��リ
+ * @returns フィルタリングされた売主リスチE * 
  * Requirements: 1.3, 2.3, 3.3, 5.2, 5.1, 5.2, 5.3
  */
 export const filterSellersByCategory = (
   sellers: (Seller | any)[],
   category: StatusCategory
 ): (Seller | any)[] => {
-  // FI（福岡）売主かどうかを判定するヘルパー
+  // FI�E�福岡�E�売主かどぁE��を判定する�Eルパ�E
   const isFiSeller = (s: any): boolean =>
     ((s.sellerNumber || s.seller_number || '') as string).toUpperCase().startsWith('FI');
 
-  // 動的カテゴリーの処理（switch文より前に処理）
-  if (typeof category === 'string' && category.startsWith('visitAssigned:')) {
+  // 動的カチE��リーの処琁E��Ewitch斁E��り前に処琁E��E  if (typeof category === 'string' && category.startsWith('visitAssigned:')) {
     const assignee = category.replace('visitAssigned:', '');
     return sellers.filter(s => isVisitAssignedTo(s, assignee));
   }
@@ -1254,17 +1042,14 @@ export const filterSellersByCategory = (
   }
   if (typeof category === 'string' && category.startsWith('todayCallWithInfo:')) {
     const targetLabel = category.replace('todayCallWithInfo:', '');
-    // FI売主は一般の当日TEL（内容）に含めない
-    return sellers.filter(s => !isFiSeller(s) && isTodayCallWithInfo(s) && getTodayCallWithInfoLabel(s) === targetLabel);
+    // FI売主は一般の当日TEL�E��E容�E�に含めなぁE    return sellers.filter(s => !isFiSeller(s) && isTodayCallWithInfo(s) && getTodayCallWithInfoLabel(s) === targetLabel);
   }
 
   switch (category) {
     case 'todayCall':
-      // FI売主は福岡専用カテゴリー（fi:todayCall）に表示するため除外
-      return sellers.filter(s => !isFiSeller(s) && isTodayCall(s) && !isTodayCallNotStarted(s));
+      // FI売主は福岡専用カチE��リー�E�Ei:todayCall�E�に表示するため除夁E      return sellers.filter(s => !isFiSeller(s) && isTodayCall(s) && !isTodayCallNotStarted(s));
     case 'todayCallWithInfo':
-      // FI売主は福岡専用カテゴリー（fi:todayCallWithInfo）に表示するため除外
-      return sellers.filter(s => !isFiSeller(s) && isTodayCallWithInfo(s));
+      // FI売主は福岡専用カチE��リー�E�Ei:todayCallWithInfo�E�に表示するため除夁E      return sellers.filter(s => !isFiSeller(s) && isTodayCallWithInfo(s));
     case 'todayCallAssigned':
       return sellers.filter(isTodayCallAssigned);
     case 'visitDayBefore':
@@ -1274,14 +1059,11 @@ export const filterSellersByCategory = (
     case 'visitCompleted':
       return sellers.filter(isVisitCompleted);
     case 'unvaluated':
-      // FI売主は福岡専用カテゴリー（fi:unvaluated）に表示するため除外
-      return sellers.filter(s => !isFiSeller(s) && isUnvaluated(s));
+      // FI売主は福岡専用カチE��リー�E�Ei:unvaluated�E�に表示するため除夁E      return sellers.filter(s => !isFiSeller(s) && isUnvaluated(s));
     case 'mailingPending':
-      // FI売主は福岡専用カテゴリー（fi:mailingPending）に表示するため除外
-      return sellers.filter(s => !isFiSeller(s) && isMailingPending(s));
+      // FI売主は福岡専用カチE��リー�E�Ei:mailingPending�E�に表示するため除夁E      return sellers.filter(s => !isFiSeller(s) && isMailingPending(s));
     case 'todayCallNotStarted':
-      // FI売主は福岡専用カテゴリー（fi:todayCallNotStarted）に表示するため除外
-      return sellers.filter(s => !isFiSeller(s) && isTodayCallNotStarted(s));
+      // FI売主は福岡専用カチE��リー�E�Ei:todayCallNotStarted�E�に表示するため除夁E      return sellers.filter(s => !isFiSeller(s) && isTodayCallNotStarted(s));
     case 'pinrichEmpty':
       return sellers.filter(isPinrichEmpty);
     case 'pinrichChangeRequired':
@@ -1301,26 +1083,8 @@ export const filterSellersByCategory = (
 };
 
 /**
- * マッチングカテゴリー判定
- * 
+ * マッチングカチE��リー判宁E * 
  * 条件:
- * - match_updated_at が NULL でない（マッチングボタンが ON）
- * 
- * @param seller 売主データ
- * @returns マッチングカテゴリー対象かどうか
- */
-export const isMatching = (seller: Seller | any): boolean => {
-  const matchUpdatedAt = seller.matchUpdatedAt || seller.match_updated_at;
-  return !!matchUpdatedAt;
-};
-
-
-/**
- * 復元カテゴリーの判定
- * 
- * @param seller - 売主データ
- * @returns 復元されたレコードかどうか
- */
-export const isRestored = (seller: Seller | any): boolean => {
-  return seller.is_restored === true;
-};
+ * - match_updated_at ぁENULL でなぁE���EチE��ングボタンぁEON�E�E * 
+ * @param seller 売主チE�Eタ
+ * @returns マッチングカチE��リー対象かどぁE��
