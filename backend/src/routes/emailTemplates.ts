@@ -15,7 +15,7 @@ const sellerService = new SellerService();
 
 /**
  * FI物件判定: 件名・本文を福岡（くじら不動産）用に置換するヘルパー
- * @param reportAssigneeName - 報告担当者のフルネーム（例: "裏天真"）。空の場合は従来の置換を実行
+ * @param reportAssigneeName - 報告担当者のフルネーム（例: "国広太郎"）。空の場合は従来の置換を実行
  */
 function applyFIBranding(subject: string, body: string, reportAssigneeName?: string): { subject: string; body: string } {
   // ── 件名 ──────────────────────────────────────────────
@@ -35,16 +35,16 @@ function applyFIBranding(subject: string, body: string, reportAssigneeName?: str
     // フルネームから苗字のみを抽出
     let lastName = reportAssigneeName;
     if (reportAssigneeName.includes(' ')) {
-      // 半角スペース区切り（例: "裏 天真" → "裏"）
+      // 半角スペース区切り（例: "国広 太郎" → "国広"）
       lastName = reportAssigneeName.split(' ')[0];
     } else if (reportAssigneeName.includes('　')) {
-      // 全角スペース区切り（例: "裏　天真" → "裏"）
+      // 全角スペース区切り（例: "国広　太郎" → "国広"）
       lastName = reportAssigneeName.split('　')[0];
     } else {
-      // スペースなしの場合は最初の1文字を苗字と推測（例: "裏天真" → "裏"）
-      // 日本の姓は1〜2文字が一般的だが、安全のため1文字とする
-      // 2文字姓の場合は従業員マスタにスペース区切りで登録されていることを期待
-      lastName = reportAssigneeName.charAt(0);
+      // スペースなしの場合は最初の2文字を苗字と推測（例: "国広太郎" → "国広"）
+      // 日本の姓は2文字が最も一般的（田中、山田、佐藤、国広など）
+      // 1文字姓（裏、林、森など）の場合は従業員マスタにスペース区切りで登録推奨
+      lastName = reportAssigneeName.slice(0, 2);
     }
     body = body.replace(/株式会社いふうです。/g, `株式会社くじら不動産の${lastName}です。`);
   } else {
