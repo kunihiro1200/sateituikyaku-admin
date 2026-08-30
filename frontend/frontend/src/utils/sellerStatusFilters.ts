@@ -829,7 +829,7 @@ export const isMailingPending = (seller: Seller | any): boolean => {
  * 条件: is_restored = true
  */
 export const isRestored = (seller: Seller | any): boolean => {
-  return seller.isRestored === true;
+  return seller.isRestored === true || seller.is_restored === true;
 };
 
 /**

@@ -1302,7 +1302,11 @@ export class SellerService extends BaseRepository {
     let query = this.table('sellers').select('*, properties(*)', { count: 'exact' });
 
     // デフォルトで削除済みを除外（マイグレーション051で追加済み）
-    if (!includeDeleted) {
+    // ⚠️ 「復元」カテゴリーは例外：
+    //   復元レコードは通常リストから完全に分離するため deleted_at を設定したまま保持している。
+    //   （deleted_at を null にすると全カテゴリーの件数に混入してしまうため）
+    //   そのため復元カテゴリーのときだけ deleted_at フィルタを適用しない。
+    if (!includeDeleted && statusCategory !== 'restored') {
       query = query.is('deleted_at', null);
     }
 
@@ -1631,6 +1635,11 @@ export class SellerService extends BaseRepository {
           // マッチングカテゴリー：マッチングボタンを押した売主のみ表示
           // match_updated_atがnullでない売主のみを取得（軽量実装）
           query = query.not('match_updated_at', 'is', null);
+          break;
+        case 'restored':
+          // 復元カテゴリー：削除から復元したレコードのみ表示
+          // 通常リストと分離するため deleted_at は設定したまま（冒頭で deleted_at フィルタを外している）
+          query = query.eq('is_restored', true);
           break;
         default: {
           // visitAssigned:xxx または todayCallAssigned:xxx または todayCallWithInfo:xxx または fi:xxx の動的カテゴリ
@@ -2479,6 +2488,9 @@ export class SellerService extends BaseRepository {
         desiredPrice: seller.desired_price,
         notes: seller.notes,
         visitNotes: seller.visit_notes,
+        // 復元フラグ（削除から復元したレコード。通常リストとは分離して「復元」カテゴリーで表示）
+        isRestored: seller.is_restored === true,
+        restoredAt: seller.restored_at || undefined,
         // Mailing status fields
         mailingStatus: seller.mailing_status,
         mailingDoneBy: seller.mailing_done_by,
@@ -3176,9 +3188,10 @@ export class SellerService extends BaseRepository {
         .is('deleted_at', null)
         .in('status', ['他決→追客', '他決→追客不要', '一般→他決']),
       // 12. 復元レコードカウント
+      // ⚠️ 復元レコードは通常リストから分離するため deleted_at を保持している。
+      //    そのため deleted_at フィルタは付けない。
       this.table('sellers')
         .select('*', { count: 'exact', head: true })
-        .is('deleted_at', null)
         .eq('is_restored', true),
     ]);
 

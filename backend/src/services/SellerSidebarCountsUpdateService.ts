@@ -509,6 +509,14 @@ export class SellerSidebarCountsUpdateService {
         .is('deleted_at', null)
         .not('match_updated_at', 'is', null);
 
+      // 復元カウント（削除から復元したレコード）
+      // ⚠️ 復元レコードは通常リストから分離するため deleted_at を保持している。
+      //    そのため deleted_at フィルタは付けない。
+      const { count: restoredCount } = await this.supabase
+        .from('sellers')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_restored', true);
+
       const exclusiveSellers = exclusiveSellersResult.data || [];
       const exclusiveCount = exclusiveSellers.filter(s => {
         const meeting = s.exclusive_other_decision_meeting;
@@ -586,6 +594,7 @@ export class SellerSidebarCountsUpdateService {
         { category: 'todayCallNotStarted', count: todayCallNotStartedCount, label: null, assignee: null },
         { category: 'pinrichEmpty', count: pinrichEmptyCount, label: null, assignee: null },
         { category: 'matching', count: matchingCount || 0, label: null, assignee: null },
+        { category: 'restored', count: restoredCount || 0, label: null, assignee: null },
         { category: 'pinrichChangeRequired', count: pinrichChangeRequiredCount, label: null, assignee: null },
         { category: 'exclusive', count: exclusiveCount, label: null, assignee: null },
         { category: 'general', count: generalCount, label: null, assignee: null },
