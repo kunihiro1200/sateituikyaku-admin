@@ -6832,9 +6832,11 @@ HP：https://ifoo-oita.com/
                   {/* 構造に関するキーワードが含まれている場合の注意喚起（戸建てのみ） */}
                   {(() => {
                     // 種別が戸建て（'detached_house' または '戸'）でない場合は警告を表示しない
-                    const isDetachedHouse = editedPropertyType === 'detached_house' || 
-                                           editedPropertyType === '戸' || 
-                                           editedPropertyType === '戸建て';
+                    // propInfo.propertyType（正規化済み）またはeditedPropertyType（編集中）をチェック
+                    const currentType = propInfo.propertyType || editedPropertyType;
+                    const isDetachedHouse = currentType === 'detached_house' || 
+                                           currentType === '戸' || 
+                                           currentType === '戸建て';
                     if (!isDetachedHouse) {
                       return null;
                     }
@@ -10328,9 +10330,11 @@ HP：https://ifoo-oita.com/
               {/* 構造に関するキーワードが含まれている場合の注意喚起（戸建てのみ） */}
               {(() => {
                 // 種別が戸建て（'detached_house' または '戸'）でない場合は警告を表示しない
-                const isDetachedHouse = editedPropertyType === 'detached_house' || 
-                                       editedPropertyType === '戸' || 
-                                       editedPropertyType === '戸建て';
+                // propInfo.propertyType（正規化済み）またはeditedPropertyType（編集中）をチェック
+                const currentType = propInfo.propertyType || editedPropertyType;
+                const isDetachedHouse = currentType === 'detached_house' || 
+                                       currentType === '戸' || 
+                                       currentType === '戸建て';
                 if (!isDetachedHouse) {
                   return null;
                 }
