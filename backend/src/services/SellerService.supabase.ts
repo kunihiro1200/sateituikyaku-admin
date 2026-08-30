@@ -2324,54 +2324,152 @@ export class SellerService extends BaseRepository {
     }
     
     // 名前、住所、電話番号、メールアドレスでの検索は全件取得が必要（暗号化されているため）
-    console.log('⚠️  Slow path: Full scan required for encrypted field search');
-    
-    // 最大500件に制限して検索速度を改善（メールアドレス検索のため増加）
-    let sellerQuery = this.table('sellers')
-      .select('*')
-      .order('updated_at', { ascending: false })
-      .limit(500);
-    
-    // デフォルトで削除済みを除外
-    if (!includeDeleted) {
-      sellerQuery = sellerQuery.is('deleted_at', null);
-    }
-    
-    const { data: sellers, error } = await sellerQuery;
+    // ─────────────────────────────────────────────────────────────────────
+    // 全件スキャン検索（名前・住所・電話番号・メールは暗号化されているため）
+    //
+    // 🚨 重要（2026年8月修正）:
+    //   旧実装は「updated_at の新しい順に500件だけ」を対象にしていたため、
+    //   更新が古い売主は名前・住所・電話番号のどれで検索してもヒットしなかった。
+    //   （例: FI589 海出 務 / 08039968317 が「DBから消えた」ように見えた）
+    //   → 全件をページネーションで走査する方式に変更。
+    //
+    //   パフォーマンス対策:
+    //   1. 平文カラム（物件住所・売主番号）はDBのilikeで先に絞り込む
+    //   2. 暗号化カラムの照合は軽量カラムのみ取得して復号（全カラム取得しない）
+    //   3. 上限件数に達したら打ち切る
+    // ─────────────────────────────────────────────────────────────────────
+    console.log('🔍 Full scan search (paginated) for encrypted field search');
+    const scanStart = Date.now();
 
-    if (error) {
-      throw new Error(`Failed to search sellers: ${error.message}`);
-    }
+    const MAX_RESULTS = 200;
+    const matchedIds = new Set<string>();
 
-    if (!sellers || sellers.length === 0) {
-      return [];
-    }
+    // 電話番号として比較するための数字のみの表現（ハイフン・空白の有無を無視して一致させる）
+    const queryDigits = lowerQuery.replace(/[^0-9]/g, '');
+    const isPhoneLikeQuery = queryDigits.length >= 7;
 
-    console.log(`📊 Retrieved ${sellers.length} recent sellers for search`);
-
-    const decryptedSellers: Seller[] = [];
-    for (const seller of sellers) {
-      try {
-        const decrypted = await this.decryptSeller(seller);
-        decryptedSellers.push(decrypted);
-      } catch (error) {
-        console.error(`❌ Failed to decrypt seller ${seller.id}:`, error);
-        // Skip this seller and continue
+    // ── 1. 平文カラムはDBレベルで部分一致検索（高速） ──────────────────
+    // ⚠️ .or() に生の入力を埋め込むとPostgRESTの構文を壊すため、個別クエリで実行する
+    for (const column of ['property_address', 'seller_number'] as const) {
+      let plainQuery = this.table('sellers')
+        .select('id')
+        .ilike(column, `%${lowerQuery}%`)
+        .limit(MAX_RESULTS);
+      if (!includeDeleted) {
+        plainQuery = plainQuery.is('deleted_at', null);
+      }
+      const { data: plainHits, error: plainError } = await plainQuery;
+      if (plainError) {
+        console.error(`⚠️ ${column} ilike検索エラー:`, plainError.message);
+        continue;
+      }
+      for (const row of plainHits || []) {
+        matchedIds.add(row.id);
       }
     }
 
-    // 復号化後に部分一致検索
-    const results = decryptedSellers.filter(
-      (seller) =>
-        (seller.name && seller.name.toLowerCase().includes(lowerQuery)) ||
-        (seller.address && seller.address.toLowerCase().includes(lowerQuery)) ||
-        (seller.phoneNumber && seller.phoneNumber.toLowerCase().includes(lowerQuery)) ||
-        (seller.email && seller.email.toLowerCase().includes(lowerQuery)) ||
-        (seller.sellerNumber && seller.sellerNumber.toLowerCase().includes(lowerQuery)) ||
-        (seller.propertyAddress && seller.propertyAddress.toLowerCase().includes(lowerQuery))
+    // ── 2. 暗号化カラムは全件を並列取得して復号照合 ────────────────────
+    // 逐次ページングだと8,000件超で5〜6秒かかりVercelの関数タイムアウトに近づくため、
+    // 件数を先に数えてページを並列取得する（体感1秒程度に短縮）
+    const SCAN_COLUMNS = 'id, seller_number, name, address, phone_number, email, property_address';
+    const scanPageSize = 1000;
+    let scannedCount = 0;
+
+    let countQuery = this.table('sellers').select('*', { count: 'exact', head: true });
+    if (!includeDeleted) {
+      countQuery = countQuery.is('deleted_at', null);
+    }
+    const { count: scanTotal } = await countQuery;
+    const pageCount = Math.max(1, Math.ceil((scanTotal || 0) / scanPageSize));
+
+    const pageResults = await Promise.all(
+      Array.from({ length: pageCount }, async (_unused, pageIndex) => {
+        let scanQuery = this.table('sellers')
+          .select(SCAN_COLUMNS)
+          .order('id')
+          .range(pageIndex * scanPageSize, (pageIndex + 1) * scanPageSize - 1);
+        if (!includeDeleted) {
+          scanQuery = scanQuery.is('deleted_at', null);
+        }
+        const { data, error } = await scanQuery;
+        if (error) {
+          console.error(`⚠️ 全件スキャン取得エラー(page ${pageIndex}):`, error.message);
+          return [];
+        }
+        return data || [];
+      })
     );
 
-    console.log(`🎯 Found ${results.length} matching sellers`);
+    const scanRowsAll = pageResults.flat();
+    scannedCount = scanRowsAll.length;
+
+    {
+      for (const row of scanRowsAll) {
+        if (matchedIds.has(row.id)) continue;
+
+        // 暗号化カラムを個別にtry/catchで復号（1件の復号失敗で検索全体を止めない）
+        const safeDecrypt = (value: string | null): string => {
+          if (!value) return '';
+          try {
+            return decrypt(value) || '';
+          } catch {
+            return '';
+          }
+        };
+
+        const name = safeDecrypt(row.name);
+        const address = safeDecrypt(row.address);
+        const phone = safeDecrypt(row.phone_number);
+        const email = safeDecrypt(row.email);
+
+        const hit =
+          (name && name.toLowerCase().includes(lowerQuery)) ||
+          (address && address.toLowerCase().includes(lowerQuery)) ||
+          (email && email.toLowerCase().includes(lowerQuery)) ||
+          (row.seller_number && String(row.seller_number).toLowerCase().includes(lowerQuery)) ||
+          (row.property_address && String(row.property_address).toLowerCase().includes(lowerQuery)) ||
+          // 電話番号はハイフン・空白を除去した数字同士で比較する
+          (isPhoneLikeQuery && phone && phone.replace(/[^0-9]/g, '').includes(queryDigits));
+
+        if (hit) {
+          matchedIds.add(row.id);
+          if (matchedIds.size >= MAX_RESULTS) break;
+        }
+      }
+    }
+
+    console.log(`📊 Scanned ${scannedCount} sellers in ${Date.now() - scanStart}ms, matched ${matchedIds.size}`);
+
+    if (matchedIds.size === 0) {
+      return [];
+    }
+
+    // ── 3. ヒットしたIDの本体を取得して復号 ────────────────────────────
+    const { data: fullRows, error: fullError } = await this.table('sellers')
+      .select('*, properties(*)')
+      .in('id', Array.from(matchedIds));
+
+    if (fullError) {
+      throw new Error(`Failed to fetch matched sellers: ${fullError.message}`);
+    }
+
+    const results: Seller[] = [];
+    for (const row of fullRows || []) {
+      try {
+        results.push(await this.decryptSeller(row));
+      } catch (error) {
+        console.error(`❌ Failed to decrypt seller ${row.id}:`, error);
+      }
+    }
+
+    // 反響日付の新しい順に並べる（一覧の既定ソートと揃える）
+    results.sort((a: any, b: any) => {
+      const av = String(a.inquiryDate || a.createdAt || '');
+      const bv = String(b.inquiryDate || b.createdAt || '');
+      return bv.localeCompare(av);
+    });
+
+    console.log(`🎯 Found ${results.length} matching sellers (full scan)`);
 
     // lastCalledAt を付与（ヘルパーを使用）
     return await this._attachLastCalledAt(results);
