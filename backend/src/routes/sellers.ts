@@ -3103,9 +3103,27 @@ router.put('/:id', async (req: Request, res: Response) => {
       // （mailingStatus / alternativeMailingAddress のみの更新は数秒かかる同期処理を省略して即レスポンス）
       const MAILING_ONLY_FIELDS = new Set(['mailingStatus', 'mailingDoneBy', 'mailingDoneAt', 'alternativeMailingAddress', 'mailingAddressConfirmed']);
       const isMailingOnlyUpdate = Object.keys(req.body).every(k => MAILING_ONLY_FIELDS.has(k));
+      
+      // ステータス更新のみの場合も同期を非同期化（UI応答性向上）
+      const STATUS_UPDATE_FIELDS = new Set([
+        'status', 'confidence', 'exclusiveOtherDecisionMeeting', 'nextCallDate',
+        'exclusiveDecisionDate', 'competitors', 'exclusiveOtherDecisionFactors',
+        'competitorNameAndReason', 'exclusionAction', 'pinrichStatus'
+      ]);
+      const isStatusOnlyUpdate = Object.keys(req.body).every(k => STATUS_UPDATE_FIELDS.has(k));
 
       if (isMailingOnlyUpdate) {
         console.log(`⚡ [SpreadsheetSync] Skipping sync for mailing-only update of seller ${req.params.id}`);
+      } else if (isStatusOnlyUpdate) {
+        console.log(`⚡ [SpreadsheetSync] Async sync for status-only update of seller ${req.params.id}`);
+        // ステータス更新は非同期で同期（レスポンスをブロックしない）
+        createSpreadsheetSyncService().then(syncService => {
+          if (syncService) {
+            syncService.syncToSpreadsheet(req.params.id).catch(e =>
+              console.error('⚠️ [SpreadsheetSync] Async sync error:', e)
+            );
+          }
+        });
       } else {
         // スプレッドシートに同期（awaitして確実に完了させる）
         // Vercelサーバーレス環境ではレスポンス後に非同期処理が打ち切られるため、awaitが必須
