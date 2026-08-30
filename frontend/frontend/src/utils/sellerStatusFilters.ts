@@ -44,7 +44,7 @@ import { isVisitDayBefore as isVisitDayBeforeUtil, parseDate } from './sellerSta
 // general: 一般カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が一般媒介 + 契約年月 >= 2025/6/23）
 // visitOtherDecision: 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり）
 // unvisitedOtherDecision: 未訪問他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担なし）
-export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'pinrichChangeRequired' | 'exclusive' | 'general' | 'visitOtherDecision' | 'unvisitedOtherDecision' | 'matching'
+export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'pinrichChangeRequired' | 'exclusive' | 'general' | 'visitOtherDecision' | 'unvisitedOtherDecision' | 'matching' | 'restored'
   | `visitAssigned:${string}`        // 担当カテゴリー（例: visitAssigned:Y）
   | `todayCallAssigned:${string}`    // 当日TELサブカテゴリー（例: todayCallAssigned:Y）
   | `todayCallWithInfo:${string}`    // 当日TEL（内容）ラベル別カテゴリー（例: todayCallWithInfo:当日TEL(I・Eメール)）
@@ -68,6 +68,7 @@ export interface CategoryCounts {
   general: number;             // 一般カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が一般媒介 + 契約年月 >= 2025/6/23）
   visitOtherDecision: number;  // 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり（「外す」含む））
   unvisitedOtherDecision: number; // 未訪問他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担なし）
+  restored: number;            // 復元カテゴリー（削除から復元されたレコード）
   visitAssignedCounts?: Record<string, number>;     // 担当者別件数（全売主）
   todayCallAssignedCounts?: Record<string, number>; // 担当者別当日TEL件数
   todayCallWithInfoLabels?: string[];               // 当日TEL（内容）のユニークラベル一覧（全件対象）
@@ -823,6 +824,15 @@ export const isMailingPending = (seller: Seller | any): boolean => {
 };
 
 /**
+ * 復元フィルター
+ * 
+ * 条件: is_restored = true
+ */
+export const isRestored = (seller: Seller | any): boolean => {
+  return seller.isRestored === true;
+};
+
+/**
  * Pinrich空欄判定
  * 
  * 条件:
@@ -1302,4 +1312,15 @@ export const filterSellersByCategory = (
 export const isMatching = (seller: Seller | any): boolean => {
   const matchUpdatedAt = seller.matchUpdatedAt || seller.match_updated_at;
   return !!matchUpdatedAt;
+};
+
+
+/**
+ * 復元カテゴリーの判定
+ * 
+ * @param seller - 売主データ
+ * @returns 復元されたレコードかどうか
+ */
+export const isRestored = (seller: Seller | any): boolean => {
+  return seller.is_restored === true;
 };

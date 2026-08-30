@@ -19,6 +19,7 @@ import {
   getTodayCallWithInfoLabel,
   isUnvaluated,
   isMailingPending,
+  isRestored,
   isTodayCallNotStarted,
   isPinrichEmpty,
   isPinrichChangeRequired,
@@ -118,37 +119,48 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
 
   if (typeof category === 'string' && category.startsWith('visitAssigned:')) {
     const assignee = category.replace('visitAssigned:', '');
-    return sellers.filter(s => isVisitAssignedTo(s, assignee));
+    // 復元レコードを除外
+    return sellers.filter(s => !isRestored(s) && isVisitAssignedTo(s, assignee));
   }
   if (typeof category === 'string' && category.startsWith('todayCallAssigned:')) {
     const assignee = category.replace('todayCallAssigned:', '');
-    return sellers.filter(s => isTodayCallAssignedTo(s, assignee));
+    // 復元レコードを除外
+    return sellers.filter(s => !isRestored(s) && isTodayCallAssignedTo(s, assignee));
   }
   if (typeof category === 'string' && category.startsWith('visitThankYouPending:')) {
     const assignee = category.replace('visitThankYouPending:', '');
-    return sellers.filter(s => isVisitThankYouPending(s) && (s.visitAssigneeInitials || s.visit_assignee || s.visitAssignee) === assignee);
+    // 復元レコードを除外
+    return sellers.filter(s => !isRestored(s) && isVisitThankYouPending(s) && (s.visitAssigneeInitials || s.visit_assignee || s.visitAssignee) === assignee);
   }
   if (typeof category === 'string' && category.startsWith('todayCallWithInfo:')) {
     const targetLabel = category.replace('todayCallWithInfo:', '');
     // FI売主は福岡専用カテゴリーに表示するため除外
-    return sellers.filter(s => !isFiSeller(s) && isTodayCallWithInfo(s) && getTodayCallWithInfoLabel(s) === targetLabel);
+    // 復元レコードも除外
+    return sellers.filter(s => !isFiSeller(s) && !isRestored(s) && isTodayCallWithInfo(s) && getTodayCallWithInfoLabel(s) === targetLabel);
   }
 
   switch (category) {
     case 'todayCall':
       // FI売主は福岡専用カテゴリー（fi:todayCall）に表示するため除外
-      return sellers.filter(s => !isFiSeller(s) && isTodayCall(s));
+      // 復元レコードも除外
+      return sellers.filter(s => !isFiSeller(s) && !isRestored(s) && isTodayCall(s));
     case 'todayCallWithInfo':
       // FI売主は福岡専用カテゴリー（fi:todayCallWithInfo）に表示するため除外
-      return sellers.filter(s => !isFiSeller(s) && isTodayCallWithInfo(s));
+      // 復元レコードも除外
+      return sellers.filter(s => !isFiSeller(s) && !isRestored(s) && isTodayCallWithInfo(s));
     case 'unvaluated':
       // FI売主は福岡専用カテゴリー（fi:unvaluated）に表示するため除外
-      return sellers.filter(s => !isFiSeller(s) && isUnvaluated(s));
+      // 復元レコードも除外
+      return sellers.filter(s => !isFiSeller(s) && !isRestored(s) && isUnvaluated(s));
     case 'mailingPending':
-      return sellers.filter(isMailingPending);
+      // 復元レコードを除外
+      return sellers.filter(s => !isRestored(s) && isMailingPending(s));
+    case 'restored':
+      return sellers.filter(isRestored);
     case 'todayCallNotStarted':
       // FI売主は福岡専用カテゴリー（fi:todayCallNotStarted）に表示するため除外
-      return sellers.filter(s => !isFiSeller(s) && isTodayCallNotStarted(s));
+      // 復元レコードも除外
+      return sellers.filter(s => !isFiSeller(s) && !isRestored(s) && isTodayCallNotStarted(s));
     case 'pinrichEmpty':
       return sellers.filter(isPinrichEmpty);
     case 'matching':
@@ -158,19 +170,26 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
         (s.buy_match_updated_at !== null && s.buy_match_updated_at !== undefined)
       );
     case 'todayCallAssigned':
-      return sellers.filter(isTodayCallAssigned);
+      // 復元レコードを除外
+      return sellers.filter(s => !isRestored(s) && isTodayCallAssigned(s));
     case 'visitDayBefore':
-      return sellers.filter(isVisitDayBefore);
+      // 復元レコードを除外
+      return sellers.filter(s => !isRestored(s) && isVisitDayBefore(s));
     case 'visitScheduled': // 後方互換性
-      return sellers.filter(isVisitDayBefore);
+      // 復元レコードを除外
+      return sellers.filter(s => !isRestored(s) && isVisitDayBefore(s));
     case 'visitCompleted':
-      return sellers.filter(isVisitCompleted);
+      // 復元レコードを除外
+      return sellers.filter(s => !isRestored(s) && isVisitCompleted(s));
     case 'unvisitedOtherDecision':
-      return sellers.filter(isUnvisitedOtherDecision);
+      // 復元レコードを除外
+      return sellers.filter(s => !isRestored(s) && isUnvisitedOtherDecision(s));
     case 'pinrichChangeRequired':
-      return sellers.filter(isPinrichNeedsChange);
+      // 復元レコードを除外
+      return sellers.filter(s => !isRestored(s) && isPinrichNeedsChange(s));
     default:
-      return sellers;
+      // 通常のリスト（全て、マッチング等）からは復元レコードを除外
+      return sellers.filter(s => !isRestored(s));
   }
 };
 
@@ -191,6 +210,8 @@ const getCategoryLabel = (category: StatusCategory): string => {
       return '⑤未査定';
     case 'mailingPending':
       return '⑥査定（郵送）';
+    case 'restored':
+      return '復元';
     case 'todayCallNotStarted':
       return '⑦当日TEL_未着手';
     case 'pinrichChangeRequired':
@@ -257,6 +278,8 @@ const getCategoryColor = (category: StatusCategory): string => {
       return 'warning.main';
     case 'mailingPending':
       return 'info.main';
+    case 'restored':
+      return 'grey.600';
     case 'todayCallNotStarted':
       return '#ff9800';
     case 'pinrichChangeRequired':
@@ -1190,6 +1213,7 @@ function SellerStatusSidebarComponent({
       })()}
 
       {renderCategoryButton('mailingPending', '⑥査定（郵送）', '#0288d1')}
+      {renderCategoryButton('restored', '復元', '#757575')}
       {renderCategoryButton('pinrichChangeRequired', 'Pinrich要変更', '#e91e63')}
       {renderCategoryButton('pinrichEmpty', '⑧Pinrich空欄', '#795548')}
       {renderCategoryButton('matching', 'マッチング', '#9c27b0')}
