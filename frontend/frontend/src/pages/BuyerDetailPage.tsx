@@ -554,7 +554,7 @@ export default function BuyerDetailPage() {
       }
     }
 
-    // 配信メールが「要」の場合は希望条件の必須チェック
+    // 配信メールが「要」の場合はエリアと種別必須チェック
     // 業者問合せの場合は配信メールを送らないため、希望条件は不要
     if (buyer.broker_inquiry !== '業者問合せ' && buyer.distribution_type && String(buyer.distribution_type).trim() === '要') {
       if (!buyer.desired_area || !String(buyer.desired_area).trim()) {
@@ -563,16 +563,17 @@ export default function BuyerDetailPage() {
       if (!buyer.desired_property_type || !String(buyer.desired_property_type).trim()) {
         missingKeys.push('desired_property_type');
       }
-      // 希望種別に応じた価格帯チェック
-      const pt = String(buyer.desired_property_type || '').trim();
+    }
+    
+    // 希望種別に応じた価格帯は常に必須（配信メールの設定に関係なく）
+    const pt = String(buyer.desired_property_type || '').trim();
+    if (pt) {
       const needsH = pt.includes('戸建て');
       const needsA = pt.includes('マンション');
       const needsL = pt.includes('土地');
-      const anyPrice = buyer.price_range_house || buyer.price_range_apartment || buyer.price_range_land;
       if (needsH && !buyer.price_range_house) missingKeys.push('price_range_house');
       if (needsA && !buyer.price_range_apartment) missingKeys.push('price_range_apartment');
       if (needsL && !buyer.price_range_land) missingKeys.push('price_range_land');
-      if (!needsH && !needsA && !needsL && !anyPrice) missingKeys.push('price_range_any');
     }
 
     // 問合時持家ヒアリング：条件付き必須（受付日 >= 2026-04-25 かつ 電話済みまたは電話問合せ）

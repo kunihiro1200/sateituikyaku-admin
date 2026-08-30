@@ -135,7 +135,7 @@ export default function BuyerDesiredConditionsPage() {
     }
   };
 
-  // 配信メール「要」時の希望条件必須チェック
+  // 希望条件必須チェック（配信メール「要」時 + 希望種別に応じた価格帯は常に必須）
   const checkDistributionRequiredFields = (fieldName: string, newValue: any): string | null => {
     if (!buyer) return null;
 
@@ -144,20 +144,24 @@ export default function BuyerDesiredConditionsPage() {
 
     // 配信メールが「要」かどうか確認
     const distributionType = String(updatedBuyer.distribution_type || '').trim();
-    if (distributionType !== '要') return null;
+    const isDistributionRequired = distributionType === '要';
 
-    // エリア・価格帯・種別の未入力チェック
-    const desiredArea = String(updatedBuyer.desired_area || '').trim();
+    const missing: string[] = [];
+
+    // 配信メール「要」の場合のみエリア・種別を必須化
+    if (isDistributionRequired) {
+      const desiredArea = String(updatedBuyer.desired_area || '').trim();
+      const desiredPropertyType = String(updatedBuyer.desired_property_type || '').trim();
+      if (!desiredArea) missing.push('エリア');
+      if (!desiredPropertyType) missing.push('希望種別');
+    }
+
+    // 希望種別に応じた価格帯は常に必須（配信メールの設定に関係なく）
     const desiredPropertyType = String(updatedBuyer.desired_property_type || '').trim();
     const priceRangeHouse = String(updatedBuyer.price_range_house || '').trim();
     const priceRangeApartment = String(updatedBuyer.price_range_apartment || '').trim();
     const priceRangeLand = String(updatedBuyer.price_range_land || '').trim();
 
-    const missing: string[] = [];
-    if (!desiredArea) missing.push('エリア');
-    if (!desiredPropertyType) missing.push('希望種別');
-
-    // 希望種別に応じた価格帯の必須チェック
     const needsHouse = desiredPropertyType.includes('戸建て');
     const needsApartment = desiredPropertyType.includes('マンション');
     const needsLand = desiredPropertyType.includes('土地');
@@ -166,13 +170,14 @@ export default function BuyerDesiredConditionsPage() {
     if (needsHouse && !priceRangeHouse) missing.push('価格帯（戸建）');
     if (needsApartment && !priceRangeApartment) missing.push('価格帯（マンション）');
     if (needsLand && !priceRangeLand) missing.push('価格帯（土地）');
-    // 種別未設定 or 条件次第の場合は3つのうちいずれか1つが必要
-    if (!needsHouse && !needsApartment && !needsLand && !hasAnyPriceRange) {
+    
+    // 種別未設定の場合は配信メール「要」の時のみ価格帯チェック
+    if (isDistributionRequired && !needsHouse && !needsApartment && !needsLand && !hasAnyPriceRange) {
       missing.push('価格帯（戸建・マンション・土地のいずれか）');
     }
 
     if (missing.length > 0) {
-      return `配信メールが「要」の場合、${missing.join('・')}は必須です。希望条件を入力してください。`;
+      return `必須項目が未入力です：${missing.join('・')}`;
     }
     return null;
   };
@@ -187,36 +192,44 @@ export default function BuyerDesiredConditionsPage() {
   const handleSaveAll = async () => {
     if (!buyer || Object.keys(pendingChanges).length === 0) return;
 
-    // 配信メール「要」時の必須バリデーション（pendingChanges全体を一括適用した仮想状態でチェック）
+    // 必須バリデーション（pendingChanges全体を一括適用した仮想状態でチェック）
     const mergedBuyer = { ...buyer, ...pendingChanges };
     const mergedDistributionType = String(mergedBuyer.distribution_type || '').trim();
-    if (mergedDistributionType === '要') {
+    const isDistributionRequired = mergedDistributionType === '要';
+
+    const missing: string[] = [];
+
+    // 配信メール「要」の場合のみエリア・種別を必須化
+    if (isDistributionRequired) {
       const mergedDesiredArea = String(mergedBuyer.desired_area || '').trim();
       const mergedDesiredPropertyType = String(mergedBuyer.desired_property_type || '').trim();
-      const mergedPriceRangeHouse = String(mergedBuyer.price_range_house || '').trim();
-      const mergedPriceRangeApartment = String(mergedBuyer.price_range_apartment || '').trim();
-      const mergedPriceRangeLand = String(mergedBuyer.price_range_land || '').trim();
-
-      const missing: string[] = [];
       if (!mergedDesiredArea) missing.push('エリア');
       if (!mergedDesiredPropertyType) missing.push('希望種別');
+    }
 
-      const needsHouse = mergedDesiredPropertyType.includes('戸建て');
-      const needsApartment = mergedDesiredPropertyType.includes('マンション');
-      const needsLand = mergedDesiredPropertyType.includes('土地');
-      const hasAnyPriceRange = mergedPriceRangeHouse || mergedPriceRangeApartment || mergedPriceRangeLand;
+    // 希望種別に応じた価格帯は常に必須（配信メールの設定に関係なく）
+    const mergedDesiredPropertyType = String(mergedBuyer.desired_property_type || '').trim();
+    const mergedPriceRangeHouse = String(mergedBuyer.price_range_house || '').trim();
+    const mergedPriceRangeApartment = String(mergedBuyer.price_range_apartment || '').trim();
+    const mergedPriceRangeLand = String(mergedBuyer.price_range_land || '').trim();
 
-      if (needsHouse && !mergedPriceRangeHouse) missing.push('価格帯（戸建）');
-      if (needsApartment && !mergedPriceRangeApartment) missing.push('価格帯（マンション）');
-      if (needsLand && !mergedPriceRangeLand) missing.push('価格帯（土地）');
-      if (!needsHouse && !needsApartment && !needsLand && !hasAnyPriceRange) {
-        missing.push('価格帯（戸建・マンション・土地のいずれか）');
-      }
+    const needsHouse = mergedDesiredPropertyType.includes('戸建て');
+    const needsApartment = mergedDesiredPropertyType.includes('マンション');
+    const needsLand = mergedDesiredPropertyType.includes('土地');
+    const hasAnyPriceRange = mergedPriceRangeHouse || mergedPriceRangeApartment || mergedPriceRangeLand;
 
-      if (missing.length > 0) {
-        setSnackbar({ open: true, message: `配信メールが「要」の場合、${missing.join('・')}は必須です。希望条件を入力してください。`, severity: 'error' });
-        return;
-      }
+    if (needsHouse && !mergedPriceRangeHouse) missing.push('価格帯（戸建）');
+    if (needsApartment && !mergedPriceRangeApartment) missing.push('価格帯（マンション）');
+    if (needsLand && !mergedPriceRangeLand) missing.push('価格帯（土地）');
+    
+    // 種別未設定の場合は配信メール「要」の時のみ価格帯チェック
+    if (isDistributionRequired && !needsHouse && !needsApartment && !needsLand && !hasAnyPriceRange) {
+      missing.push('価格帯（戸建・マンション・土地のいずれか）');
+    }
+
+    if (missing.length > 0) {
+      setSnackbar({ open: true, message: `必須項目が未入力です：${missing.join('・')}`, severity: 'error' });
+      return;
     }
 
     setIsSaving(true);
@@ -512,30 +525,40 @@ export default function BuyerDesiredConditionsPage() {
         </Box>
       </Box>
 
-      {/* 配信メール「要」時の必須項目警告バナー */}
-      {buyer.distribution_type === '要' && (
-        (() => {
-          const missingItems: string[] = [];
+      {/* 必須項目警告バナー */}
+      {(() => {
+        const missingItems: string[] = [];
+        const distributionRequired = buyer.distribution_type === '要';
+        
+        // 配信メール「要」の場合のみエリアと希望種別を必須化
+        if (distributionRequired) {
           if (!buyer.desired_area) missingItems.push('エリア');
           if (!buyer.desired_property_type) missingItems.push('希望種別');
-          // 希望種別に応じた価格帯チェック
-          const _pt = String(buyer.desired_property_type || '').trim();
-          const _needsH = _pt.includes('戸建て');
-          const _needsA = _pt.includes('マンション');
-          const _needsL = _pt.includes('土地');
+        }
+        
+        // 希望種別に応じた価格帯は常に必須（配信メールの設定に関係なく）
+        const _pt = String(buyer.desired_property_type || '').trim();
+        const _needsH = _pt.includes('戸建て');
+        const _needsA = _pt.includes('マンション');
+        const _needsL = _pt.includes('土地');
+        
+        if (_needsH && !buyer.price_range_house) missingItems.push('価格帯（戸建）');
+        if (_needsA && !buyer.price_range_apartment) missingItems.push('価格帯（マンション）');
+        if (_needsL && !buyer.price_range_land) missingItems.push('価格帯（土地）');
+        
+        // 種別が設定されていない場合は配信メール「要」の時のみ価格帯チェック
+        if (distributionRequired && !_needsH && !_needsA && !_needsL) {
           const _anyPrice = buyer.price_range_house || buyer.price_range_apartment || buyer.price_range_land;
-          if (_needsH && !buyer.price_range_house) missingItems.push('価格帯（戸建）');
-          if (_needsA && !buyer.price_range_apartment) missingItems.push('価格帯（マンション）');
-          if (_needsL && !buyer.price_range_land) missingItems.push('価格帯（土地）');
-          if (!_needsH && !_needsA && !_needsL && !_anyPrice) missingItems.push('価格帯（いずれか）');
-          return missingItems.length > 0 ? (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              <strong>配信メールが「要」に設定されています。</strong>
-              以下の必須項目を入力してください：{missingItems.join('・')}
-            </Alert>
-          ) : null;
-        })()
-      )}
+          if (!_anyPrice) missingItems.push('価格帯（いずれか）');
+        }
+        
+        return missingItems.length > 0 ? (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            <strong>{distributionRequired ? '配信メールが「要」に設定されています。' : '希望種別に応じた価格帯の入力が必要です。'}</strong>
+            以下の必須項目を入力してください：{missingItems.join('・')}
+          </Alert>
+        ) : null;
+      })()}
 
       {/* 希望条件フィールド */}
       <Paper sx={{ 
@@ -584,35 +607,74 @@ export default function BuyerDesiredConditionsPage() {
                   variant="caption"
                   color={
                     (() => {
-                      if (buyer.distribution_type !== '要') return 'text.secondary';
-                      const pt = String(buyer.desired_property_type || '').trim();
-                      const alwaysRequired = ['desired_area', 'desired_property_type'].includes(field.key) && !buyer[field.key];
-                      const houseRequired = field.key === 'price_range_house' && pt.includes('戸建て') && !buyer[field.key];
-                      const aptRequired = field.key === 'price_range_apartment' && pt.includes('マンション') && !buyer[field.key];
-                      const landRequired = field.key === 'price_range_land' && pt.includes('土地') && !buyer[field.key];
+                      // 希望種別を取得（未保存の変更も考慮）
+                      const effectivePt = pendingChanges.desired_property_type !== undefined 
+                        ? String(pendingChanges.desired_property_type || '').trim()
+                        : String(buyer.desired_property_type || '').trim();
+                      
+                      // 希望種別に応じた価格帯を必須化（配信メールの設定に関係なく）
+                      const houseRequired = field.key === 'price_range_house' && effectivePt.includes('戸建て') && !buyer[field.key];
+                      const aptRequired = field.key === 'price_range_apartment' && effectivePt.includes('マンション') && !buyer[field.key];
+                      const landRequired = field.key === 'price_range_land' && effectivePt.includes('土地') && !buyer[field.key];
+                      
+                      // 配信メール「要」の場合の必須項目
+                      const isDistributionRequired = buyer.distribution_type === '要';
+                      const alwaysRequired = isDistributionRequired && ['desired_area', 'desired_property_type'].includes(field.key) && !buyer[field.key];
+                      
                       return (alwaysRequired || houseRequired || aptRequired || landRequired) ? 'error' : 'text.secondary';
                     })()
                   }
-                  sx={{ display: 'block', mb: 0.5, fontWeight:
-                    (() => {
-                      if (buyer.distribution_type !== '要') return 'normal';
-                      const pt = String(buyer.desired_property_type || '').trim();
-                      const alwaysRequired = ['desired_area', 'desired_property_type'].includes(field.key) && !buyer[field.key];
-                      const houseRequired = field.key === 'price_range_house' && pt.includes('戸建て') && !buyer[field.key];
-                      const aptRequired = field.key === 'price_range_apartment' && pt.includes('マンション') && !buyer[field.key];
-                      const landRequired = field.key === 'price_range_land' && pt.includes('土地') && !buyer[field.key];
+                  sx={{ 
+                    display: 'block', 
+                    mb: 0.5, 
+                    fontWeight: (() => {
+                      // 希望種別を取得（未保存の変更も考慮）
+                      const effectivePt = pendingChanges.desired_property_type !== undefined 
+                        ? String(pendingChanges.desired_property_type || '').trim()
+                        : String(buyer.desired_property_type || '').trim();
+                      
+                      // 希望種別に応じた価格帯を必須化（配信メールの設定に関係なく）
+                      const houseRequired = field.key === 'price_range_house' && effectivePt.includes('戸建て') && !buyer[field.key];
+                      const aptRequired = field.key === 'price_range_apartment' && effectivePt.includes('マンション') && !buyer[field.key];
+                      const landRequired = field.key === 'price_range_land' && effectivePt.includes('土地') && !buyer[field.key];
+                      
+                      // 配信メール「要」の場合の必須項目
+                      const isDistributionRequired = buyer.distribution_type === '要';
+                      const alwaysRequired = isDistributionRequired && ['desired_area', 'desired_property_type'].includes(field.key) && !buyer[field.key];
+                      
                       return (alwaysRequired || houseRequired || aptRequired || landRequired) ? 'bold' : 'normal';
+                    })(),
+                    fontSize: (() => {
+                      // 希望種別を取得（未保存の変更も考慮）
+                      const effectivePt = pendingChanges.desired_property_type !== undefined 
+                        ? String(pendingChanges.desired_property_type || '').trim()
+                        : String(buyer.desired_property_type || '').trim();
+                      
+                      // 希望種別に応じた価格帯は大きく表示
+                      const houseRequired = field.key === 'price_range_house' && effectivePt.includes('戸建て');
+                      const aptRequired = field.key === 'price_range_apartment' && effectivePt.includes('マンション');
+                      const landRequired = field.key === 'price_range_land' && effectivePt.includes('土地');
+                      
+                      return (houseRequired || aptRequired || landRequired) ? '0.95rem' : '0.75rem';
                     })()
                   }}
                 >
                   {field.label}
                   {(() => {
-                    if (buyer.distribution_type !== '要') return null;
-                    const pt = String(buyer.desired_property_type || '').trim();
-                    const alwaysRequired = ['desired_area', 'desired_property_type'].includes(field.key) && !buyer[field.key];
-                    const houseRequired = field.key === 'price_range_house' && pt.includes('戸建て') && !buyer[field.key];
-                    const aptRequired = field.key === 'price_range_apartment' && pt.includes('マンション') && !buyer[field.key];
-                    const landRequired = field.key === 'price_range_land' && pt.includes('土地') && !buyer[field.key];
+                    // 希望種別を取得（未保存の変更も考慮）
+                    const effectivePt = pendingChanges.desired_property_type !== undefined 
+                      ? String(pendingChanges.desired_property_type || '').trim()
+                      : String(buyer.desired_property_type || '').trim();
+                    
+                    // 希望種別に応じた価格帯を必須化（配信メールの設定に関係なく）
+                    const houseRequired = field.key === 'price_range_house' && effectivePt.includes('戸建て') && !buyer[field.key];
+                    const aptRequired = field.key === 'price_range_apartment' && effectivePt.includes('マンション') && !buyer[field.key];
+                    const landRequired = field.key === 'price_range_land' && effectivePt.includes('土地') && !buyer[field.key];
+                    
+                    // 配信メール「要」の場合の必須項目
+                    const isDistributionRequired = buyer.distribution_type === '要';
+                    const alwaysRequired = isDistributionRequired && ['desired_area', 'desired_property_type'].includes(field.key) && !buyer[field.key];
+                    
                     return (alwaysRequired || houseRequired || aptRequired || landRequired) ? ' ※必須' : null;
                   })()}
                 </Typography>
