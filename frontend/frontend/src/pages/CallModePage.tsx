@@ -10234,16 +10234,19 @@ HP：https://ifoo-oita.com/
                   >
                     ⚠️ 市街化調整区域？　再建築可能かを要確認
                   </Box>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: '#d32f2f',
-                      fontWeight: 600,
-                      fontSize: '0.82rem',
-                    }}
-                  >
-                    市街化調整区域は追客する、しないにかかわらず全て一度除外申請してください
-                  </Typography>
+                  {/* 状況（当社）に「除外」が含まれていない場合のみ注意文を表示 */}
+                  {!editedStatus?.includes('除外') && (
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: '#d32f2f',
+                        fontWeight: 600,
+                        fontSize: '0.82rem',
+                      }}
+                    >
+                      市街化調整区域は追客する、しないにかかわらず全て一度除外申請してください
+                    </Typography>
+                  )}
                 </Box>
               )}
               {/* 福岡市西区の市街化調整区域：再建築確認ボタン */}
