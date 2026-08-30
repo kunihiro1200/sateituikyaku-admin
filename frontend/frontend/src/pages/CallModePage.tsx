@@ -6829,6 +6829,46 @@ HP：https://ifoo-oita.com/
                   <Typography variant="subtitle1" fontWeight="bold">📝 コメント入力</Typography>
                 </AccordionSummary>
                 <AccordionDetails sx={{ p: 1 }}>
+                  {/* 構造に関するキーワードが含まれている場合の注意喚起 */}
+                  {(() => {
+                    // HTMLタグを除去してプレーンテキストを取得
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = editableComments;
+                    const plainText = tempDiv.textContent || tempDiv.innerText || '';
+                    
+                    // 構造に関するキーワードをチェック
+                    const structureKeywords = ['鉄骨', '鉄筋', '軽量鉄骨', 'RC', 'SRC', '鉄骨造', '鉄筋コンクリート'];
+                    const hasStructureKeyword = structureKeywords.some(keyword => plainText.includes(keyword));
+                    
+                    if (hasStructureKeyword) {
+                      return (
+                        <Box
+                          sx={{
+                            mb: 2,
+                            p: 2,
+                            backgroundColor: '#fff3e0',
+                            border: '2px solid #ff9800',
+                            borderRadius: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                          }}
+                        >
+                          <Typography
+                            sx={{
+                              fontWeight: 'bold',
+                              color: '#e65100',
+                              fontSize: '0.95rem',
+                            }}
+                          >
+                            ⚠️ 構造を 軽量鉄骨や鉄骨に 変更していますか？？
+                          </Typography>
+                        </Box>
+                      );
+                    }
+                    return null;
+                  })()}
+                  
                   <RichTextCommentEditor
                     ref={commentEditorRef}
                     value={editableComments}
@@ -10272,6 +10312,46 @@ HP：https://ifoo-oita.com/
                   </Button>
                 </Box>
               )}
+              {/* 構造に関するキーワードが含まれている場合の注意喚起 */}
+              {(() => {
+                // HTMLタグを除去してプレーンテキストを取得
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = editableComments;
+                const plainText = tempDiv.textContent || tempDiv.innerText || '';
+                
+                // 構造に関するキーワードをチェック
+                const structureKeywords = ['鉄骨', '鉄筋', '軽量鉄骨', 'RC', 'SRC', '鉄骨造', '鉄筋コンクリート'];
+                const hasStructureKeyword = structureKeywords.some(keyword => plainText.includes(keyword));
+                
+                if (hasStructureKeyword) {
+                  return (
+                    <Box
+                      sx={{
+                        mb: 2,
+                        p: 2,
+                        backgroundColor: '#fff3e0',
+                        border: '2px solid #ff9800',
+                        borderRadius: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                      }}
+                    >
+                      <Typography
+                        sx={{
+                          fontWeight: 'bold',
+                          color: '#e65100',
+                          fontSize: '0.95rem',
+                        }}
+                      >
+                        ⚠️ 構造を 軽量鉄骨や鉄骨に 変更していますか？？
+                      </Typography>
+                    </Box>
+                  );
+                }
+                return null;
+              })()}
+              
               <RichTextCommentEditor
                 ref={commentEditorRef}
                 value={editableComments}
