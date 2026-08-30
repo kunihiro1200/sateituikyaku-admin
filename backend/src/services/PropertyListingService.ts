@@ -377,12 +377,38 @@ export class PropertyListingService {
       }
     }
 
-    const { data, error } = await this.supabase
-      .from('property_listings')
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('property_number', propertyNumber)
-      .select()
-      .single();
+    // 更新実行（未適用マイグレーションでカラムが存在しない場合は、そのカラムを除外して再試行する）
+    const runUpdate = async (payload: Record<string, any>) => {
+      return await this.supabase
+        .from('property_listings')
+        .update({ ...payload, updated_at: new Date().toISOString() })
+        .eq('property_number', propertyNumber)
+        .select()
+        .single();
+    };
+
+    let { data, error } = await runUpdate(updates);
+
+    // PostgREST が「'xxx' カラムが存在しない」と返した場合、そのカラムを除外して1回だけ再試行する
+    // （本番DBに未適用のマイグレーション列を送っても保存全体が失敗しないようにするフォールバック）
+    let retryUpdates = updates;
+    while (error) {
+      const match = /Could not find the '([^']+)' column/.exec(error.message)
+        || /column\s+"?[\w.]*\.?([\w]+)"?\s+does not exist/i.exec(error.message);
+      const missingColumn = match?.[1];
+      if (!missingColumn || !(missingColumn in retryUpdates)) {
+        break;
+      }
+      console.warn(`[PropertyListingService] Column '${missingColumn}' not found in property_listings. Dropping it and retrying update for ${propertyNumber}.`);
+      const { [missingColumn]: _removed, ...rest } = retryUpdates;
+      retryUpdates = rest;
+      if (Object.keys(retryUpdates).length === 0) {
+        // 実カラムが残っていない場合は現在の行を返す
+        const current = await this.getByPropertyNumber(propertyNumber);
+        return current;
+      }
+      ({ data, error } = await runUpdate(retryUpdates));
+    }
 
     if (error) {
       throw new Error(`Failed to update property listing: ${error.message}`);

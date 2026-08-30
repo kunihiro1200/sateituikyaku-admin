@@ -449,9 +449,19 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
       }
     }
 
-    // price_reduction_scheduled_date の空文字列を null に変換する（date型カラムへの空文字列保存エラー防止）
-    if (safeUpdates.price_reduction_scheduled_date === '') {
-      safeUpdates.price_reduction_scheduled_date = null;
+    // date型カラムの空文字列を null に変換する（date型カラムへの空文字列保存エラー防止）
+    // 例: PostgreSQL の date 型に '' を渡すと "invalid input syntax for type date" で500になる
+    const DATE_FIELDS = [
+      'price_reduction_scheduled_date',
+      'distribution_date',
+      'contract_date',
+      'settlement_date',
+      'viewing_available_date',
+    ] as const;
+    for (const field of DATE_FIELDS) {
+      if (safeUpdates[field] === '') {
+        safeUpdates[field] = null;
+      }
     }
 
     // OFFER_FIELDSのいずれかが更新される場合、offer_status_updated_atを記録
