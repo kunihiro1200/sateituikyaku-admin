@@ -8990,6 +8990,61 @@ HP：https://ifoo-oita.com/
                         </>
                       )}
 
+                      {/* 構造に関するキーワードが含まれている場合の注意喚起（戸建てのみ） */}
+                      {!isApartmentType && (() => {
+                        // 種別が戸建て（'detached_house' または '戸'）でない場合は警告を表示しない
+                        const currentType = propInfo.propertyType || editedPropertyType;
+                        const isDetachedHouse = currentType === 'detached_house' || 
+                                               currentType === '戸' || 
+                                               currentType === '戸建て';
+                        if (!isDetachedHouse) {
+                          return null;
+                        }
+                        
+                        // 物件情報の構造フィールドに入力がある場合は警告を表示しない
+                        if (editedStructure && editedStructure.trim()) {
+                          return null;
+                        }
+                        
+                        // HTMLタグを除去してプレーンテキストを取得
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = editableComments;
+                        const plainText = tempDiv.textContent || tempDiv.innerText || '';
+                        
+                        // 構造に関するキーワードをチェック
+                        const structureKeywords = ['鉄骨', '鉄筋', '軽量鉄骨', 'RC', 'SRC', '鉄骨造', '鉄筋コンクリート'];
+                        const hasStructureKeyword = structureKeywords.some(keyword => plainText.includes(keyword));
+                        
+                        if (hasStructureKeyword) {
+                          return (
+                            <Grid item xs={12}>
+                              <Box
+                                sx={{
+                                  p: 2,
+                                  backgroundColor: '#fff3e0',
+                                  border: '2px solid #ff9800',
+                                  borderRadius: 1,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 1,
+                                }}
+                              >
+                                <Typography
+                                  sx={{
+                                    fontWeight: 'bold',
+                                    color: '#e65100',
+                                    fontSize: '0.95rem',
+                                  }}
+                                >
+                                  ⚠️ 構造を 軽量鉄骨や鉄骨に 変更していますか？？
+                                </Typography>
+                              </Box>
+                            </Grid>
+                          );
+                        }
+                        return null;
+                      })()}
+
                       {/* 固定資産税路線価欄（種別に「マ」を含む場合は手入力査定額のみで計算するため非表示） */}
                       {!isApartmentType && (
                         <Grid item xs={12} md={4}>
