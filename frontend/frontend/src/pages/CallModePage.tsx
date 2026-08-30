@@ -6829,8 +6829,16 @@ HP：https://ifoo-oita.com/
                   <Typography variant="subtitle1" fontWeight="bold">📝 コメント入力</Typography>
                 </AccordionSummary>
                 <AccordionDetails sx={{ p: 1 }}>
-                  {/* 構造に関するキーワードが含まれている場合の注意喚起 */}
+                  {/* 構造に関するキーワードが含まれている場合の注意喚起（戸建てのみ） */}
                   {(() => {
+                    // 種別が戸建て（'detached_house' または '戸'）でない場合は警告を表示しない
+                    const isDetachedHouse = editedPropertyType === 'detached_house' || 
+                                           editedPropertyType === '戸' || 
+                                           editedPropertyType === '戸建て';
+                    if (!isDetachedHouse) {
+                      return null;
+                    }
+                    
                     // 物件情報の構造フィールドに入力がある場合は警告を表示しない
                     if (editedStructure && editedStructure.trim()) {
                       return null;
@@ -10317,8 +10325,16 @@ HP：https://ifoo-oita.com/
                   </Button>
                 </Box>
               )}
-              {/* 構造に関するキーワードが含まれている場合の注意喚起 */}
+              {/* 構造に関するキーワードが含まれている場合の注意喚起（戸建てのみ） */}
               {(() => {
+                // 種別が戸建て（'detached_house' または '戸'）でない場合は警告を表示しない
+                const isDetachedHouse = editedPropertyType === 'detached_house' || 
+                                       editedPropertyType === '戸' || 
+                                       editedPropertyType === '戸建て';
+                if (!isDetachedHouse) {
+                  return null;
+                }
+                
                 // 物件情報の構造フィールドに入力がある場合は警告を表示しない
                 if (editedStructure && editedStructure.trim()) {
                   return null;
