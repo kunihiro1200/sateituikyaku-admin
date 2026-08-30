@@ -10207,32 +10207,43 @@ HP：https://ifoo-oita.com/
               </Box>
               {/* 市街化調整区域警告（用途地域が市街化調整区域の場合に表示） */}
               {(youtoChiiki1 === '市街化調整区域' || youtoChiiki2 === '市街化調整区域') && (
-                <Box
-                  sx={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 0.5,
-                    mb: 1,
-                    px: 1.5,
-                    py: 0.5,
-                    borderRadius: 2,
-                    background: 'linear-gradient(135deg, #f57f17 0%, #fbc02d 100%)',
-                    color: '#1a1a1a',
-                    fontWeight: 700,
-                    fontSize: '0.82rem',
-                    boxShadow: '0 2px 8px rgba(251,192,45,0.5)',
-                    animation: 'pulse-yellow-shigaika 1.4s infinite',
-                    '@keyframes pulse-yellow-shigaika': {
-                      '0%': { boxShadow: '0 0 0 0 rgba(251,192,45,0.8)' },
-                      '70%': { boxShadow: '0 0 0 10px rgba(251,192,45,0)' },
-                      '100%': { boxShadow: '0 0 0 0 rgba(251,192,45,0)' },
-                    },
-                    cursor: 'default',
-                    userSelect: 'none',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  ⚠️ 市街化調整区域？　再建築可能かを要確認
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+                  <Box
+                    sx={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      px: 1.5,
+                      py: 0.5,
+                      borderRadius: 2,
+                      background: 'linear-gradient(135deg, #f57f17 0%, #fbc02d 100%)',
+                      color: '#1a1a1a',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      boxShadow: '0 2px 8px rgba(251,192,45,0.5)',
+                      animation: 'pulse-yellow-shigaika 1.4s infinite',
+                      '@keyframes pulse-yellow-shigaika': {
+                        '0%': { boxShadow: '0 0 0 0 rgba(251,192,45,0.8)' },
+                        '70%': { boxShadow: '0 0 0 10px rgba(251,192,45,0)' },
+                        '100%': { boxShadow: '0 0 0 0 rgba(251,192,45,0)' },
+                      },
+                      cursor: 'default',
+                      userSelect: 'none',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    ⚠️ 市街化調整区域？　再建築可能かを要確認
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: '#d32f2f',
+                      fontWeight: 600,
+                      fontSize: '0.82rem',
+                    }}
+                  >
+                    市街化調整区域は追客する、しないにかかわらず全て一度除外申請してください
+                  </Typography>
                 </Box>
               )}
               {/* 福岡市西区の市街化調整区域：再建築確認ボタン */}
