@@ -6831,6 +6831,11 @@ HP：https://ifoo-oita.com/
                 <AccordionDetails sx={{ p: 1 }}>
                   {/* 構造に関するキーワードが含まれている場合の注意喚起 */}
                   {(() => {
+                    // 物件情報の構造フィールドに入力がある場合は警告を表示しない
+                    if (editedStructure && editedStructure.trim()) {
+                      return null;
+                    }
+                    
                     // HTMLタグを除去してプレーンテキストを取得
                     const tempDiv = document.createElement('div');
                     tempDiv.innerHTML = editableComments;
@@ -10314,6 +10319,11 @@ HP：https://ifoo-oita.com/
               )}
               {/* 構造に関するキーワードが含まれている場合の注意喚起 */}
               {(() => {
+                // 物件情報の構造フィールドに入力がある場合は警告を表示しない
+                if (editedStructure && editedStructure.trim()) {
+                  return null;
+                }
+                
                 // HTMLタグを除去してプレーンテキストを取得
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = editableComments;
