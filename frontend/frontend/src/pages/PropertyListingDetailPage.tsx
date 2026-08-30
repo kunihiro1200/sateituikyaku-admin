@@ -3997,13 +3997,21 @@ export default function PropertyListingDetailPage() {
             担当は、チャット送信後、下記より物件番号のみを入力してください↓↓
           </Typography>
           <Link
-            href="https://docs.google.com/spreadsheets/d/1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M/edit?gid=534678762#gid=534678762"
+            href={
+              data?.property_number?.includes('FI')
+                ? 'https://docs.google.com/spreadsheets/d/1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M/edit?gid=1585036738#gid=1585036738'
+                : 'https://docs.google.com/spreadsheets/d/1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M/edit?gid=534678762#gid=534678762'
+            }
             target="_blank"
             rel="noopener noreferrer"
             variant="body2"
             sx={{ wordBreak: 'break-all' }}
           >
-            https://docs.google.com/spreadsheets/d/1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M/edit?gid=534678762#gid=534678762
+            {
+              data?.property_number?.includes('FI')
+                ? 'https://docs.google.com/spreadsheets/d/1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M/edit?gid=1585036738#gid=1585036738'
+                : 'https://docs.google.com/spreadsheets/d/1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M/edit?gid=534678762#gid=534678762'
+            }
           </Link>
         </DialogContent>
         <DialogActions>
