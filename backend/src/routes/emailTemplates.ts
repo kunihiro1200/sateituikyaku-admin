@@ -15,8 +15,9 @@ const sellerService = new SellerService();
 
 /**
  * FI物件判定: 件名・本文を福岡（くじら不動産）用に置換するヘルパー
+ * @param reportAssigneeName - 報告担当者のフルネーム（例: "裏天真"）。空の場合は従来の置換を実行
  */
-function applyFIBranding(subject: string, body: string): { subject: string; body: string } {
+function applyFIBranding(subject: string, body: string, reportAssigneeName?: string): { subject: string; body: string } {
   // ── 件名 ──────────────────────────────────────────────
   // パターン1: 括弧付き （株いふう）（㈱いふう）（株式会社いふう）など
   subject = subject.replace(/[（(][㈱株式会社　 ]*いふう[）)]/g, '（株くじら不動産）');
@@ -28,7 +29,29 @@ function applyFIBranding(subject: string, body: string): { subject: string; body
   body = body.replace(/株式会社いふうと申します。/g, '株式会社くじら不動産と申します。');
   body = body.replace(/不動産会社の㈱いふうです。/g, '不動産会社の株式会社くじら不動産です。');
   body = body.replace(/㈱いふうです。/g, '株式会社くじら不動産です。');
-  body = body.replace(/株式会社いふうです。/g, '株式会社くじら不動産（株式会社いふう）です。');
+  
+  // 報告担当者名がある場合は「株式会社くじら不動産の{苗字}です。」に置換
+  if (reportAssigneeName) {
+    // フルネームから苗字のみを抽出
+    let lastName = reportAssigneeName;
+    if (reportAssigneeName.includes(' ')) {
+      // 半角スペース区切り（例: "裏 天真" → "裏"）
+      lastName = reportAssigneeName.split(' ')[0];
+    } else if (reportAssigneeName.includes('　')) {
+      // 全角スペース区切り（例: "裏　天真" → "裏"）
+      lastName = reportAssigneeName.split('　')[0];
+    } else {
+      // スペースなしの場合は最初の1文字を苗字と推測（例: "裏天真" → "裏"）
+      // 日本の姓は1〜2文字が一般的だが、安全のため1文字とする
+      // 2文字姓の場合は従業員マスタにスペース区切りで登録されていることを期待
+      lastName = reportAssigneeName.charAt(0);
+    }
+    body = body.replace(/株式会社いふうです。/g, `株式会社くじら不動産の${lastName}です。`);
+  } else {
+    // 報告担当者名がない場合は従来通り
+    body = body.replace(/株式会社いふうです。/g, '株式会社くじら不動産（株式会社いふう）です。');
+  }
+  
   body = body.replace(/いふうにてお手伝い/g, 'くじら不動産にてお手伝い');
   body = body.replace(/是非いふうにて/g, '是非くじら不動産にて');
 
@@ -267,6 +290,16 @@ router.post('/property/merge', async (req, res) => {
       }
     }
 
+    // 報告担当者のスタッフ情報を取得（FI物件の場合に本文で使用）
+    let reportAssigneeStaffInfo = null;
+    const reportAssignee = property.report_assignee;
+    if (reportAssignee) {
+      reportAssigneeStaffInfo = await staffService.getStaffByInitials(reportAssignee);
+      if (!reportAssigneeStaffInfo) {
+        reportAssigneeStaffInfo = await staffService.getStaffByNameContains(reportAssignee);
+      }
+    }
+
     // sellerName の末尾「様」を除去（mergePropertyTemplate 内で「様」を付けるため）
     const sellerNameClean = sellerName.endsWith('様') ? sellerName.slice(0, -1) : sellerName;
 
@@ -288,7 +321,9 @@ router.post('/property/merge', async (req, res) => {
     let finalSubject = mergedSubject;
     let finalBody = mergedBody;
     if (propertyNumber.toUpperCase().includes('FI')) {
-      ({ subject: finalSubject, body: finalBody } = applyFIBranding(finalSubject, finalBody));
+      // 報告担当者名を取得（フルネーム）
+      const reportAssigneeName = reportAssigneeStaffInfo?.name || '';
+      ({ subject: finalSubject, body: finalBody } = applyFIBranding(finalSubject, finalBody, reportAssigneeName));
     }
 
     res.json({ subject: finalSubject, body: finalBody, sellerName, sellerEmail });
