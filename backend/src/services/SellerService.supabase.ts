@@ -1302,11 +1302,7 @@ export class SellerService extends BaseRepository {
     let query = this.table('sellers').select('*, properties(*)', { count: 'exact' });
 
     // デフォルトで削除済みを除外（マイグレーション051で追加済み）
-    // ⚠️ 「復元」カテゴリーは例外：
-    //   復元レコードは通常リストから完全に分離するため deleted_at を設定したまま保持している。
-    //   （deleted_at を null にすると全カテゴリーの件数に混入してしまうため）
-    //   そのため復元カテゴリーのときだけ deleted_at フィルタを適用しない。
-    if (!includeDeleted && statusCategory !== 'restored') {
+    if (!includeDeleted) {
       query = query.is('deleted_at', null);
     }
 
@@ -1635,11 +1631,6 @@ export class SellerService extends BaseRepository {
           // マッチングカテゴリー：マッチングボタンを押した売主のみ表示
           // match_updated_atがnullでない売主のみを取得（軽量実装）
           query = query.not('match_updated_at', 'is', null);
-          break;
-        case 'restored':
-          // 復元カテゴリー：削除から復元したレコードのみ表示
-          // 通常リストと分離するため deleted_at は設定したまま（冒頭で deleted_at フィルタを外している）
-          query = query.eq('is_restored', true);
           break;
         default: {
           // visitAssigned:xxx または todayCallAssigned:xxx または todayCallWithInfo:xxx または fi:xxx の動的カテゴリ
@@ -2586,9 +2577,6 @@ export class SellerService extends BaseRepository {
         desiredPrice: seller.desired_price,
         notes: seller.notes,
         visitNotes: seller.visit_notes,
-        // 復元フラグ（削除から復元したレコード。通常リストとは分離して「復元」カテゴリーで表示）
-        isRestored: seller.is_restored === true,
-        restoredAt: seller.restored_at || undefined,
         // Mailing status fields
         mailingStatus: seller.mailing_status,
         mailingDoneBy: seller.mailing_done_by,
@@ -3008,7 +2996,6 @@ export class SellerService extends BaseRepository {
     general: number;
     visitOtherDecision: number;
     unvisitedOtherDecision: number;
-    restored: number;
     visitAssignedCounts: Record<string, number>;
     todayCallAssignedCounts: Record<string, number>;
     todayCallWithInfoLabels: string[];
@@ -3108,7 +3095,6 @@ export class SellerService extends BaseRepository {
       general: getCount('general'),
       visitOtherDecision: getCount('visitOtherDecision'),
       unvisitedOtherDecision: getCount('unvisitedOtherDecision'),
-      restored: getCount('restored'),
       visitAssignedCounts,
       todayCallAssignedCounts,
       todayCallWithInfoLabels,
@@ -3143,7 +3129,6 @@ export class SellerService extends BaseRepository {
     general: number;
     visitOtherDecision: number;
     unvisitedOtherDecision: number;
-    restored: number;
     visitAssignedCounts: Record<string, number>;
     todayCallAssignedCounts: Record<string, number>;
     todayCallWithInfoLabels: string[];
@@ -3203,7 +3188,6 @@ export class SellerService extends BaseRepository {
       generalSellersResult,
       visitOtherDecisionSellersResult,
       unvisitedOtherDecisionSellersResult,
-      restoredCountResult,
     ] = await Promise.all([
       // 1. 訪問済みカウント
       this.table('sellers')
@@ -3285,12 +3269,6 @@ export class SellerService extends BaseRepository {
         .select('exclusive_other_decision_meeting, next_call_date, visit_assignee')
         .is('deleted_at', null)
         .in('status', ['他決→追客', '他決→追客不要', '一般→他決']),
-      // 12. 復元レコードカウント
-      // ⚠️ 復元レコードは通常リストから分離するため deleted_at を保持している。
-      //    そのため deleted_at フィルタは付けない。
-      this.table('sellers')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_restored', true),
     ]);
 
     // 12. Pinrich要変更カテゴリー用データ（ページネーション対応）
@@ -3457,9 +3435,6 @@ export class SellerService extends BaseRepository {
       .ilike('seller_number', 'FI%');
     const fi_mailingPendingCount = fi_mailingPendingCountResult.count || 0;
 
-    // 7-3. 復元レコードカウント
-    const restoredCount = restoredCountResult.count || 0;
-
     // 8. 当日TEL_未着手
     const todayCallNotStartedCount = filteredTodayCallNormal.filter(s => sharedIsTodayCallNotStarted(s, todayJST)).length;
 
@@ -3578,7 +3553,6 @@ export class SellerService extends BaseRepository {
       general: generalCount || 0,
       visitOtherDecision: visitOtherDecisionCount || 0,
       unvisitedOtherDecision: unvisitedOtherDecisionCount || 0,
-      restored: restoredCount || 0,
       visitAssignedCounts,
       todayCallAssignedCounts,
       todayCallWithInfoLabels,
