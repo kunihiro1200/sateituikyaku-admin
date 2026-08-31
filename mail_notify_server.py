@@ -34,6 +34,8 @@ SUBJECT_KEYWORDS = [
     "【反響 Yahoo!不動産 売買ツール】お客様から売却査定依頼がありました",
     # アットホーム反響メール（買主向け）- 部分一致で検知
     "【反響】アットホーム",
+    # SUUMO(リクルートＪＤＳ)反響メール（買主向け）- 件名完全一致で検知
+    "[リクルートＪＤＳ]反響お知らせメール",
 ]
 
 # チェック間隔（秒）
@@ -52,6 +54,10 @@ BACKEND_ATHOME_BUYER_TRANSFER_URL = os.environ.get(
     "BACKEND_ATHOME_BUYER_TRANSFER_URL",
     "https://sateituikyaku-admin-backend.vercel.app/api/buyers/athome-buyer-transfer"
 )
+BACKEND_SUUMO_BUYER_TRANSFER_URL = os.environ.get(
+    "BACKEND_SUUMO_BUYER_TRANSFER_URL",
+    "https://sateituikyaku-admin-backend.vercel.app/api/buyers/suumo-buyer-transfer"
+)
 BACKEND_LIFULL_TRANSFER_URL = os.environ.get(
     "BACKEND_LIFULL_TRANSFER_URL",
     "https://sateituikyaku-admin-backend.vercel.app/api/sellers/lifull-transfer"
@@ -61,6 +67,8 @@ HOME4U_SUBJECT_PREFIX = "[HOME4U] 査定依頼"
 # ※本文に「HOME4Uログアウト」が含まれることが絶対条件（バックエンド側でもチェック）
 ATHOME_BUYER_SUBJECT_PREFIX = "【反響】アットホーム"
 # アットホーム反響メールは件名部分一致で検知（買主リストに転記）
+SUUMO_BUYER_SUBJECT_KEYWORD = "[リクルートＪＤＳ]反響お知らせメール"
+# SUUMO(リクルートＪＤＳ)反響メールは件名完全一致で検知（買主リストに転記）
 LIFULL_SUBJECT_KEYWORD = "【LIFULL HOME'S】＜実名＞査定依頼がありました"
 # LIFULL HOME'Sは件名完全一致で検知
 CRON_SECRET = os.environ.get(
@@ -379,6 +387,35 @@ def trigger_athome_buyer_transfer(body: str):
     threading.Thread(target=_call, daemon=True).start()
 
 
+def trigger_suumo_buyer_transfer(body: str):
+    """SUUMO(リクルートＪＤＳ)反響メール（買主向け）本文をバックエンドに送って買主リストに転記"""
+    def _call():
+        try:
+            logging.info("  [DB転記] /api/buyers/suumo-buyer-transfer 呼び出し開始...")
+            payload = json.dumps({"body": body}).encode("utf-8")
+            req = urllib.request.Request(
+                BACKEND_SUUMO_BUYER_TRANSFER_URL,
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {CRON_SECRET}",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                result = json.loads(resp.read().decode("utf-8"))
+                if result.get("skipped"):
+                    logging.info(f"  [DB転記] ⏭ スキップ（重複）: {result.get('message', '')}")
+                elif result.get("success"):
+                    logging.info(f"  [DB転記] ✅ 買主リスト転記完了: {result.get('message', 'OK')} (買主番号: {result.get('buyerNumber', '')})")
+                else:
+                    logging.info(f"  [DB転記] ❌ 失敗: {result.get('error', '不明なエラー')}")
+        except Exception as e:
+            logging.info(f"  [DB転記] ❌ エラー: {e}")
+
+    threading.Thread(target=_call, daemon=True).start()
+
+
 def trigger_lifull_transfer(body: str):
     """LIFULL HOME'Sメール本文をバックエンドに送ってDB即時転記 + スプシ同期"""
     def _call():
@@ -510,6 +547,8 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                     return keyword in subject  # 部分一致
                 if keyword == "【LIFULL HOME'S】＜実名＞査定依頼がありました":
                     return keyword in subject  # 部分一致（Re:付きで届く場合があるため）
+                if keyword == SUUMO_BUYER_SUBJECT_KEYWORD:
+                    return keyword in subject  # 部分一致（件名に付加文字が付く場合に備える）
                 return subject == keyword
 
             matched = any(subject_matches(subject, keyword) for keyword in SUBJECT_KEYWORDS)
@@ -593,9 +632,12 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                             trigger_home4u_transfer(body)
                     else:
                         logging.info(f"  [スキップ] HOME4Uだが本文に「HOME4Uログアウト」なし: {subject[:50]}")
-                elif ATHOME_BUYER_SUBJECT_PREFIX in subject:
+                elif ATHOME_BUYER_SUBJECT_PREFIX in subject or ("【反響】" in subject and "アットホーム" in subject):
                     logging.info("  [DB転記] アットホーム反響（買主）検知 → athome-buyer-transfer を非同期実行します")
                     trigger_athome_buyer_transfer(body)
+                elif SUUMO_BUYER_SUBJECT_KEYWORD in subject:
+                    logging.info("  [DB転記] SUUMO(リクルートＪＤＳ)反響（買主）検知 → suumo-buyer-transfer を非同期実行します")
+                    trigger_suumo_buyer_transfer(body)
                 elif LIFULL_SUBJECT_KEYWORD in subject:
                     # LIFULLは「Re:」付き かつ 送信者が自分（tenant@ifoo-oita.com）のメールだけ転記する
                     # LIFULL自身が送る元メール（Re:なし）はダブり防止のためスキップ
@@ -612,7 +654,7 @@ def check_new_emails(service, notified_ids, start_timestamp_ms=None, home4u_proc
                             logging.info("  [DB転記] LIFULL HOME'S(Re:あり)検知 → lifull-transfer を非同期実行します")
                             trigger_lifull_transfer(body)
                 else:
-                    logging.info(f"  [スキップ] イエウール・HOME4U・アットホーム反響・LIFULL以外のため転記なし: {subject[:50]}")
+                    logging.info(f"  [スキップ] イエウール・HOME4U・アットホーム反響・SUUMO反響・LIFULL以外のため転記なし: {subject[:50]}")
 
                 # 通知済みとして記録（matchedの場合も必ず記録する）
                 notified_ids.add(msg_id)
