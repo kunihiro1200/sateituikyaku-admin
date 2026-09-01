@@ -257,7 +257,7 @@ export class PropertyListingService {
             if (rd <= today) {
               // 担当者名をイニシャルに変換（フロントエンドのgetAssigneeInitialと同じマッピング）
               const initialMap: Record<string, string> = {
-                '山本': 'Y', '生野': '生', '久': '久', '裏': 'U',
+                '山本': 'Y', '久': '久', '裏': 'U',
                 '林': '林', '林田': '林', '国広': 'K', '木村': 'R', '角井': 'I',
               };
               const assigneeInitial = effectiveAssignee

@@ -608,7 +608,7 @@ function checkMandatoryRevisionFields(
   return { hasError: errorFields.length > 0, errorFields };
 }
 
-const ASSIGNEE_OPTIONS = ['K', 'Y', 'I', '生', 'U', 'R', '久', 'H'];
+const ASSIGNEE_OPTIONS = ['K', 'Y', 'I', 'U', 'R', '久', 'H'];
 
 // サイト登録修正内容入力フィールド（再マウント防止のためモーダル外で定義）
 const SiteRevisionContentField = React.memo(({ value, hasError, onCommit }: {

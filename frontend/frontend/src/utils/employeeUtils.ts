@@ -15,8 +15,70 @@ const INITIALS_TO_NAME_MAP: Record<string, string> = {
   'Y': '山本',
   'W': '和田',
   'K': '国広',
-  '生': '生野',
 };
+
+/**
+ * 姓名フル → 名字のマッピング
+ *
+ * ⚠️ employees.name は「国広智子」「裏天真」のようにスペース区切りが無い姓名フルで
+ * 保存されているため、split(' ') では名字を切り出せない。
+ * そのためスタッフの姓名フルを明示的にマッピングする。
+ *
+ * 注意: 退職済みスタッフも残しておくこと。
+ * 退職後も過去の担当レコードは残るため、削除すると extractLastName が
+ * フルネームをそのまま返してしまう（SMS本文にフルネームが出るバグが再発する）。
+ *
+ * 新しいスタッフが入社したらこのマップに追加すること。
+ * （併せて .kiro/steering/ranking-initial-normalization-rules.md の在籍スタッフ一覧も更新）
+ */
+const FULL_NAME_TO_LAST_NAME_MAP: Record<string, string> = {
+  '廣瀬尚美': '廣瀬',
+  '角井宏充': '角井',
+  '国広智子': '国広',
+  '木村侑里音': '木村',
+  '裏天真': '裏',
+  '山本裕子': '山本',
+  '久米マリ子': '久米',
+  '和田樹奈': '和田',
+  '林田元汰': '林田',
+  '生野陸斗': '生野',  // 退職済み（過去データのSMS差出人名生成に必要なため残す）
+  '麻生華蓮': '麻生',
+};
+
+/**
+ * 姓名フルから名字だけを取り出す
+ *
+ * SMS/メール本文の差出人名（アカウント名）はフルネームではなく名字だけを表示する。
+ * 例: 「国広智子」→「国広」、「裏天真」→「裏」、「和田　樹奈」→「和田」
+ *
+ * 判定順:
+ * 1. 半角/全角スペースが含まれる場合 → スペースの前を名字とする
+ * 2. FULL_NAME_TO_LAST_NAME_MAP に一致する場合 → マッピングの名字を返す
+ * 3. どちらにも当てはまらない場合 → 入力をそのまま返す（既存挙動を壊さない）
+ *
+ * @param fullName - 姓名フル（例: 「国広智子」）
+ * @returns 名字（例: 「国広」）。入力が空の場合は空文字列
+ */
+export function extractLastName(fullName: string | null | undefined): string {
+  if (!fullName) return '';
+
+  const trimmed = fullName.trim();
+  if (trimmed.length === 0) return '';
+
+  // 1. スペース区切り（半角・全角）がある場合は先頭要素が名字
+  const spaceSeparated = trimmed.split(/[\s　]+/).filter(Boolean);
+  if (spaceSeparated.length > 1) {
+    return spaceSeparated[0];
+  }
+
+  // 2. スペース無しの姓名フルはマッピングで解決
+  if (trimmed in FULL_NAME_TO_LAST_NAME_MAP) {
+    return FULL_NAME_TO_LAST_NAME_MAP[trimmed];
+  }
+
+  // 3. 未知の値はそのまま返す（すでに名字だけの場合もここに来る）
+  return trimmed;
+}
 
 /**
  * 文字列がUUID形式かどうかを判定

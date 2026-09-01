@@ -302,12 +302,11 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
 
     // Priority 10-15: 担当者別内覧後未入力（Y_内覧後未入力と同じ条件: 公開中かつ業者問合せでない）
     const viewingPostInputConditions = [
-      { assignee: '生', priority: 10, status: '生_内覧後未入力' },
-      { assignee: 'U', priority: 11, status: 'U_内覧後未入力' },
-      { assignee: '久', priority: 12, status: '久_内覧後未入力' },
-      { assignee: 'K', priority: 13, status: 'K_内覧後未入力' },
-      { assignee: 'I', priority: 14, status: 'I_内覧後未入力' },
-      { assignee: 'R', priority: 15, status: 'R_内覧後未入力' },
+      { assignee: 'U', priority: 10, status: 'U_内覧後未入力' },
+      { assignee: '久', priority: 11, status: '久_内覧後未入力' },
+      { assignee: 'K', priority: 12, status: 'K_内覧後未入力' },
+      { assignee: 'I', priority: 13, status: 'I_内覧後未入力' },
+      { assignee: 'R', priority: 14, status: 'R_内覧後未入力' },
     ];
 
     for (const condition of viewingPostInputConditions) {
@@ -429,11 +428,7 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
       return { status, priority: 21, matchedCondition: '担当I: 次電日が空欄', color: getStatusColor(status) };
     }
 
-    // Priority 22: 担当(生)次電日空欄
-    if (and(statusAorB, isBlank(buyer.next_call_date), isBlank(buyer.broker_inquiry), equals(buyer.follow_up_assignee, '生'))) {
-      const status = '担当(生)次電日空欄';
-      return { status, priority: 22, matchedCondition: '担当生: 次電日が空欄', color: getStatusColor(status) };
-    }
+    // Priority 22: 担当(I)次電日空欄の次（生は退職済みのため削除）
 
     // Priority 23-30: 担当者別
     // 🚨 重要：次電日が今日以前の場合は「当日TEL(イニシャル)」を優先（内覧済みよりも優先）
@@ -444,11 +439,10 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
       { assignee: 'Y', priority: 23 },
       { assignee: 'W', priority: 24 },
       { assignee: 'U', priority: 25 },
-      { assignee: '生', priority: 26 },
-      { assignee: 'K', priority: 27 },
-      { assignee: '久', priority: 28 },
-      { assignee: 'I', priority: 29 },
-      { assignee: 'R', priority: 30 },
+      { assignee: 'K', priority: 26 },
+      { assignee: '久', priority: 27 },
+      { assignee: 'I', priority: 28 },
+      { assignee: 'R', priority: 29 },
     ];
 
     // 🆕 優先順位: 後続担当が最優先、空の場合のみ案件担当を使用

@@ -1,5 +1,5 @@
 import { Seller, PropertyInfo, Employee } from '../types';
-import { getEmployeeName } from './employeeUtils';
+import { getEmployeeName, extractLastName } from './employeeUtils';
 import { formatNetProceedsSection } from './netProceedsCalculator';
 
 /**
@@ -268,7 +268,8 @@ export const generateUnvisitedOtherDecisionSMS = (
   staffLastName?: string
 ): string => {
   const name = seller.name || '';
-  const accountName = staffLastName || '';
+  // 名字だけを使う（フルネームが渡ってきても「国広智子」→「国広」に丸める）
+  const accountName = extractLastName(staffLastName);
 
   // FI判定で署名の会社名を決定（replacePlaceholders は呼ばずに直接組み立てる）
   const sellerNumber = (seller.sellerNumber || '').toUpperCase();
@@ -303,7 +304,8 @@ export const generateUnreachableAfterValuationCheckSMS = (
   staffLastName?: string
 ): string => {
   const name = seller.name || '';
-  const accountName = staffLastName || '';
+  // 名字だけを使う（フルネームが渡ってきても「国広智子」→「国広」に丸める）
+  const accountName = extractLastName(staffLastName);
 
   // 売主番号にAAが含まれる場合は㈱いふう、それ以外は株式会社くじら不動産
   const sellerNumber = (seller.sellerNumber || '').toUpperCase();
@@ -388,14 +390,16 @@ export const replacePlaceholders = (
     // <<担当者名字あいさつ>>の置換
     // FI: 「くじら不動産の〇〇です」 / 非FI: 「株式会社いふうの〇〇です」
     // staffLastNameが空の場合はシンプルな会社名表記にフォールバック
+    // ⚠️ フルネームが渡ってきても名字だけに丸める（国広智子 → 国広、裏天真 → 裏）
+    const staffLastNameOnly = extractLastName(staffLastName);
     if (hasFI) {
-      const greeting = staffLastName
-        ? `くじら不動産の${staffLastName}です`
+      const greeting = staffLastNameOnly
+        ? `くじら不動産の${staffLastNameOnly}です`
         : 'くじら不動産です';
       result = result.replace(/<<担当者名字あいさつ>>/g, greeting);
     } else {
-      const greeting = staffLastName
-        ? `株式会社いふうの${staffLastName}です`
+      const greeting = staffLastNameOnly
+        ? `株式会社いふうの${staffLastNameOnly}です`
         : '株式会社いふうです';
       result = result.replace(/<<担当者名字あいさつ>>/g, greeting);
     }    
@@ -562,9 +566,9 @@ export const generateGreetingSMS = (
 ): string => {
   const name = seller.name || '';
   
-  // 担当者名を解決
+  // 担当者名を解決（本文には名字だけを表示: 国広智子 → 国広）
   const assigneeIdentifier = seller.assignedTo || '';
-  const assigneeName = getEmployeeName(assigneeIdentifier, employees);
+  const assigneeName = extractLastName(getEmployeeName(assigneeIdentifier, employees));
   
   // 売主番号でAA/FI判定
   const sellerNumber = (seller.sellerNumber || '').toUpperCase();
@@ -604,7 +608,8 @@ export const generateOtherDecisionThreeMonthsFollowUpSMS = (
   staffLastName?: string
 ): string => {
   const name = seller.name || '';
-  const accountName = staffLastName || '';
+  // 名字だけを使う（フルネームが渡ってきても「国広智子」→「国広」に丸める）
+  const accountName = extractLastName(staffLastName);
 
   // 売主番号でFI/AA判定
   const sellerNumber = (seller.sellerNumber || '').toUpperCase();
@@ -654,7 +659,8 @@ export const generateOtherDecisionSixMonthsFollowUpSMS = (
   staffLastName?: string
 ): string => {
   const name = seller.name || '';
-  const accountName = staffLastName || '';
+  // 名字だけを使う（フルネームが渡ってきても「国広智子」→「国広」に丸める）
+  const accountName = extractLastName(staffLastName);
 
   // 売主番号でFI/AA判定
   const sellerNumber = (seller.sellerNumber || '').toUpperCase();
@@ -710,7 +716,8 @@ export const generateProgressStep1ReplySMS = (
   staffLastName?: string
 ): string => {
   const name = seller.name || '';
-  const accountName = staffLastName || '';
+  // 名字だけを使う（フルネームが渡ってきても「国広智子」→「国広」に丸める）
+  const accountName = extractLastName(staffLastName);
 
   // FI判定で会社名を決定
   const sellerNumber = (seller.sellerNumber || '').toUpperCase();
@@ -742,7 +749,8 @@ export const generateProgressStep2ReplySMS = (
   staffLastName?: string
 ): string => {
   const name = seller.name || '';
-  const accountName = staffLastName || '';
+  // 名字だけを使う（フルネームが渡ってきても「国広智子」→「国広」に丸める）
+  const accountName = extractLastName(staffLastName);
 
   // FI判定で会社名を決定
   const sellerNumber = (seller.sellerNumber || '').toUpperCase();
@@ -777,7 +785,8 @@ export const generateProgressStep3ReplySMS = (
   staffLastName?: string
 ): string => {
   const name = seller.name || '';
-  const accountName = staffLastName || '';
+  // 名字だけを使う（フルネームが渡ってきても「国広智子」→「国広」に丸める）
+  const accountName = extractLastName(staffLastName);
 
   // FI判定で会社名を決定
   const sellerNumber = (seller.sellerNumber || '').toUpperCase();

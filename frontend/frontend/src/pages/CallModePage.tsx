@@ -42,7 +42,7 @@ import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, Conte
 import api, { emailImageApi } from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { Seller, PropertyInfo, Activity, SellerStatus, ConfidenceLevel, DuplicateMatch, SelectedImages, DriveImage } from '../types';
-import { getDisplayName } from '../utils/employeeUtils';
+import { getDisplayName, extractLastName } from '../utils/employeeUtils';
 import { formatDateTime } from '../utils/dateFormat';
 import CallLogDisplay, { CallLogDisplayHandle } from '../components/CallLogDisplay';
 import CallRankingDisplay from '../components/CallRankingDisplay';
@@ -1127,6 +1127,9 @@ const CallModePage = () => {
   const [duplicatesLoading, setDuplicatesLoading] = useState(false);
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
   const [duplicatesWithDetails, setDuplicatesWithDetails] = useState<any[]>([]);
+  // 重複による除外確認（済 / 未）
+  const [duplicateExclusionChecked, setDuplicateExclusionChecked] = useState(false);
+  const [savingDuplicateExclusion, setSavingDuplicateExclusion] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
   // ドキュメントモーダル用の状態
@@ -2593,9 +2596,11 @@ const CallModePage = () => {
           setEmployees(employeesData as any);
           setActiveEmployees(employeesData);
           // ログインユーザー名をemployeesリストから設定（リマインドSMS/メール差出人名用）
+          // ⚠️ employees.name は「国広智子」のような姓名フルなので、
+          //    SMS/メール本文には名字だけを差し込む（例: 国広智子 → 国広、裏天真 → 裏）
           if (employee?.email) {
             const me = (employeesData as any[]).find((e: any) => e.email?.toLowerCase() === employee.email?.toLowerCase());
-            if (me?.name) setMyLastName(me.name);
+            if (me?.name) setMyLastName(extractLastName(me.name));
           }
         }).catch((err) => {
           console.error('Failed to load employees:', err);
@@ -2787,6 +2792,34 @@ const CallModePage = () => {
       setDetailsError('詳細情報の取得に失敗しました');
     } finally {
       setDetailsLoading(false);
+    }
+  };
+
+  // 売主データから重複による除外確認の状態を同期
+  useEffect(() => {
+    setDuplicateExclusionChecked(seller?.duplicateExclusionChecked === true);
+  }, [seller?.id, seller?.duplicateExclusionChecked]);
+
+  // 重複による除外確認を「済 / 未」に切り替える
+  const handleSetDuplicateExclusionChecked = async (checked: boolean) => {
+    if (!id || savingDuplicateExclusion) return;
+
+    // 楽観的に反映（失敗したら元に戻す）
+    const previous = duplicateExclusionChecked;
+    setDuplicateExclusionChecked(checked);
+    setSavingDuplicateExclusion(true);
+
+    try {
+      await api.put(`/api/sellers/${id}`, {
+        duplicateExclusionChecked: checked,
+        duplicateExclusionCheckedBy: employee?.initials || undefined,
+      });
+    } catch (error) {
+      console.error('Failed to update duplicateExclusionChecked:', error);
+      setDuplicateExclusionChecked(previous);
+      alert('重複による除外確認の保存に失敗しました');
+    } finally {
+      setSavingDuplicateExclusion(false);
     }
   };
 
@@ -4681,9 +4714,11 @@ HP：https://ifoo-oita.com/
    */
   const resolveStaffGreeting = (text: string, sellerNumber: string, lastName: string): string => {
     const hasFI = sellerNumber.toUpperCase().includes('FI');
+    // フルネームが渡ってきても名字だけに丸める（国広智子 → 国広、裏天真 → 裏）
+    const lastNameOnly = extractLastName(lastName);
     const greeting = hasFI
-      ? (lastName ? `くじら不動産の${lastName}です` : '株式会社くじら不動産です')
-      : (lastName ? `株式会社いふうの${lastName}です` : '株式会社いふうです');
+      ? (lastNameOnly ? `くじら不動産の${lastNameOnly}です` : '株式会社くじら不動産です')
+      : (lastNameOnly ? `株式会社いふうの${lastNameOnly}です` : '株式会社いふうです');
     return text.replace(/<<担当者名字あいさつ>>/g, greeting);
   };
 
@@ -6956,12 +6991,40 @@ HP：https://ifoo-oita.com/
                       })()}
                     </Typography>
                   </Typography>
-                  {/* 重複インジケーター */}
+                  {/* 重複インジケーター + 重複による除外確認 */}
                   {!duplicatesLoading && duplicates.length > 0 && (
-                    <DuplicateIndicatorBadge
-                      duplicateCount={duplicates.length}
-                      onClick={handleOpenDuplicateModal}
-                    />
+                    <>
+                      <DuplicateIndicatorBadge
+                        duplicateCount={duplicates.length}
+                        onClick={handleOpenDuplicateModal}
+                        checked={duplicateExclusionChecked}
+                      />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, ml: 1.5 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                          重複による除外確認しましたか？
+                        </Typography>
+                        <Button
+                          size="small"
+                          variant={duplicateExclusionChecked ? 'contained' : 'outlined'}
+                          color="success"
+                          disabled={savingDuplicateExclusion}
+                          onClick={() => handleSetDuplicateExclusionChecked(true)}
+                          sx={{ minWidth: 48, py: 0.25 }}
+                        >
+                          済
+                        </Button>
+                        <Button
+                          size="small"
+                          variant={!duplicateExclusionChecked ? 'contained' : 'outlined'}
+                          color="warning"
+                          disabled={savingDuplicateExclusion}
+                          onClick={() => handleSetDuplicateExclusionChecked(false)}
+                          sx={{ minWidth: 48, py: 0.25 }}
+                        >
+                          未
+                        </Button>
+                      </Box>
+                    </>
                   )}
                   </Box>
                 )}

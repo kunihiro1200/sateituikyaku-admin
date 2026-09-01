@@ -3254,7 +3254,7 @@ export class BuyerService {
 
     const assigneePriorityMap = new Map<string, number>();
     const knownAssigneePriorities: Record<string, number> = {
-      'Y': 23, 'W': 24, 'U': 25, '生': 26, 'K': 27, '久': 28, 'I': 29, 'R': 30
+      'Y': 23, 'W': 24, 'U': 25, 'K': 26, '久': 27, 'I': 28, 'R': 29
     };
     let dynamicPriority = 31;
 
@@ -3332,7 +3332,7 @@ export class BuyerService {
       // まず担当(X)を全て収集してpriorityを割り当て
       const assigneePriorityMap = new Map<string, number>();
       const knownAssigneePriorities: Record<string, number> = {
-        'Y': 23, 'W': 24, 'U': 25, '生': 26, 'K': 27, '久': 28, 'I': 29, 'R': 30
+        'Y': 23, 'W': 24, 'U': 25, 'K': 26, '久': 27, 'I': 28, 'R': 29
       };
       let dynamicPriority = 31;
 
