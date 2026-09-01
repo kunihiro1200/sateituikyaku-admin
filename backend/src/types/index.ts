@@ -217,6 +217,10 @@ export interface Seller {
   duplicateConfirmed?: boolean;
   duplicateConfirmedAt?: Date;
   duplicateConfirmedBy?: string;
+  /** 重複による除外確認が済んでいるか（通話モードの済/未ボタン） */
+  duplicateExclusionChecked?: boolean;
+  duplicateExclusionCheckedAt?: Date;
+  duplicateExclusionCheckedBy?: string;
   duplicateMatches?: DuplicateMatch[];
   
   // 物件情報（オプション）

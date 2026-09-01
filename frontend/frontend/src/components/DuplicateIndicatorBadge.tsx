@@ -5,6 +5,11 @@ import { keyframes } from '@mui/system';
 interface DuplicateIndicatorBadgeProps {
   duplicateCount: number;
   onClick: () => void;
+  /**
+   * 重複による除外確認が済んでいるか。
+   * true の場合は光らせず（アニメーション停止）グレー表示にする。
+   */
+  checked?: boolean;
 }
 
 // スケールと影で目立つパルスアニメーション
@@ -26,6 +31,7 @@ const pulse = keyframes`
 const DuplicateIndicatorBadge: React.FC<DuplicateIndicatorBadgeProps> = ({
   duplicateCount,
   onClick,
+  checked = false,
 }) => {
   const [clicked, setClicked] = useState(false);
 
@@ -37,7 +43,8 @@ const DuplicateIndicatorBadge: React.FC<DuplicateIndicatorBadgeProps> = ({
   return (
     <Chip
       label={`重複 (${duplicateCount})`}
-      color="warning"
+      // 確認済みはグレー、未確認はオレンジ
+      color={checked ? 'default' : 'warning'}
       onClick={handleClick}
       sx={{
         ml: 1,
@@ -46,8 +53,15 @@ const DuplicateIndicatorBadge: React.FC<DuplicateIndicatorBadgeProps> = ({
         fontSize: '0.9rem',
         height: '34px',
         px: 0.5,
-        // クリック前はアニメーション、クリック後は停止
-        animation: clicked ? 'none' : `${pulse} 1.4s ease-in-out infinite`,
+        // 確認済みはグレー固定
+        ...(checked
+          ? {
+              bgcolor: 'grey.400',
+              color: 'grey.900',
+            }
+          : {}),
+        // 確認済み or クリック後はアニメーション停止
+        animation: checked || clicked ? 'none' : `${pulse} 1.4s ease-in-out infinite`,
         '& .MuiChip-label': {
           px: 1.5,
         },

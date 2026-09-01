@@ -711,6 +711,21 @@ export class SellerService extends BaseRepository {
       updates.inquiry_detailed_datetime = (data as any).inquiryDetailedDateTime || null;
     }
 
+    // 重複による除外確認（通話モードの「済 / 未」ボタン）
+    // ⚠️ duplicate_confirmed（転記時に自動で付く重複フラグ）とは別物
+    if ((data as any).duplicateExclusionChecked !== undefined) {
+      const checked = (data as any).duplicateExclusionChecked === true;
+      updates.duplicate_exclusion_checked = checked;
+      updates.duplicate_exclusion_checked_at = checked ? new Date() : null;
+      if ((data as any).duplicateExclusionCheckedBy !== undefined) {
+        updates.duplicate_exclusion_checked_by = checked
+          ? (data as any).duplicateExclusionCheckedBy
+          : null;
+      } else if (!checked) {
+        updates.duplicate_exclusion_checked_by = null;
+      }
+    }
+
     // 郵送ステータスフィールド
     if ((data as any).mailingStatus !== undefined) {
       updates.mailing_status = (data as any).mailingStatus;
@@ -2522,6 +2537,12 @@ export class SellerService extends BaseRepository {
         duplicateConfirmed: seller.duplicate_confirmed || false,
         duplicateConfirmedAt: seller.duplicate_confirmed_at ? new Date(seller.duplicate_confirmed_at) : undefined,
         duplicateConfirmedBy: seller.duplicate_confirmed_by,
+        // 重複による除外確認（通話モードの「済 / 未」ボタン）
+        duplicateExclusionChecked: seller.duplicate_exclusion_checked === true,
+        duplicateExclusionCheckedAt: seller.duplicate_exclusion_checked_at
+          ? new Date(seller.duplicate_exclusion_checked_at)
+          : undefined,
+        duplicateExclusionCheckedBy: seller.duplicate_exclusion_checked_by || undefined,
         fixedAssetTaxRoadPrice: seller.fixed_asset_tax_road_price,
         valuationAmount1: seller.valuation_amount_1,
         valuationAmount2: seller.valuation_amount_2,

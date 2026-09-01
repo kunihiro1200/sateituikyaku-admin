@@ -219,6 +219,10 @@ export interface Seller {
   duplicateConfirmed?: boolean;
   duplicateConfirmedAt?: string | Date;
   duplicateConfirmedBy?: string;
+  /** 重複による除外確認が済んでいるか（通話モードの済/未ボタン） */
+  duplicateExclusionChecked?: boolean;
+  duplicateExclusionCheckedAt?: string | Date;
+  duplicateExclusionCheckedBy?: string;
   lastCallDate?: string;
   
   // 物件関連フィールド（sellersテーブルに直接保存）
