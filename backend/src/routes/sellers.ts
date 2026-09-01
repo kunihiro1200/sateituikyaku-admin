@@ -2643,7 +2643,7 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
     // 対象売主のハッシュ + 物件住所を取得
     const { data: rawSeller, error: rawError } = await supabase
       .from('sellers')
-      .select('id, phone_number_hash, email_hash, property_address')
+      .select('id, phone_number_hash, email_hash, phone_number, email, property_address')
       .eq('id', id)
       .is('deleted_at', null)
       .single();
@@ -2654,7 +2654,42 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
       });
     }
 
-    const { phone_number_hash, email_hash, property_address } = rawSeller;
+    const { property_address } = rawSeller;
+    let { phone_number_hash, email_hash } = rawSeller;
+
+    // ─────────────────────────────────────────────────────────────────
+    // 🚨 プレースホルダー値をハッシュ照合から除外する（2026年8月修正）
+    //
+    // 電話番号欄に「不可」「NG」「なし」「不明」のような固定文字列が入っている
+    // レコードが多数あり、同じ文字列は同じハッシュになるため、
+    // 別人同士が「同一電話番号の重複」として大量に表示されてしまう。
+    //   例: 「不可」= 100件、「NG」= 15件が互いに重複扱いになっていた
+    // 実在する電話番号・メールアドレスの形式でない場合は照合しない。
+    // ─────────────────────────────────────────────────────────────────
+    {
+      const { decrypt: decryptForCheck } = await import('../utils/encryption');
+
+      const safeDecrypt = (value: string | null): string => {
+        if (!value) return '';
+        try {
+          return decryptForCheck(value) || '';
+        } catch {
+          return '';
+        }
+      };
+
+      const plainPhone = safeDecrypt(rawSeller.phone_number);
+      // 数字が10桁未満なら電話番号として成立しない（「不可」「NG」等）
+      if (plainPhone.replace(/[^0-9]/g, '').length < 10) {
+        phone_number_hash = null;
+      }
+
+      const plainEmail = safeDecrypt(rawSeller.email);
+      // メールアドレスの形式でなければ照合しない（「なし」等）
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(plainEmail)) {
+        email_hash = null;
+      }
+    }
 
     // 物件住所を正規化して比較用キーを作る
     // 名前・電話番号・メールが全て異なっても、同じ住所なら重複扱いにするため。
