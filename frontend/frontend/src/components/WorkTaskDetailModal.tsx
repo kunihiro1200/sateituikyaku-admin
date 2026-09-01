@@ -1393,7 +1393,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
 
     // サイト登録確認OK送信に値がある場合、確認後処理の全項目を必須チェック
-    if (!isEmpty(getValue('site_registration_ok_sent'))) {
+    // ただし「サイト登録確認OK送信」欄を今回変更したときのみ表示する
+    if (editedData.hasOwnProperty('site_registration_ok_sent') && !isEmpty(getValue('site_registration_ok_sent'))) {
       const missingFields: string[] = [];
       if (isEmpty(getValue('distribution_date'))) missingFields.push('配信日');
       if (isEmpty(getValue('property_file'))) missingFields.push('物件ファイル');
