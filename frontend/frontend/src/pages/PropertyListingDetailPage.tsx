@@ -538,7 +538,10 @@ export default function PropertyListingDetailPage() {
 
     let dataToSave = { ...editedData };
 
-    if (newSalesPrice !== undefined && newSalesPrice !== null && newSalesPrice !== oldSalesPrice) {
+    const isPriceReduced =
+      newSalesPrice !== undefined && newSalesPrice !== null && newSalesPrice !== oldSalesPrice;
+
+    if (isPriceReduced) {
       const initials = employee?.initials ?? '';
       const now = new Date();
       const dateStr = `${now.getMonth() + 1}/${now.getDate()}`;
@@ -554,6 +557,24 @@ export default function PropertyListingDetailPage() {
         dateStr
       );
       dataToSave = { ...dataToSave, price_reduction_history: updatedHistory };
+
+      // 値下げ予約を実行（値下げ済）した場合、予約日をクリアして「要値下げ」から外す。
+      // ユーザーが同じ編集で新しい予約日を明示的に設定した場合はその値を尊重する。
+      const userSetScheduledDate = editedData.price_reduction_scheduled_date !== undefined;
+      if (!userSetScheduledDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const currentScheduledDate = data?.price_reduction_scheduled_date
+          ? new Date(data.price_reduction_scheduled_date)
+          : null;
+        if (currentScheduledDate) {
+          currentScheduledDate.setHours(0, 0, 0, 0);
+        }
+        // 予約日が未設定、または今日以前（＝予約を消化した）の場合はクリア
+        if (currentScheduledDate && currentScheduledDate <= today) {
+          dataToSave = { ...dataToSave, price_reduction_scheduled_date: null };
+        }
+      }
     }
 
     try {
@@ -563,11 +584,13 @@ export default function PropertyListingDetailPage() {
         message: '価格情報を保存しました',
         severity: 'success',
       });
-      if (editedData.price_reduction_scheduled_date !== undefined) {
+      // 値下げ予約日が変更された（ユーザー編集 or 値下げ実行による自動クリア）場合、
+      // サイドバーの「要値下げ」件数を即時更新する
+      if ('price_reduction_scheduled_date' in dataToSave) {
         window.dispatchEvent(new CustomEvent('propertyPriceReductionUpdated', {
           detail: {
             propertyNumber,
-            priceReductionScheduledDate: editedData.price_reduction_scheduled_date
+            priceReductionScheduledDate: dataToSave.price_reduction_scheduled_date
           }
         }));
       }
