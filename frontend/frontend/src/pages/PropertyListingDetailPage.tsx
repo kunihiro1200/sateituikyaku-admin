@@ -557,23 +557,25 @@ export default function PropertyListingDetailPage() {
         dateStr
       );
       dataToSave = { ...dataToSave, price_reduction_history: updatedHistory };
+    }
 
-      // 値下げ予約を実行（値下げ済）した場合、予約日をクリアして「要値下げ」から外す。
-      // ユーザーが同じ編集で新しい予約日を明示的に設定した場合はその値を尊重する。
-      const userSetScheduledDate = editedData.price_reduction_scheduled_date !== undefined;
-      if (!userSetScheduledDate) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const currentScheduledDate = data?.price_reduction_scheduled_date
-          ? new Date(data.price_reduction_scheduled_date)
-          : null;
-        if (currentScheduledDate) {
-          currentScheduledDate.setHours(0, 0, 0, 0);
-        }
-        // 予約日が未設定、または今日以前（＝予約を消化した）の場合はクリア
-        if (currentScheduledDate && currentScheduledDate <= today) {
-          dataToSave = { ...dataToSave, price_reduction_scheduled_date: null };
-        }
+    // 値下げ予約を消化（値下げ済）したら予約日をクリアして「要値下げ」から外す。
+    // 予約日が今日以前（＝予約日が到来している）の状態で価格情報セクションを保存した場合、
+    // 売買価格の数値が変わっていなくても「値下げ対応が済んだ」とみなしてクリアする。
+    // ただしユーザーが同じ編集で新しい予約日を明示的に設定した場合はその値を尊重する。
+    const userSetScheduledDate = editedData.price_reduction_scheduled_date !== undefined;
+    if (!userSetScheduledDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const currentScheduledDate = data?.price_reduction_scheduled_date
+        ? new Date(data.price_reduction_scheduled_date)
+        : null;
+      if (currentScheduledDate) {
+        currentScheduledDate.setHours(0, 0, 0, 0);
+      }
+      // 予約日が今日以前（＝予約を消化した）の場合はクリア
+      if (currentScheduledDate && currentScheduledDate <= today) {
+        dataToSave = { ...dataToSave, price_reduction_scheduled_date: null };
       }
     }
 
