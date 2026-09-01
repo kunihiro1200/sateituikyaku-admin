@@ -4681,7 +4681,7 @@ https://docs.google.com/document/d/12vr8d5TQ-fWd7kQeOFmBe6Dd5kbt1dqaU0cjO9y2xnI/
           {/* 仲介手数料（買）: 専任両手・一般両手・他社片手の場合のみ表示 */}
           {(() => {
             const ct = getValue('contract_type') || '';
-            const showBuyer = ct === '専任両手' || ct === '一般両手' || ct === '他社片手';
+            const showBuyer = ct === '専任両手' || ct === '一般両手' || ct === '他社片手' || ct === '他社物件片手';
             return showBuyer ? (
               <EditableField label="仲介手数料（買）" field="brokerage_fee_buyer" type="number" />
             ) : null;
@@ -4702,7 +4702,7 @@ https://docs.google.com/document/d/12vr8d5TQ-fWd7kQeOFmBe6Dd5kbt1dqaU0cjO9y2xnI/
           {/* 通常仲介手数料（買）: 専任両手・一般両手・他社片手・自社含む の場合のみ表示（読み取り専用） */}
           {(() => {
             const ct = getValue('contract_type') || '';
-            const showBuyer = ct === '専任両手' || ct === '一般両手' || ct === '他社片手' || ct.includes('自社');
+            const showBuyer = ct === '専任両手' || ct === '一般両手' || ct === '他社片手' || ct === '他社物件片手' || ct.includes('自社');
             return showBuyer ? (
               <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
                 <Grid item xs={4}>
