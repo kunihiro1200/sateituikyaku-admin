@@ -4678,14 +4678,8 @@ https://docs.google.com/document/d/12vr8d5TQ-fWd7kQeOFmBe6Dd5kbt1dqaU0cjO9y2xnI/
           <EditableField label="決済予定月" field="settlement_scheduled_month" />
           <EditableField label="売買価格" field="sales_price" type="number" />
           <EditableField label="仲介手数料（売）" field="brokerage_fee_seller" type="number" />
-          {/* 仲介手数料（買）: 専任両手・一般両手・他社片手の場合のみ表示 */}
-          {(() => {
-            const ct = getValue('contract_type') || '';
-            const showBuyer = ct === '専任両手' || ct === '一般両手' || ct === '他社片手' || ct === '他社物件片手';
-            return showBuyer ? (
-              <EditableField label="仲介手数料（買）" field="brokerage_fee_buyer" type="number" />
-            ) : null;
-          })()}
+          {/* 仲介手数料（買）: 契約形態に関係なく常に入力可能 */}
+          <EditableField label="仲介手数料（買）" field="brokerage_fee_buyer" type="number" />
           {/* 通常仲介手数料（売）: 読み取り専用（売買価格から自動計算） */}
           <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
             <Grid item xs={4}>
@@ -4699,25 +4693,19 @@ https://docs.google.com/document/d/12vr8d5TQ-fWd7kQeOFmBe6Dd5kbt1dqaU0cjO9y2xnI/
               </Typography>
             </Grid>
           </Grid>
-          {/* 通常仲介手数料（買）: 専任両手・一般両手・他社片手・自社含む の場合のみ表示（読み取り専用） */}
-          {(() => {
-            const ct = getValue('contract_type') || '';
-            const showBuyer = ct === '専任両手' || ct === '一般両手' || ct === '他社片手' || ct === '他社物件片手' || ct.includes('自社');
-            return showBuyer ? (
-              <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
-                <Grid item xs={4}>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>通常仲介手数料（買）</Typography>
-                </Grid>
-                <Grid item xs={8}>
-                  <Typography variant="body2" sx={{ px: 1.5, py: 1, bgcolor: '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0', color: 'text.secondary' }}>
-                    {getValue('standard_brokerage_fee_buyer') != null && getValue('standard_brokerage_fee_buyer') !== ''
-                      ? Math.round(Number(getValue('standard_brokerage_fee_buyer'))).toLocaleString()
-                      : '—'}
-                  </Typography>
-                </Grid>
-              </Grid>
-            ) : null;
-          })()}
+          {/* 通常仲介手数料（買）: 契約形態に関係なく常に表示（読み取り専用） */}
+          <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+            <Grid item xs={4}>
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>通常仲介手数料（買）</Typography>
+            </Grid>
+            <Grid item xs={8}>
+              <Typography variant="body2" sx={{ px: 1.5, py: 1, bgcolor: '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0', color: 'text.secondary' }}>
+                {getValue('standard_brokerage_fee_buyer') != null && getValue('standard_brokerage_fee_buyer') !== ''
+                  ? Math.round(Number(getValue('standard_brokerage_fee_buyer'))).toLocaleString()
+                  : '—'}
+              </Typography>
+            </Grid>
+          </Grid>
           <EditableButtonSelect label="キャンペーン" field="campaign" options={['あり', 'なし']} />
           {/* 減額理由他: AND(売買契約締め日が入力済み かつ >2025/9/1, OR(仲介手数料（買）or（売）入力済み), OR(通常仲介手数料と異なる)) */}
           {(() => {
@@ -4747,14 +4735,8 @@ https://docs.google.com/document/d/12vr8d5TQ-fWd7kQeOFmBe6Dd5kbt1dqaU0cjO9y2xnI/
             );
           })()}
           <EditableButtonSelect label="売・支払方法" field="seller_payment_method" options={['振込', '現金', '他']} />
-          {/* 買・支払方法: 専任両手・一般両手・他社片手の場合のみ表示 */}
-          {(() => {
-            const ct = getValue('contract_type') || '';
-            const showBuyer = ct === '専任両手' || ct === '一般両手' || ct === '他社片手';
-            return showBuyer ? (
-              <EditableButtonSelect label="買・支払方法" field="buyer_payment_method" options={['振込', '現金', '他']} />
-            ) : null;
-          })()}
+          {/* 買・支払方法: 契約形態に関係なく常に入力可能 */}
+          <EditableButtonSelect label="買・支払方法" field="buyer_payment_method" options={['振込', '現金', '他']} />
           {/* 入金確認（売）: 決済日>2025/10/20 かつ 決済完了チャット入力済みの場合は必須・ハイライト */}
           {(() => {
             const settlementDate = getValue('settlement_date');
@@ -4771,14 +4753,8 @@ https://docs.google.com/document/d/12vr8d5TQ-fWd7kQeOFmBe6Dd5kbt1dqaU0cjO9y2xnI/
               />
             );
           })()}
-          {/* 入金確認（買）: 専任両手・一般両手・他社片手の場合のみ表示 */}
-          {(() => {
-            const ct = getValue('contract_type') || '';
-            const showBuyer = ct === '専任両手' || ct === '一般両手' || ct === '他社片手';
-            return showBuyer ? (
-              <EditableButtonSelect label="入金確認（買）" field="payment_confirmed_buyer" options={['確認済み', '未']} />
-            ) : null;
-          })()}
+          {/* 入金確認（買）: 契約形態に関係なく常に入力可能 */}
+          <EditableButtonSelect label="入金確認（買）" field="payment_confirmed_buyer" options={['確認済み', '未']} />
           <EditableButtonSelect label="経理確認済み" field="accounting_confirmed" options={['未', '済']} />
         </Box>
         <Box sx={{ bgcolor: '#e8f5e9', borderRadius: 1, p: 1, mb: 1 }}>
