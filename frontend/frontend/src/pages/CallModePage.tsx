@@ -6314,16 +6314,21 @@ HP：https://ifoo-oita.com/
                 size="small"
                 onClick={async () => {
                   if (!seller?.id) return;
+                  const newValue = !seller?.visitCalendarConfirmed;
+                  // 楽観的更新: API応答を待たずに即時反映する
+                  setSeller((prev: any) =>
+                    prev ? { ...prev, visitCalendarConfirmed: newValue } : prev
+                  );
                   try {
-                    const newValue = !seller?.visitCalendarConfirmed;
                     await api.put(`/api/sellers/${seller.id}`, {
                       visitCalendarConfirmed: newValue,
                     });
-                    setSeller((prev: any) =>
-                      prev ? { ...prev, visitCalendarConfirmed: newValue } : prev
-                    );
                   } catch (err) {
                     console.error('訪問カレンダー確認保存エラー:', err);
+                    // 保存失敗時は表示を元に戻す
+                    setSeller((prev: any) =>
+                      prev ? { ...prev, visitCalendarConfirmed: !newValue } : prev
+                    );
                   }
                 }}
                 sx={{ height: 'fit-content', whiteSpace: 'nowrap' }}
