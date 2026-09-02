@@ -1046,6 +1046,7 @@ export class SellerService extends BaseRepository {
       'valuation_amount_1', 'valuation_amount_2', 'valuation_amount_3',
       'valuation_method', 'mailing_status', 'pinrich_status',
       'contract_year_month', 'exclusive_other_decision_meeting', 'visit_reminder_assignee',
+      'visit_calendar_confirmed',
     ];
     return sidebarFields.some(field => field in updates);
   }
