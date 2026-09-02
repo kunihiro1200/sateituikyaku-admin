@@ -20,6 +20,7 @@ const VIEWING_PREP_UNCONFIRMED_START_DATE = '2026-09-03';
  * 条件:
  * - viewing_date が入力済み
  * - viewing_date が 2026-09-04 以降
+ * - 物件番号が「FI」始まり（福岡物件）ではない
  * - 今日が内覧準備の締切日（内覧日の前日、木曜内覧のみ2日前=火曜）以降
  * - viewing_prep_calendar_confirmed_at が未入力（「カレンダー●OK」ボタンが押されていない）
  * - 内覧当日を過ぎても表示は消さない（締切日以降は恒久的にtrueのまま）
@@ -28,6 +29,9 @@ function isViewingPrepUnconfirmed(buyer: any): boolean {
   if (!buyer.viewing_date) return false;
   if (buyer.viewing_prep_calendar_confirmed_at) return false;
   if (String(buyer.viewing_date).substring(0, 10) < VIEWING_PREP_UNCONFIRMED_START_DATE) return false;
+  // FI物件（福岡物件）は除外
+  const firstPropertyNumber = buyer.property_number ? String(buyer.property_number).split(',')[0].trim() : '';
+  if (/^FI\d+/i.test(firstPropertyNumber)) return false;
   return isOnOrAfterViewingPrepDeadline(buyer.viewing_date);
 }
 
