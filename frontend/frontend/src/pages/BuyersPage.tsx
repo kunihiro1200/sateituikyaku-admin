@@ -67,6 +67,43 @@ function normalizeSearch(str: string): string {
     .trim();
 }
 
+// 内覧準備資料未カテゴリの適用開始日（この日以降の内覧日にのみ適用する）
+const VIEWING_PREP_UNCONFIRMED_START_DATE = '2026-09-04';
+
+/**
+ * 「内覧準備資料未」かどうかを判定（BuyerService の isViewingPrepUnconfirmed と同じロジック）
+ * - 内覧日が入力済み、かつ 2026-09-04 以降
+ * - viewing_prep_calendar_confirmed_at が未入力（「カレンダー●OK」ボタン未押下）
+ * - 今日が締切日（内覧日の前日、木曜内覧のみ2日前=火曜）以降
+ * - 締切日を過ぎたら内覧当日以降も表示は消さない
+ */
+function isViewingPrepUnconfirmedFrontend(buyer: { viewing_date?: string | null; viewing_prep_calendar_confirmed_at?: string | null }): boolean {
+  if (!buyer.viewing_date) return false;
+  if (buyer.viewing_prep_calendar_confirmed_at) return false;
+  if (String(buyer.viewing_date).substring(0, 10) < VIEWING_PREP_UNCONFIRMED_START_DATE) return false;
+
+  const dateStr = buyer.viewing_date;
+  const parts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-');
+  if (parts.length < 3) return false;
+  const viewingDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2].substring(0, 2)));
+  viewingDate.setHours(0, 0, 0, 0);
+  if (isNaN(viewingDate.getTime())) return false;
+
+  // JST で今日の日付を取得
+  const now = new Date();
+  const jstOffset = 9 * 60 * 60000;
+  const today = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + jstOffset);
+  today.setHours(0, 0, 0, 0);
+
+  const dayOfWeek = viewingDate.getDay(); // 0=日, 4=木
+  const daysBeforeDeadline = dayOfWeek === 4 ? 2 : 1;
+  const deadlineDate = new Date(viewingDate);
+  deadlineDate.setDate(viewingDate.getDate() - daysBeforeDeadline);
+  deadlineDate.setHours(0, 0, 0, 0);
+
+  return today.getTime() >= deadlineDate.getTime();
+}
+
 export default function BuyersPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -219,6 +256,10 @@ export default function BuyersPage() {
                 } else if (selectedCalculatedStatus === 'viewingUnconfirmed') {
                   // 内覧未確定: viewing_unconfirmed = '未確定'
                   return b.viewing_unconfirmed === '未確定';
+                } else if (selectedCalculatedStatus === 'viewingPrepUnconfirmed') {
+                  // 内覧準備資料未: viewing_date(2026-09-04以降)が締切日（前日、木曜内覧は2日前）を過ぎても
+                  // viewing_prep_calendar_confirmed_at が未入力（バックエンドと同じロジック）
+                  return isViewingPrepUnconfirmedFrontend(b);
                 } else if (selectedCalculatedStatus.startsWith('viewingPostInput:')) {
                   // 内覧後未入力(担当者別): calculated_status = 「R_内覧後未入力」など
                   const assignee = selectedCalculatedStatus.replace('viewingPostInput:', '');
@@ -331,6 +372,7 @@ export default function BuyersPage() {
             'viewingSurveyUnchecked',      // 内覧アンケート未
             'viewingUnconfirmed',          // 内覧未確定
             'sellerViewingContactPending', // 売主内覧連絡未
+            'viewingPrepUnconfirmed',      // 内覧準備資料未
           ];
           if (backendEnglishKeyCategories.includes(selectedCalculatedStatus)) {
             quickParams.calculatedStatus = selectedCalculatedStatus;

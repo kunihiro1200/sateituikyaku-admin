@@ -53,6 +53,7 @@ import RelatedBuyerNotificationBadge from '../components/RelatedBuyerNotificatio
 import { ConfirmationToAssignee } from '../components/ConfirmationToAssignee';
 import BuyerGmailSendButton from '../components/BuyerGmailSendButton';
 import { ViewingPreparationButton } from '../components/ViewingPreparationButton';
+import { ViewingPrepCalendarOkButton } from '../components/ViewingPrepCalendarOkButton';
 
 import { SmsDropdownButton } from '../components/SmsDropdownButton';
 import PageNavigation from '../components/PageNavigation';
@@ -1689,6 +1690,14 @@ export default function BuyerDetailPage() {
         </Box>
 
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* カレンダー●OKボタン（内覧準備ボタンの左隣） */}
+          <ViewingPrepCalendarOkButton
+            buyerNumber={buyer?.buyer_number}
+            confirmedAt={buyer?.viewing_prep_calendar_confirmed_at}
+            onConfirmedChange={(newValue) => {
+              setBuyer(prev => prev ? { ...prev, viewing_prep_calendar_confirmed_at: newValue } as Buyer : prev);
+            }}
+          />
           {/* 内覧準備ボタン */}
           <ViewingPreparationButton
             buyerNumber={buyer?.buyer_number}

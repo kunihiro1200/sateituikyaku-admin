@@ -205,3 +205,40 @@ export function isAfterOrEqual(
   if (isNaN(compDate.getTime())) return false;
   return targetDate >= compDate;
 }
+
+/**
+ * 内覧準備の締切日（YYYY-MM-DD、JST）を計算する。
+ * - 通常: 内覧日の1日前
+ * - 木曜内覧のみ: 内覧日の2日前（水曜定休のため火曜に締切とする）
+ */
+export function getViewingPrepDeadlineDateStr(
+  viewingDate: Date | string | null | undefined
+): string | null {
+  if (!viewingDate) return null;
+  const targetDate = parseDateLocal(viewingDate);
+  if (isNaN(targetDate.getTime())) return null;
+
+  const dayOfWeek = getDayOfWeek(viewingDate);
+  const daysBefore = dayOfWeek === '木曜日' ? 2 : 1;
+
+  const deadline = new Date(targetDate);
+  deadline.setUTCDate(deadline.getUTCDate() - daysBefore);
+
+  const year = deadline.getUTCFullYear();
+  const month = String(deadline.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(deadline.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * 今日が内覧準備の締切日以降かどうかを判定する。
+ * 締切日を過ぎた後（内覧当日を過ぎても）ずっと true を返す。
+ * 「内覧準備資料未」カテゴリの判定に使用する。
+ */
+export function isOnOrAfterViewingPrepDeadline(
+  viewingDate: Date | string | null | undefined
+): boolean {
+  const deadlineStr = getViewingPrepDeadlineDateStr(viewingDate);
+  if (!deadlineStr) return false;
+  return getTodayJST() >= deadlineStr;
+}

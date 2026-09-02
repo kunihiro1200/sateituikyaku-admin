@@ -35,6 +35,7 @@ interface CategoryCounts {
   viewingSurveyUnchecked?: number;  // 内覧アンケート未確認
   viewingUnconfirmed?: number;  // 内覧未確定
   sellerViewingContactPending?: number;  // 売主内覧連絡未
+  viewingPrepUnconfirmed?: number;  // 内覧準備資料未
   viewingPostInputCounts?: Record<string, number>;  // 内覧後未入力（担当者別）
   // 🆕 持ち家ヒアリング統計（月別×担当別）
   homeHearingMonthlyStats?: Record<string, {
@@ -116,6 +117,8 @@ function getCategoryColor(category: string): string {
       return '#d32f2f'; // 赤
     case 'sellerViewingContactPending':
       return '#d32f2f'; // 赤
+    case 'viewingPrepUnconfirmed':
+      return '#d32f2f'; // 赤
     default:
       if (category.startsWith('nextCallDateBlank:')) {
         return '#d32f2f'; // 赤
@@ -166,6 +169,8 @@ function getCategoryLabel(category: string): string {
       return '内覧未確定';
     case 'sellerViewingContactPending':
       return '売主内覧連絡未';
+    case 'viewingPrepUnconfirmed':
+      return '内覧準備資料未';
     default:
       if (category.startsWith('nextCallDateBlank:')) {
         return `次電日空欄(${category.replace('nextCallDateBlank:', '')})`;
@@ -310,6 +315,7 @@ export default function BuyerStatusSidebar({
     'viewingSurveyUnchecked',
     'viewingUnconfirmed',
     'sellerViewingContactPending',
+    'viewingPrepUnconfirmed',
   ];
   
   newCategories.forEach(key => {

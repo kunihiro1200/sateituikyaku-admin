@@ -9,7 +9,27 @@ import { GoogleSheetsClient } from './GoogleSheetsClient';
 import { BuyerNumberSpreadsheetClient } from './BuyerNumberSpreadsheetClient';
 import { calculateBuyerStatus } from './BuyerStatusCalculator';
 import { STATUS_DEFINITIONS } from '../config/buyer-status-definitions';
+import { isOnOrAfterViewingPrepDeadline } from '../utils/dateHelpers';
 import NodeCache from 'node-cache';
+
+// 内覧準備資料未カテゴリの適用開始日（この日以降の内覧日にのみ適用する）
+const VIEWING_PREP_UNCONFIRMED_START_DATE = '2026-09-04';
+
+/**
+ * 「内覧準備資料未」カテゴリの判定
+ * 条件:
+ * - viewing_date が入力済み
+ * - viewing_date が 2026-09-04 以降
+ * - 今日が内覧準備の締切日（内覧日の前日、木曜内覧のみ2日前=火曜）以降
+ * - viewing_prep_calendar_confirmed_at が未入力（「カレンダー●OK」ボタンが押されていない）
+ * - 内覧当日を過ぎても表示は消さない（締切日以降は恒久的にtrueのまま）
+ */
+function isViewingPrepUnconfirmed(buyer: any): boolean {
+  if (!buyer.viewing_date) return false;
+  if (buyer.viewing_prep_calendar_confirmed_at) return false;
+  if (String(buyer.viewing_date).substring(0, 10) < VIEWING_PREP_UNCONFIRMED_START_DATE) return false;
+  return isOnOrAfterViewingPrepDeadline(buyer.viewing_date);
+}
 
 // モジュールレベルのキャッシュ（Vercelサーバーレス環境でもインスタンス間で共有される）
 // インスタンス変数だとリクエストごとにリセットされるため、モジュールレベルに移動
@@ -925,7 +945,7 @@ export class BuyerService {
    */
   private shouldUpdateBuyerSidebarCounts(updateData: Partial<any>): boolean {
     // サイドバーカテゴリーに影響するフィールド
-    const sidebarFields = ['next_call_date', 'follow_up_assignee', 'project_assignee', 'viewing_date', 'notification_sender', 'inquiry_email_phone', 'pinrich', 'inquiry_source', 'latest_status', 'broker_inquiry', 'pinrich_500man_registration', 'viewing_survey_result', 'viewing_survey_confirmed', 'vendor_survey', 'viewing_type_general', 'post_viewing_seller_contact', 'atbb_status', 'viewing_promotion_not_needed', 'viewing_promotion_sender', 'inquiry_confidence', 'inquiry_email_reply', 'three_call_unchecked', 'seller_viewing_date_contact', 'other_company_property', 'one_week_call_confirmed', 'one_month_call_confirmed'];
+    const sidebarFields = ['next_call_date', 'follow_up_assignee', 'project_assignee', 'viewing_date', 'notification_sender', 'inquiry_email_phone', 'pinrich', 'inquiry_source', 'latest_status', 'broker_inquiry', 'pinrich_500man_registration', 'viewing_survey_result', 'viewing_survey_confirmed', 'vendor_survey', 'viewing_type_general', 'post_viewing_seller_contact', 'atbb_status', 'viewing_promotion_not_needed', 'viewing_promotion_sender', 'inquiry_confidence', 'inquiry_email_reply', 'three_call_unchecked', 'seller_viewing_date_contact', 'other_company_property', 'one_week_call_confirmed', 'one_month_call_confirmed', 'viewing_prep_calendar_confirmed_at'];
     return sidebarFields.some(field => field in updateData);
   }
 
@@ -2237,6 +2257,7 @@ export class BuyerService {
       'viewing_survey_result', 'viewing_survey_confirmed',
       'seller_viewing_date_contact',
       'phone_contact_person', 'preferred_contact_time', 'contact_method',
+      'viewing_prep_calendar_confirmed_at',
     ].join(', ');
 
     // count クエリ・最初のバッチ・property_listings を全て並列実行
@@ -2531,6 +2552,7 @@ export class BuyerService {
       viewingSurveyUnchecked: 0,
       viewingUnconfirmed: 0,
       sellerViewingContactPending: 0,
+      viewingPrepUnconfirmed: 0,
       // 内覧後未入力（担当者別）
       viewingPostInputCounts: {} as Record<string, number>,
       // 🆕 持ち家ヒアリング統計（月別×担当別）
@@ -2596,6 +2618,12 @@ export class BuyerService {
       const isSurveyConfirmed = buyer.viewing_survey_confirmed && String(buyer.viewing_survey_confirmed).trim();
       if (hasSurveyResult && !isSurveyConfirmed) {
         result.viewingSurveyUnchecked++;
+      }
+
+      // 内覧準備資料未: viewing_date(2026-09-04以降)が締切日(前日、木曜内覧は2日前)を過ぎても
+      // viewing_prep_calendar_confirmed_at が未入力（「カレンダー●OK」ボタン未押下）
+      if (isViewingPrepUnconfirmed(buyer)) {
+        result.viewingPrepUnconfirmed++;
       }
 
       // ピンリッチ未登録
@@ -2749,6 +2777,7 @@ export class BuyerService {
       'owned_home_hearing_inquiry',
       'owned_home_hearing_result',
       'valuation_required',
+      'viewing_prep_calendar_confirmed_at',
     ].join(', ');
 
     // count クエリ・最初のバッチ・property_listings件数を並列実行
@@ -2906,6 +2935,7 @@ export class BuyerService {
         viewingSurveyUnchecked: 0,  // 内覧アンケート未確認
         viewingUnconfirmed: 0,  // 内覧未確定
         sellerViewingContactPending: 0,  // 売主内覧連絡未
+        viewingPrepUnconfirmed: 0,  // 内覧準備資料未
       };
       
       // 今日の日付（YYYY-MM-DD形式）
@@ -3018,6 +3048,14 @@ export class BuyerService {
         const isConfirmed = buyer.viewing_survey_confirmed && String(buyer.viewing_survey_confirmed).trim();
         if (hasSurveyResult && !isConfirmed) {
           result.viewingSurveyUnchecked++;
+        }
+      });
+
+      // 内覧準備資料未: viewing_date(2026-09-04以降)が締切日を過ぎても
+      // viewing_prep_calendar_confirmed_at が未入力（「カレンダー●OK」ボタン未押下）
+      allBuyers.forEach((buyer: any) => {
+        if (isViewingPrepUnconfirmed(buyer)) {
+          result.viewingPrepUnconfirmed++;
         }
       });
 
@@ -3493,6 +3531,12 @@ export class BuyerService {
           return buyer.viewing_date >= '2026-04-29';
         });
         console.log(`[getBuyersByStatus] sellerViewingContactPending フィルタ結果: ${filteredBuyers.length}件`);
+      } else if (status === 'viewingPrepUnconfirmed') {
+        // 内覧準備資料未: viewing_date(2026-09-04以降)が締切日（前日、木曜内覧は2日前）を過ぎても
+        // viewing_prep_calendar_confirmed_at が未入力
+        console.log(`[getBuyersByStatus] viewingPrepUnconfirmed カテゴリ検出`);
+        filteredBuyers = allBuyers.filter((buyer: any) => isViewingPrepUnconfirmed(buyer));
+        console.log(`[getBuyersByStatus] viewingPrepUnconfirmed フィルタ結果: ${filteredBuyers.length}件`);
       } else if (status === 'inquiryEmailUnanswered' || status === 'brokerInquiry' || 
                  status === 'generalViewingSellerContactPending' || status === 'viewingPromotionRequired') {
         // 新カテゴリの場合（2026年4月追加）- calculated_statusで直接フィルタリング
@@ -3889,6 +3933,7 @@ export class BuyerService {
       rows.push({ category: 'viewingSurveyUnchecked', count: categoryCounts.viewingSurveyUnchecked || 0, label: null, assignee: null, updated_at: now });
       rows.push({ category: 'viewingUnconfirmed', count: categoryCounts.viewingUnconfirmed || 0, label: null, assignee: null, updated_at: now });
       rows.push({ category: 'sellerViewingContactPending', count: categoryCounts.sellerViewingContactPending || 0, label: null, assignee: null, updated_at: now });
+      rows.push({ category: 'viewingPrepUnconfirmed', count: categoryCounts.viewingPrepUnconfirmed || 0, label: null, assignee: null, updated_at: now });
       
       // 担当別カテゴリ
       for (const [assignee, count] of Object.entries(categoryCounts.assignedCounts || {})) {
