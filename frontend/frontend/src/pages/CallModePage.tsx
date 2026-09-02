@@ -10428,7 +10428,9 @@ HP：https://ifoo-oita.com/
                       letterSpacing: '0.05em',
                     }}
                   >
-                    📮 査定書郵送？？
+                    {seller.valuationAmount1 != null && seller.valuationAmount1 <= 5000000
+                      ? '500万以下なので査定書は郵送しないでよいです'
+                      : '📮 査定書郵送？？'}
                   </Typography>
                 </Box>
               )}
