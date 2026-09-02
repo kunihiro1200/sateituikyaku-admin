@@ -1295,7 +1295,7 @@ export const filterSellersByCategory = (
 };
 
 // 訪問準備未カテゴリーの対象開始日（この日以降の訪問日のみ対象）
-const VISIT_PREPARATION_CUTOFF_DATE = '2026-09-04';
+const VISIT_PREPARATION_CUTOFF_DATE = '2026-09-03';
 
 /**
  * FI（福岡）売主かどうかを判定

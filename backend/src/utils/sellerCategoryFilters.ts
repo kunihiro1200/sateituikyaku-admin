@@ -85,7 +85,7 @@ export const isFiSeller = (s: SellerRow): boolean => {
 // ============================================================
 
 /** 訪問準備未カテゴリーの対象開始日（この日以降の訪問日のみ対象） */
-export const VISIT_PREPARATION_CUTOFF_DATE = '2026-09-04';
+export const VISIT_PREPARATION_CUTOFF_DATE = '2026-09-03';
 
 /**
  * TIMESTAMP/日付文字列から日付部分（YYYY-MM-DD）のみを抽出
