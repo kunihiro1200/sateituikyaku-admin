@@ -13,7 +13,7 @@ import { isOnOrAfterViewingPrepDeadline } from '../utils/dateHelpers';
 import NodeCache from 'node-cache';
 
 // 内覧準備資料未カテゴリの適用開始日（この日以降の内覧日にのみ適用する）
-const VIEWING_PREP_UNCONFIRMED_START_DATE = '2026-09-04';
+const VIEWING_PREP_UNCONFIRMED_START_DATE = '2026-09-03';
 
 /**
  * 「内覧準備資料未」カテゴリの判定
