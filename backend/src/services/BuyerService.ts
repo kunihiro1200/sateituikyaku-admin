@@ -19,7 +19,7 @@ const VIEWING_PREP_UNCONFIRMED_START_DATE = '2026-09-03';
  * 「内覧準備資料未」カテゴリの判定
  * 条件:
  * - viewing_date が入力済み
- * - viewing_date が 2026-09-04 以降
+ * - viewing_date が VIEWING_PREP_UNCONFIRMED_START_DATE 以降
  * - 物件番号が「FI」始まり（福岡物件）ではない
  * - 今日が内覧準備の締切日（内覧日の前日、木曜内覧のみ2日前=火曜）以降
  * - viewing_prep_calendar_confirmed_at が未入力（「カレンダー●OK」ボタンが押されていない）
@@ -2624,7 +2624,7 @@ export class BuyerService {
         result.viewingSurveyUnchecked++;
       }
 
-      // 内覧準備資料未: viewing_date(2026-09-04以降)が締切日(前日、木曜内覧は2日前)を過ぎても
+      // 内覧準備資料未: viewing_date(VIEWING_PREP_UNCONFIRMED_START_DATE以降)が締切日(前日、木曜内覧は2日前)を過ぎても
       // viewing_prep_calendar_confirmed_at が未入力（「カレンダー●OK」ボタン未押下）
       if (isViewingPrepUnconfirmed(buyer)) {
         result.viewingPrepUnconfirmed++;
@@ -3055,7 +3055,7 @@ export class BuyerService {
         }
       });
 
-      // 内覧準備資料未: viewing_date(2026-09-04以降)が締切日を過ぎても
+      // 内覧準備資料未: viewing_date(VIEWING_PREP_UNCONFIRMED_START_DATE以降)が締切日を過ぎても
       // viewing_prep_calendar_confirmed_at が未入力（「カレンダー●OK」ボタン未押下）
       allBuyers.forEach((buyer: any) => {
         if (isViewingPrepUnconfirmed(buyer)) {
@@ -3536,7 +3536,7 @@ export class BuyerService {
         });
         console.log(`[getBuyersByStatus] sellerViewingContactPending フィルタ結果: ${filteredBuyers.length}件`);
       } else if (status === 'viewingPrepUnconfirmed') {
-        // 内覧準備資料未: viewing_date(2026-09-04以降)が締切日（前日、木曜内覧は2日前）を過ぎても
+        // 内覧準備資料未: viewing_date(VIEWING_PREP_UNCONFIRMED_START_DATE以降)が締切日（前日、木曜内覧は2日前）を過ぎても
         // viewing_prep_calendar_confirmed_at が未入力
         console.log(`[getBuyersByStatus] viewingPrepUnconfirmed カテゴリ検出`);
         filteredBuyers = allBuyers.filter((buyer: any) => isViewingPrepUnconfirmed(buyer));

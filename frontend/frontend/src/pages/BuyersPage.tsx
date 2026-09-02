@@ -72,7 +72,7 @@ const VIEWING_PREP_UNCONFIRMED_START_DATE = '2026-09-03';
 
 /**
  * 「内覧準備資料未」かどうかを判定（BuyerService の isViewingPrepUnconfirmed と同じロジック）
- * - 内覧日が入力済み、かつ 2026-09-04 以降
+ * - 内覧日が入力済み、かつ VIEWING_PREP_UNCONFIRMED_START_DATE 以降
  * - 物件番号が「FI」始まり（福岡物件）ではない
  * - viewing_prep_calendar_confirmed_at が未入力（「カレンダー●OK」ボタン未押下）
  * - 今日が締切日（内覧日の前日、木曜内覧のみ2日前=火曜）以降
@@ -262,7 +262,7 @@ export default function BuyersPage() {
                   // 内覧未確定: viewing_unconfirmed = '未確定'
                   return b.viewing_unconfirmed === '未確定';
                 } else if (selectedCalculatedStatus === 'viewingPrepUnconfirmed') {
-                  // 内覧準備資料未: viewing_date(2026-09-04以降)が締切日（前日、木曜内覧は2日前）を過ぎても
+                  // 内覧準備資料未: viewing_date(VIEWING_PREP_UNCONFIRMED_START_DATE以降)が締切日（前日、木曜内覧は2日前）を過ぎても
                   // viewing_prep_calendar_confirmed_at が未入力（バックエンドと同じロジック）
                   return isViewingPrepUnconfirmedFrontend(b);
                 } else if (selectedCalculatedStatus.startsWith('viewingPostInput:')) {
