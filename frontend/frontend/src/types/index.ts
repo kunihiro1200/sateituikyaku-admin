@@ -179,6 +179,8 @@ export interface Seller {
   longTermEmailAssignee?: string;        // 除外前、長期客メール担当
   callReminderEmailAssignee?: string;    // 当社が電話したというリマインドメール担当
   visitReminderAssignee?: string;          // 訪問事前通知メール担当
+  visitCalendarConfirmed?: boolean;        // 訪問カレンダー確認済みフラグ（「訪問カレンダー●OK」ボタン）
+  visitCalendarConfirmedAt?: string | Date; // 訪問カレンダー確認日時
   exclusiveScript?: string;
   priceLossListEntered?: boolean;
   companyIntroduction?: string;

@@ -44,7 +44,7 @@ import { isVisitDayBefore as isVisitDayBeforeUtil, parseDate } from './sellerSta
 // general: 一般カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が一般媒介 + 契約年月 >= 2025/6/23）
 // visitOtherDecision: 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり）
 // unvisitedOtherDecision: 未訪問他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担なし）
-export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'pinrichChangeRequired' | 'exclusive' | 'general' | 'visitOtherDecision' | 'unvisitedOtherDecision' | 'matching'
+export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'pinrichChangeRequired' | 'exclusive' | 'general' | 'visitOtherDecision' | 'unvisitedOtherDecision' | 'matching' | 'visitPreparationPending'
   | `visitAssigned:${string}`        // 担当カテゴリー（例: visitAssigned:Y）
   | `todayCallAssigned:${string}`    // 当日TELサブカテゴリー（例: todayCallAssigned:Y）
   | `todayCallWithInfo:${string}`    // 当日TEL（内容）ラベル別カテゴリー（例: todayCallWithInfo:当日TEL(I・Eメール)）
@@ -79,6 +79,7 @@ export interface CategoryCounts {
   fi_unvaluated?: number;
   fi_mailingPending?: number;
   fi_todayCallWithInfoLabelCounts?: Record<string, number>;
+  visitPreparationPending?: number; // 訪問準備未（訪問カレンダー●OK未クリック）
 }
 
 /**
@@ -1213,6 +1214,7 @@ export const getCategoryCounts = (sellers: (Seller | any)[]): CategoryCounts => 
     general: sellers.filter(isGeneral).length,
     visitOtherDecision: sellers.filter(isVisitOtherDecision).length,
     unvisitedOtherDecision: sellers.filter(isUnvisitedOtherDecision).length,
+    visitPreparationPending: sellers.filter(isVisitPreparationPending).length,
   };
 };
 
@@ -1284,10 +1286,78 @@ export const filterSellersByCategory = (
       return sellers.filter(isVisitOtherDecision);
     case 'unvisitedOtherDecision':
       return sellers.filter(isUnvisitedOtherDecision);
+    case 'visitPreparationPending':
+      return sellers.filter(isVisitPreparationPending);
     case 'all':
     default:
       return sellers;
   }
+};
+
+// 訪問準備未カテゴリーの対象開始日（この日以降の訪問日のみ対象）
+const VISIT_PREPARATION_CUTOFF_DATE = '2026-09-04';
+
+/**
+ * FI（福岡）売主かどうかを判定
+ */
+const isFiSellerForPreparation = (seller: Seller | any): boolean => {
+  const num = (seller.sellerNumber || seller.seller_number || '').toString();
+  return num.toUpperCase().startsWith('FI');
+};
+
+/**
+ * 訪問日に対する通知日（前営業日）を計算
+ * 木曜訪問の場合は水曜が定休日のため2日前、それ以外は1日前
+ */
+const calculateVisitNotifyDateStr = (visitDateOnly: string): string | null => {
+  const parts = visitDateOnly.split('-');
+  if (parts.length !== 3) return null;
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+
+  const visitDateUTC = new Date(Date.UTC(year, month, day));
+  const dayOfWeek = visitDateUTC.getUTCDay();
+  const daysBefore = dayOfWeek === 4 ? 2 : 1; // 木曜(4)のみ2日前、それ以外は1日前
+  const notifyUTC = new Date(visitDateUTC);
+  notifyUTC.setUTCDate(visitDateUTC.getUTCDate() - daysBefore);
+  return `${notifyUTC.getUTCFullYear()}-${String(notifyUTC.getUTCMonth() + 1).padStart(2, '0')}-${String(notifyUTC.getUTCDate()).padStart(2, '0')}`;
+};
+
+/**
+ * 訪問準備未判定
+ *
+ * 【サイドバー表示】「訪問準備未」
+ *
+ * 条件（全て満たす必要あり）:
+ * - FI（福岡）売主ではない（seller_number が "FI" で始まらない）
+ * - visit_date が空欄でない
+ * - visit_date が 2026-09-04 以降
+ * - visitCalendarConfirmed が true ではない（「訪問カレンダー●OK」未クリック）
+ * - 今日が「通知日（訪問日の前営業日）」以降
+ *   - 通常: 訪問日の1日前以降
+ *   - 木曜訪問の場合: 2日前（水曜定休のため）以降
+ *
+ * @param seller 売主データ
+ * @returns 訪問準備未対象かどうか
+ */
+export const isVisitPreparationPending = (seller: Seller | any): boolean => {
+  if (isFiSellerForPreparation(seller)) return false;
+  if (seller.visitCalendarConfirmed === true) return false;
+
+  const visitDate = seller.visitDate || seller.visit_date;
+  if (!visitDate) return false;
+
+  const normalized = normalizeDateString(visitDate);
+  if (!normalized) return false;
+  if (normalized < VISIT_PREPARATION_CUTOFF_DATE) return false;
+
+  const notifyDate = calculateVisitNotifyDateStr(normalized);
+  if (!notifyDate) return false;
+
+  const todayStr = getTodayJSTString();
+  return todayStr >= notifyDate;
 };
 
 /**

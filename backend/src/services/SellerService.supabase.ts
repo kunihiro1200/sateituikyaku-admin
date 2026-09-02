@@ -26,6 +26,8 @@ import {
   isTodayCallWithInfo as sharedIsTodayCallWithInfo,
   isUnvaluated as sharedIsUnvaluated,
   getTodayCallWithInfoLabel as sharedGetTodayCallWithInfoLabel,
+  isVisitPreparationPending as sharedIsVisitPreparationPending,
+  VISIT_PREPARATION_CUTOFF_DATE,
 } from '../utils/sellerCategoryFilters';
 
 // モジュールレベルのインメモリキャッシュ（プロセス内で持続、Redis 不要）
@@ -858,6 +860,10 @@ export class SellerService extends BaseRepository {
     if ((data as any).visitThankYouSent !== undefined) {
       updates.visit_thank_you_sent = (data as any).visitThankYouSent;
     }
+    if ((data as any).visitCalendarConfirmed !== undefined) {
+      updates.visit_calendar_confirmed = (data as any).visitCalendarConfirmed;
+      updates.visit_calendar_confirmed_at = (data as any).visitCalendarConfirmed ? new Date() : null;
+    }
 
     if (Object.keys(updates).length === 0) {
       throw new Error('No fields to update');
@@ -1647,6 +1653,37 @@ export class SellerService extends BaseRepository {
           // match_updated_atがnullでない売主のみを取得（軽量実装）
           query = query.not('match_updated_at', 'is', null);
           break;
+        case 'visitPreparationPending': {
+          // 訪問準備未：FI売主除外 + 訪問日が対象開始日(2026-09-04)以降 + カレンダー未確認
+          // 通知日（前営業日、木曜訪問のみ2日前）以降の判定はDBで表現できないためJS側で処理
+          let vppCandidates: any[] = [];
+          let vppPage = 0;
+          const vppPageSize = 1000;
+          while (true) {
+            const { data, error } = await this.supabase
+              .from('sellers')
+              .select('id, seller_number, visit_date, visit_calendar_confirmed')
+              .is('deleted_at', null)
+              .not('visit_date', 'is', null)
+              .gte('visit_date', VISIT_PREPARATION_CUTOFF_DATE)
+              .not('seller_number', 'ilike', 'FI%')
+              .or('visit_calendar_confirmed.is.null,visit_calendar_confirmed.eq.false')
+              .order('id')
+              .range(vppPage * vppPageSize, (vppPage + 1) * vppPageSize - 1);
+            if (error) { console.error('❌ visitPreparationPending取得エラー:', error); break; }
+            if (!data || data.length === 0) break;
+            vppCandidates = vppCandidates.concat(data);
+            if (data.length < vppPageSize) break;
+            vppPage++;
+          }
+          const vppIds = vppCandidates
+            .filter(s => sharedIsVisitPreparationPending(s, todayJST))
+            .map(s => s.id);
+          query = vppIds.length === 0
+            ? query.eq('id', '00000000-0000-0000-0000-000000000000')
+            : query.in('id', vppIds);
+          break;
+        }
         default: {
           // visitAssigned:xxx または todayCallAssigned:xxx または todayCallWithInfo:xxx または fi:xxx の動的カテゴリ
           const dynamicCategory = statusCategory as string;
@@ -2126,7 +2163,8 @@ export class SellerService extends BaseRepository {
     // キャッシュに保存（インメモリ + Redis）
     // 日付依存カテゴリ（visitDayBefore等）はキャッシュしない（日付が変わると結果が変わるため）
     // visitThankYouPending はメール送信直後に消えるべきなのでキャッシュしない
-    const skipCache = statusCategory === 'visitDayBefore' || statusCategory === 'visitCompleted' || isLabelFilter ||
+    const skipCache = statusCategory === 'visitDayBefore' || statusCategory === 'visitCompleted' ||
+      statusCategory === 'visitPreparationPending' || isLabelFilter ||
       (typeof statusCategory === 'string' && statusCategory.startsWith('fi:')) ||
       (typeof statusCategory === 'string' && statusCategory.startsWith('visitThankYouPending:'));
     
@@ -2663,6 +2701,9 @@ export class SellerService extends BaseRepository {
         postalCode: seller.postal_code || undefined,
         // 訪問後お礼メール送信済みフラグ
         visitThankYouSent: seller.visit_thank_you_sent || false,
+        // 訪問カレンダー確認済みフラグ（「訪問カレンダー●OK」ボタン）
+        visitCalendarConfirmed: seller.visit_calendar_confirmed || false,
+        visitCalendarConfirmedAt: seller.visit_calendar_confirmed_at || undefined,
       };
       
       console.log(`[PERF] decryptSeller total: ${Date.now() - _dt0}ms`);
@@ -3029,6 +3070,7 @@ export class SellerService extends BaseRepository {
     fi_mailingPending: number;
     fi_todayCallWithInfoLabelCounts: Record<string, number>;
     visitThankYouPendingCounts: Record<string, number>;
+    visitPreparationPending: number;
   }> {
     try {
       // seller_sidebar_countsテーブルから全行を取得（updated_atも含めて取得）
@@ -3128,6 +3170,7 @@ export class SellerService extends BaseRepository {
       fi_mailingPending: getCount('fi_mailingPending'),
       fi_todayCallWithInfoLabelCounts,
       visitThankYouPendingCounts,
+      visitPreparationPending: getCount('visitPreparationPending'),
     };
   }
 
@@ -3161,6 +3204,7 @@ export class SellerService extends BaseRepository {
     fi_mailingPending: number;
     fi_todayCallWithInfoLabelCounts: Record<string, number>;
     visitThankYouPendingCounts: Record<string, number>;
+    visitPreparationPending: number;
   }> {
     // JST今日の日付を計算
     const now = new Date();
@@ -3559,6 +3603,28 @@ export class SellerService extends BaseRepository {
       return false;
     }).length;
 
+    // 訪問準備未カウント（FI売主除外・訪問日が対象開始日以降・カレンダー未確認）
+    let visitPreparationCandidates: any[] = [];
+    {
+      let vppPage = 0;
+      const vppPageSize = 1000;
+      while (true) {
+        const { data: vppData, error: vppError } = await this.table('sellers')
+          .select('id, seller_number, visit_date, visit_calendar_confirmed')
+          .is('deleted_at', null)
+          .not('visit_date', 'is', null)
+          .gte('visit_date', VISIT_PREPARATION_CUTOFF_DATE)
+          .not('seller_number', 'ilike', 'FI%')
+          .or('visit_calendar_confirmed.is.null,visit_calendar_confirmed.eq.false')
+          .range(vppPage * vppPageSize, (vppPage + 1) * vppPageSize - 1);
+        if (vppError || !vppData || vppData.length === 0) break;
+        visitPreparationCandidates = visitPreparationCandidates.concat(vppData);
+        if (vppData.length < vppPageSize) break;
+        vppPage++;
+      }
+    }
+    const visitPreparationPendingCount = visitPreparationCandidates.filter(s => sharedIsVisitPreparationPending(s, todayJST)).length;
+
     const sidebarResult = {
       todayCall: todayCallNoInfoCount || 0,
       todayCallWithInfo: todayCallWithInfoCount || 0,
@@ -3586,6 +3652,7 @@ export class SellerService extends BaseRepository {
       fi_mailingPending: fi_mailingPendingCount || 0,
       fi_todayCallWithInfoLabelCounts: fi_labelCountMap,
       visitThankYouPendingCounts: {},  // フォールバック時は空（seller_sidebar_countsテーブルから取得）
+      visitPreparationPending: visitPreparationPendingCount || 0,
     };
 
     console.log(`✅ [Performance] Sidebar counts calculation completed in ${Date.now() - startTime}ms`);

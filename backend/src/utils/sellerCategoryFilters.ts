@@ -42,6 +42,7 @@ export interface SellerRow {
   visit_reminder_assignee?: string | null;
   contract_year_month?: string | null;
   exclusive_other_decision_meeting?: string | null;
+  visit_calendar_confirmed?: boolean | null;
   [key: string]: any;
 }
 
@@ -77,6 +78,73 @@ export const hasContactInfo = (s: SellerRow): boolean => {
 export const isFiSeller = (s: SellerRow): boolean => {
   const num = (s.seller_number || '').toString();
   return num.startsWith('FI');
+};
+
+// ============================================================
+// 訪問準備未（visitPreparationPending）
+// ============================================================
+
+/** 訪問準備未カテゴリーの対象開始日（この日以降の訪問日のみ対象） */
+export const VISIT_PREPARATION_CUTOFF_DATE = '2026-09-04';
+
+/**
+ * TIMESTAMP/日付文字列から日付部分（YYYY-MM-DD）のみを抽出
+ */
+const extractDateOnly = (dateStr: string): string => {
+  if (dateStr.includes(' ')) return dateStr.split(' ')[0];
+  if (dateStr.includes('T')) return dateStr.split('T')[0];
+  return dateStr;
+};
+
+/**
+ * 訪問日に対する通知日（前営業日）を計算
+ * 木曜訪問の場合は水曜が定休日のため2日前、それ以外は1日前
+ */
+export const calculateVisitNotifyDate = (visitDateOnly: string): string | null => {
+  const parts = visitDateOnly.split('-');
+  if (parts.length !== 3) return null;
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+
+  const visitDateUTC = new Date(Date.UTC(year, month, day));
+  const dayOfWeek = visitDateUTC.getUTCDay();
+  const daysBefore = dayOfWeek === 4 ? 2 : 1; // 木曜(4)のみ2日前、それ以外は1日前
+  const notifyUTC = new Date(visitDateUTC);
+  notifyUTC.setUTCDate(visitDateUTC.getUTCDate() - daysBefore);
+  return `${notifyUTC.getUTCFullYear()}-${String(notifyUTC.getUTCMonth() + 1).padStart(2, '0')}-${String(notifyUTC.getUTCDate()).padStart(2, '0')}`;
+};
+
+/**
+ * 訪問準備未判定
+ *
+ * 【サイドバー表示】「訪問準備未」
+ *
+ * 条件（全て満たす必要あり）:
+ * - FI（福岡）売主ではない（seller_number が "FI" で始まらない）
+ * - visit_date が空欄でない
+ * - visit_date が 2026-09-04 以降
+ * - visit_calendar_confirmed が true ではない（「訪問カレンダー●OK」未クリック）
+ * - 今日が「通知日（訪問日の前営業日）」以降
+ *   - 通常: 訪問日の1日前以降
+ *   - 木曜訪問の場合: 2日前（水曜定休のため）以降
+ * ※ 確認（クリック）されるまでは訪問日を過ぎても表示され続ける（訪問後御礼メール未送信カテゴリーと同じ設計）
+ */
+export const isVisitPreparationPending = (s: SellerRow, todayJST: string): boolean => {
+  if (isFiSeller(s)) return false;
+  if (s.visit_calendar_confirmed === true) return false;
+
+  const visitDateRaw = s.visit_date;
+  if (!visitDateRaw || String(visitDateRaw).trim() === '') return false;
+
+  const visitDateOnly = extractDateOnly(String(visitDateRaw));
+  if (visitDateOnly < VISIT_PREPARATION_CUTOFF_DATE) return false;
+
+  const notifyDate = calculateVisitNotifyDate(visitDateOnly);
+  if (!notifyDate) return false;
+
+  return todayJST >= notifyDate;
 };
 
 // ============================================================

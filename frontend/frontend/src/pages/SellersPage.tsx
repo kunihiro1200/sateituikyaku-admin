@@ -286,6 +286,7 @@ export default function SellersPage() {
     fi_unvaluated?: number;
     fi_todayCallWithInfoLabelCounts?: Record<string, number>;
     visitThankYouPendingCounts?: Record<string, number>;
+    visitPreparationPending?: number;
   }>({
     todayCall: 0,
     todayCallWithInfo: 0,
@@ -306,6 +307,7 @@ export default function SellersPage() {
     fi_unvaluated: 0,
     fi_todayCallWithInfoLabelCounts: {},
     visitThankYouPendingCounts: {},
+    visitPreparationPending: 0,
   });
   const [sidebarLoading, setSidebarLoading] = useState(!pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS));
   // 担当者イニシャル一覧（スタッフスプレッドシートから取得）

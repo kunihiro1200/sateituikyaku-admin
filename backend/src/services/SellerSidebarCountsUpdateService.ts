@@ -8,6 +8,8 @@ import {
   isTodayCallWithInfo as sharedIsTodayCallWithInfo,
   isUnvaluated as sharedIsUnvaluated,
   getTodayCallWithInfoLabel as sharedGetTodayCallWithInfoLabel,
+  isVisitPreparationPending as sharedIsVisitPreparationPending,
+  VISIT_PREPARATION_CUTOFF_DATE,
 } from '../utils/sellerCategoryFilters';
 
 // 更新フィールド → 影響カテゴリのマッピング
@@ -25,7 +27,7 @@ const FIELD_TO_CATEGORIES: Record<string, string[]> = {
   ],
   visit_date: [
     'visitDayBefore', 'visitCompleted', 'visitAssigned',
-    'pinrichChangeRequired',
+    'pinrichChangeRequired', 'visitPreparationPending',
   ],
   status: [
     'todayCall', 'todayCallWithInfo', 'todayCallAssigned',
@@ -49,6 +51,7 @@ const FIELD_TO_CATEGORIES: Record<string, string[]> = {
   exclusive_other_decision_meeting: ['exclusive', 'general', 'visitOtherDecision', 'unvisitedOtherDecision'],
   visit_reminder_assignee: ['visitDayBefore'],
   match_updated_at: ['matching'],
+  visit_calendar_confirmed: ['visitPreparationPending'],
 };
 
 /**
@@ -303,6 +306,29 @@ export class SellerSidebarCountsUpdateService {
           visitThankYouPendingCounts[assignee] = (visitThankYouPendingCounts[assignee] || 0) + 1;
         }
       });
+
+      // 14. 訪問準備未カウント用データ（FI売主除外・訪問日が対象開始日以降・カレンダー未確認）
+      let visitPreparationCandidates: any[] = [];
+      {
+        let vppPage = 0;
+        const vppPageSize = 1000;
+        while (true) {
+          const { data: vppData, error: vppError } = await this.supabase
+            .from('sellers')
+            .select('id, seller_number, visit_date, visit_calendar_confirmed')
+            .is('deleted_at', null)
+            .not('visit_date', 'is', null)
+            .gte('visit_date', VISIT_PREPARATION_CUTOFF_DATE)
+            .not('seller_number', 'ilike', 'FI%')
+            .or('visit_calendar_confirmed.is.null,visit_calendar_confirmed.eq.false')
+            .range(vppPage * vppPageSize, (vppPage + 1) * vppPageSize - 1);
+          if (vppError || !vppData || vppData.length === 0) break;
+          visitPreparationCandidates = visitPreparationCandidates.concat(vppData);
+          if (vppData.length < vppPageSize) break;
+          vppPage++;
+        }
+      }
+      const visitPreparationPendingCount = visitPreparationCandidates.filter(s => sharedIsVisitPreparationPending(s, todayJST)).length;
 
       console.log(`⏱️ [SellerSidebarCountsUpdate] Data fetched in ${Date.now() - startTime}ms`);
 
@@ -592,6 +618,7 @@ export class SellerSidebarCountsUpdateService {
         { category: 'general', count: generalCount, label: null, assignee: null },
         { category: 'visitOtherDecision', count: visitOtherDecisionCount, label: null, assignee: null },
         { category: 'unvisitedOtherDecision', count: unvisitedOtherDecisionCount, label: null, assignee: null },
+        { category: 'visitPreparationPending', count: visitPreparationPendingCount, label: null, assignee: null },
         // 福岡（FI）専用カウント
         { category: 'fi_todayCall', count: fi_todayCallNoInfoCount, label: null, assignee: null },
         { category: 'fi_todayCallWithInfo', count: fi_todayCallWithInfoCount, label: null, assignee: null },
@@ -688,6 +715,7 @@ export class SellerSidebarCountsUpdateService {
     const needsPinrichEmpty = affected.has('pinrichEmpty');
     const needsMatching = affected.has('matching');
     const needsPinrichChange = affected.has('pinrichChangeRequired');
+    const needsVisitPreparationPending = affected.has('visitPreparationPending');
 
     if (needsTodayCallBase) {
       queries.todayCallBase1 = this.supabase
@@ -825,6 +853,16 @@ export class SellerSidebarCountsUpdateService {
         .select('visit_assignee, pinrich_status, status, confidence_level, visit_date, contract_year_month')
         .is('deleted_at', null)
         .or('pinrich_status.eq.配信中,pinrich_status.eq.クローズ,confidence_level.eq.D');
+    }
+    if (needsVisitPreparationPending) {
+      queries.visitPreparationPending = this.supabase
+        .from('sellers')
+        .select('id, seller_number, visit_date, visit_calendar_confirmed')
+        .is('deleted_at', null)
+        .not('visit_date', 'is', null)
+        .gte('visit_date', VISIT_PREPARATION_CUTOFF_DATE)
+        .not('seller_number', 'ilike', 'FI%')
+        .or('visit_calendar_confirmed.is.null,visit_calendar_confirmed.eq.false');
     }
 
     // 全クエリを並列実行
@@ -1052,6 +1090,13 @@ export class SellerSidebarCountsUpdateService {
                (validD.has(status) && pinrich === 'クローズ' && contractYM >= '2025-05-01');
       }).length;
       upsertRows.push({ category: 'pinrichChangeRequired', count, label: null, assignee: null });
+    }
+
+    // visitPreparationPending（訪問準備未）
+    if (needsVisitPreparationPending) {
+      const sellers = resultMap.visitPreparationPending?.data || [];
+      const count = sellers.filter((s: any) => sharedIsVisitPreparationPending(s, todayJST)).length;
+      upsertRows.push({ category: 'visitPreparationPending', count, label: null, assignee: null });
     }
 
     if (upsertRows.length === 0) return;

@@ -31,6 +31,7 @@ import {
   isVisitCompleted,
   isVisitThankYouPending,
   isUnvisitedOtherDecision,
+  isVisitPreparationPending,
 } from '../utils/sellerStatusFilters';
 import { Seller } from '../types';
 
@@ -77,6 +78,7 @@ interface SellerStatusSidebarProps {
 const getSellerCategory = (seller: Seller | any): StatusCategory | null => {
   if (!seller) return null;
   
+  if (isVisitPreparationPending(seller)) return 'visitPreparationPending';
   if (isTodayCall(seller)) return 'todayCall';
   if (isTodayCallWithInfo(seller)) {
     // ラベル別カテゴリキーを返す（例: todayCallWithInfo:当日TEL(U)）
@@ -169,6 +171,8 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
       return sellers.filter(isUnvisitedOtherDecision);
     case 'pinrichChangeRequired':
       return sellers.filter(isPinrichNeedsChange);
+    case 'visitPreparationPending':
+      return sellers.filter(isVisitPreparationPending);
     default:
       return sellers;
   }
@@ -209,6 +213,8 @@ const getCategoryLabel = (category: StatusCategory): string => {
       return '訪問後他決';
     case 'unvisitedOtherDecision':
       return '未訪問他決';
+    case 'visitPreparationPending':
+      return '訪問準備未';
     case 'fi':
       return 'FI売主';
     case 'all':
@@ -275,6 +281,8 @@ const getCategoryColor = (category: StatusCategory): string => {
       return '#ff9800';
     case 'unvisitedOtherDecision':
       return '#ff5722';
+    case 'visitPreparationPending':
+      return '#c62828';
     case 'fi':
       return '#1a237e';
     default:
@@ -1115,6 +1123,7 @@ function SellerStatusSidebarComponent({
       {renderOitaSectionHeader()}
 
       {/* 既存の固定カテゴリー（実質的に大分＝AA売主の件数） */}
+      {renderCategoryButton('visitPreparationPending', '訪問準備未', '#c62828')}
       {renderCategoryButton('visitDayBefore', '①訪問日前日', '#2e7d32')}
       {renderCategoryButton('todayCallNotStarted', '当日TEL_未着手', '#ff9800')}
       {renderCategoryButton('todayCall', '当日TEL分', '#d32f2f')}

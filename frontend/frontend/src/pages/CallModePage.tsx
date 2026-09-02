@@ -6306,6 +6306,31 @@ HP：https://ifoo-oita.com/
         
         {seller && (
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            {/* 訪問カレンダー確認ボタン（訪問予定日が入力されている場合のみ、訪問準備ボタンの左隣に表示） */}
+            {seller?.visitDate && (
+              <Button
+                variant={seller?.visitCalendarConfirmed ? 'contained' : 'outlined'}
+                color={seller?.visitCalendarConfirmed ? 'success' : 'inherit'}
+                size="small"
+                onClick={async () => {
+                  if (!seller?.id) return;
+                  try {
+                    const newValue = !seller?.visitCalendarConfirmed;
+                    await api.put(`/api/sellers/${seller.id}`, {
+                      visitCalendarConfirmed: newValue,
+                    });
+                    setSeller((prev: any) =>
+                      prev ? { ...prev, visitCalendarConfirmed: newValue } : prev
+                    );
+                  } catch (err) {
+                    console.error('訪問カレンダー確認保存エラー:', err);
+                  }
+                }}
+                sx={{ height: 'fit-content', whiteSpace: 'nowrap' }}
+              >
+                訪問カレンダー●OK
+              </Button>
+            )}
             {/* 訪問準備・画像ボタンを上下2段 */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
             {/* 訪問準備ボタン */}
