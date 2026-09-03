@@ -379,11 +379,16 @@ ${knownFactsText}
     const response = await client.messages.create({
       model: 'claude-sonnet-5',
       max_tokens: 1024,
+      // 拡張思考（thinking）を明示的に無効化する。
+      // 有効時は content[0] が thinking ブロックになり、実テキストは content[1] 以降に入るため
+      // 「content[0] が text か」だけを見るコードでは空文字が返ってしまう。応答時間も長くなるため無効化する。
+      thinking: { type: 'disabled' },
       system: systemPrompt,
       messages,
     });
 
-    const text = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
+    const textBlock = response.content.find((block) => block.type === 'text');
+    const text = textBlock && textBlock.type === 'text' ? textBlock.text.trim() : '';
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       return { reply: text || '回答を生成できませんでした。', themeTag: null, answerSource: 'unanswered', confidence: 'low' };
