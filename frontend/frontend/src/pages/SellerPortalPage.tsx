@@ -99,6 +99,7 @@ export default function SellerPortalPage() {
         <NetProceedsCard
           token={token}
           valuation={valuation}
+          sellerNumber={sellerNumber}
           onAskQuestion={() => openChat('net_proceeds')}
         />
 

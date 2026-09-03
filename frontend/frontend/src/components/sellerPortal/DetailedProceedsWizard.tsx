@@ -4,16 +4,15 @@ import {
   Button, Typography, Box, RadioGroup, Radio, FormControlLabel, TextField, Alert,
 } from '@mui/material';
 import { sellerPortalApi, ValuationSummary } from '../../services/sellerPortalApi';
-
-const fmtMan = (yen: number) => `${Math.round(yen / 10000).toLocaleString()}万円`;
+import ProceedsTable, { ProceedsTableRow } from './ProceedsTable';
 
 type Answers = {
-  hasLoan?: 'yes' | 'no';
+  hasLoan?: 'yes' | 'no'; // 住宅ローン残高の有無＝抵当権の有無として扱う（重複質問を避ける）
   loanBalanceMan?: string;
-  hasMortgage?: 'yes' | 'no';
-  isResident?: 'yes' | 'no';
-  isInherited?: 'yes' | 'no';
-  acquisitionKnown?: 'yes' | 'no' | 'unknown';
+  isOwner?: 'yes' | 'no'; // 名義人が売主本人かどうか（3000万円特別控除の要件）
+  isResident?: 'yes' | 'no'; // 現在居住しているか（3000万円特別控除の要件）
+  moveOutYear?: string; // 居住していない場合、住民票を移した年（3年以内かどうかの判定用）
+  acquisitionKnown?: 'yes' | 'no';
   acquisitionCostMan?: string;
   purchaseYear?: string;
 };
@@ -22,25 +21,35 @@ type Answers = {
  * 詳細な手残り計算のステップ式Q&Aウィザード。
  * 一度に大量の項目を表示せず、1問ずつ回答してもらい、回答によって不要な質問を省略する。
  * 既存の calcTransferTax（backend/src/utils/proceedsCalculator.ts）と同じ入力形式に合わせる。
+ *
+ * 質問設計の方針：
+ * - 「住宅ローンが残っている」＝「抵当権が設定されている」として1つの質問に統合する
+ *   （別々に聞くと同じ内容を二重に確認することになるため）
+ * - 3000万円特別控除（居住用財産の譲渡）は、名義人が本人かつ
+ *   ①現在居住している、または②居住していないが住民票の移動から3年以内、のいずれかで適用対象とする
  */
 export default function DetailedProceedsWizard({
   open,
   onClose,
   token,
   valuation,
+  sellerNumber,
 }: {
   open: boolean;
   onClose: () => void;
   token: string;
   valuation: ValuationSummary | null;
+  sellerNumber: string;
 }) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
   const [rows, setRows] = useState<any[] | null>(null);
+  const [specialDeductionApplied, setSpecialDeductionApplied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const isLand = valuation?.propertyType === 'land';
+  const currentYear = new Date().getFullYear();
 
   const steps: Array<{
     key: keyof Answers;
@@ -70,10 +79,10 @@ export default function DetailedProceedsWizard({
       ),
     },
     {
-      key: 'hasMortgage',
-      question: '物件に抵当権は設定されていますか？',
+      key: 'isOwner',
+      question: '物件の名義人はご自身ですか？',
       render: () => (
-        <YesNo value={answers.hasMortgage} onChange={(v) => setAnswers({ ...answers, hasMortgage: v })} />
+        <YesNo value={answers.isOwner} onChange={(v) => setAnswers({ ...answers, isOwner: v })} />
       ),
     },
     {
@@ -84,10 +93,17 @@ export default function DetailedProceedsWizard({
       ),
     },
     {
-      key: 'isInherited',
-      question: '相続した物件ですか？',
+      key: 'moveOutYear',
+      question: 'この家の住民票を移したのは何年ですか？',
+      skip: () => answers.isResident !== 'no',
       render: () => (
-        <YesNo value={answers.isInherited} onChange={(v) => setAnswers({ ...answers, isInherited: v })} />
+        <TextField
+          fullWidth
+          type="number"
+          placeholder="例: 2023"
+          value={answers.moveOutYear ?? ''}
+          onChange={(e) => setAnswers({ ...answers, moveOutYear: e.target.value })}
+        />
       ),
     },
     {
@@ -148,28 +164,29 @@ export default function DetailedProceedsWizard({
     setLoading(true);
     setError('');
     try {
-      const mortgageReleaseFee = answers.hasMortgage === 'yes' ? 30_000 : 0;
+      // 住宅ローン残高あり＝抵当権あり として扱う（別途「抵当権の有無」は聞かない）
+      const hasMortgage = answers.hasLoan === 'yes';
+      const isFiSeller = sellerNumber.trim().toUpperCase().includes('FI');
+      const mortgageReleaseFee = hasMortgage ? (isFiSeller ? 50_000 : 30_000) : 0;
       const loanBalance = answers.hasLoan === 'yes' ? Math.round(parseFloat(answers.loanBalanceMan || '0') * 10_000) : 0;
 
-      let mode: 'unknown' | 'known' | 'none' = 'none';
-      if (answers.hasMortgage === 'yes' || loanBalance > 0) {
-        mode = answers.acquisitionKnown === 'yes' ? 'known' : 'unknown';
-      } else if (answers.acquisitionKnown === 'yes') {
-        mode = 'known';
-      } else if (answers.acquisitionKnown === 'no') {
-        mode = 'unknown';
-      }
+      const mode: 'unknown' | 'known' = answers.acquisitionKnown === 'yes' ? 'known' : 'unknown';
 
-      // 3000万円特別控除：居住用かつ相続でない場合、要件を満たす可能性がある旨を概算に反映する
-      // （要件確認は必須ではないため、ここでは「適用できる可能性がある」場合のみ概算に含める）
-      const mayApplySpecialDeduction = answers.isResident === 'yes' && answers.isInherited !== 'yes';
+      // 3000万円特別控除（居住用財産の譲渡）の適用判定：
+      // 名義人が本人 かつ、①現在居住している、または②住まなくなってから3年目の年末までに売却する場合に適用
+      const moveOutYear = answers.moveOutYear ? parseInt(answers.moveOutYear, 10) : undefined;
+      const withinThreeYearsOfMoveOut = moveOutYear !== undefined && currentYear <= moveOutYear + 3;
+      const canApplySpecialDeduction =
+        answers.isOwner === 'yes' && (answers.isResident === 'yes' || withinThreeYearsOfMoveOut);
+      setSpecialDeductionApplied(canApplySpecialDeduction);
 
       await sellerPortalApi.saveKnownFacts(token, {
         has_loan: answers.hasLoan === 'yes',
         loan_balance: loanBalance,
-        has_mortgage: answers.hasMortgage === 'yes',
+        is_owner: answers.isOwner === 'yes',
         is_resident: answers.isResident === 'yes',
-        is_inherited: answers.isInherited === 'yes',
+        move_out_year: moveOutYear ?? null,
+        special_deduction_applied: canApplySpecialDeduction,
       });
 
       const res = await sellerPortalApi.getDetailedProceeds(token, {
@@ -179,7 +196,7 @@ export default function DetailedProceedsWizard({
           mode,
           acquisitionCost: answers.acquisitionCostMan ? Math.round(parseFloat(answers.acquisitionCostMan) * 10_000) : undefined,
           purchaseYear: answers.purchaseYear ? parseInt(answers.purchaseYear, 10) : undefined,
-          specialDeduction: mayApplySpecialDeduction ? 30_000_000 : 0,
+          specialDeduction: canApplySpecialDeduction ? 30_000_000 : 0,
         },
       });
       setRows(res.rows);
@@ -194,6 +211,7 @@ export default function DetailedProceedsWizard({
     setStep(0);
     setAnswers({});
     setRows(null);
+    setSpecialDeductionApplied(false);
     setError('');
     onClose();
   };
@@ -216,17 +234,29 @@ export default function DetailedProceedsWizard({
 
         {rows && (
           <Box>
-            {rows.map((row) => (
-              <Box key={row.priceYen} sx={{ py: 1, borderBottom: '1px solid #eee' }}>
-                <Typography variant="body2">{fmtMan(row.priceYen)}で売却の場合</Typography>
-                <Typography variant="body1" fontWeight="bold" color="primary">
-                  詳細な手残り: {fmtMan(row.netProceeds)}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" display="block">
-                  仲介手数料 {row.brokerageFee.toLocaleString()}円 / 印紙代 {row.stampDuty.toLocaleString()}円 / ローン残高 {row.loanBalance.toLocaleString()}円 / 抵当権抹消費用 {row.mortgageReleaseFee.toLocaleString()}円 / 譲渡所得税概算 {row.transferTax.toLocaleString()}円
-                </Typography>
-              </Box>
-            ))}
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              仲介手数料・印紙代・ローン残高・抵当権抹消費用・譲渡所得税を差し引く
+            </Typography>
+            {specialDeductionApplied && (
+              <Alert severity="success" sx={{ mb: 1.5 }}>
+                居住用財産の3,000万円特別控除の対象として、譲渡所得税を計算しています。
+              </Alert>
+            )}
+            <ProceedsTable
+              rows={rows.map(
+                (row): ProceedsTableRow => ({
+                  priceYen: row.priceYen,
+                  netProceeds: row.netProceeds,
+                  details: [
+                    { label: '仲介手数料', value: row.brokerageFee },
+                    { label: '印紙代', value: row.stampDuty },
+                    { label: 'ローン残高', value: row.loanBalance },
+                    { label: '抵当権抹消費用', value: row.mortgageReleaseFee },
+                    { label: '譲渡所得税概算', value: row.transferTax },
+                  ],
+                })
+              )}
+            />
             <Alert severity="info" sx={{ mt: 2 }}>
               こちらは概算です。実際の税額については税理士・税務署等への確認が必要です。
             </Alert>

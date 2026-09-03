@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Paper, Typography, Box, Button, CircularProgress, Collapse, IconButton } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { Paper, Typography, Box, Button, CircularProgress } from '@mui/material';
 import { sellerPortalApi, ValuationSummary } from '../../services/sellerPortalApi';
 import DetailedProceedsWizard from './DetailedProceedsWizard';
-
-const fmtMan = (yen: number) => `${Math.round(yen / 10000).toLocaleString()}万円`;
+import ProceedsTable, { ProceedsTableRow } from './ProceedsTable';
 
 interface RoughRow {
   priceYen: number;
@@ -21,16 +19,26 @@ interface RoughRow {
 export default function NetProceedsCard({
   token,
   valuation,
+  sellerNumber,
   onAskQuestion,
 }: {
   token: string;
   valuation: ValuationSummary | null;
+  sellerNumber: string;
   onAskQuestion: () => void;
 }) {
   const [rows, setRows] = useState<RoughRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
+
+  const tableRows: ProceedsTableRow[] = rows.map((row) => ({
+    priceYen: row.priceYen,
+    netProceeds: row.netProceeds,
+    details: [
+      { label: '仲介手数料', value: row.brokerageFee },
+      { label: '印紙代', value: row.stampDuty },
+    ],
+  }));
 
   useEffect(() => {
     (async () => {
@@ -49,7 +57,7 @@ export default function NetProceedsCard({
         売却したらいくら残る？
       </Typography>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-        仲介手数料・印紙代を差し引いたざっくりの手残り額です
+        仲介手数料・印紙代のみ差し引く
       </Typography>
 
       {loading && (
@@ -58,35 +66,7 @@ export default function NetProceedsCard({
         </Box>
       )}
 
-      {!loading &&
-        rows.map((row, idx) => (
-          <Box key={row.priceYen} sx={{ borderBottom: idx < rows.length - 1 ? '1px solid #eee' : 'none' }}>
-            <Box
-              sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 1, cursor: 'pointer' }}
-              onClick={() => setExpandedIndex(expandedIndex === idx ? null : idx)}
-            >
-              <Typography variant="body2">{fmtMan(row.priceYen)}で売却</Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <Typography variant="body1" fontWeight="bold" color="primary">
-                  手残り {fmtMan(row.netProceeds)}
-                </Typography>
-                <IconButton size="small" sx={{ transform: expandedIndex === idx ? 'rotate(180deg)' : 'none' }}>
-                  <ExpandMoreIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            </Box>
-            <Collapse in={expandedIndex === idx}>
-              <Box sx={{ pb: 1.5, pl: 1 }}>
-                <Typography variant="caption" color="text.secondary" display="block">
-                  仲介手数料: {row.brokerageFee.toLocaleString()}円
-                </Typography>
-                <Typography variant="caption" color="text.secondary" display="block">
-                  印紙代: {row.stampDuty.toLocaleString()}円
-                </Typography>
-              </Box>
-            </Collapse>
-          </Box>
-        ))}
+      {!loading && <ProceedsTable rows={tableRows} />}
 
       <Button
         fullWidth
@@ -94,7 +74,7 @@ export default function NetProceedsCard({
         sx={{ mt: 2 }}
         onClick={() => setWizardOpen(true)}
       >
-        その他の費用も含めて詳しく計算する
+        その他費用も差し引く
       </Button>
 
       <Button size="small" variant="text" onClick={onAskQuestion} sx={{ mt: 1 }}>
@@ -106,6 +86,7 @@ export default function NetProceedsCard({
         onClose={() => setWizardOpen(false)}
         token={token}
         valuation={valuation}
+        sellerNumber={sellerNumber}
       />
     </Paper>
   );
