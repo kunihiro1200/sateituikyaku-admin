@@ -24,6 +24,8 @@ export default function ScheduleCard({
   const [schedule, setSchedule] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [buyoutRequesting, setBuyoutRequesting] = useState(false);
+  const [buyoutRequested, setBuyoutRequested] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -48,6 +50,7 @@ export default function ScheduleCard({
   const recalculate = async () => {
     if (!settlementYearMonth) return;
     setSaving(true);
+    setBuyoutRequested(false);
     try {
       await sellerPortalApi.updatePreferences(token, {
         desiredSalePrice: Math.round(parseFloat(desiredPriceMan || '0') * 10000),
@@ -58,6 +61,16 @@ export default function ScheduleCard({
       setSchedule(res.schedule);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleBuyoutRequest = async () => {
+    setBuyoutRequesting(true);
+    try {
+      await sellerPortalApi.requestBuyout(token);
+      setBuyoutRequested(true);
+    } finally {
+      setBuyoutRequesting(false);
     }
   };
 
@@ -95,6 +108,30 @@ export default function ScheduleCard({
             value={settlementYearMonth}
             onChange={(e) => setSettlementYearMonth(e.target.value)}
           />
+
+          {schedule?.isCompressed && (
+            <Box sx={{ p: 1.5, bgcolor: '#fff3e0', borderRadius: 2 }}>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                3ヶ月以内の売却でしたら、買取をオススメ致します。
+              </Typography>
+              {buyoutRequested ? (
+                <Alert severity="success" sx={{ fontSize: '0.75rem' }}>
+                  買取依頼を受け付けました。担当スタッフよりご連絡いたします。
+                </Alert>
+              ) : (
+                <Button
+                  variant="contained"
+                  color="warning"
+                  size="small"
+                  onClick={handleBuyoutRequest}
+                  disabled={buyoutRequesting}
+                >
+                  {buyoutRequesting ? '送信中...' : '買取依頼'}
+                </Button>
+              )}
+            </Box>
+          )}
+
           <Button variant="contained" onClick={recalculate} disabled={saving || !settlementYearMonth}>
             {saving ? '計算中...' : 'スケジュールを計算する'}
           </Button>

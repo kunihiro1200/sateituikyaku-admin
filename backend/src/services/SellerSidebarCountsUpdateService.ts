@@ -321,6 +321,14 @@ export class SellerSidebarCountsUpdateService {
           .is('staff_confirmed_settlement_at', null);
         (pendingSettlement ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
 
+        // 買取依頼済み・未確認（売却スケジュールが3ヶ月以内に圧縮される場合の「買取依頼」ボタンから）
+        const { data: pendingBuyout } = await this.supabase
+          .from('seller_portal_preferences')
+          .select('seller_id')
+          .not('buyout_requested_at', 'is', null)
+          .is('staff_confirmed_buyout_at', null);
+        (pendingBuyout ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
+
         const { data: unreadMessages } = await this.supabase
           .from('seller_portal_messages')
           .select('conversation_id')
@@ -722,6 +730,13 @@ export class SellerSidebarCountsUpdateService {
         .not('desired_settlement_year_month', 'is', null)
         .is('staff_confirmed_settlement_at', null);
       (pendingSettlement ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
+
+      const { data: pendingBuyout } = await this.supabase
+        .from('seller_portal_preferences')
+        .select('seller_id')
+        .not('buyout_requested_at', 'is', null)
+        .is('staff_confirmed_buyout_at', null);
+      (pendingBuyout ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
 
       const { data: unreadMessages } = await this.supabase
         .from('seller_portal_messages')

@@ -446,6 +446,32 @@ export class SellerPortalService extends BaseRepository {
     if (error) throw new Error(`確認状態の保存に失敗しました: ${error.message}`);
   }
 
+  /**
+   * 売主が「買取依頼」ボタンを押したことを記録する。
+   * 決済希望月までの期間が短く（逆算した販売開始が過去日になる）場合に表示するボタンから呼ばれる。
+   */
+  async requestBuyout(sellerId: string, sellerNumber: string): Promise<void> {
+    const { error } = await this.table('seller_portal_preferences').upsert(
+      {
+        seller_id: sellerId,
+        seller_number: sellerNumber,
+        buyout_requested_at: new Date().toISOString(),
+        staff_confirmed_buyout_at: null, // 新規依頼のため未確認状態にする
+      },
+      { onConflict: 'seller_id' }
+    );
+    if (error) throw new Error(`買取依頼の保存に失敗しました: ${error.message}`);
+  }
+
+  /** スタッフが買取依頼を確認したことを記録する（サイドバーカテゴリーから外すため） */
+  async confirmBuyoutRequest(sellerId: string, sellerNumber: string): Promise<void> {
+    const { error } = await this.table('seller_portal_preferences').upsert(
+      { seller_id: sellerId, seller_number: sellerNumber, staff_confirmed_buyout_at: new Date().toISOString() },
+      { onConflict: 'seller_id' }
+    );
+    if (error) throw new Error(`確認状態の保存に失敗しました: ${error.message}`);
+  }
+
   async updateKnownFacts(sellerId: string, sellerNumber: string, facts: Record<string, any>): Promise<void> {
     const { data } = await this.table('seller_portal_preferences')
       .select('known_facts')
@@ -612,6 +638,13 @@ export class SellerPortalService extends BaseRepository {
       .not('desired_settlement_year_month', 'is', null)
       .is('staff_confirmed_settlement_at', null);
     for (const row of pendingSettlement ?? []) result.add(row.seller_id);
+
+    // ①-2 買取依頼済み・未確認
+    const { data: pendingBuyout } = await this.table('seller_portal_preferences')
+      .select('seller_id')
+      .not('buyout_requested_at', 'is', null)
+      .is('staff_confirmed_buyout_at', null);
+    for (const row of pendingBuyout ?? []) result.add(row.seller_id);
 
     // ② 売主からの未読メッセージがある会話を持つ売主
     const { data: unreadMessages } = await this.table('seller_portal_messages')

@@ -96,6 +96,13 @@ export const sellerPortalApi = {
     );
   },
 
+  async requestBuyout(token: string) {
+    return request<{ success: boolean }>('/api/seller-portal/portal/buyout-request', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  },
+
   async sendMessage(token: string, contextTag: string, content: string) {
     return request<{ success: boolean; conversationId: string }>('/api/seller-portal/portal/messages', {
       method: 'POST',

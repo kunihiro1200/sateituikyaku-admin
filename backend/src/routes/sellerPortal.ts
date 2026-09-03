@@ -171,6 +171,27 @@ router.put('/portal/preferences', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/seller-portal/portal/buyout-request
+ * body: { token }
+ * 「3ヶ月以内の売却でしたら買取をオススメ致します」の案内に対して、
+ * 売主が「買取依頼」ボタンを押した際に呼ばれる。
+ */
+router.post('/portal/buyout-request', async (req: Request, res: Response) => {
+  try {
+    const resolved = await requireValidToken(req, res);
+    if (!resolved) return;
+
+    await sellerPortalService.requestBuyout(resolved.sellerId, resolved.sellerNumber);
+    // Google Chatではなく、サイドバーカテゴリー「売却サポート：対応が必要」で気づける仕組みにする
+    refreshSellerPortalAttentionSidebar();
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('[SellerPortal] POST /portal/buyout-request error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/seller-portal/portal/manifest.json?token=xxx
  * 売主ごとに異なる start_url（トークン付き）を持つ動的Web App Manifest。
  * ホーム画面に保存したアイコンから起動すると、必ずこの売主自身の専用ページが直接開く。
@@ -317,6 +338,22 @@ router.post('/admin/:sellerId/confirm-settlement', authenticate, async (req: Req
     res.json({ success: true });
   } catch (error: any) {
     console.error('[SellerPortal] POST /admin/confirm-settlement error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/** POST /api/seller-portal/admin/:sellerId/confirm-buyout : 買取依頼をスタッフが確認したことを記録する */
+router.post('/admin/:sellerId/confirm-buyout', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { sellerId } = req.params;
+    const { sellerNumber } = req.body;
+    if (!sellerNumber) return res.status(400).json({ error: 'sellerNumberが必要です' });
+
+    await sellerPortalService.confirmBuyoutRequest(sellerId, sellerNumber);
+    refreshSellerPortalAttentionSidebar();
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('[SellerPortal] POST /admin/confirm-buyout error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
