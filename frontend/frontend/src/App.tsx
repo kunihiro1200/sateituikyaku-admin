@@ -60,6 +60,9 @@ import UnvisitedOtherDecisionListPage from './pages/UnvisitedOtherDecisionListPa
 import AnalysisSummaryPage from './pages/AnalysisSummaryPage';
 import SalesLearningLibraryPage from './pages/SalesLearningLibraryPage';
 import PropertyPreviewPage from './pages/PropertyPreviewPage';
+import ConsultVerifyPage from './pages/ConsultVerifyPage';
+import ConsultChatPage from './pages/ConsultChatPage';
+import ConsultHistoryPage from './pages/ConsultHistoryPage';
 import TateuriPage from './pages/TateuriPage';
 import TateuriManagePage from './pages/TateuriManagePage';
 import FukuokaTateuriPage from './pages/FukuokaTateuriPage';
@@ -75,6 +78,7 @@ import { GoogleMapsProvider } from './contexts/GoogleMapsContext';
 // 認証不要の公開ページパス（checkAuth・warmupApiをスキップ）
 const PUBLIC_PATHS = [
   '/property-preview/',
+  '/consult/',
   '/public/',
   '/tateuri',
   '/fukuoka-tateuri',
@@ -108,6 +112,9 @@ function App() {
         <Route path="/public/properties/:id" element={<PublicPropertyDetailPage />} />
         {/* 物件プレビュー（認証不要・買主向け公開ページ） */}
         <Route path="/property-preview/:slug" element={<PropertyPreviewPage />} />
+        {/* 不動産相談チャットアプリ（認証不要・売主向け公開ページ） */}
+        <Route path="/consult/verify" element={<ConsultVerifyPage />} />
+        <Route path="/consult/:sellerNumber" element={<ConsultChatPage />} />
         {/* 間取り図比較チェック（認証不要・外部公開） */}
         <Route path="/floor-plan-compare" element={
           <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>読み込み中...</div>}>
@@ -460,6 +467,14 @@ function App() {
         element={
           <ProtectedRoute>
             <SalesHistoryPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sellers/:id/consult-history"
+        element={
+          <ProtectedRoute>
+            <ConsultHistoryPage />
           </ProtectedRoute>
         }
       />
