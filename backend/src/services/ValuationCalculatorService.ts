@@ -80,6 +80,76 @@ export class ValuationCalculatorService extends BaseRepository {
   }
 
   /**
+   * 査定額1の内訳を計算する（売却サポートページの「査定額の計算根拠」表示用）。
+   *
+   * 🚨 新しい査定ロジックは作らない。calculateValuationAmount1() が内部で使っている
+   * private メソッド（getConstructionUnitPrice / calculateConstructionPrice / calculateLandPrice）を
+   * そのまま呼び出し、最終合算値だけでなく途中の内訳（土地価格・建物価格・加算額）も返す。
+   * calculateValuationAmount1() 自体の計算結果・戻り値は変更しない。
+   */
+  async calculateValuationBreakdown(
+    seller: Seller,
+    property: PropertyInfo
+  ): Promise<{
+    landAreaUsed: number;
+    fixedAssetTaxRoadPriceUsed: number;
+    landPrice: number;
+    buildingAreaUsed: number;
+    buildingAgeUsed: number;
+    structureUsed: string;
+    constructionUnitPriceUsed: number;
+    buildingPrice: number;
+    valuationAmount1: number;
+    additionAmount2: number;
+    additionAmount3: number;
+    valuationAmount2: number;
+    valuationAmount3: number;
+  }> {
+    const buildYear = property.buildYear || 0;
+    const structure = property.structure || '木造';
+    const buildingArea = property.buildingAreaVerified || property.buildingArea || 0;
+    const landArea = property.landAreaVerified || property.landArea || 0;
+    const fixedAssetTaxRoadPrice = seller.fixedAssetTaxRoadPrice || 0;
+
+    const currentYear = 2025;
+    const buildingAge = buildYear > 0 ? currentYear - buildYear : 33;
+
+    const constructionUnitPrice = await this.getConstructionUnitPrice(buildYear, structure);
+    const buildingPrice = this.calculateConstructionPrice(
+      constructionUnitPrice,
+      buildingArea,
+      buildingAge,
+      structure
+    );
+    const landPrice = this.calculateLandPrice(landArea, fixedAssetTaxRoadPrice);
+
+    const total = buildingPrice + landPrice;
+    const basePrice = Math.round((total * 1.2) / 10000);
+    const finalPrice = basePrice >= 1000 ? basePrice + 300 : basePrice;
+    const finalPriceInYen = finalPrice * 10000;
+    const valuationAmount1 = Math.floor(finalPriceInYen / 100000) * 100000;
+
+    const valuationAmount2 = await this.calculateValuationAmount2(seller, valuationAmount1);
+    const valuationAmount3 = await this.calculateValuationAmount3(seller, valuationAmount1);
+
+    return {
+      landAreaUsed: landArea,
+      fixedAssetTaxRoadPriceUsed: fixedAssetTaxRoadPrice,
+      landPrice: Math.round(landPrice),
+      buildingAreaUsed: buildingArea,
+      buildingAgeUsed: buildingAge,
+      structureUsed: structure,
+      constructionUnitPriceUsed: constructionUnitPrice,
+      buildingPrice: Math.round(buildingPrice),
+      valuationAmount1,
+      additionAmount2: Math.round(valuationAmount2 - valuationAmount1),
+      additionAmount3: Math.round(valuationAmount3 - valuationAmount1),
+      valuationAmount2,
+      valuationAmount3,
+    };
+  }
+
+  /**
    * 建築単価を取得
    */
   private async getConstructionUnitPrice(

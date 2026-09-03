@@ -30,6 +30,7 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ArrowBack, Save, Warning, Phone, Sms } from '@mui/icons-material';
 import api, { employeeApi } from '../services/api';
+import SellerPortalAdminSection from '../components/SellerPortalAdminSection';
 import { Seller, PropertyInfo, SellerStatus, ConfidenceLevel } from '../types';
 import { getDisplayName } from '../utils/employeeUtils';
 import { formatDateTime } from '../utils/dateFormat';
@@ -1700,6 +1701,13 @@ const SellerDetailPage = () => {
             </>
           </EditableSection>
           )}
+        </Grid>
+
+        {/* 売却サポートページ（査定依頼者向け専用ページ） */}
+        <Grid item xs={12}>
+          <CollapsibleSection title="売却サポートページ" defaultExpanded={false}>
+            <SellerPortalAdminSection sellerId={id!} sellerNumber={seller.sellerNumber || ''} />
+          </CollapsibleSection>
         </Grid>
 
         {/* Google Chat通知 */}

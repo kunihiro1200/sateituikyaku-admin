@@ -6125,25 +6125,7 @@ HP：https://ifoo-oita.com/
                         福岡追加資料
                       </MenuItem>
                     )}
-                    {seller?.sellerNumber && (
-                      <MenuItem onClick={() => { setDocGenMenuAnchor(null); window.open(`/sellers/${seller.id}/consult-history`, '_blank'); }}>
-                        相談アプリ履歴
-                      </MenuItem>
-                    )}
                   </Menu>
-                  {/* 相談アプリを開くボタン（顧客向け相談チャット、新しいタブで開く） */}
-                  {seller?.sellerNumber && (
-                    <Button
-                      variant="outlined"
-                      color="secondary"
-                      size="small"
-                      onClick={() => window.open(`/consult/${seller.sellerNumber}`, '_blank')}
-                      sx={{ ml: 0.5, fontSize: '0.75rem', py: 0.25 }}
-                      title="不動産相談チャットアプリを別タブで開く"
-                    >
-                      相談アプリ
-                    </Button>
-                  )}
                   {/* 文字起ボタン（資料生成の下に配置） */}
                   <Button
                     variant="outlined"
