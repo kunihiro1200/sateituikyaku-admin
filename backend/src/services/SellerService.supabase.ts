@@ -1654,6 +1654,53 @@ export class SellerService extends BaseRepository {
           // match_updated_atがnullでない売主のみを取得（軽量実装）
           query = query.not('match_updated_at', 'is', null);
           break;
+        case 'sellerPortalAttention': {
+          // 売却サポート：対応要（sellersとは別テーブルのため、対象seller_idをJSでマージしてから絞り込む）
+          // 対象: ①決済希望月入力済み・未確認 ②買取依頼済み・未確認 ③売主からの未読メッセージあり
+          const attentionSellerIds = new Set<string>();
+
+          const { data: pendingSettlement } = await this.supabase
+            .from('seller_portal_preferences')
+            .select('seller_id')
+            .not('desired_settlement_year_month', 'is', null)
+            .is('staff_confirmed_settlement_at', null);
+          (pendingSettlement ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
+
+          const { data: pendingBuyout } = await this.supabase
+            .from('seller_portal_preferences')
+            .select('seller_id')
+            .not('buyout_requested_at', 'is', null)
+            .is('staff_confirmed_buyout_at', null);
+          (pendingBuyout ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
+
+          const { data: unreadMessages } = await this.supabase
+            .from('seller_portal_messages')
+            .select('conversation_id')
+            .eq('sender_type', 'seller')
+            .is('read_at', null);
+          const unreadConversationIds = Array.from(new Set((unreadMessages ?? []).map((m: any) => m.conversation_id)));
+
+          if (unreadConversationIds.length > 0) {
+            const chunkSize = 500;
+            for (let i = 0; i < unreadConversationIds.length; i += chunkSize) {
+              const chunk = unreadConversationIds.slice(i, i + chunkSize);
+              const { data: conversations } = await this.supabase
+                .from('seller_portal_conversations')
+                .select('seller_id')
+                .in('id', chunk);
+              (conversations ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
+            }
+          }
+
+          const attentionIdList = Array.from(attentionSellerIds);
+          if (attentionIdList.length === 0) {
+            // 該当なし → 空結果を返すため存在しないIDを指定
+            query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+          } else {
+            query = query.in('id', attentionIdList);
+          }
+          break;
+        }
         case 'visitPreparationPending': {
           // 訪問準備未：FI売主除外 + 訪問日が対象開始日(2026-09-04)以降 + カレンダー未確認
           // 通知日（前営業日、木曜訪問のみ2日前）以降の判定はDBで表現できないためJS側で処理
