@@ -2,7 +2,60 @@ import { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { sellerPortalService } from '../services/SellerPortalService';
 import { SellerSidebarCountsUpdateService } from '../services/SellerSidebarCountsUpdateService';
+import { SellerService } from '../services/SellerService.supabase';
+import { EmailService } from '../services/EmailService';
 import { authenticate } from '../middleware/auth';
+
+const sellerService = new SellerService();
+const emailService = new EmailService();
+
+/** このテスト用売主番号にはメール通知を送らない */
+const EMAIL_NOTIFICATION_EXCLUDED_SELLER_NUMBERS = new Set(['FI1226']);
+
+function getPortalFrontendBaseUrl(): string {
+  return process.env.NODE_ENV === 'production'
+    ? 'https://sateituikyaku-admin-frontend.vercel.app'
+    : (process.env.FRONTEND_URL?.split(',')[0]?.trim() || 'http://localhost:5173');
+}
+
+/**
+ * スタッフが売却サポートページのチャットで返信したことを、売主本人にメールで知らせる。
+ * 失敗しても返信処理自体（DB保存）は成功させたいため、呼び出し元でエラーを握って
+ * ログのみ出すこと（この関数内では例外を投げない）。
+ */
+async function notifySellerOfStaffReply(params: { sellerId: string; sellerNumber: string; replyContent: string }): Promise<void> {
+  const { sellerId, sellerNumber, replyContent } = params;
+
+  if (EMAIL_NOTIFICATION_EXCLUDED_SELLER_NUMBERS.has(sellerNumber)) {
+    console.log(`[SellerPortal] ${sellerNumber} はテスト用売主のためメール通知をスキップします`);
+    return;
+  }
+
+  try {
+    const seller = await sellerService.getSeller(sellerId);
+    if (!seller?.email) {
+      console.log(`[SellerPortal] ${sellerNumber} にはメールアドレスが登録されていないため通知をスキップします`);
+      return;
+    }
+
+    // 既存の有効なURL（ホーム画面に設置済みの可能性がある）を壊さないよう、新規発行ではなく
+    // 追加発行する。1件も有効なトークンがない場合は初回発行として issueAdditionalToken を使う。
+    const plainToken = await sellerPortalService.issueAdditionalToken(sellerId, sellerNumber);
+    const portalUrl = `${getPortalFrontendBaseUrl()}/portal/${plainToken}`;
+
+    const subject = 'ご質問への回答がございます【売却サポートページ】';
+    const body =
+      `いつもお世話になっております。\n\n` +
+      `売却サポートページにいただいたご質問に、担当スタッフより回答いたしました。\n\n` +
+      `---回答内容---\n${replyContent}\n---------------\n\n` +
+      `以下のURLから売却サポートページをご確認ください。\n${portalUrl}\n\n` +
+      `よろしくお願いいたします。`;
+
+    await emailService.sendEmail({ to: [seller.email], subject, body });
+  } catch (err: any) {
+    console.error(`[SellerPortal] ${sellerNumber} への返信通知メール送信に失敗しました:`, err.message);
+  }
+}
 
 /**
  * 「売却サポートページ：対応が必要」サイドバーカテゴリーを非同期で再計算する。
@@ -273,16 +326,23 @@ router.post('/portal/messages', async (req: Request, res: Response) => {
   }
 });
 
-/** GET /api/seller-portal/portal/messages?token=xxx : 売主本人が自分の全会話を見る */
+/**
+ * GET /api/seller-portal/portal/messages?token=xxx&markAsRead=false
+ * 売主本人が自分の全会話を見る。
+ * markAsRead=false のときは既読化しない（FABの未読バッジ確認用に、開いていないのに既読になるのを防ぐため）。
+ */
 router.get('/portal/messages', async (req: Request, res: Response) => {
   try {
     const resolved = await requireValidToken(req, res);
     if (!resolved) return;
 
     const conversations = await sellerPortalService.getConversationsWithMessages(resolved.sellerId);
-    // 売主が画面を開いたタイミングで、スタッフからの未読メッセージを既読にする
-    for (const c of conversations) {
-      await sellerPortalService.markMessagesReadBySeller(c.id);
+    const shouldMarkAsRead = req.query.markAsRead !== 'false';
+    if (shouldMarkAsRead) {
+      // 売主が画面を開いたタイミングで、スタッフからの未読メッセージを既読にする
+      for (const c of conversations) {
+        await sellerPortalService.markMessagesReadBySeller(c.id);
+      }
     }
     res.json({ success: true, conversations });
   } catch (error: any) {
@@ -394,16 +454,25 @@ router.post('/admin/:sellerId/messages', authenticate, async (req: Request, res:
       return res.status(400).json({ error: 'conversationId, content が必要です' });
     }
 
-    const seller = req.body.sellerNumber; // フロントから明示的に渡す想定（sellerNumberの非正規化カラム用）
+    const { sellerId } = req.params;
+    const sellerNumber = req.body.sellerNumber; // フロントから明示的に渡す想定（sellerNumberの非正規化カラム用）
     await sellerPortalService.sendMessage({
       conversationId,
-      sellerNumber: seller || '',
+      sellerNumber: sellerNumber || '',
       senderType: 'staff',
       senderEmployeeId: req.employee?.id,
       content,
     });
     await sellerPortalService.markMessagesReadByStaff(conversationId);
     refreshSellerPortalAttentionSidebar();
+
+    // 売主本人にメールで返信を知らせる（レスポンスをブロックしない。失敗してもチャット送信自体は成功とする）
+    if (sellerNumber) {
+      notifySellerOfStaffReply({ sellerId, sellerNumber, replyContent: content }).catch((err: any) => {
+        console.error('⚠️ [SellerPortal] notifySellerOfStaffReply unexpected error:', err);
+      });
+    }
+
     res.json({ success: true });
   } catch (error: any) {
     console.error('[SellerPortal] POST /admin/messages error:', error.message);

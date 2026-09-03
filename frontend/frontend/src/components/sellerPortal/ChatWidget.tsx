@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Box, Fab, Dialog, DialogTitle, DialogContent, TextField, IconButton, Typography, Paper, CircularProgress } from '@mui/material';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { Box, Fab, Badge, Dialog, DialogTitle, DialogContent, TextField, IconButton, Typography, Paper, CircularProgress } from '@mui/material';
 import ChatIcon from '@mui/icons-material/Chat';
 import SendIcon from '@mui/icons-material/Send';
 import CloseIcon from '@mui/icons-material/Close';
@@ -41,7 +41,32 @@ export default function ChatWidget({
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // 未読件数を確認する（スタッフからの返信に売主が気づけるよう、チャットを開いていなくてもFABに表示する）
+  const checkUnread = useCallback(async () => {
+    try {
+      const res = await sellerPortalApi.getMessages(token, { markAsRead: false });
+      const count = res.conversations.reduce(
+        (sum: number, c: any) => sum + c.messages.filter((m: any) => m.sender_type === 'staff' && !m.read_at).length,
+        0
+      );
+      setUnreadCount(count);
+    } catch {
+      // 未読確認の失敗は画面に影響させない
+    }
+  }, [token]);
+
+  // 初回表示時とページ復帰時（フォアグラウンド化）に未読を確認する
+  useEffect(() => {
+    checkUnread();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') checkUnread();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [checkUnread]);
 
   useEffect(() => {
     if (!open) return;
@@ -51,11 +76,13 @@ export default function ChatWidget({
         const res = await sellerPortalApi.getMessages(token);
         const conv = res.conversations.find((c: any) => c.context_tag === contextTag);
         setMessages(conv?.messages ?? []);
+        // 開いたことで既読になったはずなので、未読バッジを再確認する
+        checkUnread();
       } finally {
         setLoading(false);
       }
     })();
-  }, [open, token, contextTag]);
+  }, [open, token, contextTag, checkUnread]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -79,14 +106,16 @@ export default function ChatWidget({
 
   return (
     <>
-      <Fab
-        color="primary"
-        onClick={onOpen}
+      <Badge
+        color="error"
+        badgeContent={unreadCount}
+        overlap="circular"
         sx={{ position: 'fixed', bottom: 20, right: 20, zIndex: 50 }}
-        aria-label="スタッフに相談する"
       >
-        <ChatIcon />
-      </Fab>
+        <Fab color="primary" onClick={onOpen} aria-label="スタッフに相談する">
+          <ChatIcon />
+        </Fab>
+      </Badge>
 
       <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" PaperProps={{ sx: { height: '80vh' } }}>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

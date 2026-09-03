@@ -47,6 +47,37 @@ export class SellerPortalService extends BaseRepository {
   }
 
   /**
+   * スタッフ返信メール通知用のトークンを発行する。
+   * issueToken() とは異なり、既存の有効なトークンを無効化しない（売主がホーム画面に設置済みの
+   * PWAリンクを壊さないため）。同じ売主に対して複数の有効トークンが並存してよい設計とする。
+   */
+  async issueAdditionalToken(sellerId: string, sellerNumber: string): Promise<string> {
+    const { plainToken, tokenHash } = this.generateToken();
+
+    const { error } = await this.table('seller_portal_tokens').insert({
+      seller_id: sellerId,
+      seller_number: sellerNumber,
+      token_hash: tokenHash,
+    });
+
+    if (error) throw new Error(`トークン発行に失敗しました: ${error.message}`);
+
+    return plainToken;
+  }
+
+  /** 有効な（無効化・期限切れでない）トークンが既に存在するかを確認する */
+  async hasActiveToken(sellerId: string): Promise<boolean> {
+    const { data } = await this.table('seller_portal_tokens')
+      .select('id, expires_at')
+      .eq('seller_id', sellerId)
+      .is('revoked_at', null);
+
+    if (!data || data.length === 0) return false;
+    const now = Date.now();
+    return data.some((row: any) => !row.expires_at || new Date(row.expires_at).getTime() > now);
+  }
+
+  /**
    * 専用URLトークンを新規発行する（スタッフ操作、要認証）。
    * 既存の有効なトークンがあれば無効化してから新規発行する（1売主1トークン運用）。
    */

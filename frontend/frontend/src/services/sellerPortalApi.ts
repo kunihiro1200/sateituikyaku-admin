@@ -110,9 +110,13 @@ export const sellerPortalApi = {
     });
   },
 
-  async getMessages(token: string) {
+  async getMessages(token: string, options?: { markAsRead?: boolean }) {
+    const params = new URLSearchParams({ token });
+    if (options?.markAsRead === false) {
+      params.set('markAsRead', 'false');
+    }
     return request<{ success: boolean; conversations: any[] }>(
-      `/api/seller-portal/portal/messages?token=${encodeURIComponent(token)}`
+      `/api/seller-portal/portal/messages?${params.toString()}`
     );
   },
 };
