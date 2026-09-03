@@ -194,31 +194,46 @@ export class SellerPortalService extends BaseRepository {
       .eq('seller_id', sellerId)
       .single();
 
+    const minimumPrice = seller.valuationAmount1 ?? 0;
+    const midPrice = seller.valuationAmount2 ?? 0;
+    const maximumPrice = seller.valuationAmount3 ?? 0;
+
     if (!breakdown) {
       return {
         propertyType,
         hasBreakdown: false, // 内訳データが存在しない売主。総額のみ表示すること（AIで根拠を作らない）
-        minimumPrice: seller.valuationAmount1 ?? 0,
-        midPrice: seller.valuationAmount2 ?? 0,
-        maximumPrice: seller.valuationAmount3 ?? 0,
+        minimumPrice,
+        midPrice,
+        maximumPrice,
       };
     }
+
+    // 🚨 重要：実際の査定ロジック（ValuationCalculatorService.calculateValuationAmount1）は
+    // 土地価格＋建物価格を単純合算した後、①合計を1.2倍 ②1000万円以上なら+300万円 ③10万円単位で切り捨て
+    // という調整を行っている。この調整分を反映せずに「土地価格＋建物価格」だけを表示すると、
+    // 実際の最低価格（sellers.valuation_amount_1）と数字が一致しなくなる（過去に実際に発生した不一致）。
+    // そのため、最低価格から土地価格・建物価格を引いた差分を「調整額」として明示し、
+    // 表示上の足し算が必ず実際の査定額と一致するようにする。
+    const landPrice = breakdown.land_price ?? 0;
+    const buildingPrice = breakdown.building_price ?? 0;
+    const marketAdjustment = minimumPrice - landPrice - buildingPrice;
 
     return {
       propertyType,
       hasBreakdown: true,
       landAreaUsed: breakdown.land_area_used,
       fixedAssetTaxRoadPriceUsed: breakdown.fixed_asset_tax_road_price_used,
-      landPrice: breakdown.land_price,
+      landPrice,
       buildingAreaUsed: breakdown.building_area_used,
       buildingAgeUsed: breakdown.building_age_used,
       structureUsed: breakdown.structure_used,
-      buildingPrice: breakdown.building_price,
+      buildingPrice,
+      marketAdjustment,
       additionAmount2: breakdown.addition_amount_2,
       additionAmount3: breakdown.addition_amount_3,
-      minimumPrice: seller.valuationAmount1 ?? 0,
-      midPrice: seller.valuationAmount2 ?? 0,
-      maximumPrice: seller.valuationAmount3 ?? 0,
+      minimumPrice,
+      midPrice,
+      maximumPrice,
     };
   }
 

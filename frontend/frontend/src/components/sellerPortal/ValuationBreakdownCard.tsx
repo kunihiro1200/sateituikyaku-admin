@@ -108,6 +108,8 @@ function LandOrHouseBreakdown({ breakdown }: { breakdown: any }) {
     );
   }
 
+  const subtotal = breakdown.landPrice + breakdown.buildingPrice;
+
   return (
     <Box>
       <Typography variant="body2" sx={{ mb: 1.5 }}>
@@ -129,13 +131,31 @@ function LandOrHouseBreakdown({ breakdown }: { breakdown: any }) {
         </Box>
       )}
 
+      {/* 土地価格＋建物価格の小計から、実際の最低価格までの調整額を明示する。
+          ここで足し算が必ず実際の査定額（minimumPrice）と一致するようにする。 */}
+      <Box sx={{ p: 1.5, bgcolor: '#fff8e1', borderRadius: 2, mb: 1.5 }}>
+        <Row label="小計（土地価格＋建物価格）" value={fmtMan(subtotal)} />
+        <Row
+          label="市場動向・需要を考慮した調整"
+          value={`${breakdown.marketAdjustment >= 0 ? '+' : ''}${fmtMan(breakdown.marketAdjustment)}`}
+        />
+        <Row label="早期売却を重視した価格（最低価格）" value={fmtMan(breakdown.minimumPrice)} emphasized />
+      </Box>
+
+      <Typography variant="body2" sx={{ mb: 0.5 }}>
+        現在の不動産市場の価格動向や周辺エリアの需要を考慮し、路線価等を基準として算出した価格に調整を加えています。
+      </Typography>
+
       {breakdown.additionAmount2 > 0 && (
-        <Box sx={{ mt: 1.5 }}>
-          <Typography variant="body2" sx={{ mb: 0.5 }}>
-            現在の不動産市場の価格動向や周辺エリアの需要を考慮し、路線価を基準として算出した価格に金額を加算しています。
-          </Typography>
-          <Row label="市場動向・需要を考慮した加算（成約想定価格）" value={`+${fmtMan(breakdown.additionAmount2)}`} />
-          <Row label="市場動向・需要を考慮した加算（チャレンジ価格）" value={`+${fmtMan(breakdown.additionAmount3)}`} />
+        <Box sx={{ mt: 1 }}>
+          <Row
+            label="成約想定価格（早期売却重視価格 + 加算）"
+            value={`${fmtMan(breakdown.minimumPrice)} +${fmtMan(breakdown.additionAmount2)} = ${fmtMan(breakdown.midPrice)}`}
+          />
+          <Row
+            label="チャレンジ価格（早期売却重視価格 + 加算）"
+            value={`${fmtMan(breakdown.minimumPrice)} +${fmtMan(breakdown.additionAmount3)} = ${fmtMan(breakdown.maximumPrice)}`}
+          />
         </Box>
       )}
 
