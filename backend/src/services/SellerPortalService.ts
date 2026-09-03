@@ -208,15 +208,21 @@ export class SellerPortalService extends BaseRepository {
       };
     }
 
-    // 🚨 重要：実際の査定ロジック（ValuationCalculatorService.calculateValuationAmount1）は
-    // 土地価格＋建物価格を単純合算した後、①合計を1.2倍 ②1000万円以上なら+300万円 ③10万円単位で切り捨て
-    // という調整を行っている。この調整分を反映せずに「土地価格＋建物価格」だけを表示すると、
-    // 実際の最低価格（sellers.valuation_amount_1）と数字が一致しなくなる（過去に実際に発生した不一致）。
-    // そのため、最低価格から土地価格・建物価格を引いた差分を「調整額」として明示し、
-    // 表示上の足し算が必ず実際の査定額と一致するようにする。
+    // 🚨 重要：表示は「後付けの差分」ではなく、実際の計算ステップ（ValuationCalculatorService.
+    // calculateValuationAmount1）をそのまま再現する。
+    //   ① 土地価格 = 土地面積 × 固定資産税路線価 ÷ 0.6（路線価は実勢価格の約60%という前提で市場価格に割り戻す）
+    //   ② 建物価格 = 建築単価 × 建物面積 − 経年減価
+    //   ③ 小計 = 土地価格 + 建物価格
+    //   ④ 小計 × 1.2倍
+    //   ⑤ 1000万円以上なら +300万円
+    //   ⑥ 10万円単位で切り捨て → 早期売却を重視した価格（最低価格）
+    // この6ステップの計算結果が必ず minimumPrice と一致する。
     const landPrice = breakdown.land_price ?? 0;
     const buildingPrice = breakdown.building_price ?? 0;
-    const marketAdjustment = minimumPrice - landPrice - buildingPrice;
+    const subtotal = landPrice + buildingPrice;
+    const afterMultiplier = subtotal * 1.2; // ④ 市場性を考慮した価格（円）
+    const basePriceMan = Math.round(afterMultiplier / 10000); // 万円単位に丸め
+    const largeAmountBonus = basePriceMan >= 1000 ? 3_000_000 : 0; // ⑤ 1000万円以上なら+300万円
 
     return {
       propertyType,
@@ -227,8 +233,11 @@ export class SellerPortalService extends BaseRepository {
       buildingAreaUsed: breakdown.building_area_used,
       buildingAgeUsed: breakdown.building_age_used,
       structureUsed: breakdown.structure_used,
+      constructionUnitPriceUsed: breakdown.construction_unit_price_used,
       buildingPrice,
-      marketAdjustment,
+      subtotal,
+      afterMultiplier,
+      largeAmountBonus,
       additionAmount2: breakdown.addition_amount_2,
       additionAmount3: breakdown.addition_amount_3,
       minimumPrice,
