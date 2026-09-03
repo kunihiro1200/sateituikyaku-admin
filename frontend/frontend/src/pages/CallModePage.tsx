@@ -94,6 +94,7 @@ import MatchingIntentPanel from '../components/MatchingIntentPanel';
 import { VisitPreparationButton } from '../components/VisitPreparationButton';
 import SaleScheduleModal from '../components/SaleScheduleModal';
 import NetProceedsListModal from '../components/NetProceedsListModal';
+import SellerPortalAdminModal from '../components/SellerPortalAdminModal';
 import { SouhuModal } from '../components/SouhuModal';
 import AreaReportModal from '../components/AreaReportModal';
 import CollapsibleSection from '../components/CollapsibleSection';
@@ -1139,6 +1140,7 @@ const CallModePage = () => {
   const [docGenMenuAnchor, setDocGenMenuAnchor] = useState<null | HTMLElement>(null);
   const [saleScheduleModalOpen, setSaleScheduleModalOpen] = useState(false);
   const [netProceedsModalOpen, setNetProceedsModalOpen] = useState(false);
+  const [sellerPortalModalOpen, setSellerPortalModalOpen] = useState(false);
   const [souhuModalOpen, setSouhuModalOpen] = useState(false);
   const [souhuEmptyModalOpen, setSouhuEmptyModalOpen] = useState(false);
   // 画像数バッジ用の状態
@@ -6123,6 +6125,11 @@ HP：https://ifoo-oita.com/
                     {seller?.sellerNumber?.toUpperCase().startsWith('FI') && (
                       <MenuItem onClick={() => { setDocGenMenuAnchor(null); window.open('https://drive.google.com/drive/u/0/folders/1FwlNVedSK3s-S6lAj1Z7pUpkBT1RBNXy', '_blank'); }}>
                         福岡追加資料
+                      </MenuItem>
+                    )}
+                    {seller?.id && (
+                      <MenuItem onClick={() => { setDocGenMenuAnchor(null); setSellerPortalModalOpen(true); }}>
+                        売却サポートページ
                       </MenuItem>
                     )}
                   </Menu>
@@ -11875,6 +11882,16 @@ HP：https://ifoo-oita.com/
           ownerName={seller.name || ''}
           onOpenSaleSchedule={() => { setSouhuModalOpen(false); setSaleScheduleModalOpen(true); }}
           onOpenNetProceeds={() => { setSouhuModalOpen(false); setNetProceedsModalOpen(true); }}
+        />
+      )}
+
+      {/* 売却サポートページ管理モーダル */}
+      {seller?.id && (
+        <SellerPortalAdminModal
+          open={sellerPortalModalOpen}
+          onClose={() => setSellerPortalModalOpen(false)}
+          sellerId={seller.id}
+          sellerNumber={seller.sellerNumber || ''}
         />
       )}
 
