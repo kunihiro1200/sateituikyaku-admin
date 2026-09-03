@@ -30,6 +30,14 @@ export interface ValuationSummary {
   propertyType: 'land' | 'detached_house' | 'apartment' | 'other';
 }
 
+export interface PropertySummary {
+  ownerName: string | null;
+  propertyTypeLabel: string;
+  address: string | null;
+  landArea: number | null;
+  buildingArea: number | null;
+}
+
 export const sellerPortalApi = {
   /** URLパスのトークンをlocalStorageに保存しておく（PWAでホーム画面から再訪した際の補助） */
   saveToken(token: string) {
@@ -40,9 +48,13 @@ export const sellerPortalApi = {
   },
 
   async getPortalTop(token: string) {
-    return request<{ success: boolean; sellerNumber: string; valuation: ValuationSummary; preferences: any }>(
-      `/api/seller-portal/portal?token=${encodeURIComponent(token)}`
-    );
+    return request<{
+      success: boolean;
+      sellerNumber: string;
+      valuation: ValuationSummary;
+      preferences: any;
+      propertySummary: PropertySummary | null;
+    }>(`/api/seller-portal/portal?token=${encodeURIComponent(token)}`);
   },
 
   async getValuationBreakdown(token: string) {

@@ -39,12 +39,13 @@ router.get('/portal', async (req: Request, res: Response) => {
     const resolved = await requireValidToken(req, res);
     if (!resolved) return;
 
-    const [valuation, preferences] = await Promise.all([
+    const [valuation, preferences, propertySummary] = await Promise.all([
       sellerPortalService.getValuationSummary(resolved.sellerId),
       sellerPortalService.getPreferences(resolved.sellerId),
+      sellerPortalService.getPropertySummary(resolved.sellerId),
     ]);
 
-    res.json({ success: true, sellerNumber: resolved.sellerNumber, valuation, preferences });
+    res.json({ success: true, sellerNumber: resolved.sellerNumber, valuation, preferences, propertySummary });
   } catch (error: any) {
     console.error('[SellerPortal] GET /portal error:', error.message);
     res.status(500).json({ error: error.message });

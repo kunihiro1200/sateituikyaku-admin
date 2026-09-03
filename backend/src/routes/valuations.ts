@@ -170,6 +170,20 @@ router.post('/:sellerId/calculate-valuation-amount1', async (req: Request, res: 
     );
     console.log('Calculated valuation amount 1:', valuationAmount1);
 
+    // 売却サポートページ「査定額の計算根拠」用に、内訳（路線価・面積・建物価格・加算額）を保存する。
+    // 土地・戸建のみ対象（マンションはその場で㎡単価を計算するため保存不要）。
+    // 失敗しても査定額本体のレスポンスには影響させない（根拠保存はあくまで付随機能）。
+    try {
+      const { normalizePropertyType } = await import('../utils/propertyTypeNormalizer');
+      const normalizedType = normalizePropertyType(seller.propertyType ?? propertyInfo.propertyType);
+      if (normalizedType === 'land' || normalizedType === 'detached_house') {
+        const { sellerPortalService } = await import('../services/SellerPortalService');
+        await sellerPortalService.saveValuationBreakdown(seller, propertyInfo);
+      }
+    } catch (breakdownError) {
+      console.error('[Valuation] 査定根拠の保存に失敗しました（査定額本体には影響なし）:', breakdownError);
+    }
+
     res.json({
       valuationAmount1,
       calculatedAt: new Date(),

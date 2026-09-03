@@ -21,6 +21,14 @@ export interface ValuationSummary {
   propertyType: 'land' | 'detached_house' | 'apartment' | 'other';
 }
 
+export interface PropertySummary {
+  ownerName: string | null; // 「様」付き
+  propertyTypeLabel: string; // 表示用の種別ラベル（土地/戸建て/マンション等）
+  address: string | null;
+  landArea: number | null; // ㎡。当社調べ（_verified）を優先
+  buildingArea: number | null; // ㎡。当社調べ（_verified）を優先。マンションは専有面積として使う
+}
+
 export class SellerPortalService extends BaseRepository {
   private sellerService = new SellerService();
 
@@ -104,6 +112,29 @@ export class SellerPortalService extends BaseRepository {
   // ============================================================
   // 査定額・査定根拠
   // ============================================================
+
+  /**
+   * 物件概要（売主名・種別・住所・面積）を取得する。売却サポートページの査定額カード上部に表示する。
+   * 面積は当社調べ（_verified）があればそれを優先する（既存のカラム優先順位ルールと同じ）。
+   */
+  async getPropertySummary(sellerId: string): Promise<PropertySummary | null> {
+    const seller = await this.sellerService.getSeller(sellerId);
+    if (!seller) return null;
+
+    const ownerName = seller.name ? `${seller.name.trim()} 様` : null;
+    const propertyType = normalizePropertyType(seller.propertyType ?? seller.property?.propertyType);
+    const propertyTypeLabel =
+      propertyType === 'land' ? '土地'
+      : propertyType === 'detached_house' ? '戸建て'
+      : propertyType === 'apartment' ? 'マンション'
+      : (seller.propertyType ?? seller.property?.propertyType ?? '種別不明');
+
+    const address = seller.property?.address || seller.propertyAddress || null;
+    const landArea = seller.property?.landAreaVerified || seller.property?.landArea || seller.landArea || null;
+    const buildingArea = seller.property?.buildingAreaVerified || seller.property?.buildingArea || seller.buildingArea || null;
+
+    return { ownerName, propertyTypeLabel, address, landArea, buildingArea };
+  }
 
   /**
    * 査定額（最低/中間/最高）を取得する。既存のsellers.valuation_amount_1/2/3をそのまま使う。
@@ -201,11 +232,22 @@ export class SellerPortalService extends BaseRepository {
     if (!seller) throw new Error('売主が見つかりません');
     if (!seller.property) throw new Error('物件情報が見つかりません');
 
-    const breakdown = await valuationCalculatorService.calculateValuationBreakdown(seller, seller.property);
+    await this.saveValuationBreakdown(seller, seller.property);
+  }
+
+  /**
+   * 査定額1の自動計算（POST /:sellerId/calculate-valuation-amount1 等）が呼ばれたタイミングで、
+   * 査定根拠（土地価格・建物価格・加算額の内訳）を保存する。土地・戸建のみが対象。
+   * seller・propertyInfo は呼び出し元（valuations.ts）が既に取得済みのものをそのまま渡してもらう。
+   */
+  async saveValuationBreakdown(seller: any, propertyInfo: any): Promise<void> {
+    if (!seller?.id) throw new Error('売主IDが不明です');
+
+    const breakdown = await valuationCalculatorService.calculateValuationBreakdown(seller, propertyInfo);
 
     const { error } = await this.table('seller_valuation_breakdowns').upsert(
       {
-        seller_id: sellerId,
+        seller_id: seller.id,
         seller_number: seller.sellerNumber,
         land_area_used: breakdown.landAreaUsed,
         fixed_asset_tax_road_price_used: breakdown.fixedAssetTaxRoadPriceUsed,

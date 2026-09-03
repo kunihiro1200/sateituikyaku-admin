@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Box, CircularProgress, Typography, Alert } from '@mui/material';
-import { sellerPortalApi, ValuationSummary } from '../services/sellerPortalApi';
+import { sellerPortalApi, ValuationSummary, PropertySummary } from '../services/sellerPortalApi';
 import SellerPortalHeader from '../components/sellerPortal/SellerPortalHeader';
+import PropertySummaryCard from '../components/sellerPortal/PropertySummaryCard';
 import ValuationCard from '../components/sellerPortal/ValuationCard';
 import ValuationBreakdownCard from '../components/sellerPortal/ValuationBreakdownCard';
 import NetProceedsCard from '../components/sellerPortal/NetProceedsCard';
@@ -21,6 +22,7 @@ export default function SellerPortalPage() {
   const { token } = useParams<{ token: string }>();
   const [sellerNumber, setSellerNumber] = useState('');
   const [valuation, setValuation] = useState<ValuationSummary | null>(null);
+  const [propertySummary, setPropertySummary] = useState<PropertySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
@@ -37,6 +39,7 @@ export default function SellerPortalPage() {
         const res = await sellerPortalApi.getPortalTop(token);
         setSellerNumber(res.sellerNumber);
         setValuation(res.valuation);
+        setPropertySummary(res.propertySummary);
       } catch (err: any) {
         setError(err.message || 'ページを表示できませんでした');
       } finally {
@@ -81,6 +84,8 @@ export default function SellerPortalPage() {
       <SellerPortalHeader sellerNumber={sellerNumber} />
 
       <Box sx={{ maxWidth: 560, mx: 'auto', px: 2, pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {propertySummary && <PropertySummaryCard summary={propertySummary} />}
+
         {valuation && (
           <ValuationCard valuation={valuation} onAskQuestion={() => openChat('valuation')} />
         )}

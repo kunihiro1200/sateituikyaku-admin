@@ -22,6 +22,8 @@ export default function SellerPortalAdminSection({ sellerId, sellerNumber }: { s
   const [conversations, setConversations] = useState<any[]>([]);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [sendingConvId, setSendingConvId] = useState<string | null>(null);
+  const [recalculating, setRecalculating] = useState(false);
+  const [recalcMessage, setRecalcMessage] = useState<string | null>(null);
 
   const loadStatus = async () => {
     setLoading(true);
@@ -61,6 +63,19 @@ export default function SellerPortalAdminSection({ sellerId, sellerNumber }: { s
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleRecalculateBreakdown = async () => {
+    setRecalculating(true);
+    setRecalcMessage(null);
+    try {
+      await api.post(`/api/seller-portal/admin/${sellerId}/recalculate-breakdown`);
+      setRecalcMessage('査定根拠を作成しました。売主様のページに反映されます。');
+    } catch (err: any) {
+      setRecalcMessage(err.response?.data?.error || '査定根拠の作成に失敗しました（マンションは対象外です）');
+    } finally {
+      setRecalculating(false);
+    }
+  };
+
   const handleReply = async (conversationId: string) => {
     const content = replyDrafts[conversationId];
     if (!content?.trim()) return;
@@ -92,10 +107,19 @@ export default function SellerPortalAdminSection({ sellerId, sellerNumber }: { s
         <Button variant="contained" onClick={handleIssueToken} disabled={issuing}>
           {issuing ? '発行中...' : status?.tokenStatus ? '専用URLを再発行' : '専用URLを発行'}
         </Button>
+        <Button variant="outlined" onClick={handleRecalculateBreakdown} disabled={recalculating}>
+          {recalculating ? '作成中...' : '査定根拠を作成（土地・戸建のみ）'}
+        </Button>
         {status?.unreadCount > 0 && (
           <Chip label={`未読 ${status.unreadCount}件`} color="error" size="small" />
         )}
       </Box>
+
+      {recalcMessage && (
+        <Alert severity={recalcMessage.includes('失敗') ? 'warning' : 'success'} sx={{ mb: 2 }}>
+          {recalcMessage}
+        </Alert>
+      )}
 
       {issuedUrl && (
         <Alert severity="success" sx={{ mb: 2 }}>
