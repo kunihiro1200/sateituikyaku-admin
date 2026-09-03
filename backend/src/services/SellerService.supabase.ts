@@ -3172,6 +3172,7 @@ export class SellerService extends BaseRepository {
       fi_todayCallWithInfoLabelCounts,
       visitThankYouPendingCounts,
       visitPreparationPending: getCount('visitPreparationPending'),
+      sellerPortalAttention: getCount('sellerPortalAttention'),
     };
   }
 
@@ -3654,6 +3655,7 @@ export class SellerService extends BaseRepository {
       fi_todayCallWithInfoLabelCounts: fi_labelCountMap,
       visitThankYouPendingCounts: {},  // フォールバック時は空（seller_sidebar_countsテーブルから取得）
       visitPreparationPending: visitPreparationPendingCount || 0,
+      sellerPortalAttention: 0, // フォールバック時は0（seller_sidebar_countsテーブルから取得するのが通常パス）
     };
 
     console.log(`✅ [Performance] Sidebar counts calculation completed in ${Date.now() - startTime}ms`);

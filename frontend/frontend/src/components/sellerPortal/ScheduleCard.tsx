@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Paper, Typography, Box, Button, TextField, CircularProgress } from '@mui/material';
+import { Paper, Typography, Box, Button, TextField, CircularProgress, Alert } from '@mui/material';
 import { sellerPortalApi, ValuationSummary } from '../../services/sellerPortalApi';
 
 const fmtMan = (yen: number) => `${Math.round(yen / 10000).toLocaleString()}万円`;
@@ -101,8 +101,15 @@ export default function ScheduleCard({
 
           {schedule?.hasSettlementDate && (
             <Box sx={{ mt: 1 }}>
+              {schedule.isCompressed && (
+                <Alert severity="info" sx={{ mb: 1.5, fontSize: '0.75rem' }}>
+                  ご希望の時期までの期間が短いため、販売開始を今月からとし、スケジュールを詰めて計算しています。
+                </Alert>
+              )}
               <ScheduleStep label="販売開始" detail={`売出価格：${fmtMan(schedule.desiredSalePrice)}`} yearMonth={`${schedule.startYear}年${schedule.startMonth}月`} />
-              <ScheduleStep label="販売活動強化" yearMonth={`${schedule.marketingYear}年${schedule.marketingStartMonth}月〜${schedule.marketingEndYear}年${schedule.marketingEndMonth}月`} />
+              {schedule.marketingYear && (
+                <ScheduleStep label="販売活動強化" yearMonth={`${schedule.marketingYear}年${schedule.marketingStartMonth}月〜${schedule.marketingEndYear}年${schedule.marketingEndMonth}月`} />
+              )}
               <ScheduleStep
                 label="売買契約"
                 detail={`成約想定価格：${fmtMan(schedule.desiredSalePrice)}～${fmtMan(schedule.minimumSalePrice)}`}

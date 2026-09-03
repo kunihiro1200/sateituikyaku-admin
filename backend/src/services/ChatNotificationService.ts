@@ -414,6 +414,7 @@ ${data.notes || '物件紹介文が入力されていません'}
   isConfigured(): boolean {
     return !!this.webhookUrl;
   }
+
 }
 
 // Export singleton instance

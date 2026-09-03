@@ -1,6 +1,20 @@
 import { Router, Request, Response } from 'express';
+import { createClient } from '@supabase/supabase-js';
 import { sellerPortalService } from '../services/SellerPortalService';
+import { SellerSidebarCountsUpdateService } from '../services/SellerSidebarCountsUpdateService';
 import { authenticate } from '../middleware/auth';
+
+/**
+ * 「売却サポートページ：対応が必要」サイドバーカテゴリーを非同期で再計算する。
+ * 呼び出し元のレスポンスをブロックしない（失敗してもチャット送信・保存自体は成功させる）。
+ */
+function refreshSellerPortalAttentionSidebar(): void {
+  const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+  const service = new SellerSidebarCountsUpdateService(supabase);
+  service.updateSellerPortalAttentionCategory().catch((err: any) => {
+    console.error('⚠️ [SellerPortal] sellerPortalAttention sidebar update error:', err);
+  });
+}
 
 /**
  * 査定依頼者向け「売却サポートページ」API。
@@ -142,6 +156,13 @@ router.put('/portal/preferences', async (req: Request, res: Response) => {
       minimumSalePrice,
       desiredSettlementYearMonth,
     });
+
+    // 「いつまでに売りたいですか？」が入力されたら、Google Chatではなく
+    // 売主リストのサイドバーカテゴリー「売却サポート：対応が必要」で気づける仕組みにする
+    if (desiredSettlementYearMonth) {
+      refreshSellerPortalAttentionSidebar();
+    }
+
     res.json({ success: true });
   } catch (error: any) {
     console.error('[SellerPortal] PUT /portal/preferences error:', error.message);
@@ -222,6 +243,8 @@ router.post('/portal/messages', async (req: Request, res: Response) => {
       senderType: 'seller',
       content,
     });
+    // 売主からの質問も同じく、サイドバーカテゴリーで気づける仕組みにする
+    refreshSellerPortalAttentionSidebar();
     res.json({ success: true, conversationId });
   } catch (error: any) {
     console.error('[SellerPortal] POST /portal/messages error:', error.message);
@@ -282,6 +305,22 @@ router.get('/admin/:sellerId/status', authenticate, async (req: Request, res: Re
   }
 });
 
+/** POST /api/seller-portal/admin/:sellerId/confirm-settlement : 決済希望月の入力をスタッフが確認したことを記録する */
+router.post('/admin/:sellerId/confirm-settlement', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { sellerId } = req.params;
+    const { sellerNumber } = req.body;
+    if (!sellerNumber) return res.status(400).json({ error: 'sellerNumberが必要です' });
+
+    await sellerPortalService.confirmSettlementInput(sellerId, sellerNumber);
+    refreshSellerPortalAttentionSidebar();
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('[SellerPortal] POST /admin/confirm-settlement error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 /** POST /api/seller-portal/admin/:sellerId/recalculate-breakdown : 査定根拠の再計算・保存（土地・戸建のみ） */
 router.post('/admin/:sellerId/recalculate-breakdown', authenticate, async (req: Request, res: Response) => {
   try {
@@ -327,6 +366,7 @@ router.post('/admin/:sellerId/messages', authenticate, async (req: Request, res:
       content,
     });
     await sellerPortalService.markMessagesReadByStaff(conversationId);
+    refreshSellerPortalAttentionSidebar();
     res.json({ success: true });
   } catch (error: any) {
     console.error('[SellerPortal] POST /admin/messages error:', error.message);

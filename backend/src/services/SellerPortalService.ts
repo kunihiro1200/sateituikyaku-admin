@@ -427,10 +427,23 @@ export class SellerPortalService extends BaseRepository {
     if (updates.minimumSalePrice !== undefined) payload.minimum_sale_price = updates.minimumSalePrice;
     if (updates.desiredSettlementYearMonth !== undefined) {
       payload.desired_settlement_year_month = updates.desiredSettlementYearMonth;
+      // 決済希望月が新規入力・変更された場合は、スタッフ確認済みフラグをリセットする。
+      // これにより「サイドバーで気づいたら未確認」というサイクルが機能する
+      // （Google Chat通知の代わりに、サイドバーカテゴリーで気づく設計に変更したため）。
+      payload.staff_confirmed_settlement_at = null;
     }
 
     const { error } = await this.table('seller_portal_preferences').upsert(payload, { onConflict: 'seller_id' });
     if (error) throw new Error(`希望条件の保存に失敗しました: ${error.message}`);
+  }
+
+  /** スタッフが「いつまでに売りたいか」の入力を確認したことを記録する（サイドバーカテゴリーから外すため） */
+  async confirmSettlementInput(sellerId: string, sellerNumber: string): Promise<void> {
+    const { error } = await this.table('seller_portal_preferences').upsert(
+      { seller_id: sellerId, seller_number: sellerNumber, staff_confirmed_settlement_at: new Date().toISOString() },
+      { onConflict: 'seller_id' }
+    );
+    if (error) throw new Error(`確認状態の保存に失敗しました: ${error.message}`);
   }
 
   async updateKnownFacts(sellerId: string, sellerNumber: string, facts: Record<string, any>): Promise<void> {
@@ -576,6 +589,50 @@ export class SellerPortalService extends BaseRepository {
       .eq('conversation_id', conversationId)
       .eq('sender_type', 'seller')
       .is('read_at', null);
+  }
+
+  // ============================================================
+  // サイドバーカテゴリー「売却サポート：対応が必要」向け集計
+  // ============================================================
+
+  /**
+   * 「売却サポートページで対応が必要」な売主の seller_id 一覧を返す。
+   * 対象は次のいずれかを満たす売主：
+   *   ① 決済希望月が入力済みで、まだスタッフが確認していない
+   *   ② 売主からスタッフへの未読メッセージがある
+   * 既存の visitThankYouPending カテゴリー（sellers以外のテーブルとJOINする実装）と同じ
+   * パターンで、候補IDを取得してJSでOR条件を判定する。
+   */
+  async getSellerIdsNeedingPortalAttention(): Promise<Set<string>> {
+    const result = new Set<string>();
+
+    // ① 決済希望月が入力済み・未確認
+    const { data: pendingSettlement } = await this.table('seller_portal_preferences')
+      .select('seller_id')
+      .not('desired_settlement_year_month', 'is', null)
+      .is('staff_confirmed_settlement_at', null);
+    for (const row of pendingSettlement ?? []) result.add(row.seller_id);
+
+    // ② 売主からの未読メッセージがある会話を持つ売主
+    const { data: unreadMessages } = await this.table('seller_portal_messages')
+      .select('conversation_id')
+      .eq('sender_type', 'seller')
+      .is('read_at', null);
+
+    const conversationIds = Array.from(new Set((unreadMessages ?? []).map((m: any) => m.conversation_id)));
+    if (conversationIds.length > 0) {
+      // Supabaseの .in() 上限対策で500件ずつチャンク分割する（既存のvisitThankYouPendingと同じ対策）
+      const chunkSize = 500;
+      for (let i = 0; i < conversationIds.length; i += chunkSize) {
+        const chunk = conversationIds.slice(i, i + chunkSize);
+        const { data: conversations } = await this.table('seller_portal_conversations')
+          .select('seller_id')
+          .in('id', chunk);
+        for (const row of conversations ?? []) result.add(row.seller_id);
+      }
+    }
+
+    return result;
   }
 
   /** スタッフ管理画面向け：売主単位の未読件数（売主からスタッフへの未読メッセージ数） */

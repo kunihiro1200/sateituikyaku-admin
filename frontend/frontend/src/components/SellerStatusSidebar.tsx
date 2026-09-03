@@ -173,6 +173,10 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
       return sellers.filter(isPinrichNeedsChange);
     case 'visitPreparationPending':
       return sellers.filter(isVisitPreparationPending);
+    case 'sellerPortalAttention':
+      // sellers単体では判定できない（seller_portal_*の別テーブルとのJOINが必要なため）。
+      // 展開リストは対象外とし、件数のみ表示する。誤って全件を返さないよう空配列にする。
+      return [];
     default:
       return sellers;
   }
@@ -215,6 +219,8 @@ const getCategoryLabel = (category: StatusCategory): string => {
       return '未訪問他決';
     case 'visitPreparationPending':
       return '訪問準備未';
+    case 'sellerPortalAttention':
+      return '売却サポート：対応要';
     case 'fi':
       return 'FI売主';
     case 'all':
@@ -283,6 +289,8 @@ const getCategoryColor = (category: StatusCategory): string => {
       return '#ff5722';
     case 'visitPreparationPending':
       return '#c62828';
+    case 'sellerPortalAttention':
+      return '#00897b';
     case 'fi':
       return '#1a237e';
     default:
@@ -1202,6 +1210,7 @@ function SellerStatusSidebarComponent({
       {renderCategoryButton('pinrichChangeRequired', 'Pinrich要変更', '#e91e63')}
       {renderCategoryButton('pinrichEmpty', '⑧Pinrich空欄', '#795548')}
       {renderCategoryButton('matching', 'マッチング', '#9c27b0')}
+      {renderCategoryButton('sellerPortalAttention', '売却サポート：対応要', '#00897b')}
 
       {/* マッチング通知（追客中の売主 × 買主の希望条件）：福岡セクションの直前 */}
       <SellerMatchingSidebarSection />

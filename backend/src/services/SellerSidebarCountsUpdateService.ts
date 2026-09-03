@@ -307,6 +307,42 @@ export class SellerSidebarCountsUpdateService {
         }
       });
 
+      // 売却サポートページ：対応が必要（決済希望月の未確認入力、または売主からの未読メッセージ）
+      // seller_portal_* テーブルは sellers とは別テーブルのため、visitThankYouPending と同じ
+      // 「候補IDを取得してJSでマージ」方式で件数を求める。
+      let sellerPortalAttentionCount = 0;
+      {
+        const attentionSellerIds = new Set<string>();
+
+        const { data: pendingSettlement } = await this.supabase
+          .from('seller_portal_preferences')
+          .select('seller_id')
+          .not('desired_settlement_year_month', 'is', null)
+          .is('staff_confirmed_settlement_at', null);
+        (pendingSettlement ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
+
+        const { data: unreadMessages } = await this.supabase
+          .from('seller_portal_messages')
+          .select('conversation_id')
+          .eq('sender_type', 'seller')
+          .is('read_at', null);
+        const unreadConversationIds = Array.from(new Set((unreadMessages ?? []).map((m: any) => m.conversation_id)));
+
+        if (unreadConversationIds.length > 0) {
+          const chunkSize = 500;
+          for (let i = 0; i < unreadConversationIds.length; i += chunkSize) {
+            const chunk = unreadConversationIds.slice(i, i + chunkSize);
+            const { data: conversations } = await this.supabase
+              .from('seller_portal_conversations')
+              .select('seller_id')
+              .in('id', chunk);
+            (conversations ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
+          }
+        }
+
+        sellerPortalAttentionCount = attentionSellerIds.size;
+      }
+
       // 14. 訪問準備未カウント用データ（FI売主除外・訪問日が対象開始日以降・カレンダー未確認）
       let visitPreparationCandidates: any[] = [];
       {
@@ -652,6 +688,9 @@ export class SellerSidebarCountsUpdateService {
         rows.push({ category: 'visitThankYouPending', count, label: null, assignee });
       });
 
+      // 売却サポートページ：対応が必要
+      rows.push({ category: 'sellerPortalAttention', count: sellerPortalAttentionCount, label: null, assignee: null });
+
       const { error: insertError } = await this.supabase
         .from('seller_sidebar_counts')
         .insert(rows);
@@ -664,6 +703,54 @@ export class SellerSidebarCountsUpdateService {
       console.log(`✅ [SellerSidebarCountsUpdate] Update completed in ${Date.now() - startTime}ms`);
     } catch (error) {
       console.error('❌ [SellerSidebarCountsUpdate] Update failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 「売却サポートページ：対応が必要」カテゴリーだけを再計算してupsertする（軽量版）。
+   * seller_portal_* テーブル（sellersとは別テーブル）の変更時に呼ぶ。
+   * FIELD_TO_CATEGORIES（sellersのカラム変更用）とは対象が異なるため、専用メソッドとして分離する。
+   */
+  async updateSellerPortalAttentionCategory(): Promise<void> {
+    try {
+      const attentionSellerIds = new Set<string>();
+
+      const { data: pendingSettlement } = await this.supabase
+        .from('seller_portal_preferences')
+        .select('seller_id')
+        .not('desired_settlement_year_month', 'is', null)
+        .is('staff_confirmed_settlement_at', null);
+      (pendingSettlement ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
+
+      const { data: unreadMessages } = await this.supabase
+        .from('seller_portal_messages')
+        .select('conversation_id')
+        .eq('sender_type', 'seller')
+        .is('read_at', null);
+      const unreadConversationIds = Array.from(new Set((unreadMessages ?? []).map((m: any) => m.conversation_id)));
+
+      if (unreadConversationIds.length > 0) {
+        const chunkSize = 500;
+        for (let i = 0; i < unreadConversationIds.length; i += chunkSize) {
+          const chunk = unreadConversationIds.slice(i, i + chunkSize);
+          const { data: conversations } = await this.supabase
+            .from('seller_portal_conversations')
+            .select('seller_id')
+            .in('id', chunk);
+          (conversations ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
+        }
+      }
+
+      await this.supabase.from('seller_sidebar_counts').delete().eq('category', 'sellerPortalAttention');
+      await this.supabase
+        .from('seller_sidebar_counts')
+        .insert({ category: 'sellerPortalAttention', count: attentionSellerIds.size, label: null, assignee: null });
+
+      console.log(`✅ [SidebarCounts] sellerPortalAttention updated: ${attentionSellerIds.size}`);
+    } catch (error) {
+      console.error('❌ [SidebarCounts] sellerPortalAttention update failed:', error);
+      // このカテゴリーの更新失敗はチャット送信・希望条件保存の成功を妨げない（呼び出し元でcatchする想定）
       throw error;
     }
   }
