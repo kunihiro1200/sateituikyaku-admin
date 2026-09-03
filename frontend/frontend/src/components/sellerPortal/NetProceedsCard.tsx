@@ -20,11 +20,13 @@ export default function NetProceedsCard({
   token,
   valuation,
   sellerNumber,
+  savedDetailedAnswers,
   onAskQuestion,
 }: {
   token: string;
   valuation: ValuationSummary | null;
   sellerNumber: string;
+  savedDetailedAnswers?: Record<string, any> | null;
   onAskQuestion: () => void;
 }) {
   const [rows, setRows] = useState<RoughRow[]>([]);
@@ -87,6 +89,7 @@ export default function NetProceedsCard({
         token={token}
         valuation={valuation}
         sellerNumber={sellerNumber}
+        savedAnswers={savedDetailedAnswers as any}
       />
     </Paper>
   );

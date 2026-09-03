@@ -42,6 +42,13 @@ export interface TransferTaxInput {
   buildingRatio?: number; // 建物割合（デフォルト0.7）
   /** 3000万円特別控除等の特別控除額（円）。適用可否の判定はAPI呼び出し側の質問フローで行う */
   specialDeduction?: number;
+  /**
+   * true の場合、取得費不明の簡便計算（売却価格の5%を取得費とみなす）を行わず、
+   * 3000万円特別控除だけで課税所得が吸収される前提として税額を0にする。
+   * 居住用財産の特別控除が確実に適用され、かつ物件価格が高額でない場合に使う
+   * （取得費を聞かずに済ませるためのフラグ。売却サポートページの質問スキップ用）。
+   */
+  assumeFullyCoveredBySpecialDeduction?: boolean;
 }
 
 export interface TransferTaxResult {
@@ -60,7 +67,7 @@ export const calcTransferTax = (input: TransferTaxInput): TransferTaxResult => {
   const currentYear = new Date().getFullYear();
   const saleYear = input.saleYear ?? currentYear;
 
-  if (input.mode === 'none' || input.mode === 'none_mortgage') {
+  if (input.mode === 'none' || input.mode === 'none_mortgage' || input.assumeFullyCoveredBySpecialDeduction) {
     return {
       taxAmount: 0,
       taxableGain: 0,
@@ -69,7 +76,7 @@ export const calcTransferTax = (input: TransferTaxInput): TransferTaxResult => {
       isLongTerm: false,
       depreciationAmount: 0,
       buildingAcquisitionCost: 0,
-      specialDeductionApplied: 0,
+      specialDeductionApplied: Math.max(input.specialDeduction ?? 0, 0),
     };
   }
 

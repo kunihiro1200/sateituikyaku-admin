@@ -6129,7 +6129,7 @@ HP：https://ifoo-oita.com/
                     )}
                     {seller?.id && (
                       <MenuItem onClick={() => { setDocGenMenuAnchor(null); setSellerPortalModalOpen(true); }}>
-                        売却サポートページ
+                        売却サポートページ（使用不可）
                       </MenuItem>
                     )}
                   </Menu>

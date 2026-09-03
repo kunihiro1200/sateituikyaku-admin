@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, Typography, Box, RadioGroup, Radio, FormControlLabel, TextField, Alert,
@@ -36,12 +36,15 @@ export default function DetailedProceedsWizard({
   token,
   valuation,
   sellerNumber,
+  savedAnswers,
 }: {
   open: boolean;
   onClose: () => void;
   token: string;
   valuation: ValuationSummary | null;
   sellerNumber: string;
+  /** 前回保存済みの回答（known_facts.detailed_proceeds_answers）。あれば復元して自動再計算する */
+  savedAnswers?: Answers | null;
 }) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
@@ -49,6 +52,7 @@ export default function DetailedProceedsWizard({
   const [specialDeductionApplied, setSpecialDeductionApplied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [restoring, setRestoring] = useState(false);
 
   const isLand = valuation?.propertyType === 'land';
   const currentYear = new Date().getFullYear();
@@ -204,29 +208,34 @@ export default function DetailedProceedsWizard({
     await submit();
   };
 
-  const submit = async () => {
-    setLoading(true);
+  /** 指定した回答一式で計算し、その回答内容を保存する（新規回答時・復元時の両方で使う共通処理） */
+  const calculateAndSave = async (a: Answers) => {
     setError('');
     try {
       // 住宅ローン残高あり＝抵当権あり として扱う（別途「抵当権の有無」は聞かない）
-      const hasMortgage = answers.hasLoan === 'yes';
+      const hasMortgage = a.hasLoan === 'yes';
       const isFiSeller = sellerNumber.trim().toUpperCase().includes('FI');
       const mortgageReleaseFee = hasMortgage ? (isFiSeller ? 50_000 : 30_000) : 0;
-      const loanBalance = answers.hasLoan === 'yes' ? Math.round(parseFloat(answers.loanBalanceMan || '0') * 10_000) : 0;
+      const loanBalance = a.hasLoan === 'yes' ? Math.round(parseFloat(a.loanBalanceMan || '0') * 10_000) : 0;
+
+      const mode: 'unknown' | 'known' = a.acquisitionKnown === 'yes' ? 'known' : 'unknown';
+
+      const moveOutYearParsed = a.moveOutYear ? parseInt(a.moveOutYear, 10) : undefined;
+      const withinThreeYears = moveOutYearParsed !== undefined && currentYear <= moveOutYearParsed + 3;
+      const qualifies = a.isOwner === 'yes' && (a.isResident === 'yes' || withinThreeYears);
+      const maxPriceYenLocal = valuation?.maximumPrice ?? 0;
+      const skipAcquisition = qualifies && maxPriceYenLocal <= 50_000_000;
 
       // 取得費質問をスキップした場合（3000万円控除適用・高額でない場合）は、
-      // 取得費不明モードとして扱う（売却価格の5%を取得費とみなす簡便法。控除で吸収されるため実害はない）
-      const mode: 'unknown' | 'known' = answers.acquisitionKnown === 'yes' ? 'known' : 'unknown';
+      // 「控除だけで課税所得が吸収される」前提として税額を0にする。
+      // （取得費不明時の5%簡便法を使うと、控除を差し引いてもゼロにならないため）
+      const assumeFullyCoveredBySpecialDeduction = skipAcquisition && qualifies;
 
-      setSpecialDeductionApplied(qualifiesForSpecialDeduction);
+      setSpecialDeductionApplied(qualifies);
 
+      // 回答一式をまとめて1つのキーに保存する（次回開いたときに復元・自動再計算するため）
       await sellerPortalApi.saveKnownFacts(token, {
-        has_loan: answers.hasLoan === 'yes',
-        loan_balance: loanBalance,
-        is_owner: answers.isOwner === 'yes',
-        is_resident: answers.isResident === 'yes',
-        move_out_year: moveOutYearNum ?? null,
-        special_deduction_applied: qualifiesForSpecialDeduction,
+        detailed_proceeds_answers: a,
       });
 
       const res = await sellerPortalApi.getDetailedProceeds(token, {
@@ -234,18 +243,35 @@ export default function DetailedProceedsWizard({
         mortgageReleaseFee,
         transferTax: {
           mode,
-          acquisitionCost: answers.acquisitionCostMan ? Math.round(parseFloat(answers.acquisitionCostMan) * 10_000) : undefined,
-          purchaseYear: answers.purchaseYear ? parseInt(answers.purchaseYear, 10) : undefined,
-          specialDeduction: qualifiesForSpecialDeduction ? 30_000_000 : 0,
+          acquisitionCost: a.acquisitionCostMan ? Math.round(parseFloat(a.acquisitionCostMan) * 10_000) : undefined,
+          purchaseYear: a.purchaseYear ? parseInt(a.purchaseYear, 10) : undefined,
+          specialDeduction: qualifies ? 30_000_000 : 0,
+          assumeFullyCoveredBySpecialDeduction,
         },
       });
       setRows(res.rows);
     } catch (err: any) {
       setError(err.message || '計算に失敗しました');
-    } finally {
-      setLoading(false);
     }
   };
+
+  const submit = async () => {
+    setLoading(true);
+    await calculateAndSave(answers);
+    setLoading(false);
+  };
+
+  // モーダルを開いたときに前回の回答があれば復元し、自動で再計算する
+  useEffect(() => {
+    if (!open) return;
+    if (rows) return; // 既に今回のセッションで計算済みなら復元しない
+    if (savedAnswers && Object.keys(savedAnswers).length > 0) {
+      setAnswers(savedAnswers);
+      setRestoring(true);
+      calculateAndSave(savedAnswers).finally(() => setRestoring(false));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const handleClose = () => {
     setStep(0);
@@ -260,7 +286,15 @@ export default function DetailedProceedsWizard({
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
       <DialogTitle>詳しい手残り計算</DialogTitle>
       <DialogContent>
-        {!rows && current && (
+        {restoring && (
+          <Box sx={{ py: 3, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              前回の回答内容を読み込んでいます...
+            </Typography>
+          </Box>
+        )}
+
+        {!restoring && !rows && current && (
           <Box sx={{ py: 1 }}>
             <Typography variant="caption" color="text.secondary">
               質問 {step + 1} / {visibleSteps.length}
@@ -272,7 +306,7 @@ export default function DetailedProceedsWizard({
           </Box>
         )}
 
-        {rows && (
+        {!restoring && rows && (
           <Box>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
               仲介手数料・印紙代・ローン残高・抵当権抹消費用・譲渡所得税を差し引く
@@ -300,6 +334,16 @@ export default function DetailedProceedsWizard({
             <Alert severity="info" sx={{ mt: 2 }}>
               こちらは概算です。実際の税額については税理士・税務署等への確認が必要です。
             </Alert>
+            <Button
+              size="small"
+              sx={{ mt: 1.5 }}
+              onClick={() => {
+                setRows(null);
+                setStep(0);
+              }}
+            >
+              回答をやり直す
+            </Button>
           </Box>
         )}
 
@@ -307,7 +351,7 @@ export default function DetailedProceedsWizard({
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose}>閉じる</Button>
-        {!rows && (
+        {!restoring && !rows && (
           <Button
             variant="contained"
             onClick={handleNext}

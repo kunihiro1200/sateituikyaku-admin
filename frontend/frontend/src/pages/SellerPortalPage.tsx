@@ -23,6 +23,7 @@ export default function SellerPortalPage() {
   const [sellerNumber, setSellerNumber] = useState('');
   const [valuation, setValuation] = useState<ValuationSummary | null>(null);
   const [propertySummary, setPropertySummary] = useState<PropertySummary | null>(null);
+  const [preferences, setPreferences] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
@@ -40,6 +41,7 @@ export default function SellerPortalPage() {
         setSellerNumber(res.sellerNumber);
         setValuation(res.valuation);
         setPropertySummary(res.propertySummary);
+        setPreferences(res.preferences);
       } catch (err: any) {
         setError(err.message || 'ページを表示できませんでした');
       } finally {
@@ -100,6 +102,7 @@ export default function SellerPortalPage() {
           token={token}
           valuation={valuation}
           sellerNumber={sellerNumber}
+          savedDetailedAnswers={preferences?.known_facts?.detailed_proceeds_answers?.value ?? null}
           onAskQuestion={() => openChat('net_proceeds')}
         />
 
