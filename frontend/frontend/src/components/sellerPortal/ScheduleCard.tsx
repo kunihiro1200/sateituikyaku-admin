@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Paper, Typography, Box, Button, TextField, CircularProgress, Alert } from '@mui/material';
+import { Paper, Typography, Box, Button, TextField, CircularProgress, Alert, Collapse, IconButton } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { sellerPortalApi, ValuationSummary } from '../../services/sellerPortalApi';
 import InlineChatSection from './InlineChatSection';
 
@@ -30,6 +32,7 @@ export default function ScheduleCard({
   const [saving, setSaving] = useState(false);
   const [buyoutRequesting, setBuyoutRequesting] = useState(false);
   const [buyoutRequested, setBuyoutRequested] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -41,8 +44,9 @@ export default function ScheduleCard({
           setMinPriceMan(Math.round(res.schedule.minimumSalePrice / 10000).toString());
           setSettlementYearMonth(`${res.schedule.settlementYear}-${String(res.schedule.settlementMonth).padStart(2, '0')}`);
         } else if (valuation) {
+          // 初期値（未入力時）：売りたい価格＝チャレンジ価格、最低の価格＝成約想定価格（真ん中の価格）
           setDesiredPriceMan(Math.round(valuation.maximumPrice / 10000).toString());
-          setMinPriceMan(Math.round(valuation.minimumPrice / 10000).toString());
+          setMinPriceMan(Math.round(valuation.midPrice / 10000).toString());
         }
       } finally {
         setLoading(false);
@@ -80,9 +84,51 @@ export default function ScheduleCard({
 
   return (
     <Paper sx={{ p: 2.5, borderRadius: 3 }} elevation={0} variant="outlined">
-      <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1.5 }}>
+      <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 0.5 }}>
         売却スケジュール
       </Typography>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+        下記は「仲介売却」の場合のスケジュールです。
+      </Typography>
+
+      <Box
+        onClick={() => setShowComparison((v) => !v)}
+        sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', userSelect: 'none', mb: 1.5 }}
+      >
+        <Typography variant="body2" color="primary" fontWeight="bold">
+          「仲介売却」「直接買取」の違いはこちら
+        </Typography>
+        <IconButton size="small">
+          {showComparison ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+        </IconButton>
+      </Box>
+
+      <Collapse in={showComparison}>
+        <Box sx={{ p: 1.5, mb: 1.5, bgcolor: '#f0f4f8', borderRadius: 2 }}>
+          <Typography variant="body2" fontWeight="bold" sx={{ mb: 0.5 }}>
+            仲介売却
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 1.5 }}>
+            不動産会社が広告やインターネットへの掲載などを行い、購入希望者を探して売却する方法です。
+            直接買取に比べて<strong>高く売れる可能性がある</strong>一方、購入希望者が見つかるまで時間がかかる場合があります。
+          </Typography>
+
+          <Typography variant="body2" fontWeight="bold" sx={{ mb: 0.5 }}>
+            直接買取
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 1.5 }}>
+            不動産会社が買主となり、物件を直接買い取る方法です。
+            購入希望者を探す必要がないため、<strong>早く・確実に売却しやすい</strong>のが特徴です。一方、買取価格は仲介で売却する場合より低くなるのが一般的です。
+          </Typography>
+
+          <Typography variant="body2">
+            <strong>高く売りたい方 → 仲介売却</strong>
+          </Typography>
+          <Typography variant="body2">
+            <strong>早く売りたい方 → 直接買取</strong>
+          </Typography>
+        </Box>
+      </Collapse>
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
@@ -90,6 +136,9 @@ export default function ScheduleCard({
         </Box>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Typography variant="caption" color="text.secondary">
+            査定額を初期値として入力しています。ご希望があれば自由に変更できます。
+          </Typography>
           <TextField
             label="売りたい価格（万円）"
             type="number"

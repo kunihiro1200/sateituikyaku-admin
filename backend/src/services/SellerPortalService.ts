@@ -474,8 +474,10 @@ export class SellerPortalService extends BaseRepository {
     return {
       seller_id: sellerId,
       seller_number: seller?.sellerNumber ?? null,
+      // 初期値（未入力時）：売りたい価格＝チャレンジ価格、最低の価格＝成約想定価格（真ん中の価格）。
+      // 売主が自由に編集できる想定の初期値であり、フロント側にも編集可能である旨を表示する。
       desired_sale_price: seller?.valuationAmount3 ?? null,
-      minimum_sale_price: seller?.valuationAmount1 ?? null,
+      minimum_sale_price: seller?.valuationAmount2 ?? null,
       desired_settlement_year_month: null,
       known_facts: {},
       viewed_rough_proceeds_at: null,
