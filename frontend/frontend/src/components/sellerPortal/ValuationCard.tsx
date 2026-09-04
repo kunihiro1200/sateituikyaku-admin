@@ -21,7 +21,7 @@ export default function ValuationCard({
   onMessagesRead?: () => void;
 }) {
   return (
-    <Paper sx={{ p: 2.5, borderRadius: 3 }} elevation={0} variant="outlined">
+    <Paper sx={{ p: 2.5, borderRadius: 3, bgcolor: '#FFF8E7' }} elevation={0} variant="outlined">
       <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>
         査定額
       </Typography>
@@ -56,6 +56,7 @@ export default function ValuationCard({
         label="この査定額について質問する"
         hasUnreadReply={hasUnreadReply}
         onMessagesRead={onMessagesRead}
+        bgColor="#FFF3D6"
       />
     </Paper>
   );

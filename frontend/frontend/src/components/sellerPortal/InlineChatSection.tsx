@@ -26,6 +26,7 @@ export default function InlineChatSection({
   label,
   hasUnreadReply,
   onMessagesRead,
+  bgColor,
 }: {
   token: string;
   contextTag: string;
@@ -35,6 +36,8 @@ export default function InlineChatSection({
   hasUnreadReply?: boolean;
   /** 開いて既読になったタイミングで呼ばれる。ページ側の未読状態（FAB・各カードの赤丸）を再取得させる */
   onMessagesRead?: () => void;
+  /** 展開時のメッセージ一覧エリアの背景色（セクションごとに異なる薄い色にして視覚的に区別する） */
+  bgColor?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -97,7 +100,7 @@ export default function InlineChatSection({
 
       <Collapse in={expanded}>
         <Box sx={{ mt: 1, border: '1px solid #eee', borderRadius: 2, overflow: 'hidden' }}>
-          <Box sx={{ maxHeight: 260, overflowY: 'auto', p: 1.5 }}>
+          <Box sx={{ maxHeight: 260, overflowY: 'auto', p: 1.5, bgcolor: bgColor || 'transparent' }}>
             {loading && (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
                 <CircularProgress size={20} />

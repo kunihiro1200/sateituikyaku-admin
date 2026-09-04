@@ -41,7 +41,7 @@ export default function ValuationBreakdownCard({
   }, [token]);
 
   return (
-    <Paper sx={{ p: 2.5, borderRadius: 3 }} elevation={0} variant="outlined">
+    <Paper sx={{ p: 2.5, borderRadius: 3, bgcolor: '#E8F0FE' }} elevation={0} variant="outlined">
       <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1.5 }}>
         査定額の計算根拠
       </Typography>
@@ -68,6 +68,7 @@ export default function ValuationBreakdownCard({
         label="査定の理由について質問する"
         hasUnreadReply={hasUnreadReply}
         onMessagesRead={onMessagesRead}
+        bgColor="#DCE7FB"
       />
     </Paper>
   );

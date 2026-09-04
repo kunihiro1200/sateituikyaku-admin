@@ -103,7 +103,7 @@ export default function NetProceedsCard({
   };
 
   return (
-    <Paper sx={{ p: 2.5, borderRadius: 3 }} elevation={0} variant="outlined">
+    <Paper sx={{ p: 2.5, borderRadius: 3, bgcolor: '#E8F5E9' }} elevation={0} variant="outlined">
       <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 0.5 }}>
         売却したらいくら残る？
       </Typography>
@@ -167,6 +167,7 @@ export default function NetProceedsCard({
         label="この手残りについて相談する"
         hasUnreadReply={hasUnreadReply}
         onMessagesRead={onMessagesRead}
+        bgColor="#D7EDD9"
       />
 
       <DetailedProceedsWizard

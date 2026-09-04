@@ -186,7 +186,7 @@ export default function SellerPortalAdminSection({ sellerId, sellerNumber }: { s
             </Typography>
           </Grid>
           <Grid item xs={6} sm={4}>
-            <Typography variant="caption" color="text.secondary">最低価格</Typography>
+            <Typography variant="caption" color="text.secondary">相場価格</Typography>
             <Typography variant="body2">
               {status.preferences.minimum_sale_price ? `${Math.round(status.preferences.minimum_sale_price / 10000).toLocaleString()}万円` : '未入力'}
             </Typography>

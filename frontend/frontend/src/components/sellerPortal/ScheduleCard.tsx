@@ -8,7 +8,7 @@ import InlineChatSection from './InlineChatSection';
 const fmtMan = (yen: number) => `${Math.round(yen / 10000).toLocaleString()}万円`;
 
 /**
- * 売却スケジュールカード。ユーザーが「売りたい価格」「最低の価格」「いつまでに売りたいか」を入力し、
+ * 売却スケジュールカード。ユーザーが「売りたい価格」「相場価格」「いつまでに売りたいか」を入力し、
  * 決済・引渡し希望日から逆算した各ステップの時期を表示する。
  * 既存の資料生成「売却スケジュール」の期間オフセットをそのまま使う（逆算のみ新規）。
  */
@@ -83,7 +83,7 @@ export default function ScheduleCard({
   };
 
   return (
-    <Paper sx={{ p: 2.5, borderRadius: 3 }} elevation={0} variant="outlined">
+    <Paper sx={{ p: 2.5, borderRadius: 3, bgcolor: '#F3E8FD' }} elevation={0} variant="outlined">
       <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1.5 }}>
         売却スケジュール
       </Typography>
@@ -144,7 +144,7 @@ export default function ScheduleCard({
             onChange={(e) => setDesiredPriceMan(e.target.value)}
           />
           <TextField
-            label="最低の価格（万円）"
+            label="相場価格（万円）"
             type="number"
             size="small"
             value={minPriceMan}
@@ -218,6 +218,7 @@ export default function ScheduleCard({
         label="このスケジュールについて相談する"
         hasUnreadReply={hasUnreadReply}
         onMessagesRead={onMessagesRead}
+        bgColor="#EBDBFA"
       />
     </Paper>
   );
