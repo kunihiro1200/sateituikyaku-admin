@@ -137,11 +137,28 @@ router.post('/sumai-transfer', async (req: Request, res: Response) => {
     const builtYearRaw = extractData(cleanedBody, '築年', '間取り');
     const builtYear = builtYearRaw.replace(/年/g, '').trim();
 
-    // 間取り
-    const layout = extractData(cleanedBody, '間取り', '現在の状況');
+    // 間取り・道路の接面状況・バルコニーの方角
+    // マンションの場合のみ「間取り」の後に「道路の接面状況」「バルコニーの方角」が続くため、
+    // 「道路の接面状況」の有無で終端マーカーを切り替える（GASのtransferSumaiと同じ分岐）
+    const hasRoadAccessField = cleanedBody.indexOf('道路の接面状況') !== -1;
+    const layout = hasRoadAccessField
+      ? extractData(cleanedBody, '間取り', '道路の接面状況')
+      : extractData(cleanedBody, '間取り', '現在の状況');
+    const roadAccess = hasRoadAccessField
+      ? extractData(cleanedBody, '道路の接面状況', 'バルコニーの方角')
+      : '';
+    const balconyDirection = hasRoadAccessField
+      ? extractData(cleanedBody, 'バルコニーの方角', '現在の状況')
+      : '';
 
-    // 現況
-    const currentStatusRaw = extractData(cleanedBody, '現在の状況', '物件の関係');
+    // 現況・賃料
+    // 「賃料」フィールドが存在する場合（賃貸中の場合）のみ、現在の状況の終端マーカーを「賃料」に切り替える
+    // （GASのtransferSumaiと同じ分岐）
+    const hasRentField = cleanedBody.indexOf('賃料') !== -1;
+    const currentStatusRaw = hasRentField
+      ? extractData(cleanedBody, '現在の状況', '賃料')
+      : extractData(cleanedBody, '現在の状況', '物件の関係');
+    const rent = hasRentField ? extractData(cleanedBody, '賃料', '物件の関係') : '';
     const convertStatus = (s: string): string => {
       if (!s) return '';
       if (s.includes('居住中')) return '居';
@@ -150,6 +167,9 @@ router.post('/sumai-transfer', async (req: Request, res: Response) => {
       return '他';
     };
     const propertyStatus = convertStatus(currentStatusRaw);
+
+    // 物件の関係
+    const relationToProperty = extractData(cleanedBody, '物件の関係', '査定の理由');
 
     // 査定理由・方法・希望時期・要望
     const assessmentReason = extractData(cleanedBody, '査定の理由', '査定の方法');
@@ -166,7 +186,10 @@ router.post('/sumai-transfer', async (req: Request, res: Response) => {
     const currentAddress = extractData(cleanedBody, 'お住まいの住所', 'アンケート結果');
     const preferredContactTime = extractData(cleanedBody, '連絡が取れやすい時間帯', '売却希望価格');
     const desiredSalePrice = extractData(cleanedBody, '売却希望価格', '売却活動に関する要望');
-    const saleActivityRequests = extractData(cleanedBody, '売却活動に関する要望', '');
+    // 「売却活動に関する要望」は単一行の回答フィールドのため、そのラベルが書かれた行のみを取得する
+    // （Re:メールではこの後に署名やGmail引用ブロックが続く可能性があるため、末尾まで丸ごと取得しない）
+    const saleActivityMatch = mailBody.match(/売却活動に関する要望[\s　]*[:：]?[\s　]*([^\r\n]*)/);
+    const saleActivityRequests = saleActivityMatch ? saleActivityMatch[1].trim() : '';
 
     console.log(`[sumai-transfer] 抽出結果: name="${name}" tel="${tel}" address="${propertyAddress}" type="${displayPropertyType}"`);
 
@@ -174,8 +197,20 @@ router.post('/sumai-transfer', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: `名前または電話番号が取得できませんでした name=${name} tel=${tel}` });
     }
 
+    // アンケート結果以下を原文の改行のまま取得（GASのextractSurveyResultと同じ）
+    // Re:返信メールでは、この後にGmailの引用ブロック（"> "で始まる行、
+    // "2026年X月X日(X) HH:MM ... wrote:"等の引用ヘッダー）や署名が続く可能性があるため、
+    // そのような境界が見つかった場合はそこで打ち切る
+    const surveyResultIdx = mailBody.indexOf('アンケート結果');
+    let surveyResult = surveyResultIdx !== -1 ? mailBody.substring(surveyResultIdx) : '';
+    const quoteBoundaryMatch = surveyResult.match(/\r?\n[ \t]*(?:>|On .+wrote:|\d{4}年\d{1,2}月\d{1,2}日.*(?:さんが書きました|wrote:))/i);
+    if (quoteBoundaryMatch && quoteBoundaryMatch.index !== undefined) {
+      surveyResult = surveyResult.substring(0, quoteBoundaryMatch.index);
+    }
+    surveyResult = surveyResult.trim();
+
     // コメント作成（GASのtransferSumaiと同じ構成）
-    const comments = `${memo ? memo + '\n' : ''}【以下自動転記（すまいステップ）】\n★読み方:${furigana}\n★要望:${requests}\n★査定方法:${assessmentMethod}\n★希望連絡時間：${preferredContactTime}\n★売却活動に対する要望:${saleActivityRequests}\n★年齢${age}`;
+    const comments = `${memo ? memo + '\n' : ''}【以下自動転記（すまいステップ）】\n★読み方:${furigana}\n★要望:${requests}\n★査定方法:${assessmentMethod}\n★希望連絡時間：${preferredContactTime}\n★売却活動に対する要望:${saleActivityRequests}\n★アンケート結果:${surveyResult}\n★道路の接面状況:${roadAccess}\n★バルコニーの方角:${balconyDirection}\n★現在の状況:${currentStatusRaw}\n★賃料:${rent}\n★物件の関係:${relationToProperty}\n★査定の理由:${assessmentReason}\n★売却希望時期:${desiredSaleTime}\n★売却希望価格:${desiredSalePrice}\n★年齢${age}`;
     console.log(`[sumai-transfer] comments作成完了: "${comments.substring(0, 100)}"`);
 
     // ============================================================
