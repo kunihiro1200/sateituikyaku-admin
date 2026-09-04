@@ -80,7 +80,7 @@ import {
   replacePlaceholders,
 } from '../utils/smsTemplateGenerators';
 import { formatNetProceedsEmailSection } from '../utils/netProceedsCalculator';
-import { emailTemplates, replaceFIUrls, isValuationNoticeTemplate } from '../utils/emailTemplates';
+import { emailTemplates, replaceFIUrls, isValuationNoticeTemplate, replacePortalUrlPlaceholder, PORTAL_URL_PLACEHOLDER } from '../utils/emailTemplates';
 import SenderAddressSelector from '../components/SenderAddressSelector';
 import { getActiveEmployees, Employee } from '../services/employeeService';
 import SellerStatusSidebar from '../components/SellerStatusSidebar';
@@ -4634,6 +4634,13 @@ HP：https://ifoo-oita.com/
         console.log('📧 [handleEmailTemplateSelect] FI URL置換を実行します');
         replacedContent = replaceFIUrls(replacedContent, seller?.sellerNumber);
       }
+      // <<売却サポートURL>> プレースホルダーが本文・件名に含まれていれば、実際のURLに置換する
+      let replacedSubjectFinal = replacedSubject;
+      if (replacedContent.includes(PORTAL_URL_PLACEHOLDER) || replacedSubjectFinal.includes(PORTAL_URL_PLACEHOLDER)) {
+        const portalUrl = await fetchSellerPortalUrl();
+        replacedContent = replacePortalUrlPlaceholder(replacedContent, portalUrl);
+        replacedSubjectFinal = replacePortalUrlPlaceholder(replacedSubjectFinal, portalUrl);
+      }
       const htmlContent = replacedContent.replace(/\n/g, '<br>');
 
       // 相続登記テンプレートの送信先・ラベル判定
@@ -4654,7 +4661,7 @@ HP：https://ifoo-oita.com/
       }
 
       setEditableEmailRecipient(recipientEmail);
-      setEditableEmailSubject(replacedSubject);
+      setEditableEmailSubject(replacedSubjectFinal);
       setEditableEmailBody(htmlContent);
       // テンプレート選択時に選択画像をリセット（前回の添付が残らないようにする）
       setSelectedImages([]);
@@ -4665,7 +4672,7 @@ HP：https://ifoo-oita.com/
         template: {
           id: sheetTemplate.id,
           label: templateLabel,
-          subject: replacedSubject,
+          subject: replacedSubjectFinal,
           content: replacedContent,
         },
       });
@@ -4677,13 +4684,19 @@ HP：https://ifoo-oita.com/
     if (!template) return;
 
     // プレースホルダーを置換
-    const replacedSubject = replaceEmailPlaceholders(template.subject, currentEmployees);
+    let replacedSubject = replaceEmailPlaceholders(template.subject, currentEmployees);
     let replacedContent = replaceEmailPlaceholders(template.content, currentEmployees);
     // <<担当者名字あいさつ>> を担当者名字とFI判定で置換
     replacedContent = resolveStaffGreeting(replacedContent, seller?.sellerNumber || '', myLastName);
     // 📝 FI売主番号の場合、査定額案内メールのURLを置換する
     if (isValuationNoticeTemplate(template.id, template.label)) {
       replacedContent = replaceFIUrls(replacedContent, seller?.sellerNumber);
+    }
+    // <<売却サポートURL>> プレースホルダーが本文・件名に含まれていれば、実際のURLに置換する
+    if (replacedContent.includes(PORTAL_URL_PLACEHOLDER) || replacedSubject.includes(PORTAL_URL_PLACEHOLDER)) {
+      const portalUrl = await fetchSellerPortalUrl();
+      replacedContent = replacePortalUrlPlaceholder(replacedContent, portalUrl);
+      replacedSubject = replacePortalUrlPlaceholder(replacedSubject, portalUrl);
     }
 
     // 改行を<br>タグに変換してHTMLとして設定
@@ -4706,6 +4719,22 @@ HP：https://ifoo-oita.com/
         content: replacedContent,
       },
     });
+  };
+
+  /**
+   * 売却サポートページの専用URLを取得する（<<売却サポートURL>>プレースホルダー置換用）。
+   * まだ有効なURLが無い場合はバックエンド側が自動発行しない想定のため、その場合はnullを返す
+   * （査定額保存時の自動発行が既に走っているはずなので、通常はここで見つかる）。
+   */
+  const fetchSellerPortalUrl = async (): Promise<string | null> => {
+    if (!seller?.id) return null;
+    try {
+      const res = await api.get(`/api/seller-portal/admin/${seller.id}/status`);
+      return res.data?.activeUrl ?? null;
+    } catch (err) {
+      console.error('売却サポートページURLの取得に失敗しました:', err);
+      return null;
+    }
   };
 
   /**
@@ -4758,15 +4787,23 @@ HP：https://ifoo-oita.com/
           ? template.generator(seller!, property, myLastName)
           : template.generator(seller!, property);
       
+      // <<売却サポートURL>> プレースホルダーが含まれるテンプレート（今後追加予定のURL案内専用テンプレート等）の場合、
+      // 実際のURLに置換する。文字数チェックより前に行い、URLを含めた実際の長さで判定する。
+      let finalContent = generatedContent;
+      if (finalContent.includes(PORTAL_URL_PLACEHOLDER)) {
+        const portalUrl = await fetchSellerPortalUrl();
+        finalContent = replacePortalUrlPlaceholder(finalContent, portalUrl);
+      }
+
       // エラーチェック2: メッセージ長の検証（日本語SMS制限: 670文字）
-      const messageLength = convertLineBreaks(generatedContent).length;
+      const messageLength = convertLineBreaks(finalContent).length;
       if (messageLength > 670) {
         setSmsError(`メッセージが長すぎます（${messageLength}文字 / 670文字制限）`);
         return;
       }
       
       // 改行プレースホルダーを実際の改行に変換
-      const messageContent = convertLineBreaks(generatedContent);
+      const messageContent = convertLineBreaks(finalContent);
       
       // SMSアプリを即座に開く（API呼び出しを待たない）
       const smsLink = `sms:${seller.phoneNumber}?body=${encodeURIComponent(messageContent)}`;

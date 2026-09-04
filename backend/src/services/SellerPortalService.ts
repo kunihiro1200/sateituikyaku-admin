@@ -106,6 +106,17 @@ export class SellerPortalService extends BaseRepository {
   }
 
   /**
+   * 有効なトークンがまだ無い場合のみ発行する（査定額確定時の自動発行用）。
+   * issueAdditionalToken() と同様に既存の有効トークンを無効化しない。
+   * 既に有効なトークンがある場合は何もしない（同じ売主に何度もURLが増えるのを防ぐ）。
+   */
+  async issueTokenIfNotExists(sellerId: string, sellerNumber: string): Promise<void> {
+    const alreadyHasActive = await this.hasActiveToken(sellerId);
+    if (alreadyHasActive) return;
+    await this.issueAdditionalToken(sellerId, sellerNumber);
+  }
+
+  /**
    * 専用URLトークンを新規発行する（スタッフ操作、要認証）。
    * 既存の有効なトークンがあれば無効化してから新規発行する（1売主1トークン運用）。
    * ⚠️ 既存の有効URLが無効になるため、フロント側では実行前に確認ダイアログを出すこと

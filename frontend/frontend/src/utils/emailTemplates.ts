@@ -86,6 +86,25 @@ export function isValuationNoticeTemplate(templateId: string, templateLabel: str
          templateLabel.includes('査定額案内メール');
 }
 
+/**
+ * 売却サポートページURLの共通プレースホルダー。
+ * どのテンプレート（メール本文・件名・SMS）に貼るかは運用側で後から決められるよう、
+ * 特定のテンプレートに固定せず、この文字列が含まれていれば置換対象とする汎用の仕組みにする。
+ */
+export const PORTAL_URL_PLACEHOLDER = '<<売却サポートURL>>';
+
+/**
+ * <<売却サポートURL>> プレースホルダーを、実際の売却サポートページURLに置換する。
+ * URLが未発行・取得失敗の場合はプレースホルダーをそのまま残す（送信前に気づけるようにする）。
+ * @param content メール本文・件名・SMS本文など
+ * @param portalUrl 売却サポートページの専用URL（未取得ならnull/undefined）
+ */
+export function replacePortalUrlPlaceholder(content: string, portalUrl: string | null | undefined): string {
+  if (!content.includes(PORTAL_URL_PLACEHOLDER)) return content;
+  if (!portalUrl) return content;
+  return content.split(PORTAL_URL_PLACEHOLDER).join(portalUrl);
+}
+
 export const emailTemplates: EmailTemplate[] = [
   {
     id: 'visit_thank_you',

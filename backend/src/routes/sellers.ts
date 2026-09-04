@@ -3134,6 +3134,21 @@ router.put('/:id', async (req: Request, res: Response) => {
       const seller = await sellerService.updateSeller(req.params.id, req.body);
       invalidateDuplicatesCache(req.params.id);
 
+      // 査定額（1〜3のいずれか）が今回の更新で保存された場合、
+      // 売却サポートページの専用URLをまだ持っていない売主にのみ、非同期でURLを自動発行する。
+      // レスポンスをブロックしない・失敗しても査定額保存自体は成功とする。
+      const valuationJustSaved =
+        req.body.valuationAmount1 !== undefined ||
+        req.body.valuationAmount2 !== undefined ||
+        req.body.valuationAmount3 !== undefined;
+      if (valuationJustSaved && seller?.sellerNumber) {
+        import('../services/SellerPortalService').then(({ sellerPortalService }) => {
+          sellerPortalService.issueTokenIfNotExists(req.params.id, seller.sellerNumber!).catch((e: any) =>
+            console.error('⚠️ [SellerPortal] Auto-issue token on valuation save error:', e)
+          );
+        }).catch((e: any) => console.error('⚠️ [SellerPortal] Import error:', e));
+      }
+
       // 郵送関連フィールドのみの更新はスプレッドシートに存在しないためスキップ
       // （mailingStatus / alternativeMailingAddress のみの更新は数秒かかる同期処理を省略して即レスポンス）
       const MAILING_ONLY_FIELDS = new Set(['mailingStatus', 'mailingDoneBy', 'mailingDoneAt', 'alternativeMailingAddress', 'mailingAddressConfirmed']);
