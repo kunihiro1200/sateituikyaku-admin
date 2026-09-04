@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Paper, Typography, Box, Button, TextField, CircularProgress, Alert } from '@mui/material';
+import { Paper, Typography, Box, Button, TextField, CircularProgress, Alert, Badge } from '@mui/material';
 import { sellerPortalApi, ValuationSummary } from '../../services/sellerPortalApi';
 
 const fmtMan = (yen: number) => `${Math.round(yen / 10000).toLocaleString()}万円`;
@@ -12,10 +12,13 @@ const fmtMan = (yen: number) => `${Math.round(yen / 10000).toLocaleString()}万�
 export default function ScheduleCard({
   token,
   valuation,
+  hasUnreadReply,
   onAskQuestion,
 }: {
   token: string;
   valuation: ValuationSummary | null;
+  /** スタッフからこの相談元への未読返信があるか（あれば質問ボタンに赤丸を表示する） */
+  hasUnreadReply?: boolean;
   onAskQuestion: () => void;
 }) {
   const [desiredPriceMan, setDesiredPriceMan] = useState('');
@@ -158,9 +161,11 @@ export default function ScheduleCard({
         </Box>
       )}
 
-      <Button size="small" variant="text" onClick={onAskQuestion} sx={{ mt: 1 }}>
-        このスケジュールについて相談する
-      </Button>
+      <Badge color="error" variant="dot" invisible={!hasUnreadReply} sx={{ mt: 1 }}>
+        <Button size="small" variant="text" onClick={onAskQuestion}>
+          このスケジュールについて相談する
+        </Button>
+      </Badge>
     </Paper>
   );
 }

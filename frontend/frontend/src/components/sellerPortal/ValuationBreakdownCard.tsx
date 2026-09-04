@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Paper, Typography, Box, Button, CircularProgress, Alert } from '@mui/material';
+import { Paper, Typography, Box, Button, CircularProgress, Alert, Badge } from '@mui/material';
 import { sellerPortalApi } from '../../services/sellerPortalApi';
 
 const fmtMan = (yen: number) => `${Math.round(yen / 10000).toLocaleString()}万円`;
@@ -13,10 +13,13 @@ const fmtYenPerSqm = (yen: number) => `${yen.toLocaleString()}円`;
 export default function ValuationBreakdownCard({
   token,
   propertyType,
+  hasUnreadReply,
   onAskQuestion,
 }: {
   token: string;
   propertyType: 'land' | 'detached_house' | 'apartment' | 'other';
+  /** スタッフからこの相談元への未読返信があるか（あれば質問ボタンに赤丸を表示する） */
+  hasUnreadReply?: boolean;
   onAskQuestion: () => void;
 }) {
   const [breakdown, setBreakdown] = useState<any>(null);
@@ -58,9 +61,11 @@ export default function ValuationBreakdownCard({
         <LandOrHouseBreakdown breakdown={breakdown} />
       )}
 
-      <Button size="small" variant="text" onClick={onAskQuestion} sx={{ mt: 1 }}>
-        査定の理由について質問する
-      </Button>
+      <Badge color="error" variant="dot" invisible={!hasUnreadReply} sx={{ mt: 1 }}>
+        <Button size="small" variant="text" onClick={onAskQuestion}>
+          査定の理由について質問する
+        </Button>
+      </Badge>
     </Paper>
   );
 }

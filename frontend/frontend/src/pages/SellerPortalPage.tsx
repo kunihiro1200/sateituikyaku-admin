@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Box, CircularProgress, Typography, Alert } from '@mui/material';
 import { sellerPortalApi, ValuationSummary, PropertySummary } from '../services/sellerPortalApi';
@@ -29,6 +29,40 @@ export default function SellerPortalPage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatContext, setChatContext] = useState<string>('general');
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  // 相談元（査定額/査定根拠/手残り/スケジュール/一般）ごとの未読件数。
+  // スタッフはその相談元のセクションを見ながら返信するため、どのセクションに新しい返信があるか
+  // 売主自身がひと目で分かるよう、各カードの「質問する」ボタンに赤丸を表示する。
+  const [unreadByContext, setUnreadByContext] = useState<Record<string, number>>({});
+
+  // 未読件数を確認する（スタッフからの返信に売主が気づけるよう、チャットを開いていなくてもFABに表示する）
+  const checkUnread = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await sellerPortalApi.getMessages(token, { markAsRead: false });
+      const byContext: Record<string, number> = {};
+      let total = 0;
+      for (const c of res.conversations) {
+        const count = c.messages.filter((m: any) => m.sender_type === 'staff' && !m.read_at).length;
+        if (count > 0) byContext[c.context_tag] = count;
+        total += count;
+      }
+      setUnreadByContext(byContext);
+      setUnreadCount(total);
+    } catch {
+      // 未読確認の失敗は画面に影響させない
+    }
+  }, [token]);
+
+  // 初回表示時とページ復帰時（フォアグラウンド化）に未読を確認する
+  useEffect(() => {
+    checkUnread();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') checkUnread();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [checkUnread]);
 
   useEffect(() => {
     if (!token) return;
@@ -89,12 +123,17 @@ export default function SellerPortalPage() {
         {propertySummary && <PropertySummaryCard summary={propertySummary} />}
 
         {valuation && (
-          <ValuationCard valuation={valuation} onAskQuestion={() => openChat('valuation')} />
+          <ValuationCard
+            valuation={valuation}
+            hasUnreadReply={!!unreadByContext.valuation}
+            onAskQuestion={() => openChat('valuation')}
+          />
         )}
 
         <ValuationBreakdownCard
           token={token}
           propertyType={valuation?.propertyType ?? 'other'}
+          hasUnreadReply={!!unreadByContext.valuation_breakdown}
           onAskQuestion={() => openChat('valuation_breakdown')}
         />
 
@@ -103,12 +142,14 @@ export default function SellerPortalPage() {
           valuation={valuation}
           sellerNumber={sellerNumber}
           savedDetailedAnswers={preferences?.known_facts?.detailed_proceeds_answers?.value ?? null}
+          hasUnreadReply={!!unreadByContext.net_proceeds}
           onAskQuestion={() => openChat('net_proceeds')}
         />
 
         <ScheduleCard
           token={token}
           valuation={valuation}
+          hasUnreadReply={!!unreadByContext.schedule}
           onAskQuestion={() => openChat('schedule')}
         />
 
@@ -119,8 +160,10 @@ export default function SellerPortalPage() {
         token={token}
         open={chatOpen}
         contextTag={chatContext}
+        unreadCount={unreadCount}
         onOpen={() => openChat('general')}
         onClose={() => setChatOpen(false)}
+        onMessagesRead={checkUnread}
       />
 
       {showInstallPrompt && (

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Box, Fab, Badge, Dialog, DialogTitle, DialogContent, TextField, IconButton, Typography, Paper, CircularProgress } from '@mui/material';
 import ChatIcon from '@mui/icons-material/Chat';
 import SendIcon from '@mui/icons-material/Send';
@@ -28,45 +28,26 @@ export default function ChatWidget({
   token,
   open,
   contextTag,
+  unreadCount,
   onOpen,
   onClose,
+  onMessagesRead,
 }: {
   token: string;
   open: boolean;
   contextTag: string;
+  /** 未読件数（FABの赤バッジ表示用）。ページ側で一括管理し、各カードの赤丸表示と同じデータを共有する */
+  unreadCount: number;
   onOpen: () => void;
   onClose: () => void;
+  /** 開いたことで既読になったタイミングで呼ばれる。ページ側の未読状態（FAB・各カードの赤丸）を再取得させる */
+  onMessagesRead?: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  // 未読件数を確認する（スタッフからの返信に売主が気づけるよう、チャットを開いていなくてもFABに表示する）
-  const checkUnread = useCallback(async () => {
-    try {
-      const res = await sellerPortalApi.getMessages(token, { markAsRead: false });
-      const count = res.conversations.reduce(
-        (sum: number, c: any) => sum + c.messages.filter((m: any) => m.sender_type === 'staff' && !m.read_at).length,
-        0
-      );
-      setUnreadCount(count);
-    } catch {
-      // 未読確認の失敗は画面に影響させない
-    }
-  }, [token]);
-
-  // 初回表示時とページ復帰時（フォアグラウンド化）に未読を確認する
-  useEffect(() => {
-    checkUnread();
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') checkUnread();
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [checkUnread]);
 
   useEffect(() => {
     if (!open) return;
@@ -76,13 +57,13 @@ export default function ChatWidget({
         const res = await sellerPortalApi.getMessages(token);
         const conv = res.conversations.find((c: any) => c.context_tag === contextTag);
         setMessages(conv?.messages ?? []);
-        // 開いたことで既読になったはずなので、未読バッジを再確認する
-        checkUnread();
+        // 開いたことで既読になったので、ページ側の未読状態（FAB・各カードの赤丸）を再取得させる
+        onMessagesRead?.();
       } finally {
         setLoading(false);
       }
     })();
-  }, [open, token, contextTag, checkUnread]);
+  }, [open, token, contextTag, onMessagesRead]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

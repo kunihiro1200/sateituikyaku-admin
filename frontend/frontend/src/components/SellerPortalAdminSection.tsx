@@ -183,6 +183,10 @@ export default function SellerPortalAdminSection({ sellerId, sellerNumber }: { s
           <Typography variant="caption" color="text.secondary">
             {CONTEXT_LABELS[conv.context_tag] ?? conv.context_tag}
           </Typography>
+
+          {/* 相談元のセクション内容を返信欄の上に表示する。売主がどの情報を見ながら質問したのか分かるようにするため */}
+          <SectionReferenceBox contextTag={conv.context_tag} status={status} />
+
           <Box sx={{ maxHeight: 200, overflowY: 'auto', my: 1 }}>
             {conv.messages.map((m: any) => (
               <Box key={m.id} sx={{ mb: 0.5, textAlign: m.sender_type === 'seller' ? 'left' : 'right' }}>
@@ -234,3 +238,129 @@ const CONTEXT_LABELS: Record<string, string> = {
   net_proceeds: '手残りについての相談',
   schedule: '売却スケジュールについての相談',
 };
+
+function ValuationMiniItem({ label, amount }: { label: string; amount: number }) {
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+        {label}
+      </Typography>
+      <Typography variant="body2" fontWeight="bold">
+        {Math.round(amount / 10000).toLocaleString()}万円
+      </Typography>
+    </Box>
+  );
+}
+
+const fmtMan = (yen: number) => `${Math.round(yen / 10000).toLocaleString()}万円`;
+
+/**
+ * 相談元（査定額/査定根拠/手残り/スケジュール）ごとに、そのセクションの内容を返信欄の上に表示する。
+ * スタッフが売主と同じ情報を見ながら返信できるようにする（「その他のご相談」は対象外）。
+ */
+function SectionReferenceBox({ contextTag, status }: { contextTag: string; status: any }) {
+  if (!status) return null;
+
+  if (contextTag === 'valuation' && status.valuation) {
+    return (
+      <ReferenceBox title="現在の査定額">
+        <ValuationMiniItem label="チャレンジ価格" amount={status.valuation.maximumPrice} />
+        <ValuationMiniItem label="成約想定価格" amount={status.valuation.midPrice} />
+        <ValuationMiniItem label="早期売却重視価格" amount={status.valuation.minimumPrice} />
+      </ReferenceBox>
+    );
+  }
+
+  if (contextTag === 'valuation_breakdown' && status.valuationBreakdown) {
+    const b = status.valuationBreakdown;
+    return (
+      <ReferenceBox title="査定額の計算根拠（売主様に表示中の内容）">
+        {b.hasBreakdown ? (
+          <>
+            <ValuationMiniItem label="固定資産税路線価" amount={b.fixedAssetTaxRoadPriceUsed ?? 0} />
+            <ValuationMiniItem label="土地価格" amount={b.landPrice ?? 0} />
+            {b.buildingPrice > 0 && <ValuationMiniItem label="建物価格" amount={b.buildingPrice} />}
+            <ValuationMiniItem label="早期売却重視価格" amount={b.minimumPrice ?? 0} />
+          </>
+        ) : b.unitPricePerSqm ? (
+          <ValuationMiniItem label="査定㎡単価" amount={b.unitPricePerSqm} />
+        ) : (
+          <Typography variant="caption" color="text.secondary">
+            計算根拠データがなく、総額のみ表示している状態です。
+          </Typography>
+        )}
+      </ReferenceBox>
+    );
+  }
+
+  if (contextTag === 'net_proceeds' && status.roughProceeds?.length > 0) {
+    // 売主が見ているのと同じ「ざっくり手残り」の代表値（最高額・最低額）を表示する
+    const rows = status.roughProceeds;
+    const highest = rows[0];
+    const lowest = rows[rows.length - 1];
+    return (
+      <ReferenceBox title="ざっくり手残り（売主様に表示中の内容）">
+        <Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+            {fmtMan(highest.priceYen)}で売却した場合
+          </Typography>
+          <Typography variant="body2" fontWeight="bold">
+            手残り {fmtMan(highest.netProceeds)}
+          </Typography>
+        </Box>
+        {lowest.priceYen !== highest.priceYen && (
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+              {fmtMan(lowest.priceYen)}で売却した場合
+            </Typography>
+            <Typography variant="body2" fontWeight="bold">
+              手残り {fmtMan(lowest.netProceeds)}
+            </Typography>
+          </Box>
+        )}
+      </ReferenceBox>
+    );
+  }
+
+  if (contextTag === 'schedule' && status.schedule?.hasSettlementDate) {
+    const s = status.schedule;
+    return (
+      <ReferenceBox title="売却スケジュール（売主様に表示中の内容）">
+        <Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+            決済・引き渡し希望
+          </Typography>
+          <Typography variant="body2" fontWeight="bold">
+            {s.settlementYear}年{s.settlementMonth}月
+          </Typography>
+        </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+            逆算した販売開始
+          </Typography>
+          <Typography variant="body2" fontWeight="bold">
+            {s.startYear}年{s.startMonth}月
+          </Typography>
+        </Box>
+        {s.isCompressed && (
+          <Typography variant="caption" color="warning.main">
+            ※期間が短いため買取をご案内済み
+          </Typography>
+        )}
+      </ReferenceBox>
+    );
+  }
+
+  return null;
+}
+
+function ReferenceBox({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Box sx={{ p: 1, mt: 1, mb: 1, bgcolor: '#f0f4f8', borderRadius: 1 }}>
+      <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ display: 'block', mb: 0.5 }}>
+        {title}
+      </Typography>
+      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>{children}</Box>
+    </Box>
+  );
+}

@@ -1,4 +1,4 @@
-import { Paper, Typography, Box, Button } from '@mui/material';
+import { Paper, Typography, Box, Button, Badge } from '@mui/material';
 import { ValuationSummary } from '../../services/sellerPortalApi';
 
 const fmtMan = (yen: number) => `${Math.round(yen / 10000).toLocaleString()}万円`;
@@ -9,9 +9,12 @@ const fmtMan = (yen: number) => `${Math.round(yen / 10000).toLocaleString()}万�
  */
 export default function ValuationCard({
   valuation,
+  hasUnreadReply,
   onAskQuestion,
 }: {
   valuation: ValuationSummary;
+  /** スタッフからこの相談元への未読返信があるか（あれば質問ボタンに赤丸を表示する） */
+  hasUnreadReply?: boolean;
   onAskQuestion: () => void;
 }) {
   return (
@@ -44,9 +47,11 @@ export default function ValuationCard({
         価格に幅があるのは、売却にかけられる期間や市場の状況によって、目指せる価格が変わるためです。詳しくは下の「査定額の計算根拠」をご確認ください。
       </Typography>
 
-      <Button size="small" variant="text" onClick={onAskQuestion} sx={{ mt: 1 }}>
-        この査定額について質問する
-      </Button>
+      <Badge color="error" variant="dot" invisible={!hasUnreadReply} sx={{ mt: 1 }}>
+        <Button size="small" variant="text" onClick={onAskQuestion}>
+          この査定額について質問する
+        </Button>
+      </Badge>
     </Paper>
   );
 }

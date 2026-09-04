@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Paper, Typography, Box, Button, CircularProgress } from '@mui/material';
+import { Paper, Typography, Box, Button, CircularProgress, Badge } from '@mui/material';
 import { sellerPortalApi, ValuationSummary } from '../../services/sellerPortalApi';
 import DetailedProceedsWizard from './DetailedProceedsWizard';
 import ProceedsTable, { ProceedsTableRow } from './ProceedsTable';
@@ -21,12 +21,15 @@ export default function NetProceedsCard({
   valuation,
   sellerNumber,
   savedDetailedAnswers,
+  hasUnreadReply,
   onAskQuestion,
 }: {
   token: string;
   valuation: ValuationSummary | null;
   sellerNumber: string;
   savedDetailedAnswers?: Record<string, any> | null;
+  /** スタッフからこの相談元への未読返信があるか（あれば質問ボタンに赤丸を表示する） */
+  hasUnreadReply?: boolean;
   onAskQuestion: () => void;
 }) {
   const [rows, setRows] = useState<RoughRow[]>([]);
@@ -79,9 +82,11 @@ export default function NetProceedsCard({
         その他費用も差し引く
       </Button>
 
-      <Button size="small" variant="text" onClick={onAskQuestion} sx={{ mt: 1 }}>
-        この手残りについて相談する
-      </Button>
+      <Badge color="error" variant="dot" invisible={!hasUnreadReply} sx={{ mt: 1 }}>
+        <Button size="small" variant="text" onClick={onAskQuestion}>
+          この手残りについて相談する
+        </Button>
+      </Badge>
 
       <DetailedProceedsWizard
         open={wizardOpen}

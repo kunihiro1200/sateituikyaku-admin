@@ -415,16 +415,27 @@ router.post('/admin/:sellerId/issue-token', authenticate, async (req: Request, r
   }
 });
 
-/** GET /api/seller-portal/admin/:sellerId/status : トークン発行状況・アクセス状況・入力内容・未読件数 */
+/**
+ * GET /api/seller-portal/admin/:sellerId/status : トークン発行状況・アクセス状況・入力内容・未読件数
+ *
+ * valuation / valuationBreakdown / roughProceeds / schedule も含める：
+ * スタッフが売主からの質問に返信する際、売主がどのセクション（査定額/査定根拠/手残り/スケジュール）を
+ * 見ながら質問したのかが分かるよう、各チャットの横に該当セクションの内容をそのまま表示するため。
+ * 1つでも失敗しても他の情報の取得・返信自体は継続できるよう、個別にtry/catchする。
+ */
 router.get('/admin/:sellerId/status', authenticate, async (req: Request, res: Response) => {
   try {
     const { sellerId } = req.params;
-    const [tokenStatus, preferences, unreadCount] = await Promise.all([
+    const [tokenStatus, preferences, unreadCount, valuation, valuationBreakdown, roughProceeds, schedule] = await Promise.all([
       sellerPortalService.getTokenStatus(sellerId),
       sellerPortalService.getPreferences(sellerId),
       sellerPortalService.getUnreadCountForStaff(sellerId),
+      sellerPortalService.getValuationSummary(sellerId),
+      sellerPortalService.getValuationBreakdown(sellerId).catch(() => null),
+      sellerPortalService.getRoughProceeds(sellerId).catch(() => []),
+      sellerPortalService.calculateSchedule(sellerId).catch(() => null),
     ]);
-    res.json({ success: true, tokenStatus, preferences, unreadCount });
+    res.json({ success: true, tokenStatus, preferences, unreadCount, valuation, valuationBreakdown, roughProceeds, schedule });
   } catch (error: any) {
     console.error('[SellerPortal] GET /admin/status error:', error.message);
     res.status(500).json({ error: error.message });
