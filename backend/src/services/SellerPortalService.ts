@@ -220,57 +220,67 @@ export class SellerPortalService extends BaseRepository {
     }
 
     // 土地・戸建
-    const { data: breakdown } = await this.table('seller_valuation_breakdowns')
-      .select('*')
-      .eq('seller_id', sellerId)
-      .single();
-
+    // 🚨 スタッフの手動操作（「査定根拠を作成」ボタン）は不要にし、常に自動判定する。
+    // 現在の査定額1（sellers.valuation_amount_1）が、既存の自動計算ロジック
+    // （ValuationCalculatorService.calculateValuationAmount1と同じ計算）の結果と一致する場合のみ、
+    // 実際の計算ステップ（土地価格→建物価格→小計→×1.2→加算→切り捨て）を再現して表示する。
+    // 一致しない場合（＝査定額1が手動入力で上書きされている）は、計算式と実際の金額が食い違ってしまうため、
+    // マンションと同じく総額のみの表示にする（存在しない根拠を作らない）。
     const minimumPrice = seller.valuationAmount1 ?? 0;
     const midPrice = seller.valuationAmount2 ?? 0;
     const maximumPrice = seller.valuationAmount3 ?? 0;
+    const propertyInfo = seller.property;
 
-    if (!breakdown) {
-      return {
-        propertyType,
-        hasBreakdown: false, // 内訳データが存在しない売主。総額のみ表示すること（AIで根拠を作らない）
-        minimumPrice,
-        midPrice,
-        maximumPrice,
-      };
+    if (!propertyInfo) {
+      return { propertyType, hasBreakdown: false, minimumPrice, midPrice, maximumPrice };
     }
 
-    // 🚨 重要：表示は「後付けの差分」ではなく、実際の計算ステップ（ValuationCalculatorService.
-    // calculateValuationAmount1）をそのまま再現する。
+    let computed;
+    try {
+      computed = await valuationCalculatorService.calculateValuationBreakdown(seller, propertyInfo);
+    } catch (err) {
+      console.warn('[SellerPortal] 査定根拠の自動計算に失敗しました。総額のみ表示します:', err);
+      return { propertyType, hasBreakdown: false, minimumPrice, midPrice, maximumPrice };
+    }
+
+    const isAutoCalculated = computed.valuationAmount1 === minimumPrice;
+    if (!isAutoCalculated) {
+      return { propertyType, hasBreakdown: false, minimumPrice, midPrice, maximumPrice };
+    }
+
+    // ①〜⑥の計算ステップをそのまま再現する（後付けの差分ではなく実際の計算式）
     //   ① 土地価格 = 土地面積 × 固定資産税路線価 ÷ 0.6（路線価は実勢価格の約60%という前提で市場価格に割り戻す）
     //   ② 建物価格 = 建築単価 × 建物面積 − 経年減価
     //   ③ 小計 = 土地価格 + 建物価格
     //   ④ 小計 × 1.2倍
     //   ⑤ 1000万円以上なら +300万円
     //   ⑥ 10万円単位で切り捨て → 早期売却を重視した価格（最低価格）
-    // この6ステップの計算結果が必ず minimumPrice と一致する。
-    const landPrice = breakdown.land_price ?? 0;
-    const buildingPrice = breakdown.building_price ?? 0;
-    const subtotal = landPrice + buildingPrice;
+    const subtotal = computed.landPrice + computed.buildingPrice;
     const afterMultiplier = subtotal * 1.2; // ④ 市場性を考慮した価格（円）
     const basePriceMan = Math.round(afterMultiplier / 10000); // 万円単位に丸め
     const largeAmountBonus = basePriceMan >= 1000 ? 3_000_000 : 0; // ⑤ 1000万円以上なら+300万円
 
+    // 参照用に保存しておく（管理画面等で使う可能性があるため）。失敗しても表示自体は継続する。
+    this.saveValuationBreakdown(seller, propertyInfo).catch((err) => {
+      console.warn('[SellerPortal] 査定根拠の参照保存に失敗しました（表示には影響しません）:', err);
+    });
+
     return {
       propertyType,
       hasBreakdown: true,
-      landAreaUsed: breakdown.land_area_used,
-      fixedAssetTaxRoadPriceUsed: breakdown.fixed_asset_tax_road_price_used,
-      landPrice,
-      buildingAreaUsed: breakdown.building_area_used,
-      buildingAgeUsed: breakdown.building_age_used,
-      structureUsed: breakdown.structure_used,
-      constructionUnitPriceUsed: breakdown.construction_unit_price_used,
-      buildingPrice,
+      landAreaUsed: computed.landAreaUsed,
+      fixedAssetTaxRoadPriceUsed: computed.fixedAssetTaxRoadPriceUsed,
+      landPrice: computed.landPrice,
+      buildingAreaUsed: computed.buildingAreaUsed,
+      buildingAgeUsed: computed.buildingAgeUsed,
+      structureUsed: computed.structureUsed,
+      constructionUnitPriceUsed: computed.constructionUnitPriceUsed,
+      buildingPrice: computed.buildingPrice,
       subtotal,
       afterMultiplier,
       largeAmountBonus,
-      additionAmount2: breakdown.addition_amount_2,
-      additionAmount3: breakdown.addition_amount_3,
+      additionAmount2: computed.additionAmount2,
+      additionAmount3: computed.additionAmount3,
       minimumPrice,
       midPrice,
       maximumPrice,
@@ -646,6 +656,22 @@ export class SellerPortalService extends BaseRepository {
       .eq('conversation_id', conversationId)
       .eq('sender_type', 'seller')
       .is('read_at', null);
+  }
+
+  /**
+   * スタッフ返信メールに引用するため、その会話で売主が直近に送った質問本文を取得する。
+   * 該当がない場合はnull（メール本文の「ご質問」欄は省略する）。
+   */
+  async getLastSellerMessageContent(conversationId: string): Promise<string | null> {
+    const { data } = await this.table('seller_portal_messages')
+      .select('content')
+      .eq('conversation_id', conversationId)
+      .eq('sender_type', 'seller')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    return data?.content ?? null;
   }
 
   // ============================================================

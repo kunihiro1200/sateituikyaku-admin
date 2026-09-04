@@ -12,6 +12,39 @@ const emailService = new EmailService();
 /** このテスト用売主番号にはメール通知を送らない */
 const EMAIL_NOTIFICATION_EXCLUDED_SELLER_NUMBERS = new Set(['FI1226']);
 
+/** FI案件（福岡＝くじら不動産）かどうか。既存の isFiSeller ルールと同じ（売主番号がFIで始まるか） */
+function isFiSellerNumber(sellerNumber: string): boolean {
+  return sellerNumber.startsWith('FI');
+}
+
+/** 会社名（件名・本文で使う）。FI案件は株式会社くじら不動産、それ以外は株式会社いふう */
+function getCompanyName(sellerNumber: string): string {
+  return isFiSellerNumber(sellerNumber) ? '株式会社くじら不動産' : '株式会社いふう';
+}
+
+/** 署名ブロック。既存のemailTemplates.tsの福岡署名・EmailService.supabase.tsの大分署名と同じ内容にする */
+function getEmailSignature(sellerNumber: string): string {
+  if (isFiSellerNumber(sellerNumber)) {
+    return (
+      `***************************\n` +
+      `株式会社くじら不動産\n` +
+      `〒810-0073　福岡市中央区舞鶴3－1－10\n` +
+      `TEL：092-401-5331\n` +
+      `MAIL：tenant@ifoo-oita.com\n` +
+      `***************************`
+    );
+  }
+  return (
+    `***************************\n` +
+    `株式会社いふう\n` +
+    `〒870-0044\n` +
+    `大分市舞鶴町1丁目3-30\n` +
+    `TEL：097-533-2022\n` +
+    `MAIL：tenant@ifoo-oita.com\n` +
+    `***************************`
+  );
+}
+
 function getPortalFrontendBaseUrl(): string {
   return process.env.NODE_ENV === 'production'
     ? 'https://sateituikyaku-admin-frontend.vercel.app'
@@ -23,8 +56,13 @@ function getPortalFrontendBaseUrl(): string {
  * 失敗しても返信処理自体（DB保存）は成功させたいため、呼び出し元でエラーを握って
  * ログのみ出すこと（この関数内では例外を投げない）。
  */
-async function notifySellerOfStaffReply(params: { sellerId: string; sellerNumber: string; replyContent: string }): Promise<void> {
-  const { sellerId, sellerNumber, replyContent } = params;
+async function notifySellerOfStaffReply(params: {
+  sellerId: string;
+  sellerNumber: string;
+  conversationId: string;
+  replyContent: string;
+}): Promise<void> {
+  const { sellerId, sellerNumber, conversationId, replyContent } = params;
 
   if (EMAIL_NOTIFICATION_EXCLUDED_SELLER_NUMBERS.has(sellerNumber)) {
     console.log(`[SellerPortal] ${sellerNumber} はテスト用売主のためメール通知をスキップします`);
@@ -43,13 +81,20 @@ async function notifySellerOfStaffReply(params: { sellerId: string; sellerNumber
     const plainToken = await sellerPortalService.issueAdditionalToken(sellerId, sellerNumber);
     const portalUrl = `${getPortalFrontendBaseUrl()}/portal/${plainToken}`;
 
-    const subject = 'ご質問への回答がございます【売却サポートページ】';
+    const companyName = getCompanyName(sellerNumber);
+    const questionContent = await sellerPortalService.getLastSellerMessageContent(conversationId);
+
+    const subject = `ご質問への回答がございます【${companyName}／売却サポートページ】`;
     const body =
       `いつもお世話になっております。\n\n` +
-      `売却サポートページにいただいたご質問に、担当スタッフより回答いたしました。\n\n` +
+      (questionContent
+        ? `売却サポートページにいただいたご質問に、担当スタッフより回答いたしました。\n\n` +
+          `---ご質問内容---\n${questionContent}\n---------------\n\n`
+        : `売却サポートページにいただいたご質問に、担当スタッフより回答いたしました。\n\n`) +
       `---回答内容---\n${replyContent}\n---------------\n\n` +
       `以下のURLから売却サポートページをご確認ください。\n${portalUrl}\n\n` +
-      `よろしくお願いいたします。`;
+      `よろしくお願いいたします。\n\n` +
+      getEmailSignature(sellerNumber);
 
     await emailService.sendEmail({ to: [seller.email], subject, body });
   } catch (err: any) {
@@ -418,18 +463,6 @@ router.post('/admin/:sellerId/confirm-buyout', authenticate, async (req: Request
   }
 });
 
-/** POST /api/seller-portal/admin/:sellerId/recalculate-breakdown : 査定根拠の再計算・保存（土地・戸建のみ） */
-router.post('/admin/:sellerId/recalculate-breakdown', authenticate, async (req: Request, res: Response) => {
-  try {
-    const { sellerId } = req.params;
-    await sellerPortalService.recalculateAndSaveBreakdown(sellerId);
-    res.json({ success: true });
-  } catch (error: any) {
-    console.error('[SellerPortal] POST /admin/recalculate-breakdown error:', error.message);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 /** GET /api/seller-portal/admin/:sellerId/messages : スタッフが会話一覧を見る */
 router.get('/admin/:sellerId/messages', authenticate, async (req: Request, res: Response) => {
   try {
@@ -468,7 +501,7 @@ router.post('/admin/:sellerId/messages', authenticate, async (req: Request, res:
 
     // 売主本人にメールで返信を知らせる（レスポンスをブロックしない。失敗してもチャット送信自体は成功とする）
     if (sellerNumber) {
-      notifySellerOfStaffReply({ sellerId, sellerNumber, replyContent: content }).catch((err: any) => {
+      notifySellerOfStaffReply({ sellerId, sellerNumber, conversationId, replyContent: content }).catch((err: any) => {
         console.error('⚠️ [SellerPortal] notifySellerOfStaffReply unexpected error:', err);
       });
     }
