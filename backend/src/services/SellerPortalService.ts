@@ -30,15 +30,41 @@ export interface PropertySummary {
   buildingArea: number | null; // ㎡。当社調べ（_verified）を優先。マンションは専有面積として使う
 }
 
+const BASE62_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+
+/**
+ * バイト列をBase62文字列に変換する。
+ * SMSでURLを送ると文字数オーバーになりかねないため、64文字のhex表記より短いトークンにするために使う。
+ * Base62は英数字のみでURLエンコード不要（hexよりも1文字あたりの情報量が多いため短くなる）。
+ */
+function toBase62(buffer: Buffer): string {
+  let num = BigInt('0x' + buffer.toString('hex'));
+  if (num === BigInt(0)) return '0';
+  let result = '';
+  const base = BigInt(62);
+  while (num > BigInt(0)) {
+    const rem = num % base;
+    result = BASE62_ALPHABET[Number(rem)] + result;
+    num = num / base;
+  }
+  return result;
+}
+
 export class SellerPortalService extends BaseRepository {
   private sellerService = new SellerService();
 
   /**
    * トークン用の乱数を生成し、SHA-256ハッシュを返す。
    * 平文はこの関数の戻り値としてのみ得られ、DBにはハッシュだけを保存する。
+   *
+   * 🚨 URLをSMSで送ると文字数オーバーになりかねないため、トークンは128bit（16バイト）の
+   * ランダム値をBase62エンコードして生成する（約22文字。以前は256bit/64文字のhexだったため
+   * URL全体が約120文字あった）。128bitでも総当たりは現実的に不可能な強度を保つ。
+   * 既存の64文字hexトークンも検証時は同じ仕組み（SHA-256でハッシュ化して比較）で動くため、
+   * 既に発行済みのURLに影響はない。
    */
   generateToken(): { plainToken: string; tokenHash: string } {
-    const plainToken = crypto.randomBytes(32).toString('hex');
+    const plainToken = toBase62(crypto.randomBytes(16));
     const tokenHash = crypto.createHash('sha256').update(plainToken).digest('hex');
     return { plainToken, tokenHash };
   }
@@ -721,13 +747,6 @@ export class SellerPortalService extends BaseRepository {
   async getSellerIdsNeedingPortalAttention(): Promise<Set<string>> {
     const result = new Set<string>();
 
-    // ① 決済希望月が入力済み・未確認
-    const { data: pendingSettlement } = await this.table('seller_portal_preferences')
-      .select('seller_id')
-      .not('desired_settlement_year_month', 'is', null)
-      .is('staff_confirmed_settlement_at', null);
-    for (const row of pendingSettlement ?? []) result.add(row.seller_id);
-
     // ①-2 買取依頼済み・未確認
     const { data: pendingBuyout } = await this.table('seller_portal_preferences')
       .select('seller_id')
@@ -753,6 +772,23 @@ export class SellerPortalService extends BaseRepository {
         for (const row of conversations ?? []) result.add(row.seller_id);
       }
     }
+
+    return result;
+  }
+
+  /**
+   * 「いつまでに売りたいですか？」（決済希望月）が入力済みで、まだスタッフが確認していない売主の
+   * seller_id 一覧を返す。買取依頼・未読メッセージ（getSellerIdsNeedingPortalAttention）とは
+   * 別カテゴリーとしてサイドバーに表示するため分離した。
+   */
+  async getSellerIdsNeedingScheduleAttention(): Promise<Set<string>> {
+    const result = new Set<string>();
+
+    const { data: pendingSettlement } = await this.table('seller_portal_preferences')
+      .select('seller_id')
+      .not('desired_settlement_year_month', 'is', null)
+      .is('staff_confirmed_settlement_at', null);
+    for (const row of pendingSettlement ?? []) result.add(row.seller_id);
 
     return result;
   }

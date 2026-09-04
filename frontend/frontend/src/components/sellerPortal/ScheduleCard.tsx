@@ -104,7 +104,7 @@ export default function ScheduleCard({
       </Box>
 
       <Collapse in={showComparison}>
-        <Box sx={{ p: 1.5, mb: 1.5, bgcolor: '#f0f4f8', borderRadius: 2 }}>
+        <Box sx={{ mb: 1.5 }}>
           <Typography variant="body2" fontWeight="bold" sx={{ mb: 0.5 }}>
             仲介売却
           </Typography>
@@ -162,29 +162,6 @@ export default function ScheduleCard({
             onChange={(e) => setSettlementYearMonth(e.target.value)}
           />
 
-          {schedule?.isCompressed && (
-            <Box sx={{ p: 1.5, bgcolor: '#fff3e0', borderRadius: 2 }}>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                3ヶ月以内の売却でしたら、買取をオススメ致します。
-              </Typography>
-              {buyoutRequested ? (
-                <Alert severity="success" sx={{ fontSize: '0.75rem' }}>
-                  買取依頼を受け付けました。担当スタッフよりご連絡いたします。
-                </Alert>
-              ) : (
-                <Button
-                  variant="contained"
-                  color="warning"
-                  size="small"
-                  onClick={handleBuyoutRequest}
-                  disabled={buyoutRequesting}
-                >
-                  {buyoutRequesting ? '送信中...' : '買取依頼'}
-                </Button>
-              )}
-            </Box>
-          )}
-
           <Button variant="contained" onClick={recalculate} disabled={saving || !settlementYearMonth}>
             {saving ? '計算中...' : 'スケジュールを計算する'}
           </Button>
@@ -207,6 +184,30 @@ export default function ScheduleCard({
               />
               <ScheduleStep label="決済・引き渡し" yearMonth={`${schedule.settlementYear}年${schedule.settlementMonth}月`} isLast />
             </Box>
+          )}
+        </Box>
+      )}
+
+      {/* 買取査定の案内は「このスケジュールについて相談する」の直上に配置する */}
+      {schedule?.isCompressed && (
+        <Box sx={{ p: 1.5, mt: 2, bgcolor: '#fff3e0', borderRadius: 2 }}>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            3ヶ月以内の売却でしたら、買取をオススメ致します。
+          </Typography>
+          {buyoutRequested ? (
+            <Alert severity="success" sx={{ fontSize: '0.75rem' }}>
+              買取依頼を受け付けました。担当スタッフよりご連絡いたします。
+            </Alert>
+          ) : (
+            <Button
+              variant="contained"
+              color="warning"
+              size="small"
+              onClick={handleBuyoutRequest}
+              disabled={buyoutRequesting}
+            >
+              {buyoutRequesting ? '送信中...' : '買取依頼'}
+            </Button>
           )}
         </Box>
       )}

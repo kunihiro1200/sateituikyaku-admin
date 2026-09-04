@@ -307,19 +307,14 @@ export class SellerSidebarCountsUpdateService {
         }
       });
 
-      // 売却サポートページ：対応が必要（決済希望月の未確認入力、または売主からの未読メッセージ）
+      // 売却サポートページ：対応が必要（買取依頼、または売主からの未読メッセージ）
+      // 「いつまでに売りたいですか？」（決済希望月）の入力通知は別カテゴリー（sellerPortalScheduleAttention）に分離した。
       // seller_portal_* テーブルは sellers とは別テーブルのため、visitThankYouPending と同じ
       // 「候補IDを取得してJSでマージ」方式で件数を求める。
       let sellerPortalAttentionCount = 0;
+      let sellerPortalScheduleAttentionCount = 0;
       {
         const attentionSellerIds = new Set<string>();
-
-        const { data: pendingSettlement } = await this.supabase
-          .from('seller_portal_preferences')
-          .select('seller_id')
-          .not('desired_settlement_year_month', 'is', null)
-          .is('staff_confirmed_settlement_at', null);
-        (pendingSettlement ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
 
         // 買取依頼済み・未確認（売却スケジュールが3ヶ月以内に圧縮される場合の「買取依頼」ボタンから）
         const { data: pendingBuyout } = await this.supabase
@@ -349,6 +344,16 @@ export class SellerSidebarCountsUpdateService {
         }
 
         sellerPortalAttentionCount = attentionSellerIds.size;
+
+        // 「いつまでに売りたいですか？」（決済希望月）入力済み・未確認（別カテゴリー）
+        const scheduleAttentionSellerIds = new Set<string>();
+        const { data: pendingSettlement } = await this.supabase
+          .from('seller_portal_preferences')
+          .select('seller_id')
+          .not('desired_settlement_year_month', 'is', null)
+          .is('staff_confirmed_settlement_at', null);
+        (pendingSettlement ?? []).forEach((row: any) => scheduleAttentionSellerIds.add(row.seller_id));
+        sellerPortalScheduleAttentionCount = scheduleAttentionSellerIds.size;
       }
 
       // 14. 訪問準備未カウント用データ（FI売主除外・訪問日が対象開始日以降・カレンダー未確認）
@@ -696,8 +701,10 @@ export class SellerSidebarCountsUpdateService {
         rows.push({ category: 'visitThankYouPending', count, label: null, assignee });
       });
 
-      // 売却サポートページ：対応が必要
+      // 売却サポートページ：対応が必要（買取依頼・未読メッセージ）
       rows.push({ category: 'sellerPortalAttention', count: sellerPortalAttentionCount, label: null, assignee: null });
+      // 売却サポートページ：いつまでに売りたいですか？入力あり（別カテゴリー）
+      rows.push({ category: 'sellerPortalScheduleAttention', count: sellerPortalScheduleAttentionCount, label: null, assignee: null });
 
       const { error: insertError } = await this.supabase
         .from('seller_sidebar_counts')
@@ -723,13 +730,6 @@ export class SellerSidebarCountsUpdateService {
   async updateSellerPortalAttentionCategory(): Promise<void> {
     try {
       const attentionSellerIds = new Set<string>();
-
-      const { data: pendingSettlement } = await this.supabase
-        .from('seller_portal_preferences')
-        .select('seller_id')
-        .not('desired_settlement_year_month', 'is', null)
-        .is('staff_confirmed_settlement_at', null);
-      (pendingSettlement ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
 
       const { data: pendingBuyout } = await this.supabase
         .from('seller_portal_preferences')
@@ -763,6 +763,22 @@ export class SellerSidebarCountsUpdateService {
         .insert({ category: 'sellerPortalAttention', count: attentionSellerIds.size, label: null, assignee: null });
 
       console.log(`✅ [SidebarCounts] sellerPortalAttention updated: ${attentionSellerIds.size}`);
+
+      // 「いつまでに売りたいですか？」（決済希望月）入力通知は別カテゴリーとして更新する
+      const scheduleAttentionSellerIds = new Set<string>();
+      const { data: pendingSettlement } = await this.supabase
+        .from('seller_portal_preferences')
+        .select('seller_id')
+        .not('desired_settlement_year_month', 'is', null)
+        .is('staff_confirmed_settlement_at', null);
+      (pendingSettlement ?? []).forEach((row: any) => scheduleAttentionSellerIds.add(row.seller_id));
+
+      await this.supabase.from('seller_sidebar_counts').delete().eq('category', 'sellerPortalScheduleAttention');
+      await this.supabase
+        .from('seller_sidebar_counts')
+        .insert({ category: 'sellerPortalScheduleAttention', count: scheduleAttentionSellerIds.size, label: null, assignee: null });
+
+      console.log(`✅ [SidebarCounts] sellerPortalScheduleAttention updated: ${scheduleAttentionSellerIds.size}`);
     } catch (error) {
       console.error('❌ [SidebarCounts] sellerPortalAttention update failed:', error);
       // このカテゴリーの更新失敗はチャット送信・希望条件保存の成功を妨げない（呼び出し元でcatchする想定）

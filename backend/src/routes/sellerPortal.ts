@@ -301,7 +301,8 @@ router.get('/portal/manifest.json', async (req: Request, res: Response) => {
   }
   // トークンの有効性チェックはしない（manifestはブラウザが取得するだけの静的情報のため、
   // 実際の認可は各APIエンドポイント側のverifyTokenで行う）。ただし形式だけ簡易チェックする。
-  if (!/^[a-f0-9]{64}$/.test(token)) {
+  // 新形式（Base62・約22文字、SMS対策で短縮）と旧形式（hex・64文字、既発行URLとの互換性維持）の両方を許可する。
+  if (!/^[0-9A-Za-z]{15,64}$/.test(token)) {
     return res.status(400).json({ error: 'トークンの形式が正しくありません' });
   }
 

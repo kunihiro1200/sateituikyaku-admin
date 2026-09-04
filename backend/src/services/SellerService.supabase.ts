@@ -1656,15 +1656,9 @@ export class SellerService extends BaseRepository {
           break;
         case 'sellerPortalAttention': {
           // 売却サポート：対応要（sellersとは別テーブルのため、対象seller_idをJSでマージしてから絞り込む）
-          // 対象: ①決済希望月入力済み・未確認 ②買取依頼済み・未確認 ③売主からの未読メッセージあり
+          // 対象: ①買取依頼済み・未確認 ②売主からの未読メッセージあり
+          // 「いつまでに売りたいですか？」の入力通知は sellerPortalScheduleAttention に分離した。
           const attentionSellerIds = new Set<string>();
-
-          const { data: pendingSettlement } = await this.supabase
-            .from('seller_portal_preferences')
-            .select('seller_id')
-            .not('desired_settlement_year_month', 'is', null)
-            .is('staff_confirmed_settlement_at', null);
-          (pendingSettlement ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
 
           const { data: pendingBuyout } = await this.supabase
             .from('seller_portal_preferences')
@@ -1698,6 +1692,22 @@ export class SellerService extends BaseRepository {
             query = query.eq('id', '00000000-0000-0000-0000-000000000000');
           } else {
             query = query.in('id', attentionIdList);
+          }
+          break;
+        }
+        case 'sellerPortalScheduleAttention': {
+          // 売却サポート：「いつまでに売りたいですか？」入力あり・未確認（別カテゴリー）
+          const { data: pendingSettlement } = await this.supabase
+            .from('seller_portal_preferences')
+            .select('seller_id')
+            .not('desired_settlement_year_month', 'is', null)
+            .is('staff_confirmed_settlement_at', null);
+          const scheduleAttentionIdList = Array.from(new Set((pendingSettlement ?? []).map((row: any) => row.seller_id)));
+
+          if (scheduleAttentionIdList.length === 0) {
+            query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+          } else {
+            query = query.in('id', scheduleAttentionIdList);
           }
           break;
         }
@@ -3220,6 +3230,7 @@ export class SellerService extends BaseRepository {
       visitThankYouPendingCounts,
       visitPreparationPending: getCount('visitPreparationPending'),
       sellerPortalAttention: getCount('sellerPortalAttention'),
+      sellerPortalScheduleAttention: getCount('sellerPortalScheduleAttention'),
     };
   }
 
@@ -3703,6 +3714,7 @@ export class SellerService extends BaseRepository {
       visitThankYouPendingCounts: {},  // フォールバック時は空（seller_sidebar_countsテーブルから取得）
       visitPreparationPending: visitPreparationPendingCount || 0,
       sellerPortalAttention: 0, // フォールバック時は0（seller_sidebar_countsテーブルから取得するのが通常パス）
+      sellerPortalScheduleAttention: 0, // フォールバック時は0（seller_sidebar_countsテーブルから取得するのが通常パス）
     };
 
     console.log(`✅ [Performance] Sidebar counts calculation completed in ${Date.now() - startTime}ms`);
