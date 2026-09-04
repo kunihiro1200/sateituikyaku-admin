@@ -85,7 +85,8 @@ export default function SellerPortalPage() {
     })();
   }, [token]);
 
-  // 初回アクセス時、査定額を確認した後に「スマホに保存」の案内を出す（邪魔にならないタイミング）
+  // 初回アクセス時、査定額を確認した後に「保存」の案内を出す（邪魔にならないタイミング）
+  // PC（Chrome/Edge等）でもPWAとしてインストールできるため、モバイルに限定せず案内する。
   useEffect(() => {
     if (loading || error) return;
     const dismissed = localStorage.getItem('seller_portal_install_dismissed');

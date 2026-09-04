@@ -5,8 +5,9 @@ import InstallPwaGuideDialog from './InstallPwaGuideDialog';
 import { isStandalone } from '../../utils/deviceDetect';
 
 /**
- * ページ内に常時残す「スマホに保存」の小さな導線。
+ * ページ内に常時残す「保存」の小さな導線。
  * 初回案内を断った場合でも、後からいつでも保存方法を確認できるようにする。
+ * PC（Chrome/Edge等）でもPWAとしてインストールできるため、モバイルに限定せず表示する。
  */
 export default function InstallPwaBanner() {
   const [guideOpen, setGuideOpen] = useState(false);
@@ -23,7 +24,7 @@ export default function InstallPwaBanner() {
         <PhoneIphoneIcon color="primary" />
         <Box>
           <Typography variant="body2" fontWeight="bold">
-            この査定ページをスマホに保存
+            この査定ページを保存
           </Typography>
           <Typography variant="caption" color="text.secondary">
             次回からアプリのように1タップで開けます

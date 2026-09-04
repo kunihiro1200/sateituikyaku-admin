@@ -5,6 +5,7 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import IosShareIcon from '@mui/icons-material/IosShare';
 import AddBoxIcon from '@mui/icons-material/AddBox';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import InstallDesktopIcon from '@mui/icons-material/InstallDesktop';
 import { isIOS, isAndroid } from '../../utils/deviceDetect';
 
 /**
@@ -34,9 +35,15 @@ export default function InstallPwaGuideDialog({ open, onClose }: { open: boolean
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>スマホに保存する</DialogTitle>
+      <DialogTitle>保存する</DialogTitle>
       <DialogContent>
-        {isIOS() ? <IosGuide /> : isAndroid() ? <AndroidGuide deferredPrompt={deferredPrompt} onInstall={handleAndroidInstall} /> : <GenericGuide />}
+        {isIOS() ? (
+          <IosGuide />
+        ) : isAndroid() ? (
+          <AndroidGuide deferredPrompt={deferredPrompt} onInstall={handleAndroidInstall} />
+        ) : (
+          <PcGuide deferredPrompt={deferredPrompt} onInstall={handleAndroidInstall} />
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>閉じる</Button>
@@ -92,11 +99,35 @@ function AndroidGuide({ deferredPrompt, onInstall }: { deferredPrompt: any; onIn
   );
 }
 
-function GenericGuide() {
+/**
+ * PC（Chrome/Edge等）向けの案内。
+ * beforeinstallprompt に対応しているブラウザなら、その場でインストールできる。
+ * 対応外の場合は、アドレスバーのインストールアイコンから操作する手順を案内する。
+ */
+function PcGuide({ deferredPrompt, onInstall }: { deferredPrompt: any; onInstall: () => void }) {
+  if (deferredPrompt) {
+    return (
+      <Stack spacing={2}>
+        <Typography variant="body2">
+          下のボタンからそのままインストールできます。
+        </Typography>
+        <Button variant="contained" onClick={onInstall}>
+          インストールする
+        </Button>
+      </Stack>
+    );
+  }
   return (
-    <Typography variant="body2">
-      ブラウザのメニューから「ホーム画面に追加」を選択すると、次回からアイコンから直接開けます。
-    </Typography>
+    <Stack spacing={2}>
+      <Typography variant="body2">
+        ブラウザのアドレスバー右側にあるインストールアイコン（
+        <InstallDesktopIcon fontSize="small" sx={{ verticalAlign: 'middle' }} />
+        ）をクリックするか、ブラウザのメニューから「アプリをインストール」を選択してください。
+      </Typography>
+      <Typography variant="caption" color="text.secondary">
+        インストール後は、デスクトップやアプリ一覧からアイコンひとつで開けます。
+      </Typography>
+    </Stack>
   );
 }
 

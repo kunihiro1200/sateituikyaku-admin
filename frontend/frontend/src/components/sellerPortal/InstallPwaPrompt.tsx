@@ -20,7 +20,7 @@ export default function InstallPwaPrompt({ onDismiss }: { onDismiss: () => void 
               <PhoneIphoneIcon color="primary" />
               <Box>
                 <Typography variant="body2" fontWeight="bold">
-                  このページをスマホに保存しておきませんか？
+                  このページを保存しておきませんか？
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   査定額・手残り金額・売却スケジュール・スタッフとの相談を、いつでもすぐ確認できます。
@@ -40,7 +40,7 @@ export default function InstallPwaPrompt({ onDismiss }: { onDismiss: () => void 
               variant="contained"
               onClick={() => setGuideOpen(true)}
             >
-              スマホに保存する
+              保存する
             </Button>
           </Box>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
