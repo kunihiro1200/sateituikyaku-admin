@@ -5,6 +5,7 @@ import { valuationCalculatorService } from './ValuationCalculatorService';
 import { normalizePropertyType, isApartment } from '../utils/propertyTypeNormalizer';
 import { calcBrokerageFee, calcStampDuty, calcTransferTax, TransferTaxInput } from '../utils/proceedsCalculator';
 import { calculateSaleScheduleFromSettlement } from '../utils/saleScheduleCalculator';
+import { encrypt, decrypt } from '../utils/encryption';
 
 /**
  * 査定依頼者向け「売却サポートページ」のサービス層。
@@ -58,6 +59,7 @@ export class SellerPortalService extends BaseRepository {
       seller_id: sellerId,
       seller_number: sellerNumber,
       token_hash: tokenHash,
+      token_encrypted: encrypt(plainToken),
     });
 
     if (error) throw new Error(`トークン発行に失敗しました: ${error.message}`);
@@ -80,6 +82,8 @@ export class SellerPortalService extends BaseRepository {
   /**
    * 専用URLトークンを新規発行する（スタッフ操作、要認証）。
    * 既存の有効なトークンがあれば無効化してから新規発行する（1売主1トークン運用）。
+   * ⚠️ 既存の有効URLが無効になるため、フロント側では実行前に確認ダイアログを出すこと
+   * （売主がホーム画面に保存済みのURLが使えなくなるため）。
    */
   async issueToken(sellerId: string, sellerNumber: string): Promise<string> {
     await this.table('seller_portal_tokens')
@@ -93,11 +97,37 @@ export class SellerPortalService extends BaseRepository {
       seller_id: sellerId,
       seller_number: sellerNumber,
       token_hash: tokenHash,
+      token_encrypted: encrypt(plainToken),
     });
 
     if (error) throw new Error(`トークン発行に失敗しました: ${error.message}`);
 
     return plainToken;
+  }
+
+  /**
+   * 現在有効な専用URLトークンを取得する（スタッフ管理画面で常時表示するため）。
+   * まだ一度も発行されていない場合はnullを返す。
+   * 有効なトークンが複数存在する場合（issueAdditionalTokenで追加発行されたもの含む）は、
+   * 最も新しく発行されたものを返す。
+   */
+  async getActivePlainToken(sellerId: string): Promise<string | null> {
+    const { data } = await this.table('seller_portal_tokens')
+      .select('token_encrypted')
+      .eq('seller_id', sellerId)
+      .is('revoked_at', null)
+      .not('token_encrypted', 'is', null)
+      .order('issued_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!data?.token_encrypted) return null;
+    try {
+      return decrypt(data.token_encrypted);
+    } catch (err) {
+      console.error('[SellerPortal] トークンの復号に失敗しました:', err);
+      return null;
+    }
   }
 
   /**

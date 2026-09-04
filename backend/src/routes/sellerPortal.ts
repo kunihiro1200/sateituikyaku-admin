@@ -426,7 +426,7 @@ router.post('/admin/:sellerId/issue-token', authenticate, async (req: Request, r
 router.get('/admin/:sellerId/status', authenticate, async (req: Request, res: Response) => {
   try {
     const { sellerId } = req.params;
-    const [tokenStatus, preferences, unreadCount, valuation, valuationBreakdown, roughProceeds, schedule] = await Promise.all([
+    const [tokenStatus, preferences, unreadCount, valuation, valuationBreakdown, roughProceeds, schedule, activeToken] = await Promise.all([
       sellerPortalService.getTokenStatus(sellerId),
       sellerPortalService.getPreferences(sellerId),
       sellerPortalService.getUnreadCountForStaff(sellerId),
@@ -434,8 +434,11 @@ router.get('/admin/:sellerId/status', authenticate, async (req: Request, res: Re
       sellerPortalService.getValuationBreakdown(sellerId).catch(() => null),
       sellerPortalService.getRoughProceeds(sellerId).catch(() => []),
       sellerPortalService.calculateSchedule(sellerId).catch(() => null),
+      sellerPortalService.getActivePlainToken(sellerId),
     ]);
-    res.json({ success: true, tokenStatus, preferences, unreadCount, valuation, valuationBreakdown, roughProceeds, schedule });
+    // モーダルを開き直しても専用URLを常時表示できるようにする（発行済みのトークンをここで返す）
+    const activeUrl = activeToken ? `${getPortalFrontendBaseUrl()}/portal/${activeToken}` : null;
+    res.json({ success: true, tokenStatus, preferences, unreadCount, valuation, valuationBreakdown, roughProceeds, schedule, activeUrl });
   } catch (error: any) {
     console.error('[SellerPortal] GET /admin/status error:', error.message);
     res.status(500).json({ error: error.message });

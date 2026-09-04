@@ -43,6 +43,17 @@ export default function SellerPortalAdminSection({ sellerId, sellerNumber }: { s
   }, [sellerId]);
 
   const handleIssueToken = async () => {
+    // 既に発行済みのURLがある場合、再発行すると古いURL（売主がホーム画面に保存済みの可能性がある）が
+    // 無効になるため、誤操作防止の確認ダイアログを出す。
+    if (status?.activeUrl) {
+      const confirmed = window.confirm(
+        '再発行すると、現在売主様に送っている専用URLが無効になります。\n' +
+        '売主様が既にURLを保存・利用中の場合、開けなくなります。\n\n' +
+        '本当に再発行しますか？'
+      );
+      if (!confirmed) return;
+    }
+
     setIssuing(true);
     try {
       const res = await api.post(`/api/seller-portal/admin/${sellerId}/issue-token`, { sellerNumber });
@@ -55,8 +66,9 @@ export default function SellerPortalAdminSection({ sellerId, sellerNumber }: { s
   };
 
   const handleCopy = () => {
-    if (!issuedUrl) return;
-    navigator.clipboard.writeText(issuedUrl);
+    const url = issuedUrl || status?.activeUrl;
+    if (!url) return;
+    navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -97,11 +109,12 @@ export default function SellerPortalAdminSection({ sellerId, sellerNumber }: { s
         )}
       </Box>
 
-      {issuedUrl && (
+      {/* 専用URLは常時表示する（issuedUrlは発行直後の一時表示、activeUrlはDBに保存済みの現在有効なURL） */}
+      {(issuedUrl || status?.activeUrl) && (
         <Alert severity="success" sx={{ mb: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
             <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
-              {issuedUrl}
+              {issuedUrl || status.activeUrl}
             </Typography>
             <IconButton size="small" onClick={handleCopy}>
               <ContentCopyIcon fontSize="small" />
