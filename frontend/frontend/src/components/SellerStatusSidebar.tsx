@@ -1143,9 +1143,11 @@ function SellerStatusSidebarComponent({
         if (categoryCounts?.todayCallWithInfoLabelCounts && Object.keys(categoryCounts.todayCallWithInfoLabelCounts).length > 0) {
           labelCountMap = categoryCounts.todayCallWithInfoLabelCounts;
         } else {
-          // フォールバック: validSellersから生成
+          // フォールバック: validSellersから生成（FI売主は福岡専用カテゴリーに表示するため除外）
+          const isFiSellerLocal = (s: any): boolean =>
+            ((s.sellerNumber || s.seller_number || '') as string).toUpperCase().startsWith('FI');
           labelCountMap = {};
-          validSellers.filter(isTodayCallWithInfo).forEach(s => {
+          validSellers.filter(s => !isFiSellerLocal(s) && isTodayCallWithInfo(s)).forEach(s => {
             const label = getTodayCallWithInfoLabel(s);
             labelCountMap[label] = (labelCountMap[label] || 0) + 1;
           });
