@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography, Box, Stack } from '@mui/material';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import IosShareIcon from '@mui/icons-material/IosShare';
 import AddBoxIcon from '@mui/icons-material/AddBox';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -49,9 +51,10 @@ function IosGuide() {
       <Typography variant="body2">
         Safariの「共有」ボタンから、ホーム画面に追加できます。
       </Typography>
-      <Step icon={<IosShareIcon color="primary" />} text="① 画面下（または上）の「共有」ボタンをタップ" />
-      <Step icon={<AddBoxIcon color="primary" />} text="② メニューから「ホーム画面に追加」を選択" />
-      <Step icon={<CheckCircleIcon color="primary" />} text="③ 右上の「追加」をタップ" />
+      <Step icon={<MoreHorizIcon color="primary" />} text="① 画面下部（または上部）の「…」をタップ" />
+      <Step icon={<IosShareIcon color="primary" />} text="② 一番上の「共有」をタップ" />
+      <Step icon={<AddBoxIcon color="primary" />} text="③ 共有メニューを下にスクロールして「ホーム画面に追加」をタップ" />
+      <Step icon={<CheckCircleIcon color="primary" />} text="④ 右上の「追加」をタップ" />
       <Typography variant="caption" color="text.secondary">
         ホーム画面に「売却サポート」のアイコンが追加されます。
       </Typography>
@@ -60,6 +63,7 @@ function IosGuide() {
 }
 
 function AndroidGuide({ deferredPrompt, onInstall }: { deferredPrompt: any; onInstall: () => void }) {
+  // パターン1: ブラウザがインストール操作に対応している場合、その場でインストールできる
   if (deferredPrompt) {
     return (
       <Stack spacing={2}>
@@ -72,10 +76,17 @@ function AndroidGuide({ deferredPrompt, onInstall }: { deferredPrompt: any; onIn
       </Stack>
     );
   }
+  // パターン2: 対応外ブラウザの場合、手順で案内する
   return (
     <Stack spacing={2}>
       <Typography variant="body2">
-        ブラウザのメニュー（右上の縦三点アイコン）から「ホーム画面に追加」または「アプリをインストール」を選択してください。
+        ブラウザのメニューから、ホーム画面に追加できます。
+      </Typography>
+      <Step icon={<MoreVertIcon color="primary" />} text="① ブラウザ右上の「⋮」をタップ" />
+      <Step icon={<AddBoxIcon color="primary" />} text="②「ホーム画面に追加」または「アプリをインストール」をタップ" />
+      <Step icon={<CheckCircleIcon color="primary" />} text="③ 画面の案内に従って「追加」または「インストール」をタップ" />
+      <Typography variant="caption" color="text.secondary">
+        ホーム画面に「売却サポート」のアイコンが追加されます。
       </Typography>
     </Stack>
   );

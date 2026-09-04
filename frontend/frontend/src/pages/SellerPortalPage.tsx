@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { Box, CircularProgress, Typography, Alert } from '@mui/material';
 import { sellerPortalApi, ValuationSummary, PropertySummary } from '../services/sellerPortalApi';
 import SellerPortalHeader from '../components/sellerPortal/SellerPortalHeader';
@@ -117,6 +118,20 @@ export default function SellerPortalPage() {
 
   return (
     <Box sx={{ bgcolor: '#f5f6f8', minHeight: '100vh', pb: 10 }}>
+      {/*
+        メールでURLを送った際に「大分の建売専門サイト｜株式会社いふう」（index.htmlのデフォルトタグ）が
+        表示されてしまう問題への対応。このページ専用のタイトル・OGPタグで上書きする。
+        LINE等でのプレビュー表示にも影響するため、メール件名と同じ「査定理由、手残り金額詳細」で統一する。
+      */}
+      <Helmet>
+        <title>査定理由、手残り金額詳細</title>
+        <meta name="description" content="査定額の根拠や手残り金額の詳細、売却スケジュールをご確認いただけます。" />
+        <meta property="og:title" content="査定理由、手残り金額詳細" />
+        <meta property="og:description" content="査定額の根拠や手残り金額の詳細、売却スケジュールをご確認いただけます。" />
+        <meta property="og:site_name" content="査定理由、手残り金額詳細" />
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
+
       <SellerPortalHeader sellerNumber={sellerNumber} />
 
       <Box sx={{ maxWidth: 560, mx: 'auto', px: 2, pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
