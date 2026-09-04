@@ -6218,12 +6218,13 @@ HP：https://ifoo-oita.com/
         </Dialog>
 
         {/* 査定額表示（中央）- スマホ時は非表示 */}
-        {/* 優先順位: 1. valuationText（I列テキスト）がある場合はそれを表示 */}
+        {/* 優先順位: 1. valuationText（I列テキスト）がある場合はそれをメインに表示（数値査定額1/2/3も併記） */}
         {/*          2. 手入力または自動計算の数値査定額がある場合はそれを表示 */}
         {/*          3. どちらもない場合は「査定額未設定」 */}
         <Box sx={{ display: isMobile ? 'none' : 'flex', flexDirection: 'column', alignItems: 'center', mx: 2 }}>
           {seller?.valuationText ? (
             // I列「査定額」テキスト形式がある場合（例：「1900～2200万円」）を最優先
+            // 🚨 valuationAmount1/2/3（売却サポートページ等が参照する数値査定額）も見えるよう併記する
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
@@ -6238,6 +6239,13 @@ HP：https://ifoo-oita.com/
               {seller.valuationAssignee && (
                 <Typography variant="caption" color="text.secondary">
                   査定担当: {seller.valuationAssignee}
+                </Typography>
+              )}
+              {seller.valuationAmount1 && (
+                <Typography variant="caption" color="text.secondary">
+                  数値査定額（売却サポートページ表示用）: {Math.round(seller.valuationAmount1 / 10000)}万円 ～{' '}
+                  {seller.valuationAmount2 ? Math.round(seller.valuationAmount2 / 10000) : '-'}万円 ～{' '}
+                  {seller.valuationAmount3 ? Math.round(seller.valuationAmount3 / 10000) : '-'}万円
                 </Typography>
               )}
             </Box>
@@ -8899,6 +8907,14 @@ HP：https://ifoo-oita.com/
                     {valuationAssignee && (
                       <Typography variant="caption" color="text.secondary">
                         査定担当: {valuationAssignee}
+                      </Typography>
+                    )}
+                    {/* 🚨 当時査定額（valuationText）表示中でも、数値査定額1/2/3（売却サポートページ等が参照する値）を併記する */}
+                    {seller?.valuationText && editedValuationAmount1 && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        数値査定額（売却サポートページ表示用）: {Math.round(parseInt(editedValuationAmount1) / 10000)}万円 ～{' '}
+                        {editedValuationAmount2 ? Math.round(parseInt(editedValuationAmount2) / 10000) : '-'}万円 ～{' '}
+                        {editedValuationAmount3 ? Math.round(parseInt(editedValuationAmount3) / 10000) : '-'}万円
                       </Typography>
                     )}
                     {isManualValuation && (
