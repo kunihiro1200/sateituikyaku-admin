@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Paper, Typography, Box, Button, CircularProgress, Alert, Badge } from '@mui/material';
+import { Paper, Typography, Box, CircularProgress, Alert } from '@mui/material';
 import { sellerPortalApi } from '../../services/sellerPortalApi';
+import InlineChatSection from './InlineChatSection';
 
 const fmtMan = (yen: number) => `${Math.round(yen / 10000).toLocaleString()}万円`;
 const fmtYenPerSqm = (yen: number) => `${yen.toLocaleString()}円`;
@@ -14,13 +15,13 @@ export default function ValuationBreakdownCard({
   token,
   propertyType,
   hasUnreadReply,
-  onAskQuestion,
+  onMessagesRead,
 }: {
   token: string;
   propertyType: 'land' | 'detached_house' | 'apartment' | 'other';
-  /** スタッフからこの相談元への未読返信があるか（あれば質問ボタンに赤丸を表示する） */
+  /** スタッフからこの相談元への未読返信があるか（あれば赤丸を表示する） */
   hasUnreadReply?: boolean;
-  onAskQuestion: () => void;
+  onMessagesRead?: () => void;
 }) {
   const [breakdown, setBreakdown] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -61,11 +62,13 @@ export default function ValuationBreakdownCard({
         <LandOrHouseBreakdown breakdown={breakdown} />
       )}
 
-      <Badge color="error" variant="dot" invisible={!hasUnreadReply} sx={{ mt: 1 }}>
-        <Button size="small" variant="text" onClick={onAskQuestion}>
-          査定の理由について質問する
-        </Button>
-      </Badge>
+      <InlineChatSection
+        token={token}
+        contextTag="valuation_breakdown"
+        label="査定の理由について質問する"
+        hasUnreadReply={hasUnreadReply}
+        onMessagesRead={onMessagesRead}
+      />
     </Paper>
   );
 }

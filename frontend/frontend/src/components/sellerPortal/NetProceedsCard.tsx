@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Paper, Typography, Box, Button, CircularProgress, Badge } from '@mui/material';
+import { Paper, Typography, Box, Button, CircularProgress } from '@mui/material';
 import { sellerPortalApi, ValuationSummary } from '../../services/sellerPortalApi';
 import DetailedProceedsWizard from './DetailedProceedsWizard';
 import ProceedsTable, { ProceedsTableRow } from './ProceedsTable';
+import InlineChatSection from './InlineChatSection';
 
 interface RoughRow {
   priceYen: number;
@@ -22,15 +23,15 @@ export default function NetProceedsCard({
   sellerNumber,
   savedDetailedAnswers,
   hasUnreadReply,
-  onAskQuestion,
+  onMessagesRead,
 }: {
   token: string;
   valuation: ValuationSummary | null;
   sellerNumber: string;
   savedDetailedAnswers?: Record<string, any> | null;
-  /** スタッフからこの相談元への未読返信があるか（あれば質問ボタンに赤丸を表示する） */
+  /** スタッフからこの相談元への未読返信があるか（あれば赤丸を表示する） */
   hasUnreadReply?: boolean;
-  onAskQuestion: () => void;
+  onMessagesRead?: () => void;
 }) {
   const [rows, setRows] = useState<RoughRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,11 +83,13 @@ export default function NetProceedsCard({
         その他費用も差し引く
       </Button>
 
-      <Badge color="error" variant="dot" invisible={!hasUnreadReply} sx={{ mt: 1 }}>
-        <Button size="small" variant="text" onClick={onAskQuestion}>
-          この手残りについて相談する
-        </Button>
-      </Badge>
+      <InlineChatSection
+        token={token}
+        contextTag="net_proceeds"
+        label="この手残りについて相談する"
+        hasUnreadReply={hasUnreadReply}
+        onMessagesRead={onMessagesRead}
+      />
 
       <DetailedProceedsWizard
         open={wizardOpen}

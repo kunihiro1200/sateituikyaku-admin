@@ -1,5 +1,6 @@
-import { Paper, Typography, Box, Button, Badge } from '@mui/material';
+import { Paper, Typography, Box } from '@mui/material';
 import { ValuationSummary } from '../../services/sellerPortalApi';
+import InlineChatSection from './InlineChatSection';
 
 const fmtMan = (yen: number) => `${Math.round(yen / 10000).toLocaleString()}万円`;
 
@@ -8,14 +9,16 @@ const fmtMan = (yen: number) => `${Math.round(yen / 10000).toLocaleString()}万�
  * 伝わるラベルとともに表示する。既存の sellers.valuation_amount_1/2/3 をそのまま使う。
  */
 export default function ValuationCard({
+  token,
   valuation,
   hasUnreadReply,
-  onAskQuestion,
+  onMessagesRead,
 }: {
+  token: string;
   valuation: ValuationSummary;
-  /** スタッフからこの相談元への未読返信があるか（あれば質問ボタンに赤丸を表示する） */
+  /** スタッフからこの相談元への未読返信があるか（あれば赤丸を表示する） */
   hasUnreadReply?: boolean;
-  onAskQuestion: () => void;
+  onMessagesRead?: () => void;
 }) {
   return (
     <Paper sx={{ p: 2.5, borderRadius: 3 }} elevation={0} variant="outlined">
@@ -47,11 +50,13 @@ export default function ValuationCard({
         価格に幅があるのは、売却にかけられる期間や市場の状況によって、目指せる価格が変わるためです。詳しくは下の「査定額の計算根拠」をご確認ください。
       </Typography>
 
-      <Badge color="error" variant="dot" invisible={!hasUnreadReply} sx={{ mt: 1 }}>
-        <Button size="small" variant="text" onClick={onAskQuestion}>
-          この査定額について質問する
-        </Button>
-      </Badge>
+      <InlineChatSection
+        token={token}
+        contextTag="valuation"
+        label="この査定額について質問する"
+        hasUnreadReply={hasUnreadReply}
+        onMessagesRead={onMessagesRead}
+      />
     </Paper>
   );
 }

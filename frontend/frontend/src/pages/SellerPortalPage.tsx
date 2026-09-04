@@ -124,9 +124,10 @@ export default function SellerPortalPage() {
 
         {valuation && (
           <ValuationCard
+            token={token}
             valuation={valuation}
             hasUnreadReply={!!unreadByContext.valuation}
-            onAskQuestion={() => openChat('valuation')}
+            onMessagesRead={checkUnread}
           />
         )}
 
@@ -134,7 +135,7 @@ export default function SellerPortalPage() {
           token={token}
           propertyType={valuation?.propertyType ?? 'other'}
           hasUnreadReply={!!unreadByContext.valuation_breakdown}
-          onAskQuestion={() => openChat('valuation_breakdown')}
+          onMessagesRead={checkUnread}
         />
 
         <NetProceedsCard
@@ -143,14 +144,14 @@ export default function SellerPortalPage() {
           sellerNumber={sellerNumber}
           savedDetailedAnswers={preferences?.known_facts?.detailed_proceeds_answers?.value ?? null}
           hasUnreadReply={!!unreadByContext.net_proceeds}
-          onAskQuestion={() => openChat('net_proceeds')}
+          onMessagesRead={checkUnread}
         />
 
         <ScheduleCard
           token={token}
           valuation={valuation}
           hasUnreadReply={!!unreadByContext.schedule}
-          onAskQuestion={() => openChat('schedule')}
+          onMessagesRead={checkUnread}
         />
 
         <InstallPwaBanner />

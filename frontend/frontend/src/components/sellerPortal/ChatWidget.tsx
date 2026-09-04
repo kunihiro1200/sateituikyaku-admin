@@ -5,6 +5,9 @@ import SendIcon from '@mui/icons-material/Send';
 import CloseIcon from '@mui/icons-material/Close';
 import { sellerPortalApi } from '../../services/sellerPortalApi';
 
+// このFABは「その他のご相談」（一般的な質問）専用。査定額・査定根拠・手残り・スケジューについての
+// 相談は各カード内のインライン展開チャット（InlineChatSection.tsx）で行うため、
+// ここでは contextTag は常に 'general' 固定として扱われる。
 const CONTEXT_LABELS: Record<string, string> = {
   general: 'その他のご相談',
   valuation: '査定額についての相談',
