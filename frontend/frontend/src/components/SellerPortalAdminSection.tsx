@@ -22,6 +22,8 @@ export default function SellerPortalAdminSection({ sellerId, sellerNumber }: { s
   const [conversations, setConversations] = useState<any[]>([]);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [sendingConvId, setSendingConvId] = useState<string | null>(null);
+  const [confirmingSettlement, setConfirmingSettlement] = useState(false);
+  const [confirmingBuyout, setConfirmingBuyout] = useState(false);
 
   const loadStatus = async () => {
     setLoading(true);
@@ -71,6 +73,35 @@ export default function SellerPortalAdminSection({ sellerId, sellerNumber }: { s
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  /**
+   * 「いつまでに売りたいですか？」の入力をスタッフが確認したことを記録する。
+   * サイドバーカテゴリー「売却サポート：売却希望時期」から、この売主を除外するために必要。
+   * （確認しないと、いつまでもこのカテゴリーに表示され続ける）
+   */
+  const handleConfirmSettlement = async () => {
+    setConfirmingSettlement(true);
+    try {
+      await api.post(`/api/seller-portal/admin/${sellerId}/confirm-settlement`, { sellerNumber });
+      await loadStatus();
+    } finally {
+      setConfirmingSettlement(false);
+    }
+  };
+
+  /**
+   * 「買取依頼」ボタンの押下をスタッフが確認したことを記録する。
+   * サイドバーカテゴリー「売却サポート：対応要」から、この売主を除外するために必要。
+   */
+  const handleConfirmBuyout = async () => {
+    setConfirmingBuyout(true);
+    try {
+      await api.post(`/api/seller-portal/admin/${sellerId}/confirm-buyout`, { sellerNumber });
+      await loadStatus();
+    } finally {
+      setConfirmingBuyout(false);
+    }
   };
 
   const handleReply = async (conversationId: string) => {
@@ -160,13 +191,31 @@ export default function SellerPortalAdminSection({ sellerId, sellerNumber }: { s
               {status.preferences.minimum_sale_price ? `${Math.round(status.preferences.minimum_sale_price / 10000).toLocaleString()}万円` : '未入力'}
             </Typography>
           </Grid>
-          <Grid item xs={6} sm={4}>
+          <Grid item xs={12} sm={4}>
             <Typography variant="caption" color="text.secondary">売却希望時期</Typography>
             <Typography variant="body2">
               {status.preferences.desired_settlement_year_month
                 ? new Date(status.preferences.desired_settlement_year_month).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' })
                 : '未入力'}
             </Typography>
+            {/* 「いつまでに売りたいですか？」が入力済み・未確認の場合のみボタンを表示する。
+                確認するとサイドバーカテゴリー「売却サポート：売却希望時期」からこの売主が消える。 */}
+            {status.preferences.desired_settlement_year_month && (
+              status.preferences.staff_confirmed_settlement_at ? (
+                <Chip label="確認済み" size="small" color="success" sx={{ mt: 0.5 }} />
+              ) : (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="primary"
+                  onClick={handleConfirmSettlement}
+                  disabled={confirmingSettlement}
+                  sx={{ mt: 0.5 }}
+                >
+                  {confirmingSettlement ? '処理中...' : '確認済みにする'}
+                </Button>
+              )
+            )}
           </Grid>
           <Grid item xs={6} sm={4}>
             <Typography variant="caption" color="text.secondary">ざっくり手残り閲覧</Typography>
@@ -176,6 +225,27 @@ export default function SellerPortalAdminSection({ sellerId, sellerNumber }: { s
             <Typography variant="caption" color="text.secondary">詳細手残り計算</Typography>
             <Typography variant="body2">{status.preferences.detailed_proceeds_completed ? '実施済み' : '未実施'}</Typography>
           </Grid>
+          {status.preferences.buyout_requested_at && (
+            <Grid item xs={12} sm={4}>
+              <Typography variant="caption" color="text.secondary">買取依頼</Typography>
+              <Typography variant="body2">依頼あり（{new Date(status.preferences.buyout_requested_at).toLocaleDateString('ja-JP')}）</Typography>
+              {/* 確認するとサイドバーカテゴリー「売却サポート：対応要」からこの売主が消える（未読メッセージが無い場合） */}
+              {status.preferences.staff_confirmed_buyout_at ? (
+                <Chip label="確認済み" size="small" color="success" sx={{ mt: 0.5 }} />
+              ) : (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="primary"
+                  onClick={handleConfirmBuyout}
+                  disabled={confirmingBuyout}
+                  sx={{ mt: 0.5 }}
+                >
+                  {confirmingBuyout ? '処理中...' : '確認済みにする'}
+                </Button>
+              )}
+            </Grid>
+          )}
         </Grid>
       )}
 

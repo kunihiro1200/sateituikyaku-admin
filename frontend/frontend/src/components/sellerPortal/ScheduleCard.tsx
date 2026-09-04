@@ -84,11 +84,8 @@ export default function ScheduleCard({
 
   return (
     <Paper sx={{ p: 2.5, borderRadius: 3 }} elevation={0} variant="outlined">
-      <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 0.5 }}>
+      <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1.5 }}>
         売却スケジュール
-      </Typography>
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-        下記は「仲介売却」の場合のスケジュールです。
       </Typography>
 
       <Box
@@ -168,6 +165,9 @@ export default function ScheduleCard({
 
           {schedule?.hasSettlementDate && (
             <Box sx={{ mt: 1 }}>
+              <Typography variant="body2" fontWeight="bold" sx={{ mb: 1.5 }}>
+                下記は「仲介売却」の場合のスケジュールです。
+              </Typography>
               {schedule.isCompressed && (
                 <Alert severity="info" sx={{ mb: 1.5, fontSize: '0.75rem' }}>
                   ご希望の時期までの期間が短いため、販売開始を今月からとし、スケジュールを詰めて計算しています。
