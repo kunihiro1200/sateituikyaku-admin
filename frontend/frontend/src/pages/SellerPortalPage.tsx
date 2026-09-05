@@ -178,6 +178,9 @@ export default function SellerPortalPage() {
         />
 
         <InstallPwaBanner token={token} />
+
+        {/* 会社情報（FI/AA判定で表示を切り替え） */}
+        <CompanySignature sellerNumber={sellerNumber} />
       </Box>
 
       <ChatWidget
@@ -199,6 +202,82 @@ export default function SellerPortalPage() {
           token={token}
         />
       )}
+    </Box>
+  );
+}
+
+const IFOO_INFO = {
+  name: '株式会社いふう',
+  address: '〒870-0044 大分市舞鶴町1丁目3-30 STビル1F',
+  tel: '097-533-2022',
+  email: 'tenant@ifoo-oita.com',
+  hp: 'https://ifoo-oita.com/',
+};
+
+const KUJIRA_INFO = {
+  name: '株式会社くじら不動産',
+  address: '〒810-0073 福岡市中央区舞鶴3－1－10',
+  tel: '092-401-5331',
+  email: 'tenant@ifoo-oita.com',
+  hp: 'https://kujira-fudosan.com/',
+};
+
+function CompanySignature({ sellerNumber }: { sellerNumber: string }) {
+  const isFi = sellerNumber.toUpperCase().startsWith('FI');
+  const info = isFi ? KUJIRA_INFO : IFOO_INFO;
+
+  return (
+    <Box
+      sx={{
+        mt: 2,
+        p: 2.5,
+        borderRadius: 3,
+        bgcolor: '#f5f5f5',
+        border: '1px solid #e0e0e0',
+        fontSize: '0.85rem',
+        lineHeight: 1.9,
+      }}
+    >
+      <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
+        {info.name}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+        {info.address}
+      </Typography>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+        <Typography variant="body2">
+          📞{' '}
+          <Box
+            component="a"
+            href={`tel:${info.tel.replace(/-/g, '')}`}
+            sx={{ color: 'primary.main', textDecoration: 'none', fontWeight: 'bold' }}
+          >
+            {info.tel}
+          </Box>
+        </Typography>
+        <Typography variant="body2">
+          ✉️{' '}
+          <Box
+            component="a"
+            href={`mailto:${info.email}`}
+            sx={{ color: 'primary.main', textDecoration: 'none' }}
+          >
+            {info.email}
+          </Box>
+        </Typography>
+        <Typography variant="body2">
+          🌐{' '}
+          <Box
+            component="a"
+            href={info.hp}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ color: 'primary.main', textDecoration: 'none' }}
+          >
+            {info.hp}
+          </Box>
+        </Typography>
+      </Box>
     </Box>
   );
 }
