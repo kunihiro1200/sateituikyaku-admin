@@ -70,7 +70,7 @@ export const sellerPortalApi = {
   },
 
   async getDetailedProceeds(token: string, params: { loanBalance?: number; mortgageReleaseFee?: number; transferTax: any }) {
-    return request<{ success: boolean; rows: any[] }>('/api/seller-portal/portal/detailed-proceeds', {
+    return request<{ success: boolean; rows: any[]; taxBreakdown: any | null }>('/api/seller-portal/portal/detailed-proceeds', {
       method: 'POST',
       body: JSON.stringify({ token, ...params }),
     });

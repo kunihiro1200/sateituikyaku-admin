@@ -449,21 +449,29 @@ export class SellerPortalService extends BaseRepository {
       mortgageReleaseFee?: number; // 抵当権抹消費用（円）
       transferTax: TransferTaxInput;
     }
-  ): Promise<Array<{
-    priceYen: number;
-    brokerageFee: number;
-    stampDuty: number;
-    loanBalance: number;
-    mortgageReleaseFee: number;
-    transferTax: number;
-    netProceeds: number;
-  }>> {
+  ): Promise<{
+    rows: Array<{
+      priceYen: number;
+      brokerageFee: number;
+      stampDuty: number;
+      loanBalance: number;
+      mortgageReleaseFee: number;
+      transferTax: number;
+      netProceeds: number;
+    }>;
+    /**
+     * 譲渡所得税の計算根拠（チャレンジ価格＝最高査定額をベースに算出）。
+     * 既存の資料生成「手残りリスト」（NetProceedsListModal.tsx）の「譲渡所得税 計算根拠」表示と
+     * 同じ考え方で、売主向けページにも計算過程を明示する。税額が0円の場合は表示不要。
+     */
+    taxBreakdown: ReturnType<typeof calcTransferTax> | null;
+  }> {
     const seller = await this.sellerService.getSeller(sellerId);
     if (!seller) throw new Error('売主が見つかりません');
 
     const maxYen = seller.valuationAmount3 ?? 0;
     const minYen = seller.valuationAmount1 ?? 0;
-    if (maxYen <= 0) return [];
+    if (maxYen <= 0) return { rows: [], taxBreakdown: null };
 
     const step = 1_000_000;
     const prices: number[] = [];
@@ -475,7 +483,10 @@ export class SellerPortalService extends BaseRepository {
     const loanBalance = input.loanBalance ?? 0;
     const mortgageReleaseFee = input.mortgageReleaseFee ?? 0;
 
-    return prices.map((priceYen) => {
+    // チャレンジ価格（最高査定額）ベースの計算根拠を1件だけ算出して返す
+    const taxBreakdown = calcTransferTax({ ...input.transferTax, salePrice: maxYen });
+
+    const rows = prices.map((priceYen) => {
       const brokerageFee = calcBrokerageFee(priceYen);
       const stampDuty = calcStampDuty(priceYen);
       const { taxAmount } = calcTransferTax({ ...input.transferTax, salePrice: priceYen });
@@ -491,6 +502,8 @@ export class SellerPortalService extends BaseRepository {
         netProceeds,
       };
     });
+
+    return { rows, taxBreakdown };
   }
   // ============================================================
   // 希望条件（売却スケジュール入力）・閲覧状況

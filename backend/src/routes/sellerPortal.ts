@@ -207,13 +207,13 @@ router.post('/portal/detailed-proceeds', async (req: Request, res: Response) => 
       return res.status(400).json({ error: 'transferTax.mode が必要です' });
     }
 
-    const rows = await sellerPortalService.getDetailedProceeds(resolved.sellerId, {
+    const { rows, taxBreakdown } = await sellerPortalService.getDetailedProceeds(resolved.sellerId, {
       loanBalance,
       mortgageReleaseFee,
       transferTax,
     });
     await sellerPortalService.markViewed(resolved.sellerId, resolved.sellerNumber, 'detailed');
-    res.json({ success: true, rows });
+    res.json({ success: true, rows, taxBreakdown });
   } catch (error: any) {
     console.error('[SellerPortal] POST /portal/detailed-proceeds error:', error.message);
     res.status(500).json({ error: error.message });

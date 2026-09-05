@@ -16,6 +16,8 @@ export type DetailedProceedsAnswers = {
 export interface DetailedProceedsResult {
   rows: any[];
   qualifiesForSpecialDeduction: boolean;
+  /** 譲渡所得税の計算根拠（チャレンジ価格ベース）。税額が発生しない場合はnull。 */
+  taxBreakdown: any | null;
 }
 
 /**
@@ -68,5 +70,5 @@ export async function calculateDetailedProceeds(
     },
   });
 
-  return { rows: res.rows, qualifiesForSpecialDeduction: qualifies };
+  return { rows: res.rows, qualifiesForSpecialDeduction: qualifies, taxBreakdown: res.taxBreakdown };
 }

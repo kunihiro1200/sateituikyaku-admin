@@ -13,6 +13,66 @@ interface RoughRow {
   netProceeds: number;
 }
 
+const fmtManYen = (yen: number) => `${Math.round(yen / 10000).toLocaleString()}万円`;
+
+/**
+ * 譲渡所得税の計算根拠。既存の資料生成「手残りリスト」（NetProceedsListModal.tsx）の
+ * 「譲渡所得税 計算根拠」表示と同じ考え方で、実際の計算過程（①取得費→②課税譲渡所得→③税額）を示す。
+ * チャレンジ価格（最高査定額）を基準に計算した内訳を表示する。
+ */
+function TransferTaxBreakdownBox({
+  taxBreakdown,
+  challengePriceYen,
+  brokerageFeeAtChallengePrice,
+  mode,
+}: {
+  taxBreakdown: any;
+  challengePriceYen: number;
+  brokerageFeeAtChallengePrice: number;
+  mode: 'known' | 'unknown';
+}) {
+  return (
+    <Box sx={{ p: 1.5, mt: 1.5, bgcolor: '#FFF3E0', borderRadius: 2 }}>
+      <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+        譲渡所得税の計算根拠（チャレンジ価格：{fmtManYen(challengePriceYen)}をもとに算出）
+      </Typography>
+
+      <Typography variant="body2" sx={{ mt: 0.5 }}>
+        ①取得費：{fmtManYen(taxBreakdown.acquisitionCostUsed)}
+        {mode === 'unknown' && '（取得費不明のため、売却価格の5%として計算）'}
+      </Typography>
+
+      {mode === 'known' && taxBreakdown.buildingAcquisitionCost > 0 && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 1.5 }}>
+          （建物取得費 {fmtManYen(taxBreakdown.buildingAcquisitionCost)} から、所有期間約{taxBreakdown.holdingYears}年分の減価償却
+          {fmtManYen(taxBreakdown.depreciationAmount)} を差し引いた金額を含む）
+        </Typography>
+      )}
+
+      <Typography variant="body2" sx={{ mt: 0.5 }}>
+        ②課税譲渡所得：{fmtManYen(challengePriceYen)} − {fmtManYen(taxBreakdown.acquisitionCostUsed)}（取得費） −{' '}
+        {fmtManYen(brokerageFeeAtChallengePrice)}（仲介手数料）
+        {taxBreakdown.specialDeductionApplied > 0 && ` − ${fmtManYen(taxBreakdown.specialDeductionApplied)}（特別控除）`}
+        {' = '}
+        <strong>{fmtManYen(taxBreakdown.taxableGain)}</strong>
+      </Typography>
+
+      <Typography variant="body2" sx={{ mt: 0.5 }}>
+        ③{taxBreakdown.isLongTerm ? '長期' : '短期'}譲渡所得税率（{taxBreakdown.isLongTerm ? '20.315%' : '39.63%'}）を適用
+        <br />
+        {fmtManYen(taxBreakdown.taxableGain)} × {taxBreakdown.isLongTerm ? '20.315%' : '39.63%'} ={' '}
+        <strong>約{fmtManYen(taxBreakdown.taxAmount)}</strong>
+      </Typography>
+
+      {mode === 'unknown' && (
+        <Typography variant="caption" color="warning.main" sx={{ display: 'block', mt: 1 }}>
+          売買契約書等が見つかって実際の取得費が分かれば、譲渡所得税は安くなる可能性があります。
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
 /**
  * 「売却したらいくら残る？」カード。
  * ① ざっくり手残り（自動表示、仲介手数料・印紙代のみ差し引き）
@@ -141,6 +201,17 @@ export default function NetProceedsCard({
             </Alert>
           )}
           <ProceedsTable rows={detailedTableRows} />
+
+          {/* 譲渡所得税が発生する場合のみ、計算根拠を表示する（税額0円なら表示不要） */}
+          {detailedResult.taxBreakdown && detailedResult.taxBreakdown.taxAmount > 0 && (
+            <TransferTaxBreakdownBox
+              taxBreakdown={detailedResult.taxBreakdown}
+              challengePriceYen={detailedResult.rows[0]?.priceYen ?? 0}
+              brokerageFeeAtChallengePrice={detailedResult.rows[0]?.brokerageFee ?? 0}
+              mode={detailedAnswers?.acquisitionKnown === 'yes' ? 'known' : 'unknown'}
+            />
+          )}
+
           <Alert severity="info" sx={{ mt: 1.5 }}>
             こちらは概算です。実際の税額については税理士・税務署等への確認が必要です。
           </Alert>
