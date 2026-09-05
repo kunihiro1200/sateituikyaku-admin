@@ -29,6 +29,7 @@ import { ValidationService } from '../services/ValidationService';
 import PreDayEmailButton from '../components/PreDayEmailButton';
 import SmsIcon from '@mui/icons-material/Sms';
 import { useAuthStore } from '../store/authStore';
+import { useBuyerPresenceTrack } from '../hooks/useBuyerPresence';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 import { OfferFailedChatSentPopup } from '../components/OfferFailedChatSentPopup';
 import CompactBuyerListForProperty from '../components/CompactBuyerListForProperty';
@@ -213,6 +214,9 @@ export default function BuyerViewingResultPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { employee } = useAuthStore();
+
+  // プレゼンストラッキング（他のユーザーに「この買主を開いている」ことを通知）
+  useBuyerPresenceTrack(buyer_number);
   const [buyer, setBuyer] = useState<Buyer | null>(null);
   const buyerRef = useRef<Buyer | null>(null); // handleInlineFieldSave から buyer を参照するための ref
   const [linkedProperties, setLinkedProperties] = useState<any[]>([]);
