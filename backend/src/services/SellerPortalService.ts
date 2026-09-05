@@ -168,6 +168,25 @@ export class SellerPortalService extends BaseRepository {
   }
 
   /**
+   * トークンからsellerNumberだけを軽量に解決する（アクセス記録は更新しない）。
+   * SMS/メールのリンクプレビュー生成（bot向けHTML・manifest.json）で使う想定。
+   * これらはブラウザ・クローラーが自動的に何度も取得するため、verifyToken()の
+   * access_count更新を毎回走らせると「アクセス状況」の数値が実際の閲覧回数と合わなくなる。
+   */
+  async resolveTokenSellerNumber(token: string): Promise<string | null> {
+    const tokenHash = this.hashToken(token);
+    const { data, error } = await this.table('seller_portal_tokens')
+      .select('seller_number, revoked_at, expires_at')
+      .eq('token_hash', tokenHash)
+      .single();
+
+    if (error || !data) return null;
+    if (data.revoked_at) return null;
+    if (data.expires_at && new Date(data.expires_at) < new Date()) return null;
+    return data.seller_number;
+  }
+
+  /**
    * トークンを検証し、有効なら売主情報を返す。アクセス記録も更新する。
    */
   async verifyToken(token: string): Promise<{ sellerId: string; sellerNumber: string } | null> {

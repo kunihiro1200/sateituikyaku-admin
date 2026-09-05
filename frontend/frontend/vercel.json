@@ -14,6 +14,17 @@
       ],
       "destination": "https://sateituikyaku-admin-backend.vercel.app/api/property-preview/html/:slug"
     },
+    {
+      "source": "/portal/:token",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(Googlebot|bingbot|Slurp|DuckDuckBot|Baiduspider|YandexBot|facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Slack|Discordbot|TelegramBot|crawler|spider|bot).*"
+        }
+      ],
+      "destination": "https://sateituikyaku-admin-backend.vercel.app/api/seller-portal/portal-html/:token"
+    },
     { "source": "/google([a-z0-9]+).html", "destination": "/google$1.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],

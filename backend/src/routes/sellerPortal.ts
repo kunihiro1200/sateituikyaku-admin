@@ -51,6 +51,15 @@ function getPortalFrontendBaseUrl(): string {
     : (process.env.FRONTEND_URL?.split(',')[0]?.trim() || 'http://localhost:5173');
 }
 
+/** HTMLエスケープ用ユーティリティ（bot向けHTML生成で使用） */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 /**
  * スタッフが売却サポートページのチャットで返信したことを、売主本人にメールで知らせる。
  * 失敗しても返信処理自体（DB保存）は成功させたいため、呼び出し元でエラーを握って
@@ -140,6 +149,74 @@ async function requireValidToken(req: Request, res: Response): Promise<{ sellerI
   }
   return resolved;
 }
+
+/**
+ * GET /api/seller-portal/portal-html/:token
+ * SMS・メールのリンクプレビュー用HTML（iMessage/LINE等のクローラー向け）。
+ * vercel.json の rewrites で、bot User-Agent の場合のみ /portal/:token からここに転送される
+ * （property-preview/html/:slug と同じパターン）。
+ *
+ * SellerPortalPage.tsx の react-helmet-async によるタイトル・OGP設定はクライアントサイド
+ * （JS実行後）にしか反映されないため、JSを実行しないリンクプレビュークローラーには効かない。
+ * そのためこのエンドポイントでサーバーサイドから直接メタタグを埋め込んだHTMLを返す。
+ *
+ * FI売主番号かどうかで会社名・OGP画像（ロゴ）を切り替える。
+ */
+router.get('/portal-html/:token', async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+    const sellerNumber = await sellerPortalService.resolveTokenSellerNumber(token);
+
+    const frontendBaseUrl = getPortalFrontendBaseUrl();
+    const pageTitle = '査定の根拠と手残りリスト';
+    const description = '査定額の根拠や手残り金額の詳細、売却スケジュールをご確認いただけます。';
+
+    // トークンが無効・期限切れの場合でも、リンク自体は開けるようにしておく
+    // （実際のページ側でエラー表示される。プレビューの会社名判定だけデフォルト＝いふうにする）
+    const isFi = sellerNumber ? isFiSellerNumber(sellerNumber) : false;
+    const ogImage = isFi
+      ? `${frontendBaseUrl}/ifoo-assets/kujira-fudosan-logo.png`
+      : `${frontendBaseUrl}/ifoo-assets/ifoo-logo-yellow.png`;
+    const siteName = isFi ? '株式会社くじら不動産' : '株式会社いふう';
+    const canonicalUrl = `${frontendBaseUrl}/portal/${token}`;
+
+    let html: string;
+    try {
+      const axios = (await import('axios')).default;
+      const indexRes = await axios.get(`${frontendBaseUrl}/index.html`, { timeout: 5000 });
+      html = indexRes.data as string;
+    } catch {
+      html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/></head><body><div id="root"></div></body></html>`;
+    }
+
+    const metaTags = `
+    <title>${escapeHtml(pageTitle)}</title>
+    <meta name="description" content="${escapeHtml(description)}" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta property="og:title" content="${escapeHtml(pageTitle)}" />
+    <meta property="og:description" content="${escapeHtml(description)}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
+    <meta property="og:image" content="${escapeHtml(ogImage)}" />
+    <meta property="og:site_name" content="${escapeHtml(siteName)}" />
+    <meta property="og:locale" content="ja_JP" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="${escapeHtml(pageTitle)}" />
+    <meta name="twitter:description" content="${escapeHtml(description)}" />
+    <meta name="twitter:image" content="${escapeHtml(ogImage)}" />`;
+
+    html = html
+      .replace(/<title>.*?<\/title>/s, '')
+      .replace(/<head>/, `<head>${metaTags}`);
+
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.set('Cache-Control', 'private, no-store'); // 個人情報を含むページのため、CDN等にキャッシュさせない
+    res.send(html);
+  } catch (error: any) {
+    console.error('[SellerPortal] GET /portal-html error:', error.message);
+    res.status(500).send('<html><body><h1>エラーが発生しました</h1></body></html>');
+  }
+});
 
 // ============================================================
 // 顧客向け（認証不要、トークン検証）
@@ -306,19 +383,27 @@ router.get('/portal/manifest.json', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'トークンの形式が正しくありません' });
   }
 
+  // トークンからFI/AA判定してロゴ・会社名を切り替える
+  // （トークンが無効・期限切れでもmanifest自体は返す。実際のページ側でエラー表示されるだけなので、
+  //  判定できない場合はデフォルト＝いふうのロゴにする）
+  const sellerNumberForManifest = await sellerPortalService.resolveTokenSellerNumber(token);
+  const isFi = sellerNumberForManifest ? isFiSellerNumber(sellerNumberForManifest) : false;
+  const logoPath = isFi ? '/ifoo-assets/kujira-fudosan-logo.png' : '/ifoo-assets/logo.png';
+  const appName = isFi ? '売却サポート（くじら不動産）' : '売却サポート（いふう）';
+
   res.set('Content-Type', 'application/manifest+json');
   res.json({
-    name: '売却サポート',
+    name: appName,
     short_name: '売却サポート',
-    description: 'くじら不動産の売却サポートページ',
+    description: isFi ? 'くじら不動産の売却サポートページ' : '株式会社いふうの売却サポートページ',
     start_url: `/portal/${token}`,
     scope: `/portal/${token}`,
     display: 'standalone',
     background_color: '#f5f6f8',
     theme_color: '#0B2545',
     icons: [
-      { src: '/ifoo-assets/logo.png', sizes: '192x192', type: 'image/png' },
-      { src: '/ifoo-assets/logo.png', sizes: '512x512', type: 'image/png' },
+      { src: logoPath, sizes: '192x192', type: 'image/png' },
+      { src: logoPath, sizes: '512x512', type: 'image/png' },
     ],
   });
 });

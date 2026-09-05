@@ -68,6 +68,7 @@ export default function SellerPortalPage() {
   useEffect(() => {
     if (!token) return;
     sellerPortalApi.saveToken(token);
+    // sellerNumber（FI/AA判定）が分かるまでは、いふう表示で一旦セットアップする
     setupPortalPwa(token);
 
     (async () => {
@@ -77,6 +78,11 @@ export default function SellerPortalPage() {
         setValuation(res.valuation);
         setPropertySummary(res.propertySummary);
         setPreferences(res.preferences);
+        // FI売主番号ならホーム画面アイコン（apple-touch-icon）をくじら不動産のロゴに差し替える
+        // （Androidのmanifest.jsonは同じ判定をバックエンド側で行っている）
+        if ((res.sellerNumber || '').toUpperCase().includes('FI')) {
+          setupPortalPwa(token, true);
+        }
       } catch (err: any) {
         setError(err.message || 'ページを表示できませんでした');
       } finally {
@@ -125,11 +131,11 @@ export default function SellerPortalPage() {
         LINE等でのプレビュー表示にも影響するため、メール件名と同じ「査定理由、手残り金額詳細」で統一する。
       */}
       <Helmet>
-        <title>査定理由、手残り金額詳細</title>
+        <title>査定の根拠と手残りリスト</title>
         <meta name="description" content="査定額の根拠や手残り金額の詳細、売却スケジュールをご確認いただけます。" />
-        <meta property="og:title" content="査定理由、手残り金額詳細" />
+        <meta property="og:title" content="査定の根拠と手残りリスト" />
         <meta property="og:description" content="査定額の根拠や手残り金額の詳細、売却スケジュールをご確認いただけます。" />
-        <meta property="og:site_name" content="査定理由、手残り金額詳細" />
+        <meta property="og:site_name" content="査定の根拠と手残りリスト" />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 

@@ -8,7 +8,7 @@ import { BACKEND_URL } from '../services/sellerPortalApi';
  *   <link rel="manifest"> をJSで注入する（静的ファイルでは売主別のstart_urlを持たせられない）
  * - service worker: standalone表示の要件を満たすための最小限のSWを登録する
  */
-export function setupPortalPwa(token: string) {
+export function setupPortalPwa(token: string, isFi: boolean = false) {
   // 既存のmanifestリンクがあれば入れ替える（他ページに影響しないよう、離脱時に元に戻す想定はせず、
   // このページ限定のセッション内でのみ有効な注入とする）
   let link = document.querySelector<HTMLLinkElement>('link[rel="manifest"][data-seller-portal]');
@@ -21,10 +21,11 @@ export function setupPortalPwa(token: string) {
   link.href = `${BACKEND_URL}/api/seller-portal/portal/manifest.json?token=${encodeURIComponent(token)}`;
 
   // iOS Safari向け：ホーム画面追加時のアプリらしい表示のための設定
+  // FI売主番号の場合はくじら不動産のロゴ・名称にする（Androidのmanifest.jsonと同じ判定基準）
   setMetaTag('apple-mobile-web-app-capable', 'yes');
   setMetaTag('apple-mobile-web-app-status-bar-style', 'black-translucent');
-  setMetaTag('apple-mobile-web-app-title', '売却サポート');
-  setLinkTag('apple-touch-icon', '/ifoo-assets/logo.png');
+  setMetaTag('apple-mobile-web-app-title', isFi ? '売却サポート（くじら）' : '売却サポート');
+  setLinkTag('apple-touch-icon', isFi ? '/ifoo-assets/kujira-fudosan-logo.png' : '/ifoo-assets/logo.png');
   setMetaTag('theme-color', '#0B2545');
 
   if ('serviceWorker' in navigator) {
