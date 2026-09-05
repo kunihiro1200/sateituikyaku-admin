@@ -28,6 +28,7 @@ import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 import { uploadFileToStorage, toggleStaff } from '../utils/sharedItemFormUtils';
+import { useSharedItemPresenceTrack } from '../hooks/useListPresence';
 
 // チームアンサーの型（契約率チーム・物件数チーム専用）
 interface TeamAnswers {
@@ -84,6 +85,8 @@ export default function SharedItemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  // プレゼンス発信（この共有項目を開いていることを他ユーザーに通知）
+  useSharedItemPresenceTrack(id);
   const fromLocation = (location.state as { fromLocation?: string | null })?.fromLocation ?? null;
   const color = SECTION_COLORS.sharedItems;
   const [item, setItem] = useState<SharedItem | null>(null);

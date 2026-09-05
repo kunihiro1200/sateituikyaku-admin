@@ -52,6 +52,7 @@ import { emailTemplates } from '../utils/emailTemplates';
 import { getActiveEmployees } from '../services/employeeService';
 import { getSenderAddress, saveSenderAddress } from '../utils/senderAddressStorage';
 import { useAuthStore } from '../store/authStore';
+import { usePropertyListingPresenceTrack } from '../hooks/useListPresence';
 import { buildUpdatedHistory } from '../utils/priceHistoryUtils';
 import { isMobile } from 'react-device-detect';
 import { SECTION_COLORS } from '../theme/sectionColors';
@@ -254,7 +255,9 @@ export default function PropertyListingDetailPage() {
   const { propertyNumber } = useParams<{ propertyNumber: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  
+  // プレゼンス発信（この物件を開いていることを他ユーザーに通知）
+  usePropertyListingPresenceTrack(propertyNumber);
+
   const { employee } = useAuthStore();
   // viewerロール判定（物件リスト閲覧＋メール送信のみ許可）
   const isViewer = employee?.role === 'viewer';

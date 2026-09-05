@@ -22,6 +22,7 @@ import api from '../services/api';
 import BuyerTable from './BuyerTable';
 import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
 import { SECTION_COLORS } from '../theme/sectionColors';
+import { usePropertyListingPresenceTrack } from '../hooks/useListPresence';
 
 interface Props {
   open: boolean;
@@ -39,6 +40,8 @@ interface BuyerTabState {
 
 export default function PropertyListingDetailModal({ open, onClose, propertyNumber, onUpdate }: Props) {
   const navigate = useNavigate();
+  // プレゼンス発信（この物件を開いていることを他ユーザーに通知）
+  usePropertyListingPresenceTrack(open ? propertyNumber : null);
   const [tabIndex, setTabIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);

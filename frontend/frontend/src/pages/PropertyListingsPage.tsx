@@ -46,6 +46,8 @@ import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { calculatePropertyStatus, createWorkTaskMap, isPrivateStatus, getAtbbStatusColor } from '../utils/propertyListingStatusUtils';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
+import { usePropertyListingPresenceSubscribe } from '../hooks/useListPresence';
+import PresenceChips from '../components/PresenceChips';
 
 // 全角→半角の正規化（NFKC）+ 小文字化
 const normalizeText = (text: string): string =>
@@ -85,6 +87,8 @@ export default function PropertyListingsPage() {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  // プレゼンス購読（誰が今どの物件を開いて作業しているか）
+  const { presenceState } = usePropertyListingPresenceSubscribe();
 
   const [allListings, setAllListings] = useState<PropertyListing[]>([]);
   const [workTasks, setWorkTasks] = useState<WorkTask[]>([]);
@@ -836,6 +840,7 @@ export default function PropertyListingsPage() {
                       物件番号
                     </TableSortLabel>
                   </TableCell>
+                  <TableCell>作業中</TableCell>
                   <TableCell>
                     <TableSortLabel
                       active={sortBy === 'sales_assignee'}
@@ -951,11 +956,11 @@ export default function PropertyListingsPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={12} align="center">読み込み中...</TableCell>
+                    <TableCell colSpan={13} align="center">読み込み中...</TableCell>
                   </TableRow>
                 ) : paginatedListings.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={12} align="center">
+                    <TableCell colSpan={13} align="center">
                       {isLoadingAll && (searchQuery.trim() || sidebarStatus) ? '読み込み中...' : '物件データが見つかりませんでした'}
                     </TableCell>
                   </TableRow>
@@ -1000,6 +1005,9 @@ export default function PropertyListingsPage() {
                               />
                             )}
                           </Box>
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <PresenceChips presenceState={presenceState} itemKey={listing.property_number} emptyPlaceholder="-" />
                         </TableCell>
                         <TableCell>{listing.sales_assignee || '-'}</TableCell>
                         <TableCell>
@@ -1102,11 +1110,14 @@ export default function PropertyListingsPage() {
                               />
                             )}
                           </Box>
-                          <Chip
-                            label={propertyStatus.label}
-                            size="small"
-                            sx={{ height: 22, fontSize: '12px', bgcolor: propertyStatus.color, color: '#fff' }}
-                          />
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <PresenceChips presenceState={presenceState} itemKey={listing.property_number} size={20} />
+                            <Chip
+                              label={propertyStatus.label}
+                              size="small"
+                              sx={{ height: 22, fontSize: '12px', bgcolor: propertyStatus.color, color: '#fff' }}
+                            />
+                          </Box>
                         </Box>
                         <Typography
                           variant="body2"
