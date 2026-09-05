@@ -312,10 +312,13 @@ export default function BuyerDetailPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // プレゼンストラッキング（他のユーザーに「この買主を開いている」ことを通知）
-  useBuyerPresenceTrack(buyer_number);
-
   const [buyer, setBuyer] = useState<Buyer | null>(null);
+
+  // プレゼンストラッキング（他のユーザーに「この買主を開いている」ことを通知）
+  // 買主リストのキーは正規化済みの buyer_number なので、APIから取得した値を優先し、
+  // 未取得の間は URL パラメータをフォールバックとして使う
+  useBuyerPresenceTrack(buyer?.buyer_number || buyer_number);
+
   const [linkedProperties, setLinkedProperties] = useState<PropertyListing[]>([]);
   const [nearbyPropertiesCount, setNearbyPropertiesCount] = useState(0);
   const [inquiryHistory, setInquiryHistory] = useState<InquiryHistory[]>([]);

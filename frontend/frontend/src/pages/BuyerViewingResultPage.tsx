@@ -215,9 +215,11 @@ export default function BuyerViewingResultPage() {
   const location = useLocation();
   const { employee } = useAuthStore();
 
-  // プレゼンストラッキング（他のユーザーに「この買主を開いている」ことを通知）
-  useBuyerPresenceTrack(buyer_number);
   const [buyer, setBuyer] = useState<Buyer | null>(null);
+
+  // プレゼンストラッキング（他のユーザーに「この買主を開いている」ことを通知）
+  // 買主リストのキーは正規化済みの buyer_number なので、APIから取得した値を優先する
+  useBuyerPresenceTrack(buyer?.buyer_number || buyer_number);
   const buyerRef = useRef<Buyer | null>(null); // handleInlineFieldSave から buyer を参照するための ref
   const [linkedProperties, setLinkedProperties] = useState<any[]>([]);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
