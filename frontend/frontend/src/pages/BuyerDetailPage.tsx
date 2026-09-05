@@ -62,6 +62,7 @@ import { SectionSaveButton } from '../components/SectionSaveButton';
 import { useStableContainerHeight } from '../hooks/useStableContainerHeight';
 import { useAuthStore } from '../store/authStore';
 import { useQuickButtonState } from '../hooks/useQuickButtonState';
+import { useBuyerPresenceTrack } from '../hooks/useBuyerPresence';
 import { INQUIRY_SOURCE_OPTIONS } from '../utils/buyerInquirySourceOptions';
 import { isSecondInquiry, resolvePinrichValue } from '../utils/buyerPinrichHelper';
 import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
@@ -310,6 +311,9 @@ export default function BuyerDetailPage() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // プレゼンストラッキング（他のユーザーに「この買主を開いている」ことを通知）
+  useBuyerPresenceTrack(buyer_number);
 
   const [buyer, setBuyer] = useState<Buyer | null>(null);
   const [linkedProperties, setLinkedProperties] = useState<PropertyListing[]>([]);
