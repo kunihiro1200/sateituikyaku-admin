@@ -548,7 +548,7 @@ app.get('/api/cron/sales-meeting-month-end-reminder', async (req, res) => {
   }
 });
 
-// Cron Job: 毎月第一土曜日に非公開配信メールを「未」にリセット（毎日 UTC 00:00 = JST 09:00 に実行、第一土曜日のみ処理）
+// Cron Job: 毎月第一土曜日に非公開配信メールを「未」にリセット（毎日 UTC 00:00 = JST 同日 09:00 に実行、第一土曜日のみ処理）
 app.get('/api/cron/reset-private-mail-delivery', async (req, res) => {
   try {
     console.log('[Cron PrivateMailDelivery] 非公開配信メールリセットジョブ開始');

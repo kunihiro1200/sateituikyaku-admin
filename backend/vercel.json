@@ -48,7 +48,7 @@
     },
     {
       "path": "/api/cron/reset-private-mail-delivery",
-      "schedule": "0 15 * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/sales-meeting-notification",
