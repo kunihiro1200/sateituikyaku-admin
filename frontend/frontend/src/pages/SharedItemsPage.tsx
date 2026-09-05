@@ -186,7 +186,6 @@ export default function SharedItemsPage() {
       items = items.filter(
         (item) =>
           item.staff_not_shared &&
-          !item.confirmation_date &&
           String(item.staff_not_shared)
             .split(/[,、，]/)
             .map((s) => s.trim())
@@ -234,7 +233,7 @@ export default function SharedItemsPage() {
   const unconfirmedCategories = useMemo(() => {
     const staffMap = new Map<string, number>();
     for (const item of allSharedItems) {
-      if (item.staff_not_shared && !item.confirmation_date) {
+      if (item.staff_not_shared) {
         // カンマ区切りで複数スタッフが入っている場合に対応
         const staffNames = String(item.staff_not_shared)
           .split(/[,、，]/)

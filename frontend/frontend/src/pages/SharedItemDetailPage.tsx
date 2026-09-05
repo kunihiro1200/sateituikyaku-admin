@@ -100,7 +100,6 @@ export default function SharedItemDetailPage() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [sharingDate, setSharingDate] = useState('');
-  const [confirmationDate, setConfirmationDate] = useState('');
   const [staffNotShared, setStaffNotShared] = useState<string[]>([]);
 
   // 追加ファイル
@@ -132,7 +131,6 @@ export default function SharedItemDetailPage() {
   const [initialTitle, setInitialTitle] = useState('');
   const [initialContent, setInitialContent] = useState('');
   const [initialSharingDate, setInitialSharingDate] = useState('');
-  const [initialConfirmationDate, setInitialConfirmationDate] = useState('');
   const [initialStaffNotShared, setInitialStaffNotShared] = useState('');
 
   useEffect(() => {
@@ -141,7 +139,6 @@ export default function SharedItemDetailPage() {
     setTitle('');
     setContent('');
     setSharingDate('');
-    setConfirmationDate('');
     setStaffNotShared([]);
     setNewPdfs([]);
     setNewImages([]);
@@ -162,18 +159,15 @@ export default function SharedItemDetailPage() {
       if (foundItem) {
         setItem(foundItem);
         const sd = foundItem['共有日'] || '';
-        const cd = foundItem['確認日'] || '';
         const sns = foundItem['共有できていない'] || '';
         const ct = foundItem['内容'] || '';
         const tl = foundItem['タイトル'] || '';
         setTitle(tl);
         setSharingDate(sd);
-        setConfirmationDate(cd);
         setStaffNotShared(sns ? sns.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
         setContent(ct);
         setInitialTitle(tl);
         setInitialSharingDate(sd);
-        setInitialConfirmationDate(cd);
         setInitialStaffNotShared(sns);
         setInitialContent(ct);
 
@@ -314,7 +308,6 @@ export default function SharedItemDetailPage() {
         'PDF6': pdfUrls[5], 'PDF7': pdfUrls[6], 'PDF8': pdfUrls[7], 'PDF9': pdfUrls[8], 'PDF10': pdfUrls[9],
         '画像１': imageUrls[0], '画像２': imageUrls[1], '画像３': imageUrls[2], '画像４': imageUrls[3],
         '共有日': today,
-        '確認日': confirmationDate,
         '共有できていない': staffNotShared.join(','),
         '内容': content,
       };
@@ -355,7 +348,6 @@ export default function SharedItemDetailPage() {
       setSharingDate(today);
       setInitialTitle(title);
       setInitialSharingDate(today);
-      setInitialConfirmationDate(confirmationDate);
       setInitialStaffNotShared(staffNotShared.join(','));
       setInitialContent(content);
       setInitialImageComments({ ...imageComments });
@@ -489,7 +481,6 @@ export default function SharedItemDetailPage() {
         '画像３': imageUrls[2],
         '画像４': imageUrls[3],
         '共有日': sharingDate,
-        '確認日': confirmationDate,
         '共有できていない': staffNotShared.join(','),
         '内容': content,
       };
@@ -532,7 +523,6 @@ export default function SharedItemDetailPage() {
       setNewImages([]);
       setInitialTitle(title);
       setInitialSharingDate(sharingDate);
-      setInitialConfirmationDate(confirmationDate);
       setInitialStaffNotShared(staffNotShared.join(','));
       setInitialContent(content);
       setInitialImageComments({ ...imageComments });
@@ -581,7 +571,6 @@ export default function SharedItemDetailPage() {
     title !== initialTitle ||
     content !== initialContent ||
     sharingDate !== initialSharingDate ||
-    confirmationDate !== initialConfirmationDate ||
     staffNotShared.join(',') !== initialStaffNotShared ||
     JSON.stringify(imageComments) !== JSON.stringify(initialImageComments);
 
@@ -1014,7 +1003,7 @@ export default function SharedItemDetailPage() {
           <Grid item xs={12}>
             <Typography variant="caption" color="text.secondary">共有できていないスタッフ</Typography>
             <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
-              ＊複数いる場合は、確認後自分の名前だけ消して保存してください。確認日は入れないでください！最後の一人が「確認日」を入力してください
+              ＊確認後、自分の名前だけ消して保存してください。
             </Typography>
             <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
               {staff.map((s, index) => {
@@ -1040,19 +1029,7 @@ export default function SharedItemDetailPage() {
             </Box>
           </Grid>
 
-          {/* 確認日（編集可能） */}
-          <Grid item xs={6}>
-            <Typography variant="caption" color="text.secondary">確認日</Typography>
-            <TextField
-              fullWidth
-              type="date"
-              value={confirmationDate}
-              onChange={(e) => setConfirmationDate(e.target.value)}
-              size="small"
-              InputLabelProps={{ shrink: true }}
-              sx={{ mt: 1 }}
-            />
-          </Grid>
+
 
           {/* 打ち合わせ内容 */}
           <Grid item xs={12}>
