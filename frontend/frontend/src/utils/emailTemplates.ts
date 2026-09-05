@@ -94,14 +94,29 @@ export function isValuationNoticeTemplate(templateId: string, templateLabel: str
 export const PORTAL_URL_PLACEHOLDER = '<<売却サポートURL>>';
 
 /**
+ * プレースホルダーが行の中で単独（前後が空白のみ）の場合はその行全体を削除し、
+ * そうでない場合（文中に埋め込まれている場合）はプレースホルダー部分だけを取り除く。
+ * URL未発行時に「<<売却サポートURL>>」という文字列だけが本文に残ってしまうのを防ぐため。
+ */
+function removePlaceholderLine(content: string, placeholder: string): string {
+  const lineRemoved = content
+    .split('\n')
+    .filter((line) => line.trim() !== placeholder)
+    .join('\n');
+  return lineRemoved.split(placeholder).join('');
+}
+
+/**
  * <<売却サポートURL>> プレースホルダーを、実際の売却サポートページURLに置換する。
- * URLが未発行・取得失敗の場合はプレースホルダーをそのまま残す（送信前に気づけるようにする）。
+ * 🚨 過去の障害：専用URLが未発行の売主にこのプレースホルダーを含むテンプレートで送信すると、
+ * プレースホルダーの文字列がそのまま本文に残ってしまっていた。URL未発行・取得失敗の場合は
+ * プレースホルダー（を含む行）を本文から削除する（そのまま残さない）。
  * @param content メール本文・件名・SMS本文など
  * @param portalUrl 売却サポートページの専用URL（未取得ならnull/undefined）
  */
 export function replacePortalUrlPlaceholder(content: string, portalUrl: string | null | undefined): string {
   if (!content.includes(PORTAL_URL_PLACEHOLDER)) return content;
-  if (!portalUrl) return content;
+  if (!portalUrl) return removePlaceholderLine(content, PORTAL_URL_PLACEHOLDER);
   return content.split(PORTAL_URL_PLACEHOLDER).join(portalUrl);
 }
 
@@ -110,7 +125,7 @@ export function replacePortalUrlPlaceholder(content: string, portalUrl: string |
  * クリック可能なリンクテキスト（<a>タグ）に置換する。
  * メール本文はHTML化されるためリンクとして機能する（SMSはプレーンテキストのため対象外、
  * SMSでは従来の replacePortalUrlPlaceholder でURLそのまま表示する）。
- * URLが未発行・取得失敗の場合はプレースホルダーをそのまま残す。
+ * URL未発行・取得失敗の場合はプレースホルダー（を含む行）を本文から削除する。
  */
 export function replacePortalUrlPlaceholderAsLink(
   content: string,
@@ -118,7 +133,7 @@ export function replacePortalUrlPlaceholderAsLink(
   linkText: string = '査定の根拠、手残りリストはこちら'
 ): string {
   if (!content.includes(PORTAL_URL_PLACEHOLDER)) return content;
-  if (!portalUrl) return content;
+  if (!portalUrl) return removePlaceholderLine(content, PORTAL_URL_PLACEHOLDER);
   const anchor = `<a href="${portalUrl}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
   return content.split(PORTAL_URL_PLACEHOLDER).join(anchor);
 }

@@ -486,6 +486,24 @@ router.get('/portal/messages', async (req: Request, res: Response) => {
 // スタッフ向け（認証必須）
 // ============================================================
 
+/**
+ * GET /api/seller-portal/admin/:sellerId/portal-url?sellerNumber=xxx
+ * 読み取り専用：既存の有効な専用URLがあれば返す。無ければ発行せずnullを返す。
+ * SMS「査定Sメール２」等の<<売却サポートURL>>置換で、送信前にURLの有無だけを確認するために使う。
+ * ここでは絶対に自動発行しない（発行は明示的な操作＝管理モーダルの発行ボタンのみで行う）。
+ */
+router.get('/admin/:sellerId/portal-url', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { sellerId } = req.params;
+    const activeToken = await sellerPortalService.getActivePlainToken(sellerId);
+    const activeUrl = activeToken ? `${getPortalFrontendBaseUrl()}/portal/${activeToken}` : null;
+    res.json({ success: true, activeUrl });
+  } catch (error: any) {
+    console.error('[SellerPortal] GET /admin/portal-url error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 /** POST /api/seller-portal/admin/:sellerId/issue-token : 専用URLトークンを発行（再発行含む） */
 router.post('/admin/:sellerId/issue-token', authenticate, async (req: Request, res: Response) => {
   try {
@@ -512,6 +530,10 @@ router.post('/admin/:sellerId/issue-token', authenticate, async (req: Request, r
 router.get('/admin/:sellerId/status', authenticate, async (req: Request, res: Response) => {
   try {
     const { sellerId } = req.params;
+    // 🚨 このエンドポイントは状況を確認するためだけの読み取り専用とする（副作用でトークンを
+    // 発行しない）。SMS/メール送信直前に必要なら POST /admin/:sellerId/ensure-token を使うこと。
+    // 理由：ここでも自動発行してしまうと、スタッフが「まだ発行されていない」ことを画面で確認
+    // できなくなり、SMSテンプレートの表示切り替え（発行済みのときだけ表示する）が機能しなくなる。
     const [tokenStatus, preferences, unreadCount, valuation, valuationBreakdown, roughProceeds, schedule, activeToken] = await Promise.all([
       sellerPortalService.getTokenStatus(sellerId),
       sellerPortalService.getPreferences(sellerId),

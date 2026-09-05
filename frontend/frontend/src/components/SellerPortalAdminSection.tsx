@@ -16,6 +16,7 @@ import api from '../services/api';
 export default function SellerPortalAdminSection({ sellerId, sellerNumber }: { sellerId: string; sellerNumber: string }) {
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [issuing, setIssuing] = useState(false);
   const [issuedUrl, setIssuedUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -27,13 +28,22 @@ export default function SellerPortalAdminSection({ sellerId, sellerNumber }: { s
 
   const loadStatus = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await api.get(`/api/seller-portal/admin/${sellerId}/status`);
       setStatus(res.data);
       const msgRes = await api.get(`/api/seller-portal/admin/${sellerId}/messages`);
       setConversations(msgRes.data.conversations || []);
-    } catch {
-      // 未発行の場合もあるため、エラーは静かに無視する（statusはnullのまま）
+    } catch (err: any) {
+      // 🚨 以前はここでエラーを握っており、「本当に未発行」なのか「取得に失敗しただけ」なのかを
+      // 画面上で区別できなかった。取得失敗時に「未発行」と誤認して再発行してしまうと、
+      // 既にSMS/メールで送信済みの有効なURLを誤って無効化してしまう危険があるため、
+      // エラー時は明示的にエラー表示し、statusはnullのままにする（「発行」ボタンは出さない）。
+      console.error('[SellerPortalAdminSection] 状況の取得に失敗しました:', err);
+      setLoadError(
+        err?.response?.data?.error || err?.message || '取得に失敗しました。時間を置いて再読み込みしてください。'
+      );
+      setStatus(null);
     } finally {
       setLoading(false);
     }
@@ -125,6 +135,22 @@ export default function SellerPortalAdminSection({ sellerId, sellerNumber }: { s
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
         <CircularProgress size={24} />
+      </Box>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <Box>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {loadError}
+        </Alert>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          発行状況を正しく確認できないため、安全のため「発行」ボタンは表示していません。
+          既にSMS・メールでURLを送信済みの場合、状況が確認できないまま発行すると、
+          その有効なURLを誤って無効化する恐れがあるためです。再読み込みをお試しください。
+        </Typography>
+        <Button variant="outlined" onClick={loadStatus}>再読み込み</Button>
       </Box>
     );
   }

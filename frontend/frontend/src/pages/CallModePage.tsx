@@ -1142,6 +1142,10 @@ const CallModePage = () => {
   const [saleScheduleModalOpen, setSaleScheduleModalOpen] = useState(false);
   const [netProceedsModalOpen, setNetProceedsModalOpen] = useState(false);
   const [sellerPortalModalOpen, setSellerPortalModalOpen] = useState(false);
+  // 売却サポートページの専用URLが発行済みかどうか。
+  // 未発行の場合、SMS「査定Sメール２（査定根拠等）」はURL抜けで送信されてしまうため選択肢に出さない。
+  // 手動発行はまれなので、SMSメニューを開くたびに最新状態を確認する。
+  const [hasPortalUrl, setHasPortalUrl] = useState(false);
   const [souhuModalOpen, setSouhuModalOpen] = useState(false);
   const [souhuEmptyModalOpen, setSouhuEmptyModalOpen] = useState(false);
   // 画像数バッジ用の状態
@@ -4733,13 +4737,18 @@ HP：https://ifoo-oita.com/
 
   /**
    * 売却サポートページの専用URLを取得する（<<売却サポートURL>>プレースホルダー置換用）。
-   * まだ有効なURLが無い場合はバックエンド側が自動発行しない想定のため、その場合はnullを返す
-   * （査定額保存時の自動発行が既に走っているはずなので、通常はここで見つかる）。
+   * 🚨 過去の障害：査定額をまだ保存していない等の理由で自動発行（issueTokenIfNotExists）が
+   * 一度も走っていない売主にSMS「査定Sメール２」等を送ると、有効なトークンが無いためURLが
+   * 置換されず「URL抜けのSMS」が送られてしまっていた。
+   * 対応方針：ここでは自動発行しない（読み取り専用）。未発行の場合は呼び出し元（メール送信時は
+   * プレースホルダー行を削除、SMSは「査定Sメール２」テンプレート自体を選択肢に出さない）で
+   * 「URLが無いまま送信されない」ようにする。手動で「専用URLを発行」した場合は、次にこの関数を
+   * 呼んだときに正しく取得できる。
    */
   const fetchSellerPortalUrl = async (): Promise<string | null> => {
     if (!seller?.id) return null;
     try {
-      const res = await api.get(`/api/seller-portal/admin/${seller.id}/status`);
+      const res = await api.get(`/api/seller-portal/admin/${seller.id}/portal-url`);
       return res.data?.activeUrl ?? null;
     } catch (err) {
       console.error('売却サポートページURLの取得に失敗しました:', err);
@@ -6582,6 +6591,16 @@ HP：https://ifoo-oita.com/
                 <Select
                   value=""
                   label="SMS送信"
+                  onOpen={async () => {
+                    // メニューを開くたびに専用URLの発行状況を確認する（手動発行は稀なので都度確認する）
+                    if (!seller?.id) return;
+                    try {
+                      const res = await api.get(`/api/seller-portal/admin/${seller.id}/portal-url`);
+                      setHasPortalUrl(!!res.data?.activeUrl);
+                    } catch {
+                      setHasPortalUrl(false);
+                    }
+                  }}
                   onChange={(e) => handleSmsTemplateSelect(e.target.value)}
                   disabled={seller.smsSendDisabled || sendingTemplate || !isMobilePhone(seller.phoneNumber)}
                   MenuProps={{
@@ -6590,7 +6609,10 @@ HP：https://ifoo-oita.com/
                     }
                   }}
                 >
-                  {smsTemplates.map((template) => {
+                  {smsTemplates
+                    // 専用URL未発行の場合、「査定Sメール２（査定根拠等）」はURL抜けで送信されてしまうため選択肢から外す
+                    .filter((template) => template.id !== 'valuation2' || hasPortalUrl)
+                    .map((template) => {
                     const isSent = isSmsTemplateSent(template);
                     
                     // 薄緑背景（進捗①②③）
