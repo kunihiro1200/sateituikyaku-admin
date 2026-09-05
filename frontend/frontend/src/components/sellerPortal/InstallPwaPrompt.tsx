@@ -8,7 +8,7 @@ import InstallPwaGuideDialog from './InstallPwaGuideDialog';
  * 初回アクセス時の「このページをスマホに保存しておきませんか？」案内。
  * 全画面表示にせず、査定内容を見てもらうことを優先した控えめな表示にする。
  */
-export default function InstallPwaPrompt({ onDismiss }: { onDismiss: () => void }) {
+export default function InstallPwaPrompt({ onDismiss, token }: { onDismiss: () => void; token?: string }) {
   const [guideOpen, setGuideOpen] = useState(false);
 
   return (
@@ -55,6 +55,7 @@ export default function InstallPwaPrompt({ onDismiss }: { onDismiss: () => void 
           setGuideOpen(false);
           onDismiss();
         }}
+        token={token}
       />
     </>
   );

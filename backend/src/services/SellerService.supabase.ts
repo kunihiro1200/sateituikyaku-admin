@@ -3130,6 +3130,10 @@ export class SellerService extends BaseRepository {
     fi_todayCallWithInfoLabelCounts: Record<string, number>;
     visitThankYouPendingCounts: Record<string, number>;
     visitPreparationPending: number;
+    sellerPortalAttention?: number;
+    sellerPortalScheduleAttention?: number;
+    fi_sellerPortalAttention?: number;
+    fi_sellerPortalScheduleAttention?: number;
   }> {
     try {
       // seller_sidebar_countsテーブルから全行を取得（updated_atも含めて取得）
@@ -3232,6 +3236,8 @@ export class SellerService extends BaseRepository {
       visitPreparationPending: getCount('visitPreparationPending'),
       sellerPortalAttention: getCount('sellerPortalAttention'),
       sellerPortalScheduleAttention: getCount('sellerPortalScheduleAttention'),
+      fi_sellerPortalAttention: getCount('fi_sellerPortalAttention'),
+      fi_sellerPortalScheduleAttention: getCount('fi_sellerPortalScheduleAttention'),
     };
   }
 
@@ -3717,6 +3723,8 @@ export class SellerService extends BaseRepository {
       visitPreparationPending: visitPreparationPendingCount || 0,
       sellerPortalAttention: 0, // フォールバック時は0（seller_sidebar_countsテーブルから取得するのが通常パス）
       sellerPortalScheduleAttention: 0, // フォールバック時は0（seller_sidebar_countsテーブルから取得するのが通常パス）
+      fi_sellerPortalAttention: 0,
+      fi_sellerPortalScheduleAttention: 0,
     };
 
     console.log(`✅ [Performance] Sidebar counts calculation completed in ${Date.now() - startTime}ms`);

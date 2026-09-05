@@ -12,6 +12,34 @@ import {
   VISIT_PREPARATION_CUTOFF_DATE,
 } from '../utils/sellerCategoryFilters';
 
+/**
+ * seller_id集合を、対応するsellers.seller_numberがFI（福岡）かどうかで振り分ける。
+ * 売却サポートページのサイドバーカテゴリー（sellerPortalAttention等）を
+ * 福岡/大分に分離するために使う。SupabaseClientを直接受け取る版
+ * （SellerSidebarCountsUpdateServiceは自前のthis.supabaseを使うため、
+ * SellerPortalService.splitSellerIdsByFiと同じロジックをここにも用意する）。
+ */
+async function splitSellerIdsByFi(
+  supabase: any,
+  sellerIds: Set<string>
+): Promise<{ fi: Set<string>; nonFi: Set<string> }> {
+  const fi = new Set<string>();
+  const nonFi = new Set<string>();
+  const ids = Array.from(sellerIds);
+  if (ids.length === 0) return { fi, nonFi };
+
+  const chunkSize = 500;
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize);
+    const { data: sellersData } = await supabase.from('sellers').select('id, seller_number').in('id', chunk);
+    for (const row of sellersData ?? []) {
+      if ((row.seller_number || '').toUpperCase().startsWith('FI')) fi.add(row.id);
+      else nonFi.add(row.id);
+    }
+  }
+  return { fi, nonFi };
+}
+
 // 更新フィールド → 影響カテゴリのマッピング
 const FIELD_TO_CATEGORIES: Record<string, string[]> = {
   next_call_date: [
@@ -311,8 +339,11 @@ export class SellerSidebarCountsUpdateService {
       // 「いつまでに売りたいですか？」（決済希望月）の入力通知は別カテゴリー（sellerPortalScheduleAttention）に分離した。
       // seller_portal_* テーブルは sellers とは別テーブルのため、visitThankYouPending と同じ
       // 「候補IDを取得してJSでマージ」方式で件数を求める。
+      // 🚨 FI（福岡）/非FI（大分）で別カテゴリーとして分離表示するため、件数だけでなくSetも保持する。
       let sellerPortalAttentionCount = 0;
       let sellerPortalScheduleAttentionCount = 0;
+      let fiSellerPortalAttentionCount = 0;
+      let fiSellerPortalScheduleAttentionCount = 0;
       {
         const attentionSellerIds = new Set<string>();
 
@@ -344,6 +375,9 @@ export class SellerSidebarCountsUpdateService {
         }
 
         sellerPortalAttentionCount = attentionSellerIds.size;
+        const { fi: fiAttention, nonFi: nonFiAttention } = await splitSellerIdsByFi(this.supabase, attentionSellerIds);
+        fiSellerPortalAttentionCount = fiAttention.size;
+        sellerPortalAttentionCount = nonFiAttention.size; // 大分（非FI）のみを既存カテゴリーの件数とする
 
         // 「いつまでに売りたいですか？」（決済希望月）入力済み・未確認（別カテゴリー）
         const scheduleAttentionSellerIds = new Set<string>();
@@ -353,7 +387,9 @@ export class SellerSidebarCountsUpdateService {
           .not('desired_settlement_year_month', 'is', null)
           .is('staff_confirmed_settlement_at', null);
         (pendingSettlement ?? []).forEach((row: any) => scheduleAttentionSellerIds.add(row.seller_id));
-        sellerPortalScheduleAttentionCount = scheduleAttentionSellerIds.size;
+        const { fi: fiSchedule, nonFi: nonFiSchedule } = await splitSellerIdsByFi(this.supabase, scheduleAttentionSellerIds);
+        fiSellerPortalScheduleAttentionCount = fiSchedule.size;
+        sellerPortalScheduleAttentionCount = nonFiSchedule.size; // 大分（非FI）のみ
       }
 
       // 14. 訪問準備未カウント用データ（FI売主除外・訪問日が対象開始日以降・カレンダー未確認）
@@ -703,10 +739,13 @@ export class SellerSidebarCountsUpdateService {
         rows.push({ category: 'visitThankYouPending', count, label: null, assignee });
       });
 
-      // 売却サポートページ：対応が必要（買取依頼・未読メッセージ）
+      // 売却サポートページ：対応が必要（買取依頼・未読メッセージ）大分（非FI）分
       rows.push({ category: 'sellerPortalAttention', count: sellerPortalAttentionCount, label: null, assignee: null });
-      // 売却サポートページ：いつまでに売りたいですか？入力あり（別カテゴリー）
+      // 売却サポートページ：いつまでに売りたいですか？入力あり（別カテゴリー）大分（非FI）分
       rows.push({ category: 'sellerPortalScheduleAttention', count: sellerPortalScheduleAttentionCount, label: null, assignee: null });
+      // 福岡（FI）分は別カテゴリーとして分離表示する
+      rows.push({ category: 'fi_sellerPortalAttention', count: fiSellerPortalAttentionCount, label: null, assignee: null });
+      rows.push({ category: 'fi_sellerPortalScheduleAttention', count: fiSellerPortalScheduleAttentionCount, label: null, assignee: null });
 
       const { error: insertError } = await this.supabase
         .from('seller_sidebar_counts')
@@ -759,12 +798,20 @@ export class SellerSidebarCountsUpdateService {
         }
       }
 
+      // 🚨 福岡（FI）/大分（非FI）で別カテゴリーとして分離表示する
+      const { fi: fiAttention, nonFi: nonFiAttention } = await splitSellerIdsByFi(this.supabase, attentionSellerIds);
+
       await this.supabase.from('seller_sidebar_counts').delete().eq('category', 'sellerPortalAttention');
       await this.supabase
         .from('seller_sidebar_counts')
-        .insert({ category: 'sellerPortalAttention', count: attentionSellerIds.size, label: null, assignee: null });
+        .insert({ category: 'sellerPortalAttention', count: nonFiAttention.size, label: null, assignee: null });
 
-      console.log(`✅ [SidebarCounts] sellerPortalAttention updated: ${attentionSellerIds.size}`);
+      await this.supabase.from('seller_sidebar_counts').delete().eq('category', 'fi_sellerPortalAttention');
+      await this.supabase
+        .from('seller_sidebar_counts')
+        .insert({ category: 'fi_sellerPortalAttention', count: fiAttention.size, label: null, assignee: null });
+
+      console.log(`✅ [SidebarCounts] sellerPortalAttention updated: 大分=${nonFiAttention.size} / 福岡=${fiAttention.size}`);
 
       // 「いつまでに売りたいですか？」（決済希望月）入力通知は別カテゴリーとして更新する
       const scheduleAttentionSellerIds = new Set<string>();
@@ -775,12 +822,19 @@ export class SellerSidebarCountsUpdateService {
         .is('staff_confirmed_settlement_at', null);
       (pendingSettlement ?? []).forEach((row: any) => scheduleAttentionSellerIds.add(row.seller_id));
 
+      const { fi: fiSchedule, nonFi: nonFiSchedule } = await splitSellerIdsByFi(this.supabase, scheduleAttentionSellerIds);
+
       await this.supabase.from('seller_sidebar_counts').delete().eq('category', 'sellerPortalScheduleAttention');
       await this.supabase
         .from('seller_sidebar_counts')
-        .insert({ category: 'sellerPortalScheduleAttention', count: scheduleAttentionSellerIds.size, label: null, assignee: null });
+        .insert({ category: 'sellerPortalScheduleAttention', count: nonFiSchedule.size, label: null, assignee: null });
 
-      console.log(`✅ [SidebarCounts] sellerPortalScheduleAttention updated: ${scheduleAttentionSellerIds.size}`);
+      await this.supabase.from('seller_sidebar_counts').delete().eq('category', 'fi_sellerPortalScheduleAttention');
+      await this.supabase
+        .from('seller_sidebar_counts')
+        .insert({ category: 'fi_sellerPortalScheduleAttention', count: fiSchedule.size, label: null, assignee: null });
+
+      console.log(`✅ [SidebarCounts] sellerPortalScheduleAttention updated: 大分=${nonFiSchedule.size} / 福岡=${fiSchedule.size}`);
     } catch (error) {
       console.error('❌ [SidebarCounts] sellerPortalAttention update failed:', error);
       // このカテゴリーの更新失敗はチャット送信・希望条件保存の成功を妨げない（呼び出し元でcatchする想定）

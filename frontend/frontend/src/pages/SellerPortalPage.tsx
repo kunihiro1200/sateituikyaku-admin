@@ -177,7 +177,7 @@ export default function SellerPortalPage() {
           onMessagesRead={checkUnread}
         />
 
-        <InstallPwaBanner />
+        <InstallPwaBanner token={token} />
       </Box>
 
       <ChatWidget
@@ -196,6 +196,7 @@ export default function SellerPortalPage() {
             localStorage.setItem('seller_portal_install_dismissed', '1');
             setShowInstallPrompt(false);
           }}
+          token={token}
         />
       )}
     </Box>

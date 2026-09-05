@@ -234,6 +234,11 @@ router.get('/portal', async (req: Request, res: Response) => {
       sellerPortalService.getPropertySummary(resolved.sellerId),
     ]);
 
+    // トップ画面表示＝査定額セクションを見たとみなす（全体分析ダッシュボード集計用。レスポンスをブロックしない）
+    sellerPortalService
+      .recordSectionView(resolved.sellerId, resolved.sellerNumber, 'valuation')
+      .catch((e: any) => console.error('⚠️ [SellerPortal] recordSectionView(valuation) error:', e));
+
     res.json({ success: true, sellerNumber: resolved.sellerNumber, valuation, preferences, propertySummary });
   } catch (error: any) {
     console.error('[SellerPortal] GET /portal error:', error.message);
@@ -248,6 +253,9 @@ router.get('/portal/valuation-breakdown', async (req: Request, res: Response) =>
     if (!resolved) return;
 
     const breakdown = await sellerPortalService.getValuationBreakdown(resolved.sellerId);
+    sellerPortalService
+      .recordSectionView(resolved.sellerId, resolved.sellerNumber, 'valuation_breakdown')
+      .catch((e: any) => console.error('⚠️ [SellerPortal] recordSectionView(valuation_breakdown) error:', e));
     res.json({ success: true, breakdown });
   } catch (error: any) {
     console.error('[SellerPortal] GET /portal/valuation-breakdown error:', error.message);
@@ -263,6 +271,9 @@ router.get('/portal/rough-proceeds', async (req: Request, res: Response) => {
 
     const rows = await sellerPortalService.getRoughProceeds(resolved.sellerId);
     await sellerPortalService.markViewed(resolved.sellerId, resolved.sellerNumber, 'rough');
+    sellerPortalService
+      .recordSectionView(resolved.sellerId, resolved.sellerNumber, 'net_proceeds_rough')
+      .catch((e: any) => console.error('⚠️ [SellerPortal] recordSectionView(net_proceeds_rough) error:', e));
     res.json({ success: true, rows });
   } catch (error: any) {
     console.error('[SellerPortal] GET /portal/rough-proceeds error:', error.message);
@@ -290,6 +301,9 @@ router.post('/portal/detailed-proceeds', async (req: Request, res: Response) => 
       transferTax,
     });
     await sellerPortalService.markViewed(resolved.sellerId, resolved.sellerNumber, 'detailed');
+    sellerPortalService
+      .recordSectionView(resolved.sellerId, resolved.sellerNumber, 'net_proceeds_detailed')
+      .catch((e: any) => console.error('⚠️ [SellerPortal] recordSectionView(net_proceeds_detailed) error:', e));
     res.json({ success: true, rows, taxBreakdown });
   } catch (error: any) {
     console.error('[SellerPortal] POST /portal/detailed-proceeds error:', error.message);
@@ -367,6 +381,27 @@ router.post('/portal/buyout-request', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/seller-portal/portal/pwa-install-click
+ * body: { token }
+ * 「この査定ページを保存」ボタン（InstallPwaBanner/InstallPwaPrompt）が押されて、
+ * ホーム画面保存の案内ダイアログ（InstallPwaGuideDialog）を開いたタイミングで呼ぶ。
+ * 実際にインストールされたかどうか（特にiOSは検知不可能）までは分からないため、
+ * 「保存を試みた回数」として全体分析ダッシュボードに表示する。
+ */
+router.post('/portal/pwa-install-click', async (req: Request, res: Response) => {
+  try {
+    const resolved = await requireValidToken(req, res);
+    if (!resolved) return;
+
+    await sellerPortalService.recordSectionView(resolved.sellerId, resolved.sellerNumber, 'pwa_install');
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('[SellerPortal] POST /portal/pwa-install-click error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/seller-portal/portal/manifest.json?token=xxx
  * 売主ごとに異なる start_url（トークン付き）を持つ動的Web App Manifest。
  * ホーム画面に保存したアイコンから起動すると、必ずこの売主自身の専用ページが直接開く。
@@ -415,6 +450,9 @@ router.get('/portal/schedule', async (req: Request, res: Response) => {
     if (!resolved) return;
 
     const schedule = await sellerPortalService.calculateSchedule(resolved.sellerId);
+    sellerPortalService
+      .recordSectionView(resolved.sellerId, resolved.sellerNumber, 'schedule')
+      .catch((e: any) => console.error('⚠️ [SellerPortal] recordSectionView(schedule) error:', e));
     res.json({ success: true, schedule });
   } catch (error: any) {
     console.error('[SellerPortal] GET /portal/schedule error:', error.message);
@@ -500,6 +538,21 @@ router.get('/admin/:sellerId/portal-url', authenticate, async (req: Request, res
     res.json({ success: true, activeUrl });
   } catch (error: any) {
     console.error('[SellerPortal] GET /admin/portal-url error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/seller-portal/admin/analytics-summary
+ * 全体分析ダッシュボード用：このURL自体のアクセス数・セクション別アクセス数・
+ * PWA保存ボタンのクリック数を、福岡（FI）/大分（FI以外）/全体（合計）別に返す。
+ */
+router.get('/admin/analytics-summary', authenticate, async (req: Request, res: Response) => {
+  try {
+    const summary = await sellerPortalService.getAnalyticsSummary();
+    res.json({ success: true, ...summary });
+  } catch (error: any) {
+    console.error('[SellerPortal] GET /admin/analytics-summary error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });

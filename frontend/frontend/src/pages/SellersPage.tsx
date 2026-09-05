@@ -287,6 +287,10 @@ export default function SellersPage() {
     fi_todayCallWithInfoLabelCounts?: Record<string, number>;
     visitThankYouPendingCounts?: Record<string, number>;
     visitPreparationPending?: number;
+    sellerPortalAttention?: number;
+    sellerPortalScheduleAttention?: number;
+    fi_sellerPortalAttention?: number;
+    fi_sellerPortalScheduleAttention?: number;
   }>({
     todayCall: 0,
     todayCallWithInfo: 0,

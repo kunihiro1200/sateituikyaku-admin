@@ -15,6 +15,7 @@ import { PhoneSettingsPage } from './pages/PhoneSettingsPage';
 import { CallHistoryPage } from './pages/CallHistoryPage';
 import SalesSchedulePage from './pages/SalesSchedulePage';
 import { CallStatisticsPage } from './pages/CallStatisticsPage';
+import SellerPortalAnalyticsPage from './pages/SellerPortalAnalyticsPage';
 import EmployeeCalendarStatusPage from './pages/EmployeeCalendarStatusPage';
 import WorkTasksPage from './pages/WorkTasksPage';
 import PropertyListingsPage from './pages/PropertyListingsPage';
@@ -229,6 +230,14 @@ function App() {
         element={
           <ProtectedRoute>
             <CallStatisticsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/seller-portal/analytics"
+        element={
+          <ProtectedRoute>
+            <SellerPortalAnalyticsPage />
           </ProtectedRoute>
         }
       />

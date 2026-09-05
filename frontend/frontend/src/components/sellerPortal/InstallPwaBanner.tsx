@@ -9,7 +9,7 @@ import { isStandalone } from '../../utils/deviceDetect';
  * 初回案内を断った場合でも、後からいつでも保存方法を確認できるようにする。
  * PC（Chrome/Edge等）でもPWAとしてインストールできるため、モバイルに限定せず表示する。
  */
-export default function InstallPwaBanner() {
+export default function InstallPwaBanner({ token }: { token?: string }) {
   const [guideOpen, setGuideOpen] = useState(false);
 
   if (isStandalone()) return null;
@@ -32,7 +32,7 @@ export default function InstallPwaBanner() {
         </Box>
       </Paper>
 
-      <InstallPwaGuideDialog open={guideOpen} onClose={() => setGuideOpen(false)} />
+      <InstallPwaGuideDialog open={guideOpen} onClose={() => setGuideOpen(false)} token={token} />
     </>
   );
 }

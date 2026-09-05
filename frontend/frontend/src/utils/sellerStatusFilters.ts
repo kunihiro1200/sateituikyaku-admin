@@ -80,8 +80,10 @@ export interface CategoryCounts {
   fi_mailingPending?: number;
   fi_todayCallWithInfoLabelCounts?: Record<string, number>;
   visitPreparationPending?: number; // 訪問準備未（訪問カレンダー●OK未クリック）
-  sellerPortalAttention?: number; // 売却サポートページ：対応が必要（買取依頼済み・未確認、または売主からの未読質問）
-  sellerPortalScheduleAttention?: number; // 売却サポートページ：いつまでに売りたいですか？入力あり・未確認（別カテゴリー）
+  sellerPortalAttention?: number; // 売却サポートページ：対応が必要（買取依頼済み・未確認、または売主からの未読質問）大分（FI以外）分
+  sellerPortalScheduleAttention?: number; // 売却サポートページ：いつまでに売りたいですか？入力あり・未確認（別カテゴリー）大分（FI以外）分
+  fi_sellerPortalAttention?: number; // 売却サポートページ：対応が必要（福岡・FI分）
+  fi_sellerPortalScheduleAttention?: number; // 売却サポートページ：いつまでに売りたいですか？入力あり・未確認（福岡・FI分）
 }
 
 /**

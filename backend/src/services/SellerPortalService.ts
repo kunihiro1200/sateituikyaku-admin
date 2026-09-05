@@ -838,6 +838,29 @@ export class SellerPortalService extends BaseRepository {
     return result;
   }
 
+  /**
+   * seller_id集合を、対応するsellers.seller_numberがFI（福岡）かどうかで振り分ける。
+   * サイドバーの「売却サポート」系カテゴリーを福岡/大分に分離表示するために使う。
+   * Supabaseの.in()上限対策で500件ずつチャンク分割する。
+   */
+  async splitSellerIdsByFi(sellerIds: Set<string>): Promise<{ fi: Set<string>; nonFi: Set<string> }> {
+    const fi = new Set<string>();
+    const nonFi = new Set<string>();
+    const ids = Array.from(sellerIds);
+    if (ids.length === 0) return { fi, nonFi };
+
+    const chunkSize = 500;
+    for (let i = 0; i < ids.length; i += chunkSize) {
+      const chunk = ids.slice(i, i + chunkSize);
+      const { data: sellersData } = await this.table('sellers').select('id, seller_number').in('id', chunk);
+      for (const row of sellersData ?? []) {
+        if ((row.seller_number || '').toUpperCase().startsWith('FI')) fi.add(row.id);
+        else nonFi.add(row.id);
+      }
+    }
+    return { fi, nonFi };
+  }
+
   /** スタッフ管理画面向け：売主単位の未読件数（売主からスタッフへの未読メッセージ数） */
   async getUnreadCountForStaff(sellerId: string): Promise<number> {
     const { data: conversations } = await this.table('seller_portal_conversations')
@@ -854,6 +877,95 @@ export class SellerPortalService extends BaseRepository {
       .is('read_at', null);
 
     return count ?? 0;
+  }
+
+  // ============================================================
+  // 全体分析（セクション別アクセス数・PWA保存クリック数・FI/非FI統計）
+  // ============================================================
+
+  /**
+   * セクション別アクセスを1件記録する（都度INSERT。回数を数えるため上書きしない）。
+   * 呼び出し元（各GETエンドポイント・PWA保存ボタン押下API）で await せず fire-and-forget してよい。
+   */
+  async recordSectionView(
+    sellerId: string,
+    sellerNumber: string,
+    section: 'valuation' | 'valuation_breakdown' | 'net_proceeds_rough' | 'net_proceeds_detailed' | 'schedule' | 'pwa_install'
+  ): Promise<void> {
+    const { error } = await this.table('seller_portal_section_views').insert({
+      seller_id: sellerId,
+      seller_number: sellerNumber,
+      section,
+    });
+    if (error) {
+      console.error('[SellerPortal] recordSectionView error:', error.message);
+    }
+  }
+
+  /**
+   * 全体分析ダッシュボード用の集計データを返す。
+   * ・このURL自体へのアクセス数（seller_portal_tokens.access_countの合計）
+   * ・セクション別アクセス数（seller_portal_section_views）
+   * ・「この査定ページを保存」ボタンのクリック数（pwa_installセクション）
+   * ・福岡（FI）/大分（FI以外）別、および全体（福岡＋大分）の統計
+   *
+   * FI/非FI判定はseller_numberの先頭2文字が'FI'かどうかで行う（既存のisFiSellerと同じ判定）。
+   */
+  async getAnalyticsSummary(): Promise<{
+    totalUrlAccessCount: { all: number; fukuoka: number; oita: number };
+    sectionViewCounts: Record<string, { all: number; fukuoka: number; oita: number }>;
+  }> {
+    const isFi = (sellerNumber: string | null | undefined) => (sellerNumber || '').toUpperCase().startsWith('FI');
+
+    // このURL自体へのアクセス数：トークンごとのaccess_countを合算する
+    // （access_countはverifyToken()経由の全アクセスの合計。同じ売主が複数トークンを持つ場合もあるため全件合算する）
+    const totalUrlAccessCount = { all: 0, fukuoka: 0, oita: 0 };
+    {
+      const { data: tokens } = await this.table('seller_portal_tokens').select('seller_number, access_count');
+      for (const row of tokens ?? []) {
+        const count = row.access_count ?? 0;
+        totalUrlAccessCount.all += count;
+        if (isFi(row.seller_number)) totalUrlAccessCount.fukuoka += count;
+        else totalUrlAccessCount.oita += count;
+      }
+    }
+
+    // セクション別アクセス数：seller_portal_section_views を section ごとに件数集計する
+    const sectionViewCounts: Record<string, { all: number; fukuoka: number; oita: number }> = {
+      valuation: { all: 0, fukuoka: 0, oita: 0 },
+      valuation_breakdown: { all: 0, fukuoka: 0, oita: 0 },
+      net_proceeds_rough: { all: 0, fukuoka: 0, oita: 0 },
+      net_proceeds_detailed: { all: 0, fukuoka: 0, oita: 0 },
+      schedule: { all: 0, fukuoka: 0, oita: 0 },
+      pwa_install: { all: 0, fukuoka: 0, oita: 0 },
+    };
+    {
+      // Supabaseの1リクエストあたりの最大件数対策として、seller_numberだけをページ分割して取得する
+      const pageSize = 1000;
+      let from = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data: rows, error } = await this.table('seller_portal_section_views')
+          .select('section, seller_number')
+          .range(from, from + pageSize - 1);
+        if (error) {
+          console.error('[SellerPortal] getAnalyticsSummary section_views error:', error.message);
+          break;
+        }
+        if (!rows || rows.length === 0) break;
+        for (const row of rows) {
+          const bucket = sectionViewCounts[row.section];
+          if (!bucket) continue;
+          bucket.all += 1;
+          if (isFi(row.seller_number)) bucket.fukuoka += 1;
+          else bucket.oita += 1;
+        }
+        if (rows.length < pageSize) break;
+        from += pageSize;
+      }
+    }
+
+    return { totalUrlAccessCount, sectionViewCounts };
   }
 }
 

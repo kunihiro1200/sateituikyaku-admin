@@ -7,13 +7,25 @@ import AddBoxIcon from '@mui/icons-material/AddBox';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InstallDesktopIcon from '@mui/icons-material/InstallDesktop';
 import { isIOS, isAndroid } from '../../utils/deviceDetect';
+import { sellerPortalApi } from '../../services/sellerPortalApi';
 
 /**
  * 端末に応じた「ホーム画面に保存」の案内ダイアログ。
  * - Android（Chrome等）: beforeinstallprompt イベントが発火していれば、その場でインストール操作に進める
  * - Android（対応外ブラウザ）/ iPhone: 実際の操作場所が分かる視覚的な手順を表示する
+ *
+ * tokenを渡すと、ダイアログが開かれたタイミングで「保存を試みた」ことを全体分析用に記録する
+ * （InstallPwaBanner/InstallPwaPromptの両方の入口から共通で呼ばれるため、ここで一括記録する）。
  */
-export default function InstallPwaGuideDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export default function InstallPwaGuideDialog({
+  open,
+  onClose,
+  token,
+}: {
+  open: boolean;
+  onClose: () => void;
+  token?: string;
+}) {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
@@ -24,6 +36,14 @@ export default function InstallPwaGuideDialog({ open, onClose }: { open: boolean
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
+
+  useEffect(() => {
+    if (open && token) {
+      sellerPortalApi.recordPwaInstallClick(token).catch(() => {
+        // 記録の失敗は案内表示自体をブロックしない
+      });
+    }
+  }, [open, token]);
 
   const handleAndroidInstall = async () => {
     if (!deferredPrompt) return;

@@ -104,6 +104,14 @@ export const sellerPortalApi = {
     });
   },
 
+  /** 「この査定ページを保存」ボタン（ホーム画面保存の案内ダイアログ）を開いたことを記録する（全体分析用） */
+  async recordPwaInstallClick(token: string) {
+    return request<{ success: boolean }>('/api/seller-portal/portal/pwa-install-click', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  },
+
   async sendMessage(token: string, contextTag: string, content: string) {
     return request<{ success: boolean; conversationId: string }>('/api/seller-portal/portal/messages', {
       method: 'POST',

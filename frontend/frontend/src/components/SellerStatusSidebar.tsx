@@ -779,7 +779,10 @@ function SellerStatusSidebarComponent({
     const fiUnvaluated = categoryCounts?.fi_unvaluated ?? 0;
     const fiMailingPending = categoryCounts?.fi_mailingPending ?? 0;
     const fiLabelCounts = categoryCounts?.fi_todayCallWithInfoLabelCounts ?? {};
-    const fiTotal = fiTodayCall + fiTodayCallNotStarted + fiTodayCallWithInfo + fiUnvaluated + fiMailingPending;
+    const fiSellerPortalAttention = categoryCounts?.fi_sellerPortalAttention ?? 0;
+    const fiSellerPortalScheduleAttention = categoryCounts?.fi_sellerPortalScheduleAttention ?? 0;
+    const fiTotal = fiTodayCall + fiTodayCallNotStarted + fiTodayCallWithInfo + fiUnvaluated + fiMailingPending
+      + fiSellerPortalAttention + fiSellerPortalScheduleAttention;
 
     // FI売主が1件もない場合は表示しない
     if (fiTotal === 0 && Object.keys(fiLabelCounts).length === 0) return null;
@@ -853,6 +856,12 @@ function SellerStatusSidebarComponent({
 
         {/* 査定（郵送）（FI） */}
         {renderFiButton(`${FI_PREFIX}mailingPending` as StatusCategory, '査定（郵送）', fiMailingPending, '#0288d1')}
+
+        {/* 売却サポート：対応要（FI） */}
+        {renderFiButton(`${FI_PREFIX}sellerPortalAttention` as StatusCategory, '売却サポート：対応要', fiSellerPortalAttention, '#00897b')}
+
+        {/* 売却サポート：売却希望時期（FI） */}
+        {renderFiButton(`${FI_PREFIX}sellerPortalScheduleAttention` as StatusCategory, '売却サポート：売却希望時期', fiSellerPortalScheduleAttention, '#00acc1')}
 
         {/* 当日TEL（内容）ラベル別（FI） */}
         {Object.keys(fiLabelCounts).length > 0
@@ -1219,6 +1228,23 @@ function SellerStatusSidebarComponent({
       {renderCategoryButton('matching', 'マッチング', '#9c27b0')}
       {renderCategoryButton('sellerPortalAttention', '売却サポート：対応要', '#00897b')}
       {renderCategoryButton('sellerPortalScheduleAttention', '売却サポート：売却希望時期', '#00acc1')}
+      <Button
+        fullWidth
+        onClick={() => navigate('/seller-portal/analytics')}
+        sx={{
+          justifyContent: 'flex-start',
+          textAlign: 'left',
+          fontSize: '0.85rem',
+          py: 1,
+          pl: 1.5,
+          pr: 1.5,
+          color: '#5e35b1',
+          borderRadius: 1,
+          '&:hover': { bgcolor: '#5e35b122' },
+        }}
+      >
+        📊 売却サポート：全体分析
+      </Button>
 
       {/* マッチング通知（追客中の売主 × 買主の希望条件）：福岡セクションの直前 */}
       <SellerMatchingSidebarSection />
