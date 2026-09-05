@@ -1513,7 +1513,7 @@ const CallModePage = () => {
     },
     {
       id: 'valuation2',
-      label: '査定Sメール２',
+      label: '査定Sメール２（査定根拠等）',
       generator: generateValuationSMS2,
     },
     {
