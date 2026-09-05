@@ -28,6 +28,7 @@ export interface PropertySummary {
   address: string | null;
   landArea: number | null; // ㎡。当社調べ（_verified）を優先
   buildingArea: number | null; // ㎡。当社調べ（_verified）を優先。マンションは専有面積として使う
+  currentStatus: string | null; // 状況（売主）：居住中/空き家/賃貸中等。「賃」を含む場合は賃貸中→利回り計算UIに切り替える判定に使う
 }
 
 const BASE62_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -249,8 +250,9 @@ export class SellerPortalService extends BaseRepository {
     const address = seller.property?.address || seller.propertyAddress || null;
     const landArea = seller.property?.landAreaVerified || seller.property?.landArea || seller.landArea || null;
     const buildingArea = seller.property?.buildingAreaVerified || seller.property?.buildingArea || seller.buildingArea || null;
+    const currentStatus = seller.property?.sellerSituation || seller.currentStatus || null;
 
-    return { ownerName, propertyTypeLabel, address, landArea, buildingArea };
+    return { ownerName, propertyTypeLabel, address, landArea, buildingArea, currentStatus };
   }
 
   /**

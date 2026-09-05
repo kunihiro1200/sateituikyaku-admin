@@ -144,7 +144,14 @@ export default function SellerPortalAdminSection({ sellerId, sellerNumber }: { s
       {(issuedUrl || status?.activeUrl) && (
         <Alert severity="success" sx={{ mb: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+            <Typography
+              component="a"
+              href={issuedUrl || status.activeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="body2"
+              sx={{ wordBreak: 'break-all', color: 'primary.main', textDecoration: 'underline' }}
+            >
               {issuedUrl || status.activeUrl}
             </Typography>
             <IconButton size="small" onClick={handleCopy}>

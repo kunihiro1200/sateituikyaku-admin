@@ -36,6 +36,7 @@ export interface PropertySummary {
   address: string | null;
   landArea: number | null;
   buildingArea: number | null;
+  currentStatus: string | null; // 状況（売主）：居住中/空き家/賃貸中等
 }
 
 export const sellerPortalApi = {

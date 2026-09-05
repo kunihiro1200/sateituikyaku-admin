@@ -156,6 +156,7 @@ export default function SellerPortalPage() {
         <ValuationBreakdownCard
           token={token}
           propertyType={valuation?.propertyType ?? 'other'}
+          isRental={!!propertySummary?.currentStatus?.includes('賃')}
           hasUnreadReply={!!unreadByContext.valuation_breakdown}
           onMessagesRead={checkUnread}
         />

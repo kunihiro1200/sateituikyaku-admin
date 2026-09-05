@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Paper, Typography, Box, CircularProgress, Alert } from '@mui/material';
+import { Paper, Typography, Box, CircularProgress, Alert, TextField, InputAdornment } from '@mui/material';
 import { sellerPortalApi } from '../../services/sellerPortalApi';
 import InlineChatSection from './InlineChatSection';
 
@@ -7,18 +7,24 @@ const fmtMan = (yen: number) => `${Math.round(yen / 10000).toLocaleString()}万�
 const fmtYenPerSqm = (yen: number) => `${yen.toLocaleString()}円`;
 
 /**
- * 査定額の計算根拠カード。物件種別によって表示内容を分ける。
+ * 査定額の計算根拠カード。物件種別・状況（売主）によって表示内容を分ける。
+ * - 賃貸中（状況（売主）に「賃」を含む）：入居中で室内が確認できないため、通常の査定根拠の代わりに
+ *   賃料入力→利回り別の売買価格を自動計算して表示する（既存の計算ページTemodoriCalcPageの
+ *   収益物件・利回り計算と同じ計算式：売買価格＝年間賃料÷利回り）
  * - 土地・戸建：固定資産税路線価×面積の内訳（保存済みデータがある場合のみ。なければ総額のみ表示）
  * - マンション：査定額÷専有面積で㎡単価をその場で計算して表示
  */
 export default function ValuationBreakdownCard({
   token,
   propertyType,
+  isRental,
   hasUnreadReply,
   onMessagesRead,
 }: {
   token: string;
   propertyType: 'land' | 'detached_house' | 'apartment' | 'other';
+  /** 状況（売主）が賃貸中（「賃」を含む）かどうか。賃貸中の場合は査定根拠の代わりに利回り計算を表示する */
+  isRental?: boolean;
   /** スタッフからこの相談元への未読返信があるか（あれば赤丸を表示する） */
   hasUnreadReply?: boolean;
   onMessagesRead?: () => void;
@@ -28,6 +34,11 @@ export default function ValuationBreakdownCard({
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (isRental) {
+      // 賃貸中は査定根拠データを使わないため取得しない
+      setLoading(false);
+      return;
+    }
     (async () => {
       try {
         const res = await sellerPortalApi.getValuationBreakdown(token);
@@ -38,12 +49,12 @@ export default function ValuationBreakdownCard({
         setLoading(false);
       }
     })();
-  }, [token]);
+  }, [token, isRental]);
 
   return (
     <Paper sx={{ p: 2.5, borderRadius: 3, bgcolor: '#E8F0FE' }} elevation={0} variant="outlined">
       <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1.5 }}>
-        査定額の計算根拠
+        {isRental ? '賃貸中の物件の利回り計算' : '査定額の計算根拠'}
       </Typography>
 
       {loading && (
@@ -52,14 +63,20 @@ export default function ValuationBreakdownCard({
         </Box>
       )}
 
-      {error && <Alert severity="error">{error}</Alert>}
+      {isRental && !loading && <RentalYieldCalculator />}
 
-      {!loading && !error && breakdown && propertyType === 'apartment' && (
-        <ApartmentBreakdown breakdown={breakdown} />
-      )}
+      {!isRental && (
+        <>
+          {error && <Alert severity="error">{error}</Alert>}
 
-      {!loading && !error && breakdown && propertyType !== 'apartment' && (
-        <LandOrHouseBreakdown breakdown={breakdown} />
+          {!loading && !error && breakdown && propertyType === 'apartment' && (
+            <ApartmentBreakdown breakdown={breakdown} />
+          )}
+
+          {!loading && !error && breakdown && propertyType !== 'apartment' && (
+            <LandOrHouseBreakdown breakdown={breakdown} />
+          )}
+        </>
       )}
 
       <InlineChatSection
@@ -71,6 +88,86 @@ export default function ValuationBreakdownCard({
         bgColor="#DCE7FB"
       />
     </Paper>
+  );
+}
+
+/**
+ * 賃貸中の物件向け：賃料（月額）を入力すると、利回り3%〜11%それぞれの売買価格を自動計算して表示する。
+ * 計算式は既存のTemodoriCalcPage（収益物件・利回り計算）と同じ：
+ * 賃料（年）＝賃料（月額）×12、売買価格＝賃料（年）÷利回り
+ */
+function RentalYieldCalculator() {
+  const [rentInput, setRentInput] = useState(''); // 賃料（月額）万円
+  const rentMonthYen = parseFloat(rentInput) > 0 ? Math.round(parseFloat(rentInput) * 10_000) : 0;
+  const rentYearYen = rentMonthYen * 12;
+
+  const YIELDS = [3, 4, 5, 6, 7, 8, 9, 10, 11];
+  const yieldPrices = YIELDS.map((y) => ({
+    yieldRate: y,
+    price: rentYearYen > 0 ? Math.round(rentYearYen / (y / 100)) : 0,
+  }));
+
+  return (
+    <Box>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+        入居中のため室内を確認できません。賃料（月額）を入力いただくと、利回りに応じた売買価格を自動計算します。
+      </Typography>
+
+      <TextField
+        type="number"
+        label="賃料（月額）"
+        placeholder="例：7"
+        value={rentInput}
+        onChange={(e) => setRentInput(e.target.value)}
+        InputProps={{
+          endAdornment: <InputAdornment position="end">万円</InputAdornment>,
+          inputProps: { min: 0, step: 0.1 },
+        }}
+        sx={{ width: { xs: '100%', sm: 240 }, mb: 2, bgcolor: 'white' }}
+      />
+
+      {rentMonthYen > 0 && (
+        <Box sx={{ p: 1.5, bgcolor: 'white', borderRadius: 2 }}>
+          <Box sx={{ display: 'flex', gap: 3, mb: 1.5 }}>
+            <Box>
+              <Typography variant="caption" color="text.secondary">賃料（月額）</Typography>
+              <Typography variant="body1" fontWeight="bold">{fmtMan(rentMonthYen)}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">賃料（年）</Typography>
+              <Typography variant="body1" fontWeight="bold">{fmtMan(rentYearYen)}</Typography>
+            </Box>
+          </Box>
+
+          <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ display: 'block', mb: 0.5 }}>
+            利回り別　売買価格
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr 1fr 1fr' }, gap: 1 }}>
+            {yieldPrices.map(({ yieldRate, price }) => (
+              <Box
+                key={yieldRate}
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  bgcolor: '#f0f4f8',
+                  borderRadius: 1.5,
+                  px: 1.5,
+                  py: 0.75,
+                }}
+              >
+                <Typography variant="caption" color="text.secondary">{yieldRate}.00%</Typography>
+                <Typography variant="body2" fontWeight="bold">
+                  {price > 0 ? fmtMan(price) : '—'}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+            売買価格＝賃料（年）÷利回り
+          </Typography>
+        </Box>
+      )}
+    </Box>
   );
 }
 
