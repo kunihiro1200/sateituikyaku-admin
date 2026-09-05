@@ -1591,7 +1591,8 @@ export class SellerService extends BaseRepository {
             pinrichPage++;
           }
 
-          const excludedPinrichB = new Set(['クローズ', '登録不要', 'アドレスエラー', '配信不要（他決後、訪問後、担当付）', '△配信停止']);
+          // 「配信中」は除外（確度D かつ Pinrich=配信中 は要変更に含めない）
+          const excludedPinrichB = new Set(['クローズ', '登録不要', 'アドレスエラー', '配信不要（他決後、訪問後、担当付）', '△配信停止', '配信中']);
           const validStatusC = new Set(['専任媒介', '追客中', '除外後追客中']);
           const validStatusD = new Set(['他決→追客', '他決→追客不要', '一般媒介']);
 
@@ -3601,7 +3602,8 @@ export class SellerService extends BaseRepository {
     const pinrichEmptyCount = pinrichEmptyAllSellers.length;
 
     // 10. Pinrich要変更カテゴリー（条件A〜DのいずれかにマッチするものをJSでフィルタリング）
-    const _excludedPinrichB = new Set(['クローズ', '登録不要', 'アドレスエラー', '配信不要（他決後、訪問後、担当付）', '△配信停止']);
+    // 「配信中」は除外（確度D かつ Pinrich=配信中 は要変更に含めない）
+    const _excludedPinrichB = new Set(['クローズ', '登録不要', 'アドレスエラー', '配信不要（他決後、訪問後、担当付）', '△配信停止', '配信中']);
     const _validStatusC = new Set(['専任媒介', '追客中', '除外後追客中']);
     const _validStatusD = new Set(['他決→追客', '他決→追客不要', '一般媒介']);
     const pinrichChangeRequiredCount = pinrichCandidatesAllFallback.filter(s => {
