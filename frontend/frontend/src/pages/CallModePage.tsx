@@ -37,6 +37,7 @@ import {
   ListItemText,
   Popper,
   ClickAwayListener,
+  Badge,
 } from '@mui/material';
 import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Sms as SmsIcon, OpenInNew as OpenInNewIcon, Print as PrintIcon, LocationOn as LocationOnIcon } from '@mui/icons-material';
 import api, { emailImageApi } from '../services/api';
@@ -1143,9 +1144,10 @@ const CallModePage = () => {
   const [netProceedsModalOpen, setNetProceedsModalOpen] = useState(false);
   const [sellerPortalModalOpen, setSellerPortalModalOpen] = useState(false);
   // 売却サポートページの専用URLが発行済みかどうか。
-  // 未発行の場合、SMS「査定Sメール２（査定根拠等）」はURL抜けで送信されてしまうため選択肢に出さない。
-  // 手動発行はまれなので、SMSメニューを開くたびに最新状態を確認する。
   const [hasPortalUrl, setHasPortalUrl] = useState(false);
+  // 売却サポートページの未読メッセージ数（売主からスタッフへの未読）。
+  // コメント欄の上に配置するボタンの赤丸バッジに使う。
+  const [portalUnreadCount, setPortalUnreadCount] = useState(0);
   const [souhuModalOpen, setSouhuModalOpen] = useState(false);
   const [souhuEmptyModalOpen, setSouhuEmptyModalOpen] = useState(false);
   // 画像数バッジ用の状態
@@ -1901,6 +1903,14 @@ const CallModePage = () => {
     if (seller) {
       loadVisitStats();
     }
+  }, [seller?.id]);
+
+  // 売却サポートページの未読メッセージ数を取得する（売主が変わるたびに更新）
+  useEffect(() => {
+    if (!seller?.id) { setPortalUnreadCount(0); return; }
+    api.get(`/api/seller-portal/admin/${seller.id}/status`)
+      .then((res) => { setPortalUnreadCount(res.data?.unreadCount ?? 0); })
+      .catch(() => { setPortalUnreadCount(0); });
   }, [seller?.id]);
 
   // キーボードショートカット
@@ -6183,11 +6193,6 @@ HP：https://ifoo-oita.com/
                         福岡追加資料
                       </MenuItem>
                     )}
-                    {seller?.id && (
-                      <MenuItem onClick={() => { setDocGenMenuAnchor(null); setSellerPortalModalOpen(true); }}>
-                        売却サポートページ（使用不可）
-                      </MenuItem>
-                    )}
                   </Menu>
                   {/* 文字起ボタン（資料生成の下に配置） */}
                   <Button
@@ -9917,6 +9922,34 @@ HP：https://ifoo-oita.com/
               order: isMobile ? 0 : 1,
             }}
           >
+            {/* 売却サポートページボタン：コメント欄の直上に独立配置。未読があれば赤丸バッジを表示 */}
+            {seller?.id && (
+              <Box sx={{ px: isMobile ? 1.5 : 0, pt: isMobile ? 1.5 : 0, pb: 1.5 }}>
+                <Badge badgeContent={portalUnreadCount > 0 ? portalUnreadCount : null} color="error">
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => {
+                      setSellerPortalModalOpen(true);
+                      // モーダルを開いたら未読を再取得してバッジを更新する
+                      setTimeout(() => {
+                        api.get(`/api/seller-portal/admin/${seller.id}/status`)
+                          .then((res) => setPortalUnreadCount(res.data?.unreadCount ?? 0))
+                          .catch(() => {});
+                      }, 1500);
+                    }}
+                    sx={{
+                      bgcolor: '#00897b',
+                      '&:hover': { bgcolor: '#00695c' },
+                      fontWeight: 'bold',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    🏠 売却サポートページ
+                  </Button>
+                </Badge>
+              </Box>
+            )}
             {isMobile && (
               <Box
                 onClick={() => setMobileCommentOpen(!mobileCommentOpen)}
