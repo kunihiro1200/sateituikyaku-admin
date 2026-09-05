@@ -90,6 +90,35 @@ export class ActivityLogService extends BaseRepository {
   }
 
   /**
+   * 活動ログを削除（対象タイプ・対象ID・アクションで照合）
+   * 買主のSMS履歴削除などに使用。誤削除防止のため target と action を必須照合する。
+   */
+  async deleteActivityLog(params: {
+    activityId: string;
+    targetType: string;
+    targetId: string;
+    action?: string;
+  }): Promise<boolean> {
+    let query = this.table('activity_logs')
+      .delete()
+      .eq('id', params.activityId)
+      .eq('target_type', params.targetType)
+      .eq('target_id', params.targetId);
+
+    if (params.action) {
+      query = query.eq('action', params.action);
+    }
+
+    const { data, error } = await query.select('id').maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to delete activity log: ${error.message}`);
+    }
+
+    return data !== null;
+  }
+
+  /**
    * メール送信を記録
    */
   async logEmail(params: {

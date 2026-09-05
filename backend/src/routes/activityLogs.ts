@@ -182,4 +182,69 @@ router.post(
   }
 );
 
+/**
+ * 活動ログ（SMS履歴など）を削除
+ * 買主詳細ページのSMS履歴を「×」で消すために使用。
+ * 誤削除防止のため target_type / target_id / action で照合する。
+ */
+router.delete('/:activityId', async (req: Request, res: Response) => {
+  try {
+    const { activityId } = req.params;
+    const targetType = req.query.target_type as string | undefined;
+    const targetId = req.query.target_id as string | undefined;
+    const action = req.query.action as string | undefined;
+
+    if (
+      !activityId ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activityId)
+    ) {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid activity ID',
+          retryable: false,
+        },
+      });
+    }
+
+    if (!targetType || !targetId) {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'target_type and target_id are required',
+          retryable: false,
+        },
+      });
+    }
+
+    const deleted = await activityLogService.deleteActivityLog({
+      activityId,
+      targetType,
+      targetId,
+      action,
+    });
+
+    if (!deleted) {
+      return res.status(404).json({
+        error: {
+          code: 'ACTIVITY_NOT_FOUND',
+          message: '履歴が見つかりません',
+          retryable: false,
+        },
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete activity log error:', error);
+    res.status(500).json({
+      error: {
+        code: 'DELETE_ACTIVITY_ERROR',
+        message: '履歴の削除に失敗しました',
+        retryable: true,
+      },
+    });
+  }
+});
+
 export default router;

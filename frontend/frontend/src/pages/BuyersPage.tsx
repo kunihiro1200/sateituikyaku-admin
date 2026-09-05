@@ -622,6 +622,16 @@ export default function BuyersPage() {
   };
 
   const handleRowClick = (buyerId: string, viewingDate?: string | null) => {
+    // 現在表示中のリスト順（買主番号の配列）を保存 → 買主詳細ページの「前へ/次へ」で使用
+    try {
+      const orderedBuyerNumbers = buyers
+        .map((b) => b.buyer_number)
+        .filter((n): n is string => !!n);
+      sessionStorage.setItem('buyerListOrder', JSON.stringify(orderedBuyerNumbers));
+    } catch (e) {
+      console.warn('[BuyersPage] 買主リスト順の保存に失敗:', e);
+    }
+
     // selectedCalculatedStatusはカテゴリキー（例: 'visitDayBefore'）なので、日本語表示名に変換して比較
     const displayName = categoryKeyToDisplayName[selectedCalculatedStatus || ''] || selectedCalculatedStatus;
     // 内覧日が入っている場合は内覧結果ページへ直接遷移
