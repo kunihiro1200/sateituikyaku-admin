@@ -914,12 +914,14 @@ export const isPinrichChangeRequired = (seller: Seller | any): boolean => {
     && status === '追客中';
 
   // 条件B: confidence_level = "D" AND pinrich_status が除外リスト外
+  // 「配信中」は除外（確度D かつ Pinrich=配信中 は要変更に含めない）
   const excludedPinrichB = new Set([
     'クローズ',
     '登録不要',
     'アドレスエラー',
     '配信不要（他決後、訪問後、担当付）',
     '△配信停止',
+    '配信中',
   ]);
   const conditionB = confidenceLevel === 'D'
     && !excludedPinrichB.has(pinrichStatus);

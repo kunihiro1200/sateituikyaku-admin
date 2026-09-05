@@ -49,6 +49,7 @@ import ImageSelectorModal from './ImageSelectorModal';
 import DocumentModal from './DocumentModal';
 import { useAuthStore } from '../store/authStore';
 import RichTextEditor from './RichTextEditor';
+import { useWorkTaskPresenceTrack } from '../hooks/useListPresence';
 
 
 
@@ -965,6 +966,8 @@ const FloorPlanCompareButton = React.memo(function FloorPlanCompareButton({
 export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onUpdate, initialData, initialTabIndex, onNavigate }: WorkTaskDetailModalProps) {
   const [tabIndex, setTabIndex] = useState(0);
   const navigate = useNavigate();
+  // プレゼンス発信（この業務依頼を開いていることを他ユーザーに通知）
+  useWorkTaskPresenceTrack(open ? propertyNumber : null);
   const normalInitials = useNormalInitials();
   const cwCounts = useCwCounts();
   const theme = useTheme();

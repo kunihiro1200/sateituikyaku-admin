@@ -1563,10 +1563,10 @@ export class PropertyListingService {
   }
 
   /**
-   * 毎月第2土曜日に「非公開（配信メールのみ）」カテゴリーの物件の
+   * 毎月第一土曜日に「非公開（配信メールのみ）」カテゴリーの物件の
    * private_mail_delivery を「未」にリセットする
    */
-  async resetPrivateMailDeliveryForSecondSaturday(): Promise<{ reset: number }> {
+  async resetPrivateMailDeliveryForFirstSaturday(): Promise<{ reset: number }> {
     console.log('[PropertyListingService] Resetting private_mail_delivery to 未 for 非公開（配信メールのみ）');
 
     const { data, error } = await this.supabase

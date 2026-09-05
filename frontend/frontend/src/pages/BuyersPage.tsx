@@ -33,6 +33,7 @@ import PageNavigation from '../components/PageNavigation';
 import BuyerStatusSidebar, { BuyerWithStatus } from '../components/BuyerStatusSidebar';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
+import { useBuyerPresenceSubscribe } from '../hooks/useBuyerPresence';
 
 interface Buyer {
   id: string;
@@ -112,6 +113,8 @@ function isViewingPrepUnconfirmedFrontend(buyer: { viewing_date?: string | null;
 export default function BuyersPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  // プレゼンス購読（他のユーザーがどの買主ページを開いているかをリアルタイム取得）
+  const { presenceState } = useBuyerPresenceSubscribe();
   const initialStatus = searchParams.get('status');
   const viewingMonth = searchParams.get('viewingMonth'); // YYYY-MM形式
   const assigneeParam = searchParams.get('assignee');
@@ -622,6 +625,16 @@ export default function BuyersPage() {
   };
 
   const handleRowClick = (buyerId: string, viewingDate?: string | null) => {
+    // 現在表示中のリスト順（買主番号の配列）を保存 → 買主詳細ページの「前へ/次へ」で使用
+    try {
+      const orderedBuyerNumbers = buyers
+        .map((b) => b.buyer_number)
+        .filter((n): n is string => !!n);
+      sessionStorage.setItem('buyerListOrder', JSON.stringify(orderedBuyerNumbers));
+    } catch (e) {
+      console.warn('[BuyersPage] 買主リスト順の保存に失敗:', e);
+    }
+
     // selectedCalculatedStatusはカテゴリキー（例: 'visitDayBefore'）なので、日本語表示名に変換して比較
     const displayName = categoryKeyToDisplayName[selectedCalculatedStatus || ''] || selectedCalculatedStatus;
     // 内覧日が入っている場合は内覧結果ページへ直接遷移
@@ -934,6 +947,36 @@ export default function BuyersPage() {
                             {buyer.buyer_number && (
                               <ContentCopyIcon sx={{ fontSize: 14 }} />
                             )}
+                            {buyer.buyer_number && (() => {
+                              const active = (presenceState[buyer.buyer_number] || [])
+                                .filter(r => Date.now() - new Date(r.entered_at).getTime() < 30 * 60 * 1000);
+                              if (active.length === 0) return null;
+                              return (
+                                <Box sx={{ display: 'flex', gap: 0.5, ml: 0.5 }}>
+                                  {active.map((r, i) => (
+                                    <Box
+                                      key={i}
+                                      sx={{
+                                        width: 20,
+                                        height: 20,
+                                        borderRadius: '50%',
+                                        bgcolor: 'error.main',
+                                        color: 'white',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '0.6rem',
+                                        fontWeight: 'bold',
+                                        flexShrink: 0,
+                                      }}
+                                      title={r.user_name}
+                                    >
+                                      {r.user_name ? r.user_name.charAt(0) : '?'}
+                                    </Box>
+                                  ))}
+                                </Box>
+                              );
+                            })()}
                           </Box>
                           {displayConfidence && (
                             <Chip
@@ -997,6 +1040,7 @@ export default function BuyersPage() {
               <TableHead>
                 <TableRow sx={{ bgcolor: '#f5f5f5' }}>
                   <TableCell>買主番号</TableCell>
+                  <TableCell sx={{ width: 60 }}>対応中</TableCell>
                   <TableCell>氏名</TableCell>
                   <TableCell>物件所在地</TableCell>
                   <TableCell>物件担当</TableCell>
@@ -1016,11 +1060,11 @@ export default function BuyersPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={9} align="center">読み込み中...</TableCell>
+                    <TableCell colSpan={10} align="center">読み込み中...</TableCell>
                   </TableRow>
                 ) : buyers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} align="center">買主データが見つかりませんでした</TableCell>
+                    <TableCell colSpan={10} align="center">買主データが見つかりませんでした</TableCell>
                   </TableRow>
                 ) : (
                   buyers.map((buyer) => {
@@ -1053,6 +1097,45 @@ export default function BuyersPage() {
                               />
                             )}
                           </Box>
+                        </TableCell>
+                        <TableCell>
+                          {buyer.buyer_number && (() => {
+                            const active = (presenceState[buyer.buyer_number] || [])
+                              .filter(r => {
+                                const enteredAt = new Date(r.entered_at).getTime();
+                                return Date.now() - enteredAt < 30 * 60 * 1000;
+                              });
+                            if (active.length === 0) return '-';
+                            return (
+                              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                                {active.map((r, i) => {
+                                  // 名字の1文字目を取得（漢字・英字どちらも対応）
+                                  const initial = r.user_name ? r.user_name.charAt(0) : '?';
+                                  return (
+                                    <Box
+                                      key={i}
+                                      sx={{
+                                        width: 24,
+                                        height: 24,
+                                        borderRadius: '50%',
+                                        bgcolor: 'error.main',
+                                        color: 'white',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '0.65rem',
+                                        fontWeight: 'bold',
+                                        flexShrink: 0,
+                                      }}
+                                      title={r.user_name}
+                                    >
+                                      {initial}
+                                    </Box>
+                                  );
+                                })}
+                              </Box>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell>{buyer.name || '-'}</TableCell>
                         <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

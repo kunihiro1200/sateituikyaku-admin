@@ -625,7 +625,9 @@ export class SellerSidebarCountsUpdateService {
       }).length;
 
       // Pinrich要変更カウント計算（条件A〜DのいずれかにマッチするものをJSでフィルタリング）
-      const excludedPinrichB = new Set(['クローズ', '登録不要', 'アドレスエラー', '配信不要（他決後、訪問後、担当付）', '△配信停止']);
+      // 「配信中」は除外（確度D かつ Pinrich=配信中 は要変更に含めない）。
+      // ⚠️ ここを除外しないと、カウントには出るが一覧クエリ（配信中を除外）に出ず「1件あるのに消えない」不具合になる
+      const excludedPinrichB = new Set(['クローズ', '登録不要', 'アドレスエラー', '配信不要（他決後、訪問後、担当付）', '△配信停止', '配信中']);
       const validStatusC = new Set(['専任媒介', '追客中', '除外後追客中']);
       const validStatusD = new Set(['他決→追客', '他決→追客不要', '一般媒介']);
       const pinrichChangeRequiredCount = (pinrichCandidatesAll).filter(s => {
@@ -1192,7 +1194,9 @@ export class SellerSidebarCountsUpdateService {
 
     // pinrichChangeRequired
     if (needsPinrichChange) {
-      const excludedB = new Set(['クローズ', '登録不要', 'アドレスエラー', '配信不要（他決後、訪問後、担当付）', '△配信停止']);
+      // 「配信中」は除外（確度D かつ Pinrich=配信中 は要変更に含めない）。
+      // ⚠️ 一覧クエリ（SellerService.supabase.ts）は配信中を除外しているため、ここも合わせないとカウントと一覧がズレる
+      const excludedB = new Set(['クローズ', '登録不要', 'アドレスエラー', '配信不要（他決後、訪問後、担当付）', '△配信停止', '配信中']);
       const validC = new Set(['専任媒介', '追客中', '除外後追客中']);
       const validD = new Set(['他決→追客', '他決→追客不要', '一般媒介']);
       const count = (resultMap.pinrichChange?.data || []).filter((s: any) => {

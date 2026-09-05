@@ -89,15 +89,13 @@ HP：https://ifoo-oita.com/
 お世話になっております。
 ${companyName}です。
 
-本日、各サイトに正式に公開されましたので、レインズの登録証明書を送付いたします。
-（全国に募集を公開している証明です）
+本日、各サイトに正式に公開されましたので、お知らせいたします。
 
 【各サイトのご案内】
 ■athome
 ${suumoLine}
 
 今後、当社全員で、お客様の大切な物件の販売に努めてまいります。
-2週間に1度担当より、進捗状況をご報告させていただきます。
 
 よろしくお願い申し上げます。
 
@@ -121,8 +119,8 @@ export default function ReinsRegistrationPage() {
   const [emailCc, setEmailCc] = useState('');
   const [emailSubject, setEmailSubject] = useState(
     propertyNumber?.startsWith('FI')
-      ? 'サイト公開＆レインズ登録証明書のご案内（株式会社くじら不動産）'
-      : 'サイト公開＆レインズ登録証明書のご案内（株式会社いふう）'
+      ? 'サイト公開のお知らせ（株式会社くじら不動産）'
+      : 'サイト公開のお知らせ（株式会社いふう）'
   );
   const [emailBody, setEmailBody] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -176,8 +174,8 @@ export default function ReinsRegistrationPage() {
       setEmailCc(assigneeEmployee?.email ?? '');
       setEmailSubject(
         propertyNumber?.startsWith('FI')
-          ? 'サイト公開＆レインズ登録証明書のご案内（株式会社くじら不動産）'
-          : 'サイト公開＆レインズ登録証明書のご案内（株式会社いふう）'
+          ? 'サイト公開のお知らせ（株式会社くじら不動産）'
+          : 'サイト公開のお知らせ（株式会社いふう）'
       );
       setEmailBody(buildEmailBody(d.seller_name ?? '売主', d.suumo_url ?? '', propertyNumber ?? ''));
     } catch (error) {

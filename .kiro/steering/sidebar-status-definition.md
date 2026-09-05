@@ -182,7 +182,7 @@ fileMatchPattern: '**/seller*.{ts,tsx,js,md}'
 **条件**: 以下の条件A〜Dのいずれかを満たす売主
 
 - **条件A**: `visit_assignee = "外す"` AND `pinrich_status = "クローズ"` AND `status = "追客中"`
-- **条件B**: `confidence_level = "D"` AND `pinrich_status` が以下のいずれでもない：「クローズ」「登録不要」「アドレスエラー」「配信不要（他決後、訪問後、担当付）」「△配信停止」
+- **条件B**: `confidence_level = "D"` AND `pinrich_status` が以下のいずれでもない：「クローズ」「登録不要」「アドレスエラー」「配信不要（他決後、訪問後、担当付）」「△配信停止」「配信中」
 - **条件C**: `visit_date` が空欄でない AND `pinrich_status = "配信中"` AND `visit_assignee` が空欄でない AND `status` が「専任媒介」「追客中」「除外後追客中」のいずれか
 - **条件D**: `status` が「他決→追客」「他決→追客不要」「一般媒介」のいずれか AND `pinrich_status = "クローズ"` AND `contract_year_month >= "2025-05-01"`
 

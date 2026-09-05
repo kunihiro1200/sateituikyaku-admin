@@ -31,6 +31,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
+import { useSharedItemPresenceSubscribe } from '../hooks/useListPresence';
+import PresenceChips from '../components/PresenceChips';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import CallRankingDisplay from '../components/CallRankingDisplay';
 
@@ -60,6 +62,8 @@ export default function SharedItemsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const sharedItemsColor = SECTION_COLORS.sharedItems;
+  // プレゼンス購読（誰が今どの共有項目を開いて作業しているか）
+  const { presenceState } = useSharedItemPresenceSubscribe();
   const [allSharedItems, setAllSharedItems] = useState<SharedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -1009,6 +1013,7 @@ export default function SharedItemsPage() {
               <TableRow sx={{ bgcolor: `${sharedItemsColor.light}20` }}>
                 <TableCell sx={{ whiteSpace: 'nowrap', width: 40 }}></TableCell>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>ID</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>作業中</TableCell>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>入力者</TableCell>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>共有日</TableCell>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>項目</TableCell>
@@ -1025,13 +1030,13 @@ export default function SharedItemsPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={13} align="center">
+                  <TableCell colSpan={14} align="center">
                     読み込み中...
                   </TableCell>
                 </TableRow>
               ) : fetchError ? (
                 <TableRow>
-                  <TableCell colSpan={13} align="center">
+                  <TableCell colSpan={14} align="center">
                     <Typography color="error" variant="body2" sx={{ mb: 1 }}>{fetchError}</Typography>
                     <Button size="small" variant="outlined" onClick={() => fetchAllSharedItems(true)}>
                       再読み込み
@@ -1040,7 +1045,7 @@ export default function SharedItemsPage() {
                 </TableRow>
               ) : paginatedItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={13} align="center">
+                  <TableCell colSpan={14} align="center">
                     共有データが見つかりませんでした
                   </TableCell>
                 </TableRow>
@@ -1066,6 +1071,9 @@ export default function SharedItemsPage() {
                       <Typography variant="body2" fontWeight="bold" sx={{ color: sharedItemsColor.main }}>
                         {item.id || '-'}
                       </Typography>
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
+                      <PresenceChips presenceState={presenceState} itemKey={item.id} emptyPlaceholder="-" />
                     </TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>{item['入力者'] || '-'}</TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDate(item['共有日'] || item.sharing_date)}</TableCell>

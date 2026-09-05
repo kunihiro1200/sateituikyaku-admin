@@ -62,6 +62,7 @@ import { SectionSaveButton } from '../components/SectionSaveButton';
 import { useStableContainerHeight } from '../hooks/useStableContainerHeight';
 import { useAuthStore } from '../store/authStore';
 import { useQuickButtonState } from '../hooks/useQuickButtonState';
+import { useBuyerPresenceTrack } from '../hooks/useBuyerPresence';
 import { INQUIRY_SOURCE_OPTIONS } from '../utils/buyerInquirySourceOptions';
 import { isSecondInquiry, resolvePinrichValue } from '../utils/buyerPinrichHelper';
 import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
@@ -312,6 +313,12 @@ export default function BuyerDetailPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [buyer, setBuyer] = useState<Buyer | null>(null);
+
+  // プレゼンストラッキング（他のユーザーに「この買主を開いている」ことを通知）
+  // 買主リストのキーは正規化済みの buyer_number なので、APIから取得した値を優先し、
+  // 未取得の間は URL パラメータをフォールバックとして使う
+  useBuyerPresenceTrack(buyer?.buyer_number || buyer_number);
+
   const [linkedProperties, setLinkedProperties] = useState<PropertyListing[]>([]);
   const [nearbyPropertiesCount, setNearbyPropertiesCount] = useState(0);
   const [inquiryHistory, setInquiryHistory] = useState<InquiryHistory[]>([]);
@@ -324,6 +331,8 @@ export default function BuyerDetailPage() {
   const [relatedBuyersCount, setRelatedBuyersCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [copiedBuyerNumber, setCopiedBuyerNumber] = useState(false);
+  // 買主リストの表示順（前へ/次へボタン用）。買主一覧からの遷移時に sessionStorage に保存される。
+  const [buyerListOrder, setBuyerListOrder] = useState<string[]>([]);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' }>({
     open: false,
     message: '',
@@ -762,6 +771,29 @@ export default function BuyerDetailPage() {
       fetchActivities();
     }
   }, [buyer_number, isValidBuyerNumber]);
+
+  // 買主一覧の表示順を sessionStorage から読み込む（前へ/次へボタン用）
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('buyerListOrder');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setBuyerListOrder(parsed.filter((n) => typeof n === 'string'));
+        }
+      }
+    } catch (e) {
+      console.warn('[BuyerDetailPage] 買主リスト順の読み込みに失敗:', e);
+    }
+  }, []);
+
+  // 前へ/次への算出
+  const buyerListIndex = buyer_number ? buyerListOrder.indexOf(buyer_number) : -1;
+  const hasPrevBuyer = buyerListIndex > 0;
+  const prevBuyerNumber = hasPrevBuyer ? buyerListOrder[buyerListIndex - 1] : null;
+  const hasNextBuyer = buyerListIndex !== -1 && buyerListIndex < buyerListOrder.length - 1;
+  const nextBuyerNumber = hasNextBuyer ? buyerListOrder[buyerListIndex + 1] : null;
+  const buyerPosLabel = buyerListIndex !== -1 ? `${buyerListIndex + 1}/${buyerListOrder.length}` : '';
 
   // inquiry_source が '2件目以降' の場合、pinrich を自動セット（初期表示時）
   useEffect(() => {
@@ -1368,6 +1400,31 @@ export default function BuyerDetailPage() {
     }
   };
 
+  // SMS履歴を「×」で削除する
+  const handleDeleteSmsActivity = async (activityId: string) => {
+    if (!buyer_number) return;
+    if (!window.confirm('このSMS履歴を一覧から削除しますか？\nこの操作は取り消せません。')) return;
+
+    try {
+      await api.delete(`/api/activity-logs/${activityId}`, {
+        params: {
+          target_type: 'buyer',
+          target_id: buyer_number,
+          action: 'sms',
+        },
+      });
+      setActivities((current) => current.filter((item) => item.id !== activityId));
+      setSnackbar({ open: true, message: 'SMS履歴を削除しました', severity: 'success' });
+    } catch (err: any) {
+      console.error('SMS履歴の削除に失敗しました:', err);
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.error?.message || 'SMS履歴の削除に失敗しました',
+        severity: 'error',
+      });
+    }
+  };
+
   const fetchInquiryHistoryTable = async () => {
     try {
       setIsLoadingHistory(true);
@@ -1622,6 +1679,44 @@ export default function BuyerDetailPage() {
           >
             <ArrowBackIcon />
           </IconButton>
+          )}
+          {/* 前へ／次へボタン（買主一覧から遷移してきた場合のみ表示） */}
+          {buyerListIndex !== -1 && buyerListOrder.length > 0 && (
+            <Box sx={{ display: 'flex', gap: 0.5, mr: 1 }}>
+              <Button
+                variant="contained"
+                size="small"
+                disabled={!hasPrevBuyer}
+                sx={{
+                  fontSize: '0.7rem', py: 0.25, px: 0.75, minWidth: 0,
+                  bgcolor: '#43a047',
+                  '&:hover': { bgcolor: '#2e7d32' },
+                  '&.Mui-disabled': { bgcolor: '#c8e6c9', color: 'white' },
+                }}
+                onClick={() => {
+                  if (prevBuyerNumber) handleNavigate(`/buyers/${prevBuyerNumber}`);
+                }}
+              >
+                ◀ 前へ
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                disabled={!hasNextBuyer}
+                sx={{
+                  fontSize: '0.7rem', py: 0.25, px: 0.75, minWidth: 0,
+                  bgcolor: '#43a047',
+                  '&:hover': { bgcolor: '#2e7d32' },
+                  '&.Mui-disabled': { bgcolor: '#c8e6c9', color: 'white' },
+                }}
+                onClick={() => {
+                  if (nextBuyerNumber) handleNavigate(`/buyers/${nextBuyerNumber}`);
+                }}
+              >
+                {buyerPosLabel && <span style={{ fontSize: '0.65rem', marginRight: 2, opacity: 0.85 }}>{buyerPosLabel}</span>}
+                次へ ▶
+              </Button>
+            </Box>
           )}
           <Typography
             variant={isMobile ? 'body1' : 'h5'}
@@ -2254,9 +2349,30 @@ TEL：097-533-2022`;
                                 : (metadata.templateName || metadata.subject || '件名なし')}
                             </Typography>
                           </Box>
-                          <Typography variant="caption" color="text.secondary">
-                            {formatDateTime(activity.created_at)}
-                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              {formatDateTime(activity.created_at)}
+                            </Typography>
+                            {isSms && (
+                              <Tooltip title="このSMS履歴を削除">
+                                <IconButton
+                                  size="small"
+                                  aria-label="SMS履歴を削除"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    handleDeleteSmsActivity(activity.id);
+                                  }}
+                                  sx={{
+                                    p: 0.25,
+                                    color: 'text.secondary',
+                                    '&:hover': { color: 'error.main' },
+                                  }}
+                                >
+                                  <ClearIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                          </Box>
                         </Box>
                         {isSms ? (
                           <Box sx={{ width: '100%', mb: 1 }}>

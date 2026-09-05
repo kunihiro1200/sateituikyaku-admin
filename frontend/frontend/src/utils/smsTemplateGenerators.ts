@@ -357,7 +357,7 @@ export const generateUnreachableAfterValuationCheckSMS = (
  * const seller = { sellerNumber: 'AA13501', name: '佐藤花子' };
  * const message = '<<当社住所>>です。<<売買実績ｖ>>';
  * const result = replacePlaceholders(message, seller);
- * // 結果: '大分市舞鶴町1-3-30STビル１Fです。売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map'
+ * // 結果: '大分市舞鶴町1-3-30STビル１Fです。売買実績はこちら：bit.ly/3J61wzG'
  * ```
  */
 export const replacePlaceholders = (
@@ -415,8 +415,8 @@ export const replacePlaceholders = (
       result = result.replace(/<<売買実績ｖ>>/g, '');
       result = result.replace(/<<売買実績v>>/g, '');
     } else {
-      result = result.replace(/<<売買実績ｖ>>/g, '売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
-      result = result.replace(/<<売買実績v>>/g, '売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
+      result = result.replace(/<<売買実績ｖ>>/g, '売買実績はこちら：bit.ly/3J61wzG');
+      result = result.replace(/<<売買実績v>>/g, '売買実績はこちら：bit.ly/3J61wzG');
     }
 
     // 新規追加: ハードコードされた「大分市舞鶴町にございます」の変換
@@ -550,8 +550,8 @@ export const replacePlaceholders = (
 const replaceWithDefaults = (message: string): string => {
   let result = message;
   result = result.replace(/<<当社住所>>/g, '大分市舞鶴町1-3-30STビル１F');
-  result = result.replace(/<<売買実績ｖ>>/g, '売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
-  result = result.replace(/<<売買実績v>>/g, '売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
+  result = result.replace(/<<売買実績ｖ>>/g, '売買実績はこちら：bit.ly/3J61wzG');
+  result = result.replace(/<<売買実績v>>/g, '売買実績はこちら：bit.ly/3J61wzG');
   return result;
 };
 

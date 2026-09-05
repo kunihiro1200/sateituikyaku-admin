@@ -39,6 +39,8 @@ import { WorkTask, getStatusCategories, filterTasksByStatus, calculateTaskStatus
 import PageNavigation from '../components/PageNavigation';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 import { useNavigate } from 'react-router-dom';
+import { useWorkTaskPresenceSubscribe } from '../hooks/useListPresence';
+import PresenceChips from '../components/PresenceChips';
 
 /**
  * カテゴリーキー文字列からタブインデックスを返す
@@ -64,6 +66,8 @@ export default function WorkTasksPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
+  // プレゼンス購読（誰が今どの業務依頼を開いて作業しているか）
+  const { presenceState } = useWorkTaskPresenceSubscribe();
 
   const [allWorkTasks, setAllWorkTasks] = useState<WorkTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -504,14 +508,17 @@ export default function WorkTasksPage() {
                               <ContentCopyIcon sx={{ fontSize: 13, color: 'text.secondary' }} />
                             )}
                           </Box>
-                          {status && (
-                            <Chip
-                              label={status}
-                              size="small"
-                              color={status.includes('未') || status.includes('要') ? 'warning' : 'default'}
-                              sx={{ fontSize: '11px', height: 20, maxWidth: 160, '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' } }}
-                            />
-                          )}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <PresenceChips presenceState={presenceState} itemKey={task.property_number} size={20} />
+                            {status && (
+                              <Chip
+                                label={status}
+                                size="small"
+                                color={status.includes('未') || status.includes('要') ? 'warning' : 'default'}
+                                sx={{ fontSize: '11px', height: 20, maxWidth: 160, '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' } }}
+                              />
+                            )}
+                          </Box>
                         </Box>
                         {/* 2行目：物件所在 */}
                         <Typography variant="body2" sx={{ fontSize: '13px', mb: 0.25 }}>
@@ -564,6 +571,7 @@ export default function WorkTasksPage() {
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f5f5f5' }}>
                     <TableCell>物件番号</TableCell>
+                    <TableCell>作業中</TableCell>
                     <TableCell>物件所在</TableCell>
                     <TableCell>売主</TableCell>
                     <TableCell>営業担当</TableCell>
@@ -579,11 +587,11 @@ export default function WorkTasksPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={isOnHoldCategory ? 11 : 10} align="center">読み込み中...</TableCell>
+                      <TableCell colSpan={isOnHoldCategory ? 12 : 11} align="center">読み込み中...</TableCell>
                     </TableRow>
                   ) : paginatedTasks.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={isOnHoldCategory ? 11 : 10} align="center">業務データが見つかりませんでした</TableCell>
+                      <TableCell colSpan={isOnHoldCategory ? 12 : 11} align="center">業務データが見つかりませんでした</TableCell>
                     </TableRow>
                   ) : (
                     paginatedTasks.map((task) => {
@@ -616,6 +624,9 @@ export default function WorkTasksPage() {
                                 />
                               )}
                             </Box>
+                          </TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <PresenceChips presenceState={presenceState} itemKey={task.property_number} emptyPlaceholder="-" />
                           </TableCell>
                           <TableCell>{task.property_address || '-'}</TableCell>
                           <TableCell>{task.seller_name || '-'}</TableCell>
