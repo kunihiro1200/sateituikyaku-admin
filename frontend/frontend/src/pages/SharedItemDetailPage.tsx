@@ -97,6 +97,7 @@ export default function SharedItemDetailPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // 編集可能フィールド
+  const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [sharingDate, setSharingDate] = useState('');
   const [confirmationDate, setConfirmationDate] = useState('');
@@ -128,6 +129,7 @@ export default function SharedItemDetailPage() {
   const [finishedDialogOpen, setFinishedDialogOpen] = useState(false);
 
   // 初期値（変更検知用）
+  const [initialTitle, setInitialTitle] = useState('');
   const [initialContent, setInitialContent] = useState('');
   const [initialSharingDate, setInitialSharingDate] = useState('');
   const [initialConfirmationDate, setInitialConfirmationDate] = useState('');
@@ -136,6 +138,7 @@ export default function SharedItemDetailPage() {
   useEffect(() => {
     // idが変わったら古いデータをリセット
     setItem(null);
+    setTitle('');
     setContent('');
     setSharingDate('');
     setConfirmationDate('');
@@ -162,10 +165,13 @@ export default function SharedItemDetailPage() {
         const cd = foundItem['確認日'] || '';
         const sns = foundItem['共有できていない'] || '';
         const ct = foundItem['内容'] || '';
+        const tl = foundItem['タイトル'] || '';
+        setTitle(tl);
         setSharingDate(sd);
         setConfirmationDate(cd);
         setStaffNotShared(sns ? sns.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
         setContent(ct);
+        setInitialTitle(tl);
         setInitialSharingDate(sd);
         setInitialConfirmationDate(cd);
         setInitialStaffNotShared(sns);
@@ -303,6 +309,7 @@ export default function SharedItemDetailPage() {
         return item[key] || '';
       });
       const payload: Record<string, string> = {
+        'タイトル': title,
         'PDF1': pdfUrls[0], 'PDF2': pdfUrls[1], 'PDF3': pdfUrls[2], 'PDF4': pdfUrls[3], 'PDF5': pdfUrls[4],
         'PDF6': pdfUrls[5], 'PDF7': pdfUrls[6], 'PDF8': pdfUrls[7], 'PDF9': pdfUrls[8], 'PDF10': pdfUrls[9],
         '画像１': imageUrls[0], '画像２': imageUrls[1], '画像３': imageUrls[2], '画像４': imageUrls[3],
@@ -346,6 +353,7 @@ export default function SharedItemDetailPage() {
       setItem((prev) => (prev ? { ...prev, ...payloadForState } : prev));
       // 保存成功後にステートと初期値を同時に同じ値でセット → hasChanges が false になり保存ボタンがグレーに戻る
       setSharingDate(today);
+      setInitialTitle(title);
       setInitialSharingDate(today);
       setInitialConfirmationDate(confirmationDate);
       setInitialStaffNotShared(staffNotShared.join(','));
@@ -465,6 +473,7 @@ export default function SharedItemDetailPage() {
       }
 
       const payload: Record<string, string> = {
+        'タイトル': title,
         'PDF1': pdfUrls[0],
         'PDF2': pdfUrls[1],
         'PDF3': pdfUrls[2],
@@ -521,6 +530,7 @@ export default function SharedItemDetailPage() {
       setItem((prev) => (prev ? { ...prev, ...payloadForState } : prev));
       setNewPdfs([]);
       setNewImages([]);
+      setInitialTitle(title);
       setInitialSharingDate(sharingDate);
       setInitialConfirmationDate(confirmationDate);
       setInitialStaffNotShared(staffNotShared.join(','));
@@ -568,6 +578,7 @@ export default function SharedItemDetailPage() {
       const key = `画像${n === 1 ? '１' : n === 2 ? '２' : n === 3 ? '３' : n === 4 ? '４' : n === 5 ? '５' : n === 6 ? '６' : n === 7 ? '７' : n === 8 ? '８' : n === 9 ? '９' : '１０'}`;
       return item[key] === '';
     }) ||
+    title !== initialTitle ||
     content !== initialContent ||
     sharingDate !== initialSharingDate ||
     confirmationDate !== initialConfirmationDate ||
@@ -711,11 +722,15 @@ export default function SharedItemDetailPage() {
                 sx={{ mt: 1, '& .MuiOutlinedInput-root': { bgcolor: `${color.light}15` } }}
               />
             ) : (
-              <TextField fullWidth value={item['タイトル'] || ''} disabled
+              <TextField
+                fullWidth
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
                 sx={{ mt: 1,
-                  '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: color.main, fontWeight: 'bold', fontSize: '1.1rem' },
                   '& .MuiOutlinedInput-root': { bgcolor: `${color.light}15` },
-                }} />
+                  '& .MuiInputBase-input': { fontWeight: 'bold', fontSize: '1.1rem', color: color.main },
+                }}
+              />
             )}
           </Grid>
 
