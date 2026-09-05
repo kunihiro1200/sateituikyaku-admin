@@ -600,8 +600,9 @@ export default function PropertyListingsPage() {
       return;
     }
 
-    // 「レインズ登録＋SUUMO URL 要登録」カテゴリー選択中はレインズ登録ページへ直接遷移
-    if (sidebarStatus === 'レインズ登録＋SUUMO URL 要登録') {
+    // 「レインズ登録＋SUUMO URL 要登録」（専任）カテゴリー選択中はレインズ登録ページへ直接遷移
+    // 「SUUMO URL　要登録」（一般）カテゴリーも同様にサイト公開お知らせメールを送るためレインズ登録ページへ直接遷移
+    if (sidebarStatus === 'レインズ登録＋SUUMO URL 要登録' || sidebarStatus === 'SUUMO URL　要登録') {
       console.log('[handleRowClick] レインズ登録ページへ直接遷移');
       navigate(`/property-listings/${propertyNumber}/reins-registration`);
       return;
