@@ -917,11 +917,13 @@ export class SellerPortalService extends BaseRepository {
   }> {
     const isFi = (sellerNumber: string | null | undefined) => (sellerNumber || '').toUpperCase().startsWith('FI');
 
-    // このURL自体へのアクセス数：トークンごとのaccess_countを合算する
-    // （access_countはverifyToken()経由の全アクセスの合計。同じ売主が複数トークンを持つ場合もあるため全件合算する）
+    // このURL自体へのアクセス数：有効（revoked_atがnull）なトークンのみ合算する。
+    // 失効済みトークン（再発行後に古くなったもの）は除外し、実際の閲覧回数に近い値を出す。
     const totalUrlAccessCount = { all: 0, fukuoka: 0, oita: 0 };
     {
-      const { data: tokens } = await this.table('seller_portal_tokens').select('seller_number, access_count');
+      const { data: tokens } = await this.table('seller_portal_tokens')
+        .select('seller_number, access_count')
+        .is('revoked_at', null);
       for (const row of tokens ?? []) {
         const count = row.access_count ?? 0;
         totalUrlAccessCount.all += count;
@@ -966,6 +968,96 @@ export class SellerPortalService extends BaseRepository {
     }
 
     return { totalUrlAccessCount, sectionViewCounts };
+  }
+
+  /**
+   * 特定のセクション（または'url_access'）にアクセスした売主の一覧を返す。
+   * 全体分析ダッシュボードで行をクリックしたときに呼ぶ。
+   * 返すフィールド: seller_number, activeUrl（専用URL）, viewCount（そのセクションのアクセス回数）
+   *
+   * section='url_access' を指定すると、有効なトークンを持つ全売主の一覧を返す（URLアクセス行用）。
+   */
+  async getAnalyticsDetail(
+    section: string
+  ): Promise<Array<{ sellerNumber: string; activeUrl: string | null; viewCount: number }>> {
+    const frontendBaseUrl = (process.env.NODE_ENV === 'production'
+      ? 'https://sateituikyaku-admin-frontend.vercel.app'
+      : (process.env.FRONTEND_URL?.split(',')[0]?.trim() || 'http://localhost:5173'));
+
+    if (section === 'url_access') {
+      // 有効なトークンを持つ全売主のアクセス回数
+      const { data: tokens } = await this.table('seller_portal_tokens')
+        .select('seller_number, token_encrypted, access_count')
+        .is('revoked_at', null)
+        .not('token_encrypted', 'is', null)
+        .order('access_count', { ascending: false });
+
+      const result: Array<{ sellerNumber: string; activeUrl: string | null; viewCount: number }> = [];
+      for (const row of tokens ?? []) {
+        let plainToken: string | null = null;
+        try {
+          const { decrypt } = await import('../utils/encryption');
+          plainToken = decrypt(row.token_encrypted);
+        } catch { /* 復号失敗は無視 */ }
+        result.push({
+          sellerNumber: row.seller_number,
+          activeUrl: plainToken ? `${frontendBaseUrl}/portal/${plainToken}` : null,
+          viewCount: row.access_count ?? 0,
+        });
+      }
+      return result;
+    }
+
+    // セクション別：そのセクションにアクセスした seller_number ごとのカウント
+    const pageSize = 1000;
+    let from = 0;
+    const countMap: Record<string, number> = {};
+    while (true) {
+      const { data: rows, error } = await this.table('seller_portal_section_views')
+        .select('seller_number')
+        .eq('section', section)
+        .range(from, from + pageSize - 1);
+      if (error || !rows || rows.length === 0) break;
+      for (const row of rows) {
+        countMap[row.seller_number] = (countMap[row.seller_number] ?? 0) + 1;
+      }
+      if (rows.length < pageSize) break;
+      from += pageSize;
+    }
+
+    // seller_numberに対応する有効なトークン（activeUrl）を取得する
+    const sellerNumbers = Object.keys(countMap);
+    if (sellerNumbers.length === 0) return [];
+
+    const urlMap: Record<string, string | null> = {};
+    const chunkSize = 500;
+    for (let i = 0; i < sellerNumbers.length; i += chunkSize) {
+      const chunk = sellerNumbers.slice(i, i + chunkSize);
+      const { data: tokens } = await this.table('seller_portal_tokens')
+        .select('seller_number, token_encrypted')
+        .in('seller_number', chunk)
+        .is('revoked_at', null)
+        .not('token_encrypted', 'is', null)
+        .order('issued_at', { ascending: false });
+      // seller_numberごとに最新のトークンだけを使う（複数ある場合は先頭）
+      const seen = new Set<string>();
+      for (const row of tokens ?? []) {
+        if (seen.has(row.seller_number)) continue;
+        seen.add(row.seller_number);
+        try {
+          const { decrypt } = await import('../utils/encryption');
+          urlMap[row.seller_number] = `${frontendBaseUrl}/portal/${decrypt(row.token_encrypted)}`;
+        } catch { urlMap[row.seller_number] = null; }
+      }
+    }
+
+    return Object.entries(countMap)
+      .sort((a, b) => b[1] - a[1]) // アクセス回数降順
+      .map(([sellerNumber, viewCount]) => ({
+        sellerNumber,
+        activeUrl: urlMap[sellerNumber] ?? null,
+        viewCount,
+      }));
   }
 }
 

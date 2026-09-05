@@ -543,6 +543,24 @@ router.get('/admin/:sellerId/portal-url', authenticate, async (req: Request, res
 });
 
 /**
+ * GET /api/seller-portal/admin/analytics-detail?section=valuation
+ * 分析ダッシュボードで行をクリックしたときに、そのセクションにアクセスした
+ * 売主番号・専用URL・アクセス回数の一覧を返す。
+ * section='url_access' で有効トークンを持つ全売主を返す（URLアクセス行用）。
+ */
+router.get('/admin/analytics-detail', authenticate, async (req: Request, res: Response) => {
+  try {
+    const section = req.query.section as string;
+    if (!section) return res.status(400).json({ error: 'sectionが必要です' });
+    const detail = await sellerPortalService.getAnalyticsDetail(section);
+    res.json({ success: true, detail });
+  } catch (error: any) {
+    console.error('[SellerPortal] GET /admin/analytics-detail error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/seller-portal/admin/analytics-summary
  * 全体分析ダッシュボード用：このURL自体のアクセス数・セクション別アクセス数・
  * PWA保存ボタンのクリック数を、福岡（FI）/大分（FI以外）/全体（合計）別に返す。
