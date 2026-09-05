@@ -105,6 +105,24 @@ export function replacePortalUrlPlaceholder(content: string, portalUrl: string |
   return content.split(PORTAL_URL_PLACEHOLDER).join(portalUrl);
 }
 
+/**
+ * <<売却サポートURL>> プレースホルダーを、URLそのままではなく
+ * クリック可能なリンクテキスト（<a>タグ）に置換する。
+ * メール本文はHTML化されるためリンクとして機能する（SMSはプレーンテキストのため対象外、
+ * SMSでは従来の replacePortalUrlPlaceholder でURLそのまま表示する）。
+ * URLが未発行・取得失敗の場合はプレースホルダーをそのまま残す。
+ */
+export function replacePortalUrlPlaceholderAsLink(
+  content: string,
+  portalUrl: string | null | undefined,
+  linkText: string = '査定の根拠、手残りリストはこちら'
+): string {
+  if (!content.includes(PORTAL_URL_PLACEHOLDER)) return content;
+  if (!portalUrl) return content;
+  const anchor = `<a href="${portalUrl}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+  return content.split(PORTAL_URL_PLACEHOLDER).join(anchor);
+}
+
 export const emailTemplates: EmailTemplate[] = [
   {
     id: 'visit_thank_you',

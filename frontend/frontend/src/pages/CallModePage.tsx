@@ -80,7 +80,7 @@ import {
   replacePlaceholders,
 } from '../utils/smsTemplateGenerators';
 import { formatNetProceedsEmailSection } from '../utils/netProceedsCalculator';
-import { emailTemplates, replaceFIUrls, isValuationNoticeTemplate, replacePortalUrlPlaceholder, PORTAL_URL_PLACEHOLDER } from '../utils/emailTemplates';
+import { emailTemplates, replaceFIUrls, isValuationNoticeTemplate, replacePortalUrlPlaceholder, replacePortalUrlPlaceholderAsLink, PORTAL_URL_PLACEHOLDER } from '../utils/emailTemplates';
 import SenderAddressSelector from '../components/SenderAddressSelector';
 import { getActiveEmployees, Employee } from '../services/employeeService';
 import SellerStatusSidebar from '../components/SellerStatusSidebar';
@@ -4635,10 +4635,12 @@ HP：https://ifoo-oita.com/
         replacedContent = replaceFIUrls(replacedContent, seller?.sellerNumber);
       }
       // <<売却サポートURL>> プレースホルダーが本文・件名に含まれていれば、実際のURLに置換する
+      // 本文はHTML化されるため、URLをそのまま貼らずクリック可能なリンクテキストに変換する
       let replacedSubjectFinal = replacedSubject;
       if (replacedContent.includes(PORTAL_URL_PLACEHOLDER) || replacedSubjectFinal.includes(PORTAL_URL_PLACEHOLDER)) {
         const portalUrl = await fetchSellerPortalUrl();
-        replacedContent = replacePortalUrlPlaceholder(replacedContent, portalUrl);
+        replacedContent = replacePortalUrlPlaceholderAsLink(replacedContent, portalUrl);
+        // 件名はHTML化されないため、リンク化はできずURLをそのまま置換する
         replacedSubjectFinal = replacePortalUrlPlaceholder(replacedSubjectFinal, portalUrl);
       }
       const htmlContent = replacedContent.replace(/\n/g, '<br>');
@@ -4693,9 +4695,11 @@ HP：https://ifoo-oita.com/
       replacedContent = replaceFIUrls(replacedContent, seller?.sellerNumber);
     }
     // <<売却サポートURL>> プレースホルダーが本文・件名に含まれていれば、実際のURLに置換する
+    // 本文はHTML化されるため、URLをそのまま貼らずクリック可能なリンクテキストに変換する
     if (replacedContent.includes(PORTAL_URL_PLACEHOLDER) || replacedSubject.includes(PORTAL_URL_PLACEHOLDER)) {
       const portalUrl = await fetchSellerPortalUrl();
-      replacedContent = replacePortalUrlPlaceholder(replacedContent, portalUrl);
+      replacedContent = replacePortalUrlPlaceholderAsLink(replacedContent, portalUrl);
+      // 件名はHTML化されないため、リンク化はできずURLをそのまま置換する
       replacedSubject = replacePortalUrlPlaceholder(replacedSubject, portalUrl);
     }
 
