@@ -140,6 +140,22 @@ export const generateNetProceedsValuationSMS = (
 };
 
 /**
+ * 査定Sメール２
+ * 売却サポートページ（査定の根拠・手残りリスト）へのURL案内専用SMS。
+ * <<売却サポートURL>> はCallModePage.handleSmsTemplateSelect側で
+ * 実際のURLに置換される（SMSはプレーンテキストのためURLそのまま表示）。
+ */
+export const generateValuationSMS2 = (
+  seller: Seller,
+  property: PropertyInfo | null
+): string => {
+  let message = `査定の根拠と　手残りリストはこちらから[改行]<<売却サポートURL>>`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
+
+/**
  * 4. 訪問事前通知メール
  * 訪問予定日の前日に送信（木曜日の場合は明後日表記）
  */
