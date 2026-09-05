@@ -1656,17 +1656,8 @@ export class SellerService extends BaseRepository {
           query = query.not('match_updated_at', 'is', null);
           break;
         case 'sellerPortalAttention': {
-          // 売却サポート：対応要（sellersとは別テーブルのため、対象seller_idをJSでマージしてから絞り込む）
-          // 対象: ①買取依頼済み・未確認 ②売主からの未読メッセージあり
-          // 「いつまでに売りたいですか？」の入力通知は sellerPortalScheduleAttention に分離した。
-          const attentionSellerIds = new Set<string>();
-
-          const { data: pendingBuyout } = await this.supabase
-            .from('seller_portal_preferences')
-            .select('seller_id')
-            .not('buyout_requested_at', 'is', null)
-            .is('staff_confirmed_buyout_at', null);
-          (pendingBuyout ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
+          // 売却サポート：対応要（未読メッセージのみ。買取依頼は sellerPortalBuyoutAttention に分離した）
+          const unreadSellerIds = new Set<string>();
 
           const { data: unreadMessages } = await this.supabase
             .from('seller_portal_messages')
@@ -1683,16 +1674,32 @@ export class SellerService extends BaseRepository {
                 .from('seller_portal_conversations')
                 .select('seller_id')
                 .in('id', chunk);
-              (conversations ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
+              (conversations ?? []).forEach((row: any) => unreadSellerIds.add(row.seller_id));
             }
           }
 
-          const attentionIdList = Array.from(attentionSellerIds);
+          const attentionIdList = Array.from(unreadSellerIds);
           if (attentionIdList.length === 0) {
             // 該当なし → 空結果を返すため存在しないIDを指定
             query = query.eq('id', '00000000-0000-0000-0000-000000000000');
           } else {
             query = query.in('id', attentionIdList);
+          }
+          break;
+        }
+        case 'sellerPortalBuyoutAttention': {
+          // 売却サポート：買取依頼・未確認（独立カテゴリー）
+          const { data: pendingBuyout } = await this.supabase
+            .from('seller_portal_preferences')
+            .select('seller_id')
+            .not('buyout_requested_at', 'is', null)
+            .is('staff_confirmed_buyout_at', null);
+          const buyoutIdList = Array.from(new Set((pendingBuyout ?? []).map((row: any) => row.seller_id)));
+
+          if (buyoutIdList.length === 0) {
+            query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+          } else {
+            query = query.in('id', buyoutIdList);
           }
           break;
         }
@@ -3131,8 +3138,10 @@ export class SellerService extends BaseRepository {
     visitThankYouPendingCounts: Record<string, number>;
     visitPreparationPending: number;
     sellerPortalAttention?: number;
+    sellerPortalBuyoutAttention?: number;
     sellerPortalScheduleAttention?: number;
     fi_sellerPortalAttention?: number;
+    fi_sellerPortalBuyoutAttention?: number;
     fi_sellerPortalScheduleAttention?: number;
   }> {
     try {
@@ -3235,8 +3244,10 @@ export class SellerService extends BaseRepository {
       visitThankYouPendingCounts,
       visitPreparationPending: getCount('visitPreparationPending'),
       sellerPortalAttention: getCount('sellerPortalAttention'),
+      sellerPortalBuyoutAttention: getCount('sellerPortalBuyoutAttention'),
       sellerPortalScheduleAttention: getCount('sellerPortalScheduleAttention'),
       fi_sellerPortalAttention: getCount('fi_sellerPortalAttention'),
+      fi_sellerPortalBuyoutAttention: getCount('fi_sellerPortalBuyoutAttention'),
       fi_sellerPortalScheduleAttention: getCount('fi_sellerPortalScheduleAttention'),
     };
   }
@@ -3722,8 +3733,10 @@ export class SellerService extends BaseRepository {
       visitThankYouPendingCounts: {},  // フォールバック時は空（seller_sidebar_countsテーブルから取得）
       visitPreparationPending: visitPreparationPendingCount || 0,
       sellerPortalAttention: 0, // フォールバック時は0（seller_sidebar_countsテーブルから取得するのが通常パス）
+      sellerPortalBuyoutAttention: 0,
       sellerPortalScheduleAttention: 0, // フォールバック時は0（seller_sidebar_countsテーブルから取得するのが通常パス）
       fi_sellerPortalAttention: 0,
+      fi_sellerPortalBuyoutAttention: 0,
       fi_sellerPortalScheduleAttention: 0,
     };
 

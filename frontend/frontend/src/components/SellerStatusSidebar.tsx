@@ -174,6 +174,7 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
     case 'visitPreparationPending':
       return sellers.filter(isVisitPreparationPending);
     case 'sellerPortalAttention':
+    case 'sellerPortalBuyoutAttention':
     case 'sellerPortalScheduleAttention':
       // sellers単体では判定できない（seller_portal_*の別テーブルとのJOINが必要なため）。
       // 展開リストは対象外とし、件数のみ表示する。誤って全件を返さないよう空配列にする。
@@ -222,6 +223,8 @@ const getCategoryLabel = (category: StatusCategory): string => {
       return '訪問準備未';
     case 'sellerPortalAttention':
       return '売却サポート：対応要';
+    case 'sellerPortalBuyoutAttention':
+      return '売却サポート：買取依頼';
     case 'sellerPortalScheduleAttention':
       return '売却サポート：売却希望時期';
     case 'fi':
@@ -294,6 +297,8 @@ const getCategoryColor = (category: StatusCategory): string => {
       return '#c62828';
     case 'sellerPortalAttention':
       return '#00897b';
+    case 'sellerPortalBuyoutAttention':
+      return '#f57c00';
     case 'sellerPortalScheduleAttention':
       return '#00acc1';
     case 'fi':
@@ -780,9 +785,10 @@ function SellerStatusSidebarComponent({
     const fiMailingPending = categoryCounts?.fi_mailingPending ?? 0;
     const fiLabelCounts = categoryCounts?.fi_todayCallWithInfoLabelCounts ?? {};
     const fiSellerPortalAttention = categoryCounts?.fi_sellerPortalAttention ?? 0;
+    const fiSellerPortalBuyoutAttention = categoryCounts?.fi_sellerPortalBuyoutAttention ?? 0;
     const fiSellerPortalScheduleAttention = categoryCounts?.fi_sellerPortalScheduleAttention ?? 0;
     const fiTotal = fiTodayCall + fiTodayCallNotStarted + fiTodayCallWithInfo + fiUnvaluated + fiMailingPending
-      + fiSellerPortalAttention + fiSellerPortalScheduleAttention;
+      + fiSellerPortalAttention + fiSellerPortalBuyoutAttention + fiSellerPortalScheduleAttention;
 
     // FI売主が1件もない場合は表示しない
     if (fiTotal === 0 && Object.keys(fiLabelCounts).length === 0) return null;
@@ -859,6 +865,9 @@ function SellerStatusSidebarComponent({
 
         {/* 売却サポート：対応要（FI） */}
         {renderFiButton(`${FI_PREFIX}sellerPortalAttention` as StatusCategory, '売却サポート：対応要', fiSellerPortalAttention, '#00897b')}
+
+        {/* 売却サポート：買取依頼（FI） */}
+        {renderFiButton(`${FI_PREFIX}sellerPortalBuyoutAttention` as StatusCategory, '売却サポート：買取依頼', fiSellerPortalBuyoutAttention, '#f57c00')}
 
         {/* 売却サポート：売却希望時期（FI） */}
         {renderFiButton(`${FI_PREFIX}sellerPortalScheduleAttention` as StatusCategory, '売却サポート：売却希望時期', fiSellerPortalScheduleAttention, '#00acc1')}
@@ -1227,6 +1236,7 @@ function SellerStatusSidebarComponent({
       {renderCategoryButton('pinrichEmpty', '⑧Pinrich空欄', '#795548')}
       {renderCategoryButton('matching', 'マッチング', '#9c27b0')}
       {renderCategoryButton('sellerPortalAttention', '売却サポート：対応要', '#00897b')}
+      {renderCategoryButton('sellerPortalBuyoutAttention', '売却サポート：買取依頼', '#f57c00')}
       {renderCategoryButton('sellerPortalScheduleAttention', '売却サポート：売却希望時期', '#00acc1')}
       <Button
         fullWidth

@@ -288,8 +288,10 @@ export default function SellersPage() {
     visitThankYouPendingCounts?: Record<string, number>;
     visitPreparationPending?: number;
     sellerPortalAttention?: number;
+    sellerPortalBuyoutAttention?: number;
     sellerPortalScheduleAttention?: number;
     fi_sellerPortalAttention?: number;
+    fi_sellerPortalBuyoutAttention?: number;
     fi_sellerPortalScheduleAttention?: number;
   }>({
     todayCall: 0,

@@ -335,26 +335,32 @@ export class SellerSidebarCountsUpdateService {
         }
       });
 
-      // 売却サポートページ：対応が必要（買取依頼、または売主からの未読メッセージ）
-      // 「いつまでに売りたいですか？」（決済希望月）の入力通知は別カテゴリー（sellerPortalScheduleAttention）に分離した。
+      // 売却サポートページ：対応が必要（未読メッセージのみ）と、買取依頼（独立カテゴリー）
+      // 「いつまでに売りたいですか？」（決済希望月）の入力通知は別カテゴリー（sellerPortalScheduleAttention）に分離済み。
       // seller_portal_* テーブルは sellers とは別テーブルのため、visitThankYouPending と同じ
       // 「候補IDを取得してJSでマージ」方式で件数を求める。
       // 🚨 FI（福岡）/非FI（大分）で別カテゴリーとして分離表示するため、件数だけでなくSetも保持する。
-      let sellerPortalAttentionCount = 0;
+      let sellerPortalAttentionCount = 0;     // 未読メッセージのみ（大分）
+      let sellerPortalBuyoutCount = 0;        // 買取依頼・未確認（大分）
       let sellerPortalScheduleAttentionCount = 0;
-      let fiSellerPortalAttentionCount = 0;
+      let fiSellerPortalAttentionCount = 0;   // 未読メッセージのみ（福岡）
+      let fiSellerPortalBuyoutCount = 0;      // 買取依頼・未確認（福岡）
       let fiSellerPortalScheduleAttentionCount = 0;
       {
-        const attentionSellerIds = new Set<string>();
-
-        // 買取依頼済み・未確認（売却スケジュールが3ヶ月以内に圧縮される場合の「買取依頼」ボタンから）
+        // ① 買取依頼済み・未確認（独立カテゴリーに分離）
+        const buyoutSellerIds = new Set<string>();
         const { data: pendingBuyout } = await this.supabase
           .from('seller_portal_preferences')
           .select('seller_id')
           .not('buyout_requested_at', 'is', null)
           .is('staff_confirmed_buyout_at', null);
-        (pendingBuyout ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
+        (pendingBuyout ?? []).forEach((row: any) => buyoutSellerIds.add(row.seller_id));
+        const { fi: fiBuyout, nonFi: nonFiBuyout } = await splitSellerIdsByFi(this.supabase, buyoutSellerIds);
+        fiSellerPortalBuyoutCount = fiBuyout.size;
+        sellerPortalBuyoutCount = nonFiBuyout.size;
 
+        // ② 未読メッセージあり（sellerPortalAttention = 未読のみ）
+        const unreadSellerIds = new Set<string>();
         const { data: unreadMessages } = await this.supabase
           .from('seller_portal_messages')
           .select('conversation_id')
@@ -370,14 +376,12 @@ export class SellerSidebarCountsUpdateService {
               .from('seller_portal_conversations')
               .select('seller_id')
               .in('id', chunk);
-            (conversations ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
+            (conversations ?? []).forEach((row: any) => unreadSellerIds.add(row.seller_id));
           }
         }
-
-        sellerPortalAttentionCount = attentionSellerIds.size;
-        const { fi: fiAttention, nonFi: nonFiAttention } = await splitSellerIdsByFi(this.supabase, attentionSellerIds);
-        fiSellerPortalAttentionCount = fiAttention.size;
-        sellerPortalAttentionCount = nonFiAttention.size; // 大分（非FI）のみを既存カテゴリーの件数とする
+        const { fi: fiUnread, nonFi: nonFiUnread } = await splitSellerIdsByFi(this.supabase, unreadSellerIds);
+        fiSellerPortalAttentionCount = fiUnread.size;
+        sellerPortalAttentionCount = nonFiUnread.size;
 
         // 「いつまでに売りたいですか？」（決済希望月）入力済み・未確認（別カテゴリー）
         const scheduleAttentionSellerIds = new Set<string>();
@@ -389,7 +393,7 @@ export class SellerSidebarCountsUpdateService {
         (pendingSettlement ?? []).forEach((row: any) => scheduleAttentionSellerIds.add(row.seller_id));
         const { fi: fiSchedule, nonFi: nonFiSchedule } = await splitSellerIdsByFi(this.supabase, scheduleAttentionSellerIds);
         fiSellerPortalScheduleAttentionCount = fiSchedule.size;
-        sellerPortalScheduleAttentionCount = nonFiSchedule.size; // 大分（非FI）のみ
+        sellerPortalScheduleAttentionCount = nonFiSchedule.size;
       }
 
       // 14. 訪問準備未カウント用データ（FI売主除外・訪問日が対象開始日以降・カレンダー未確認）
@@ -739,12 +743,15 @@ export class SellerSidebarCountsUpdateService {
         rows.push({ category: 'visitThankYouPending', count, label: null, assignee });
       });
 
-      // 売却サポートページ：対応が必要（買取依頼・未読メッセージ）大分（非FI）分
+      // 売却サポートページ：対応が必要（未読メッセージのみ）大分（非FI）分
       rows.push({ category: 'sellerPortalAttention', count: sellerPortalAttentionCount, label: null, assignee: null });
+      // 売却サポートページ：買取依頼・未確認（独立カテゴリー）大分（非FI）分
+      rows.push({ category: 'sellerPortalBuyoutAttention', count: sellerPortalBuyoutCount, label: null, assignee: null });
       // 売却サポートページ：いつまでに売りたいですか？入力あり（別カテゴリー）大分（非FI）分
       rows.push({ category: 'sellerPortalScheduleAttention', count: sellerPortalScheduleAttentionCount, label: null, assignee: null });
       // 福岡（FI）分は別カテゴリーとして分離表示する
       rows.push({ category: 'fi_sellerPortalAttention', count: fiSellerPortalAttentionCount, label: null, assignee: null });
+      rows.push({ category: 'fi_sellerPortalBuyoutAttention', count: fiSellerPortalBuyoutCount, label: null, assignee: null });
       rows.push({ category: 'fi_sellerPortalScheduleAttention', count: fiSellerPortalScheduleAttentionCount, label: null, assignee: null });
 
       const { error: insertError } = await this.supabase
@@ -770,15 +777,26 @@ export class SellerSidebarCountsUpdateService {
    */
   async updateSellerPortalAttentionCategory(): Promise<void> {
     try {
-      const attentionSellerIds = new Set<string>();
-
+      // ① 買取依頼済み・未確認（独立カテゴリー sellerPortalBuyoutAttention に分離）
+      const buyoutSellerIds = new Set<string>();
       const { data: pendingBuyout } = await this.supabase
         .from('seller_portal_preferences')
         .select('seller_id')
         .not('buyout_requested_at', 'is', null)
         .is('staff_confirmed_buyout_at', null);
-      (pendingBuyout ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
+      (pendingBuyout ?? []).forEach((row: any) => buyoutSellerIds.add(row.seller_id));
 
+      const { fi: fiBuyout, nonFi: nonFiBuyout } = await splitSellerIdsByFi(this.supabase, buyoutSellerIds);
+      await this.supabase.from('seller_sidebar_counts').delete().eq('category', 'sellerPortalBuyoutAttention');
+      await this.supabase.from('seller_sidebar_counts')
+        .insert({ category: 'sellerPortalBuyoutAttention', count: nonFiBuyout.size, label: null, assignee: null });
+      await this.supabase.from('seller_sidebar_counts').delete().eq('category', 'fi_sellerPortalBuyoutAttention');
+      await this.supabase.from('seller_sidebar_counts')
+        .insert({ category: 'fi_sellerPortalBuyoutAttention', count: fiBuyout.size, label: null, assignee: null });
+      console.log(`✅ [SidebarCounts] sellerPortalBuyoutAttention: 大分=${nonFiBuyout.size} / 福岡=${fiBuyout.size}`);
+
+      // ② 未読メッセージあり（sellerPortalAttention = 未読のみ、買取依頼は含まない）
+      const unreadSellerIds = new Set<string>();
       const { data: unreadMessages } = await this.supabase
         .from('seller_portal_messages')
         .select('conversation_id')
@@ -794,26 +812,23 @@ export class SellerSidebarCountsUpdateService {
             .from('seller_portal_conversations')
             .select('seller_id')
             .in('id', chunk);
-          (conversations ?? []).forEach((row: any) => attentionSellerIds.add(row.seller_id));
+          (conversations ?? []).forEach((row: any) => unreadSellerIds.add(row.seller_id));
         }
       }
 
-      // 🚨 福岡（FI）/大分（非FI）で別カテゴリーとして分離表示する
-      const { fi: fiAttention, nonFi: nonFiAttention } = await splitSellerIdsByFi(this.supabase, attentionSellerIds);
+      const { fi: fiUnread, nonFi: nonFiUnread } = await splitSellerIdsByFi(this.supabase, unreadSellerIds);
 
       await this.supabase.from('seller_sidebar_counts').delete().eq('category', 'sellerPortalAttention');
-      await this.supabase
-        .from('seller_sidebar_counts')
-        .insert({ category: 'sellerPortalAttention', count: nonFiAttention.size, label: null, assignee: null });
+      await this.supabase.from('seller_sidebar_counts')
+        .insert({ category: 'sellerPortalAttention', count: nonFiUnread.size, label: null, assignee: null });
 
       await this.supabase.from('seller_sidebar_counts').delete().eq('category', 'fi_sellerPortalAttention');
-      await this.supabase
-        .from('seller_sidebar_counts')
-        .insert({ category: 'fi_sellerPortalAttention', count: fiAttention.size, label: null, assignee: null });
+      await this.supabase.from('seller_sidebar_counts')
+        .insert({ category: 'fi_sellerPortalAttention', count: fiUnread.size, label: null, assignee: null });
 
-      console.log(`✅ [SidebarCounts] sellerPortalAttention updated: 大分=${nonFiAttention.size} / 福岡=${fiAttention.size}`);
+      console.log(`✅ [SidebarCounts] sellerPortalAttention(未読): 大分=${nonFiUnread.size} / 福岡=${fiUnread.size}`);
 
-      // 「いつまでに売りたいですか？」（決済希望月）入力通知は別カテゴリーとして更新する
+      // ③「いつまでに売りたいですか？」入力通知（別カテゴリー）
       const scheduleAttentionSellerIds = new Set<string>();
       const { data: pendingSettlement } = await this.supabase
         .from('seller_portal_preferences')
@@ -825,16 +840,14 @@ export class SellerSidebarCountsUpdateService {
       const { fi: fiSchedule, nonFi: nonFiSchedule } = await splitSellerIdsByFi(this.supabase, scheduleAttentionSellerIds);
 
       await this.supabase.from('seller_sidebar_counts').delete().eq('category', 'sellerPortalScheduleAttention');
-      await this.supabase
-        .from('seller_sidebar_counts')
+      await this.supabase.from('seller_sidebar_counts')
         .insert({ category: 'sellerPortalScheduleAttention', count: nonFiSchedule.size, label: null, assignee: null });
 
       await this.supabase.from('seller_sidebar_counts').delete().eq('category', 'fi_sellerPortalScheduleAttention');
-      await this.supabase
-        .from('seller_sidebar_counts')
+      await this.supabase.from('seller_sidebar_counts')
         .insert({ category: 'fi_sellerPortalScheduleAttention', count: fiSchedule.size, label: null, assignee: null });
 
-      console.log(`✅ [SidebarCounts] sellerPortalScheduleAttention updated: 大分=${nonFiSchedule.size} / 福岡=${fiSchedule.size}`);
+      console.log(`✅ [SidebarCounts] sellerPortalScheduleAttention: 大分=${nonFiSchedule.size} / 福岡=${fiSchedule.size}`);
     } catch (error) {
       console.error('❌ [SidebarCounts] sellerPortalAttention update failed:', error);
       // このカテゴリーの更新失敗はチャット送信・希望条件保存の成功を妨げない（呼び出し元でcatchする想定）
