@@ -1,6 +1,13 @@
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, keyframes } from '@mui/material';
+import SwipeRightAltIcon from '@mui/icons-material/SwipeRightAlt';
 
 const fmtMan = (yen: number) => `${Math.round(yen / 10000).toLocaleString()}万円`;
+
+/** スワイプアイコンを左右に軽く揺らして、スクロールできることに気づきやすくする */
+const swipeBounce = keyframes`
+  0%, 100% { transform: translateX(0); opacity: 0.6; }
+  50% { transform: translateX(8px); opacity: 1; }
+`;
 const fmtYen = (yen: number) => `${yen.toLocaleString()}円`;
 
 export interface ProceedsTableRow {
@@ -19,9 +26,30 @@ export interface ProceedsTableRow {
 export default function ProceedsTable({ rows }: { rows: ProceedsTableRow[] }) {
   if (rows.length === 0) return null;
   const detailLabels = rows[0].details.map((d) => d.label);
+  // 内訳列が2つ以下（ざっくり手残り）はスマホでも収まりやすいが、
+  // 詳細手残り（内訳5項目）は必ず横スクロールが必要になるため、テーブルの上に案内を出す。
+  // スマホ幅（sm未満）でのみ表示し、PCでは出さない（横に収まるため不要）。
+  const needsScrollHint = detailLabels.length >= 2;
 
   return (
-    <Box sx={{ overflowX: 'auto' }}>
+    <Box>
+      {needsScrollHint && (
+        <Box
+          sx={{
+            display: { xs: 'flex', sm: 'none' },
+            alignItems: 'center',
+            gap: 0.5,
+            mb: 0.75,
+            color: 'primary.main',
+          }}
+        >
+          <SwipeRightAltIcon fontSize="small" sx={{ animation: `${swipeBounce} 1.2s ease-in-out infinite` }} />
+          <Typography variant="caption" fontWeight="bold" color="primary.main">
+            左右にスライドすると「手残り」まで確認できます
+          </Typography>
+        </Box>
+      )}
+      <Box sx={{ overflowX: 'auto' }}>
       <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', minWidth: 420 }}>
         <Box component="thead">
           <Box component="tr">
@@ -47,6 +75,7 @@ export default function ProceedsTable({ rows }: { rows: ProceedsTableRow[] }) {
             </Box>
           ))}
         </Box>
+      </Box>
       </Box>
     </Box>
   );
