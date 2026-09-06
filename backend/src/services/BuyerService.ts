@@ -2503,7 +2503,10 @@ export class BuyerService {
     // getStatusCategoriesWithBuyers() が先に呼ばれた場合はここでキャッシュヒットする
     if (_moduleLevelStatusCache && (Date.now() - _moduleLevelStatusCache.computedAt) < CACHE_TTL) {
       console.log('🔍 [BuyerService] getSidebarCounts - cache hit (skipping DB access)');
-      return this._buildSidebarCountsFromCache(_moduleLevelStatusCache.buyers);
+      const { categoryCounts } = this._buildSidebarCountsFromCache(_moduleLevelStatusCache.buyers);
+      // 🚨 修正: normalStaffInitialsはemployeesテーブルから正規の従業員イニシャルを取得
+      const normalStaffInitials = await this.fetchNormalStaffInitials();
+      return { categoryCounts, normalStaffInitials };
     }
 
     console.log('🔍 [BuyerService] getSidebarCounts - cache miss, fetching all buyers with status');
@@ -2511,14 +2514,17 @@ export class BuyerService {
     try {
       // キャッシュミス時は fetchAllBuyersWithStatus() を使って取得・キャッシュに載せる。
       // これにより後続の getStatusCategoriesWithBuyers() 呼び出しでもキャッシュが効く。
-      const allBuyers = await this.fetchAllBuyersWithStatus();
-      const result = this._buildSidebarCountsFromCache(allBuyers);
+      const [allBuyers, normalStaffInitials] = await Promise.all([
+        this.fetchAllBuyersWithStatus(),
+        this.fetchNormalStaffInitials()
+      ]);
+      const { categoryCounts } = this._buildSidebarCountsFromCache(allBuyers);
       const duration = Date.now() - startTime;
       console.log(`[INFO] getSidebarCounts completed in ${duration}ms`);
       if (duration > 5000) {
         console.warn(`[WARN] getSidebarCounts took ${duration}ms (> 5000ms)`);
       }
-      return result;
+      return { categoryCounts, normalStaffInitials };
     } catch (e) {
       const duration = Date.now() - startTime;
       console.error(`[ERROR] getSidebarCounts error after ${duration}ms:`, e);
@@ -2722,7 +2728,11 @@ export class BuyerService {
       }
     }
 
-    const normalStaffInitials = Object.keys(result.assignedCounts);
+    // 🚨 修正: assignedCountsのキーをそのまま使用すると「林田＿未確認」のような
+    // 不正な担当者名が含まれてしまうため、fetchNormalStaffInitialsで取得した
+    // 正規の従業員イニシャルのみを返す
+    // ここでは空配列を返し、呼び出し元でfetchNormalStaffInitialsを使用する
+    const normalStaffInitials: string[] = [];
     return { categoryCounts: result, normalStaffInitials };
   }
 
@@ -3203,18 +3213,21 @@ export class BuyerService {
    */
   private async fetchNormalStaffInitials(): Promise<string[]> {
     try {
-      const { data: staffDataNormal, error: normalError } = await this.supabase
+      // is_normalカラムは存在しないため、全従業員を取得する
+      // ただし「業者」は除外する（買主リストの担当者カテゴリに表示しない）
+      const { data: allStaffData, error } = await this.supabase
         .from('employees')
         .select('initials')
-        .eq('is_normal', true);
-      if (!normalError && staffDataNormal && staffDataNormal.length > 0) {
-        return staffDataNormal.map((s: any) => s.initials).filter((i: string) => i);
+        .neq('initials', '業者');  // 業者を除外
+      
+      if (error) {
+        console.error('[fetchNormalStaffInitials] Error:', error);
+        return [];
       }
-      const { data: allStaffData } = await this.supabase
-        .from('employees')
-        .select('initials');
+      
       return (allStaffData || []).map((s: any) => s.initials).filter((i: string) => i);
-    } catch {
+    } catch (err) {
+      console.error('[fetchNormalStaffInitials] Exception:', err);
       return [];
     }
   }
