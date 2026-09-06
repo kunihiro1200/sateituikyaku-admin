@@ -249,9 +249,9 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     isBlank(task.on_hold) &&
     isBlank(task.binding_completed)
   ) {
-    // 郵送準備の依頼が済んでいるかを明示
-    const mailingLabel = task.mailing_prep === '依頼' ? '郵送準備依頼済' : '郵送準備未';
-    return `売買契約 製本待ち【${mailingLabel}】 ${formatDateMD(task.binding_scheduled_date)} ${task.sales_contract_assignee || ''}`;
+    // 郵送準備の依頼が済んでいる場合のみ明示（未のときは何も付けない）
+    const mailingLabel = task.mailing_prep === '依頼' ? '【郵送準備依頼済】' : '';
+    return `売買契約 製本待ち${mailingLabel} ${formatDateMD(task.binding_scheduled_date)} ${task.sales_contract_assignee || ''}`;
   }
 
   // 8. 売買契約 依頼未
