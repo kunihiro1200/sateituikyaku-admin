@@ -135,6 +135,7 @@ interface WorkTaskData {
   contract_revision_countermeasure: string;
   completed_comment_sales: string;
   binding_scheduled_date: string;
+  binding_double_check: string;
   binding_completed: string;
   seller_payment_method: string;
   brokerage_fee_seller: number;
@@ -1368,6 +1369,18 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     const bindingCompleted = getValue('binding_completed');
     const salesContractConfirmed = getValue('sales_contract_confirmed');
     const salesContractDeadline = getValue('sales_contract_deadline');
+
+    // 製本二重チェック: 製本完了に値があるのに二重チェック（久/R/和）が未実施の場合はブロック
+    if (bindingCompleted && !getValue('binding_double_check')) {
+      setValidationWarningDialog({
+        open: true,
+        title: '製本二重チェックが未実施のため保存できません',
+        emptyFields: ['久・R・和 のいずれかが「製本二重チェック」をしてから製本完了を入力してください'],
+        onConfirmAction: 'binding_completed',
+      });
+      return;
+    }
+
     if (
       bindingCompleted &&
       salesContractConfirmed !== '確認OK' &&
@@ -4615,61 +4628,122 @@ https://docs.google.com/document/d/12vr8d5TQ-fWd7kQeOFmBe6Dd5kbt1dqaU0cjO9y2xnI/
             </Box>
           )}
 
-          <EditableField label="製本完了" field="binding_completed" type="date" />
-
-          {/* 契約書、重説他の修正内容まとめ（全物件） */}
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#b71c1c', mb: 1, mt: 3 }}>
-            契約書、重説他の修正内容　まとめ
-          </Typography>
-          {contractRevisionSummary.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              修正内容のある物件はありません
-            </Typography>
-          ) : (
-            <Box sx={{ overflowX: 'auto', mb: 2 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#ffcdd2' }}>
-                    <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
-                    <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', whiteSpace: 'nowrap' }}>重説・契約書入力納期</th>
-                    <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', whiteSpace: 'nowrap' }}>写真が契約書作成</th>
-                    <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', minWidth: '200px' }}>修正内容</th>
-                    <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', minWidth: '180px' }}>対策案</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {contractRevisionSummary.map((row, idx) => (
-                    <tr key={row.property_number} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#fff8f8' }}>
-                      <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'nowrap' }}>
-                        <span onClick={() => onNavigate?.(row.property_number, 2)} style={{ color: '#1565c0', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>{row.property_number}</span>
-                      </td>
-                      <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'nowrap', color: '#555' }}>
-                        {row.contract_input_deadline
-                          ? new Date(row.contract_input_deadline).toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' })
-                          : '-'}
-                      </td>
-                      <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'nowrap' }}>
-                        {row.employee_contract_creation || '-'}
-                      </td>
-                      <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'inherit', fontWeight: 'normal' }}>
-                        <span dangerouslySetInnerHTML={{ __html: row.contract_revision_content || '-' }} />
-                      </td>
-                      <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', color: 'inherit', fontWeight: 'normal' }}>
-                        <CountermeasureCell
-                          propertyNumber={row.property_number}
-                          field="contract_revision_countermeasure"
-                          value={row.contract_revision_countermeasure || ''}
-                          onSaved={(val) => {
-                            setContractRevisionSummary(prev => prev.map((r) => r.property_number === row.property_number ? { ...r, contract_revision_countermeasure: val } : r));
-                          }}
-                        />
-                      </td>
-                    </tr>
+          {/* 製本二重チェック（久/R/和）- チェックしないと製本完了を押せない */}
+          <Box sx={{ bgcolor: '#fff3e0', borderRadius: 1, p: 1.5, mb: 1 }}>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={4}>
+                <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>
+                  製本二重チェック*（必須）
+                </Typography>
+              </Grid>
+              <Grid item xs={8}>
+                <ButtonGroup size="small" variant="outlined">
+                  {['久', 'R', '和'].map((opt) => (
+                    <Button
+                      key={opt}
+                      variant={getValue('binding_double_check') === opt ? 'contained' : 'outlined'}
+                      color={getValue('binding_double_check') === opt ? 'warning' : 'inherit'}
+                      onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('binding_double_check', getValue('binding_double_check') === opt ? null : opt); }}
+                    >
+                      {opt}
+                    </Button>
                   ))}
-                </tbody>
-              </table>
-            </Box>
+                </ButtonGroup>
+                {!getValue('binding_double_check') && (
+                  <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+                    久・R・和 のいずれかがチェックすると製本完了を入力できます
+                  </Typography>
+                )}
+              </Grid>
+            </Grid>
+          </Box>
+
+          {/* 製本完了: 二重チェック済みのときのみ入力可能 */}
+          {getValue('binding_double_check') ? (
+            <EditableField label="製本完了" field="binding_completed" type="date" />
+          ) : (
+            <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+              <Grid item xs={4}>
+                <Typography variant="body2" color="text.disabled" sx={{ fontWeight: 500 }}>
+                  製本完了
+                </Typography>
+              </Grid>
+              <Grid item xs={8}>
+                <TextField
+                  type="date"
+                  size="small"
+                  fullWidth
+                  value={getValue('binding_completed') || ''}
+                  disabled
+                  InputLabelProps={{ shrink: true }}
+                  helperText="製本二重チェックが必要です"
+                />
+              </Grid>
+            </Grid>
           )}
+
+          {/* 契約書、重説他の修正内容まとめ（全物件・アコーディオン） */}
+          <Accordion
+            defaultExpanded={false}
+            sx={{ mt: 3, mb: 2, bgcolor: '#fff5f5', border: '1px solid #ef9a9a', '&:before': { display: 'none' } }}
+          >
+            <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: '#b71c1c' }} />} sx={{ minHeight: 40, '& .MuiAccordionSummary-content': { margin: '6px 0' } }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#b71c1c' }}>
+                契約書、重説他の修正内容　まとめ{contractRevisionSummary.length > 0 ? `（${contractRevisionSummary.length}件）` : ''}
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ pt: 0 }}>
+              {contractRevisionSummary.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  修正内容のある物件はありません
+                </Typography>
+              ) : (
+                <Box sx={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#ffcdd2' }}>
+                        <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
+                        <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', whiteSpace: 'nowrap' }}>重説・契約書入力納期</th>
+                        <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', whiteSpace: 'nowrap' }}>写真が契約書作成</th>
+                        <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', minWidth: '200px' }}>修正内容</th>
+                        <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', minWidth: '180px' }}>対策案</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {contractRevisionSummary.map((row, idx) => (
+                        <tr key={row.property_number} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#fff8f8' }}>
+                          <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'nowrap' }}>
+                            <span onClick={() => onNavigate?.(row.property_number, 2)} style={{ color: '#1565c0', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>{row.property_number}</span>
+                          </td>
+                          <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'nowrap', color: '#555' }}>
+                            {row.contract_input_deadline
+                              ? new Date(row.contract_input_deadline).toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                              : '-'}
+                          </td>
+                          <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'nowrap' }}>
+                            {row.employee_contract_creation || '-'}
+                          </td>
+                          <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'inherit', fontWeight: 'normal' }}>
+                            <span dangerouslySetInnerHTML={{ __html: row.contract_revision_content || '-' }} />
+                          </td>
+                          <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', color: 'inherit', fontWeight: 'normal' }}>
+                            <CountermeasureCell
+                              propertyNumber={row.property_number}
+                              field="contract_revision_countermeasure"
+                              value={row.contract_revision_countermeasure || ''}
+                              onSaved={(val) => {
+                                setContractRevisionSummary(prev => prev.map((r) => r.property_number === row.property_number ? { ...r, contract_revision_countermeasure: val } : r));
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </Box>
+              )}
+            </AccordionDetails>
+          </Accordion>
         </Box>
       </Box>
 
