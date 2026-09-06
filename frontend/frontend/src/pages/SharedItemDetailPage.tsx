@@ -828,27 +828,15 @@ export default function SharedItemDetailPage() {
                 <Grid container spacing={2}>
                   {TEAM_ANSWER_MEMBERS.map(({ key, label, visibilityKey }) => {
                     const isVisible = teamAnswers[visibilityKey] as boolean;
-                    
-                    // employee.nameを文字列として取得（nullチェック）
                     const employeeName = employee?.name ? String(employee.name) : '';
-                    
-                    // デバッグ用
-                    if (label === '国広') {
-                      console.log(`[DEBUG] employeeName:`, employeeName, `(type: ${typeof employeeName})`);
-                      console.log(`[DEBUG] label:`, label, `(type: ${typeof label})`);
-                      console.log(`[DEBUG] includes result:`, employeeName.includes(label));
-                    }
-                    
-                    // employee.nameとlabelを比較（部分一致も許可）
                     const isOwnAnswer = employeeName.includes(label) || label.includes(employeeName);
-                    // 自分の回答は常にボタンを表示するが、内容の表示は公開状態に依存
-                    const canView = isVisible;  // 公開されている場合のみ内容が見える（自分も含めて）
+                    const hasContent = teamAnswers[key] && String(teamAnswers[key]).trim().length > 0;
 
                     return (
                       <Grid item xs={12} key={key}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                           <Typography variant="caption" color="text.secondary">{label}</Typography>
-                          {teamAnswers[key] && (
+                          {hasContent && (
                             <Chip 
                               size="small" 
                               label={isVisible ? '公開' : '非公開'}
@@ -857,44 +845,27 @@ export default function SharedItemDetailPage() {
                             />
                           )}
                         </Box>
-                        {canView ? (
-                          <>
-                            <TextField
-                              fullWidth
-                              multiline
-                              minRows={3}
-                              value={teamAnswers[key]}
-                              onChange={(e) => handleTeamAnswerChange(key, e.target.value)}
-                              placeholder={`${label}の回答`}
-                              disabled={!isOwnAnswer}
-                              sx={{ 
-                                mt: 0.5, 
-                                '& .MuiOutlinedInput-root': { 
-                                  bgcolor: isOwnAnswer ? `${color.light}08` : '#f5f5f5'
-                                } 
-                              }}
-                            />
-                          </>
-                        ) : isOwnAnswer ? (
-                          // 自分の回答だが非公開の場合：入力欄とボタンは表示
-                          <>
-                            <TextField
-                              fullWidth
-                              multiline
-                              minRows={3}
-                              value={teamAnswers[key]}
-                              onChange={(e) => handleTeamAnswerChange(key, e.target.value)}
-                              placeholder={`${label}の回答`}
-                              sx={{ 
-                                mt: 0.5, 
-                                '& .MuiOutlinedInput-root': { 
-                                  bgcolor: `${color.light}08`
-                                } 
-                              }}
-                            />
-                          </>
+
+                        {/* 表示ロジック：超シンプル */}
+                        {isVisible ? (
+                          /* 公開中：全員に内容が見える */
+                          <TextField
+                            fullWidth
+                            multiline
+                            minRows={3}
+                            value={teamAnswers[key]}
+                            onChange={(e) => handleTeamAnswerChange(key, e.target.value)}
+                            placeholder={`${label}の回答`}
+                            disabled={!isOwnAnswer}
+                            sx={{ 
+                              mt: 0.5, 
+                              '& .MuiOutlinedInput-root': { 
+                                bgcolor: isOwnAnswer ? `${color.light}08` : '#f5f5f5'
+                              } 
+                            }}
+                          />
                         ) : (
-                          // 他人の非公開の回答
+                          /* 非公開：全員（本人含む）に「未公開」を表示 */
                           <Box 
                             sx={{ 
                               mt: 0.5,
@@ -910,8 +881,9 @@ export default function SharedItemDetailPage() {
                             </Typography>
                           </Box>
                         )}
-                        {/* 公開/非公開ボタンは自分の回答にのみ表示 */}
-                        {isOwnAnswer && teamAnswers[key] && (
+
+                        {/* ボタン：本人のみ、内容がある場合のみ表示 */}
+                        {isOwnAnswer && hasContent && (
                           <Button
                             size="small"
                             variant={isVisible ? 'outlined' : 'contained'}
