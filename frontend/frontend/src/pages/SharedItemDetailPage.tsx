@@ -5,6 +5,8 @@ import {
   AttachFile as AttachFileIcon,
   Close as CloseIcon,
   Delete as DeleteIcon,
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
 } from '@mui/icons-material';
 import {
   Container,
@@ -28,6 +30,7 @@ import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 import { uploadFileToStorage, toggleStaff } from '../utils/sharedItemFormUtils';
+import { useAuthStore } from '../store/authStore';
 import { useSharedItemPresenceTrack } from '../hooks/useListPresence';
 
 // チームアンサーの型（契約率チーム・物件数チーム専用）
@@ -40,15 +43,25 @@ interface TeamAnswers {
   answer_hayashida: string;
   answer_aso: string;
   summary: string;
+  is_kunihiro_visible?: boolean;
+  is_yamamoto_visible?: boolean;
+  is_ura_visible?: boolean;
+  is_kadoi_visible?: boolean;
+  is_hayashida_visible?: boolean;
+  is_aso_visible?: boolean;
 }
 
-const TEAM_ANSWER_MEMBERS: { key: keyof TeamAnswers; label: string }[] = [
-  { key: 'answer_kuniHiro', label: '国広' },
-  { key: 'answer_yamamoto', label: '山本' },
-  { key: 'answer_ura', label: '裏' },
-  { key: 'answer_kadoi', label: '角井' },
-  { key: 'answer_hayashida', label: '林田' },
-  { key: 'answer_aso', label: '麻生' },
+const TEAM_ANSWER_MEMBERS: { 
+  key: keyof TeamAnswers; 
+  label: string; 
+  visibilityKey: keyof TeamAnswers;
+}[] = [
+  { key: 'answer_kuniHiro', label: '国広', visibilityKey: 'is_kunihiro_visible' },
+  { key: 'answer_yamamoto', label: '山本', visibilityKey: 'is_yamamoto_visible' },
+  { key: 'answer_ura', label: '裏', visibilityKey: 'is_ura_visible' },
+  { key: 'answer_kadoi', label: '角井', visibilityKey: 'is_kadoi_visible' },
+  { key: 'answer_hayashida', label: '林田', visibilityKey: 'is_hayashida_visible' },
+  { key: 'answer_aso', label: '麻生', visibilityKey: 'is_aso_visible' },
 ];
 
 const TEAM_MODES = ['契約率チーム', '物件数チーム'];
@@ -62,6 +75,12 @@ const EMPTY_TEAM_ANSWERS: TeamAnswers = {
   answer_hayashida: '',
   answer_aso: '',
   summary: '',
+  is_kunihiro_visible: false,
+  is_yamamoto_visible: false,
+  is_ura_visible: false,
+  is_kadoi_visible: false,
+  is_hayashida_visible: false,
+  is_aso_visible: false,
 };
 
 interface SharedItem {
@@ -85,6 +104,7 @@ export default function SharedItemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const employee = useAuthStore((state) => state.employee);
   // プレゼンス発信（この共有項目を開いていることを他ユーザーに通知）
   useSharedItemPresenceTrack(id);
   const fromLocation = (location.state as { fromLocation?: string | null })?.fromLocation ?? null;
@@ -223,12 +243,47 @@ export default function SharedItemDetailPage() {
           answer_hayashida: data.answer_hayashida || '',
           answer_aso: data.answer_aso || '',
           summary: data.summary || '',
+          is_kunihiro_visible: data.is_kunihiro_visible ?? false,
+          is_yamamoto_visible: data.is_yamamoto_visible ?? false,
+          is_ura_visible: data.is_ura_visible ?? false,
+          is_kadoi_visible: data.is_kadoi_visible ?? false,
+          is_hayashida_visible: data.is_hayashida_visible ?? false,
+          is_aso_visible: data.is_aso_visible ?? false,
         };
         setTeamAnswers(answers);
         setInitialTeamAnswers(answers);
       }
     } catch (error) {
       console.error('Failed to fetch team answers:', error);
+    }
+  };
+
+  const handleToggleVisibility = async (memberLabel: string) => {
+    if (!item) return;
+    const member = TEAM_ANSWER_MEMBERS.find(m => m.label === memberLabel);
+    if (!member) return;
+
+    const currentVisibility = teamAnswers[member.visibilityKey] as boolean;
+    const newVisibility = !currentVisibility;
+
+    try {
+      await api.post(`/api/shared-items/${item.id}/team-answers/toggle-visibility`, {
+        member: memberLabel,
+        isVisible: newVisibility,
+      });
+
+      // ローカルステートを更新
+      setTeamAnswers(prev => ({
+        ...prev,
+        [member.visibilityKey]: newVisibility,
+      }));
+      setInitialTeamAnswers(prev => ({
+        ...prev,
+        [member.visibilityKey]: newVisibility,
+      }));
+    } catch (error: any) {
+      console.error('Failed to toggle visibility:', error);
+      setTeamAnswerError(error.response?.data?.error || '公開状態の切り替えに失敗しました');
     }
   };
 
@@ -739,20 +794,73 @@ export default function SharedItemDetailPage() {
                   <Alert severity="success" sx={{ mb: 2 }} onClose={() => setTeamAnswerSuccess(false)}>保存しました</Alert>
                 )}
                 <Grid container spacing={2}>
-                  {TEAM_ANSWER_MEMBERS.map(({ key, label }) => (
-                    <Grid item xs={12} key={key}>
-                      <Typography variant="caption" color="text.secondary">{label}</Typography>
-                      <TextField
-                        fullWidth
-                        multiline
-                        minRows={3}
-                        value={teamAnswers[key]}
-                        onChange={(e) => handleTeamAnswerChange(key, e.target.value)}
-                        placeholder={`${label}の回答`}
-                        sx={{ mt: 0.5, '& .MuiOutlinedInput-root': { bgcolor: `${color.light}08` } }}
-                      />
-                    </Grid>
-                  ))}
+                  {TEAM_ANSWER_MEMBERS.map(({ key, label, visibilityKey }) => {
+                    const isVisible = teamAnswers[visibilityKey] as boolean;
+                    const isOwnAnswer = employee?.name === label;
+                    const canView = isVisible || isOwnAnswer;
+
+                    return (
+                      <Grid item xs={12} key={key}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary">{label}</Typography>
+                          {teamAnswers[key] && (
+                            <Chip 
+                              size="small" 
+                              label={isVisible ? '公開' : '非公開'}
+                              color={isVisible ? 'success' : 'default'}
+                              sx={{ height: 20, fontSize: '0.7rem' }}
+                            />
+                          )}
+                        </Box>
+                        {canView ? (
+                          <>
+                            <TextField
+                              fullWidth
+                              multiline
+                              minRows={3}
+                              value={teamAnswers[key]}
+                              onChange={(e) => handleTeamAnswerChange(key, e.target.value)}
+                              placeholder={`${label}の回答`}
+                              disabled={!isOwnAnswer}
+                              sx={{ 
+                                mt: 0.5, 
+                                '& .MuiOutlinedInput-root': { 
+                                  bgcolor: isOwnAnswer ? `${color.light}08` : '#f5f5f5'
+                                } 
+                              }}
+                            />
+                            {isOwnAnswer && teamAnswers[key] && (
+                              <Button
+                                size="small"
+                                variant={isVisible ? 'outlined' : 'contained'}
+                                color={isVisible ? 'inherit' : 'primary'}
+                                startIcon={isVisible ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                                onClick={() => handleToggleVisibility(label)}
+                                sx={{ mt: 1 }}
+                              >
+                                {isVisible ? '非公開にする' : '公開する'}
+                              </Button>
+                            )}
+                          </>
+                        ) : (
+                          <Box 
+                            sx={{ 
+                              mt: 0.5,
+                              p: 2,
+                              border: '1px dashed #ccc',
+                              borderRadius: 1,
+                              bgcolor: '#fafafa',
+                              textAlign: 'center',
+                            }}
+                          >
+                            <Typography variant="body2" color="text.secondary">
+                              未公開
+                            </Typography>
+                          </Box>
+                        )}
+                      </Grid>
+                    );
+                  })}
 
                   {/* まとめ */}
                   <Grid item xs={12}>

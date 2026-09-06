@@ -394,6 +394,53 @@ router.put('/:id/team-answers', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/shared-items/:id/team-answers/toggle-visibility - チームアンサーの公開状態切り替え
+ */
+router.post('/:id/team-answers/toggle-visibility', async (req: Request, res: Response) => {
+  try {
+    const supabaseUrl = process.env.SUPABASE_URL!;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!;
+    const axios = (await import('axios')).default;
+    const sharedItemId = req.params.id;
+    const { member, isVisible } = req.body;
+
+    // メンバー名からカラム名にマッピング
+    const visibilityColumnMap: Record<string, string> = {
+      '国広': 'is_kunihiro_visible',
+      '山本': 'is_yamamoto_visible',
+      '裏': 'is_ura_visible',
+      '角井': 'is_kadoi_visible',
+      '林田': 'is_hayashida_visible',
+      '麻生': 'is_aso_visible',
+    };
+
+    const columnName = visibilityColumnMap[member];
+    if (!columnName) {
+      return res.status(400).json({ error: '不正なメンバー名です' });
+    }
+
+    const headers = {
+      apikey: supabaseKey,
+      Authorization: `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    };
+
+    // 既存レコードを更新
+    const updateResp = await axios.patch(
+      `${supabaseUrl}/rest/v1/shared_item_team_answers?shared_item_id=eq.${encodeURIComponent(sharedItemId)}`,
+      { [columnName]: isVisible, updated_at: new Date().toISOString() },
+      { headers }
+    );
+
+    res.json({ data: Array.isArray(updateResp.data) ? updateResp.data[0] : updateResp.data });
+  } catch (error: any) {
+    console.error('Failed to toggle visibility:', error);
+    res.status(500).json({ error: '公開状態の切り替えに失敗しました', details: error.response?.data || error.message });
+  }
+});
+
+/**
  * GET /api/shared-items/:id/image-comments - 画像コメント取得
  */
 router.get('/:id/image-comments', async (req: Request, res: Response) => {
