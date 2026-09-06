@@ -50,6 +50,8 @@ import { InquiryResponseEmailModal } from '../components/InquiryResponseEmailMod
 import UnifiedInquiryHistoryTable from '../components/UnifiedInquiryHistoryTable';
 import DuplicateIndicatorBadge from '../components/DuplicateIndicatorBadge';
 import DuplicateDetailsModal from '../components/DuplicateDetailsModal';
+import BuyerDuplicateDetailsModal from '../components/BuyerDuplicateDetailsModal';
+import { BuyerDuplicateMatch } from '../components/BuyerDuplicateCard';
 import { DuplicateMatch } from '../types';
 import { ConfirmationToAssignee } from '../components/ConfirmationToAssignee';
 import BuyerGmailSendButton from '../components/BuyerGmailSendButton';
@@ -334,6 +336,11 @@ export default function BuyerDetailPage() {
   const [sellerDuplicatesLoading, setSellerDuplicatesLoading] = useState(false);
   const [sellerDuplicatesError, setSellerDuplicatesError] = useState<string | null>(null);
   const [sellerDuplicateModalOpen, setSellerDuplicateModalOpen] = useState(false);
+  // 買主同士の重複（電話番号・メールアドレスで判定）
+  const [buyerDuplicates, setBuyerDuplicates] = useState<BuyerDuplicateMatch[]>([]);
+  const [buyerDuplicatesLoading, setBuyerDuplicatesLoading] = useState(false);
+  const [buyerDuplicatesError, setBuyerDuplicatesError] = useState<string | null>(null);
+  const [buyerDuplicateModalOpen, setBuyerDuplicateModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [copiedBuyerNumber, setCopiedBuyerNumber] = useState(false);
   // 買主リストの表示順（前へ/次へボタン用）。買主一覧からの遷移時に sessionStorage に保存される。
@@ -773,6 +780,7 @@ export default function BuyerDetailPage() {
       fetchInquiryHistory();
       fetchInquiryHistoryTable();
       fetchSellerDuplicates();
+      fetchBuyerDuplicates();
       fetchActivities();
     }
   }, [buyer_number, isValidBuyerNumber]);
@@ -826,6 +834,21 @@ export default function BuyerDetailPage() {
       setSellerDuplicatesError('売主との重複情報の取得に失敗しました');
     } finally {
       setSellerDuplicatesLoading(false);
+    }
+  };
+
+  // 買主同士の重複（電話番号・メールアドレス一致の他の買主）
+  const fetchBuyerDuplicates = async () => {
+    try {
+      setBuyerDuplicatesLoading(true);
+      setBuyerDuplicatesError(null);
+      const res = await api.get(`/api/buyers/${buyer_number}/buyer-duplicates`);
+      setBuyerDuplicates(res.data.duplicates || []);
+    } catch (error) {
+      console.error('Failed to fetch buyer duplicates:', error);
+      setBuyerDuplicatesError('買主の重複情報の取得に失敗しました');
+    } finally {
+      setBuyerDuplicatesLoading(false);
     }
   };
 
@@ -1766,6 +1789,23 @@ export default function BuyerDetailPage() {
                   from: { boxShadow: '0 0 4px rgba(211,47,47,0.5)' },
                   to: { boxShadow: '0 0 14px rgba(211,47,47,1)' },
                 },
+              }}
+            />
+          )}
+          {/* 買主同士の重複（電話番号・メアドで判定） */}
+          {!buyerDuplicatesLoading && buyerDuplicates.length > 0 && (
+            <Chip
+              label={`重複 (${buyerDuplicates.length})`}
+              color="warning"
+              onClick={() => setBuyerDuplicateModalOpen(true)}
+              sx={{
+                ml: 1,
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                height: '34px',
+                '& .MuiChip-label': { px: 1.5 },
+                '&:hover': { opacity: 0.85 },
               }}
             />
           )}
@@ -4602,6 +4642,16 @@ TEL：097-533-2022`;
         loading={sellerDuplicatesLoading}
         error={sellerDuplicatesError}
         onRetry={fetchSellerDuplicates}
+      />
+
+      {/* 買主同士の重複詳細（電話番号・メアドで判定） */}
+      <BuyerDuplicateDetailsModal
+        open={buyerDuplicateModalOpen}
+        onClose={() => setBuyerDuplicateModalOpen(false)}
+        duplicates={buyerDuplicates}
+        loading={buyerDuplicatesLoading}
+        error={buyerDuplicatesError}
+        onRetry={fetchBuyerDuplicates}
       />
 
     </Box>

@@ -3361,4 +3361,140 @@ router.get('/:id/seller-duplicates', async (req: Request, res: Response) => {
 });
 
 
+// ─────────────────────────────────────────────────────────────────────────
+// 買主同士の重複判定
+//   GET /api/buyers/:id/buyer-duplicates
+//
+// 同一人物（電話番号・メールアドレス一致）の他の買主レコードを、
+// 売主重複ボタンと同じ「重複ボタン→詳細モーダル」形式で表示するためのAPI。
+//
+// 買主の name / phone_number / email は平文なので、
+// 既存の RelatedBuyerService（phone/email の完全一致で照合）を流用する。
+// 各重複買主には「前回どの物件に問い合わせたか」が分かるよう物件住所を付与する。
+//
+// レスポンス形式（売主重複 DuplicateMatch と対称）:
+//   {
+//     duplicates: [{
+//       buyerId, matchType: 'phone'|'email'|'both',
+//       relationType: 'multiple_inquiry'|'possible_duplicate',
+//       buyerInfo: { buyerNumber, name, receptionDate, propertyNumber,
+//                    propertyAddress, latestStatus, assignee },
+//     }]
+//   }
+// ─────────────────────────────────────────────────────────────────────────
+router.get('/:id/buyer-duplicates', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // 買主番号 → buyer_id(UUID) を解決
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    let buyerId = id;
+    if (!isUuid) {
+      const buyer = await buyerService.getByBuyerNumber(id, true);
+      if (!buyer) {
+        return res.status(404).json({
+          error: { code: 'BUYER_NOT_FOUND', message: 'Buyer not found', retryable: false },
+        });
+      }
+      buyerId = buyer.buyer_id;
+    }
+
+    // 電話番号・メールが一致する他の買主を取得（既存ロジックを流用）
+    const relatedBuyers = await relatedBuyerService.findRelatedBuyers(buyerId);
+
+    if (relatedBuyers.length === 0) {
+      return res.json({ duplicates: [] });
+    }
+
+    const { createClient } = require('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    // 各重複買主の詳細（状況・担当）と物件住所を取得
+    const buyerIds = relatedBuyers.map((b: any) => b.buyer_id).filter(Boolean);
+    const detailMap = new Map<string, any>();
+    if (buyerIds.length > 0) {
+      const { data: details } = await supabase
+        .from('buyers')
+        .select('buyer_id, buyer_number, name, reception_date, property_number, latest_status, follow_up_assignee, initial_assignee, other_company_property')
+        .in('buyer_id', buyerIds);
+      for (const d of details || []) {
+        detailMap.set(d.buyer_id, d);
+      }
+    }
+
+    // 物件番号 → 住所（前回どの物件に問い合わせたか）
+    const allPropertyNumbers = new Set<string>();
+    for (const d of detailMap.values()) {
+      if (d.property_number) {
+        String(d.property_number)
+          .split(',')
+          .map((n: string) => n.trim())
+          .filter(Boolean)
+          .forEach((n: string) => allPropertyNumbers.add(n));
+      }
+    }
+    const addressMap = new Map<string, string>();
+    if (allPropertyNumbers.size > 0) {
+      const { data: properties } = await supabase
+        .from('property_listings')
+        .select('property_number, address')
+        .in('property_number', Array.from(allPropertyNumbers));
+      for (const p of properties || []) {
+        if (p.property_number && p.address) {
+          addressMap.set(String(p.property_number), p.address);
+        }
+      }
+    }
+
+    const resolveAddress = (detail: any): string | null => {
+      if (detail?.property_number) {
+        const addrs = String(detail.property_number)
+          .split(',')
+          .map((n: string) => n.trim())
+          .filter(Boolean)
+          .map((n: string) => addressMap.get(n))
+          .filter((a: string | undefined): a is string => !!a);
+        if (addrs.length > 0) return addrs.join(' / ');
+      }
+      if (detail?.other_company_property && String(detail.other_company_property).trim()) {
+        return String(detail.other_company_property).trim();
+      }
+      return null;
+    };
+
+    const duplicates = relatedBuyers.map((rb: any) => {
+      const detail = detailMap.get(rb.buyer_id) || {};
+      return {
+        buyerId: rb.buyer_id,
+        matchType: rb.match_reason, // 'phone' | 'email' | 'both'
+        relationType: rb.relation_type, // 'multiple_inquiry' | 'possible_duplicate'
+        buyerInfo: {
+          buyerNumber: detail.buyer_number ?? rb.buyer_number,
+          name: detail.name ?? rb.name ?? '',
+          receptionDate: detail.reception_date ?? rb.reception_date ?? undefined,
+          propertyNumber: detail.property_number ?? rb.property_number ?? null,
+          propertyAddress: resolveAddress(detail),
+          latestStatus: detail.latest_status ?? null,
+          assignee: detail.follow_up_assignee || detail.initial_assignee || null,
+        },
+      };
+    });
+
+    res.json({ duplicates });
+  } catch (error: any) {
+    console.error('Get buyer duplicates error:', error);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to get buyer duplicates',
+        retryable: true,
+      },
+    });
+  }
+});
+
+
 export default router;
