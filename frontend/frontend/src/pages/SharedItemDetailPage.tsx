@@ -797,16 +797,19 @@ export default function SharedItemDetailPage() {
                   {TEAM_ANSWER_MEMBERS.map(({ key, label, visibilityKey }) => {
                     const isVisible = teamAnswers[visibilityKey] as boolean;
                     
-                    // デバッグ用（本番環境では削除）
-                    console.log(`[DEBUG] label: "${label}" (length: ${label.length}), employee.name: "${employee?.name}" (length: ${employee?.name?.length})`);
-                    console.log(`[DEBUG] includes check: "${employee?.name}".includes("${label}") = ${employee?.name?.includes(label)}`);
-                    console.log(`[DEBUG] includes check: "${label}".includes("${employee?.name}") = ${label.includes(employee?.name || '')}`);
+                    // employee.nameを文字列として取得（nullチェック）
+                    const employeeName = employee?.name ? String(employee.name) : '';
+                    
+                    // デバッグ用
+                    if (label === '国広') {
+                      console.log(`[DEBUG] employeeName:`, employeeName, `(type: ${typeof employeeName})`);
+                      console.log(`[DEBUG] label:`, label, `(type: ${typeof label})`);
+                      console.log(`[DEBUG] includes result:`, employeeName.includes(label));
+                    }
                     
                     // employee.nameとlabelを比較（部分一致も許可）
-                    const isOwnAnswer = employee?.name?.includes(label) || label.includes(employee?.name || '');
+                    const isOwnAnswer = employeeName.includes(label) || label.includes(employeeName);
                     const canView = isVisible || isOwnAnswer;
-                    
-                    console.log(`[DEBUG] isOwnAnswer: ${isOwnAnswer}, isVisible: ${isVisible}`);
 
                     return (
                       <Grid item xs={12} key={key}>
