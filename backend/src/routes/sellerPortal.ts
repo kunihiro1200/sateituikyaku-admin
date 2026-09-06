@@ -135,14 +135,27 @@ function refreshSellerPortalAttentionSidebar(): void {
 
 const router = Router();
 
-/** トークンを検証し、有効な場合は { sellerId, sellerNumber } を返す。無効なら null を返して401を書き込む。 */
-async function requireValidToken(req: Request, res: Response): Promise<{ sellerId: string; sellerNumber: string } | null> {
+/**
+ * トークンを検証し、有効な場合は { sellerId, sellerNumber } を返す。無効なら null を返して401を書き込む。
+ *
+ * 🚨 過去の障害：1回のページ訪問で複数のAPIが呼ばれるため、全エンドポイントで
+ * access_countを更新すると訪問回数が過大にカウントされてしまっていた。
+ * デフォルトはアクセス記録を更新しない読み取り専用検証とし、「本当にページを開いた」
+ * とみなすべき箇所（GET /portal）だけ countAccess=true を明示的に渡す。
+ */
+async function requireValidToken(
+  req: Request,
+  res: Response,
+  countAccess: boolean = false
+): Promise<{ sellerId: string; sellerNumber: string } | null> {
   const token = (req.body?.token || req.query?.token) as string | undefined;
   if (!token) {
     res.status(400).json({ error: 'トークンが指定されていません' });
     return null;
   }
-  const resolved = await sellerPortalService.verifyToken(token);
+  const resolved = countAccess
+    ? await sellerPortalService.verifyToken(token)
+    : await sellerPortalService.verifyTokenReadOnly(token);
   if (!resolved) {
     res.status(401).json({ error: 'このページは無効か期限切れです。担当者にご確認ください。' });
     return null;
@@ -225,7 +238,8 @@ router.get('/portal-html/:token', async (req: Request, res: Response) => {
 /** GET /api/seller-portal/portal?token=xxx : トップ画面の初期データ一括取得 */
 router.get('/portal', async (req: Request, res: Response) => {
   try {
-    const resolved = await requireValidToken(req, res);
+    // このエンドポイントだけ「本当にページを開いた」としてアクセス数をカウントする
+    const resolved = await requireValidToken(req, res, true);
     if (!resolved) return;
 
     const [valuation, preferences, propertySummary] = await Promise.all([

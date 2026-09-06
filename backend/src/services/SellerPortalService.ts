@@ -189,6 +189,13 @@ export class SellerPortalService extends BaseRepository {
 
   /**
    * トークンを検証し、有効なら売主情報を返す。アクセス記録も更新する。
+   *
+   * 🚨 過去の障害（2026年9月）：1回のページ訪問で内部的に複数のAPI
+   * （/portal, /portal/valuation-breakdown, /portal/rough-proceeds, /portal/schedule,
+   *  /portal/messages 等）が順番に呼ばれるため、全エンドポイントでこのメソッドを使うと
+   * 1回の訪問が5〜8回とカウントされ、「アクセス数」が実際の訪問回数の数倍に膨らんでいた。
+   * 現在は「ページを開いた最初の1回」（GET /portal）だけがこのメソッドを使い、
+   * それ以外のサブエンドポイントは副作用のない verifyTokenReadOnly() を使うこと。
    */
   async verifyToken(token: string): Promise<{ sellerId: string; sellerNumber: string } | null> {
     const tokenHash = this.hashToken(token);
@@ -208,6 +215,26 @@ export class SellerPortalService extends BaseRepository {
         access_count: (data.access_count ?? 0) + 1,
       })
       .eq('id', data.id);
+
+    return { sellerId: data.seller_id, sellerNumber: data.seller_number };
+  }
+
+  /**
+   * トークンを検証するが、アクセス記録（access_count/last_accessed_at）は更新しない。
+   * ページ内の個々のセクション取得API（査定根拠・手残り・スケジュール・メッセージ確認等）で使う。
+   * これらは1回のページ訪問中に複数回呼ばれるため、ここでカウントすると訪問回数が過大になる。
+   */
+  async verifyTokenReadOnly(token: string): Promise<{ sellerId: string; sellerNumber: string } | null> {
+    const tokenHash = this.hashToken(token);
+
+    const { data, error } = await this.table('seller_portal_tokens')
+      .select('seller_id, seller_number, revoked_at, expires_at')
+      .eq('token_hash', tokenHash)
+      .single();
+
+    if (error || !data) return null;
+    if (data.revoked_at) return null;
+    if (data.expires_at && new Date(data.expires_at) < new Date()) return null;
 
     return { sellerId: data.seller_id, sellerNumber: data.seller_number };
   }
