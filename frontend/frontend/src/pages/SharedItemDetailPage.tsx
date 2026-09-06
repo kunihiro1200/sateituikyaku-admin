@@ -894,6 +894,91 @@ export default function SharedItemDetailPage() {
                 </Grid>
                 <Divider sx={{ mt: 2 }} />
               </Grid>
+
+              {/* チームモード用：共有完了セクション */}
+              <Grid item xs={12}>
+                <Typography variant="caption" color="text.secondary">共有完了</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                  <TextField
+                    type="date"
+                    value={sharingDate}
+                    onChange={(e) => setSharingDate(e.target.value)}
+                    size="small"
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ width: 180 }}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={handleSave}
+                    disabled={saving || !hasChanges}
+                    sx={{ bgcolor: color.main, '&:hover': { bgcolor: color.dark }, whiteSpace: 'nowrap', flexShrink: 0 }}
+                    startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
+                  >
+                    {saving ? '保存中...' : '保存'}
+                  </Button>
+                  {/* 共有完了ボタン：今日の日付を自動入力して保存 */}
+                  {staffNotShared.length === 0 ? (
+                    <Chip
+                      label="完了"
+                      color="success"
+                      sx={{ fontWeight: 'bold', fontSize: '0.9rem', height: 36 }}
+                    />
+                  ) : (
+                    <Button
+                      variant="contained"
+                      color="success"
+                      onClick={handleComplete}
+                      disabled={completing}
+                      sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                      startIcon={completing ? <CircularProgress size={16} color="inherit" /> : undefined}
+                    >
+                      {completing ? '保存中...' : '✓ 共有完了'}
+                    </Button>
+                  )}
+                  {/* チームから来た場合のみ「次へ」ボタンを表示 */}
+                  {fromLocation && (
+                    <Button
+                      variant="outlined"
+                      onClick={handleNext}
+                      disabled={navigatingNext}
+                      sx={{ whiteSpace: 'nowrap', flexShrink: 0, borderColor: color.main, color: color.main }}
+                      startIcon={navigatingNext ? <CircularProgress size={16} color="inherit" /> : undefined}
+                    >
+                      {navigatingNext ? '...' : '次へ →'}
+                    </Button>
+                  )}
+                </Box>
+              </Grid>
+
+              {/* チームモード用：共有できていないスタッフ */}
+              <Grid item xs={12}>
+                <Typography variant="caption" color="text.secondary">共有できていないスタッフ</Typography>
+                <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+                  ＊確認後、自分の名前だけ消して保存してください。
+                </Typography>
+                <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {staff.map((s, index) => {
+                    const initial = s.initials || s.name.charAt(0);
+                    const isSelected = staffNotShared.includes(s.name);
+                    return (
+                      <Button
+                        key={index}
+                        variant={isSelected ? 'contained' : 'outlined'}
+                        onClick={() => handleStaffToggle(s.name)}
+                        sx={{
+                          minWidth: '48px', height: '48px', borderRadius: '50%',
+                          fontSize: '1.2rem', fontWeight: 'bold',
+                          bgcolor: isSelected ? color.main : 'transparent',
+                          color: isSelected ? '#fff' : color.main,
+                          borderColor: color.main,
+                          '&:hover': { bgcolor: isSelected ? color.dark : `${color.light}30` },
+                        }}
+                        title={s.name}
+                      >{initial}</Button>
+                    );
+                  })}
+                </Box>
+              </Grid>
             </>
           ) : (
             /* 通常の内容フィールド */
@@ -1083,16 +1168,24 @@ export default function SharedItemDetailPage() {
                 {saving ? '保存中...' : '保存'}
               </Button>
               {/* 共有完了ボタン：今日の日付を自動入力して保存 */}
-              <Button
-                variant="contained"
-                color="success"
-                onClick={handleComplete}
-                disabled={completing}
-                sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
-                startIcon={completing ? <CircularProgress size={16} color="inherit" /> : undefined}
-              >
-                {completing ? '保存中...' : '✓ 共有完了'}
-              </Button>
+              {staffNotShared.length === 0 ? (
+                <Chip
+                  label="完了"
+                  color="success"
+                  sx={{ fontWeight: 'bold', fontSize: '0.9rem', height: 36 }}
+                />
+              ) : (
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={handleComplete}
+                  disabled={completing}
+                  sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                  startIcon={completing ? <CircularProgress size={16} color="inherit" /> : undefined}
+                >
+                  {completing ? '保存中...' : '✓ 共有完了'}
+                </Button>
+              )}
               {/* 朝礼等カテゴリーから来た場合のみ「次へ」ボタンを表示 */}
               {fromLocation && (
                 <Button
