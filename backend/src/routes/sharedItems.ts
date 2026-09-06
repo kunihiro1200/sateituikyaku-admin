@@ -419,6 +419,8 @@ router.post('/:id/team-answers/toggle-visibility', async (req: Request, res: Res
       return res.status(400).json({ error: '不正なメンバー名です' });
     }
 
+    console.log(`[DEBUG BACKEND] member: ${member}, columnName: ${columnName}, isVisible: ${isVisible}`);
+
     const headers = {
       apikey: supabaseKey,
       Authorization: `Bearer ${supabaseKey}`,
@@ -426,12 +428,18 @@ router.post('/:id/team-answers/toggle-visibility', async (req: Request, res: Res
       Prefer: 'return=representation',
     };
 
+    const updatePayload = { [columnName]: isVisible, updated_at: new Date().toISOString() };
+    console.log(`[DEBUG BACKEND] updatePayload:`, updatePayload);
+
     // 既存レコードを更新
-    await axios.patch(
+    const patchResponse = await axios.patch(
       `${supabaseUrl}/rest/v1/shared_item_team_answers?shared_item_id=eq.${encodeURIComponent(sharedItemId)}`,
-      { [columnName]: isVisible, updated_at: new Date().toISOString() },
+      updatePayload,
       { headers }
     );
+
+    console.log(`[DEBUG BACKEND] patchResponse.status:`, patchResponse.status);
+    console.log(`[DEBUG BACKEND] patchResponse.data:`, patchResponse.data);
 
     // 更新後のデータを再取得
     const getResponse = await axios.get(
