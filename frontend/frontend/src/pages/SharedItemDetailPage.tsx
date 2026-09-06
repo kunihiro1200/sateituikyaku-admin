@@ -272,20 +272,47 @@ export default function SharedItemDetailPage() {
     console.log(`[DEBUG TOGGLE] newVisibility:`, newVisibility);
 
     try {
-      await api.post(`/api/shared-items/${item.id}/team-answers/toggle-visibility`, {
+      const response = await api.post(`/api/shared-items/${item.id}/team-answers/toggle-visibility`, {
         member: memberLabel,
         isVisible: newVisibility,
       });
 
-      // ローカルステートを更新
-      setTeamAnswers(prev => ({
-        ...prev,
-        [member.visibilityKey]: newVisibility,
-      }));
-      setInitialTeamAnswers(prev => ({
-        ...prev,
-        [member.visibilityKey]: newVisibility,
-      }));
+      // APIレスポンスから最新のデータを取得してステートを更新
+      if (response.data?.data) {
+        const updatedData = response.data.data;
+        setTeamAnswers({
+          question: updatedData.question || '',
+          answer_kuniHiro: updatedData.answer_kunihiro || updatedData.answer_kuniHiro || '',
+          answer_yamamoto: updatedData.answer_yamamoto || '',
+          answer_ura: updatedData.answer_ura || '',
+          answer_kadoi: updatedData.answer_kadoi || '',
+          answer_hayashida: updatedData.answer_hayashida || '',
+          answer_aso: updatedData.answer_aso || '',
+          summary: updatedData.summary || '',
+          is_kunihiro_visible: updatedData.is_kunihiro_visible ?? false,
+          is_yamamoto_visible: updatedData.is_yamamoto_visible ?? false,
+          is_ura_visible: updatedData.is_ura_visible ?? false,
+          is_kadoi_visible: updatedData.is_kadoi_visible ?? false,
+          is_hayashida_visible: updatedData.is_hayashida_visible ?? false,
+          is_aso_visible: updatedData.is_aso_visible ?? false,
+        });
+        setInitialTeamAnswers({
+          question: updatedData.question || '',
+          answer_kuniHiro: updatedData.answer_kunihiro || updatedData.answer_kuniHiro || '',
+          answer_yamamoto: updatedData.answer_yamamoto || '',
+          answer_ura: updatedData.answer_ura || '',
+          answer_kadoi: updatedData.answer_kadoi || '',
+          answer_hayashida: updatedData.answer_hayashida || '',
+          answer_aso: updatedData.answer_aso || '',
+          summary: updatedData.summary || '',
+          is_kunihiro_visible: updatedData.is_kunihiro_visible ?? false,
+          is_yamamoto_visible: updatedData.is_yamamoto_visible ?? false,
+          is_ura_visible: updatedData.is_ura_visible ?? false,
+          is_kadoi_visible: updatedData.is_kadoi_visible ?? false,
+          is_hayashida_visible: updatedData.is_hayashida_visible ?? false,
+          is_aso_visible: updatedData.is_aso_visible ?? false,
+        });
+      }
     } catch (error: any) {
       console.error('Failed to toggle visibility:', error);
       setTeamAnswerError(error.response?.data?.error || '公開状態の切り替えに失敗しました');
