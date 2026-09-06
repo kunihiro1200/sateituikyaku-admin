@@ -796,7 +796,8 @@ export default function SharedItemDetailPage() {
                 <Grid container spacing={2}>
                   {TEAM_ANSWER_MEMBERS.map(({ key, label, visibilityKey }) => {
                     const isVisible = teamAnswers[visibilityKey] as boolean;
-                    const isOwnAnswer = employee?.name === label;
+                    // employee.nameとlabelを比較（部分一致も許可）
+                    const isOwnAnswer = employee?.name?.includes(label) || label.includes(employee?.name || '');
                     const canView = isVisible || isOwnAnswer;
 
                     return (
