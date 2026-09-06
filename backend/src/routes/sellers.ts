@@ -2874,6 +2874,161 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────
+// 売主と買主の重複判定
+//   GET /api/sellers/:id/buyer-duplicates
+//
+// 売主リスト（通話モードページ）の売主が、買主リストにも同じ人物として
+// 登録されているかを、名前・電話番号・メールアドレスで照合する。
+//
+// ⚠️ アーキテクチャの非対称性（重要）:
+//   - 売主(sellers): name / phone_number / email は「暗号化」されている。
+//     検索用に phone_number_hash / email_hash（= sha256(平文)）を持つ。
+//   - 買主(buyers): name / phone_number / email は「平文」（暗号化なし・hashなし）。
+//
+// 照合方式:
+//   1. 売主の暗号化された phone_number / email を復号して平文を得る。
+//   2. 買主テーブルは平文なので、電話（数字のみに正規化）・メール（小文字）・
+//      名前（記号/空白除去）で JS 比較する。
+//   3. 電話は数字10桁以上、メールは形式チェックでプレースホルダーを除外する
+//      （sellers.ts の /duplicates と同様のルール）。
+// ─────────────────────────────────────────────────────────────────────────
+router.get('/:id/buyer-duplicates', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    // 対象売主の暗号化された連絡先を取得
+    const { data: rawSeller, error: rawError } = await supabase
+      .from('sellers')
+      .select('id, name, phone_number, email')
+      .eq('id', id)
+      .is('deleted_at', null)
+      .single();
+
+    if (rawError || !rawSeller) {
+      return res.status(404).json({
+        error: { code: 'SELLER_NOT_FOUND', message: 'Seller not found', retryable: false },
+      });
+    }
+
+    const { decrypt } = await import('../utils/encryption');
+    const safeDecrypt = (value: string | null): string => {
+      if (!value) return '';
+      try {
+        return decrypt(value) || '';
+      } catch {
+        return '';
+      }
+    };
+
+    // 売主の平文連絡先
+    const sellerName = safeDecrypt(rawSeller.name).trim();
+    const sellerPhoneDigits = safeDecrypt(rawSeller.phone_number).replace(/[^0-9]/g, '');
+    const sellerEmail = safeDecrypt(rawSeller.email).trim().toLowerCase();
+
+    // プレースホルダー除外: 電話は数字10桁以上、メールは形式チェック
+    const phoneUsable = sellerPhoneDigits.length >= 10;
+    const emailUsable = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sellerEmail);
+
+    if (!phoneUsable && !emailUsable) {
+      // 名前だけでは誤検出が多いため、電話・メールが無ければ空で返す
+      return res.json({ duplicates: [] });
+    }
+
+    // 名前の正規化（全角/半角スペース・記号を除去して比較）
+    const normalizeName = (n: string): string =>
+      String(n || '')
+        .replace(/[\s\u3000]/g, '')
+        .replace(/[（）()「」]/g, '')
+        .trim();
+    const normalizedSellerName = normalizeName(sellerName);
+
+    // 買主候補を取得（平文カラム）。電話・メールで別々に取得してマージする。
+    const buyerCols =
+      'buyer_id, buyer_number, name, phone_number, email, reception_date, property_number, property_address, latest_status, follow_up_assignee, initial_assignee';
+
+    const matchMap = new Map<string, any>();
+
+    const addMatch = (buyer: any, matchType: 'phone' | 'email') => {
+      const existing = matchMap.get(buyer.buyer_id);
+      if (existing) {
+        if (existing.matchType !== matchType) existing.matchType = 'both';
+        return;
+      }
+      const buyerNameNorm = normalizeName(buyer.name || '');
+      matchMap.set(buyer.buyer_id, {
+        buyerId: buyer.buyer_id,
+        matchType,
+        // 同一人物とみなせるか（名前も一致）を relationType で表現
+        relationType:
+          normalizedSellerName && buyerNameNorm === normalizedSellerName
+            ? 'possible_duplicate'
+            : 'multiple_inquiry',
+        buyerInfo: {
+          buyerNumber: buyer.buyer_number,
+          name: buyer.name,
+          receptionDate: buyer.reception_date,
+          propertyNumber: buyer.property_number,
+          propertyAddress: buyer.property_address,
+          latestStatus: buyer.latest_status,
+          assignee: buyer.follow_up_assignee || buyer.initial_assignee || null,
+        },
+      });
+    };
+
+    // 1. 電話番号で照合
+    //    買主の phone_number は平文だが、ハイフン等の書式ゆれがあるため
+    //    全件から数字比較する（買主テーブルは比較的小規模）。
+    if (phoneUsable) {
+      const { data: buyersByPhone } = await supabase
+        .from('buyers')
+        .select(buyerCols)
+        .not('phone_number', 'is', null)
+        .neq('is_deleted', true);
+
+      for (const buyer of buyersByPhone || []) {
+        const digits = String(buyer.phone_number || '').replace(/[^0-9]/g, '');
+        if (digits.length >= 10 && digits === sellerPhoneDigits) {
+          addMatch(buyer, 'phone');
+        }
+      }
+    }
+
+    // 2. メールアドレスで照合（小文字化して比較）
+    if (emailUsable) {
+      const { data: buyersByEmail } = await supabase
+        .from('buyers')
+        .select(buyerCols)
+        .not('email', 'is', null)
+        .neq('is_deleted', true);
+
+      for (const buyer of buyersByEmail || []) {
+        const email = String(buyer.email || '').trim().toLowerCase();
+        if (email && email === sellerEmail) {
+          addMatch(buyer, 'email');
+        }
+      }
+    }
+
+    const duplicates = Array.from(matchMap.values());
+    res.json({ duplicates });
+  } catch (error) {
+    console.error('Get seller-buyer duplicates error:', error);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to get buyer duplicates',
+        retryable: true,
+      },
+    });
+  }
+});
+
 // Valid site options
 const VALID_SITE_OPTIONS = [
   'ウ',

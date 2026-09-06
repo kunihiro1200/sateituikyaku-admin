@@ -50,6 +50,8 @@ import CallRankingDisplay from '../components/CallRankingDisplay';
 import { SMS_TEMPLATE_ASSIGNEE_MAP, EMAIL_TEMPLATE_ASSIGNEE_MAP } from '../components/AssigneeSection';
 import DuplicateIndicatorBadge from '../components/DuplicateIndicatorBadge';
 import DuplicateDetailsModal from '../components/DuplicateDetailsModal';
+import BuyerDuplicateDetailsModal from '../components/BuyerDuplicateDetailsModal';
+import { BuyerDuplicateMatch } from '../components/BuyerDuplicateCard';
 import DocumentModal from '../components/DocumentModal';
 import ImageSelectorModal from '../components/ImageSelectorModal';
 import { InlineEditableField } from '../components/InlineEditableField';
@@ -1130,6 +1132,11 @@ const CallModePage = () => {
   const [duplicatesLoading, setDuplicatesLoading] = useState(false);
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
   const [duplicatesWithDetails, setDuplicatesWithDetails] = useState<any[]>([]);
+  // 買主リストとの重複（名前・電話番号・メアドで判定）
+  const [buyerDuplicates, setBuyerDuplicates] = useState<BuyerDuplicateMatch[]>([]);
+  const [buyerDuplicatesLoading, setBuyerDuplicatesLoading] = useState(false);
+  const [buyerDuplicatesError, setBuyerDuplicatesError] = useState<string | null>(null);
+  const [buyerDuplicateModalOpen, setBuyerDuplicateModalOpen] = useState(false);
   // 重複による除外確認（済 / 未）
   const [duplicateExclusionChecked, setDuplicateExclusionChecked] = useState(false);
   const [savingDuplicateExclusion, setSavingDuplicateExclusion] = useState(false);
@@ -2716,6 +2723,8 @@ const CallModePage = () => {
 
       // 重複検出を非同期で実行（画面表示後にバックグラウンドで実行）
       loadDuplicates();
+      // 買主リストとの重複検出も非同期で実行
+      loadBuyerDuplicates();
     } catch (err: any) {
       console.error('Failed to load data:', err);
       setError('データの取得に失敗しました');
@@ -2761,6 +2770,25 @@ const CallModePage = () => {
       setDuplicates([]);
     } finally {
       setDuplicatesLoading(false);
+    }
+  };
+
+  // 買主リストとの重複を取得する関数（名前・電話番号・メアドで判定）
+  const loadBuyerDuplicates = async () => {
+    if (!id) return;
+    try {
+      setBuyerDuplicatesLoading(true);
+      setBuyerDuplicatesError(null);
+      const response = await api.get(`/api/sellers/${id}/buyer-duplicates`, {
+        timeout: 10000,
+      });
+      setBuyerDuplicates(response.data.duplicates || []);
+    } catch (error) {
+      console.error('Failed to load buyer duplicates:', error);
+      setBuyerDuplicatesError('買主リストとの重複情報の取得に失敗しました');
+      setBuyerDuplicates([]);
+    } finally {
+      setBuyerDuplicatesLoading(false);
     }
   };
 
@@ -7152,6 +7180,23 @@ HP：https://ifoo-oita.com/
                         </Button>
                       </Box>
                     </>
+                  )}
+                  {/* 買主リストとの重複（名前・電話番号・メアドで判定） */}
+                  {!buyerDuplicatesLoading && buyerDuplicates.length > 0 && (
+                    <Chip
+                      label={`買主にも登録あり (${buyerDuplicates.length})`}
+                      color="error"
+                      onClick={() => setBuyerDuplicateModalOpen(true)}
+                      sx={{
+                        ml: 1,
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        height: '34px',
+                        '& .MuiChip-label': { px: 1.5 },
+                        '&:hover': { opacity: 0.85 },
+                      }}
+                    />
                   )}
                   </Box>
                 )}
@@ -11968,6 +12013,16 @@ HP：https://ifoo-oita.com/
         loading={detailsLoading}
         error={detailsError}
         onRetry={handleOpenDuplicateModal}
+      />
+
+      {/* 買主リストとの重複詳細（名前・電話番号・メアドで判定） */}
+      <BuyerDuplicateDetailsModal
+        open={buyerDuplicateModalOpen}
+        onClose={() => setBuyerDuplicateModalOpen(false)}
+        duplicates={buyerDuplicates}
+        loading={buyerDuplicatesLoading}
+        error={buyerDuplicatesError}
+        onRetry={loadBuyerDuplicates}
       />
 
       {/* ドキュメント管理モーダル */}
