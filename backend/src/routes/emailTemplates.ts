@@ -32,9 +32,16 @@ function applyFIBranding(subject: string, body: string, reportAssigneeName?: str
   
   // 報告担当者名がある場合は「株式会社くじら不動産の{苗字}です。」に置換
   if (reportAssigneeName) {
+    // フルネーム（苗字を切り出さずそのまま表示）で扱うスタッフ
+    // 例: 裏天真 は「裏天」ではなくフルネーム「裏天真」で表示する
+    const FULL_NAME_STAFF = ['裏天真'];
+
     // フルネームから苗字のみを抽出
     let lastName = reportAssigneeName;
-    if (reportAssigneeName.includes(' ')) {
+    if (FULL_NAME_STAFF.includes(reportAssigneeName.trim())) {
+      // フルネーム表示対象はそのまま使う
+      lastName = reportAssigneeName.trim();
+    } else if (reportAssigneeName.includes(' ')) {
       // 半角スペース区切り（例: "国広 太郎" → "国広"）
       lastName = reportAssigneeName.split(' ')[0];
     } else if (reportAssigneeName.includes('　')) {
