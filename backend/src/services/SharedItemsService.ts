@@ -113,10 +113,62 @@ export class SharedItemsService {
   }
 
   /**
+   * スタッフ名を正規化
+   * - 全角スペースを半角に統一
+   * - 重複削除
+   * - トリム
+   */
+  private normalizeStaffNames(staffNotShared: string | null | undefined): string | null {
+    if (!staffNotShared) return null;
+
+    // カンマで分割
+    const names = staffNotShared
+      .split(/[,、，]+/)
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    // 全角スペースを半角に統一し、重複削除
+    const uniqueNames = Array.from(
+      new Set(
+        names.map(name => name.replace(/\s+/g, ' ')) // 全角スペース・連続スペースを半角1つに統一
+      )
+    );
+
+    return uniqueNames.join(',');
+  }
+
+  /**
+   * スタッフ名を正規化（重複削除、全角スペースを半角に統一）
+   */
+  private normalizeStaffNames(staffNotShared: string | null | undefined): string | null {
+    if (!staffNotShared) return null;
+
+    // カンマで分割
+    const names = staffNotShared
+      .split(/[,、，]+/)
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    // 全角スペースを半角に統一し、重複削除
+    const uniqueNames = Array.from(
+      new Set(
+        names.map(name => name.replace(/\s+/g, ' ')) // 全角スペースを半角に統一
+      )
+    );
+
+    return uniqueNames.join(',');
+  }
+
+  /**
    * 新規作成（appendRow使用）
    */
   async create(item: Partial<SharedItem>): Promise<SharedItem> {
     try {
+      // staff_not_sharedフィールドを正規化（全角スペースを半角に統一、重複削除）
+      if (item.staff_not_shared) {
+        item.staff_not_shared = this.normalizeStaffNames(item.staff_not_shared);
+      }
+
       // 英語キーを日本語キー（スプレッドシートヘッダー）に変換
       const normalizedItem = this.normalizeKeys(item as Record<string, any>);
 
@@ -145,6 +197,11 @@ export class SharedItemsService {
    */
   async update(id: string, updates: Partial<SharedItem>): Promise<SharedItem> {
     try {
+      // staff_not_sharedフィールドを正規化（全角スペースを半角に統一、重複削除）
+      if (updates.staff_not_shared !== undefined) {
+        updates.staff_not_shared = this.normalizeStaffNames(updates.staff_not_shared);
+      }
+
       // IDから行番号を検索
       const rowIndex = await this.sheetsClient.findRowByColumn('ID', id);
       
