@@ -917,24 +917,16 @@ export default function SharedItemDetailPage() {
                     {saving ? '保存中...' : '保存'}
                   </Button>
                   {/* 共有完了ボタン：今日の日付を自動入力して保存 */}
-                  {staffNotShared.length === 0 ? (
-                    <Chip
-                      label="完了"
-                      color="success"
-                      sx={{ fontWeight: 'bold', fontSize: '0.9rem', height: 36 }}
-                    />
-                  ) : (
-                    <Button
-                      variant="contained"
-                      color="success"
-                      onClick={handleComplete}
-                      disabled={completing}
-                      sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
-                      startIcon={completing ? <CircularProgress size={16} color="inherit" /> : undefined}
-                    >
-                      {completing ? '保存中...' : '✓ 共有完了'}
-                    </Button>
-                  )}
+                  <Button
+                    variant="contained"
+                    color="success"
+                    onClick={handleComplete}
+                    disabled={completing}
+                    sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                    startIcon={completing ? <CircularProgress size={16} color="inherit" /> : undefined}
+                  >
+                    {completing ? '保存中...' : '✓ 共有完了'}
+                  </Button>
                   {/* チームから来た場合のみ「次へ」ボタンを表示 */}
                   {fromLocation && (
                     <Button
@@ -1168,24 +1160,16 @@ export default function SharedItemDetailPage() {
                 {saving ? '保存中...' : '保存'}
               </Button>
               {/* 共有完了ボタン：今日の日付を自動入力して保存 */}
-              {staffNotShared.length === 0 ? (
-                <Chip
-                  label="完了"
-                  color="success"
-                  sx={{ fontWeight: 'bold', fontSize: '0.9rem', height: 36 }}
-                />
-              ) : (
-                <Button
-                  variant="contained"
-                  color="success"
-                  onClick={handleComplete}
-                  disabled={completing}
-                  sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
-                  startIcon={completing ? <CircularProgress size={16} color="inherit" /> : undefined}
-                >
-                  {completing ? '保存中...' : '✓ 共有完了'}
-                </Button>
-              )}
+              <Button
+                variant="contained"
+                color="success"
+                onClick={handleComplete}
+                disabled={completing}
+                sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                startIcon={completing ? <CircularProgress size={16} color="inherit" /> : undefined}
+              >
+                {completing ? '保存中...' : '✓ 共有完了'}
+              </Button>
               {/* 朝礼等カテゴリーから来た場合のみ「次へ」ボタンを表示 */}
               {fromLocation && (
                 <Button
