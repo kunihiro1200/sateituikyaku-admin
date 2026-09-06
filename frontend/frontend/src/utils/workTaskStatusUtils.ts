@@ -133,12 +133,6 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     return '保留';
   }
 
-  // 郵送準備 必要（郵送準備を「依頼」したもの・製本完了前まで表示）
-  // ※ 製本待ち等の条件に関わらず、依頼した時点でサイドバーに出す
-  if (task.mailing_prep === '依頼' && isBlank(task.binding_completed)) {
-    return `郵送準備 必要 ${formatDateMD(task.binding_scheduled_date)} ${task.sales_contract_assignee || ''}`.trimEnd();
-  }
-
   // 0a. 契約後司法書士連絡未
   // property_listingsのsales_contract_completedが"契約完了～"で始まり、
   // judicial_scrivener_email_after_contractが空で、決済日が2026/4/30以降の場合
@@ -255,7 +249,9 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     isBlank(task.on_hold) &&
     isBlank(task.binding_completed)
   ) {
-    return `売買契約 製本待ち ${formatDateMD(task.binding_scheduled_date)} ${task.sales_contract_assignee || ''}`;
+    // 郵送準備を依頼したものは締め日の横に案内を表示
+    const mailingNote = task.mailing_prep === '依頼' ? ' 郵送準備までお願いします' : '';
+    return `売買契約 製本待ち ${formatDateMD(task.binding_scheduled_date)}${mailingNote} ${task.sales_contract_assignee || ''}`.replace(/\s+$/, '');
   }
 
   // 8. 売買契約 依頼未
@@ -337,7 +333,6 @@ const CATEGORY_GROUP_COLORS: [string, string][] = [
   ['売買契約　営業確認中',       '#e3f2fd'],
   ['売買契約 入力待ち',          '#e3f2fd'],
   ['売買契約 製本待ち',          '#e3f2fd'],
-  ['郵送準備 必要',              '#ffe0b2'],
   ['要台帳作成',                 '#fce4ec'],
   ['決済完了チャット送信未',     '#fff8e1'],
   ['経理確認未',                 '#fff8e1'],
@@ -366,7 +361,6 @@ const CATEGORY_ORDER = [
   '売買契約　営業確認中',
   '売買契約 入力待ち',
   '売買契約 製本待ち',
-  '郵送準備 必要',
   '要台帳作成',
   '決済完了チャット送信未',
   '経理確認未',
@@ -469,7 +463,6 @@ const getStatusKey = (status: string): string => {
   if (status.startsWith('経理確認未')) return 'payment_pending';
   if (status.startsWith('要台帳作成')) return 'ledger_required';
   if (status.startsWith('売買契約 製本待ち')) return 'sales_contract_binding';
-  if (status.startsWith('郵送準備 必要')) return 'mailing_prep_required';
   if (status.startsWith('売買契約 依頼未')) return 'sales_contract_unrequested';
   if (status.startsWith('サイト依頼済み納品待ち')) return 'site_delivery_pending';
   if (status.startsWith('サイト登録要確認')) return 'site_registration_check';
