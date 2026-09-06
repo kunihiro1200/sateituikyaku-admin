@@ -145,33 +145,83 @@ export class RelatedBuyerService {
   }
 
   /**
-   * 関連買主を検索（データベースクエリ）
+   * 電話番号を数字のみに正規化（ハイフン・空白・括弧などを除去）
+   * 例: "080-1234-5678" と "08012345678" を同一とみなす
+   */
+  private normalizePhone(phone: string | null | undefined): string {
+    return String(phone || '').replace(/[^0-9]/g, '');
+  }
+
+  /**
+   * メールアドレスを正規化（trim + 小文字化）
+   */
+  private normalizeEmail(email: string | null | undefined): string {
+    return String(email || '').trim().toLowerCase();
+  }
+
+  /**
+   * 関連買主を検索（正規化比較）
+   *
+   * ⚠️ 以前は `.eq()` の完全一致で照合していたため、
+   * 電話番号の表記ゆれ（"080-1234-5678" vs "08012345678"）や
+   * メールの大文字小文字違いで重複が検出できないケースがあった。
+   * DB側では正規化できないため、候補を全件ページ取得してアプリ側で
+   * 正規化して比較する（売主リストの重複判定と同じ設計思想）。
    */
   private async searchRelatedBuyers(currentBuyer: Buyer): Promise<Buyer[]> {
-    const conditions = [];
-    
-    if (currentBuyer.phone_number) {
-      conditions.push(`phone_number.eq.${currentBuyer.phone_number}`);
-    }
-    
-    if (currentBuyer.email) {
-      conditions.push(`email.eq.${currentBuyer.email}`);
-    }
+    const targetPhone = this.normalizePhone(currentBuyer.phone_number);
+    const targetEmail = this.normalizeEmail(currentBuyer.email);
 
-    if (conditions.length === 0) {
+    // 電話番号は10桁未満なら電話番号として成立しない（プレースホルダー "不可" 等を除外）
+    const phoneUsable = targetPhone.length >= 10;
+    const emailUsable = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail);
+
+    if (!phoneUsable && !emailUsable) {
       return [];
     }
 
-    // OR条件で検索
+    // 軽量カラムのみを全件ページ取得（削除済みは除外）
+    const candidates: Array<{ buyer_id: string; phone_number: string | null; email: string | null }> = [];
+    const PAGE_SIZE = 1000;
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data: page, error } = await supabase
+        .from('buyers')
+        .select('buyer_id, phone_number, email')
+        .is('deleted_at', null)
+        .neq('buyer_id', currentBuyer.buyer_id)
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) {
+        throw new Error(`Failed to search related buyers: ${error.message}`);
+      }
+      if (!page || page.length === 0) break;
+      candidates.push(...page);
+      if (page.length < PAGE_SIZE) break;
+    }
+
+    // 正規化して一致する買主IDを抽出
+    const matchedIds = candidates
+      .filter((c) => {
+        const phoneMatch =
+          phoneUsable && this.normalizePhone(c.phone_number) === targetPhone;
+        const emailMatch =
+          emailUsable && this.normalizeEmail(c.email) === targetEmail;
+        return phoneMatch || emailMatch;
+      })
+      .map((c) => c.buyer_id);
+
+    if (matchedIds.length === 0) {
+      return [];
+    }
+
+    // ヒットした買主の本体を取得
     const { data, error } = await supabase
       .from('buyers')
       .select('*')
-      .neq('buyer_id', currentBuyer.buyer_id)  // 自分自身を除外
-      .or(conditions.join(','))
+      .in('buyer_id', matchedIds)
       .order('reception_date', { ascending: false, nullsFirst: false });
 
     if (error) {
-      throw new Error(`Failed to search related buyers: ${error.message}`);
+      throw new Error(`Failed to fetch related buyers: ${error.message}`);
     }
 
     return data || [];
@@ -197,10 +247,13 @@ export class RelatedBuyerService {
    * マッチ理由を判定
    */
   private determineMatchReason(currentBuyer: Buyer, relatedBuyer: Buyer): MatchReason {
-    const phoneMatch = currentBuyer.phone_number && 
-                      currentBuyer.phone_number === relatedBuyer.phone_number;
-    const emailMatch = currentBuyer.email && 
-                      currentBuyer.email === relatedBuyer.email;
+    const targetPhone = this.normalizePhone(currentBuyer.phone_number);
+    const targetEmail = this.normalizeEmail(currentBuyer.email);
+    const phoneMatch =
+      targetPhone.length >= 10 && this.normalizePhone(relatedBuyer.phone_number) === targetPhone;
+    const emailMatch =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail) &&
+      this.normalizeEmail(relatedBuyer.email) === targetEmail;
 
     if (phoneMatch && emailMatch) {
       return MatchReason.BOTH;
