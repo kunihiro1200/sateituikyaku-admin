@@ -6146,7 +6146,7 @@ router.get('/:id/other-decision-analysis', authenticate, async (req: Request, re
         exclusive_other_decision_factor,
         visit_assignee
       `)
-      .eq('visit_assignee', assignee)
+      .in('visit_assignee', assigneeVariantsOD)
       .in('status', OTHER_DECISION_STATUSES)
       .gte('contract_year_month', monthStart)
       .lt('contract_year_month', nextMonth)
@@ -6170,7 +6170,7 @@ router.get('/:id/other-decision-analysis', authenticate, async (req: Request, re
     const { count: totalOtherDecisionCount } = await supabase
       .from('sellers')
       .select('id', { count: 'exact', head: true })
-      .eq('visit_assignee', assignee)
+      .in('visit_assignee', assigneeVariantsOD)
       .in('status', OTHER_DECISION_STATUSES)
       .is('deleted_at', null);
 
