@@ -36,8 +36,6 @@ export interface Buyer {
 export interface RelatedBuyer extends Buyer {
   relation_type: RelationType;
   match_reason: MatchReason;
-  /** 問い合わせのあった物件の住所（property_number → property_listings.address）。前回どの物件に問い合わせたかを示す。 */
-  property_address?: string | null;
 }
 
 export interface InquiryHistory {
@@ -129,14 +127,11 @@ export class RelatedBuyerService {
       const relatedBuyers = await this.searchRelatedBuyers(currentBuyer);
 
       // 関係を分類
-      const classified = relatedBuyers.map(rb => ({
+      const result = relatedBuyers.map(rb => ({
         ...rb,
         relation_type: this.classifyRelation(currentBuyer, rb),
         match_reason: this.determineMatchReason(currentBuyer, rb)
       }));
-
-      // 前回どの物件に問い合わせたかが分かるよう、物件住所を付与する
-      const result = await this.enrichWithPropertyAddress(classified);
 
       // Cache the result
       relatedBuyerCache.set(buyerId, result);
@@ -180,73 +175,6 @@ export class RelatedBuyerService {
     }
 
     return data || [];
-  }
-
-  /**
-   * 関連買主に「問い合わせのあった物件の住所」を付与する。
-   * property_number（カンマ区切りで複数の場合あり）から property_listings.address を引く。
-   * 自社物件が見つからない場合は other_company_property（他社物件の住所）をフォールバックにする。
-   */
-  private async enrichWithPropertyAddress(
-    buyers: RelatedBuyer[]
-  ): Promise<RelatedBuyer[]> {
-    // 全買主の property_number を分解して一意な物件番号リストを作る
-    const allPropertyNumbers = new Set<string>();
-    for (const b of buyers) {
-      if (b.property_number) {
-        String(b.property_number)
-          .split(',')
-          .map((n) => n.trim())
-          .filter(Boolean)
-          .forEach((n) => allPropertyNumbers.add(n));
-      }
-    }
-
-    let addressMap = new Map<string, string>();
-    if (allPropertyNumbers.size > 0) {
-      const { data: properties, error } = await supabase
-        .from('property_listings')
-        .select('property_number, address')
-        .in('property_number', Array.from(allPropertyNumbers));
-
-      if (error) {
-        console.warn('[RelatedBuyerService] Failed to fetch property addresses:', error.message);
-      } else {
-        addressMap = new Map(
-          (properties || [])
-            .filter((p: any) => p.property_number && p.address)
-            .map((p: any) => [String(p.property_number), p.address as string])
-        );
-      }
-    }
-
-    return buyers.map((b) => {
-      let propertyAddress: string | null = null;
-
-      if (b.property_number) {
-        const numbers = String(b.property_number)
-          .split(',')
-          .map((n) => n.trim())
-          .filter(Boolean);
-        // 最初に住所が見つかった物件番号の住所を採用（複数物件のうち先頭優先）
-        const addresses = numbers
-          .map((n) => addressMap.get(n))
-          .filter((a): a is string => !!a);
-        if (addresses.length > 0) {
-          propertyAddress = addresses.join(' / ');
-        }
-      }
-
-      // 自社物件で住所が取れない場合は他社物件の住所をフォールバック
-      if (!propertyAddress) {
-        const other = (b as any).other_company_property;
-        if (other && String(other).trim()) {
-          propertyAddress = String(other).trim();
-        }
-      }
-
-      return { ...b, property_address: propertyAddress };
-    });
   }
 
   /**
