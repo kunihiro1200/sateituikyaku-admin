@@ -7112,8 +7112,8 @@ HP：https://ifoo-oita.com/
             )}
 
             {/* 物件情報 */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5, minWidth: 0 }}>
                 <Typography variant="h6" sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
                   📍 物件情報
                 </Typography>
