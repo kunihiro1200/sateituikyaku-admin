@@ -864,7 +864,7 @@ export default function SharedItemDetailPage() {
                             sx={{ 
                               mt: 0.5, 
                               '& .MuiOutlinedInput-root': { 
-                                bgcolor: isOwnAnswer ? `${color.light}08` : '#f5f5f5'
+                                bgcolor: isOwnAnswer ? `${color.light}08` : 'white'
                               } 
                             }}
                           />
