@@ -266,6 +266,11 @@ export default function SharedItemDetailPage() {
     const currentVisibility = teamAnswers[member.visibilityKey] as boolean;
     const newVisibility = !currentVisibility;
 
+    console.log(`[DEBUG TOGGLE] member: ${memberLabel}, visibilityKey: ${String(member.visibilityKey)}`);
+    console.log(`[DEBUG TOGGLE] teamAnswers:`, teamAnswers);
+    console.log(`[DEBUG TOGGLE] currentVisibility:`, currentVisibility);
+    console.log(`[DEBUG TOGGLE] newVisibility:`, newVisibility);
+
     try {
       await api.post(`/api/shared-items/${item.id}/team-answers/toggle-visibility`, {
         member: memberLabel,
