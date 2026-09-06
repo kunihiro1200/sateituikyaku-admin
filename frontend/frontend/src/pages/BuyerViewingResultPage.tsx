@@ -1978,48 +1978,63 @@ export default function BuyerViewingResultPage() {
                 )}
 
                 {/* 何人来るか聞いた / 子供がいる チェック（売主内覧日連絡の横） */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flexShrink: 0 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <input
-                      type="checkbox"
-                      id="asked-number-of-visitors-hearing"
-                      checked={askedNumberOfVisitors}
-                      onChange={async (e) => {
-                        const checked = e.target.checked;
-                        setAskedNumberOfVisitors(checked);
-                        try {
-                          await handleInlineFieldSave('asked_number_of_visitors', checked);
-                        } catch (err) {
-                          setAskedNumberOfVisitors(!checked);
-                        }
-                      }}
-                      style={{ width: 18, height: 18, cursor: 'pointer' }}
-                    />
-                    <label htmlFor="asked-number-of-visitors-hearing" style={{ cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                      何人来るか聞いた
-                    </label>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <input
-                      type="checkbox"
-                      id="has-children-hearing"
-                      checked={hasChildren}
-                      onChange={async (e) => {
-                        const checked = e.target.checked;
-                        setHasChildren(checked);
-                        try {
-                          await handleInlineFieldSave('has_children', checked);
-                        } catch (err) {
-                          setHasChildren(!checked);
-                        }
-                      }}
-                      style={{ width: 18, height: 18, cursor: 'pointer' }}
-                    />
-                    <label htmlFor="has-children-hearing" style={{ cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                      子供がいる（内覧前日メールを子供用テンプレートで送信）
-                    </label>
-                  </Box>
-                </Box>
+                {/* 売主内覧日連絡と同じ必須条件: AND(ISNOTBLANK([●内覧日(最新）]),[●内覧日(最新）]>="2025/8/1") */}
+                {(() => {
+                  const isRequired = (() => {
+                    if (!buyer.viewing_date) return false;
+                    const vd = new Date(buyer.viewing_date);
+                    if (isNaN(vd.getTime())) return false;
+                    return vd >= new Date('2025-08-01');
+                  })();
+                  const askedMissing = isRequired && !askedNumberOfVisitors;
+                  return (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flexShrink: 0 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <input
+                          type="checkbox"
+                          id="asked-number-of-visitors-hearing"
+                          checked={askedNumberOfVisitors}
+                          onChange={async (e) => {
+                            const checked = e.target.checked;
+                            setAskedNumberOfVisitors(checked);
+                            try {
+                              await handleInlineFieldSave('asked_number_of_visitors', checked);
+                            } catch (err) {
+                              setAskedNumberOfVisitors(!checked);
+                            }
+                          }}
+                          style={{ width: 18, height: 18, cursor: 'pointer' }}
+                        />
+                        <label
+                          htmlFor="asked-number-of-visitors-hearing"
+                          style={{ cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold', color: askedMissing ? '#d32f2f' : undefined }}
+                        >
+                          何人来るか聞いた{askedMissing ? ' *必須' : ''}
+                        </label>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <input
+                          type="checkbox"
+                          id="has-children-hearing"
+                          checked={hasChildren}
+                          onChange={async (e) => {
+                            const checked = e.target.checked;
+                            setHasChildren(checked);
+                            try {
+                              await handleInlineFieldSave('has_children', checked);
+                            } catch (err) {
+                              setHasChildren(!checked);
+                            }
+                          }}
+                          style={{ width: 18, height: 18, cursor: 'pointer' }}
+                        />
+                        <label htmlFor="has-children-hearing" style={{ cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                          子供がいる（内覧前日メールを子供用テンプレートで送信）
+                        </label>
+                      </Box>
+                    </Box>
+                  );
+                })()}
               </Box>
 
               <Typography variant="subtitle2" gutterBottom>
