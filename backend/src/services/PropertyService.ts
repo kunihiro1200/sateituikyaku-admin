@@ -198,14 +198,20 @@ export class PropertyService {
         if (updates.landAreaVerified !== undefined) sellerUpdateData.land_area_verified = updates.landAreaVerified;
         if (updates.buildingAreaVerified !== undefined) sellerUpdateData.building_area_verified = updates.buildingAreaVerified;
         
+        console.log(`[PropertyService] Syncing verified areas to sellers table: seller_id=${data.seller_id}`, sellerUpdateData);
+        
         const { error: sellerError } = await supabase
           .from('sellers')
           .update(sellerUpdateData)
           .eq('id', data.seller_id);
         
         if (sellerError) {
-          console.error('Warning: Failed to sync verified area to sellers table:', sellerError);
+          console.error(`❌ [PropertyService] Failed to sync verified area to sellers table (seller_id=${data.seller_id}):`, sellerError);
+          console.error('   Update data:', JSON.stringify(sellerUpdateData));
+          console.error('   Property data:', JSON.stringify({ id: data.id, seller_id: data.seller_id }));
           // エラーでも処理は続行（propertiesテーブルの更新は成功しているため）
+        } else {
+          console.log(`✅ [PropertyService] Successfully synced verified areas to sellers table (seller_id=${data.seller_id})`);
         }
       }
 
