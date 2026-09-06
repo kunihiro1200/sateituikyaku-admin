@@ -1402,7 +1402,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       if (isEmpty(getValue('distribution_date'))) missingFields.push('配信日');
       if (isEmpty(getValue('property_file'))) missingFields.push('物件ファイル');
       if (isEmpty(getValue('publish_scheduled_date'))) missingFields.push('公開予定日');
-      if (isEmpty(getValue('pre_distribution_check'))) missingFields.push('メール配信');
       if (isEmpty(getValue('site_registration_deadline'))) missingFields.push('サイト登録締め日');
       if (missingFields.length > 0) {
         setValidationWarningDialog({
@@ -1608,6 +1607,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       } else {
         setEditedData(prev => ({ ...prev, [field]: value }));
       }
+    } else if (field === 'site_registration_deadline') {
+      // サイト登録締め日と公開予定日は同じ日を反映する
+      setEditedData(prev => ({ ...prev, [field]: value, publish_scheduled_date: value }));
+    } else if (field === 'publish_scheduled_date') {
+      // 公開予定日とサイト登録締め日は同じ日を反映する
+      setEditedData(prev => ({ ...prev, [field]: value, site_registration_deadline: value }));
     } else if (field === 'sales_price') {
       // 売買価格変更時は通常仲介手数料（売）・（買）を自動計算
       const fee = calcStandardBrokerageFeeFromPrice(value ? Number(value) : null);
@@ -3410,6 +3415,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             labelColor={!getValue('site_registration_confirmer') ? 'error' : undefined}
           />
         )}
+        <EditableButtonSelect label="写真の順番確認したか" field="photo_order_checked" options={['済', '未']} />
         <EditableField label="メール配信v" field="email_distribution" />
         <EditableField label="サイト登録確認OKコメント" field="site_registration_ok_comment" type="text" />
         <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
@@ -3541,12 +3547,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <EditableButtonSelect label={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('property_file')) ? '物件ファイル*（必須）' : '物件ファイル'} field="property_file" options={['担当に渡し済み', '未']} labelColor={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('property_file')) ? 'error' : undefined} />
         </Box>
         <EditableField label={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('publish_scheduled_date')) ? '公開予定日*（必須）' : '公開予定日'} field="publish_scheduled_date" type="date" labelColor={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('publish_scheduled_date')) ? 'error' : undefined} />
-        <ReadOnlyDisplayField
-          label="メール配信"
-          value={getValue('email_distribution') || null}
-          labelColor="error"
-        />
-        <EditableField label={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('pre_distribution_check')) ? 'メール配信*（必須）' : 'メール配信'} field="pre_distribution_check" labelColor={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('pre_distribution_check')) ? 'error' : undefined} />
+        <EditableButtonSelect label="物件リスト反映情報確認したか" field="property_list_reflection_checked" options={['済', '未']} />
         <EditableField label={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('site_registration_deadline')) ? 'サイト登録締め日v*（必須）' : 'サイト登録締め日v'} field="site_registration_deadline" type="date" labelColor={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('site_registration_deadline')) ? 'error' : undefined} />
         </Box>
       </Box>
