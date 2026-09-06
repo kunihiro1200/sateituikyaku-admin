@@ -43,7 +43,7 @@ const BuyerDuplicateDetailsModal: React.FC<BuyerDuplicateDetailsModalProps> = ({
       }}
     >
       <DialogTitle>
-        重複買主情報
+        買主同士の重複
         <IconButton
           onClick={onClose}
           sx={{ position: 'absolute', right: 8, top: 8 }}

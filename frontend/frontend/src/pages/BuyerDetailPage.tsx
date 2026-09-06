@@ -48,7 +48,6 @@ import PropertyInfoCard from '../components/PropertyInfoCard';
 import InquiryHistoryTable, { InquiryHistoryItem } from '../components/InquiryHistoryTable';
 import { InquiryResponseEmailModal } from '../components/InquiryResponseEmailModal';
 import UnifiedInquiryHistoryTable from '../components/UnifiedInquiryHistoryTable';
-import DuplicateIndicatorBadge from '../components/DuplicateIndicatorBadge';
 import DuplicateDetailsModal from '../components/DuplicateDetailsModal';
 import BuyerDuplicateDetailsModal from '../components/BuyerDuplicateDetailsModal';
 import { BuyerDuplicateMatch } from '../components/BuyerDuplicateCard';
@@ -1795,7 +1794,7 @@ export default function BuyerDetailPage() {
           {/* 買主同士の重複（電話番号・メアドで判定） */}
           {!buyerDuplicatesLoading && buyerDuplicates.length > 0 && (
             <Chip
-              label={`重複 (${buyerDuplicates.length})`}
+              label={`買主重複 (${buyerDuplicates.length})`}
               color="warning"
               onClick={() => setBuyerDuplicateModalOpen(true)}
               sx={{
@@ -1809,11 +1808,21 @@ export default function BuyerDetailPage() {
               }}
             />
           )}
-          {/* 売主リストとの重複（名前・電話番号・メアドで判定） */}
+          {/* 売主リスト（通話モードページ）との重複（名前・電話番号・メアドで判定） */}
           {!sellerDuplicatesLoading && sellerDuplicates.length > 0 && (
-            <DuplicateIndicatorBadge
-              duplicateCount={sellerDuplicates.length}
+            <Chip
+              label={`売主重複 (${sellerDuplicates.length})`}
+              color="error"
               onClick={() => setSellerDuplicateModalOpen(true)}
+              sx={{
+                ml: 1,
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                height: '34px',
+                '& .MuiChip-label': { px: 1.5 },
+                '&:hover': { opacity: 0.85 },
+              }}
             />
           )}
           {/* 削除ボタン */}
@@ -4634,7 +4643,7 @@ TEL：097-533-2022`;
         onClose={() => setChatPopupOpen(false)}
       />
 
-      {/* 売主リストとの重複詳細（名前・電話番号・メアドで判定） */}
+      {/* 売主リスト（通話モードページ）との重複詳細（名前・電話番号・メアドで判定） */}
       <DuplicateDetailsModal
         open={sellerDuplicateModalOpen}
         onClose={() => setSellerDuplicateModalOpen(false)}
@@ -4642,6 +4651,7 @@ TEL：097-533-2022`;
         loading={sellerDuplicatesLoading}
         error={sellerDuplicatesError}
         onRetry={fetchSellerDuplicates}
+        title="売主リストとの重複（通話モードページ）"
       />
 
       {/* 買主同士の重複詳細（電話番号・メアドで判定） */}

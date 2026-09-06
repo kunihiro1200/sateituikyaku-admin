@@ -26,6 +26,8 @@ interface DuplicateDetailsModalProps {
   loading: boolean;
   error?: string | null;
   onRetry?: () => void;
+  /** モーダルのタイトル。未指定の場合は「重複案件情報」。 */
+  title?: string;
 }
 
 const DuplicateDetailsModal: React.FC<DuplicateDetailsModalProps> = ({
@@ -35,6 +37,7 @@ const DuplicateDetailsModal: React.FC<DuplicateDetailsModalProps> = ({
   loading,
   error,
   onRetry,
+  title = '重複案件情報',
 }) => {
   return (
     <Dialog
@@ -49,7 +52,7 @@ const DuplicateDetailsModal: React.FC<DuplicateDetailsModalProps> = ({
       }}
     >
       <DialogTitle>
-        重複案件情報
+        {title}
         <IconButton
           onClick={onClose}
           sx={{ position: 'absolute', right: 8, top: 8 }}
