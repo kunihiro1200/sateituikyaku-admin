@@ -427,13 +427,23 @@ router.post('/:id/team-answers/toggle-visibility', async (req: Request, res: Res
     };
 
     // 既存レコードを更新
-    const updateResp = await axios.patch(
+    await axios.patch(
       `${supabaseUrl}/rest/v1/shared_item_team_answers?shared_item_id=eq.${encodeURIComponent(sharedItemId)}`,
       { [columnName]: isVisible, updated_at: new Date().toISOString() },
       { headers }
     );
 
-    res.json({ data: Array.isArray(updateResp.data) ? updateResp.data[0] : updateResp.data });
+    // 更新後のデータを再取得
+    const getResponse = await axios.get(
+      `${supabaseUrl}/rest/v1/shared_item_team_answers?shared_item_id=eq.${encodeURIComponent(sharedItemId)}&limit=1`,
+      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, Accept: 'application/json' } }
+    );
+
+    const updatedData = Array.isArray(getResponse.data) && getResponse.data.length > 0 
+      ? getResponse.data[0] 
+      : null;
+
+    res.json({ data: updatedData });
   } catch (error: any) {
     console.error('Failed to toggle visibility:', error);
     res.status(500).json({ error: '公開状態の切り替えに失敗しました', details: error.response?.data || error.message });
