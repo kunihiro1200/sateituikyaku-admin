@@ -4359,6 +4359,29 @@ https://docs.google.com/document/d/12vr8d5TQ-fWd7kQeOFmBe6Dd5kbt1dqaU0cjO9y2xnI/
           )}
           </div>
 
+          {/* 郵送準備（契約書確認の横 / DB専用）- 済/未 */}
+          <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+            <Grid item xs={4}>
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                郵送準備
+              </Typography>
+            </Grid>
+            <Grid item xs={8}>
+              <ButtonGroup size="small" variant="outlined">
+                {['済', '未'].map((opt) => (
+                  <Button
+                    key={opt}
+                    variant={getValue('mailing_prep') === opt ? 'contained' : 'outlined'}
+                    color={getValue('mailing_prep') === opt ? (opt === '済' ? 'success' : 'warning') : 'inherit'}
+                    onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('mailing_prep', getValue('mailing_prep') === opt ? null : opt); }}
+                  >
+                    {opt}
+                  </Button>
+                ))}
+              </ButtonGroup>
+            </Grid>
+          </Grid>
+
           {/* 契約書、重説他　修正点（常に表示・入力可能） */}
           <Box sx={{ bgcolor: '#fff8e1', borderRadius: 1, p: 1.5, mb: 1 }}>
             {/* 契約書、重説他　修正点 */}

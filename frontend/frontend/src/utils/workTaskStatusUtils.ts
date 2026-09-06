@@ -20,6 +20,7 @@ export interface WorkTask {
   sales_contract_deadline: string;
   binding_scheduled_date: string;
   binding_completed: string;
+  mailing_prep: string;
   on_hold: string;
   settlement_date: string;
   hirose_request_sales: string;
@@ -248,7 +249,9 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     isBlank(task.on_hold) &&
     isBlank(task.binding_completed)
   ) {
-    return `売買契約 製本待ち ${formatDateMD(task.binding_scheduled_date)} ${task.sales_contract_assignee || ''}`;
+    // 郵送準備が未（＝「済」以外）の場合は「郵送準備 未」を明示
+    const mailingLabel = task.mailing_prep === '済' ? '郵送準備済' : '郵送準備未';
+    return `売買契約 製本待ち【${mailingLabel}】 ${formatDateMD(task.binding_scheduled_date)} ${task.sales_contract_assignee || ''}`;
   }
 
   // 8. 売買契約 依頼未
