@@ -800,6 +800,9 @@ export default function SharedItemDetailPage() {
                     const isOwnAnswer = employee?.name?.includes(label) || label.includes(employee?.name || '');
                     const canView = isVisible || isOwnAnswer;
 
+                    // デバッグ用（本番環境では削除）
+                    console.log(`[DEBUG] label: ${label}, employee.name: ${employee?.name}, isOwnAnswer: ${isOwnAnswer}, isVisible: ${isVisible}`);
+
                     return (
                       <Grid item xs={12} key={key}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
