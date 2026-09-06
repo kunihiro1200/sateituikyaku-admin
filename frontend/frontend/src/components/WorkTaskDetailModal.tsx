@@ -3415,7 +3415,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             labelColor={!getValue('site_registration_confirmer') ? 'error' : undefined}
           />
         )}
-        <EditableButtonSelect label="写真の順番確認したか" field="photo_order_checked" options={['済', '未']} />
         <EditableField label="メール配信v" field="email_distribution" />
         <EditableField label="サイト登録確認OKコメント" field="site_registration_ok_comment" type="text" />
         <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
@@ -3547,7 +3546,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <EditableButtonSelect label={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('property_file')) ? '物件ファイル*（必須）' : '物件ファイル'} field="property_file" options={['担当に渡し済み', '未']} labelColor={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('property_file')) ? 'error' : undefined} />
         </Box>
         <EditableField label={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('publish_scheduled_date')) ? '公開予定日*（必須）' : '公開予定日'} field="publish_scheduled_date" type="date" labelColor={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('publish_scheduled_date')) ? 'error' : undefined} />
-        <EditableButtonSelect label="物件リスト反映情報確認したか" field="property_list_reflection_checked" options={['済', '未']} />
         <EditableField label={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('site_registration_deadline')) ? 'サイト登録締め日v*（必須）' : 'サイト登録締め日v'} field="site_registration_deadline" type="date" labelColor={!isEmpty(getValue('site_registration_ok_sent')) && isEmpty(getValue('site_registration_deadline')) ? 'error' : undefined} />
         </Box>
       </Box>
