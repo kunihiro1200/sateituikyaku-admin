@@ -9,6 +9,7 @@ interface RelatedBuyer {
   phone_number: string | null;
   email: string | null;
   property_number: string | null;
+  property_address?: string | null;
   reception_date: string | null;
   relation_type: 'multiple_inquiry' | 'possible_duplicate';
   match_reason: 'phone' | 'email' | 'both';
@@ -190,6 +191,12 @@ const RelatedBuyersSection: React.FC<RelatedBuyersSectionProps> = ({ buyerNumber
                       </span>
                     )}
                   </div>
+                  {buyer.property_address && (
+                    <div className="text-gray-700">
+                      <span className="text-gray-500">問合せ物件: </span>
+                      {buyer.property_address}
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <span
                       className={`inline-block px-2 py-1 rounded text-xs font-medium ${getRelationTypeColor(

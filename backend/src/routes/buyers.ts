@@ -3195,7 +3195,170 @@ ${detailUrl}`;
 });
 
 
+// ─────────────────────────────────────────────────────────────────────────
+// 買主と売主の重複判定
+//   GET /api/buyers/:id/seller-duplicates
+//
+// 買主リストページの買主が、売主リスト（通話モードページ）にも
+// 登録されていないかを、名前・電話番号・メールアドレスで判定する。
+//
+// ⚠️ アーキテクチャの非対称性（重要）:
+//   - 買主(buyers): name / phone_number / email は「平文」（暗号化なし・hashなし）
+//   - 売主(sellers): name / phone_number / email は「暗号化」され、
+//     検索用に phone_number_hash / email_hash（= sha256(平文)）を持つ。name_hash は無い。
+//
+// 照合方式:
+//   1. 電話番号: 買主の平文電話 → 数字抽出 → sha256 → 売主の phone_number_hash と照合
+//   2. メール:   買主の平文メール → sha256 → 売主の email_hash と照合
+//   3. 名前:     売主は暗号化のため hash 照合不可。phone/email でヒットした売主を
+//                復号し、名前一致なら matchType に反映する。
+//
+// steering ルール（seller-search-and-hash-integrity-rules.md）に従い、
+// ハッシュは必ず「平文」から sha256 で作る。
+// また sellers.ts の /duplicates と同様、プレースホルダー値
+// （電話「不可」「NG」等、メール「なし」等）は照合対象から除外する。
+// ─────────────────────────────────────────────────────────────────────────
+router.get('/:id/seller-duplicates', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
 
+    // 買主を取得（UUID / 買主番号どちらでも可）
+    const buyer = await buyerService.getById(id);
+    if (!buyer) {
+      return res.status(404).json({
+        error: { code: 'BUYER_NOT_FOUND', message: 'Buyer not found', retryable: false },
+      });
+    }
+
+    const crypto = await import('crypto');
+    const sha256 = (value: string): string =>
+      crypto.createHash('sha256').update(value).digest('hex');
+
+    // 買主の平文値を正規化
+    const buyerName = (buyer.name || '').trim();
+    const buyerPhoneDigits = String(buyer.phone_number || '').replace(/[^0-9]/g, '');
+    const buyerEmail = String(buyer.email || '').trim().toLowerCase();
+
+    // プレースホルダー除外: 電話は数字10桁以上、メールは形式チェック
+    const phoneUsable = buyerPhoneDigits.length >= 10;
+    const emailUsable = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail);
+
+    if (!phoneUsable && !emailUsable) {
+      // 名前だけでは売主の暗号化カラムと照合できないため、空で返す
+      return res.json({ duplicates: [] });
+    }
+
+    const phoneHash = phoneUsable ? sha256(buyerPhoneDigits) : null;
+    const emailHash = emailUsable ? sha256(buyerEmail) : null;
+
+    const { createClient } = require('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    const selectCols =
+      'id, seller_number, name, phone_number, email, inquiry_date, confidence_level, status, next_call_date, valuation_amount_1, valuation_amount_2, valuation_amount_3, property_address, comments';
+
+    // matchType: 'phone' | 'email' | 'both' | 'name'
+    const matchMap = new Map<string, any>();
+    const { decrypt } = await import('../utils/encryption');
+
+    const buildSellerInfo = (seller: any) => {
+      let decryptedName = '';
+      try { decryptedName = seller.name ? decrypt(seller.name) : ''; } catch { /* skip */ }
+      return {
+        name: decryptedName,
+        phoneNumber: '',
+        inquiryDate: seller.inquiry_date ? new Date(seller.inquiry_date) : undefined,
+        sellerNumber: seller.seller_number,
+        confidenceLevel: seller.confidence_level,
+        status: seller.status,
+        nextCallDate: seller.next_call_date,
+        valuationAmount1: seller.valuation_amount_1,
+        valuationAmount2: seller.valuation_amount_2,
+        valuationAmount3: seller.valuation_amount_3,
+        propertyAddress: seller.property_address,
+        comments: seller.comments,
+      };
+    };
+
+    // 名前一致判定（全角/半角スペース・記号を除去して比較）
+    const normalizeName = (n: string): string =>
+      String(n || '')
+        .replace(/[\s\u3000]/g, '')
+        .replace(/[（）()「」]/g, '')
+        .trim();
+    const normalizedBuyerName = normalizeName(buyerName);
+
+    // 1. 電話番号ハッシュで検索
+    if (phoneHash) {
+      const { data: phoneMatches } = await supabase
+        .from('sellers')
+        .select(selectCols)
+        .eq('phone_number_hash', phoneHash)
+        .is('deleted_at', null);
+
+      for (const seller of phoneMatches || []) {
+        matchMap.set(seller.id, {
+          sellerId: seller.id,
+          matchType: 'phone' as const,
+          sellerInfo: buildSellerInfo(seller),
+          propertyInfo: seller.property_address
+            ? { address: seller.property_address, propertyType: '' }
+            : undefined,
+        });
+      }
+    }
+
+    // 2. メールハッシュで検索
+    if (emailHash) {
+      const { data: emailMatches } = await supabase
+        .from('sellers')
+        .select(selectCols)
+        .eq('email_hash', emailHash)
+        .is('deleted_at', null);
+
+      for (const seller of emailMatches || []) {
+        if (matchMap.has(seller.id)) {
+          matchMap.get(seller.id).matchType = 'both';
+        } else {
+          matchMap.set(seller.id, {
+            sellerId: seller.id,
+            matchType: 'email' as const,
+            sellerInfo: buildSellerInfo(seller),
+            propertyInfo: seller.property_address
+              ? { address: seller.property_address, propertyType: '' }
+              : undefined,
+          });
+        }
+      }
+    }
+
+    // 3. 名前一致の反映
+    //    売主の name は暗号化されているため hash 照合できない。
+    //    phone/email でヒットした売主については復号済みの名前があるので、
+    //    名前も一致していれば matchType に 'name' の意味を追加する。
+    if (normalizedBuyerName) {
+      for (const entry of matchMap.values()) {
+        const sellerNameNorm = normalizeName(entry.sellerInfo.name);
+        entry.nameMatch = !!sellerNameNorm && sellerNameNorm === normalizedBuyerName;
+      }
+    }
+
+    const duplicates = Array.from(matchMap.values());
+    res.json({ duplicates });
+  } catch (error: any) {
+    console.error('Get buyer-seller duplicates error:', error);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to get seller duplicates',
+        retryable: true,
+      },
+    });
+  }
+});
 
 
 export default router;
