@@ -257,6 +257,8 @@ export default function BuyerViewingResultPage() {
   const [isSavingContinueDistribution, setIsSavingContinueDistribution] = useState(false); // 契約後配信フラグ保存中
   const [offerFailedChatSentPopupOpen, setOfferFailedChatSentPopupOpen] = useState(false);
   const [campaignHandedOver, setCampaignHandedOver] = useState(false); // 10万円キャンペーンお渡し済みチェック
+  const [askedNumberOfVisitors, setAskedNumberOfVisitors] = useState(false); // 何人来るか聞いたかチェック
+  const [hasChildren, setHasChildren] = useState(false); // 子供がいるチェック
   const [offerPdfFile, setOfferPdfFile] = useState<File | null>(null); // 買付PDF添付
   const [normalInitials, setNormalInitials] = useState<string[]>([]);
   const [calendarOpened, setCalendarOpened] = useState(false); // カレンダーを開いたかどうか
@@ -439,6 +441,9 @@ export default function BuyerViewingResultPage() {
       setInsightCompanionValue(res.data.viewing_insight_companion || '');
       // 10万円キャンペーンお渡し済みチェックの初期値をセット
       setCampaignHandedOver(res.data.campaign_handed_over === true);
+      // 何人来るか聞いたか・子供がいるチェックの初期値をセット
+      setAskedNumberOfVisitors(res.data.asked_number_of_visitors === true);
+      setHasChildren(res.data.has_children === true);
       // property_numberがあれば買主リストを取得（linkedPropertiesが空の場合のフォールバック）
       if (res.data.property_number) {
         fetchPropertyBuyers(res.data.property_number);
@@ -1222,6 +1227,7 @@ export default function BuyerViewingResultPage() {
                   preViewingNotes={buyer.pre_viewing_notes || ''}
                   viewingDate={buyer.viewing_date || ''}
                   viewingTime={buyer.viewing_time || ''}
+                  hasChildren={hasChildren}
                   inquiryHistory={[]}
                   selectedPropertyIds={selectedPropertyIds}
                   propertyNumbers={linkedProperties.map((p: any) => p.property_number).filter(Boolean)}
@@ -1970,6 +1976,50 @@ export default function BuyerViewingResultPage() {
                     })()}
                   </Box>
                 )}
+
+                {/* 何人来るか聞いた / 子供がいる チェック（売主内覧日連絡の横） */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flexShrink: 0 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type="checkbox"
+                      id="asked-number-of-visitors-hearing"
+                      checked={askedNumberOfVisitors}
+                      onChange={async (e) => {
+                        const checked = e.target.checked;
+                        setAskedNumberOfVisitors(checked);
+                        try {
+                          await handleInlineFieldSave('asked_number_of_visitors', checked);
+                        } catch (err) {
+                          setAskedNumberOfVisitors(!checked);
+                        }
+                      }}
+                      style={{ width: 18, height: 18, cursor: 'pointer' }}
+                    />
+                    <label htmlFor="asked-number-of-visitors-hearing" style={{ cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                      何人来るか聞いた
+                    </label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type="checkbox"
+                      id="has-children-hearing"
+                      checked={hasChildren}
+                      onChange={async (e) => {
+                        const checked = e.target.checked;
+                        setHasChildren(checked);
+                        try {
+                          await handleInlineFieldSave('has_children', checked);
+                        } catch (err) {
+                          setHasChildren(!checked);
+                        }
+                      }}
+                      style={{ width: 18, height: 18, cursor: 'pointer' }}
+                    />
+                    <label htmlFor="has-children-hearing" style={{ cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                      子供がいる（内覧前日メールを子供用テンプレートで送信）
+                    </label>
+                  </Box>
+                </Box>
               </Box>
 
               <Typography variant="subtitle2" gutterBottom>

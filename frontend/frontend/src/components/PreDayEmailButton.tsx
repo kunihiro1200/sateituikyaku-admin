@@ -8,6 +8,8 @@ import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 
 const PRE_DAY_TEMPLATE_NAME = '☆内覧前日通知メール';
+// 子供がいる場合に使用する内覧前日メールテンプレート名（スプレッドシートの種別列の値と一致させる）
+const PRE_DAY_KODOMO_TEMPLATE_NAME = '☆内覧前日通知メール（子供）';
 
 interface PreDayEmailButtonProps {
   buyerId: string;
@@ -18,6 +20,7 @@ interface PreDayEmailButtonProps {
   preViewingNotes?: string;
   viewingDate?: string;
   viewingTime?: string;
+  hasChildren?: boolean; // 子供がいる場合は子供用テンプレートを使用する
   inquiryHistory: InquiryHistoryItem[];
   selectedPropertyIds: Set<string>;
   propertyNumbers?: string[]; // property_number の配列（mergeMultiple用）
@@ -39,6 +42,7 @@ export default function PreDayEmailButton({
   preViewingNotes,
   viewingDate,
   viewingTime,
+  hasChildren,
   selectedPropertyIds,
   propertyNumbers,
   size = 'medium',
@@ -58,13 +62,15 @@ export default function PreDayEmailButton({
   const handleClick = async () => {
     setLoading(true);
     try {
-      // テンプレート一覧を取得して '★内覧前日通知メール' のみ使用
+      // テンプレート一覧を取得
+      // 子供がいる場合は子供用テンプレート（NAIRANNMAEZENJITUkodomo）、それ以外は通常の内覧前日通知メールを使用
       const templatesRes = await api.get('/api/email-templates');
       const templates: EmailTemplate[] = templatesRes.data;
-      const template = templates.find((t) => t.name === PRE_DAY_TEMPLATE_NAME);
+      const targetTemplateName = hasChildren ? PRE_DAY_KODOMO_TEMPLATE_NAME : PRE_DAY_TEMPLATE_NAME;
+      const template = templates.find((t) => t.name === targetTemplateName);
 
       if (!template) {
-        setErrorMessage(`${PRE_DAY_TEMPLATE_NAME}テンプレートが見つかりません。スプレッドシートのテンプレートシートに「買主」区分で「${PRE_DAY_TEMPLATE_NAME}」を追加してください。`);
+        setErrorMessage(`${targetTemplateName}テンプレートが見つかりません。スプレッドシートのテンプレートシートに「買主」区分で「${targetTemplateName}」を追加してください。`);
         return;
       }
 
