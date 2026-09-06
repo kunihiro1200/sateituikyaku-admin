@@ -188,7 +188,7 @@ export default function SharedItemsPage() {
           item.staff_not_shared &&
           !item.confirmation_date &&
           String(item.staff_not_shared)
-            .split(/[,、，\s　]+/)
+            .split(/[,、，]+/)  // 🚨 修正: スペースで分割しない
             .map((s) => s.trim())
             .filter(Boolean)
             .includes(selectedUnconfirmedStaff)
@@ -232,13 +232,15 @@ export default function SharedItemsPage() {
 
   // 「●●＿未確認」カテゴリー集計
   // staff_not_shared に値があり confirmation_date が空のアイテムをスタッフ名ごとに集計
+  // 🚨 修正: スペース区切りは使わず、カンマ・全角カンマ・読点のみで分割
+  // これにより「林田 元汰」が「林田」と「元汰」に分かれなくなる
   const unconfirmedCategories = useMemo(() => {
     const staffMap = new Map<string, number>();
     for (const item of allSharedItems) {
       if (item.staff_not_shared && !item.confirmation_date) {
-        // カンマ・スペース区切りで複数スタッフが入っている場合に対応
+        // カンマ・読点区切りでのみ分割（スペースは使わない）
         const staffNames = String(item.staff_not_shared)
-          .split(/[,、，\s　]+/)
+          .split(/[,、，]+/)  // スペース・全角スペースを削除
           .map((s) => s.trim())
           .filter(Boolean);
         for (const name of staffNames) {
