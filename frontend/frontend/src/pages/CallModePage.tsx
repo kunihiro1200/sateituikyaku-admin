@@ -7118,7 +7118,7 @@ HP：https://ifoo-oita.com/
                   📍 物件情報
                 </Typography>
                 {seller && (seller.inquiryDetailedDateTime || seller.inquiryDetailedDatetime || (seller as any).inquiryDatetime || seller.inquiryDate) && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                   <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
                     反響日：
                     <Typography component="span" variant="body2" sx={{ fontWeight: 'bold', ml: 0.5 }}>
@@ -7181,22 +7181,24 @@ HP：https://ifoo-oita.com/
                       </Box>
                     </>
                   )}
-                  {/* 買主リストとの重複（名前・電話番号・メアドで判定） */}
+                  {/* 買主リストとの重複（名前・電話番号・メアドで判定）
+                      → 重複行の下に折り返して表示（flexBasis 100% で改行させる） */}
                   {!buyerDuplicatesLoading && buyerDuplicates.length > 0 && (
-                    <Chip
-                      label={`買主にも登録あり (${buyerDuplicates.length})`}
-                      color="error"
-                      onClick={() => setBuyerDuplicateModalOpen(true)}
-                      sx={{
-                        ml: 1,
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        fontSize: '0.9rem',
-                        height: '34px',
-                        '& .MuiChip-label': { px: 1.5 },
-                        '&:hover': { opacity: 0.85 },
-                      }}
-                    />
+                    <Box sx={{ flexBasis: '100%', mt: 0.5 }}>
+                      <Chip
+                        label={`買主にも登録あり (${buyerDuplicates.length})`}
+                        color="error"
+                        onClick={() => setBuyerDuplicateModalOpen(true)}
+                        sx={{
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          fontSize: '0.9rem',
+                          height: '34px',
+                          '& .MuiChip-label': { px: 1.5 },
+                          '&:hover': { opacity: 0.85 },
+                        }}
+                      />
+                    </Box>
                   )}
                   </Box>
                 )}
