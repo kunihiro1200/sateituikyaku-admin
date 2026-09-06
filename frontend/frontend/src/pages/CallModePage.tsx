@@ -7114,9 +7114,6 @@ HP：https://ifoo-oita.com/
             {/* 物件情報 */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5, minWidth: 0 }}>
-                <Typography variant="h6" sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
-                  📍 物件情報
-                </Typography>
                 {seller && (seller.inquiryDetailedDateTime || seller.inquiryDetailedDatetime || (seller as any).inquiryDatetime || seller.inquiryDate) && (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                   {/* 1列目: 反響日 + 重複 + 重複による除外確認（横並びのまま） */}
@@ -7243,6 +7240,10 @@ HP：https://ifoo-oita.com/
               )}
             </Box>
             <Paper sx={{ p: 2, mb: 3, bgcolor: '#f0f7f4' }}>
+              {/* 物件情報 見出し（ボックスの一番上） */}
+              <Typography variant="h6" sx={{ mb: 1.5, whiteSpace: 'nowrap' }}>
+                📍 物件情報
+              </Typography>
               {(() => {
                 // 編集モード（propertyがなくてもsellerの直接フィールドで編集可能）
                 if (editingProperty) {
