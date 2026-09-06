@@ -121,8 +121,21 @@ const BASE_DATE = new Date('2025-05-26');
 // 2025-10-30 基準日
 const SITE_REG_BASE_DATE = new Date('2025-10-30');
 
-// ステータス計算関数
+// ステータス計算関数（ラッパー）
+// 郵送準備を「依頼」したもの（製本完了前）は、いずれのカテゴリーでも
+// 締め日の横に「郵送準備までお願いします」を付与する
 export const calculateTaskStatus = (task: WorkTask): string => {
+  const base = computeBaseStatus(task);
+  if (!base) return base;
+  // 「保留」以外で、郵送準備を依頼済みかつ製本未完了なら案内を付ける
+  if (base !== '保留' && task.mailing_prep === '依頼' && isBlank(task.binding_completed)) {
+    return `${base}【郵送準備までお願いします】`;
+  }
+  return base;
+};
+
+// ステータス計算の本体
+const computeBaseStatus = (task: WorkTask): string => {
   // 非表示（保留から削除されたもの）→ どのカテゴリにも入れない
   if (task.on_hold === '非表示') {
     return '';
@@ -249,9 +262,7 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     isBlank(task.on_hold) &&
     isBlank(task.binding_completed)
   ) {
-    // 郵送準備を依頼したものは締め日の横に案内を表示
-    const mailingNote = task.mailing_prep === '依頼' ? ' 郵送準備までお願いします' : '';
-    return `売買契約 製本待ち ${formatDateMD(task.binding_scheduled_date)}${mailingNote} ${task.sales_contract_assignee || ''}`.replace(/\s+$/, '');
+    return `売買契約 製本待ち ${formatDateMD(task.binding_scheduled_date)} ${task.sales_contract_assignee || ''}`;
   }
 
   // 8. 売買契約 依頼未
