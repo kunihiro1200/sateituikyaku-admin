@@ -841,7 +841,8 @@ export default function SharedItemDetailPage() {
                     
                     // employee.nameとlabelを比較（部分一致も許可）
                     const isOwnAnswer = employeeName.includes(label) || label.includes(employeeName);
-                    const canView = isVisible || isOwnAnswer;
+                    // 自分の回答は常にボタンを表示するが、内容の表示は公開状態に依存
+                    const canView = isVisible;  // 公開されている場合のみ内容が見える（自分も含めて）
 
                     return (
                       <Grid item xs={12} key={key}>
@@ -873,20 +874,27 @@ export default function SharedItemDetailPage() {
                                 } 
                               }}
                             />
-                            {isOwnAnswer && teamAnswers[key] && (
-                              <Button
-                                size="small"
-                                variant={isVisible ? 'outlined' : 'contained'}
-                                color={isVisible ? 'inherit' : 'primary'}
-                                startIcon={isVisible ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                                onClick={() => handleToggleVisibility(label)}
-                                sx={{ mt: 1 }}
-                              >
-                                {isVisible ? '非公開にする' : '公開する'}
-                              </Button>
-                            )}
+                          </>
+                        ) : isOwnAnswer ? (
+                          // 自分の回答だが非公開の場合：入力欄とボタンは表示
+                          <>
+                            <TextField
+                              fullWidth
+                              multiline
+                              minRows={3}
+                              value={teamAnswers[key]}
+                              onChange={(e) => handleTeamAnswerChange(key, e.target.value)}
+                              placeholder={`${label}の回答`}
+                              sx={{ 
+                                mt: 0.5, 
+                                '& .MuiOutlinedInput-root': { 
+                                  bgcolor: `${color.light}08`
+                                } 
+                              }}
+                            />
                           </>
                         ) : (
+                          // 他人の非公開の回答
                           <Box 
                             sx={{ 
                               mt: 0.5,
@@ -901,6 +909,19 @@ export default function SharedItemDetailPage() {
                               未公開
                             </Typography>
                           </Box>
+                        )}
+                        {/* 公開/非公開ボタンは自分の回答にのみ表示 */}
+                        {isOwnAnswer && teamAnswers[key] && (
+                          <Button
+                            size="small"
+                            variant={isVisible ? 'outlined' : 'contained'}
+                            color={isVisible ? 'inherit' : 'primary'}
+                            startIcon={isVisible ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                            onClick={() => handleToggleVisibility(label)}
+                            sx={{ mt: 1 }}
+                          >
+                            {isVisible ? '非公開にする' : '公開する'}
+                          </Button>
                         )}
                       </Grid>
                     );
