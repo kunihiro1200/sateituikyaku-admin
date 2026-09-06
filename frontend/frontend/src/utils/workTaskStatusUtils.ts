@@ -61,8 +61,12 @@ export interface StatusCategory {
   isDeadlinePast?: boolean;
   isDeadlineTomorrow?: boolean;
   isUrgent?: boolean; // 赤字表示（契約後司法書士連絡未・金種表送付未）
+  mailingPrepRequired?: boolean; // 郵送準備の依頼あり（締め日横に案内表示）
   filter: (task: WorkTask) => boolean;
 }
+
+// 郵送準備の案内マーカー（ステータス文字列末尾に付与される）
+export const MAILING_PREP_MARKER = '【郵送準備までお願いします】';
 
 // 日付ヘルパー関数
 const isNotBlank = (value: any): boolean => {
@@ -127,9 +131,9 @@ const SITE_REG_BASE_DATE = new Date('2025-10-30');
 export const calculateTaskStatus = (task: WorkTask): string => {
   const base = computeBaseStatus(task);
   if (!base) return base;
-  // 「保留」以外で、郵送準備を依頼済みかつ製本未完了なら案内を付ける
+  // 「保留」以外で、郵送準備を依頼済みかつ製本未完了なら案内マーカーを付ける
   if (base !== '保留' && task.mailing_prep === '依頼' && isBlank(task.binding_completed)) {
-    return `${base}【郵送準備までお願いします】`;
+    return `${base}${MAILING_PREP_MARKER}`;
   }
   return base;
 };
@@ -446,13 +450,18 @@ export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
       isDeadlineTomorrow = deadlineDate.getTime() === tomorrow.getTime();
     }
 
-    const isUrgent = status === '契約後司法書士連絡未' || status === '金種表送付　未';
+    // 郵送準備の案内マーカーを検出し、ラベルからは除去してフラグ化
+    const mailingPrepRequired = status.includes(MAILING_PREP_MARKER);
+    const cleanLabel = status.replace(MAILING_PREP_MARKER, '');
+
+    const isUrgent = cleanLabel === '契約後司法書士連絡未' || cleanLabel === '金種表送付　未';
 
     categories.push({
       key,
-      label: status,
+      label: cleanLabel,
       count,
       deadline: deadlineStr,
+      mailingPrepRequired,
       siteDeadline: siteDeadlines[status],
       isDeadlinePast,
       isDeadlineTomorrow,

@@ -310,10 +310,22 @@ export default function WorkTasksPage() {
                     fontWeight: (cat.isUrgent || cat.isDeadlinePast || cat.isDeadlineTomorrow) ? 'bold' : 'normal',
                   },
                 }}
-                secondary={cat.siteDeadline ? `締め日: ${cat.siteDeadline}` : cat.deadline ? `締め日: ${cat.deadline}` : undefined}
+                secondary={
+                  (cat.siteDeadline || cat.deadline || cat.mailingPrepRequired) ? (
+                    <>
+                      {cat.siteDeadline ? `締め日: ${cat.siteDeadline}` : cat.deadline ? `締め日: ${cat.deadline}` : ''}
+                      {cat.mailingPrepRequired && (
+                        <Box component="span" sx={{ color: '#e65100', fontWeight: 700, ml: (cat.siteDeadline || cat.deadline) ? 1 : 0 }}>
+                          郵送準備までお願いします
+                        </Box>
+                      )}
+                    </>
+                  ) : undefined
+                }
                 secondaryTypographyProps={{
                   variant: 'caption',
                   color: cat.isDeadlinePast ? 'error' : 'text.secondary',
+                  component: 'div',
                 }}
               />
               <Badge
