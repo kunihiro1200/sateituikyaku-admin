@@ -188,8 +188,9 @@ export default function SharedItemsPage() {
           item.staff_not_shared &&
           !item.confirmation_date &&
           String(item.staff_not_shared)
-            .split(/[,、，]/)
+            .split(/[,、，\s　]+/)
             .map((s) => s.trim())
+            .filter(Boolean)
             .includes(selectedUnconfirmedStaff)
       );
     } else if (selectedLocation) {
@@ -235,9 +236,9 @@ export default function SharedItemsPage() {
     const staffMap = new Map<string, number>();
     for (const item of allSharedItems) {
       if (item.staff_not_shared && !item.confirmation_date) {
-        // カンマ区切りで複数スタッフが入っている場合に対応
+        // カンマ・スペース区切りで複数スタッフが入っている場合に対応
         const staffNames = String(item.staff_not_shared)
-          .split(/[,、，]/)
+          .split(/[,、，\s　]+/)
           .map((s) => s.trim())
           .filter(Boolean);
         for (const name of staffNames) {

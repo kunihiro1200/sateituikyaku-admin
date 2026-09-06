@@ -200,10 +200,10 @@ router.put('/:id', async (req: Request, res: Response) => {
         const previousStaffNotShared: string = currentItem?.['共有できていない'] || currentItem?.staff_not_shared || '';
 
         const previousNames = previousStaffNotShared
-          ? previousStaffNotShared.split(',').map((s: string) => s.trim()).filter(Boolean)
+          ? previousStaffNotShared.split(/[,\s　]+/).map((s: string) => s.trim()).filter(Boolean)
           : [];
         const newNames = newStaffNotShared
-          ? newStaffNotShared.split(',').map((s: string) => s.trim()).filter(Boolean)
+          ? newStaffNotShared.split(/[,\s　]+/).map((s: string) => s.trim()).filter(Boolean)
           : [];
 
         // 新たに追加されたスタッフ名を特定（以前は入っていなかった名前）

@@ -164,7 +164,7 @@ export default function SharedItemDetailPage() {
         const tl = foundItem['タイトル'] || '';
         setTitle(tl);
         setSharingDate(sd);
-        setStaffNotShared(sns ? sns.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
+        setStaffNotShared(sns ? sns.split(/[,\s　]+/).map((s: string) => s.trim()).filter(Boolean) : []);
         setContent(ct);
         setInitialTitle(tl);
         setInitialSharingDate(sd);
