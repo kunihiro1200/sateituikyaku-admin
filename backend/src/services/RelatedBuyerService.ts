@@ -70,16 +70,21 @@ export class RelatedBuyerService {
   }
 
   /**
-   * Validates buyer ID (UUID or buyer number)
-   * @throws Error if invalid format
+   * Validates buyer ID.
+   *
+   * ⚠️ buyers テーブルの主キー buyer_id は TEXT型で、
+   * UUID だけでなく `BY_MN28...`（BY_プレフィックス）や `FK1`（FK形式）、
+   * 数値文字列など様々な形式を取りうる。
+   * 以前は UUID または数字のみを許容していたため、それ以外の buyer_id が
+   * 渡されると例外→空配列となり、買主重複が全く検出されないケースがあった。
+   * ここでは「空でない文字列」であれば許容し、存在チェックは呼び出し側の
+   * DB クエリ（.single()）に委ねる。
+   *
+   * @throws Error if empty
    */
   private validateBuyerId(buyerId: string, context: string = 'buyer ID'): void {
-    if (!buyerId) {
+    if (!buyerId || typeof buyerId !== 'string' || !buyerId.trim()) {
       throw new Error(`Missing ${context}`);
-    }
-
-    if (!this.isValidUUID(buyerId) && !this.isValidBuyerNumber(buyerId)) {
-      throw new Error(`Invalid ${context} format: ${buyerId}. Expected UUID or buyer number.`);
     }
   }
 
