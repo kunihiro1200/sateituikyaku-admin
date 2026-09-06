@@ -1905,11 +1905,19 @@ const CallModePage = () => {
     }
   }, [seller?.id]);
 
-  // 売却サポートページの未読メッセージ数を取得する（売主が変わるたびに更新）
+  // 売却サポートページの「対応要」件数を取得する（売主が変わるたびに更新）。
+  // 対象：① 売主からの未読メッセージがある ② 買取依頼済み・未確認
+  // サイドバーの「売却サポート：対応要」と同じ条件でバッジを出す。
   useEffect(() => {
     if (!seller?.id) { setPortalUnreadCount(0); return; }
     api.get(`/api/seller-portal/admin/${seller.id}/status`)
-      .then((res) => { setPortalUnreadCount(res.data?.unreadCount ?? 0); })
+      .then((res) => {
+        const unread = res.data?.unreadCount ?? 0;
+        const hasBuyoutPending =
+          res.data?.preferences?.buyout_requested_at &&
+          !res.data?.preferences?.staff_confirmed_buyout_at;
+        setPortalUnreadCount(unread + (hasBuyoutPending ? 1 : 0));
+      })
       .catch(() => { setPortalUnreadCount(0); });
   }, [seller?.id]);
 
@@ -7753,7 +7761,29 @@ HP：https://ifoo-oita.com/
                         <Typography variant="body2" color="text.secondary">
                           住所
                         </Typography>
-                        <Typography variant="body1">{seller.address}</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body1">{seller.address}</Typography>
+                          {seller.address && (
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                const searchQuery = encodeURIComponent(seller.address);
+                                window.open(`https://www.google.com/maps/search/${searchQuery}`, '_blank');
+                              }}
+                              title="GoogleMapで開く"
+                              sx={{
+                                bgcolor: '#fff',
+                                border: '1px solid #e0e0e0',
+                                p: 0.5,
+                                '&:hover': {
+                                  bgcolor: '#f5f5f5'
+                                }
+                              }}
+                            >
+                              <LocationOnIcon fontSize="small" sx={{ color: '#EA4335' }} />
+                            </IconButton>
+                          )}
+                        </Box>
                       </Box>
                       {seller.postalCode && (
                         <Box sx={{ mb: 2 }}>
@@ -9934,7 +9964,13 @@ HP：https://ifoo-oita.com/
                       // モーダルを開いたら未読を再取得してバッジを更新する
                       setTimeout(() => {
                         api.get(`/api/seller-portal/admin/${seller.id}/status`)
-                          .then((res) => setPortalUnreadCount(res.data?.unreadCount ?? 0))
+                          .then((res) => {
+                            const unread = res.data?.unreadCount ?? 0;
+                            const hasBuyoutPending =
+                              res.data?.preferences?.buyout_requested_at &&
+                              !res.data?.preferences?.staff_confirmed_buyout_at;
+                            setPortalUnreadCount(unread + (hasBuyoutPending ? 1 : 0));
+                          })
                           .catch(() => {});
                       }, 1500);
                     }}
