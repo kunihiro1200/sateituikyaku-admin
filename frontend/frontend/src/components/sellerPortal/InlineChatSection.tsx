@@ -30,7 +30,7 @@ export default function InlineChatSection({
 }: {
   token: string;
   contextTag: string;
-  /** 折りたたみ部分のラベル（例: 「この査定額について質問する」） */
+  /** 折りたたみ部分のラベル（例: 「この査定額についてチャットで質問」） */
   label: string;
   /** スタッフからこの相談元への未読返信があるか（あれば赤丸を表示する） */
   hasUnreadReply?: boolean;

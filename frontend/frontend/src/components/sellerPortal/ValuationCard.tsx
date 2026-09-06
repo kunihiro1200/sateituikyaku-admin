@@ -53,7 +53,7 @@ export default function ValuationCard({
       <InlineChatSection
         token={token}
         contextTag="valuation"
-        label="この査定額について質問する"
+        label="この査定額についてチャットで質問"
         hasUnreadReply={hasUnreadReply}
         onMessagesRead={onMessagesRead}
         bgColor="#FFF3D6"

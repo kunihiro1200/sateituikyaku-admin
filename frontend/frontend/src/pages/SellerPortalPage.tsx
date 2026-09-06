@@ -33,7 +33,7 @@ export default function SellerPortalPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   // 相談元（査定額/査定根拠/手残り/スケジュール/一般）ごとの未読件数。
   // スタッフはその相談元のセクションを見ながら返信するため、どのセクションに新しい返信があるか
-  // 売主自身がひと目で分かるよう、各カードの「質問する」ボタンに赤丸を表示する。
+  // 売主自身がひと目で分かるよう、各カードの「チャットで質問」ボタンに赤丸を表示する。
   const [unreadByContext, setUnreadByContext] = useState<Record<string, number>>({});
 
   // 未読件数を確認する（スタッフからの返信に売主が気づけるよう、チャットを開いていなくてもFABに表示する）

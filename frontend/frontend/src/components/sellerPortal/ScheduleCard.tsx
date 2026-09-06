@@ -215,7 +215,7 @@ export default function ScheduleCard({
       <InlineChatSection
         token={token}
         contextTag="schedule"
-        label="このスケジュールについて相談する"
+        label="このスケジュールについてチャットで質問"
         hasUnreadReply={hasUnreadReply}
         onMessagesRead={onMessagesRead}
         bgColor="#EBDBFA"

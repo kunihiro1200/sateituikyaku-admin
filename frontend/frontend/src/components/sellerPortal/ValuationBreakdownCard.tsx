@@ -82,7 +82,7 @@ export default function ValuationBreakdownCard({
       <InlineChatSection
         token={token}
         contextTag="valuation_breakdown"
-        label="査定の理由について質問する"
+        label="査定の理由についてチャットで質問"
         hasUnreadReply={hasUnreadReply}
         onMessagesRead={onMessagesRead}
         bgColor="#DCE7FB"

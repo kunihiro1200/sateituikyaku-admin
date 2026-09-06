@@ -235,7 +235,7 @@ export default function NetProceedsCard({
       <InlineChatSection
         token={token}
         contextTag="net_proceeds"
-        label="この手残りについて相談する"
+        label="この手残りについてチャットで質問"
         hasUnreadReply={hasUnreadReply}
         onMessagesRead={onMessagesRead}
         bgColor="#D7EDD9"
