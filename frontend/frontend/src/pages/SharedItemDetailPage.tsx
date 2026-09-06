@@ -875,7 +875,7 @@ export default function SharedItemDetailPage() {
                         onChange={(e) => setImageComments((prev) => ({ ...prev, [imageIndex]: e.target.value }))}
                         size="small"
                         multiline
-                        rows={2}
+                        minRows={2}
                         sx={{ 
                           mt: 0.5,
                           '& .MuiOutlinedInput-root': { 
@@ -911,7 +911,7 @@ export default function SharedItemDetailPage() {
                     )}
                     size="small"
                     multiline
-                    rows={2}
+                    minRows={2}
                     sx={{ 
                       mt: 1,
                       '& .MuiOutlinedInput-root': { 
