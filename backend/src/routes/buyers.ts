@@ -1382,7 +1382,7 @@ router.get('/:id/unified-inquiry-history', uuidValidationMiddleware('id'), async
     const relatedBuyers = await relatedBuyerService.findRelatedBuyers(buyerId);
     
     // 全ての買主IDを集める
-    const allBuyerIds = [buyerId, ...relatedBuyers.map(rb => rb.id)];
+    const allBuyerIds = [buyerId, ...relatedBuyers.map(rb => rb.buyer_id)];
     
     // 統合問合せ履歴を取得
     const inquiries = await relatedBuyerService.getUnifiedInquiryHistory(allBuyerIds);

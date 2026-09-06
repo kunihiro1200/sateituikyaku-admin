@@ -23,7 +23,8 @@ export enum MatchReason {
 }
 
 export interface Buyer {
-  id: string;
+  // buyers テーブルの主キーは buyer_id（id カラムは存在しない）
+  buyer_id: string;
   buyer_number: string;
   name: string | null;
   phone_number: string | null;
@@ -104,7 +105,7 @@ export class RelatedBuyerService {
       const { data: currentBuyer, error: buyerError } = await supabase
         .from('buyers')
         .select('*')
-        .eq('id', buyerId)
+        .eq('buyer_id', buyerId)
         .single();
 
       if (buyerError) {
@@ -170,7 +171,7 @@ export class RelatedBuyerService {
     const { data, error } = await supabase
       .from('buyers')
       .select('*')
-      .neq('id', currentBuyer.id)  // 自分自身を除外
+      .neq('buyer_id', currentBuyer.buyer_id)  // 自分自身を除外
       .or(conditions.join(','))
       .order('reception_date', { ascending: false, nullsFirst: false });
 
@@ -304,8 +305,8 @@ export class RelatedBuyerService {
       // 買主情報を取得
       const { data: buyers, error: buyersError } = await supabase
         .from('buyers')
-        .select('id, buyer_number, property_number, reception_date')
-        .in('id', buyerIds);
+        .select('buyer_id, buyer_number, property_number, reception_date')
+        .in('buyer_id', buyerIds);
 
       if (buyersError) {
         console.error('Error fetching buyers for inquiry history:', buyersError);
@@ -324,7 +325,7 @@ export class RelatedBuyerService {
 
       if (propertyNumbers.length === 0) {
         return buyers.map(b => ({
-          buyer_id: b.id,
+          buyer_id: b.buyer_id,
           buyer_number: b.buyer_number,
           property_id: null,
           property_number: b.property_number || '',
@@ -353,7 +354,7 @@ export class RelatedBuyerService {
       const history: InquiryHistory[] = buyers.map(b => {
         const property = b.property_number ? propertyMap.get(b.property_number) : null;
         return {
-          buyer_id: b.id,
+          buyer_id: b.buyer_id,
           buyer_number: b.buyer_number,
           property_id: property?.id || null,
           property_number: b.property_number || '',
