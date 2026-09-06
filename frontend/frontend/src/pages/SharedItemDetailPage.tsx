@@ -864,8 +864,24 @@ export default function SharedItemDetailPage() {
                               } 
                             }}
                           />
+                        ) : isOwnAnswer ? (
+                          /* 非公開 + 本人：編集可能な入力欄 */
+                          <TextField
+                            fullWidth
+                            multiline
+                            minRows={3}
+                            value={teamAnswers[key]}
+                            onChange={(e) => handleTeamAnswerChange(key, e.target.value)}
+                            placeholder={`${label}の回答（非公開中）`}
+                            sx={{ 
+                              mt: 0.5, 
+                              '& .MuiOutlinedInput-root': { 
+                                bgcolor: `${color.light}08`
+                              } 
+                            }}
+                          />
                         ) : (
-                          /* 非公開：全員（本人含む）に「未公開」を表示 */
+                          /* 非公開 + 他人：未公開表示 */
                           <Box 
                             sx={{ 
                               mt: 0.5,
