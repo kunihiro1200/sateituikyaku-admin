@@ -796,12 +796,17 @@ export default function SharedItemDetailPage() {
                 <Grid container spacing={2}>
                   {TEAM_ANSWER_MEMBERS.map(({ key, label, visibilityKey }) => {
                     const isVisible = teamAnswers[visibilityKey] as boolean;
+                    
+                    // デバッグ用（本番環境では削除）
+                    console.log(`[DEBUG] label: "${label}" (length: ${label.length}), employee.name: "${employee?.name}" (length: ${employee?.name?.length})`);
+                    console.log(`[DEBUG] includes check: "${employee?.name}".includes("${label}") = ${employee?.name?.includes(label)}`);
+                    console.log(`[DEBUG] includes check: "${label}".includes("${employee?.name}") = ${label.includes(employee?.name || '')}`);
+                    
                     // employee.nameとlabelを比較（部分一致も許可）
                     const isOwnAnswer = employee?.name?.includes(label) || label.includes(employee?.name || '');
                     const canView = isVisible || isOwnAnswer;
-
-                    // デバッグ用（本番環境では削除）
-                    console.log(`[DEBUG] label: ${label}, employee.name: ${employee?.name}, isOwnAnswer: ${isOwnAnswer}, isVisible: ${isVisible}`);
+                    
+                    console.log(`[DEBUG] isOwnAnswer: ${isOwnAnswer}, isVisible: ${isVisible}`);
 
                     return (
                       <Grid item xs={12} key={key}>
