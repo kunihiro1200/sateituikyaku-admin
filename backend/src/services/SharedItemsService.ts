@@ -138,28 +138,6 @@ export class SharedItemsService {
   }
 
   /**
-   * スタッフ名を正規化（重複削除、全角スペースを半角に統一）
-   */
-  private normalizeStaffNames(staffNotShared: string | null | undefined): string | null {
-    if (!staffNotShared) return null;
-
-    // カンマで分割
-    const names = staffNotShared
-      .split(/[,、，]+/)
-      .map(s => s.trim())
-      .filter(Boolean);
-
-    // 全角スペースを半角に統一し、重複削除
-    const uniqueNames = Array.from(
-      new Set(
-        names.map(name => name.replace(/\s+/g, ' ')) // 全角スペースを半角に統一
-      )
-    );
-
-    return uniqueNames.join(',');
-  }
-
-  /**
    * 新規作成（appendRow使用）
    */
   async create(item: Partial<SharedItem>): Promise<SharedItem> {

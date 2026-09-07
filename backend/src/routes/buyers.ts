@@ -3407,6 +3407,15 @@ router.get('/:id/buyer-duplicates', async (req: Request, res: Response) => {
       dbg.resolvedBuyerId = buyerId;
       dbg.currentPhone = currentBuyerForDebug?.phone_number ?? null;
       dbg.currentEmail = currentBuyerForDebug?.email ?? null;
+      // buyers テーブルの実際のカラム名を特定するため、行の全キーとID系カラムを出す
+      dbg.currentRowKeys = currentBuyerForDebug ? Object.keys(currentBuyerForDebug) : null;
+      if (currentBuyerForDebug) {
+        dbg.idCandidates = {
+          buyer_id: currentBuyerForDebug.buyer_id ?? null,
+          id: currentBuyerForDebug.id ?? null,
+          uuid: currentBuyerForDebug.uuid ?? null,
+        };
+      }
     }
 
     // 電話番号・メールが一致する他の買主を取得（既存ロジックを流用）
