@@ -1795,6 +1795,13 @@ export class SellerService extends BaseRepository {
                 .in('status', ['追客中', '除外後追客中', '他決→追客'])
                 .eq('valuation_method', '机上査定（郵送）')
                 .eq('mailing_status', '未');
+            } else if (fiSubCatForQuery === 'sellerPortalScheduleAttention' || 
+                       fiSubCatForQuery === 'sellerPortalAttention' || 
+                       fiSubCatForQuery === 'sellerPortalBuyoutAttention') {
+              // 売却サポート系カテゴリー：FI売主のみ絞り込み
+              // 実際の条件はseller_portal_preferencesテーブルとの結合が必要なため、ここではFI絞り込みのみ
+              // JSフィルタで詳細条件を適用
+              query = query.ilike('seller_number', 'FI%');
             } else {
               // その他のFIカテゴリ：FI売主のみ絞り込み（フォールバック）
               query = query.ilike('seller_number', 'FI%');
@@ -2155,7 +2162,60 @@ export class SellerService extends BaseRepository {
         return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth() + 1).padStart(2, '0')}-${String(jst.getUTCDate()).padStart(2, '0')}`;
       })();
 
-      finalSellers = decryptedSellers.filter((s: any) => {
+      // 売却サポート系カテゴリーの場合、seller_portal_preferencesとの照合が必要
+      if (fiSubCat === 'sellerPortalScheduleAttention' || 
+          fiSubCat === 'sellerPortalAttention' || 
+          fiSubCat === 'sellerPortalBuyoutAttention') {
+        
+        // seller_portal_preferencesテーブルから条件に合う売主IDを取得
+        let validSellerIds: Set<string> = new Set();
+        
+        if (fiSubCat === 'sellerPortalScheduleAttention') {
+          // 「いつまでに売りたいですか？」入力あり・未確認
+          const { data: pendingSettlement } = await this.supabase
+            .from('seller_portal_preferences')
+            .select('seller_id')
+            .not('desired_settlement_year_month', 'is', null)
+            .is('staff_confirmed_settlement_at', null);
+          (pendingSettlement ?? []).forEach((row: any) => validSellerIds.add(row.seller_id));
+        } else if (fiSubCat === 'sellerPortalBuyoutAttention') {
+          // 買取依頼済み・未確認
+          const { data: pendingBuyout } = await this.supabase
+            .from('seller_portal_preferences')
+            .select('seller_id')
+            .not('buyout_requested_at', 'is', null)
+            .is('staff_confirmed_buyout_at', null);
+          (pendingBuyout ?? []).forEach((row: any) => validSellerIds.add(row.seller_id));
+        } else if (fiSubCat === 'sellerPortalAttention') {
+          // 未読メッセージあり
+          const { data: unreadMessages } = await this.supabase
+            .from('seller_portal_messages')
+            .select('conversation_id')
+            .eq('sender_type', 'seller')
+            .is('read_at', null);
+          const unreadConversationIds = Array.from(new Set((unreadMessages ?? []).map((m: any) => m.conversation_id)));
+          
+          if (unreadConversationIds.length > 0) {
+            const chunkSize = 500;
+            for (let i = 0; i < unreadConversationIds.length; i += chunkSize) {
+              const chunk = unreadConversationIds.slice(i, i + chunkSize);
+              const { data: conversations } = await this.supabase
+                .from('seller_portal_conversations')
+                .select('seller_id')
+                .in('id', chunk);
+              (conversations ?? []).forEach((row: any) => validSellerIds.add(row.seller_id));
+            }
+          }
+        }
+        
+        // seller_idではなくidで照合する必要があるため、マッピングを作成
+        finalSellers = decryptedSellers.filter((s: any) => validSellerIds.has(s.id));
+      } else {
+        // その他のfiカテゴリー（todayCall, unvaluated等）
+        finalSellers = decryptedSellers.filter((s: any) => {
+      } else {
+        // その他のfiカテゴリー（todayCall, unvaluated等）
+        finalSellers = decryptedSellers.filter((s: any) => {
         // decryptSeller経由のデータ（camelCase）をsnake_case形式に正規化して共通関数に渡す
         const inquiryDateRaw = s.inquiryDate || s.inquiry_date;
         const normalized = {
@@ -2198,6 +2258,7 @@ export class SellerService extends BaseRepository {
 
         return true;
       });
+      }
     }
 
     // lastCalledAt を各売主に付与（キーは sellerNumber）
