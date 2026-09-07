@@ -1744,13 +1744,22 @@ export default function BuyerDetailPage() {
               </Button>
             </Box>
           )}
-          <Typography
-            variant={isMobile ? 'body1' : 'h5'}
-            fontWeight="bold"
-            sx={{ fontSize: isMobile ? '0.95rem' : undefined }}
-          >
-            {buyer.name ? buyer.name + '様' : buyer.buyer_number}
-          </Typography>
+          <Tooltip title={buyer.name ? buyer.name + '様' : buyer.buyer_number} arrow>
+            <Typography
+              variant={isMobile ? 'body1' : 'h5'}
+              fontWeight="bold"
+              sx={{
+                fontSize: isMobile ? '0.95rem' : undefined,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: isMobile ? '60vw' : 320,
+                flexShrink: 0,
+              }}
+            >
+              {buyer.name ? buyer.name + '様' : buyer.buyer_number}
+            </Typography>
+          </Tooltip>
           {/* 買主番号コピーChip - 名前の直後に目立つように配置 */}
           <Tooltip title={copiedBuyerNumber ? 'コピーしました！' : '買主番号をコピー'} arrow>
             <Chip
