@@ -3383,12 +3383,15 @@ router.get('/:id/seller-duplicates', async (req: Request, res: Response) => {
 //   }
 // ─────────────────────────────────────────────────────────────────────────
 router.get('/:id/buyer-duplicates', async (req: Request, res: Response) => {
+  const debug = req.query.debug === '1';
+  const dbg: any = {};
   try {
     const { id } = req.params;
 
     // 買主番号 → buyer_id(UUID) を解決
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     let buyerId = id;
+    let currentBuyerForDebug: any = null;
     if (!isUuid) {
       const buyer = await buyerService.getByBuyerNumber(id, true);
       if (!buyer) {
@@ -3397,13 +3400,44 @@ router.get('/:id/buyer-duplicates', async (req: Request, res: Response) => {
         });
       }
       buyerId = buyer.buyer_id;
+      currentBuyerForDebug = buyer;
+    }
+    if (debug) {
+      dbg.inputId = id;
+      dbg.resolvedBuyerId = buyerId;
+      dbg.currentPhone = currentBuyerForDebug?.phone_number ?? null;
+      dbg.currentEmail = currentBuyerForDebug?.email ?? null;
     }
 
     // 電話番号・メールが一致する他の買主を取得（既存ロジックを流用）
     const relatedBuyers = await relatedBuyerService.findRelatedBuyers(buyerId);
+    if (debug) {
+      dbg.relatedCount = relatedBuyers.length;
+      // 独立検証: 同じメールを持つ買主をDBのilikeで直接数える（正規化前の生値）
+      try {
+        const { createClient } = require('@supabase/supabase-js');
+        const sb = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+        const { data: cur } = await sb
+          .from('buyers')
+          .select('buyer_id, buyer_number, phone_number, email, deleted_at')
+          .eq('buyer_id', buyerId)
+          .maybeSingle();
+        dbg.currentBuyerRow = cur || null;
+        if (cur?.email) {
+          const { data: sameEmail } = await sb
+            .from('buyers')
+            .select('buyer_number, email, deleted_at')
+            .ilike('email', String(cur.email).trim())
+            .is('deleted_at', null);
+          dbg.sameEmailRows = sameEmail || [];
+        }
+      } catch (e: any) {
+        dbg.debugError = e?.message || String(e);
+      }
+    }
 
     if (relatedBuyers.length === 0) {
-      return res.json({ duplicates: [] });
+      return res.json(debug ? { duplicates: [], debug: dbg } : { duplicates: [] });
     }
 
     const { createClient } = require('@supabase/supabase-js');
@@ -3483,7 +3517,7 @@ router.get('/:id/buyer-duplicates', async (req: Request, res: Response) => {
       };
     });
 
-    res.json({ duplicates });
+    res.json(debug ? { duplicates, debug: dbg } : { duplicates });
   } catch (error: any) {
     console.error('Get buyer duplicates error:', error);
     res.status(500).json({
