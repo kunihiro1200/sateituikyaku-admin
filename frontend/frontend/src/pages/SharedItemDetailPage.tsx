@@ -344,6 +344,65 @@ export default function SharedItemDetailPage() {
     }
   };
 
+  const handleBulkToggleVisibility = async (isVisible: boolean) => {
+    if (!item || !employee?.name) return;
+
+    // employee.nameからメンバー名を判定
+    const employeeName = String(employee.name);
+    let memberLabel = '';
+    
+    for (const { label } of TEAM_ANSWER_MEMBERS) {
+      if (employeeName.includes(label) || label.includes(employeeName)) {
+        memberLabel = label;
+        break;
+      }
+    }
+
+    if (!memberLabel) {
+      setTeamAnswerError('ユーザー名からメンバーを特定できませんでした');
+      return;
+    }
+
+    const sharingLocation = item['共有場'];
+    if (!sharingLocation || !['物件数チーム', '契約率チーム'].includes(sharingLocation)) {
+      setTeamAnswerError('この機能は物件数チーム・契約率チーム専用です');
+      return;
+    }
+
+    setTeamAnswerSaving(true);
+    setTeamAnswerError('');
+    setTeamAnswerSuccess(false);
+
+    try {
+      const response = await api.post('/api/shared-items/bulk-toggle-visibility', {
+        member: memberLabel,
+        isVisible,
+        sharingLocation,
+      });
+
+      setTeamAnswerSuccess(true);
+      setTeamAnswerError('');
+      
+      // 現在の案件のデータを再取得
+      await fetchTeamAnswers(item.id);
+      
+      // 成功メッセージを表示
+      const action = isVisible ? '公開' : '非公開';
+      const count = response.data?.updatedCount || 0;
+      setTeamAnswerError(''); // エラーをクリア
+      setTeamAnswerSuccess(false); // 一旦falseにして
+      setTimeout(() => {
+        setTeamAnswerSuccess(true); // すぐにtrueにすることで再表示
+        setTeamAnswerError(`${memberLabel}の${sharingLocation}の全案件（${count}件）を${action}にしました`);
+      }, 100);
+    } catch (error: any) {
+      console.error('Failed to bulk toggle visibility:', error);
+      setTeamAnswerError(error.response?.data?.error || '一括公開/非公開の切り替えに失敗しました');
+    } finally {
+      setTeamAnswerSaving(false);
+    }
+  };
+
   const fetchStaff = async () => {
     try {
       const response = await api.get('/api/shared-items/staff');
@@ -820,9 +879,36 @@ export default function SharedItemDetailPage() {
               {/* チームアンサーセクション */}
               <Grid item xs={12}>
                 <Divider sx={{ mb: 1 }} />
-                <Typography variant="subtitle2" fontWeight="bold" sx={{ color: color.main, mb: 2 }}>
-                  内容（各担当者の回答）
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="subtitle2" fontWeight="bold" sx={{ color: color.main }}>
+                    内容（各担当者の回答）
+                  </Typography>
+                  {/* 一括公開/非公開ボタン（自分のアカウントのみ） */}
+                  {employee?.name && (
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="success"
+                        startIcon={<VisibilityIcon />}
+                        onClick={() => handleBulkToggleVisibility(true)}
+                        disabled={teamAnswerSaving}
+                      >
+                        自分の全公開
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="inherit"
+                        startIcon={<VisibilityOffIcon />}
+                        onClick={() => handleBulkToggleVisibility(false)}
+                        disabled={teamAnswerSaving}
+                      >
+                        自分の全非公開
+                      </Button>
+                    </Box>
+                  )}
+                </Box>
                 {teamAnswerError && (
                   <Alert severity="error" sx={{ mb: 2 }} onClose={() => setTeamAnswerError('')}>{teamAnswerError}</Alert>
                 )}

@@ -459,6 +459,84 @@ router.post('/:id/team-answers/toggle-visibility', async (req: Request, res: Res
 });
 
 /**
+ * POST /api/shared-items/bulk-toggle-visibility - 特定チームの自分の全案件を一括公開/非公開
+ */
+router.post('/bulk-toggle-visibility', async (req: Request, res: Response) => {
+  try {
+    const supabaseUrl = process.env.SUPABASE_URL!;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!;
+    const axios = (await import('axios')).default;
+    const { member, isVisible, sharingLocation } = req.body;
+
+    // メンバー名からカラム名にマッピング
+    const visibilityColumnMap: Record<string, string> = {
+      '国広': 'is_kunihiro_visible',
+      '山本': 'is_yamamoto_visible',
+      '裏': 'is_ura_visible',
+      '角井': 'is_kadoi_visible',
+      '林田': 'is_hayashida_visible',
+      '麻生': 'is_aso_visible',
+    };
+
+    const columnName = visibilityColumnMap[member];
+    if (!columnName) {
+      return res.status(400).json({ error: '不正なメンバー名です' });
+    }
+
+    if (!sharingLocation || !['物件数チーム', '契約率チーム'].includes(sharingLocation)) {
+      return res.status(400).json({ error: '不正な共有場です' });
+    }
+
+    console.log(`[BULK TOGGLE] member: ${member}, columnName: ${columnName}, isVisible: ${isVisible}, sharingLocation: ${sharingLocation}`);
+
+    // 1. 対象チームの全shared_itemを取得
+    const sharedItems = await sharedItemsService.getAll();
+    const targetItems = sharedItems.filter((item: any) => item['共有場'] === sharingLocation);
+    const targetIds = targetItems.map((item: any) => item.id);
+
+    console.log(`[BULK TOGGLE] 対象案件数: ${targetIds.length}`);
+
+    if (targetIds.length === 0) {
+      return res.json({ success: true, updatedCount: 0, message: '対象案件がありません' });
+    }
+
+    // 2. 各shared_itemのteam_answersを一括更新
+    const headers = {
+      apikey: supabaseKey,
+      Authorization: `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json',
+    };
+
+    const updatePayload = { [columnName]: isVisible, updated_at: new Date().toISOString() };
+
+    // shared_item_idがtargetIdsのいずれかに一致するレコードを一括更新
+    // PostgREST の in. フィルタを使用
+    const patchUrl = `${supabaseUrl}/rest/v1/shared_item_team_answers?shared_item_id=in.(${targetIds.map(id => `"${id}"`).join(',')})`;
+    
+    const patchResponse = await axios.patch(
+      patchUrl,
+      updatePayload,
+      { headers }
+    );
+
+    console.log(`[BULK TOGGLE] patchResponse.status:`, patchResponse.status);
+    console.log(`[BULK TOGGLE] 更新件数:`, patchResponse.data?.length || 0);
+
+    res.json({ 
+      success: true, 
+      updatedCount: patchResponse.data?.length || 0,
+      message: `${member}の${sharingLocation}の全案件を${isVisible ? '公開' : '非公開'}にしました`
+    });
+  } catch (error: any) {
+    console.error('Failed to bulk toggle visibility:', error);
+    res.status(500).json({ 
+      error: '一括公開/非公開の切り替えに失敗しました', 
+      details: error.response?.data || error.message 
+    });
+  }
+});
+
+/**
  * GET /api/shared-items/:id/image-comments - 画像コメント取得
  */
 router.get('/:id/image-comments', async (req: Request, res: Response) => {
