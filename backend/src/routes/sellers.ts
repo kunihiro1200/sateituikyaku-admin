@@ -5389,8 +5389,37 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
           statusLabel = atbbStatus;
         }
 
-        // 築年データを取得（複数のカラム名を試す）
-        let buildYear = row['新築年月'] || row['築年月'] || row['建築年月'] || row['竣工年月'] || row['築年'] || row['建築年'] || '';
+        // 築年データを取得（カラム名の正規化を試みる）
+        // スプシのヘッダーに全角スペースや特殊文字が混入している可能性があるため、
+        // 複数のパターンで検索
+        let buildYear = '';
+        const keys = Object.keys(row);
+        
+        // 優先順位順にカラムを検索
+        const buildYearPatterns = [
+          '新築年月',
+          '築年月',
+          '建築年月',
+          '竣工年月',
+          '築年',
+          '建築年',
+        ];
+        
+        for (const pattern of buildYearPatterns) {
+          // 完全一致
+          if (row[pattern]) {
+            buildYear = row[pattern];
+            break;
+          }
+          
+          // トリム・正規化して一致
+          const matchedKey = keys.find(k => k.trim().replace(/\s+/g, '') === pattern.replace(/\s+/g, ''));
+          if (matchedKey && row[matchedKey]) {
+            buildYear = row[matchedKey];
+            console.log(`[築年カラム名正規化] "${matchedKey}" → "${pattern}"`);
+            break;
+          }
+        }
         
         if (buildYear) {
           // Excelシリアル値の可能性をチェック
@@ -5404,19 +5433,13 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
         // デバッグログ：築年データを確認
         if (!buildYear && (row['種別'] === 'マ' || row['種別'] === 'マンション' || row['種別'] === '戸' || row['種別'] === '戸建')) {
           console.log(`[築年データなし] 所在地: ${row['所在地']}`);
-          console.log('  新築年月:', row['新築年月']);
-          console.log('  築年月:', row['築年月']);
-          console.log('  建築年月:', row['建築年月']);
-          console.log('  竣工年月:', row['竣工年月']);
-          console.log('  築年:', row['築年']);
-          console.log('  建築年:', row['建築年']);
           
-          // AG列付近のカラムを全て表示
-          const keys = Object.keys(row);
-          console.log('  全カラム名（築・建・竣を含むもの）:');
+          // 築・建・竣を含むカラムを全て表示
+          console.log('  築・建・竣を含むカラム:');
           keys.forEach(key => {
             if (key.includes('築') || key.includes('建') || key.includes('竣') || key.includes('年月')) {
-              console.log(`    ${key}: ${row[key]}`);
+              const charCodes = key.split('').map(c => c.charCodeAt(0)).join(',');
+              console.log(`    "${key}" (文字コード: ${charCodes}): ${row[key]}`);
             }
           });
         }
