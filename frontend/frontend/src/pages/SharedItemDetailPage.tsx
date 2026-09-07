@@ -64,7 +64,7 @@ const TEAM_ANSWER_MEMBERS: {
   { key: 'answer_aso', label: '麻生', visibilityKey: 'is_aso_visible' },
 ];
 
-const TEAM_MODES = ['契約率チーム', '物件数チーム'];
+const TEAM_MODES = ['契約率チーム', '物件数チーム', '営業会議'];
 
 const EMPTY_TEAM_ANSWERS: TeamAnswers = {
   question: '',
