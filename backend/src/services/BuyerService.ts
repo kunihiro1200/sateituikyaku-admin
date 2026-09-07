@@ -2363,18 +2363,28 @@ export class BuyerService {
 
     // 各買主に紐づく物件の情報を付与（複数物件の場合は最初の物件を使用）
     return allBuyers.map(buyer => {
+      // 他社物件情報（紐づき物件がない場合のフォールバック表示に使用）
+      const otherCompanyProperty = (buyer.other_company_property && String(buyer.other_company_property).trim())
+        ? String(buyer.other_company_property).trim()
+        : null;
+
       if (!buyer.property_number) {
         return {
           ...buyer,
-          property_address: buyer.other_company_property ?? null,
+          property_address: otherCompanyProperty ?? null,
+          // 自社物件が紐づいていないので、住所が取れていれば他社物件情報由来
+          is_other_company_property: !!otherCompanyProperty,
         };
       }
       const firstPropertyNumber = buyer.property_number.split(',')[0].trim();
       const prop = propertyMap[firstPropertyNumber];
+      const linkedAddress = prop?.property_address ?? null;
       return {
         ...buyer,
         atbb_status: prop?.atbb_status || '',
-        property_address: prop?.property_address ?? buyer.other_company_property ?? null,
+        property_address: linkedAddress ?? otherCompanyProperty ?? null,
+        // 自社物件の住所が無く、他社物件情報で補完した場合のみ true
+        is_other_company_property: !linkedAddress && !!otherCompanyProperty,
         property_sales_assignee: prop?.sales_assignee ?? null,
         property_type: prop?.property_type ?? null,
         inquiry_property_price: prop?.price ?? null,
