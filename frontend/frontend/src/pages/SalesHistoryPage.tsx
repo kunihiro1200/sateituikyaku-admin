@@ -197,38 +197,48 @@ export default function SalesHistoryPage() {
     const yearStr = String(buildYear).trim();
     if (!yearStr) return '-';
     
-    // デバッグログ
-    console.log('[築年フォーマット]', { buildYear, yearStr, propertyType });
+    // 和暦を西暦に変換
+    const eraMap: { [key: string]: number } = {
+      '明治': 1867,
+      '大正': 1911,
+      '昭和': 1925,
+      '平成': 1988,
+      '令和': 2018,
+    };
+    
+    for (const [era, baseYear] of Object.entries(eraMap)) {
+      const eraMatch = yearStr.match(new RegExp(`${era}(\\d+)`));
+      if (eraMatch) {
+        const eraYear = parseInt(eraMatch[1]);
+        const westernYear = baseYear + eraYear;
+        return String(westernYear);
+      }
+    }
     
     // YYYY年MM月DD日 形式の場合は年だけ抽出
     const japaneseFullMatch = yearStr.match(/^(\d{4})年/);
     if (japaneseFullMatch) {
-      console.log('[築年フォーマット] マッチ: YYYY年', japaneseFullMatch[1]);
       return japaneseFullMatch[1];
     }
     
     // YYYY/MM/DD または YYYY-MM-DD 形式の場合は年だけ抽出
     const fullDateMatch = yearStr.match(/^(\d{4})[\/-]\d{1,2}[\/-]\d{1,2}/);
     if (fullDateMatch) {
-      console.log('[築年フォーマット] マッチ: YYYY/MM/DD', fullDateMatch[1]);
       return fullDateMatch[1];
     }
     
     // YYYY/MM または YYYY-MM 形式の場合は年だけ抽出
     const yearMonthMatch = yearStr.match(/^(\d{4})[\/-]\d{1,2}/);
     if (yearMonthMatch) {
-      console.log('[築年フォーマット] マッチ: YYYY/MM', yearMonthMatch[1]);
       return yearMonthMatch[1];
     }
     
     // 数値の場合はそのまま表示
     const year = parseFloat(yearStr);
     if (!isNaN(year) && year > 1900 && year < 2100) {
-      console.log('[築年フォーマット] マッチ: 数値', Math.floor(year));
       return String(Math.floor(year));
     }
     
-    console.log('[築年フォーマット] マッチなし:', yearStr);
     return '-';
   };
 
