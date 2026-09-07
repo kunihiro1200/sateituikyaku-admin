@@ -76,6 +76,8 @@ router.get('/staff', async (req: Request, res: Response) => {
       .select('name, initials, is_active')
       .eq('is_active', true)
       .neq('name', '')
+      .not('initials', 'in', '(IF,業者)') // 特殊なスタッフを除外
+      .not('initials', 'is', null) // initialsがnullのスタッフを除外
       .order('name');
 
     if (error) {

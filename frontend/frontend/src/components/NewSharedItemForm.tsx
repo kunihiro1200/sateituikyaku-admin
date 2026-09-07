@@ -478,16 +478,17 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
             {staffList.map((s) => {
               const initial = s.initials || s.name.charAt(0);
               const isSelected = staffNotShared.includes(s.name);
+              const isLongInitial = initial.length > 1;
               return (
                 <Button
                   key={s.name}
                   variant={isSelected ? 'contained' : 'outlined'}
                   onClick={() => handleStaffToggle(s.name)}
                   sx={{
-                    minWidth: '48px',
+                    minWidth: isLongInitial ? '56px' : '48px',
                     height: '48px',
                     borderRadius: '50%',
-                    fontSize: '1.1rem',
+                    fontSize: isLongInitial ? '1rem' : '1.1rem',
                     fontWeight: 'bold',
                     bgcolor: isSelected ? color.main : 'transparent',
                     color: isSelected ? '#fff' : color.main,

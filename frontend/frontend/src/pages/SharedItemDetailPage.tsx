@@ -1094,14 +1094,18 @@ export default function SharedItemDetailPage() {
                   {staff.map((s, index) => {
                     const initial = s.initials || s.name.charAt(0);
                     const isSelected = staffNotShared.includes(s.name);
+                    const isLongInitial = initial.length > 1;
                     return (
                       <Button
                         key={index}
                         variant={isSelected ? 'contained' : 'outlined'}
                         onClick={() => handleStaffToggle(s.name)}
                         sx={{
-                          minWidth: '48px', height: '48px', borderRadius: '50%',
-                          fontSize: '1.2rem', fontWeight: 'bold',
+                          minWidth: isLongInitial ? '56px' : '48px',
+                          height: '48px',
+                          borderRadius: '50%',
+                          fontSize: isLongInitial ? '1rem' : '1.2rem',
+                          fontWeight: 'bold',
                           bgcolor: isSelected ? color.main : 'transparent',
                           color: isSelected ? '#fff' : color.main,
                           borderColor: color.main,
@@ -1337,14 +1341,18 @@ export default function SharedItemDetailPage() {
               {staff.map((s, index) => {
                 const initial = s.initials || s.name.charAt(0);
                 const isSelected = staffNotShared.includes(s.name);
+                const isLongInitial = initial.length > 1;
                 return (
                   <Button
                     key={index}
                     variant={isSelected ? 'contained' : 'outlined'}
                     onClick={() => handleStaffToggle(s.name)}
                     sx={{
-                      minWidth: '48px', height: '48px', borderRadius: '50%',
-                      fontSize: '1.2rem', fontWeight: 'bold',
+                      minWidth: isLongInitial ? '56px' : '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      fontSize: isLongInitial ? '1rem' : '1.2rem',
+                      fontWeight: 'bold',
                       bgcolor: isSelected ? color.main : 'transparent',
                       color: isSelected ? '#fff' : color.main,
                       borderColor: color.main,
