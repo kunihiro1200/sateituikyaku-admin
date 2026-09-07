@@ -322,17 +322,34 @@ export default function SharedItemsPage() {
         <Typography variant="h5" fontWeight="bold" sx={{ color: sharedItemsColor.main }}>
           共有（社内共有事項管理）
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => navigate('/shared-items/new')}
-          sx={{
-            bgcolor: sharedItemsColor.main,
-            '&:hover': { bgcolor: sharedItemsColor.dark },
-          }}
-        >
-          新規作成
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            startIcon={<OpenInNewIcon />}
+            onClick={() => window.open('https://docs.google.com/spreadsheets/d/1BuvYd9cKOdgIAy0XhL-voVx1tiGA-cd6MCU_dYvbAQE', '_blank')}
+            sx={{
+              borderColor: sharedItemsColor.main,
+              color: sharedItemsColor.main,
+              '&:hover': { 
+                borderColor: sharedItemsColor.dark,
+                bgcolor: `${sharedItemsColor.light}15`,
+              },
+            }}
+          >
+            共有スプシ
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => navigate('/shared-items/new')}
+            sx={{
+              bgcolor: sharedItemsColor.main,
+              '&:hover': { bgcolor: sharedItemsColor.dark },
+            }}
+          >
+            新規作成
+          </Button>
+        </Box>
       </Box>
       
       {/* ページナビゲーション */}
