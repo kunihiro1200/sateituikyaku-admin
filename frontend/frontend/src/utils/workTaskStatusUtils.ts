@@ -40,6 +40,14 @@ export interface WorkTask {
   ledger_created: string;
   site_registration_confirm_request_date: string;
   site_registration_confirmed: string;
+  // 図面作成依頼関係（サイト登録締め日より先に依頼するケースの判定用）
+  floor_plan?: string;
+  floor_plan_comment?: string;
+  cw_request_email_floor_plan?: string;
+  cw_request_email_2f_above?: string;
+  floor_plan_due_date?: string;
+  floor_plan_ok_sent?: string;
+  direction_symbol?: string;
   // property_listingsから参照（サイドバーカテゴリー判定用）
   sales_contract_completed?: string;
   // DB専用フィールド（スプシ非同期）
@@ -206,6 +214,29 @@ const computeBaseStatus = (task: WorkTask): string => {
     return `売買契約 入力待ち ${formatDateMD(task.sales_contract_deadline)} ${task.sales_contract_assignee || ''}`;
   }
 
+  // 2.5 依頼中（図面作成依頼を先に行ったケース）
+  // サイト登録締め日がまだ無くても、図面作成依頼（間取図・CW依頼メール・完了予定日のいずれか）が
+  // 行われている場合は「依頼中」としてサイドバーに表示する。
+  // ※ サイト登録締め日がある場合は既存カテゴリー（サイト登録依頼してください等）が担当するため除外する。
+  if (
+    isBlank(task.site_registration_deadline) &&
+    isBlank(task.sales_contract_deadline) &&
+    isBlank(task.on_hold) &&
+    isBlank(task.distribution_date) &&
+    isBlank(task.publish_scheduled_date) &&
+    isBlank(task.floor_plan_ok_sent) &&
+    isBlank(task.site_registration_confirmed) &&
+    (
+      isNotBlank(task.floor_plan) ||
+      isNotBlank(task.cw_request_email_floor_plan) ||
+      isNotBlank(task.floor_plan_due_date) ||
+      isNotBlank(task.cw_request_email_2f_above) ||
+      isNotBlank(task.floor_plan_comment)
+    )
+  ) {
+    return `依頼中${task.floor_plan_due_date ? ` ${formatDateMD(task.floor_plan_due_date)}` : ''}`;
+  }
+
   // 3. サイト登録依頼してください
   if (
     isBlank(task.site_registration_requestor) &&
@@ -339,6 +370,7 @@ const computeBaseStatus = (task: WorkTask): string => {
 const CATEGORY_GROUP_COLORS: [string, string][] = [
   ['媒介作成の印刷OR郵送　未',   '#e8f5e9'],
   ['媒介作成_締日',              '#e8f5e9'],
+  ['依頼中',                     '#f3e5f5'],
   ['サイト登録依頼してください', '#f3e5f5'],
   ['サイト依頼済み納品待ち',     '#f3e5f5'],
   ['サイト登録要確認',           '#f3e5f5'],
@@ -367,6 +399,7 @@ export const getCategoryGroupColor = (label: string): string | undefined => {
 const CATEGORY_ORDER = [
   '媒介作成の印刷OR郵送　未',
   '媒介作成_締日',
+  '依頼中',
   'サイト登録依頼してください',
   'サイト依頼済み納品待ち',
   'サイト登録要確認',
@@ -478,6 +511,7 @@ const getStatusKey = (status: string): string => {
   if (!status) return '';
   if (status.startsWith('売買契約　営業確認中')) return 'sales_contract_confirm';
   if (status.startsWith('売買契約 入力待ち')) return 'sales_contract_input';
+  if (status.startsWith('依頼中')) return 'floor_plan_requested';
   if (status.startsWith('サイト登録依頼してください')) return 'site_registration_request';
   if (status.startsWith('決済完了チャット送信未')) return 'settlement_chat_pending';
   if (status.startsWith('経理確認未')) return 'payment_pending';

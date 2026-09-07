@@ -995,7 +995,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     open: boolean;
     title: string;
     emptyFields: string[];
-    onConfirmAction: 'site' | 'floor' | 'mandatory' | 'cadastral' | 'binding_completed' | 'sales_assignee' | 'publish_scheduled_date' | 'storage_url' | 'distribution_date_required' | 'cw_request_email_site' | null;
+    onConfirmAction: 'site' | 'floor' | 'mandatory' | 'cadastral' | 'binding_completed' | 'sales_assignee' | 'publish_scheduled_date' | 'storage_url' | 'distribution_date_required' | 'cw_request_email_site' | 'direction_symbol' | null;
   }>({ open: false, title: '', emptyFields: [], onConfirmAction: null });
 
   // 謄本読み取り関連のstate
@@ -1326,6 +1326,24 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       return;
     }
 
+    // 図面作成依頼を触った場合、方位記号は必須
+    const floorPlanTouched = !!(
+      getValue('floor_plan') ||
+      getValue('floor_plan_comment') ||
+      getValue('cw_request_email_floor_plan') ||
+      getValue('cw_request_email_2f_above') ||
+      getValue('floor_plan_due_date')
+    );
+    if (floorPlanTouched && isEmpty(getValue('direction_symbol'))) {
+      setValidationWarningDialog({
+        open: true,
+        title: '「方位記号」が未入力です。図面作成依頼を行う場合は必須項目です。',
+        emptyFields: ['方位記号'],
+        onConfirmAction: 'direction_symbol',
+      });
+      return;
+    }
+
     // 条件付きバリデーション
     const cwEmailSite = getValue('cw_request_email_site');
     const rowAdded = getValue('property_list_row_added');
@@ -1520,6 +1538,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const handleValidationWarningCancel = () => {
     const action = validationWarningDialog.onConfirmAction;
     setValidationWarningDialog(prev => ({ ...prev, open: false }));
+
+    // 方位記号未入力エラーの場合、サイト登録タブ（tabIndex=1）に切り替える
+    if (action === 'direction_symbol') {
+      setTabIndex(1);
+    }
 
     // 営業担当空欄エラーの場合、媒介契約タブ（tabIndex=0）に切り替えてスクロール
     if (action === 'sales_assignee') {
@@ -2999,6 +3022,16 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     const isSiteDueDateRequired = !!(getValue('cw_request_email_site'));
     const siteDueDateLabel = `サイト登録納期予定日${isSiteDueDateRequired ? '*（必須）' : '*'}`;
 
+    // 図面作成依頼を触ったかどうか（いずれかの図面作成依頼フィールドに値がある）
+    // 触った場合は方位記号を必須にする
+    const isFloorPlanTouched = !!(
+      getValue('floor_plan') ||
+      getValue('floor_plan_comment') ||
+      getValue('cw_request_email_floor_plan') ||
+      getValue('cw_request_email_2f_above') ||
+      getValue('floor_plan_due_date')
+    );
+
     // 浅沼様の日付別依頼件数制限チェック
     const [siteDueDateCounts, setSiteDueDateCounts] = useState<Record<string, number>>({});
     const [dueDateLimitWarning, setDueDateLimitWarning] = useState<string>('');
@@ -3133,6 +3166,25 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <EditableField label="サイト登録締め日" field="site_registration_deadline" type="date" />
         <EditableField label="種別" field="property_type" />
 
+        <Box sx={{ bgcolor: '#e8f5e9', borderRadius: 1, p: 1, mb: 1 }}>
+        <SectionHeader label="【図面作成依頼】" />
+        <EditableButtonSelect label="間取図" field="floor_plan" options={['クラウドワークス', '他', '不要']} />
+        <EditableButtonSelect
+          label="方位記号"
+          field="direction_symbol"
+          options={['確認済', '不要（営業相談済）']}
+          required={isFloorPlanTouched}
+          labelColor={isFloorPlanTouched && !getValue('direction_symbol') ? 'error' : undefined}
+        />
+        <EditableField label="コメント（間取図関係）" field="floor_plan_comment" />
+        {getValue('property_type') === '土' && (
+          <EditableField label="道路寸法" field="road_dimensions" />
+        )}
+        <EditableYesNo label="CWの方へ依頼メール（間取り、区画図）" field="cw_request_email_floor_plan" />
+        <EditableYesNo label="CWの方へ依頼メール（2階以上）" field="cw_request_email_2f_above" />
+        <EditableField label="間取図完了予定*" field="floor_plan_due_date" type="datetime-local" />
+        </Box>
+
         <Box sx={{ bgcolor: '#e3f2fd', borderRadius: 1, p: 1, mb: 1 }}>
         <SectionHeader label="【サイト登録依頼】" />
         <EditableField label="サイト備考" field="site_notes" highlight={!!getValue('site_notes')} />
@@ -3207,19 +3259,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           </Grid>
         </Grid>
 
-        </Box>
-
-        <Box sx={{ bgcolor: '#e8f5e9', borderRadius: 1, p: 1, mb: 1 }}>
-        <SectionHeader label="【図面作成依頼】" />
-        <EditableButtonSelect label="間取図" field="floor_plan" options={['クラウドワークス', '他', '不要']} />
-        <EditableButtonSelect label="方位記号" field="direction_symbol" options={['確認済', '不要（営業相談済）']} />
-        <EditableField label="コメント（間取図関係）" field="floor_plan_comment" />
-        {getValue('property_type') === '土' && (
-          <EditableField label="道路寸法" field="road_dimensions" />
-        )}
-        <EditableYesNo label="CWの方へ依頼メール（間取り、区画図）" field="cw_request_email_floor_plan" />
-        <EditableYesNo label="CWの方へ依頼メール（2階以上）" field="cw_request_email_2f_above" />
-        <EditableField label="間取図完了予定*" field="floor_plan_due_date" type="datetime-local" />
         </Box>
         {/* 物件一覧に行追加（薄いピンク背景） */}
         <Box sx={{ bgcolor: '#fce4ec', borderRadius: 1, p: 1, mb: 1 }}>
@@ -6546,7 +6585,7 @@ ${pageUrl}`;
         emptyFields={validationWarningDialog.emptyFields}
         onConfirm={handleValidationWarningConfirm}
         onCancel={handleValidationWarningCancel}
-        isMandatory={validationWarningDialog.onConfirmAction === 'mandatory' || validationWarningDialog.onConfirmAction === 'binding_completed'}
+        isMandatory={validationWarningDialog.onConfirmAction === 'mandatory' || validationWarningDialog.onConfirmAction === 'binding_completed' || validationWarningDialog.onConfirmAction === 'direction_symbol'}
       />
       <MediationFormatWarningDialog
         open={mediationFormatWarningDialog.open}
