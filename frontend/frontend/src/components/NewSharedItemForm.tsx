@@ -61,6 +61,13 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [sharingDate, setSharingDate] = useState('');
+
+  // 共有場が「他」に変更されたときに内容のデフォルト値を設定
+  useEffect(() => {
+    if (sharingLocation === '他' && content === '') {
+      setContent('**「共有できていないスタッフ」の自分のアカウントにチェックして必ず保存してください**');
+    }
+  }, [sharingLocation]);
   const [staffNotShared, setStaffNotShared] = useState<string[]>([]);
   const [pdfs, setPdfs] = useState<UploadedFile[]>([]);
   const [images, setImages] = useState<UploadedFile[]>([]);
