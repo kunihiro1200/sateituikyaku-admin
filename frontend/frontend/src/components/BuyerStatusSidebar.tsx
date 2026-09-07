@@ -51,6 +51,11 @@ interface CategoryCounts {
     ryoteCounts: Record<string, number>;
     katateCounts: Record<string, number>;
   }>;
+  // 🆕 内覧統計（内覧日月別×後続担当別）
+  viewingMonthlyStats?: Record<string, {
+    total: number;
+    assigneeCounts: Record<string, number>;
+  }>;
 }
 
 export interface BuyerWithStatus {
@@ -715,6 +720,81 @@ export default function BuyerStatusSidebar({
                 </AccordionSummary>
                 <AccordionDetails sx={{ p: 0 }}>
                   {pastYears[year].map(renderPurchaseMonthAccordion)}
+                </AccordionDetails>
+              </Accordion>
+            ))}
+            </AccordionDetails>
+          </Accordion>
+        );
+      })()}
+
+      {/* 🆕 内覧統計セクション（内覧日月別×後続担当別） */}
+      {(() => {
+        const viewingStats = categoryCounts.viewingMonthlyStats || {};
+        const viewingSortedMonths = Object.keys(viewingStats).sort().reverse();
+        if (viewingSortedMonths.length === 0) return null;
+
+        const currentYear = new Date().getFullYear().toString();
+        const currentYearMonths = viewingSortedMonths.filter(m => m.startsWith(currentYear));
+        const pastMonths = viewingSortedMonths.filter(m => !m.startsWith(currentYear));
+        const pastYears: Record<string, string[]> = {};
+        pastMonths.forEach(m => {
+          const year = m.substring(0, 4);
+          if (!pastYears[year]) pastYears[year] = [];
+          pastYears[year].push(m);
+        });
+        const pastYearKeys = Object.keys(pastYears).sort().reverse();
+
+        const renderViewingMonthAccordion = (month: string) => {
+          const data = viewingStats[month];
+          if (!data || data.total === 0) return null;
+
+          const assignees = Object.keys(data.assigneeCounts).sort();
+
+          return (
+            <Accordion key={month} disableGutters sx={{ '&:before': { display: 'none' }, boxShadow: 'none' }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 16 }} />} sx={{ minHeight: 32, '& .MuiAccordionSummary-content': { my: 0.5 } }}>
+                <Typography variant="caption" fontWeight="bold">{month}（計{data.total}）</Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0.5, pt: 0 }}>
+                <Box sx={{ px: 1, py: 0.3, backgroundColor: '#e3f2fd' }}>
+                  <Typography variant="caption" fontWeight="bold" sx={{ color: '#1565c0', fontSize: '0.65rem' }}>後続担当別</Typography>
+                  {assignees.map(staff => {
+                    const count = data.assigneeCounts[staff] ?? 0;
+                    if (count === 0) return null;
+                    return (
+                      <Box key={staff} sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5 }}>
+                        <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>{staff}</Typography>
+                        <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{count}</Typography>
+                      </Box>
+                    );
+                  })}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', pl: 0.5, borderTop: '1px solid #eee' }}>
+                    <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>計</Typography>
+                    <Typography variant="caption" fontWeight="bold" sx={{ fontSize: '0.65rem' }}>{data.total}</Typography>
+                  </Box>
+                </Box>
+              </AccordionDetails>
+            </Accordion>
+          );
+        };
+
+        return (
+          <Accordion disableGutters sx={{ '&:before': { display: 'none' }, boxShadow: 'none', borderTop: '2px solid #ccc' }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 16 }} />} sx={{ minHeight: 36, backgroundColor: '#f5f5f5', '& .MuiAccordionSummary-content': { my: 0.5 } }}>
+              <Typography variant="caption" fontWeight="bold" sx={{ color: '#333' }}>
+                内覧統計（内覧日月別×後続担当）
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ p: 0 }}>
+            {currentYearMonths.map(renderViewingMonthAccordion)}
+            {pastYearKeys.map(year => (
+              <Accordion key={year} disableGutters sx={{ '&:before': { display: 'none' }, boxShadow: 'none', borderTop: '1px solid #ddd' }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 16 }} />} sx={{ minHeight: 36, backgroundColor: '#eeeeee', '& .MuiAccordionSummary-content': { my: 0.5 } }}>
+                  <Typography variant="caption" fontWeight="bold" sx={{ color: '#666' }}>{year}年</Typography>
+                </AccordionSummary>
+                <AccordionDetails sx={{ p: 0 }}>
+                  {pastYears[year].map(renderViewingMonthAccordion)}
                 </AccordionDetails>
               </Accordion>
             ))}

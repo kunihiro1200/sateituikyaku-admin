@@ -2602,6 +2602,11 @@ export class BuyerService {
         ryoteCounts: Record<string, number>;  // 買（両手）
         katateCounts: Record<string, number>;  // 買（片手）
       }>,
+      // 🆕 内覧統計（内覧日月別×後続担当別）
+      viewingMonthlyStats: {} as Record<string, {
+        total: number;                              // その月の内覧総数
+        assigneeCounts: Record<string, number>;     // 後続担当別内覧数
+      }>,
     };
 
     // 持ち家ヒアリング統計：同一顧客の重複排除用セット
@@ -2749,6 +2754,27 @@ export class BuyerService {
           monthData.katateCounts[followUpAssignee] = (monthData.katateCounts[followUpAssignee] || 0) + 1;
         }
       }
+    }
+
+    // 🆕 内覧統計（内覧日月別×後続担当別）
+    // 内覧日（viewing_date）が入っている買主を月別にカウント
+    for (const buyer of cachedBuyers) {
+      const viewingDate = buyer.viewing_date ? String(buyer.viewing_date).trim() : '';
+      if (!viewingDate) continue;
+
+      const month = viewingDate.substring(0, 7).replace('-', '/');
+      // 2025年以降のみ対象
+      if (month < '2025') continue;
+
+      if (!result.viewingMonthlyStats[month]) {
+        result.viewingMonthlyStats[month] = { total: 0, assigneeCounts: {} };
+      }
+      const monthData = result.viewingMonthlyStats[month];
+      monthData.total += 1;
+
+      const followUpAssignee = buyer.follow_up_assignee ? String(buyer.follow_up_assignee).trim() : '';
+      const assigneeKey = followUpAssignee || '未設定';
+      monthData.assigneeCounts[assigneeKey] = (monthData.assigneeCounts[assigneeKey] || 0) + 1;
     }
 
     // 🚨 修正: assignedCountsのキーをそのまま使用すると「林田＿未確認」のような
@@ -3197,6 +3223,30 @@ export class BuyerService {
         }
       });
       result.purchaseMonthlyStats = purchaseMonthlyStats;
+
+      // 🆕 内覧統計（内覧日月別×後続担当別）
+      const viewingMonthlyStats: Record<string, {
+        total: number;
+        assigneeCounts: Record<string, number>;
+      }> = {};
+      allBuyers.forEach((buyer: any) => {
+        const viewingDate = buyer.viewing_date ? String(buyer.viewing_date).trim() : '';
+        if (!viewingDate) return;
+
+        const month = viewingDate.substring(0, 7).replace('-', '/');
+        if (month < '2025') return;
+
+        if (!viewingMonthlyStats[month]) {
+          viewingMonthlyStats[month] = { total: 0, assigneeCounts: {} };
+        }
+        const monthData = viewingMonthlyStats[month];
+        monthData.total += 1;
+
+        const followUpAssignee = buyer.follow_up_assignee ? String(buyer.follow_up_assignee).trim() : '';
+        const assigneeKey = followUpAssignee || '未設定';
+        monthData.assigneeCounts[assigneeKey] = (monthData.assigneeCounts[assigneeKey] || 0) + 1;
+      });
+      result.viewingMonthlyStats = viewingMonthlyStats;
 
       // 通常スタッフのイニシャルを取得
       const normalStaffInitials = await this.fetchNormalStaffInitials();
