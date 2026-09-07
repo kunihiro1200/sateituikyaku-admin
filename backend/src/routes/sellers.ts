@@ -5249,12 +5249,12 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
 
 /**
  * GET /api/sellers/:id/sales-history
- * 売主の物件住所に基づいて物件スプシから売買実績を取得
- * F列「所在地」またはG列「住居表示（ATBB登録住所）」に住所が含まれる行を返す
+ * 売主の物件住所に基づいてDBのpropertiesテーブルから売買実績を取得
+ * 住所の部分一致で検索
  * 種別フィルタリング：
- *   - マ/マンション → 物件スプシの種別が同じ（マ/マンション）
- *   - 戸建/戸/戸建て → 物件スプシの種別が戸建/戸/戸建て + 土/土地
- *   - 土/土地 → 物件スプシの種別が土/土地
+ *   - マンション → property_type='マンション'
+ *   - 戸建て → property_type='戸建て' + '土地'
+ *   - 土地 → property_type='土地'
  */
 router.get('/:id/sales-history', authenticate, async (req: Request, res: Response) => {
   try {
@@ -5278,20 +5278,13 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
     };
 
     // 住所から検索キーワードを抽出
-    // ルール：市区町村名の後ろ2文字まで取得
-    // 例1: 「大分市乙津町3-1-2」→「大分市乙津」
-    // 例2: 「大分市大字乙津町3-1-2」→「大分市乙津」（大字除去後）
-    // 例3: 「大分市明野高尾明野高城1-1」→「大分市明野」
-    // 例4: 「別府市大字鶴見1234」→「別府市鶴見」
     const extractSearchKeyword = (addr: string): string => {
       const normalized = normalizeAddress(addr);
-      // 市・区・町・村・郡 で終わる行政区画を検出
       const cityMatch = normalized.match(/^(.+?[市区町村郡])/);
-      if (!cityMatch) return normalized.slice(0, 5); // フォールバック
-      const cityPart = cityMatch[1]; // 例: 「大分市」「別府市」「福岡市」
-      const rest = normalized.slice(cityPart.length); // 市区町村以降
+      if (!cityMatch) return normalized.slice(0, 5);
+      const cityPart = cityMatch[1];
+      const rest = normalized.slice(cityPart.length);
       if (!rest) return cityPart;
-      // 残りの先頭2文字を取得（数字・記号・ハイフンが来たら打ち切り）
       const townMatch = rest.match(/^([^\d０-９\-－\s]{1,2})/);
       if (townMatch) return cityPart + townMatch[1];
       return cityPart;
@@ -5305,19 +5298,14 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
     // 売主の種別を取得
     const sellerPropertyType: string = (seller as any).propertyType || (seller as any).property_type || '';
 
-    // 物件スプシにアクセス
-    const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
-    const sheetsClient = new GoogleSheetsClient({
-      spreadsheetId: '1tI_iXaiLuWBggs5y0RH7qzkbHs9wnLLdRekAmjkhcLY',
-      sheetName: '物件',
-      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || 'google-service-account.json',
-    });
-    await sheetsClient.authenticate();
+    // DBのpropertiesテーブルから検索
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+    );
 
-    // 全データを取得
-    const allRows = await sheetsClient.readAll();
-
-    // 種別グループを判定
+    // 種別フィルタリング
     const MANSION_TYPES = ['マ', 'マンション'];
     const HOUSE_TYPES = ['戸建', '戸', '戸建て'];
     const LAND_TYPES = ['土', '土地'];
@@ -5326,144 +5314,50 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
     const isHouse = HOUSE_TYPES.some(t => sellerPropertyType === t);
     const isLand = LAND_TYPES.some(t => sellerPropertyType === t);
 
-    // 許可する種別リストを決定
-    let allowedTypes: string[] = [];
+    let propertyTypeFilter: string[] = [];
     if (isMansion) {
-      allowedTypes = [...MANSION_TYPES];
+      propertyTypeFilter = ['マンション'];
     } else if (isHouse) {
-      // 戸建の場合は土地も含める
-      allowedTypes = [...HOUSE_TYPES, ...LAND_TYPES];
+      propertyTypeFilter = ['戸建て', '土地'];
     } else if (isLand) {
-      allowedTypes = [...LAND_TYPES];
-    } else {
-      // 種別不明の場合は全て返す
-      allowedTypes = [];
+      propertyTypeFilter = ['土地'];
     }
 
-    // Excelシリアル値を日付文字列（YYYY/MM/DD）に変換
-    const excelSerialToDateStr = (value: any): string => {
-      if (!value) return '';
-      const str = String(value).trim();
-      if (!str) return '';
-      // 既に YYYY/MM/DD or YYYY-MM-DD 形式の場合はそのまま返す
-      if (/^\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}/.test(str)) return str;
-      // 数値（Excelシリアル値）の場合は変換
-      const num = parseFloat(str);
-      if (!isNaN(num) && num > 1000) {
-        // Excelのシリアル値は1900/1/1を1として計算（ただし1900/2/29バグあり）
-        const excelEpoch = new Date(1899, 11, 30); // 1899-12-30
-        const date = new Date(excelEpoch.getTime() + num * 86400000);
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const d = String(date.getDate()).padStart(2, '0');
-        return `${y}/${m}/${d}`;
-      }
-      return str;
-    };
+    // propertiesテーブルから検索（住所の部分一致）
+    let query = supabase
+      .from('properties')
+      .select('*')
+      .ilike('property_address', `%${normalizeAddress(searchKeyword)}%`);
 
-    // 住所マッチング＋種別フィルタリング
-    const searchNormalized = normalizeAddress(searchKeyword);
+    if (propertyTypeFilter.length > 0) {
+      query = query.in('property_type', propertyTypeFilter);
+    }
 
-    const results = allRows
-      .filter((row: any) => {
-        // F列「所在地」またはG列「住居表示（ATBB登録住所）」に住所が含まれるか
-        const address = normalizeAddress(String(row['所在地'] || ''));
-        const displayAddress = normalizeAddress(String(row['住居表示（ATBB登録住所）'] || ''));
-        const addressMatch = address.includes(searchNormalized) || displayAddress.includes(searchNormalized);
-        if (!addressMatch) return false;
+    const { data: properties, error: dbError } = await query;
 
-        // 種別フィルタリング
-        if (allowedTypes.length === 0) return true;
-        const rowType = String(row['種別'] || '').trim();
-        return allowedTypes.some(t => rowType === t || rowType.startsWith(t) || t.startsWith(rowType));
-      })
-      .map((row: any) => {
-        // atbb成約済み/非公開 → 表示ラベル変換
-        const atbbStatus = String(row['atbb成約済み/非公開'] || '');
-        let statusLabel = '';
-        if (atbbStatus.includes('非公開')) {
-          statusLabel = '成約済み';
-        } else if (atbbStatus.includes('公開')) {
-          statusLabel = '現在募集中';
-        } else {
-          statusLabel = atbbStatus;
-        }
+    if (dbError) {
+      console.error('DB query error:', dbError);
+      return res.status(500).json({ error: 'Database query failed' });
+    }
 
-        // 築年データを取得（カラム名の正規化を試みる）
-        // スプシのヘッダーに全角スペースや特殊文字が混入している可能性があるため、
-        // 複数のパターンで検索
-        let buildYear = '';
-        const keys = Object.keys(row);
-        
-        // 優先順位順にカラムを検索
-        const buildYearPatterns = [
-          '新築年月',
-          '築年月',
-          '建築年月',
-          '竣工年月',
-          '築年',
-          '建築年',
-        ];
-        
-        for (const pattern of buildYearPatterns) {
-          // 完全一致
-          if (row[pattern]) {
-            buildYear = row[pattern];
-            break;
-          }
-          
-          // トリム・正規化して一致
-          const matchedKey = keys.find(k => k.trim().replace(/\s+/g, '') === pattern.replace(/\s+/g, ''));
-          if (matchedKey && row[matchedKey]) {
-            buildYear = row[matchedKey];
-            console.log(`[築年カラム名正規化] "${matchedKey}" → "${pattern}"`);
-            break;
-          }
-        }
-        
-        if (buildYear) {
-          // Excelシリアル値の可能性をチェック
-          const numValue = parseFloat(String(buildYear).trim());
-          if (!isNaN(numValue) && numValue > 1000 && numValue < 100000) {
-            // Excelシリアル値なので日付に変換
-            buildYear = excelSerialToDateStr(buildYear);
-          }
-        }
-        
-        // デバッグログ：築年データを確認
-        if (!buildYear && (row['種別'] === 'マ' || row['種別'] === 'マンション' || row['種別'] === '戸' || row['種別'] === '戸建')) {
-          console.log(`[築年データなし] 所在地: ${row['所在地']}`);
-          
-          // 築・建・竣を含むカラムを全て表示
-          console.log('  築・建・竣を含むカラム:');
-          keys.forEach(key => {
-            if (key.includes('築') || key.includes('建') || key.includes('竣') || key.includes('年月')) {
-              const charCodes = key.split('').map(c => c.charCodeAt(0)).join(',');
-              console.log(`    "${key}" (文字コード: ${charCodes}): ${row[key]}`);
-            }
-          });
-        }
-
-        return {
-          propertyType: row['種別'] || '',
-          settlementDate: excelSerialToDateStr(row['決済日'] || ''),
-          address: row['所在地'] || '',
-          displayAddress: row['住居表示（ATBB登録住所）'] || '',
-          landArea: row['土地面積'] || '',
-          buildingArea: row['建物面積'] || '',
-          salesPrice: row['売買価格'] || '',
-          atbbStatus: statusLabel,
-          buildYear,
-        };
-      });
+    // レスポンス形式に変換
+    const results = (properties || []).map((prop: any) => ({
+      propertyType: prop.property_type || '',
+      settlementDate: '', // propertiesテーブルには決済日がないため空
+      address: prop.property_address || '',
+      displayAddress: prop.property_address_ieul_apartment || '',
+      landArea: prop.land_area || '',
+      buildingArea: prop.building_area || '',
+      salesPrice: '', // propertiesテーブルには売買価格がないため空
+      atbbStatus: '', // propertiesテーブルにはステータスがないため空
+      buildYear: prop.construction_year ? String(prop.construction_year) : '',
+    }));
 
     res.json({
       results,
       address: rawAddress,
       searchKeyword,
       sellerPropertyType,
-      // デバッグ: 最初の1件のカラム名を返す
-      debugColumns: allRows.length > 0 ? Object.keys(allRows[0]) : [],
     });
   } catch (error: any) {
     console.error('Sales history error:', error?.message || error);
