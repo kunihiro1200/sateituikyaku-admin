@@ -102,7 +102,7 @@ import SellerPortalAdminModal from '../components/SellerPortalAdminModal';
 import { SouhuModal } from '../components/SouhuModal';
 import AreaReportModal from '../components/AreaReportModal';
 import CollapsibleSection from '../components/CollapsibleSection';
-import CommentHighlightsPanel from '../components/CommentHighlightsPanel';
+
 import HouseMakerModal from '../components/HouseMakerModal';
 import MansionModal, { MANSION_BRANDS } from '../components/MansionModal';
 
@@ -976,9 +976,6 @@ const CallModePage = () => {
   const savedCommentsRef = useRef<string>(''); // loadAllData クロージャ内でdirty判定に使用
   const editableCommentsRef = useRef<string>(''); // loadAllData クロージャ内でdirty判定に使用
   const [savingComments, setSavingComments] = useState(false);
-  // AIコメントまとめの結果（査定計算セクションで価格情報を表示するために使用）
-  const [aiCommentHighlights, setAiCommentHighlights] = useState<string[]>([]);
-  const [aiCommentOtherSummary, setAiCommentOtherSummary] = useState<string[]>([]);
   
   // 保存処理のロック（同時実行を防ぐ）
   const savingLockRef = useRef<boolean>(false);
@@ -8840,34 +8837,6 @@ HP：https://ifoo-oita.com/
               </Box>
               <Paper sx={{ p: 2, bgcolor: '#fff8f0' }}>
 
-                {/* コメントに記載された予想価格・売却希望価格の表示（AIまとめから抽出） */}
-                {(() => {
-                  const allItems = [...aiCommentHighlights, ...aiCommentOtherSummary];
-                  const expectedItem = allItems.find(item => item.includes('希望価格'));
-                  if (!expectedItem) return null;
-                  return (
-                    <Box sx={{
-                      mb: 2,
-                      p: 1.5,
-                      bgcolor: '#fff3e0',
-                      border: '2px solid #ff6f00',
-                      borderRadius: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 0.5,
-                    }}>
-                      <Typography variant="subtitle2" sx={{ color: '#bf360c', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        💬 お客様がコメントで言及した価格
-                      </Typography>
-                      {expectedItem && (
-                        <Typography variant="body2" sx={{ color: '#e65100', fontWeight: 'bold', fontSize: '1rem' }}>
-                          📌 {expectedItem}
-                        </Typography>
-                      )}
-                    </Box>
-                  );
-                })()}
-
                 {/* つながるオンライン査定書（反響URL） */}
                 {inquiryUrl && (
                   <Box sx={{ mb: 2 }}>
@@ -10373,36 +10342,6 @@ HP：https://ifoo-oita.com/
                 </Box>
               );
             })()}
-            <CommentHighlightsPanel
-              commentHtml={savedComments}
-              onHighlightsUpdate={(h, o) => { setAiCommentHighlights(h); setAiCommentOtherSummary(o); }}
-              quickButtonIds={[
-                { id: 'call-memo-b-prime', label: '確度', insertText: '確度：' },
-                { id: 'call-memo-wood-2f', label: '構造', insertText: '構造：' },
-                { id: 'call-memo-land-area', label: '土地面積', insertText: '土地面積：だいたい' },
-                { id: 'call-memo-solar', label: '太陽光', insertText: '太陽光付き' },
-                { id: 'call-memo-desk-valuation', label: '机上査定', insertText: '一旦机上査定して、その後訪問考える' },
-                { id: 'call-memo-waiting-other', label: '他社待ち', insertText: 'まだ他社の査定がでていない' },
-                { id: 'call-memo-surprised-high', label: '査定額反応', insertText: '思ったより査定額高かった' },
-                { id: 'call-memo-ownership', label: '名義', insertText: '本人名義人：本人' },
-                { id: 'call-memo-loan', label: 'ローン', insertText: 'ローン残：' },
-                { id: 'call-memo-willing-sell', label: '売る気あり', insertText: '売却には興味あり' },
-                { id: 'call-memo-considering', label: '検討中', insertText: '検討中' },
-                { id: 'call-memo-unreachable', label: '不通', insertText: '不通' },
-                { id: 'call-memo-cancel-guidance', label: 'キャンセル案内', insertText: 'キャンセル案内済み' },
-                { id: 'call-memo-transfer-income-tax', label: '譲渡所得税', insertText: '譲渡所得税説明済み' },
-                { id: 'call-memo-has-customer', label: 'お客様います', insertText: 'お客様紹介：済　紹介OK　お客様からこの辺で探していると問合せがあったときにご紹介は控えたほうが良いですよね？' },
-                { id: 'call-memo-our-referral', label: '当社紹介', insertText: '当社紹介済み' },
-                { id: 'call-memo-house-maker', label: 'ハウスメーカー', insertText: 'ハウスメーカー：' },
-                { id: 'call-memo-sell-reason', label: '売却理由', insertText: '売却理由：' },
-                { id: 'call-memo-nameplate', label: '表札確認', insertText: '表札確認：' },
-              ]}
-              getButtonState={getButtonState}
-              onQuickButtonClick={(id, insertText) => {
-                handleQuickButtonClick(id);
-                appendBoldText(insertText);
-              }}
-            />
 
             {/* ハウスメーカーモーダル */}
             <HouseMakerModal
