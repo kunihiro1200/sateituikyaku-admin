@@ -197,16 +197,22 @@ export default function SalesHistoryPage() {
     const yearStr = String(buildYear).trim();
     if (!yearStr) return '-';
     
-    // YYYY/MM または YYYY-MM 形式の場合は年だけ抽出
-    const yearMonthMatch = yearStr.match(/^(\d{4})[\/-](\d{1,2})/);
-    if (yearMonthMatch) {
-      return yearMonthMatch[1];
+    // YYYY年MM月DD日 形式の場合は年だけ抽出
+    const japaneseFullMatch = yearStr.match(/^(\d{4})年/);
+    if (japaneseFullMatch) {
+      return japaneseFullMatch[1];
     }
     
-    // YYYY年MM月 形式の場合は年だけ抽出
-    const japaneseMatch = yearStr.match(/^(\d{4})年/);
-    if (japaneseMatch) {
-      return japaneseMatch[1];
+    // YYYY/MM/DD または YYYY-MM-DD 形式の場合は年だけ抽出
+    const fullDateMatch = yearStr.match(/^(\d{4})[\/-]\d{1,2}[\/-]\d{1,2}/);
+    if (fullDateMatch) {
+      return fullDateMatch[1];
+    }
+    
+    // YYYY/MM または YYYY-MM 形式の場合は年だけ抽出
+    const yearMonthMatch = yearStr.match(/^(\d{4})[\/-]\d{1,2}/);
+    if (yearMonthMatch) {
+      return yearMonthMatch[1];
     }
     
     // 数値の場合はそのまま表示
