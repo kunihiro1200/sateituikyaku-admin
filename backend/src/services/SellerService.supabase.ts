@@ -2213,9 +2213,6 @@ export class SellerService extends BaseRepository {
       } else {
         // その他のfiカテゴリー（todayCall, unvaluated等）
         finalSellers = decryptedSellers.filter((s: any) => {
-      } else {
-        // その他のfiカテゴリー（todayCall, unvaluated等）
-        finalSellers = decryptedSellers.filter((s: any) => {
         // decryptSeller経由のデータ（camelCase）をsnake_case形式に正規化して共通関数に渡す
         const inquiryDateRaw = s.inquiryDate || s.inquiry_date;
         const normalized = {
