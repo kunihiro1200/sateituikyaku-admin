@@ -477,6 +477,15 @@ export default function BuyerStatusSidebar({
         {categoryList.map(renderCategoryItem)}
       </Box>
 
+      {/* 📊 統計（親カテゴリー：持家ヒアリング・買付・内覧をまとめる） */}
+      <Accordion disableGutters sx={{ '&:before': { display: 'none' }, boxShadow: 'none', borderTop: '2px solid #999' }}>
+        <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 16 }} />} sx={{ minHeight: 40, backgroundColor: '#e0e0e0', '& .MuiAccordionSummary-content': { my: 0.5 } }}>
+          <Typography variant="caption" fontWeight="bold" sx={{ color: '#222', fontSize: '0.8rem' }}>
+            📊 統計
+          </Typography>
+        </AccordionSummary>
+        <AccordionDetails sx={{ p: 0 }}>
+
       {/* 持家ヒアリング統計（親フォルダ） */}
       {hasMonthlyStats && (() => {
         const currentYear = new Date().getFullYear().toString();
@@ -602,7 +611,7 @@ export default function BuyerStatusSidebar({
         };
 
         return (
-          <Accordion disableGutters sx={{ '&:before': { display: 'none' }, boxShadow: 'none', borderTop: '2px solid #ccc' }}>
+          <Accordion disableGutters sx={{ '&:before': { display: 'none' }, boxShadow: 'none', borderTop: '1px solid #ddd' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 16 }} />} sx={{ minHeight: 36, backgroundColor: '#f5f5f5', '& .MuiAccordionSummary-content': { my: 0.5 } }}>
               <Typography variant="caption" fontWeight="bold" sx={{ color: '#333' }}>
                 持家ヒアリング統計（月別）
@@ -705,7 +714,7 @@ export default function BuyerStatusSidebar({
         };
 
         return (
-          <Accordion disableGutters sx={{ '&:before': { display: 'none' }, boxShadow: 'none', borderTop: '2px solid #ccc' }}>
+          <Accordion disableGutters sx={{ '&:before': { display: 'none' }, boxShadow: 'none', borderTop: '1px solid #ddd' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 16 }} />} sx={{ minHeight: 36, backgroundColor: '#f5f5f5', '& .MuiAccordionSummary-content': { my: 0.5 } }}>
               <Typography variant="caption" fontWeight="bold" sx={{ color: '#333' }}>
                 買付統計（内覧日月別×後続担当）
@@ -780,7 +789,7 @@ export default function BuyerStatusSidebar({
         };
 
         return (
-          <Accordion disableGutters sx={{ '&:before': { display: 'none' }, boxShadow: 'none', borderTop: '2px solid #ccc' }}>
+          <Accordion disableGutters sx={{ '&:before': { display: 'none' }, boxShadow: 'none', borderTop: '1px solid #ddd' }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 16 }} />} sx={{ minHeight: 36, backgroundColor: '#f5f5f5', '& .MuiAccordionSummary-content': { my: 0.5 } }}>
               <Typography variant="caption" fontWeight="bold" sx={{ color: '#333' }}>
                 内覧統計（内覧日月別×後続担当）
@@ -802,6 +811,9 @@ export default function BuyerStatusSidebar({
           </Accordion>
         );
       })()}
+
+        </AccordionDetails>
+      </Accordion>
     </Box>
   );
 }
