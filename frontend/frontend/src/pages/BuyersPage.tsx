@@ -55,6 +55,7 @@ interface Buyer {
   calculated_status?: string;
   status_color?: string;
   property_address?: string;
+  is_other_company_property?: boolean;
   property_type?: string;
   atbb_status?: string;
   property_sales_assignee?: string;
@@ -1138,8 +1139,39 @@ export default function BuyersPage() {
                           })()}
                         </TableCell>
                         <TableCell>{buyer.name || '-'}</TableCell>
-                        <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {buyer.property_address || '-'}
+                        <TableCell sx={{ maxWidth: 220 }}>
+                          {buyer.property_address ? (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+                              {buyer.is_other_company_property && (
+                                <Chip
+                                  label="他社物件"
+                                  size="small"
+                                  sx={{
+                                    height: 18,
+                                    fontSize: '0.65rem',
+                                    fontWeight: 'bold',
+                                    color: '#856404',
+                                    bgcolor: '#fff3cd',
+                                    border: '1px solid #ffe69c',
+                                    flexShrink: 0,
+                                  }}
+                                />
+                              )}
+                              <Box
+                                component="span"
+                                sx={{
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  color: buyer.is_other_company_property ? '#856404' : 'inherit',
+                                }}
+                              >
+                                {buyer.property_address}
+                              </Box>
+                            </Box>
+                          ) : (
+                            '-'
+                          )}
                         </TableCell>
                         <TableCell>{buyer.property_sales_assignee || '-'}</TableCell>
                         <TableCell>{buyer.property_type || '-'}</TableCell>

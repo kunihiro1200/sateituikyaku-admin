@@ -381,12 +381,24 @@ export class BuyerService {
     const enrichedData = buyers.map((b: any) => {
       // calculated_statusを計算
       const statusResult = calculateBuyerStatus(b);
-      
+
+      // 紐づき物件の住所（自社物件）
+      const linkedAddress = propertyMap[b.property_number]?.address ?? null;
+      // 他社物件情報（紐づき物件がない場合のフォールバック表示に使用）
+      const otherCompanyProperty = (b.other_company_property && String(b.other_company_property).trim())
+        ? String(b.other_company_property).trim()
+        : null;
+      // 表示する物件所在地：自社物件を優先し、なければ他社物件情報を使う
+      const displayAddress = linkedAddress ?? otherCompanyProperty ?? null;
+      // 表示している所在地が他社物件情報由来かどうか（フロントの表示区別用）
+      const isOtherCompanyProperty = !linkedAddress && !!otherCompanyProperty;
+
       return {
         ...b,
         calculated_status: statusResult.status,
         status_priority: statusResult.priority,
-        property_address: propertyMap[b.property_number]?.address ?? b.other_company_property ?? null,
+        property_address: displayAddress,
+        is_other_company_property: isOtherCompanyProperty,
         property_sales_assignee: propertyMap[b.property_number]?.sales_assignee ?? null,
         property_type: propertyMap[b.property_number]?.property_type ?? null,
         atbb_status: propertyMap[b.property_number]?.atbb_status ?? null,
