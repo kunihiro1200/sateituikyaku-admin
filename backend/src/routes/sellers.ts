@@ -5389,6 +5389,22 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
           statusLabel = atbbStatus;
         }
 
+        // 築年データを取得（Excelシリアル値の場合は日付に変換）
+        let buildYear = row['新築年月'] || row['築年'] || '';
+        if (buildYear) {
+          // Excelシリアル値の可能性をチェック
+          const numValue = parseFloat(String(buildYear).trim());
+          if (!isNaN(numValue) && numValue > 1000 && numValue < 100000) {
+            // Excelシリアル値なので日付に変換
+            buildYear = excelSerialToDateStr(buildYear);
+          }
+        }
+        
+        // デバッグログ：築年データを確認
+        if (!buildYear && (row['種別'] === 'マ' || row['種別'] === 'マンション' || row['種別'] === '戸' || row['種別'] === '戸建')) {
+          console.log(`[築年データなし] 物件: ${row['所在地']}, 種別: ${row['種別']}, 新築年月: ${row['新築年月']}, 築年: ${row['築年']}`);
+        }
+
         return {
           propertyType: row['種別'] || '',
           settlementDate: excelSerialToDateStr(row['決済日'] || ''),
@@ -5398,7 +5414,7 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
           buildingArea: row['建物面積'] || '',
           salesPrice: row['売買価格'] || '',
           atbbStatus: statusLabel,
-          buildYear: row['新築年月'] || row['築年'] || '',
+          buildYear,
         };
       });
 
