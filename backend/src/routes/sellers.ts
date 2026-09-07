@@ -5462,6 +5462,8 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
       address: rawAddress,
       searchKeyword,
       sellerPropertyType,
+      // デバッグ: 最初の1件のカラム名を返す
+      debugColumns: allRows.length > 0 ? Object.keys(allRows[0]) : [],
     });
   } catch (error: any) {
     console.error('Sales history error:', error?.message || error);
