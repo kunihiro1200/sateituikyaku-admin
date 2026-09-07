@@ -194,10 +194,28 @@ export default function SalesHistoryPage() {
     const type = String(propertyType).trim();
     if (type === '土' || type === '土地') return '-';
     
-    const year = typeof buildYear === 'number' ? buildYear : parseFloat(String(buildYear));
-    if (isNaN(year) || year <= 0) return '-';
+    const yearStr = String(buildYear).trim();
+    if (!yearStr) return '-';
     
-    return String(Math.floor(year));
+    // YYYY/MM または YYYY-MM 形式の場合は年だけ抽出
+    const yearMonthMatch = yearStr.match(/^(\d{4})[\/-](\d{1,2})/);
+    if (yearMonthMatch) {
+      return yearMonthMatch[1];
+    }
+    
+    // YYYY年MM月 形式の場合は年だけ抽出
+    const japaneseMatch = yearStr.match(/^(\d{4})年/);
+    if (japaneseMatch) {
+      return japaneseMatch[1];
+    }
+    
+    // 数値の場合はそのまま表示
+    const year = parseFloat(yearStr);
+    if (!isNaN(year) && year > 1900 && year < 2100) {
+      return String(Math.floor(year));
+    }
+    
+    return '-';
   };
 
   const typeColor = (type: string): string => {

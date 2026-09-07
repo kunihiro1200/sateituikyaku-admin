@@ -5398,7 +5398,7 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
           buildingArea: row['建物面積'] || '',
           salesPrice: row['売買価格'] || '',
           atbbStatus: statusLabel,
-          buildYear: row['築年'] || '',
+          buildYear: row['新築年月'] || row['築年'] || '',
         };
       });
 
