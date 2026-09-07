@@ -2274,6 +2274,7 @@ export class BuyerService {
       'seller_viewing_date_contact',
       'phone_contact_person', 'preferred_contact_time', 'contact_method',
       'viewing_prep_calendar_confirmed_at',
+      'other_company_property',
     ].join(', ');
 
     // count クエリ・最初のバッチ・property_listings を全て並列実行
