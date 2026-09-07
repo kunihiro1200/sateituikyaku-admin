@@ -1,0 +1,40 @@
+name: Send Scheduled Chats
+
+on:
+  schedule:
+    # 15分ごとに実行 (毎時 0, 15, 30, 45 分)
+    - cron: '0,15,30,45 * * * *'
+  workflow_dispatch: # 手動実行も可能
+
+jobs:
+  send-chats:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm ci
+
+      - name: Run scheduled chat sender
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NODE_ENV: production
+        run: |
+          cd backend
+          npx ts-node send-scheduled-chats.ts
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "⚠️ 予約送信スクリプトが失敗しました"
+          # 必要に応じてSlack/Email通知を追加

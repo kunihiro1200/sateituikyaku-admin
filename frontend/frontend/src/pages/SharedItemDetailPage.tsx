@@ -153,6 +153,12 @@ export default function SharedItemDetailPage() {
   const [initialSharingDate, setInitialSharingDate] = useState('');
   const [initialStaffNotShared, setInitialStaffNotShared] = useState('');
 
+  // チャット送信関連（共有場が「他」の場合のみ）
+  const [scheduledChatDatetime, setScheduledChatDatetime] = useState('');
+  const [sendingChat, setSendingChat] = useState(false);
+  const [chatSuccess, setChatSuccess] = useState(false);
+  const [chatError, setChatError] = useState('');
+
   useEffect(() => {
     // idが変わったら古いデータをリセット
     setItem(null);
@@ -434,6 +440,44 @@ export default function SharedItemDetailPage() {
       navigate('/shared-items', { state: { restoreLocation: fromLocation } });
     } else {
       navigate('/shared-items');
+    }
+  };
+
+  const handleChatSend = async () => {
+    if (!item) return;
+
+    // 共有場が「他」であることを確認
+    const sharingLocation = item['共有場'] || item.sharing_location;
+    if (sharingLocation !== '他') {
+      setChatError('チャット送信は共有場が「他」の場合のみ利用できます');
+      return;
+    }
+
+    setSendingChat(true);
+    setChatError('');
+    setChatSuccess(false);
+
+    try {
+      const payload: { scheduledDatetime?: string } = {};
+      if (scheduledChatDatetime) {
+        payload.scheduledDatetime = scheduledChatDatetime;
+      }
+
+      const response = await api.post(`/api/shared-items/${item.id}/send-chat`, payload);
+      
+      if (response.data.success) {
+        setChatSuccess(true);
+        if (response.data.scheduled) {
+          alert(response.data.message || 'チャット送信を予約しました');
+        } else {
+          alert('チャットを送信しました');
+        }
+      }
+    } catch (error: any) {
+      console.error('チャット送信エラー:', error);
+      setChatError(error.response?.data?.error || 'チャット送信に失敗しました');
+    } finally {
+      setSendingChat(false);
     }
   };
 
@@ -1365,7 +1409,78 @@ export default function SharedItemDetailPage() {
             </Box>
           </Grid>
 
+          {/* チャット送信（共有場が「他」の場合のみ表示） */}
+          {item && (item['共有場'] === '他' || item.sharing_location === '他') && (
+            <>
+              <Grid item xs={12}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="h6" fontWeight="bold" sx={{ color: color.main, mb: 2 }}>
+                  💬 チャット送信
+                </Typography>
+              </Grid>
 
+              {chatError && (
+                <Grid item xs={12}>
+                  <Alert severity="error" onClose={() => setChatError('')}>
+                    {chatError}
+                  </Alert>
+                </Grid>
+              )}
+
+              {chatSuccess && (
+                <Grid item xs={12}>
+                  <Alert severity="success" onClose={() => setChatSuccess(false)}>
+                    チャット送信が完了しました
+                  </Alert>
+                </Grid>
+              )}
+
+              <Grid item xs={12} md={6}>
+                <Typography variant="caption" color="text.secondary">
+                  送信予定日時（オプション）
+                </Typography>
+                <TextField
+                  fullWidth
+                  type="datetime-local"
+                  value={scheduledChatDatetime}
+                  onChange={(e) => setScheduledChatDatetime(e.target.value)}
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ mt: 0.5 }}
+                  helperText="未入力の場合は即時送信"
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <Alert severity="info" sx={{ fontSize: '0.875rem' }}>
+                  <strong>チャット送信内容：</strong>
+                  <br />
+                  • タイトル、内容、PDF/画像リンクをGoogle Chatへ送信します
+                  <br />
+                  • <strong>「共有できていないスタッフ」の自分のアカウントにチェックして必ず保存してください</strong>という注意文が含まれます
+                  <br />
+                  • 詳細ページのリンクも送信されます
+                </Alert>
+              </Grid>
+
+              <Grid item xs={12}>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={handleChatSend}
+                  disabled={sendingChat}
+                  startIcon={sendingChat ? <CircularProgress size={16} color="inherit" /> : undefined}
+                  sx={{ 
+                    bgcolor: '#7e57c2', 
+                    '&:hover': { bgcolor: '#5e35b1' },
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {sendingChat ? '送信中...' : scheduledChatDatetime ? '予約送信' : '今すぐ送信'}
+                </Button>
+              </Grid>
+            </>
+          )}
 
           {/* 打ち合わせ内容 */}
           <Grid item xs={12}>

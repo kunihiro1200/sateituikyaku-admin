@@ -539,6 +539,124 @@ router.post('/bulk-toggle-visibility', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/shared-items/:id/send-chat - チャット送信
+ * 共有場が「他」の場合に、Google Chatへメッセージを送信
+ */
+router.post('/:id/send-chat', async (req: Request, res: Response) => {
+  try {
+    await ensureInitialized();
+    const itemId = req.params.id;
+    const { scheduledDatetime } = req.body; // 送信予定日時（オプション）
+
+    // 共有アイテムを取得
+    const allItems = await sharedItemsService.getAll();
+    const item = allItems.find((i) => i.id === itemId);
+
+    if (!item) {
+      return res.status(404).json({ error: '共有アイテムが見つかりません' });
+    }
+
+    // 共有場が「他」であることを確認
+    const sharingLocation = item['共有場'] || item.sharing_location;
+    if (sharingLocation !== '他') {
+      return res.status(400).json({ error: 'チャット送信は共有場が「他」の場合のみ利用できます' });
+    }
+
+    // 予定日時が指定されている場合は予約として保存
+    if (scheduledDatetime) {
+      // scheduled_chat_datetime を更新（実際の送信は cron で行う）
+      const supabase = createClient(
+        process.env.SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
+      );
+
+      const { error: updateError } = await supabase
+        .from('shared_items')
+        .update({ scheduled_chat_datetime: scheduledDatetime })
+        .eq('id', itemId);
+
+      if (updateError) {
+        throw new Error(`予約送信の設定に失敗しました: ${updateError.message}`);
+      }
+
+      console.log(`[sharedItems] チャット予約送信を設定: ${itemId} → ${scheduledDatetime}`);
+      return res.json({ 
+        success: true, 
+        scheduled: true,
+        message: `${new Date(scheduledDatetime).toLocaleString('ja-JP')} に送信予定です` 
+      });
+    }
+
+    // 即時送信の場合
+    const { GoogleChatService } = await import('../services/GoogleChatService');
+    const chatService = new GoogleChatService();
+
+    // チャットWebhook URL
+    const CHAT_WEBHOOK_URL = 'https://chat.googleapis.com/v1/spaces/AAAAlknS4P0/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=61OklKGHQpRoIFhiI00wGZPmcRHd4oY_BV47uQGMWbg';
+
+    // メッセージ作成
+    const title = item['タイトル'] || item.title || '（タイトルなし）';
+    const content = item['内容'] || item.content || '';
+    const pdfUrl = item['PDF'] || item.pdf_url || '';
+    const imageUrl = item['画像'] || item.image_url || '';
+    
+    // フロントエンドの詳細画面URL
+    const frontendBaseUrl = process.env.NODE_ENV === 'production'
+      ? 'https://sateituikyaku-admin-frontend.vercel.app'
+      : (process.env.FRONTEND_URL?.split(',')[0] || 'http://localhost:5173');
+    const detailUrl = `${frontendBaseUrl}/shared-items/${itemId}`;
+
+    let message = `【共有事項】\n`;
+    message += `タイトル: ${title}\n\n`;
+    message += `${content}\n\n`;
+    message += `**「共有できていないスタッフ」の自分のアカウントにチェックして必ず保存してください**\n\n`;
+    message += `詳細: ${detailUrl}\n`;
+
+    if (pdfUrl) {
+      message += `\nPDF: ${pdfUrl}`;
+    }
+    if (imageUrl) {
+      message += `\n画像: ${imageUrl}`;
+    }
+
+    // Google Chatに送信
+    const result = await chatService.sendMessage(CHAT_WEBHOOK_URL, message);
+
+    if (!result.success) {
+      return res.status(500).json({ 
+        success: false, 
+        error: result.error || 'チャット送信に失敗しました' 
+      });
+    }
+
+    // 送信成功 → chat_sent_at を記録
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    const { error: updateError } = await supabase
+      .from('shared_items')
+      .update({ chat_sent_at: new Date().toISOString() })
+      .eq('id', itemId);
+
+    if (updateError) {
+      console.error('[sharedItems] chat_sent_at更新エラー:', updateError.message);
+      // 送信は成功しているのでエラーは無視
+    }
+
+    console.log(`[sharedItems] チャット送信成功: ${itemId}`);
+    res.json({ success: true, scheduled: false, message: 'チャットを送信しました' });
+  } catch (error: any) {
+    console.error('[sharedItems] チャット送信エラー:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'チャット送信に失敗しました' 
+    });
+  }
+});
+
+/**
  * GET /api/shared-items/:id/image-comments - 画像コメント取得
  */
 router.get('/:id/image-comments', async (req: Request, res: Response) => {

@@ -67,6 +67,11 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
   const [url, setUrl] = useState('');
   const [meetingContent, setMeetingContent] = useState('');
 
+  // チャット送信関連（共有場が「他」の場合のみ）
+  const [scheduledChatDatetime, setScheduledChatDatetime] = useState('');
+  const [sendingChat, setSendingChat] = useState(false);
+  const [chatSuccess, setChatSuccess] = useState(false);
+
   // UI状態
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -240,6 +245,16 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
         }
       }
 
+      // 共有場が「他」かつチャット送信が有効な場合、保存後にチャット送信
+      if (sharingLocation === '他' && (scheduledChatDatetime || chatSuccess)) {
+        try {
+          await handleChatSend(nextId);
+        } catch (chatError) {
+          console.error('チャット送信エラー:', chatError);
+          // チャット送信失敗は全体の保存を止めない
+        }
+      }
+
       onSaved();
     } catch (error: any) {
       console.error('保存エラー:', error);
@@ -249,11 +264,61 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
     }
   };
 
+  const handleChatSend = async (itemId?: string) => {
+    const targetId = itemId || nextId;
+    if (!targetId) {
+      setApiError('チャット送信にはアイテムIDが必要です');
+      return;
+    }
+
+    setSendingChat(true);
+    setApiError('');
+
+    try {
+      const payload: { scheduledDatetime?: string } = {};
+      if (scheduledChatDatetime) {
+        payload.scheduledDatetime = scheduledChatDatetime;
+      }
+
+      const response = await api.post(`/api/shared-items/${targetId}/send-chat`, payload);
+      
+      if (response.data.success) {
+        setChatSuccess(true);
+        if (response.data.scheduled) {
+          setApiError(''); // エラーをクリア
+          alert(response.data.message || 'チャット送信を予約しました');
+        } else {
+          setApiError(''); // エラーをクリア
+          alert('チャットを送信しました');
+        }
+      }
+    } catch (error: any) {
+      console.error('チャット送信エラー:', error);
+      setApiError(error.response?.data?.error || 'チャット送信に失敗しました');
+    } finally {
+      setSendingChat(false);
+    }
+  };
+
+  const handleChatSendClick = () => {
+    if (!validate()) {
+      setApiError('必須項目を入力してからチャット送信してください');
+      return;
+    }
+    handleChatSend();
+  };
+
   return (
     <Box>
       {apiError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setApiError('')}>
           {apiError}
+        </Alert>
+      )}
+
+      {chatSuccess && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setChatSuccess(false)}>
+          チャット送信が完了しました
         </Alert>
       )}
 
@@ -529,6 +594,32 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
             </Button>
           </Box>
         </Grid>
+
+        {/* チャット送信（共有場が「他」の場合のみ表示） */}
+        {sharingLocation === '他' && (
+          <>
+            <Grid item xs={6}>
+              <Typography variant="caption" color="text.secondary">
+                チャット送信予定日時（オプション）
+              </Typography>
+              <TextField
+                fullWidth
+                type="datetime-local"
+                value={scheduledChatDatetime}
+                onChange={(e) => setScheduledChatDatetime(e.target.value)}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                sx={{ mt: 0.5 }}
+                helperText="未入力の場合は保存時に即時送信"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <Alert severity="info" sx={{ fontSize: '0.875rem' }}>
+                💬 <strong>チャット送信</strong>: 保存すると指定した日時（または即時）にGoogle Chatへ送信されます
+              </Alert>
+            </Grid>
+          </>
+        )}
 
         {/* 打ち合わせ内容 */}
         <Grid item xs={12}>
