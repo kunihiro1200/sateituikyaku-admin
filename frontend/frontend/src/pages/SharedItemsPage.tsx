@@ -75,6 +75,10 @@ export default function SharedItemsPage() {
   );
   // 未確認フィルター用スタッフ名（null = 未確認フィルターなし）
   const [selectedUnconfirmedStaff, setSelectedUnconfirmedStaff] = useState<string | null>(null);
+  // 未確認カテゴリー（DBから取得）
+  const [unconfirmedCategories, setUnconfirmedCategories] = useState<{ staffName: string; count: number }[]>([]);
+  // 選択中スタッフの未確認アイテムID（フィルター用）
+  const [unconfirmedItemIds, setUnconfirmedItemIds] = useState<Set<string>>(new Set());
   // 削除ダイアログ用
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTargetItem, setDeleteTargetItem] = useState<SharedItem | null>(null);
@@ -110,6 +114,7 @@ export default function SharedItemsPage() {
 
   useEffect(() => {
     fetchAllSharedItems();
+    fetchUnconfirmedSummary();
   }, []);
 
   // 専任媒介・月別サマリーを取得（初回のみ）
@@ -141,6 +146,15 @@ export default function SharedItemsPage() {
     fetchOtherDecisionSummary();
     return () => { cancelled = true; };
   }, []);
+
+  const fetchUnconfirmedSummary = async () => {
+    try {
+      const res = await api.get('/api/shared-items/unconfirmed-summary');
+      setUnconfirmedCategories(res.data.data || []);
+    } catch (e) {
+      // エラーは無視（サイドバーの補助機能）
+    }
+  };
 
   const fetchAllSharedItems = async (forceRefresh = false) => {
     // キャッシュが有効な場合はAPIを叩かない
@@ -183,16 +197,7 @@ export default function SharedItemsPage() {
 
     // 未確認スタッフフィルター
     if (selectedUnconfirmedStaff) {
-      items = items.filter(
-        (item) =>
-          item.staff_not_shared &&
-          !item.confirmation_date &&
-          String(item.staff_not_shared)
-            .split(/[,、，]+/)  // 🚨 修正: スペースで分割しない
-            .map((s) => s.trim())
-            .filter(Boolean)
-            .includes(selectedUnconfirmedStaff)
-      );
+      items = items.filter((item) => unconfirmedItemIds.has(item.id));
     } else if (selectedLocation) {
       // 共有場フィルター
       items = items.filter(item => (item.sharing_location || '') === selectedLocation);
@@ -228,29 +233,6 @@ export default function SharedItemsPage() {
       }
     }
     return Array.from(seen.entries()).map(([label, count]) => ({ label, count }));
-  }, [allSharedItems]);
-
-  // 「●●＿未確認」カテゴリー集計
-  // staff_not_shared に値があり confirmation_date が空のアイテムをスタッフ名ごとに集計
-  // 🚨 修正: スペース区切りは使わず、カンマ・全角カンマ・読点のみで分割
-  // これにより「林田 元汰」が「林田」と「元汰」に分かれなくなる
-  const unconfirmedCategories = useMemo(() => {
-    const staffMap = new Map<string, number>();
-    for (const item of allSharedItems) {
-      if (item.staff_not_shared && !item.confirmation_date) {
-        // カンマ・読点区切りでのみ分割（スペースは使わない）
-        const staffNames = String(item.staff_not_shared)
-          .split(/[,、，]+/)  // スペース・全角スペースを削除
-          .map((s) => s.trim())
-          .filter(Boolean);
-        for (const name of staffNames) {
-          staffMap.set(name, (staffMap.get(name) || 0) + 1);
-        }
-      }
-    }
-    return Array.from(staffMap.entries())
-      .sort((a, b) => a[0].localeCompare(b[0], 'ja'))
-      .map(([name, count]) => ({ label: `${name}＿未確認`, staffName: name, count }));
   }, [allSharedItems]);
 
   // ページネーション用
@@ -365,7 +347,7 @@ export default function SharedItemsPage() {
           {/* All */}
           <ListItemButton
             selected={!selectedLocation && !selectedUnconfirmedStaff}
-            onClick={() => { setSelectedLocation(null); setSelectedUnconfirmedStaff(null); setPage(0); }}
+            onClick={() => { setSelectedLocation(null); setSelectedUnconfirmedStaff(null); setUnconfirmedItemIds(new Set()); setPage(0); }}
             sx={{ py: 1 }}
           >
             <ListItemText
@@ -390,11 +372,19 @@ export default function SharedItemsPage() {
                   未確認
                 </Typography>
               </Box>
-              {unconfirmedCategories.map(({ label, staffName, count }) => (
+              {unconfirmedCategories.map(({ staffName, count }) => (
                 <ListItemButton
-                  key={label}
+                  key={staffName}
                   selected={selectedUnconfirmedStaff === staffName}
-                  onClick={() => { setSelectedUnconfirmedStaff(staffName); setSelectedLocation(null); setPage(0); }}
+                  onClick={() => {
+                    setSelectedUnconfirmedStaff(staffName);
+                    setSelectedLocation(null);
+                    setPage(0);
+                    // 選択スタッフの未確認アイテムIDをDBから取得
+                    api.get(`/api/shared-items/unconfirmed-by-staff/${encodeURIComponent(staffName)}`)
+                      .then((res) => setUnconfirmedItemIds(new Set(res.data.data || [])))
+                      .catch(() => setUnconfirmedItemIds(new Set()));
+                  }}
                   sx={{
                     py: 1,
                     borderLeft: '4px solid #f44336',
@@ -407,7 +397,7 @@ export default function SharedItemsPage() {
                   }}
                 >
                   <ListItemText
-                    primary={label}
+                    primary={`${staffName}＿未確認`}
                     primaryTypographyProps={{ variant: 'body2', color: '#d32f2f' }}
                     sx={{ flex: 1, minWidth: 0, mr: 1 }}
                   />
@@ -435,7 +425,7 @@ export default function SharedItemsPage() {
             <ListItemButton
               key={label}
               selected={selectedLocation === label && !selectedUnconfirmedStaff}
-              onClick={() => { setSelectedLocation(label); setSelectedUnconfirmedStaff(null); setPage(0); }}
+              onClick={() => { setSelectedLocation(label); setSelectedUnconfirmedStaff(null); setUnconfirmedItemIds(new Set()); setPage(0); }}
               sx={{
                 py: 1,
                 borderLeft: `4px solid ${sharedItemsColor.main}`,
@@ -535,7 +525,7 @@ export default function SharedItemsPage() {
               <ListItemButton
                 key={label}
                 selected={selectedLocation === label && !selectedUnconfirmedStaff}
-                onClick={() => { setSelectedLocation(label); setSelectedUnconfirmedStaff(null); setPage(0); }}
+                onClick={() => { setSelectedLocation(label); setSelectedUnconfirmedStaff(null); setUnconfirmedItemIds(new Set()); setPage(0); }}
                 sx={{
                   py: 1,
                   pl: 3,
@@ -866,7 +856,7 @@ export default function SharedItemsPage() {
               {/* 事務会議の共有データ表示 */}
               <ListItemButton
                 selected={selectedLocation === '事務会議' && !selectedUnconfirmedStaff}
-                onClick={() => { setSelectedLocation('事務会議'); setSelectedUnconfirmedStaff(null); setPage(0); }}
+                onClick={() => { setSelectedLocation('事務会議'); setSelectedUnconfirmedStaff(null); setUnconfirmedItemIds(new Set()); setPage(0); }}
                 sx={{
                   py: 0.75,
                   pl: 3,

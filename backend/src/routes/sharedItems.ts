@@ -723,5 +723,127 @@ router.put('/:id/images', async (req: Request, res: Response) => {
   }
 });
 
+// ============================================================
+// 未確認スタッフ管理（DB管理）
+// ============================================================
+
+const SUPABASE_URL = process.env.SUPABASE_URL!;
+const SUPABASE_KEY = () => process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!;
+
+/**
+ * GET /api/shared-items/unconfirmed-summary
+ * サイドバー用：スタッフごとの未確認件数を返す
+ * [{ staffName: '山田', count: 3 }, ...]
+ */
+router.get('/unconfirmed-summary', async (req: Request, res: Response) => {
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY());
+    const { data, error } = await supabase
+      .from('shared_item_unconfirmed_staff')
+      .select('staff_name');
+    if (error) throw error;
+
+    const map = new Map<string, number>();
+    for (const row of data || []) {
+      map.set(row.staff_name, (map.get(row.staff_name) || 0) + 1);
+    }
+    const summary = Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0], 'ja'))
+      .map(([staffName, count]) => ({ staffName, count }));
+
+    res.json({ data: summary });
+  } catch (error: any) {
+    console.error('Failed to get unconfirmed summary:', error);
+    res.status(500).json({ error: '未確認サマリーの取得に失敗しました', details: error.message });
+  }
+});
+
+/**
+ * GET /api/shared-items/unconfirmed-by-staff/:staffName
+ * 特定スタッフの未確認アイテムID一覧を返す（フィルター用）
+ */
+router.get('/unconfirmed-by-staff/:staffName', async (req: Request, res: Response) => {
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY());
+    const { data, error } = await supabase
+      .from('shared_item_unconfirmed_staff')
+      .select('shared_item_id')
+      .eq('staff_name', decodeURIComponent(req.params.staffName));
+    if (error) throw error;
+
+    const itemIds = (data || []).map((r) => r.shared_item_id);
+    res.json({ data: itemIds });
+  } catch (error: any) {
+    console.error('Failed to get unconfirmed item ids:', error);
+    res.status(500).json({ error: '未確認アイテムIDの取得に失敗しました', details: error.message });
+  }
+});
+
+/**
+ * GET /api/shared-items/:id/unconfirmed-staff
+ * 特定アイテムの未確認スタッフ一覧を返す
+ */
+router.get('/:id/unconfirmed-staff', async (req: Request, res: Response) => {
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY());
+    const { data, error } = await supabase
+      .from('shared_item_unconfirmed_staff')
+      .select('staff_name')
+      .eq('shared_item_id', req.params.id);
+    if (error) throw error;
+
+    const staffNames = (data || []).map((r) => r.staff_name);
+    res.json({ data: staffNames });
+  } catch (error: any) {
+    console.error('Failed to get unconfirmed staff:', error);
+    res.status(500).json({ error: '未確認スタッフの取得に失敗しました', details: error.message });
+  }
+});
+
+/**
+ * POST /api/shared-items/:id/unconfirmed-staff
+ * スタッフを未確認リストに追加（ボタンON）
+ * Body: { staffName: string }
+ */
+router.post('/:id/unconfirmed-staff', async (req: Request, res: Response) => {
+  try {
+    const { staffName } = req.body;
+    if (!staffName) return res.status(400).json({ error: 'staffName は必須です' });
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY());
+    const { error } = await supabase
+      .from('shared_item_unconfirmed_staff')
+      .upsert({ shared_item_id: req.params.id, staff_name: staffName }, { onConflict: 'shared_item_id,staff_name' });
+    if (error) throw error;
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Failed to add unconfirmed staff:', error);
+    res.status(500).json({ error: '未確認スタッフの追加に失敗しました', details: error.message });
+  }
+});
+
+/**
+ * DELETE /api/shared-items/:id/unconfirmed-staff/:staffName
+ * スタッフを未確認リストから削除（ボタンOFF＝確認済み）
+ */
+router.delete('/:id/unconfirmed-staff/:staffName', async (req: Request, res: Response) => {
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY());
+    const { error } = await supabase
+      .from('shared_item_unconfirmed_staff')
+      .delete()
+      .eq('shared_item_id', req.params.id)
+      .eq('staff_name', decodeURIComponent(req.params.staffName));
+    if (error) throw error;
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Failed to remove unconfirmed staff:', error);
+    res.status(500).json({ error: '未確認スタッフの削除に失敗しました', details: error.message });
+  }
+});
+
 export default router;
+
 

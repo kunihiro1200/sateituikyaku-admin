@@ -120,7 +120,10 @@ export default function SharedItemDetailPage() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [sharingDate, setSharingDate] = useState('');
-  const [staffNotShared, setStaffNotShared] = useState<string[]>([]);
+
+  // 未確認スタッフ（DB管理）
+  const [unconfirmedStaff, setUnconfirmedStaff] = useState<string[]>([]);
+  const [staffToggling, setStaffToggling] = useState<string | null>(null); // トグル中のスタッフ名
 
   // 追加ファイル
   const [newPdfs, setNewPdfs] = useState<NewFile[]>([]);
@@ -151,7 +154,6 @@ export default function SharedItemDetailPage() {
   const [initialTitle, setInitialTitle] = useState('');
   const [initialContent, setInitialContent] = useState('');
   const [initialSharingDate, setInitialSharingDate] = useState('');
-  const [initialStaffNotShared, setInitialStaffNotShared] = useState('');
 
   // チャット送信関連（共有場が「他」の場合のみ）
   const [scheduledChatDatetime, setScheduledChatDatetime] = useState('');
@@ -166,7 +168,7 @@ export default function SharedItemDetailPage() {
     setTitle('');
     setContent('');
     setSharingDate('');
-    setStaffNotShared([]);
+    setUnconfirmedStaff([]);
     setNewPdfs([]);
     setNewImages([]);
     setImageComments({});
@@ -191,12 +193,18 @@ export default function SharedItemDetailPage() {
         const tl = foundItem['タイトル'] || '';
         setTitle(tl);
         setSharingDate(sd);
-        setStaffNotShared(sns ? sns.split(/[,\s　]+/).map((s: string) => s.trim()).filter(Boolean) : []);
         setContent(ct);
         setInitialTitle(tl);
         setInitialSharingDate(sd);
-        setInitialStaffNotShared(sns);
         setInitialContent(ct);
+
+        // 未確認スタッフをDBから取得
+        try {
+          const unconfirmedRes = await api.get(`/api/shared-items/${foundItem.id}/unconfirmed-staff`);
+          setUnconfirmedStaff(unconfirmedRes.data.data || []);
+        } catch (e) {
+          setUnconfirmedStaff([]);
+        }
 
         // 画像コメントを読み込み（DBから取得）
         try {
@@ -504,7 +512,6 @@ export default function SharedItemDetailPage() {
         'PDF6': pdfUrls[5], 'PDF7': pdfUrls[6], 'PDF8': pdfUrls[7], 'PDF9': pdfUrls[8], 'PDF10': pdfUrls[9],
         '画像１': imageUrls[0], '画像２': imageUrls[1], '画像３': imageUrls[2], '画像４': imageUrls[3],
         '共有日': today,
-        '共有できていない': staffNotShared.join(','),
         '内容': content,
       };
       await api.put(`/api/shared-items/${item.id}`, payload);
@@ -544,7 +551,6 @@ export default function SharedItemDetailPage() {
       setSharingDate(today);
       setInitialTitle(title);
       setInitialSharingDate(today);
-      setInitialStaffNotShared(staffNotShared.join(','));
       setInitialContent(content);
       setInitialImageComments({ ...imageComments });
       setNewPdfs([]);
@@ -583,8 +589,24 @@ export default function SharedItemDetailPage() {
     }
   };
 
-  const handleStaffToggle = (name: string) => {
-    setStaffNotShared((prev) => toggleStaff(prev, name));
+  const handleStaffToggle = async (name: string) => {
+    if (!item || staffToggling) return;
+    setStaffToggling(name);
+    try {
+      if (unconfirmedStaff.includes(name)) {
+        // 確認済み → 未確認リストから削除
+        await api.delete(`/api/shared-items/${item.id}/unconfirmed-staff/${encodeURIComponent(name)}`);
+        setUnconfirmedStaff((prev) => prev.filter((n) => n !== name));
+      } else {
+        // 未確認 → 追加
+        await api.post(`/api/shared-items/${item.id}/unconfirmed-staff`, { staffName: name });
+        setUnconfirmedStaff((prev) => [...prev, name]);
+      }
+    } catch (e) {
+      console.error('Failed to toggle unconfirmed staff:', e);
+    } finally {
+      setStaffToggling(null);
+    }
   };
 
   const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -677,7 +699,6 @@ export default function SharedItemDetailPage() {
         '画像３': imageUrls[2],
         '画像４': imageUrls[3],
         '共有日': sharingDate,
-        '共有できていない': staffNotShared.join(','),
         '内容': content,
       };
 
@@ -719,7 +740,6 @@ export default function SharedItemDetailPage() {
       setNewImages([]);
       setInitialTitle(title);
       setInitialSharingDate(sharingDate);
-      setInitialStaffNotShared(staffNotShared.join(','));
       setInitialContent(content);
       setInitialImageComments({ ...imageComments });
       setSaveSuccess(true);
@@ -767,7 +787,6 @@ export default function SharedItemDetailPage() {
     title !== initialTitle ||
     content !== initialContent ||
     sharingDate !== initialSharingDate ||
-    staffNotShared.join(',') !== initialStaffNotShared ||
     JSON.stringify(imageComments) !== JSON.stringify(initialImageComments);
 
   const isTeamMode = TEAM_MODES.includes(item['共有場'] || '');
@@ -1134,18 +1153,19 @@ export default function SharedItemDetailPage() {
               <Grid item xs={12}>
                 <Typography variant="caption" color="text.secondary">共有できていないスタッフ</Typography>
                 <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
-                  ＊確認後、自分の名前だけ消して保存してください。
+                  ＊自分の名前をタップして未確認（オレンジ）→確認済み（白）に切り替えてください。
                 </Typography>
                 <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                   {staff.map((s, index) => {
                     const initial = s.initials || s.name.charAt(0);
-                    const isSelected = staffNotShared.includes(s.name);
+                    const isSelected = unconfirmedStaff.includes(s.name);
                     const isLongInitial = initial.length > 1;
                     return (
                       <Button
                         key={index}
                         variant={isSelected ? 'contained' : 'outlined'}
                         onClick={() => handleStaffToggle(s.name)}
+                        disabled={staffToggling === s.name}
                         sx={{
                           minWidth: isLongInitial ? '56px' : '48px',
                           height: '48px',
@@ -1381,18 +1401,19 @@ export default function SharedItemDetailPage() {
           <Grid item xs={12}>
             <Typography variant="caption" color="text.secondary">共有できていないスタッフ</Typography>
             <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
-              ＊確認後、自分の名前だけ消して保存してください。
+              ＊自分の名前をタップして未確認（オレンジ）→確認済み（白）に切り替えてください。
             </Typography>
             <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
               {staff.map((s, index) => {
                 const initial = s.initials || s.name.charAt(0);
-                const isSelected = staffNotShared.includes(s.name);
+                const isSelected = unconfirmedStaff.includes(s.name);
                 const isLongInitial = initial.length > 1;
                 return (
                   <Button
                     key={index}
                     variant={isSelected ? 'contained' : 'outlined'}
                     onClick={() => handleStaffToggle(s.name)}
+                    disabled={staffToggling === s.name}
                     sx={{
                       minWidth: isLongInitial ? '56px' : '48px',
                       height: '48px',
