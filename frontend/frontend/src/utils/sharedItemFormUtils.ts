@@ -95,6 +95,7 @@ export const SHARING_LOCATIONS = [
   '物件数チーム',
   '事務会議',
   '営業会議',
+  '他',
 ] as const;
 
 /**
