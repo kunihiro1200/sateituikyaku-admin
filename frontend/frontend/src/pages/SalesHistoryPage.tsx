@@ -31,6 +31,7 @@ interface SalesHistoryItem {
   buildingArea: string;
   salesPrice: string;
   atbbStatus: string;
+  buildYear: string;
 }
 
 interface NearbyPropertyItem extends SalesHistoryItem {
@@ -185,6 +186,18 @@ export default function SalesHistoryPage() {
     const match = String(dateStr).match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
     if (match) return `${match[1]}/${match[2].padStart(2, '0')}/${match[3].padStart(2, '0')}`;
     return String(dateStr);
+  };
+
+  const formatBuildYear = (buildYear: string | number, propertyType: string): string => {
+    if (!buildYear) return '-';
+    // 種別が建物（マンション・戸建て）以外の場合は表示しない
+    const type = String(propertyType).trim();
+    if (type === '土' || type === '土地') return '-';
+    
+    const year = typeof buildYear === 'number' ? buildYear : parseFloat(String(buildYear));
+    if (isNaN(year) || year <= 0) return '-';
+    
+    return String(Math.floor(year));
   };
 
   const typeColor = (type: string): string => {
@@ -459,6 +472,7 @@ export default function SalesHistoryPage() {
                           <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>所在地</TableCell>
                           <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>土地面積</TableCell>
                           <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>建物面積</TableCell>
+                          <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>築年</TableCell>
                           <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>売買価格</TableCell>
                           <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>状態</TableCell>
                           <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>距離</TableCell>
@@ -498,6 +512,9 @@ export default function SalesHistoryPage() {
                               <TableCell sx={{ whiteSpace: 'nowrap' }}>
                                 {item.buildingArea ? formatArea(item.buildingArea) : '-'}
                               </TableCell>
+                              <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                {formatBuildYear(item.buildYear, item.propertyType)}
+                              </TableCell>
                               <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold' }}>
                                 {item.salesPrice ? formatPrice(item.salesPrice) : '-'}
                               </TableCell>
@@ -528,6 +545,7 @@ export default function SalesHistoryPage() {
                           <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>所在地</TableCell>
                           <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>土地面積</TableCell>
                           <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>建物面積</TableCell>
+                          <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>築年</TableCell>
                           <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>売買価格</TableCell>
                           <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>状態</TableCell>
                           <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>距離</TableCell>
@@ -556,6 +574,9 @@ export default function SalesHistoryPage() {
                             </TableCell>
                             <TableCell sx={{ whiteSpace: 'nowrap' }}>
                               {item.buildingArea ? formatArea(item.buildingArea) : '-'}
+                            </TableCell>
+                            <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                              {formatBuildYear(item.buildYear, item.propertyType)}
                             </TableCell>
                             <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold' }}>
                               {item.salesPrice ? formatPrice(item.salesPrice) : '-'}
