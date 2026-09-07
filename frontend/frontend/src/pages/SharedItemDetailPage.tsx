@@ -158,6 +158,7 @@ export default function SharedItemDetailPage() {
   const [sendingChat, setSendingChat] = useState(false);
   const [chatSuccess, setChatSuccess] = useState(false);
   const [chatError, setChatError] = useState('');
+  const [includeWarningText, setIncludeWarningText] = useState(true);
 
   useEffect(() => {
     // idが変わったら古いデータをリセット
@@ -458,10 +459,11 @@ export default function SharedItemDetailPage() {
     setChatSuccess(false);
 
     try {
-      const payload: { scheduledDatetime?: string } = {};
+      const payload: { scheduledDatetime?: string; includeWarningText?: boolean } = {};
       if (scheduledChatDatetime) {
         payload.scheduledDatetime = scheduledChatDatetime;
       }
+      payload.includeWarningText = includeWarningText;
 
       const response = await api.post(`/api/shared-items/${item.id}/send-chat`, payload);
       
@@ -1457,10 +1459,27 @@ export default function SharedItemDetailPage() {
                   <br />
                   • タイトル、内容、PDF/画像リンクをGoogle Chatへ送信します
                   <br />
-                  • <strong>「共有できていないスタッフ」の自分のアカウントにチェックして必ず保存してください</strong>という注意文が含まれます
-                  <br />
                   • 詳細ページのリンクも送信されます
                 </Alert>
+              </Grid>
+
+              <Grid item xs={12}>
+                <Box sx={{ p: 1.5, bgcolor: '#fff3e0', borderRadius: 1, border: '1px solid #ffb74d' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={includeWarningText}
+                      onChange={(e) => setIncludeWarningText(e.target.checked)}
+                      style={{ marginRight: 8, width: 18, height: 18, cursor: 'pointer' }}
+                    />
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#e65100' }}>
+                      **「共有できていないスタッフ」の自分のアカウントにチェックして必ず保存してください**
+                    </Typography>
+                  </label>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, ml: 3.5 }}>
+                    ※ チェックを入れると、チャット送信時に上記の注意文が含まれます
+                  </Typography>
+                </Box>
               </Grid>
 
               <Grid item xs={12}>

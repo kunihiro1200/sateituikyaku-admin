@@ -61,13 +61,6 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [sharingDate, setSharingDate] = useState('');
-
-  // 共有場が「他」に変更されたときに内容のデフォルト値を設定
-  useEffect(() => {
-    if (sharingLocation === '他' && content === '') {
-      setContent('**「共有できていないスタッフ」の自分のアカウントにチェックして必ず保存してください**');
-    }
-  }, [sharingLocation]);
   const [staffNotShared, setStaffNotShared] = useState<string[]>([]);
   const [pdfs, setPdfs] = useState<UploadedFile[]>([]);
   const [images, setImages] = useState<UploadedFile[]>([]);
@@ -78,6 +71,7 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
   const [scheduledChatDatetime, setScheduledChatDatetime] = useState('');
   const [sendingChat, setSendingChat] = useState(false);
   const [chatSuccess, setChatSuccess] = useState(false);
+  const [includeWarningText, setIncludeWarningText] = useState(true);
 
   // UI状態
   const [saving, setSaving] = useState(false);
@@ -282,9 +276,13 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
     setApiError('');
 
     try {
-      const payload: { scheduledDatetime?: string } = {};
+      const payload: { scheduledDatetime?: string; includeWarningText?: boolean } = {};
       if (scheduledChatDatetime) {
         payload.scheduledDatetime = scheduledChatDatetime;
+      }
+      // 共有場が「他」の場合のみ includeWarningText を送信
+      if (sharingLocation === '他') {
+        payload.includeWarningText = includeWarningText;
       }
 
       const response = await api.post(`/api/shared-items/${targetId}/send-chat`, payload);
@@ -421,6 +419,25 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
         {/* 内容（チームモードでは非表示） */}
         {!['契約率チーム', '物件数チーム'].includes(sharingLocation) && (
           <Grid item xs={12}>
+            {/* 共有場が「他」の場合はチェックボックスを表示 */}
+            {sharingLocation === '他' && (
+              <Box sx={{ mb: 1, p: 1.5, bgcolor: '#fff3e0', borderRadius: 1, border: '1px solid #ffb74d' }}>
+                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={includeWarningText}
+                    onChange={(e) => setIncludeWarningText(e.target.checked)}
+                    style={{ marginRight: 8, width: 18, height: 18, cursor: 'pointer' }}
+                  />
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#e65100' }}>
+                    **「共有できていないスタッフ」の自分のアカウントにチェックして必ず保存してください**
+                  </Typography>
+                </label>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, ml: 3.5 }}>
+                  ※ チェックを入れると、チャット送信時に上記の注意文が含まれます
+                </Typography>
+              </Box>
+            )}
             <Typography variant="caption" color="text.secondary">内容</Typography>
             <TextField
               fullWidth

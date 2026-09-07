@@ -546,7 +546,7 @@ router.post('/:id/send-chat', async (req: Request, res: Response) => {
   try {
     await ensureInitialized();
     const itemId = req.params.id;
-    const { scheduledDatetime } = req.body; // 送信予定日時（オプション）
+    const { scheduledDatetime, includeWarningText = true } = req.body; // 送信予定日時（オプション）、注意文含めるか（デフォルトtrue）
 
     // 共有アイテムを取得
     const allItems = await sharedItemsService.getAll();
@@ -609,7 +609,12 @@ router.post('/:id/send-chat', async (req: Request, res: Response) => {
     let message = `【共有事項】\n`;
     message += `タイトル: ${title}\n\n`;
     message += `${content}\n\n`;
-    message += `**「共有できていないスタッフ」の自分のアカウントにチェックして必ず保存してください**\n\n`;
+    
+    // includeWarningTextがtrueの場合のみ注意文を含める
+    if (includeWarningText) {
+      message += `**「共有できていないスタッフ」の自分のアカウントにチェックして必ず保存してください**\n\n`;
+    }
+    
     message += `詳細: ${detailUrl}\n`;
 
     if (pdfUrl) {
