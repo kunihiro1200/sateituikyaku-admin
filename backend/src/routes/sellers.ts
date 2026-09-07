@@ -4838,6 +4838,7 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
       '野芥': 'のけ',
       '椎原': 'しいば',
       '飯倉': 'いいくら',
+      '桧原': 'ひばる',
       '原': 'はら',
       '四箇': 'しか',
       '干隈': 'ほしくま',
