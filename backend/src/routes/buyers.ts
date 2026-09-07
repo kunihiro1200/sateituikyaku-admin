@@ -3383,70 +3383,16 @@ router.get('/:id/seller-duplicates', async (req: Request, res: Response) => {
 //   }
 // ─────────────────────────────────────────────────────────────────────────
 router.get('/:id/buyer-duplicates', async (req: Request, res: Response) => {
-  const debug = req.query.debug === '1';
-  const dbg: any = {};
   try {
     const { id } = req.params;
 
-    // 買主番号 → buyer_id(UUID) を解決
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-    let buyerId = id;
-    let currentBuyerForDebug: any = null;
-    if (!isUuid) {
-      const buyer = await buyerService.getByBuyerNumber(id, true);
-      if (!buyer) {
-        return res.status(404).json({
-          error: { code: 'BUYER_NOT_FOUND', message: 'Buyer not found', retryable: false },
-        });
-      }
-      buyerId = buyer.buyer_id;
-      currentBuyerForDebug = buyer;
-    }
-    if (debug) {
-      dbg.inputId = id;
-      dbg.resolvedBuyerId = buyerId;
-      dbg.currentPhone = currentBuyerForDebug?.phone_number ?? null;
-      dbg.currentEmail = currentBuyerForDebug?.email ?? null;
-      // buyers テーブルの実際のカラム名を特定するため、行の全キーとID系カラムを出す
-      dbg.currentRowKeys = currentBuyerForDebug ? Object.keys(currentBuyerForDebug) : null;
-      if (currentBuyerForDebug) {
-        dbg.idCandidates = {
-          buyer_id: currentBuyerForDebug.buyer_id ?? null,
-          id: currentBuyerForDebug.id ?? null,
-          uuid: currentBuyerForDebug.uuid ?? null,
-        };
-      }
-    }
-
-    // 電話番号・メールが一致する他の買主を取得（既存ロジックを流用）
-    const relatedBuyers = await relatedBuyerService.findRelatedBuyers(buyerId);
-    if (debug) {
-      dbg.relatedCount = relatedBuyers.length;
-      // 独立検証: 同じメールを持つ買主をDBのilikeで直接数える（正規化前の生値）
-      try {
-        const { createClient } = require('@supabase/supabase-js');
-        const sb = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
-        const { data: cur } = await sb
-          .from('buyers')
-          .select('buyer_id, buyer_number, phone_number, email, deleted_at')
-          .eq('buyer_id', buyerId)
-          .maybeSingle();
-        dbg.currentBuyerRow = cur || null;
-        if (cur?.email) {
-          const { data: sameEmail } = await sb
-            .from('buyers')
-            .select('buyer_number, email, deleted_at')
-            .ilike('email', String(cur.email).trim())
-            .is('deleted_at', null);
-          dbg.sameEmailRows = sameEmail || [];
-        }
-      } catch (e: any) {
-        dbg.debugError = e?.message || String(e);
-      }
-    }
+    // ⚠️ buyers テーブルの buyer_id はスプレッドシート同期行で NULL のことがあるため、
+    // 主キーではなく buyer_number ベースで照合する（findRelatedBuyers も buyer_number 対応済み）。
+    // id が UUID(buyer_id) で渡された場合も findRelatedBuyers 側で解決する。
+    const relatedBuyers = await relatedBuyerService.findRelatedBuyers(id);
 
     if (relatedBuyers.length === 0) {
-      return res.json(debug ? { duplicates: [], debug: dbg } : { duplicates: [] });
+      return res.json({ duplicates: [] });
     }
 
     const { createClient } = require('@supabase/supabase-js');
@@ -3455,24 +3401,12 @@ router.get('/:id/buyer-duplicates', async (req: Request, res: Response) => {
       process.env.SUPABASE_SERVICE_KEY!
     );
 
-    // 各重複買主の詳細（状況・担当）と物件住所を取得
-    const buyerIds = relatedBuyers.map((b: any) => b.buyer_id).filter(Boolean);
-    const detailMap = new Map<string, any>();
-    if (buyerIds.length > 0) {
-      const { data: details } = await supabase
-        .from('buyers')
-        .select('buyer_id, buyer_number, name, reception_date, property_number, latest_status, follow_up_assignee, initial_assignee, other_company_property')
-        .in('buyer_id', buyerIds);
-      for (const d of details || []) {
-        detailMap.set(d.buyer_id, d);
-      }
-    }
-
     // 物件番号 → 住所（前回どの物件に問い合わせたか）
+    // relatedBuyers は select('*') の結果なので全カラムを持つ
     const allPropertyNumbers = new Set<string>();
-    for (const d of detailMap.values()) {
-      if (d.property_number) {
-        String(d.property_number)
+    for (const rb of relatedBuyers as any[]) {
+      if (rb.property_number) {
+        String(rb.property_number)
           .split(',')
           .map((n: string) => n.trim())
           .filter(Boolean)
@@ -3492,9 +3426,9 @@ router.get('/:id/buyer-duplicates', async (req: Request, res: Response) => {
       }
     }
 
-    const resolveAddress = (detail: any): string | null => {
-      if (detail?.property_number) {
-        const addrs = String(detail.property_number)
+    const resolveAddress = (rb: any): string | null => {
+      if (rb?.property_number) {
+        const addrs = String(rb.property_number)
           .split(',')
           .map((n: string) => n.trim())
           .filter(Boolean)
@@ -3502,31 +3436,28 @@ router.get('/:id/buyer-duplicates', async (req: Request, res: Response) => {
           .filter((a: string | undefined): a is string => !!a);
         if (addrs.length > 0) return addrs.join(' / ');
       }
-      if (detail?.other_company_property && String(detail.other_company_property).trim()) {
-        return String(detail.other_company_property).trim();
+      if (rb?.other_company_property && String(rb.other_company_property).trim()) {
+        return String(rb.other_company_property).trim();
       }
       return null;
     };
 
-    const duplicates = relatedBuyers.map((rb: any) => {
-      const detail = detailMap.get(rb.buyer_id) || {};
-      return {
-        buyerId: rb.buyer_id,
-        matchType: rb.match_reason, // 'phone' | 'email' | 'both'
-        relationType: rb.relation_type, // 'multiple_inquiry' | 'possible_duplicate'
-        buyerInfo: {
-          buyerNumber: detail.buyer_number ?? rb.buyer_number,
-          name: detail.name ?? rb.name ?? '',
-          receptionDate: detail.reception_date ?? rb.reception_date ?? undefined,
-          propertyNumber: detail.property_number ?? rb.property_number ?? null,
-          propertyAddress: resolveAddress(detail),
-          latestStatus: detail.latest_status ?? null,
-          assignee: detail.follow_up_assignee || detail.initial_assignee || null,
-        },
-      };
-    });
+    const duplicates = (relatedBuyers as any[]).map((rb) => ({
+      buyerId: rb.buyer_number, // フロントは buyer_number でリンクするため番号を渡す
+      matchType: rb.match_reason, // 'phone' | 'email' | 'both'
+      relationType: rb.relation_type, // 'multiple_inquiry' | 'possible_duplicate'
+      buyerInfo: {
+        buyerNumber: rb.buyer_number,
+        name: rb.name ?? '',
+        receptionDate: rb.reception_date ?? undefined,
+        propertyNumber: rb.property_number ?? null,
+        propertyAddress: resolveAddress(rb),
+        latestStatus: rb.latest_status ?? null,
+        assignee: rb.follow_up_assignee || rb.initial_assignee || null,
+      },
+    }));
 
-    res.json(debug ? { duplicates, debug: dbg } : { duplicates });
+    res.json({ duplicates });
   } catch (error: any) {
     console.error('Get buyer duplicates error:', error);
     res.status(500).json({

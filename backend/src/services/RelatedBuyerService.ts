@@ -93,38 +93,59 @@ export class RelatedBuyerService {
    * @param buyerId - 現在の買主ID
    * @returns 関連買主のリスト
    */
-  async findRelatedBuyers(buyerId: string): Promise<RelatedBuyer[]> {
+  /**
+   * 関連買主を検索
+   *
+   * ⚠️ 重要（2026-09 修正）:
+   * buyers テーブルは主キーカラム buyer_id が存在するものの、
+   * スプレッドシート同期で作られた行では buyer_id の値が NULL のことがある。
+   * そのため buyer_id ベースの照合（.eq / .neq / .in('buyer_id', ...)）は
+   * 全滅し、買主重複が一切検出できなかった。
+   * 一方 buyer_number は必ず値が入っているため、
+   * 本メソッドは buyer_number ベースで動作する。
+   *
+   * @param buyerKey - 買主番号（buyer_number）。UUID の buyer_id が渡された場合も
+   *                   buyer_id で解決を試みる（後方互換）。
+   */
+  async findRelatedBuyers(buyerKey: string): Promise<RelatedBuyer[]> {
     try {
-      // Validate buyer ID
-      this.validateBuyerId(buyerId, 'buyer ID');
+      this.validateBuyerId(buyerKey, 'buyer key');
 
       // Check cache first
-      const cached = relatedBuyerCache.get(buyerId);
+      const cached = relatedBuyerCache.get(buyerKey);
       if (cached !== null) {
         return cached;
       }
 
-      // 現在の買主を取得
-      const { data: currentBuyer, error: buyerError } = await supabase
-        .from('buyers')
-        .select('*')
-        .eq('buyer_id', buyerId)
-        .single();
-
-      if (buyerError) {
-        console.error(`Error fetching buyer ${buyerId}:`, buyerError);
-        // Return empty array instead of throwing for missing buyers
-        return [];
+      // 現在の買主を取得（buyer_number 優先、ダメなら buyer_id で解決）
+      let currentBuyer: any = null;
+      {
+        const byNumber = await supabase
+          .from('buyers')
+          .select('*')
+          .eq('buyer_number', buyerKey)
+          .is('deleted_at', null)
+          .maybeSingle();
+        if (byNumber.data) {
+          currentBuyer = byNumber.data;
+        } else {
+          const byId = await supabase
+            .from('buyers')
+            .select('*')
+            .eq('buyer_id', buyerKey)
+            .maybeSingle();
+          currentBuyer = byId.data || null;
+        }
       }
 
       if (!currentBuyer) {
-        console.warn(`Buyer not found: ${buyerId}`);
+        console.warn(`Buyer not found: ${buyerKey}`);
         return [];
       }
 
       // 電話番号もメールアドレスもない場合は空配列を返す
       if (!currentBuyer.phone_number && !currentBuyer.email) {
-        console.info(`Buyer ${buyerId} has no phone or email for matching`);
+        console.info(`Buyer ${buyerKey} has no phone or email for matching`);
         return [];
       }
 
@@ -139,11 +160,11 @@ export class RelatedBuyerService {
       }));
 
       // Cache the result
-      relatedBuyerCache.set(buyerId, result);
+      relatedBuyerCache.set(buyerKey, result);
 
       return result;
     } catch (error) {
-      console.error(`Error in findRelatedBuyers for ${buyerId}:`, error);
+      console.error(`Error in findRelatedBuyers for ${buyerKey}:`, error);
       // Return empty array on error to prevent UI breaking
       return [];
     }
@@ -186,14 +207,15 @@ export class RelatedBuyerService {
     }
 
     // 軽量カラムのみを全件ページ取得（削除済みは除外）
-    const candidates: Array<{ buyer_id: string; phone_number: string | null; email: string | null }> = [];
+    // ⚠️ buyer_id は NULL のことがあるため、比較キーには buyer_number を使う
+    const currentBuyerNumber = String(currentBuyer.buyer_number ?? '');
+    const candidates: Array<{ buyer_number: string; phone_number: string | null; email: string | null }> = [];
     const PAGE_SIZE = 1000;
     for (let from = 0; ; from += PAGE_SIZE) {
       const { data: page, error } = await supabase
         .from('buyers')
-        .select('buyer_id, phone_number, email')
+        .select('buyer_number, phone_number, email')
         .is('deleted_at', null)
-        .neq('buyer_id', currentBuyer.buyer_id)
         .range(from, from + PAGE_SIZE - 1);
       if (error) {
         throw new Error(`Failed to search related buyers: ${error.message}`);
@@ -203,18 +225,20 @@ export class RelatedBuyerService {
       if (page.length < PAGE_SIZE) break;
     }
 
-    // 正規化して一致する買主IDを抽出
-    const matchedIds = candidates
+    // 正規化して一致する買主番号を抽出（自分自身は除外）
+    const matchedNumbers = candidates
       .filter((c) => {
+        if (String(c.buyer_number ?? '') === currentBuyerNumber) return false; // 自分自身を除外
         const phoneMatch =
           phoneUsable && this.normalizePhone(c.phone_number) === targetPhone;
         const emailMatch =
           emailUsable && this.normalizeEmail(c.email) === targetEmail;
         return phoneMatch || emailMatch;
       })
-      .map((c) => c.buyer_id);
+      .map((c) => c.buyer_number)
+      .filter((n): n is string => !!n);
 
-    if (matchedIds.length === 0) {
+    if (matchedNumbers.length === 0) {
       return [];
     }
 
@@ -222,7 +246,7 @@ export class RelatedBuyerService {
     const { data, error } = await supabase
       .from('buyers')
       .select('*')
-      .in('buyer_id', matchedIds)
+      .in('buyer_number', matchedNumbers)
       .order('reception_date', { ascending: false, nullsFirst: false });
 
     if (error) {
