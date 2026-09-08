@@ -2201,7 +2201,7 @@ const CallModePage = () => {
       .finally(() => {
         setAddressReadingLoading(false);
       });
-  }, [seller?.id, seller?.propertyAddress]);
+  }, [seller?.id, seller?.propertyAddress, (seller as any)?.property?.address]);
 
   // 用途地域を取得（売主の座標から自動取得、DBにキャッシュ）
   useEffect(() => {
