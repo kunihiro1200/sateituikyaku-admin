@@ -5436,7 +5436,7 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
 
     console.log('[sales-history] Total results:', results.length);
     
-    // 各結果に対してDBから築年を検索（住所のみで検索）
+    // 各結果に対してDBから築年を検索（物件番号で検索）
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
       
@@ -5446,42 +5446,40 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
         continue;
       }
 
-      const addr = normalizeAddress(result.address);
-      if (!addr) continue;
+      const propNum = result.propertyNumber;
+      if (!propNum) {
+        console.log(`[sales-history] Result ${i}: propertyNumber is empty, skipping`);
+        continue;
+      }
 
-      console.log(`[sales-history] Result ${i}: address="${addr}"`);
+      console.log(`[sales-history] Result ${i}: propertyNumber="${propNum}"`);
 
-      // DBから築年を取得（部分一致で検索）
+      // DBから築年を取得（seller_numberで検索）
       const { data, error } = await supabase
-        .from('properties')
-        .select('construction_year, property_address')
-        .ilike('property_address', `%${addr}%`)
+        .from('sellers')
+        .select('construction_year')
+        .eq('seller_number', propNum)
         .limit(1);
 
       if (error) {
         console.log(`[sales-history] DB error:`, error.message);
       } else if (data && data.length > 0 && data[0].construction_year != null) {
         result.buildYear = String(data[0].construction_year);
-        console.log(`[sales-history] ✅ Found: ${data[0].property_address} → ${data[0].construction_year}`);
+        console.log(`[sales-history] ✅ Found: ${propNum} → ${data[0].construction_year}`);
       } else {
-        console.log(`[sales-history] ❌ Not found in DB`);
+        console.log(`[sales-history] ❌ Not found in DB for ${propNum}`);
       }
     }
 
-    // propertyNumberフィールドを削除（レスポンスに含めない）
-    const finalResults = results.map(r => {
-      const { propertyNumber, ...rest } = r;
-      return rest;
-    });
-
+    // propertyNumberをレスポンスに含める（UIで表示するため）
     res.json({
-      results: finalResults,
+      results: results,
       address: rawAddress,
       searchKeyword,
       sellerPropertyType,
       debug: {
-        firstResult: finalResults[0] || null,
-        totalResults: finalResults.length
+        firstResult: results[0] || null,
+        totalResults: results.length
       }
     });
   } catch (error: any) {
