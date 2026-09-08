@@ -2195,13 +2195,14 @@ const CallModePage = () => {
       .then(res => {
         setAddressReading(res.data.reading || null);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('[CallModePage] 物件住所の読み仮名取得エラー:', err);
         setAddressReading(null);
       })
       .finally(() => {
         setAddressReadingLoading(false);
       });
-  }, [seller?.id, seller?.propertyAddress, (seller as any)?.property?.address]);
+  }, [seller?.id, seller?.propertyAddress, seller]);
 
   // 用途地域を取得（売主の座標から自動取得、DBにキャッシュ）
   useEffect(() => {

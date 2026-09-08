@@ -4770,13 +4770,19 @@ function saveToAddressCache(placeName: string, reading: string): void {
 router.get('/:id/address-reading', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    console.log('[address-reading] リクエスト受信:', id);
 
     const seller = await sellerService.getSeller(id);
-    if (!seller) return res.status(404).json({ error: '売主が見つかりません' });
+    if (!seller) {
+      console.log('[address-reading] 売主が見つかりません:', id);
+      return res.status(404).json({ error: '売主が見つかりません' });
+    }
 
     // 住所の取得（propertiesテーブル優先、なければsellersテーブル）
     const address = (seller as any).property?.address || seller.propertyAddress || '';
+    console.log('[address-reading] 取得した住所:', address);
     if (!address || address.trim() === '' || address.trim() === '未入力') {
+      console.log('[address-reading] 物件住所が設定されていません');
       return res.status(400).json({ error: '物件住所が設定されていません' });
     }
 
@@ -5051,6 +5057,7 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
       }
     }
 
+    console.log('[address-reading] 読み仮名を返却:', reading);
     return res.json({ address, reading });
   } catch (error: any) {
     console.error('[address-reading] エラー:', error?.message || error);
