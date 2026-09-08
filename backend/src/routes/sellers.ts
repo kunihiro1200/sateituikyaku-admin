@@ -5325,7 +5325,7 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
       range,
       valueRenderOption: 'UNFORMATTED_VALUE',
       dateTimeRenderOption: 'SERIAL_NUMBER',
-      auth: (sheetsClient as any).auth, // 認証情報を取得
+      auth: sheetsClient.getAuth(),
     });
 
     const rows = response.data.values || [];
