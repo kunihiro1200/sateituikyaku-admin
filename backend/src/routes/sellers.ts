@@ -4778,6 +4778,14 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
       return res.status(404).json({ error: '売主が見つかりません' });
     }
 
+    console.log('[address-reading] seller取得成功:', {
+      sellerId: seller.id,
+      sellerNumber: seller.sellerNumber,
+      propertyAddress: seller.propertyAddress,
+      hasProperty: !!(seller as any).property,
+      propertyAddressFromProperty: (seller as any).property?.address,
+    });
+
     // 住所の取得（propertiesテーブル優先、なければsellersテーブル）
     const address = (seller as any).property?.address || seller.propertyAddress || '';
     console.log('[address-reading] 取得した住所:', address);
@@ -5323,12 +5331,12 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
     });
     await sheetsClient.authenticate();
 
-    // B列から取得（A列は空列のため）
+    // A列から取得（物件スプレッドシートはA列から始まる）
     // 物件スプレッドシート専用の読み取り処理
     const { google } = await import('googleapis');
     const sheets = google.sheets('v4');
     
-    const range = `'物件'!B:FZ`;
+    const range = `'物件'!A:FZ`;
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: '1tI_iXaiLuWBggs5y0RH7qzkbHs9wnLLdRekAmjkhcLY',
       range,
@@ -5351,11 +5359,19 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
     console.log(`[sales-history] "築年" index: ${buildYearIndex} (${buildYearIndex >= 0 ? headers[buildYearIndex] : 'NOT FOUND'})`);
 
     // 行をオブジェクトに変換
-    const allRows = dataRows.map((row: any[]) => {
+    const allRows = dataRows.map((row: any[], rowIndex: number) => {
       const obj: any = {};
       headers.forEach((header: string, index: number) => {
         obj[header] = row[index] !== undefined ? row[index] : '';
       });
+      
+      // デバッグ：最初の10行の物件番号と新築年月を確認
+      if (rowIndex < 10) {
+        const propNum = obj['物件番号'];
+        const buildYear = obj['新築年月'];
+        console.log(`[sales-history] Row ${rowIndex}: 物件番号="${propNum}", 新築年月="${buildYear}"`);
+      }
+      
       return obj;
     });
 
@@ -5431,10 +5447,10 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
           statusLabel = atbbStatus;
         }
 
-        // 築年をスプレッドシートから取得（種別が土地でない場合のみ）
+        // 新築年月をスプレッドシートから取得（種別が土地でない場合のみ）
         const propertyType = String(row['種別'] || '').trim();
         const propertyNumber = String(row['物件番号'] || '').trim();
-        const buildYearRaw = row['築年'];
+        const buildYearRaw = row['新築年月'];
         
         let buildYear = '';
         if (propertyType !== '土' && propertyType !== '土地') {
