@@ -4772,7 +4772,17 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
     const { id } = req.params;
     console.log('[address-reading] リクエスト受信:', id);
 
-    const seller = await sellerService.getSeller(id);
+    let seller;
+    try {
+      seller = await sellerService.getSeller(id);
+    } catch (sellerError: any) {
+      console.error('[address-reading] getSeller エラー:', sellerError);
+      return res.status(500).json({ 
+        error: 'getSeller failed', 
+        details: sellerError?.message || String(sellerError) 
+      });
+    }
+
     if (!seller) {
       console.log('[address-reading] 売主が見つかりません:', id);
       return res.status(404).json({ error: '売主が見つかりません' });
@@ -5071,7 +5081,12 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
     return res.json({ address, reading });
   } catch (error: any) {
     console.error('[address-reading] エラー:', error?.message || error);
-    return res.status(500).json({ error: '読み仮名の取得に失敗しました' });
+    console.error('[address-reading] エラースタック:', error?.stack);
+    return res.status(500).json({ 
+      error: '読み仮名の取得に失敗しました',
+      details: error?.message || String(error),
+      stack: error?.stack
+    });
   }
 });
 
@@ -5186,7 +5201,7 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
     // 1. property_listingsから座標付き物件を全件取得
     const { data: allListings } = await supabase
       .from('property_listings')
-      .select('property_number, property_type, address, display_address, land_area, building_area, sales_price, settlement_date, atbb_status, offer_status, latitude, longitude')
+      .select('property_number, property_type, address, display_address, land_area, building_area, sales_price, settlement_date, atbb_status, offer_status, construction_year_month, latitude, longitude')
       .not('latitude', 'is', null)
       .not('longitude', 'is', null);
 
@@ -5229,6 +5244,7 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
 
         results.push({
           propertyType: listing.property_type || '',
+          propertyNumber: listing.property_number || '',
           settlementDate: excelSerialToDateStr(listing.settlement_date || ''),
           address: listing.address || '',
           displayAddress: listing.display_address || '',
@@ -5236,6 +5252,7 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
           buildingArea: listing.building_area ? String(listing.building_area) : '',
           salesPrice: listing.sales_price ? String(listing.sales_price) : '',
           atbbStatus: statusLabel,
+          buildYear: listing.construction_year_month ? String(listing.construction_year_month).slice(0, 4) : '',
           distanceKm: Math.round(dist * 1000) / 1000,
           lat,
           lng,
@@ -5455,13 +5472,13 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
         let buildYear = '';
         if (propertyType !== '土' && propertyType !== '土地') {
           if (buildYearRaw) {
-            buildYear = String(buildYearRaw).trim();
+            // 決済日と同じ変換関数で日付文字列に変換し、年だけ取り出す
+            const dateStr = excelSerialToDateStr(buildYearRaw);
+            const yearMatch = dateStr.match(/^(\d{4})/);
+            if (yearMatch) {
+              buildYear = yearMatch[1];
+            }
           }
-        }
-
-        // デバッグログ
-        if (propertyNumber === 'AA13377' || propertyNumber === 'AA8932') {
-          console.log(`[sales-history] DEBUG: propertyNumber="${propertyNumber}", buildYearRaw=${buildYearRaw}, buildYear="${buildYear}"`);
         }
 
         return {
