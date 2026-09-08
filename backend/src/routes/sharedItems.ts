@@ -544,13 +544,16 @@ router.post('/bulk-toggle-visibility', async (req: Request, res: Response) => {
  */
 router.post('/:id/send-chat', async (req: Request, res: Response) => {
   try {
+    console.log(`[sharedItems] チャット送信リクエスト受信: itemId=${req.params.id}, body=`, req.body);
     await ensureInitialized();
     const itemId = req.params.id;
     const { scheduledDatetime, includeWarningText = true } = req.body; // 送信予定日時（オプション）、注意文含めるか（デフォルトtrue）
 
     // 共有アイテムを取得
     const allItems = await sharedItemsService.getAll();
+    console.log(`[sharedItems] 全アイテム数: ${allItems.length}`);
     const item = allItems.find((i) => i.id === itemId);
+    console.log(`[sharedItems] アイテム検索結果:`, item ? `見つかりました (共有場: ${item['共有場']})` : '見つかりませんでした');
 
     if (!item) {
       return res.status(404).json({ error: '共有アイテムが見つかりません' });
@@ -564,6 +567,7 @@ router.post('/:id/send-chat', async (req: Request, res: Response) => {
 
     // 予定日時が指定されている場合は予約として保存
     if (scheduledDatetime) {
+      console.log(`[sharedItems] 予約送信モード: scheduledDatetime=${scheduledDatetime}`);
       // スプレッドシート由来のアイテムIDは数値文字列なので、専用テーブルに保存
       const supabase = createClient(
         process.env.SUPABASE_URL!,
@@ -571,12 +575,19 @@ router.post('/:id/send-chat', async (req: Request, res: Response) => {
       );
 
       // 既存の予約があれば更新、なければ新規作成
-      const { data: existing } = await supabase
+      const { data: existing, error: selectError } = await supabase
         .from('shared_item_scheduled_chats')
         .select('id')
         .eq('spreadsheet_item_id', itemId)
         .is('chat_sent_at', null)
         .single();
+
+      if (selectError && selectError.code !== 'PGRST116') {
+        console.error(`[sharedItems] 既存予約の確認エラー:`, selectError);
+        throw new Error(`既存予約の確認に失敗しました: ${selectError.message}`);
+      }
+
+      console.log(`[sharedItems] 既存予約:`, existing ? `あり (id=${existing.id})` : 'なし');
 
       if (existing) {
         // 既存の予約を更新
@@ -616,6 +627,7 @@ router.post('/:id/send-chat', async (req: Request, res: Response) => {
     }
 
     // 即時送信の場合
+    console.log(`[sharedItems] 即時送信モード`);
     const { GoogleChatService } = await import('../services/GoogleChatService');
     const chatService = new GoogleChatService();
 
