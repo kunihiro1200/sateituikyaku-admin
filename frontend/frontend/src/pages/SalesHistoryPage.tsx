@@ -24,6 +24,7 @@ import api from '../services/api';
 
 interface SalesHistoryItem {
   propertyType: string;
+  propertyNumber?: string; // 物件番号（スプレッドシートのB列）
   settlementDate: string;
   address: string;
   displayAddress: string;
@@ -510,6 +511,7 @@ export default function SalesHistoryPage() {
                             />
                           </TableCell>
                           <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>種別</TableCell>
+                          <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }} className="no-print">物件番号</TableCell>
                           <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>決済日</TableCell>
                           <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>所在地</TableCell>
                           <TableCell sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>土地面積</TableCell>
@@ -538,6 +540,9 @@ export default function SalesHistoryPage() {
                                 <span className="type-badge" style={{ backgroundColor: typeColor(item.propertyType) }}>
                                   {item.propertyType || '-'}
                                 </span>
+                              </TableCell>
+                              <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.75rem', color: 'text.secondary' }} className="no-print">
+                                {item.propertyNumber || '-'}
                               </TableCell>
                               <TableCell sx={{ whiteSpace: 'nowrap' }}>
                                 {item.settlementDate ? formatDate(item.settlementDate) : '-'}
