@@ -5342,7 +5342,7 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
     const dataRows = rows.slice(1);
 
     console.log('[sales-history] Total headers:', headers.length);
-    console.log('[sales-history] Headers sample:', headers.slice(0, 10));
+    console.log('[sales-history] ALL HEADERS:', JSON.stringify(headers));
     
     // 物件番号と築年のヘッダー位置を確認
     const propNumIndex = headers.findIndex((h: string) => String(h).includes('物件番号'));
