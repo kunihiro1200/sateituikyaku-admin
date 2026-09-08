@@ -5411,20 +5411,30 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
     );
 
     // 全ての結果に対してDBから築年を検索
+    // 物件番号 = 売主番号として扱う（売主番号でsellersテーブルを検索 → propertiesを取得）
     for (const result of results) {
       let foundConstructionYear: any = null;
 
-      // 1. 物件番号がある場合は物件番号で検索（最優先）
+      // 1. 物件番号がある場合は売主番号として検索（最優先）
       if (result.propertyNumber) {
-        const { data: propData } = await supabase
-          .from('properties')
-          .select('construction_year')
-          .eq('property_number', result.propertyNumber)
+        // sellersテーブルからseller_idを取得
+        const { data: sellerData } = await supabase
+          .from('sellers')
+          .select('id')
+          .eq('seller_number', result.propertyNumber)
           .single();
 
-        if (propData?.construction_year != null) {
-          foundConstructionYear = propData.construction_year;
-          console.log('[sales-history] Found by property_number:', result.propertyNumber, '→', foundConstructionYear);
+        if (sellerData?.id) {
+          // propertiesテーブルから築年を取得
+          const { data: propData } = await supabase
+            .from('properties')
+            .select('construction_year')
+            .eq('seller_id', sellerData.id)
+            .single();
+
+          if (propData?.construction_year != null) {
+            foundConstructionYear = propData.construction_year;
+          }
         }
       }
 
@@ -5440,7 +5450,6 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
 
           if (addrData && addrData.length > 0 && addrData[0].construction_year != null) {
             foundConstructionYear = addrData[0].construction_year;
-            console.log('[sales-history] Found by address:', addr, '→', foundConstructionYear);
           }
         }
       }
