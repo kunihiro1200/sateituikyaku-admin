@@ -5410,37 +5410,21 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
       process.env.SUPABASE_SERVICE_ROLE_KEY || ''
     );
 
-    // 住所のリストを取得（正規化して重複除去）
-    const addresses = [...new Set(results.map(r => normalizeAddress(r.address)).filter(a => a))];
+    // 全ての結果に対してDBから築年を検索
+    for (const result of results) {
+      const addr = normalizeAddress(result.address);
+      if (!addr) continue;
 
-    if (addresses.length > 0) {
-      // DBから住所と築年を取得（部分一致で検索）
-      const propertyQueries = addresses.map(addr => 
-        supabase
-          .from('properties')
-          .select('property_address, construction_year')
-          .ilike('property_address', `%${addr}%`)
-          .limit(1)
-      );
+      // DBから築年を取得（部分一致で検索）
+      const { data } = await supabase
+        .from('properties')
+        .select('property_address, construction_year')
+        .ilike('property_address', `%${addr}%`)
+        .limit(1);
 
-      const propertyResults = await Promise.all(propertyQueries);
-
-      // 住所→築年のマップを作成
-      const buildYearMap = new Map();
-      propertyResults.forEach((result, index) => {
-        const { data } = result;
-        if (data && data.length > 0 && data[0].construction_year) {
-          buildYearMap.set(addresses[index], String(data[0].construction_year));
-        }
-      });
-
-      // 築年を補完
-      results.forEach(r => {
-        const normalizedAddr = normalizeAddress(r.address);
-        if (buildYearMap.has(normalizedAddr)) {
-          r.buildYear = buildYearMap.get(normalizedAddr);
-        }
-      });
+      if (data && data.length > 0 && data[0].construction_year) {
+        result.buildYear = String(data[0].construction_year);
+      }
     }
 
     // propertyNumberフィールドを削除（レスポンスに含めない）
