@@ -5339,6 +5339,15 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
     const headers = rows[0] || [];
     const dataRows = rows.slice(1);
 
+    console.log('[sales-history] Total headers:', headers.length);
+    console.log('[sales-history] Headers sample:', headers.slice(0, 10));
+    
+    // 物件番号と築年のヘッダー位置を確認
+    const propNumIndex = headers.findIndex((h: string) => String(h).includes('物件番号'));
+    const buildYearIndex = headers.findIndex((h: string) => String(h).includes('築年'));
+    console.log(`[sales-history] "物件番号" index: ${propNumIndex} (${propNumIndex >= 0 ? headers[propNumIndex] : 'NOT FOUND'})`);
+    console.log(`[sales-history] "築年" index: ${buildYearIndex} (${buildYearIndex >= 0 ? headers[buildYearIndex] : 'NOT FOUND'})`);
+
     // 行をオブジェクトに変換
     const allRows = dataRows.map((row: any[]) => {
       const obj: any = {};
@@ -5422,17 +5431,24 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
 
         // 築年をスプレッドシートから取得（種別が土地でない場合のみ）
         const propertyType = String(row['種別'] || '').trim();
+        const propertyNumber = String(row['物件番号'] || '').trim();
+        const buildYearRaw = row['築年'];
+        
         let buildYear = '';
         if (propertyType !== '土' && propertyType !== '土地') {
-          const buildYearValue = row['築年'];
-          if (buildYearValue) {
-            buildYear = String(buildYearValue).trim();
+          if (buildYearRaw) {
+            buildYear = String(buildYearRaw).trim();
           }
+        }
+
+        // デバッグログ
+        if (propertyNumber === 'AA13377' || propertyNumber === 'AA8932') {
+          console.log(`[sales-history] DEBUG: propertyNumber="${propertyNumber}", buildYearRaw=${buildYearRaw}, buildYear="${buildYear}"`);
         }
 
         return {
           propertyType: row['種別'] || '',
-          propertyNumber: row['物件番号'] || '',
+          propertyNumber: propertyNumber,
           settlementDate: excelSerialToDateStr(row['決済日'] || ''),
           address: row['所在地'] || '',
           displayAddress: row['住居表示（ATBB登録住所）'] || '',
@@ -5445,6 +5461,7 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
       });
 
     console.log('[sales-history] Total results:', results.length);
+    console.log('[sales-history] First result:', JSON.stringify(results[0], null, 2));
 
     // レスポンスを返す
     res.json({
