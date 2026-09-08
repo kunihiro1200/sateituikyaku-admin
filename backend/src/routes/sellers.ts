@@ -4846,6 +4846,7 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
       '飯倉': 'いいくら',
       '桧原': 'ひばる',
       '原': 'はら',
+      '和田': 'わだ',
       '四箇': 'しか',
       '干隈': 'ほしくま',
       '周船寺': 'すせんじ',
@@ -5001,7 +5002,8 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
     }
 
     if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ error: 'OPENAI_API_KEYが設定されていません' });
+      console.warn('[address-reading] OPENAI_API_KEY未設定、空の読みを返します');
+      return res.json({ address, reading: '' });
     }
 
     // systemプロンプト: 都道府県を明示することで地域固有の読み方を正確に返させる
