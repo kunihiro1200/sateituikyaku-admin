@@ -2186,20 +2186,39 @@ const CallModePage = () => {
 
   // 物件住所の読み仮名を取得（sellerが読み込まれた後にバックグラウンドで実行）
   useEffect(() => {
-    if (!seller?.id) return;
+    console.log('[CallModePage] addressReading useEffect 実行', {
+      sellerId: seller?.id,
+      propertyAddress: seller?.propertyAddress,
+      propertyObjectAddress: (seller as any)?.property?.address,
+    });
+    
+    if (!seller?.id) {
+      console.log('[CallModePage] seller.idがないため中断');
+      return;
+    }
+    
     const address = (seller as any).property?.address || seller.propertyAddress || '';
-    if (!address || address.trim() === '' || address.trim() === '未入力') return;
+    console.log('[CallModePage] 取得した住所:', address);
+    
+    if (!address || address.trim() === '' || address.trim() === '未入力') {
+      console.log('[CallModePage] 住所が空または未入力のため中断');
+      return;
+    }
 
+    console.log('[CallModePage] APIリクエスト開始:', `/api/sellers/${seller.id}/address-reading`);
     setAddressReadingLoading(true);
     api.get(`/api/sellers/${seller.id}/address-reading`)
       .then(res => {
+        console.log('[CallModePage] APIレスポンス成功:', res.data);
         setAddressReading(res.data.reading || null);
       })
       .catch((err) => {
         console.error('[CallModePage] 物件住所の読み仮名取得エラー:', err);
+        console.error('[CallModePage] エラー詳細:', err?.response?.data);
         setAddressReading(null);
       })
       .finally(() => {
+        console.log('[CallModePage] APIリクエスト完了');
         setAddressReadingLoading(false);
       });
   }, [seller?.id, seller?.propertyAddress, seller]);
