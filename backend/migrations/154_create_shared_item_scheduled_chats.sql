@@ -20,9 +20,10 @@ CREATE INDEX IF NOT EXISTS idx_scheduled_chats_spreadsheet_id
 ON shared_item_scheduled_chats (spreadsheet_item_id);
 
 -- インデックス: 未送信の予約送信を検索（cron用）
+-- 注: now()は使用せず、部分インデックスでchat_sent_atがNULLのもののみをインデックス化
 CREATE INDEX IF NOT EXISTS idx_scheduled_chats_pending
 ON shared_item_scheduled_chats (scheduled_datetime)
-WHERE chat_sent_at IS NULL AND scheduled_datetime <= now();
+WHERE chat_sent_at IS NULL;
 
 COMMENT ON TABLE shared_item_scheduled_chats IS 'スプレッドシート管理の共有アイテムのチャット予約情報';
 COMMENT ON COLUMN shared_item_scheduled_chats.spreadsheet_item_id IS 'スプレッドシートの行番号（IDとして使用）';
