@@ -5413,9 +5413,19 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
           statusLabel = atbbStatus;
         }
 
+        // 築年をスプレッドシートから取得（種別が土地でない場合のみ）
+        const propertyType = String(row['種別'] || '').trim();
+        let buildYear = '';
+        if (propertyType !== '土' && propertyType !== '土地') {
+          const buildYearValue = row['築年'];
+          if (buildYearValue) {
+            buildYear = String(buildYearValue).trim();
+          }
+        }
+
         return {
           propertyType: row['種別'] || '',
-          propertyNumber: row['物件番号'] || '', // 物件番号を保持（DB照合用）
+          propertyNumber: row['物件番号'] || '',
           settlementDate: excelSerialToDateStr(row['決済日'] || ''),
           address: row['所在地'] || '',
           displayAddress: row['住居表示（ATBB登録住所）'] || '',
@@ -5423,55 +5433,13 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
           buildingArea: row['建物面積'] || '',
           salesPrice: row['売買価格'] || '',
           atbbStatus: statusLabel,
-          buildYear: '', // 後でDBから取得
+          buildYear: buildYear,
         };
       });
 
-    // DBから築年を補完（住所で照合）
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabase = createClient(
-      process.env.SUPABASE_URL || '',
-      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-    );
-
     console.log('[sales-history] Total results:', results.length);
-    
-    // 各結果に対してDBから築年を検索（物件番号で検索）
-    for (let i = 0; i < results.length; i++) {
-      const result = results[i];
-      
-      // 種別が土地の場合はスキップ
-      const propertyType = String(result.propertyType || '').trim();
-      if (propertyType === '土' || propertyType === '土地') {
-        continue;
-      }
 
-      const propNum = result.propertyNumber;
-      if (!propNum) {
-        console.log(`[sales-history] Result ${i}: propertyNumber is empty, skipping`);
-        continue;
-      }
-
-      console.log(`[sales-history] Result ${i}: propertyNumber="${propNum}"`);
-
-      // DBから築年を取得（seller_numberで検索）
-      const { data, error } = await supabase
-        .from('sellers')
-        .select('construction_year')
-        .eq('seller_number', propNum)
-        .limit(1);
-
-      if (error) {
-        console.log(`[sales-history] DB error:`, error.message);
-      } else if (data && data.length > 0 && data[0].construction_year != null) {
-        result.buildYear = String(data[0].construction_year);
-        console.log(`[sales-history] ✅ Found: ${propNum} → ${data[0].construction_year}`);
-      } else {
-        console.log(`[sales-history] ❌ Not found in DB for ${propNum}`);
-      }
-    }
-
-    // propertyNumberをレスポンスに含める（UIで表示するため）
+    // レスポンスを返す
     res.json({
       results: results,
       address: rawAddress,
