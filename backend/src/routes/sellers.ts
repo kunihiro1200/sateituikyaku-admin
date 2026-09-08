@@ -5042,16 +5042,20 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
     }
 
     const axiosLib = (await import('axios')).default;
-    // gpt-4o-search-preview: Web検索機能付きモデル（難読地名も正確に読める）
-    // ※ systemロール・temperature・max_tokensは非対応のため省略
     const response = await axiosLib.post(
       'https://api.openai.com/v1/chat/completions',
       {
-        model: 'gpt-4o-search-preview',
+        model: 'gpt-4o',
+        temperature: 0,
+        max_tokens: 50,
         messages: [
           {
+            role: 'system',
+            content: `あなたは日本の住所読み仮名変換の専門家です。住所の区と町名部分のひらがな読みだけを返してください。都道府県・市・「大字」・丁目・番地（数字・ハイフン）は不要です。ひらがなのみを返してください。余分な説明は不要です。${prefectureNote}`,
+          },
+          {
             role: 'user',
-            content: `次の日本の住所の、区と町名部分のひらがな読みだけを返してください。都道府県・市・「大字」・丁目・番地（数字・ハイフン）は不要です。ひらがなのみを返してください。余分な説明は不要です。${prefectureNote}\n\n${examplesText}\n\n${address}`,
+            content: `${examplesText}\n\n${address}`,
           },
         ],
       },
@@ -5252,7 +5256,22 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
           buildingArea: listing.building_area ? String(listing.building_area) : '',
           salesPrice: listing.sales_price ? String(listing.sales_price) : '',
           atbbStatus: statusLabel,
-          buildYear: listing.construction_year_month ? String(listing.construction_year_month).slice(0, 4) : '',
+          buildYear: (() => {
+            const val = listing.construction_year_month;
+            if (!val) return '';
+            const str = String(val);
+            // "Sun Mar 01 2009..." 形式
+            const fullDateMatch = str.match(/\b(\d{4})\b/);
+            if (fullDateMatch) return fullDateMatch[1];
+            // 和暦「昭和49年...」→変換
+            const warekiMatch = str.match(/昭和(\d+)年/);
+            if (warekiMatch) return String(1925 + parseInt(warekiMatch[1]));
+            const heisei = str.match(/平成(\d+)年/);
+            if (heisei) return String(1988 + parseInt(heisei[1]));
+            const reiwa = str.match(/令和(\d+)年/);
+            if (reiwa) return String(2018 + parseInt(reiwa[1]));
+            return '';
+          })(),
           distanceKm: Math.round(dist * 1000) / 1000,
           lat,
           lng,
