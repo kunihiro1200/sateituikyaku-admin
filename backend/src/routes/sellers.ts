@@ -5403,37 +5403,42 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
         };
       });
 
-    // DBから築年を補完
+    // DBから築年を補完（住所で照合）
     const { createClient } = await import('@supabase/supabase-js');
     const supabase = createClient(
       process.env.SUPABASE_URL || '',
       process.env.SUPABASE_SERVICE_ROLE_KEY || ''
     );
 
-    // 物件番号のリストを取得
-    const propertyNumbers = results
-      .map(r => r.propertyNumber)
-      .filter(n => n);
+    // 住所のリストを取得（正規化して重複除去）
+    const addresses = [...new Set(results.map(r => normalizeAddress(r.address)).filter(a => a))];
 
-    if (propertyNumbers.length > 0) {
-      // DBから物件番号と築年を取得
-      const { data: properties } = await supabase
-        .from('properties')
-        .select('id, construction_year')
-        .in('id', propertyNumbers); // property_numberがUUIDの場合はidで検索
+    if (addresses.length > 0) {
+      // DBから住所と築年を取得（部分一致で検索）
+      const propertyQueries = addresses.map(addr => 
+        supabase
+          .from('properties')
+          .select('property_address, construction_year')
+          .ilike('property_address', `%${addr}%`)
+          .limit(1)
+      );
 
-      // 物件番号→築年のマップを作成
+      const propertyResults = await Promise.all(propertyQueries);
+
+      // 住所→築年のマップを作成
       const buildYearMap = new Map();
-      (properties || []).forEach((p: any) => {
-        if (p.construction_year) {
-          buildYearMap.set(p.id, String(p.construction_year));
+      propertyResults.forEach((result, index) => {
+        const { data } = result;
+        if (data && data.length > 0 && data[0].construction_year) {
+          buildYearMap.set(addresses[index], String(data[0].construction_year));
         }
       });
 
       // 築年を補完
       results.forEach(r => {
-        if (r.propertyNumber && buildYearMap.has(r.propertyNumber)) {
-          r.buildYear = buildYearMap.get(r.propertyNumber);
+        const normalizedAddr = normalizeAddress(r.address);
+        if (buildYearMap.has(normalizedAddr)) {
+          r.buildYear = buildYearMap.get(normalizedAddr);
         }
       });
     }

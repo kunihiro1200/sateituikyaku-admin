@@ -564,19 +564,47 @@ router.post('/:id/send-chat', async (req: Request, res: Response) => {
 
     // 予定日時が指定されている場合は予約として保存
     if (scheduledDatetime) {
-      // scheduled_chat_datetime を更新（実際の送信は cron で行う）
+      // スプレッドシート由来のアイテムIDは数値文字列なので、専用テーブルに保存
       const supabase = createClient(
         process.env.SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
       );
 
-      const { error: updateError } = await supabase
-        .from('shared_items')
-        .update({ scheduled_chat_datetime: scheduledDatetime })
-        .eq('id', itemId);
+      // 既存の予約があれば更新、なければ新規作成
+      const { data: existing } = await supabase
+        .from('shared_item_scheduled_chats')
+        .select('id')
+        .eq('spreadsheet_item_id', itemId)
+        .is('chat_sent_at', null)
+        .single();
 
-      if (updateError) {
-        throw new Error(`予約送信の設定に失敗しました: ${updateError.message}`);
+      if (existing) {
+        // 既存の予約を更新
+        const { error: updateError } = await supabase
+          .from('shared_item_scheduled_chats')
+          .update({ 
+            scheduled_datetime: scheduledDatetime,
+            include_warning_text: includeWarningText,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existing.id);
+
+        if (updateError) {
+          throw new Error(`予約送信の更新に失敗しました: ${updateError.message}`);
+        }
+      } else {
+        // 新規予約を作成
+        const { error: insertError } = await supabase
+          .from('shared_item_scheduled_chats')
+          .insert({
+            spreadsheet_item_id: itemId,
+            scheduled_datetime: scheduledDatetime,
+            include_warning_text: includeWarningText
+          });
+
+        if (insertError) {
+          throw new Error(`予約送信の設定に失敗しました: ${insertError.message}`);
+        }
       }
 
       console.log(`[sharedItems] チャット予約送信を設定: ${itemId} → ${scheduledDatetime}`);
@@ -634,21 +662,20 @@ router.post('/:id/send-chat', async (req: Request, res: Response) => {
       });
     }
 
-    // 送信成功 → chat_sent_at を記録
+    // 送信成功 → 即時送信の記録を残す（スプレッドシートIDのため専用テーブルに保存）
     const supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
     );
 
-    const { error: updateError } = await supabase
-      .from('shared_items')
-      .update({ chat_sent_at: new Date().toISOString() })
-      .eq('id', itemId);
-
-    if (updateError) {
-      console.error('[sharedItems] chat_sent_at更新エラー:', updateError.message);
-      // 送信は成功しているのでエラーは無視
-    }
+    await supabase
+      .from('shared_item_scheduled_chats')
+      .insert({
+        spreadsheet_item_id: itemId,
+        scheduled_datetime: new Date().toISOString(),  // 即時送信なので現在時刻
+        chat_sent_at: new Date().toISOString(),
+        include_warning_text: includeWarningText
+      });
 
     console.log(`[sharedItems] チャット送信成功: ${itemId}`);
     res.json({ success: true, scheduled: false, message: 'チャットを送信しました' });
