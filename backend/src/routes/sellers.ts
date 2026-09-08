@@ -5416,14 +5416,30 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
       if (!addr) continue;
 
       // DBから築年を取得（部分一致で検索）
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('properties')
         .select('property_address, construction_year')
         .ilike('property_address', `%${addr}%`)
         .limit(1);
 
-      if (data && data.length > 0 && data[0].construction_year) {
-        result.buildYear = String(data[0].construction_year);
+      if (error) {
+        console.error('[sales-history] DB query error:', error, 'for address:', addr);
+        continue;
+      }
+
+      if (data && data.length > 0) {
+        console.log('[sales-history] DB match:', {
+          searchAddress: addr,
+          foundAddress: data[0].property_address,
+          constructionYear: data[0].construction_year,
+          constructionYearType: typeof data[0].construction_year
+        });
+
+        if (data[0].construction_year != null) {
+          result.buildYear = String(data[0].construction_year);
+        }
+      } else {
+        console.log('[sales-history] No DB match for address:', addr);
       }
     }
 
