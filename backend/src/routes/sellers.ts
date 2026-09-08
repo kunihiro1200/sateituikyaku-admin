@@ -5314,8 +5314,28 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
     });
     await sheetsClient.authenticate();
 
-    // 全データを取得
-    const allRows = await sheetsClient.readAll();
+    // B列から取得（A列は空列のため）
+    // 物件スプレッドシート専用の読み取り処理
+    const range = `'物件'!B:FZ`;
+    const response = await sheetsClient['sheets']!.spreadsheets.values.get({
+      spreadsheetId: '1tI_iXaiLuWBggs5y0RH7qzkbHs9wnLLdRekAmjkhcLY',
+      range,
+      valueRenderOption: 'UNFORMATTED_VALUE',
+      dateTimeRenderOption: 'SERIAL_NUMBER',
+    });
+
+    const rows = response.data.values || [];
+    const headers = rows[0] || [];
+    const dataRows = rows.slice(1);
+
+    // 行をオブジェクトに変換
+    const allRows = dataRows.map((row: any[]) => {
+      const obj: any = {};
+      headers.forEach((header: string, index: number) => {
+        obj[header] = row[index] !== undefined ? row[index] : '';
+      });
+      return obj;
+    });
 
     // 種別グループを判定
     const MANSION_TYPES = ['マ', 'マンション'];
