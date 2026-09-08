@@ -5517,6 +5517,10 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
       address: rawAddress,
       searchKeyword,
       sellerPropertyType,
+      debug: {
+        firstResult: finalResults[0] || null,
+        totalResults: finalResults.length
+      }
     });
   } catch (error: any) {
     console.error('Sales history error:', error?.message || error);
