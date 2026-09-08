@@ -527,7 +527,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
             mb: 2,
           }}
         >
-          ＊事務は1～9まで準備
+          ＊事務は1～{isMansionType ? '10' : '9'}まで準備
         </Typography>
 
         {/* リンク一覧（番号付きリスト） */}
