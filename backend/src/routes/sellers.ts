@@ -5412,44 +5412,70 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
 
     // 全ての結果に対してDBから築年を検索
     // 物件番号 = 売主番号として扱う（売主番号でsellersテーブルを検索 → propertiesを取得）
-    for (const result of results) {
+    console.log('[sales-history] Total results:', results.length);
+    
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
       let foundConstructionYear: any = null;
+
+      console.log(`[sales-history] Result ${i}:`, {
+        address: result.address,
+        propertyNumber: result.propertyNumber
+      });
 
       // 1. 物件番号がある場合は売主番号として検索（最優先）
       if (result.propertyNumber) {
+        console.log(`[sales-history] Searching by property_number: ${result.propertyNumber}`);
+        
         // sellersテーブルからseller_idを取得
-        const { data: sellerData } = await supabase
+        const { data: sellerData, error: sellerError } = await supabase
           .from('sellers')
           .select('id')
           .eq('seller_number', result.propertyNumber)
           .single();
 
-        if (sellerData?.id) {
+        if (sellerError) {
+          console.log(`[sales-history] Seller not found:`, sellerError.message);
+        } else if (sellerData?.id) {
+          console.log(`[sales-history] Found seller_id:`, sellerData.id);
+          
           // propertiesテーブルから築年を取得
-          const { data: propData } = await supabase
+          const { data: propData, error: propError } = await supabase
             .from('properties')
             .select('construction_year')
             .eq('seller_id', sellerData.id)
             .single();
 
-          if (propData?.construction_year != null) {
+          if (propError) {
+            console.log(`[sales-history] Property not found:`, propError.message);
+          } else if (propData?.construction_year != null) {
             foundConstructionYear = propData.construction_year;
+            console.log(`[sales-history] ✅ Found construction_year:`, foundConstructionYear);
           }
         }
+      } else {
+        console.log(`[sales-history] No property_number`);
       }
 
       // 2. 物件番号で見つからなかった場合は住所で検索（フォールバック）
       if (foundConstructionYear == null) {
         const addr = normalizeAddress(result.address);
         if (addr) {
-          const { data: addrData } = await supabase
+          console.log(`[sales-history] Fallback: searching by address: ${addr}`);
+          
+          const { data: addrData, error: addrError } = await supabase
             .from('properties')
             .select('construction_year')
             .ilike('property_address', `%${addr}%`)
             .limit(1);
 
-          if (addrData && addrData.length > 0 && addrData[0].construction_year != null) {
+          if (addrError) {
+            console.log(`[sales-history] Address search error:`, addrError.message);
+          } else if (addrData && addrData.length > 0 && addrData[0].construction_year != null) {
             foundConstructionYear = addrData[0].construction_year;
+            console.log(`[sales-history] ✅ Found by address:`, foundConstructionYear);
+          } else {
+            console.log(`[sales-history] ❌ Not found by address`);
           }
         }
       }
