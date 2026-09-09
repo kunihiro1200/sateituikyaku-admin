@@ -27,8 +27,9 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// チャットWebhook URL
-const CHAT_WEBHOOK_URL = 'https://chat.googleapis.com/v1/spaces/AAAAlknS4P0/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=61OklKGHQpRoIFhiI00wGZPmcRHd4oY_BV47uQGMWbg';
+// チャットWebhook URL（環境変数から取得、なければデフォルト値）
+const CHAT_WEBHOOK_URL = process.env.GOOGLE_CHAT_WEBHOOK_URL || 
+  'https://chat.googleapis.com/v1/spaces/AAAAlknS4P0/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=61OklKGHQpRoIFhiI00wGZPmcRHd4oY_BV47uQGMWbg';
 
 // フロントエンドのベースURL
 const FRONTEND_BASE_URL = process.env.NODE_ENV === 'production'

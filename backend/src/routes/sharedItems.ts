@@ -631,8 +631,9 @@ router.post('/:id/send-chat', async (req: Request, res: Response) => {
     const { GoogleChatService } = await import('../services/GoogleChatService');
     const chatService = new GoogleChatService();
 
-    // チャットWebhook URL
-    const CHAT_WEBHOOK_URL = 'https://chat.googleapis.com/v1/spaces/AAAAlknS4P0/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=61OklKGHQpRoIFhiI00wGZPmcRHd4oY_BV47uQGMWbg';
+    // チャットWebhook URL（環境変数から取得、なければデフォルト値）
+    const CHAT_WEBHOOK_URL = process.env.GOOGLE_CHAT_WEBHOOK_URL || 
+      'https://chat.googleapis.com/v1/spaces/AAAAlknS4P0/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=61OklKGHQpRoIFhiI00wGZPmcRHd4oY_BV47uQGMWbg';
 
     // メッセージ作成
     const title = item['タイトル'] || item.title || '（タイトルなし）';
@@ -665,9 +666,12 @@ router.post('/:id/send-chat', async (req: Request, res: Response) => {
     }
 
     // Google Chatに送信
+    console.log(`[sharedItems] Google Chatに送信中... URL=${CHAT_WEBHOOK_URL.substring(0, 60)}...`);
     const result = await chatService.sendMessage(CHAT_WEBHOOK_URL, message);
 
+    console.log(`[sharedItems] 送信結果:`, result);
     if (!result.success) {
+      console.error(`[sharedItems] チャット送信失敗: ${result.error}`);
       return res.status(500).json({ 
         success: false, 
         error: result.error || 'チャット送信に失敗しました' 
