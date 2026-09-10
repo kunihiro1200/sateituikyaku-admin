@@ -2634,11 +2634,11 @@ router.get('/:sellerNumber/ieul-sheet-info', async (req: Request, res: Response)
     const hIdx = headers.findIndex((h) => h === '仲介会社名');
     const iIdx = headers.findIndex((h) => h === '価格');
     const jIdx = headers.findIndex((h) => h === '取引様態');
-    const kIdx = headers.findIndex((h) => h === '物件番号');
+    const kIdx = headers.findIndex((h) => h === 'いふう記入欄');
 
     if (kIdx === -1) {
-      console.warn(`[ieul-sheet-info] "物件番号"列がヘッダーに見つかりません`);
-      return res.json({ found: false, reason: '物件番号列が見つかりません' });
+      console.warn(`[ieul-sheet-info] "いふう記入欄"列がヘッダーに見つかりません。headers=${JSON.stringify(headers)}`);
+      return res.json({ found: false, reason: 'いふう記入欄列が見つかりません' });
     }
 
     // K列（物件番号）全行を取得して sellerNumber と突合
