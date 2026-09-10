@@ -23,6 +23,12 @@ export interface EmailRule {
    * 例: ['Y'] を指定すると Y にセットされたときだけ送信し、「不要」「N」では送信しない。
    */
   triggerValues?: string[];
+  /**
+   * true の場合、triggerField 自体が変わらなくても `cw_person`（CWの方）が変更され、
+   * かつ triggerField が triggerValues を満たしている（例: 'Y'）ときに再送信する。
+   * 「CWの方を山崎→浅沼に変えたのにメールが飛ばない」問題への対応。
+   */
+  retriggerOnCwPersonChange?: boolean;
 }
 
 /** テンプレート変数のカラムマッピング */
@@ -227,6 +233,8 @@ export const EMAIL_RULES: EmailRule[] = [
     bodyTemplate: '__dynamic_site_registration_request__',
     isHtml: true,
     triggerValues: ['Y'],
+    // CWの方（cw_person）を変更したときも、依頼メールがすでに 'Y' なら新しいCWへ再送信する
+    retriggerOnCwPersonChange: true,
   },
   // ルール5: サイト登録確認OK送信 - cw_personフィールドで宛先を動的決定
   {
@@ -403,6 +411,12 @@ export class WorkTaskEmailNotificationService {
     beforeData: Record<string, any>,
     afterData: Record<string, any>
   ): Promise<void> {
+    // CWの方（cw_person）が変更されたか（山崎⇔浅沼の切り替え判定は「山崎を含むか」で行う）
+    const cwPersonBefore = String(beforeData['cw_person'] ?? '');
+    const cwPersonAfter = String(afterData['cw_person'] ?? '');
+    const cwPersonChanged =
+      cwPersonBefore.includes('山崎') !== cwPersonAfter.includes('山崎');
+
     for (const rule of EMAIL_RULES) {
       const beforeValue = beforeData[rule.triggerField];
       const afterValue = afterData[rule.triggerField];
@@ -410,13 +424,24 @@ export class WorkTaskEmailNotificationService {
       // 変更がない場合はスキップ（null/undefined は空文字として比較）
       const normalizedBefore = beforeValue ?? '';
       const normalizedAfter = afterValue ?? '';
-      if (normalizedBefore === normalizedAfter) {
+      const triggerFieldChanged = normalizedBefore !== normalizedAfter;
+
+      // triggerField 自体が変わっていない場合でも、
+      // retriggerOnCwPersonChange のルールは「CWの方が変わり、かつ triggerField が送信条件を満たす」ときに再送信する
+      const retriggerByCwPerson =
+        !triggerFieldChanged &&
+        rule.retriggerOnCwPersonChange === true &&
+        cwPersonChanged &&
+        (!rule.triggerValues || rule.triggerValues.includes(String(normalizedAfter)));
+
+      if (!triggerFieldChanged && !retriggerByCwPerson) {
         continue;
       }
 
       // triggerValues が指定されている場合、変更後の値がその集合に含まれるときだけ送信する
       // （例: cw_request_email_site は 'Y' のときだけ送信し、「不要」「N」では送信しない）
-      if (rule.triggerValues && !rule.triggerValues.includes(String(normalizedAfter))) {
+      // ※ retriggerByCwPerson の場合はすでに上で triggerValues を満たすことを確認済み
+      if (triggerFieldChanged && rule.triggerValues && !rule.triggerValues.includes(String(normalizedAfter))) {
         continue;
       }
 
