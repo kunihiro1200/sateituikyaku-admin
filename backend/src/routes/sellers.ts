@@ -2669,7 +2669,12 @@ router.get('/:sellerNumber/ieul-sheet-info', async (req: Request, res: Response)
     return res.json({ found: true, agencyName, price, dealType });
   } catch (error: any) {
     console.error('[ieul-sheet-info] Error:', error.message);
-    res.status(500).json({ error: 'イエウールデータの取得に失敗しました: ' + (error.message || '') });
+    // 詳細エラーをレスポンスに含めてデバッグしやすくする
+    res.status(500).json({
+      error: 'イエウールデータの取得に失敗しました',
+      detail: error.message || '',
+      code: error.code || '',
+    });
   }
 });
 
