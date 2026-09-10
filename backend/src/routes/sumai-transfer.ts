@@ -56,14 +56,9 @@ router.post('/sumai-transfer', async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, error: 'mailBody is required' });
   }
 
-  // すまいステップの本文条件：反響詳細データが含まれているか確認
-  // 「1年以内の反響のみ閲覧できます」はHTML→text変換の都合で取得できない場合があるため、
-  // より確実な「管理番号」「反響日時」「氏名」の存在を条件とする
-  const hasSumaiContent =
-    mailBody.includes('1年以内の反響のみ閲覧できます') ||
-    (mailBody.includes('管理番号') && mailBody.includes('反響日時') && mailBody.includes('氏名'));
-  if (!hasSumaiContent) {
-    return res.json({ success: true, skipped: true, message: '「管理番号」「反響日時」「氏名」が含まれないためスキップ（反響詳細なし）' });
+  // すまいステップの本文条件（GASと同じ: 1年以内の反響のみ閲覧できますという文言が必須）
+  if (!mailBody.includes('1年以内の反響のみ閲覧できます')) {
+    return res.json({ success: true, skipped: true, message: '「1年以内の反響のみ閲覧できます」が含まれないためスキップ' });
   }
 
   try {
