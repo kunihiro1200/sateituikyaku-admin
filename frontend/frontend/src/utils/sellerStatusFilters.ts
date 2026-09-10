@@ -1298,6 +1298,20 @@ export const filterSellersByCategory = (
       return sellers.filter(isUnvisitedOtherDecision);
     case 'visitPreparationPending':
       return sellers.filter(isVisitPreparationPending);
+    case 'ieulCompetitor':
+      // イエウール他決？（大分・非FI）
+      return sellers.filter(s =>
+        !isFiSeller(s) &&
+        (s.ieulCompetitor || s.ieul_competitor) === true &&
+        !(s.ieulCompetitorCheckedAt || s.ieul_competitor_checked_at)
+      );
+    case 'fi_ieulCompetitor':
+      // イエウール他決？（福岡・FI）
+      return sellers.filter(s =>
+        isFiSeller(s) &&
+        (s.ieulCompetitor || s.ieul_competitor) === true &&
+        !(s.ieulCompetitorCheckedAt || s.ieul_competitor_checked_at)
+      );
     case 'all':
     default:
       return sellers;

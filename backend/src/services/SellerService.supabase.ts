@@ -1750,6 +1750,20 @@ export class SellerService extends BaseRepository {
             : query.in('id', vppIds);
           break;
         }
+        case 'ieulCompetitor':
+          // イエウール他決？（大分・非FI）: ieul_competitor=true かつ 未確認 かつ 非FI
+          query = query
+            .eq('ieul_competitor', true)
+            .is('ieul_competitor_checked_at', null)
+            .not('seller_number', 'ilike', 'FI%');
+          break;
+        case 'fi_ieulCompetitor':
+          // イエウール他決？（福岡・FI）: ieul_competitor=true かつ 未確認 かつ FI
+          query = query
+            .eq('ieul_competitor', true)
+            .is('ieul_competitor_checked_at', null)
+            .ilike('seller_number', 'FI%');
+          break;
         default: {
           // visitAssigned:xxx または todayCallAssigned:xxx または todayCallWithInfo:xxx または fi:xxx の動的カテゴリ
           const dynamicCategory = statusCategory as string;
