@@ -539,6 +539,17 @@ router.post('/bulk-toggle-visibility', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/shared-items/test-chat - チャット送信機能のテスト用エンドポイント
+ */
+router.get('/test-chat', async (req: Request, res: Response) => {
+  res.json({ 
+    message: 'チャット送信機能は動作しています',
+    timestamp: new Date().toISOString(),
+    version: '2026-09-10-v2'
+  });
+});
+
+/**
  * POST /api/shared-items/:id/send-chat - チャット送信
  * 共有場が「他」の場合に、Google Chatへメッセージを送信
  */
