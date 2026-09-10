@@ -1407,6 +1407,14 @@ const CallModePage = () => {
   const callLogRef = useRef<CallLogDisplayHandle>(null); // 追客ログ更新用ref
   const commentEditorRef = useRef<RichTextCommentEditorHandle>(null); // コメントエディタ用ref
 
+  // イエウールデータシート（仲介会社名・価格・取引様態）
+  const [ieulSheetInfo, setIeulSheetInfo] = useState<{
+    found: boolean;
+    agencyName?: string;
+    price?: string;
+    dealType?: string;
+  } | null>(null);
+
   // サイトオプション
   const siteOptions = [
     'ウ',
@@ -2338,6 +2346,20 @@ const CallModePage = () => {
   useEffect(() => {
     savedCommentsRef.current = savedComments;
   }, [savedComments]);
+
+  // イエウールデータシート（仲介会社名・価格・取引様態）を取得
+  useEffect(() => {
+    if (!seller?.sellerNumber) return;
+    let cancelled = false;
+    api.get(`/api/sellers/${encodeURIComponent(seller.sellerNumber)}/ieul-sheet-info`)
+      .then((res) => {
+        if (!cancelled) setIeulSheetInfo(res.data);
+      })
+      .catch(() => {
+        if (!cancelled) setIeulSheetInfo(null);
+      });
+    return () => { cancelled = true; };
+  }, [seller?.sellerNumber]);
 
   const loadAllData = async (showLoading: boolean = true) => {
     if (showLoading) setLoading(true);
@@ -7091,6 +7113,46 @@ HP：https://ifoo-oita.com/
                     return null;
                   })()}
                   
+                  {/* イエウールデータシート：仲介会社名・価格・取引様態（モバイル） */}
+                  {ieulSheetInfo?.found && (ieulSheetInfo.agencyName || ieulSheetInfo.price || ieulSheetInfo.dealType) && (
+                    <Box
+                      sx={{
+                        mb: 1.5,
+                        px: 1.5,
+                        py: 1,
+                        backgroundColor: '#f3e5f5',
+                        border: '1px solid #ce93d8',
+                        borderRadius: 1,
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 1.5,
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ color: '#6a1b9a', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                        📋 イエウール
+                      </Typography>
+                      {ieulSheetInfo.agencyName && (
+                        <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                          <span style={{ color: '#757575' }}>仲介会社名：</span>
+                          <strong>{ieulSheetInfo.agencyName}</strong>
+                        </Typography>
+                      )}
+                      {ieulSheetInfo.price && (
+                        <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                          <span style={{ color: '#757575' }}>価格：</span>
+                          <strong>{ieulSheetInfo.price}</strong>
+                        </Typography>
+                      )}
+                      {ieulSheetInfo.dealType && (
+                        <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                          <span style={{ color: '#757575' }}>取引様態：</span>
+                          <strong>{ieulSheetInfo.dealType}</strong>
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+
                   <RichTextCommentEditor
                     ref={commentEditorRef}
                     value={editableComments}
@@ -10715,7 +10777,47 @@ HP：https://ifoo-oita.com/
                 }
                 return null;
               })()}
-              
+
+              {/* イエウールデータシート：仲介会社名・価格・取引様態 */}
+              {ieulSheetInfo?.found && (ieulSheetInfo.agencyName || ieulSheetInfo.price || ieulSheetInfo.dealType) && (
+                <Box
+                  sx={{
+                    mb: 1.5,
+                    px: 1.5,
+                    py: 1,
+                    backgroundColor: '#f3e5f5',
+                    border: '1px solid #ce93d8',
+                    borderRadius: 1,
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 1.5,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Typography variant="caption" sx={{ color: '#6a1b9a', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                    📋 イエウール
+                  </Typography>
+                  {ieulSheetInfo.agencyName && (
+                    <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                      <span style={{ color: '#757575' }}>仲介会社名：</span>
+                      <strong>{ieulSheetInfo.agencyName}</strong>
+                    </Typography>
+                  )}
+                  {ieulSheetInfo.price && (
+                    <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                      <span style={{ color: '#757575' }}>価格：</span>
+                      <strong>{ieulSheetInfo.price}</strong>
+                    </Typography>
+                  )}
+                  {ieulSheetInfo.dealType && (
+                    <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                      <span style={{ color: '#757575' }}>取引様態：</span>
+                      <strong>{ieulSheetInfo.dealType}</strong>
+                    </Typography>
+                  )}
+                </Box>
+              )}
+
               <RichTextCommentEditor
                 ref={commentEditorRef}
                 value={editableComments}

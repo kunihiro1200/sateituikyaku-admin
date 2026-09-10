@@ -7470,5 +7470,98 @@ router.get('/:id/nearby-cases-suumo', authenticate, async (req: Request, res: Re
   }
 });
 
+/**
+ * GET /api/sellers/:sellerNumber/ieul-sheet-info
+ * イエウールデータシートから仲介会社名・価格・取引様態を取得する
+ * K列（物件番号）= sellerNumber で行を特定し、H・I・J列の値を返す
+ */
+router.get('/:sellerNumber/ieul-sheet-info', async (req: Request, res: Response) => {
+  const { sellerNumber } = req.params;
+
+  try {
+    const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID!;
+    const SHEET_NAME = 'イエウールデータ';
+
+    // GoogleSheetsClient を直接使用して認証・取得
+    const { google } = await import('googleapis');
+
+    let auth: any;
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      let jsonString = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+      try { JSON.parse(jsonString); } catch { jsonString = Buffer.from(jsonString, 'base64').toString('utf8'); }
+      const keyFile = JSON.parse(jsonString);
+      auth = new google.auth.JWT(
+        keyFile.client_email,
+        undefined,
+        keyFile.private_key,
+        ['https://www.googleapis.com/auth/spreadsheets.readonly']
+      );
+    } else if (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
+      auth = new google.auth.JWT(
+        process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        undefined,
+        process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        ['https://www.googleapis.com/auth/spreadsheets.readonly']
+      );
+    } else {
+      return res.status(500).json({ error: 'Google認証情報が設定されていません' });
+    }
+
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    // ヘッダー行を取得（H・I・J・K列の列インデックスを動的に特定）
+    const headerRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${SHEET_NAME}'!1:1`,
+    });
+    const headers: string[] = (headerRes.data.values?.[0] || []) as string[];
+
+    const hIdx = headers.findIndex((h) => h === '仲介会社名');
+    const iIdx = headers.findIndex((h) => h === '価格');
+    const jIdx = headers.findIndex((h) => h === '取引様態');
+    const kIdx = headers.findIndex((h) => h === '物件番号');
+
+    if (kIdx === -1) {
+      console.warn(`[ieul-sheet-info] "物件番号"列がヘッダーに見つかりません`);
+      return res.json({ found: false, reason: '物件番号列が見つかりません' });
+    }
+
+    // K列（物件番号）全行を取得して sellerNumber と突合
+    const colLetter = String.fromCharCode(65 + kIdx); // 0-indexed → A=65
+    const kColRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${SHEET_NAME}'!${colLetter}2:${colLetter}`,
+    });
+    const kValues: string[] = ((kColRes.data.values || []) as string[][]).map((r) => r[0] || '');
+
+    const rowOffset = kValues.findIndex((v) => v.trim() === sellerNumber.trim());
+    if (rowOffset === -1) {
+      return res.json({ found: false });
+    }
+
+    // 該当行全体を取得（H・I・J 列の値を読む）
+    const sheetRowNumber = rowOffset + 2; // 1行目=ヘッダー、2行目から始まるので +2
+    const dataRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${SHEET_NAME}'!A${sheetRowNumber}:ZZ${sheetRowNumber}`,
+    });
+    const rowData: string[] = ((dataRes.data.values?.[0] || []) as string[]);
+
+    const agencyName  = hIdx !== -1 ? (rowData[hIdx] || '') : '';
+    const price       = iIdx !== -1 ? (rowData[iIdx] || '') : '';
+    const dealType    = jIdx !== -1 ? (rowData[jIdx] || '') : '';
+
+    return res.json({
+      found: true,
+      agencyName,
+      price,
+      dealType,
+    });
+  } catch (error: any) {
+    console.error('[ieul-sheet-info] Error:', error.message);
+    res.status(500).json({ error: 'イエウールデータの取得に失敗しました: ' + (error.message || '') });
+  }
+});
+
 export default router;
 
