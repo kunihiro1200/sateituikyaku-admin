@@ -7150,6 +7150,33 @@ HP：https://ifoo-oita.com/
                           <strong>{ieulSheetInfo.dealType}</strong>
                         </Typography>
                       )}
+                      {/* 確認済みボタン（モバイル） */}
+                      {seller?.ieulCompetitor && !seller?.ieulCompetitorCheckedAt && (
+                        <Button
+                          size="small"
+                          variant="contained"
+                          sx={{
+                            ml: 'auto',
+                            backgroundColor: '#b71c1c',
+                            color: '#fff',
+                            fontWeight: 'bold',
+                            fontSize: '0.75rem',
+                            whiteSpace: 'nowrap',
+                            '&:hover': { backgroundColor: '#7f0000' },
+                          }}
+                          onClick={async () => {
+                            if (!seller?.id) return;
+                            try {
+                              await api.put(`/api/sellers/${seller.id}/ieul-competitor-check`);
+                              setSeller((prev: any) => prev ? { ...prev, ieulCompetitorCheckedAt: new Date().toISOString() } : prev);
+                            } catch (e) {
+                              console.error('ieul-competitor-check error:', e);
+                            }
+                          }}
+                        >
+                          ✅ 確認済み
+                        </Button>
+                      )}
                     </Box>
                   )}
 
@@ -10814,6 +10841,33 @@ HP：https://ifoo-oita.com/
                       <span style={{ color: '#757575' }}>取引様態：</span>
                       <strong>{ieulSheetInfo.dealType}</strong>
                     </Typography>
+                  )}
+                  {/* 確認済みボタン：ieul_competitorフラグあり かつ 未確認の場合のみ表示 */}
+                  {seller?.ieulCompetitor && !seller?.ieulCompetitorCheckedAt && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      sx={{
+                        ml: 'auto',
+                        backgroundColor: '#b71c1c',
+                        color: '#fff',
+                        fontWeight: 'bold',
+                        fontSize: '0.75rem',
+                        whiteSpace: 'nowrap',
+                        '&:hover': { backgroundColor: '#7f0000' },
+                      }}
+                      onClick={async () => {
+                        if (!seller?.id) return;
+                        try {
+                          await api.put(`/api/sellers/${seller.id}/ieul-competitor-check`);
+                          setSeller((prev: any) => prev ? { ...prev, ieulCompetitorCheckedAt: new Date().toISOString() } : prev);
+                        } catch (e) {
+                          console.error('ieul-competitor-check error:', e);
+                        }
+                      }}
+                    >
+                      ✅ 確認済み
+                    </Button>
                   )}
                 </Box>
               )}

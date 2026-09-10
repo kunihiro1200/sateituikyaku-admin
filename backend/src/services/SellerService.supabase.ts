@@ -2828,6 +2828,9 @@ export class SellerService extends BaseRepository {
         // 訪問カレンダー確認済みフラグ（「訪問カレンダー●OK」ボタン）
         visitCalendarConfirmed: seller.visit_calendar_confirmed || false,
         visitCalendarConfirmedAt: seller.visit_calendar_confirmed_at || undefined,
+        // イエウール他決候補フラグ
+        ieulCompetitor: seller.ieul_competitor || false,
+        ieulCompetitorCheckedAt: seller.ieul_competitor_checked_at || null,
       };
       
       console.log(`[PERF] decryptSeller total: ${Date.now() - _dt0}ms`);

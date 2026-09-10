@@ -227,6 +227,10 @@ const getCategoryLabel = (category: StatusCategory): string => {
       return '売却サポート：買取依頼';
     case 'sellerPortalScheduleAttention':
       return '売却サポート：売却希望時期';
+    case 'ieulCompetitor':
+      return 'イエウ他決？';
+    case 'fi_ieulCompetitor':
+      return 'イエウ他決？';
     case 'fi':
       return 'FI売主';
     case 'all':
@@ -301,6 +305,9 @@ const getCategoryColor = (category: StatusCategory): string => {
       return '#f57c00';
     case 'sellerPortalScheduleAttention':
       return '#00acc1';
+    case 'ieulCompetitor':
+    case 'fi_ieulCompetitor':
+      return '#b71c1c';
     case 'fi':
       return '#1a237e';
     default:
@@ -787,8 +794,9 @@ function SellerStatusSidebarComponent({
     const fiSellerPortalAttention = categoryCounts?.fi_sellerPortalAttention ?? 0;
     const fiSellerPortalBuyoutAttention = categoryCounts?.fi_sellerPortalBuyoutAttention ?? 0;
     const fiSellerPortalScheduleAttention = categoryCounts?.fi_sellerPortalScheduleAttention ?? 0;
+    const fiIeulCompetitor = categoryCounts?.fi_ieulCompetitor ?? 0;
     const fiTotal = fiTodayCall + fiTodayCallNotStarted + fiTodayCallWithInfo + fiUnvaluated + fiMailingPending
-      + fiSellerPortalAttention + fiSellerPortalBuyoutAttention + fiSellerPortalScheduleAttention;
+      + fiSellerPortalAttention + fiSellerPortalBuyoutAttention + fiSellerPortalScheduleAttention + fiIeulCompetitor;
 
     // FI売主が1件もない場合は表示しない
     if (fiTotal === 0 && Object.keys(fiLabelCounts).length === 0) return null;
@@ -871,6 +879,9 @@ function SellerStatusSidebarComponent({
 
         {/* 売却サポート：売却希望時期（FI） */}
         {renderFiButton(`${FI_PREFIX}sellerPortalScheduleAttention` as StatusCategory, '売却サポート：売却希望時期', fiSellerPortalScheduleAttention, '#00acc1')}
+
+        {/* イエウール他決？（FI・福岡） */}
+        {fiIeulCompetitor > 0 && renderFiButton('fi_ieulCompetitor' as StatusCategory, 'イエウ他決？', fiIeulCompetitor, '#b71c1c')}
 
         {/* 当日TEL（内容）ラベル別（FI） */}
         {Object.keys(fiLabelCounts).length > 0
@@ -1238,6 +1249,8 @@ function SellerStatusSidebarComponent({
       {renderCategoryButton('sellerPortalAttention', '売却サポート：対応要', '#00897b')}
       {renderCategoryButton('sellerPortalBuyoutAttention', '売却サポート：買取依頼', '#f57c00')}
       {renderCategoryButton('sellerPortalScheduleAttention', '売却サポート：売却希望時期', '#00acc1')}
+      {/* イエウール他決？（大分） */}
+      {(categoryCounts?.ieulCompetitor ?? 0) > 0 && renderCategoryButton('ieulCompetitor', 'イエウ他決？', '#b71c1c')}
       <Button
         fullWidth
         onClick={() => navigate('/seller-portal/analytics')}

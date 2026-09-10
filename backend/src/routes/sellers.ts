@@ -353,6 +353,111 @@ router.post('/backfill-call-log', async (req: Request, res: Response) => {
 router.use(authenticate);
 
 /**
+ * GET /api/sellers/sync-ieul-competitors
+ * イエウールデータシートのK列（いふう記入欄）をスキャンして
+ * sellers.ieul_competitor フラグを更新する（週次Cron用・認証不要）
+ * 確認済み（ieul_competitor_checked_at IS NOT NULL）の売主は上書きしない
+ */
+router.get('/sync-ieul-competitors', async (_req: Request, res: Response) => {
+  try {
+    const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_IEUL_SPREADSHEET_ID
+      || '1O_tlaKTH6nYFaRr2HcuHdjiugMTWXQaztRXvI_ENP_o';
+    const SHEET_NAME = 'イエウールデータ';
+
+    const { google } = await import('googleapis');
+    let auth: any;
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      let jsonString = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+      try { JSON.parse(jsonString); } catch { jsonString = Buffer.from(jsonString, 'base64').toString('utf8'); }
+      const keyFile = JSON.parse(jsonString);
+      auth = new google.auth.JWT(keyFile.client_email, undefined, keyFile.private_key,
+        ['https://www.googleapis.com/auth/spreadsheets.readonly']);
+    } else if (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
+      auth = new google.auth.JWT(process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL, undefined,
+        process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        ['https://www.googleapis.com/auth/spreadsheets.readonly']);
+    } else {
+      return res.status(500).json({ error: 'Google認証情報が設定されていません' });
+    }
+
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    // ヘッダー行からK列（いふう記入欄）のインデックスを特定
+    const headerRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${SHEET_NAME}'!1:1`,
+    });
+    const headers: string[] = (headerRes.data.values?.[0] || []) as string[];
+    const kIdx = headers.findIndex((h) => h === 'いふう記入欄');
+
+    if (kIdx === -1) {
+      return res.status(500).json({ error: '「いふう記入欄」列がヘッダーに見つかりません' });
+    }
+
+    // K列の全値を取得
+    const colLetter = String.fromCharCode(65 + kIdx);
+    const colRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${SHEET_NAME}'!${colLetter}2:${colLetter}`,
+    });
+    // スプシに存在する売主番号セット（空白・重複除去）
+    const sheetSellerNumbers = new Set(
+      ((colRes.data.values || []) as string[][])
+        .map((r) => (r[0] || '').trim())
+        .filter((v) => v !== '')
+    );
+
+    if (sheetSellerNumbers.size === 0) {
+      return res.json({ updated: 0, message: 'スプシに売主番号が1件もありません' });
+    }
+
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+
+    // 確認済みでない売主の ieul_competitor を一旦 false にリセット
+    // （スプシから削除された売主をフラグ解除するため）
+    await supabase
+      .from('sellers')
+      .update({ ieul_competitor: false })
+      .eq('ieul_competitor', true)
+      .is('ieul_competitor_checked_at', null)
+      .is('deleted_at', null);
+
+    // スプシにある売主番号を ieul_competitor = true にセット
+    // （確認済みは除外: checked_at があるものは触らない）
+    const sellerNumberArray = Array.from(sheetSellerNumbers);
+    let updatedCount = 0;
+
+    // バッチで処理（Supabase IN句の制限対策: 500件ずつ）
+    const batchSize = 500;
+    for (let i = 0; i < sellerNumberArray.length; i += batchSize) {
+      const batch = sellerNumberArray.slice(i, i + batchSize);
+      const { data, error } = await supabase
+        .from('sellers')
+        .update({ ieul_competitor: true })
+        .in('seller_number', batch)
+        .is('ieul_competitor_checked_at', null) // 確認済みは上書きしない
+        .is('deleted_at', null);
+      if (error) {
+        console.error('[sync-ieul-competitors] batch update error:', error);
+      } else {
+        updatedCount += batch.length;
+      }
+    }
+
+    console.log(`[sync-ieul-competitors] ✅ ${updatedCount} sellers flagged from ${sheetSellerNumbers.size} in sheet`);
+    return res.json({
+      success: true,
+      sheetCount: sheetSellerNumbers.size,
+      updated: updatedCount,
+    });
+  } catch (error: any) {
+    console.error('[sync-ieul-competitors] Error:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+
+/**
  * サイドバー一時追加フィルターの一覧を取得
  */
 router.get('/sidebar-temp-filters', async (req: Request, res: Response) => {
@@ -2581,6 +2686,36 @@ router.get('/site-monthly-summary/:siteCode', async (req: Request, res: Response
   } catch (error) {
     console.error('[site-monthly-summary] Error:', error);
     return res.status(500).json({ error: 'Failed to get site monthly summary' });
+  }
+});
+
+/**
+ * PUT /api/sellers/:id/ieul-competitor-check
+ * イエウール他決確認済みにする（サイドバーから除外）
+ * ⚠️ /:id より前に定義する必要がある
+ */
+router.put('/:id/ieul-competitor-check', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+    const { error } = await supabase
+      .from('sellers')
+      .update({ ieul_competitor_checked_at: new Date().toISOString() })
+      .eq('id', id)
+      .is('deleted_at', null);
+    if (error) throw error;
+
+    // サイドバーカウントを非同期で再計算
+    const { SellerSidebarCountsUpdateService } = await import('../services/SellerSidebarCountsUpdateService');
+    const updateService = new SellerSidebarCountsUpdateService(supabase);
+    updateService.updateSellerSidebarCounts().catch((e: any) =>
+      console.error('⚠️ [ieul-competitor-check] SidebarCounts update error:', e)
+    );
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('[ieul-competitor-check] Error:', error.message);
+    return res.status(500).json({ error: error.message });
   }
 });
 

@@ -44,7 +44,7 @@ import { isVisitDayBefore as isVisitDayBeforeUtil, parseDate } from './sellerSta
 // general: 一般カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が一般媒介 + 契約年月 >= 2025/6/23）
 // visitOtherDecision: 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり）
 // unvisitedOtherDecision: 未訪問他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担なし）
-export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'pinrichChangeRequired' | 'exclusive' | 'general' | 'visitOtherDecision' | 'unvisitedOtherDecision' | 'matching' | 'visitPreparationPending' | 'sellerPortalAttention' | 'sellerPortalBuyoutAttention' | 'sellerPortalScheduleAttention'
+export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'pinrichChangeRequired' | 'exclusive' | 'general' | 'visitOtherDecision' | 'unvisitedOtherDecision' | 'matching' | 'visitPreparationPending' | 'sellerPortalAttention' | 'sellerPortalBuyoutAttention' | 'sellerPortalScheduleAttention' | 'ieulCompetitor' | 'fi_ieulCompetitor'
   | `visitAssigned:${string}`        // 担当カテゴリー（例: visitAssigned:Y）
   | `todayCallAssigned:${string}`    // 当日TELサブカテゴリー（例: todayCallAssigned:Y）
   | `todayCallWithInfo:${string}`    // 当日TEL（内容）ラベル別カテゴリー（例: todayCallWithInfo:当日TEL(I・Eメール)）
@@ -86,6 +86,8 @@ export interface CategoryCounts {
   fi_sellerPortalAttention?: number; // 売却サポートページ：対応要（福岡・FI分）
   fi_sellerPortalBuyoutAttention?: number; // 売却サポートページ：買取依頼・未確認（福岡・FI分）
   fi_sellerPortalScheduleAttention?: number; // 売却サポートページ：いつまでに売りたいですか？入力あり・未確認（福岡・FI分）
+  ieulCompetitor?: number;    // イエウール他決？（大分・非FI）
+  fi_ieulCompetitor?: number; // イエウール他決？（福岡・FI）
 }
 
 /**

@@ -624,6 +624,21 @@ export class SellerSidebarCountsUpdateService {
         .is('deleted_at', null)
         .not('match_updated_at', 'is', null);
 
+      // イエウール他決？カウント（ieul_competitor=true かつ 確認済みでない）
+      // 大分（非FI）と福岡（FI: seller_numberがFIで始まる）に分けて集計
+      const { data: ieulCompetitorSellers } = await this.supabase
+        .from('sellers')
+        .select('seller_number')
+        .eq('ieul_competitor', true)
+        .is('ieul_competitor_checked_at', null)
+        .is('deleted_at', null);
+      const ieulOitaCount = (ieulCompetitorSellers || []).filter(
+        (s: any) => !String(s.seller_number || '').startsWith('FI')
+      ).length;
+      const ieulFukuokaCount = (ieulCompetitorSellers || []).filter(
+        (s: any) => String(s.seller_number || '').startsWith('FI')
+      ).length;
+
 
       const exclusiveSellers = exclusiveSellersResult.data || [];
       const exclusiveCount = exclusiveSellers.filter(s => {
@@ -753,6 +768,9 @@ export class SellerSidebarCountsUpdateService {
       rows.push({ category: 'fi_sellerPortalAttention', count: fiSellerPortalAttentionCount, label: null, assignee: null });
       rows.push({ category: 'fi_sellerPortalBuyoutAttention', count: fiSellerPortalBuyoutCount, label: null, assignee: null });
       rows.push({ category: 'fi_sellerPortalScheduleAttention', count: fiSellerPortalScheduleAttentionCount, label: null, assignee: null });
+      // イエウール他決？カテゴリー（大分・福岡別）
+      rows.push({ category: 'ieulCompetitor', count: ieulOitaCount, label: null, assignee: null });
+      rows.push({ category: 'fi_ieulCompetitor', count: ieulFukuokaCount, label: null, assignee: null });
 
       const { error: insertError } = await this.supabase
         .from('seller_sidebar_counts')
