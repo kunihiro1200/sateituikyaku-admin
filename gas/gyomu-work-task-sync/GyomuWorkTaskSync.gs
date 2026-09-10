@@ -298,6 +298,9 @@ function syncGyomuWorkTasks() {
 
   // CWカウントを同期（エラーが発生しても業務依頼同期は継続済み）
   syncCwCounts();
+
+  // 個別物件スプシ「媒介依頼」シートのB23を読み取ってDBに反映
+  syncMediationSheetCells();
 }
 
 // ============================================================
@@ -957,5 +960,133 @@ function doGet(e) {
       success: false,
       error: err.toString()
     })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// ============================================================
+// 個別物件スプシ「媒介依頼」シートB23を読み取ってDBに反映
+// B23 = 仲介手数料の種別（「他」の場合にフロントエンドで上長確認チェックが必須になる）
+// ============================================================
+
+/**
+ * 業務依頼シートの各行に紐付く個別物件スプシを開き、
+ * 「媒介依頼」シートのB23を読み取って mediation_commission_type をPATCHする。
+ *
+ * スプシURLがある行のみ処理。読み取り失敗はスキップ（ログに記録）。
+ */
+function syncMediationSheetCells() {
+  var startTime = new Date();
+  Logger.log('=== 媒介依頼シートB23同期開始 ===');
+
+  try {
+    var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(CONFIG.SHEET_NAME);
+    if (!sheet) {
+      Logger.log('ERROR: シート「' + CONFIG.SHEET_NAME + '」が見つかりません');
+      return;
+    }
+
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) { return; }
+
+    var lastCol = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var rawValues = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+    // 列インデックスを取得
+    var propNumIdx = -1;
+    var urlIdx = -1;
+    for (var h = 0; h < headers.length; h++) {
+      if (headers[h] === '物件番号') propNumIdx = h;
+      if (headers[h] === 'スプシURL') urlIdx = h;
+    }
+    if (propNumIdx === -1 || urlIdx === -1) {
+      Logger.log('ERROR: 物件番号またはスプシURL列が見つかりません');
+      return;
+    }
+
+    var successCount = 0;
+    var skipCount = 0;
+    var errorCount = 0;
+
+    for (var i = 0; i < rawValues.length; i++) {
+      var row = rawValues[i];
+      var propertyNumber = String(row[propNumIdx] || '').trim();
+      var spreadsheetUrl = String(row[urlIdx] || '').trim();
+
+      if (!propertyNumber || !spreadsheetUrl) {
+        skipCount++;
+        continue;
+      }
+
+      // スプシIDをURLから抽出
+      var match = spreadsheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+      if (!match) {
+        skipCount++;
+        continue;
+      }
+      var spreadsheetId = match[1];
+
+      try {
+        var indivSs = SpreadsheetApp.openById(spreadsheetId);
+        var mediationSheet = indivSs.getSheetByName('媒介依頼');
+        if (!mediationSheet) {
+          skipCount++;
+          continue;
+        }
+
+        var b23Value = String(mediationSheet.getRange('B23').getValue() || '').trim();
+        var commissionType = b23Value || null;
+
+        var result = patchMediationCommissionType(propertyNumber, commissionType);
+        if (result.success) {
+          successCount++;
+        } else {
+          errorCount++;
+          Logger.log('PATCH失敗: ' + propertyNumber + ' - ' + result.error);
+        }
+
+      } catch (e) {
+        errorCount++;
+        Logger.log('スキップ（個別スプシ読み取りエラー）: ' + propertyNumber + ' - ' + e.toString());
+      }
+    }
+
+    var duration = (new Date() - startTime) / 1000;
+    Logger.log('=== 媒介依頼シートB23同期完了: 成功=' + successCount + ', スキップ=' + skipCount + ', エラー=' + errorCount + ', ' + duration + '秒 ===');
+
+  } catch (e) {
+    Logger.log('ERROR: syncMediationSheetCells - ' + e.toString());
+  }
+}
+
+/**
+ * work_tasks の mediation_commission_type を1件PATCHする
+ */
+function patchMediationCommissionType(propertyNumber, commissionType) {
+  var url = CONFIG.SUPABASE_URL + '/rest/v1/' + CONFIG.TABLE_NAME +
+    '?property_number=eq.' + encodeURIComponent(propertyNumber);
+  var payload = { mediation_commission_type: commissionType };
+
+  try {
+    var response = UrlFetchApp.fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': CONFIG.SUPABASE_SERVICE_KEY,
+        'Authorization': 'Bearer ' + CONFIG.SUPABASE_SERVICE_KEY,
+        'Prefer': 'return=minimal'
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+    var code = response.getResponseCode();
+    if (code >= 200 && code < 300) {
+      return { success: true };
+    } else {
+      return { success: false, error: 'HTTP ' + code + ': ' + response.getContentText() };
+    }
+  } catch (e) {
+    return { success: false, error: e.toString() };
   }
 }
