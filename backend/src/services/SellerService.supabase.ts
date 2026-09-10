@@ -3310,6 +3310,8 @@ export class SellerService extends BaseRepository {
       fi_sellerPortalAttention: getCount('fi_sellerPortalAttention'),
       fi_sellerPortalBuyoutAttention: getCount('fi_sellerPortalBuyoutAttention'),
       fi_sellerPortalScheduleAttention: getCount('fi_sellerPortalScheduleAttention'),
+      ieulCompetitor: getCount('ieulCompetitor'),
+      fi_ieulCompetitor: getCount('fi_ieulCompetitor'),
     };
   }
 
