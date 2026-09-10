@@ -2594,7 +2594,8 @@ router.get('/:sellerNumber/ieul-sheet-info', async (req: Request, res: Response)
   const { sellerNumber } = req.params;
 
   try {
-    const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID!;
+    const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_IEUL_SPREADSHEET_ID
+      || '1O_tlaKTH6nYFaRr2HcuHdjiugMTWXQaztRXvI_ENP_o'; // イエウール共有売主リスト
     const SHEET_NAME = 'イエウールデータ';
 
     const { google } = await import('googleapis');
