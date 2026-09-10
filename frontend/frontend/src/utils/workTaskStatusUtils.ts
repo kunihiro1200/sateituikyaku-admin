@@ -218,7 +218,9 @@ const computeBaseStatus = (task: WorkTask): string => {
   // サイト登録締め日がまだ無くても、図面作成依頼（間取図・CW依頼メール・完了予定日のいずれか）が
   // 行われている場合は「依頼中」としてサイドバーに表示する。
   // ※ サイト登録締め日がある場合は既存カテゴリー（サイト登録依頼してください等）が担当するため除外する。
+  // ※ サイト登録を外注しない案件（cw_request_email_site === '不要'）は「依頼中」に出さない。
   if (
+    task.cw_request_email_site !== '不要' &&
     isBlank(task.site_registration_deadline) &&
     isBlank(task.sales_contract_deadline) &&
     isBlank(task.on_hold) &&

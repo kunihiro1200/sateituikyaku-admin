@@ -18,6 +18,11 @@ export interface EmailRule {
   bodyTemplate: string;
   /** HTML形式かどうか（デフォルト: false） */
   isHtml?: boolean;
+  /**
+   * 送信対象とする変更後の値の集合（省略時は「空でない任意の値」に変化したら送信）。
+   * 例: ['Y'] を指定すると Y にセットされたときだけ送信し、「不要」「N」では送信しない。
+   */
+  triggerValues?: string[];
 }
 
 /** テンプレート変数のカラムマッピング */
@@ -213,6 +218,7 @@ export const EMAIL_RULES: EmailRule[] = [
     isHtml: false,
   },
   // ルール4: CWの方へ依頼メール（サイト登録）- cw_personフィールドで宛先を動的決定
+  // ※「Y」（依頼する）にセットされたときだけ送信する。「不要」（外注しない）・「N」では送信しない。
   {
     triggerField: 'cw_request_email_site',
     to: '__dynamic_cw_person__',
@@ -220,6 +226,7 @@ export const EMAIL_RULES: EmailRule[] = [
     subjectTemplate: 'サイト登録関係お願いいたします！{物件番号}{物件所在}（㈱いふう）',
     bodyTemplate: '__dynamic_site_registration_request__',
     isHtml: true,
+    triggerValues: ['Y'],
   },
   // ルール5: サイト登録確認OK送信 - cw_personフィールドで宛先を動的決定
   {
@@ -404,6 +411,12 @@ export class WorkTaskEmailNotificationService {
       const normalizedBefore = beforeValue ?? '';
       const normalizedAfter = afterValue ?? '';
       if (normalizedBefore === normalizedAfter) {
+        continue;
+      }
+
+      // triggerValues が指定されている場合、変更後の値がその集合に含まれるときだけ送信する
+      // （例: cw_request_email_site は 'Y' のときだけ送信し、「不要」「N」では送信しない）
+      if (rule.triggerValues && !rule.triggerValues.includes(String(normalizedAfter))) {
         continue;
       }
 

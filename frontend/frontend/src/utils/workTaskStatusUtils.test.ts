@@ -460,3 +460,80 @@ describe('Property 5: 締日超過フラグの正確性', () => {
     );
   });
 });
+
+// ============================================================
+// 「依頼中」カテゴリー: サイト登録を外注しない案件（cw_request_email_site === '不要'）の除外
+// ============================================================
+// 「依頼中」条件（2.5）を満たす最小タスク:
+//   - site_registration_deadline / sales_contract_deadline / on_hold: 空
+//   - distribution_date / publish_scheduled_date: 空
+//   - floor_plan_ok_sent / site_registration_confirmed: 空
+//   - 図面作成依頼のいずれか（ここでは floor_plan）に値がある
+const makeFloorPlanRequestedTask = (overrides: Partial<WorkTask> = {}): WorkTask => ({
+  id: 'test-irai',
+  property_number: 'AA14877',
+  property_address: '大分市大字木上木上120-2',
+  seller_name: 'テスト売主',
+  sales_assignee: 'Y',
+  property_type: '戸',
+  mediation_type: '',
+  mediation_deadline: '',
+  mediation_completed: '',
+  mediation_notes: '',
+  sales_contract_confirmed: '',
+  sales_contract_deadline: '',
+  binding_scheduled_date: '',
+  binding_completed: '',
+  on_hold: '',
+  settlement_date: '',
+  hirose_request_sales: '',
+  cw_request_sales: '',
+  employee_contract_creation: '',
+  accounting_confirmed: '',
+  cw_completed_email_sales: '',
+  work_completed_chat_hirose: '',
+  sales_contract_assignee: '',
+  site_registration_requestor: '',
+  cw_request_email_site: '',
+  distribution_date: '',
+  publish_scheduled_date: '',
+  site_registration_deadline: '',
+  site_registration_due_date: '',
+  settlement_completed_chat: '',
+  ledger_created: '',
+  site_registration_confirm_request_date: '',
+  site_registration_confirmed: '',
+  floor_plan: 'クラウドワークス',
+  floor_plan_ok_sent: '',
+  ...overrides,
+} as WorkTask);
+
+describe('依頼中カテゴリー - サイト登録外注しない案件の除外', () => {
+  it('図面作成依頼があり cw_request_email_site が空なら「依頼中」になる', () => {
+    const task = makeFloorPlanRequestedTask();
+    const result = calculateTaskStatus(task);
+    expect(result.startsWith('依頼中')).toBe(true);
+  });
+
+  it('cw_request_email_site が「不要」なら「依頼中」にならない', () => {
+    const task = makeFloorPlanRequestedTask({ cw_request_email_site: '不要' });
+    const result = calculateTaskStatus(task);
+    expect(result.startsWith('依頼中')).toBe(false);
+  });
+
+  it('cw_request_email_site が「不要」の場合「サイト登録依頼してください」にもならない', () => {
+    // site_registration_deadline があっても cw_request_email_site が非空なので条件3から外れる
+    const task = makeFloorPlanRequestedTask({
+      cw_request_email_site: '不要',
+      site_registration_deadline: '2025-11-15',
+    });
+    const result = calculateTaskStatus(task);
+    expect(result.startsWith('サイト登録依頼してください')).toBe(false);
+  });
+
+  it('cw_request_email_site が「Y」なら図面依頼があっても「依頼中」から除外されない', () => {
+    const task = makeFloorPlanRequestedTask({ cw_request_email_site: 'Y' });
+    const result = calculateTaskStatus(task);
+    expect(result.startsWith('依頼中')).toBe(true);
+  });
+});

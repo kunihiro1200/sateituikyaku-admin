@@ -1313,10 +1313,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       return;
     }
 
-    // 格納先URLが空欄で、CWの方へ依頼メール（サイト登録）または間取図 に値が入っている場合はブロック
+    // 格納先URLが空欄で、CWの方へ依頼メール（サイト登録）＝Y または間取図 に値が入っている場合はブロック
+    // ※「不要」（外注しない）や「N」のときは外注前提の格納先URLを求めない
     const storageUrl = getValue('storage_url');
     const floorPlanVal = getValue('floor_plan');
-    if (!storageUrl && (cwRequestEmailSiteVal || floorPlanVal)) {
+    const cwSiteRequested = cwRequestEmailSiteVal === 'Y';
+    if (!storageUrl && (cwSiteRequested || (floorPlanVal && floorPlanVal !== '不要'))) {
       setValidationWarningDialog({
         open: true,
         title: '「格納先URL」が空欄です。CWの方へ依頼メール（サイト登録）または間取図 に値が入っている場合は必須項目です。',
@@ -1345,9 +1347,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
 
     // 条件付きバリデーション
+    // CWにサイト登録を依頼する（Y）のときだけ物件一覧への行追加を必須にする
+    // 「不要」（外注しない）や「N」のときは行追加を求めない
     const cwEmailSite = getValue('cw_request_email_site');
     const rowAdded = getValue('property_list_row_added');
-    if (cwEmailSite && !rowAdded) {
+    if (cwEmailSite === 'Y' && !rowAdded) {
       setRowAddWarningDialog({ open: true });
       return;
     }
@@ -1624,8 +1628,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     if (field === 'settlement_completed_chat' && value) {
       setEditedData(prev => ({ ...prev, [field]: value, accounting_confirmed: '未' }));
     } else if (field === 'cw_request_email_site') {
-      // cw_request_email_site に値がセットされた時、site_registration_due_date が空なら自動セット
-      if (value) {
+      // cw_request_email_site が「Y」（依頼する）のとき、site_registration_due_date が空なら自動セット
+      // 「不要」（外注しない）や「N」のときは納期予定日を自動セットしない
+      if (value === 'Y') {
         const currentDueDate = editedData['site_registration_due_date'] ?? data?.site_registration_due_date;
         if (!currentDueDate) {
           // デフォルト納期予定日を計算（火曜+3日、それ以外+2日、12:00 JST）
@@ -2311,8 +2316,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     );
   };
 
-  // Yes/No選択
-  const EditableYesNo = ({ label, field, labelColor }: { label: string; field: string; labelColor?: 'error' | 'text.secondary' }) => (
+  // Yes/No選択（extraOptions を渡すと Y/N の後ろに追加のトグルボタンを表示できる）
+  const EditableYesNo = ({ label, field, labelColor, extraOptions }: { label: string; field: string; labelColor?: 'error' | 'text.secondary'; extraOptions?: string[] }) => (
     <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
       <Grid item xs={4}>
         <Typography variant="body2" color={labelColor || 'text.secondary'} sx={{ fontWeight: labelColor === 'error' ? 700 : 500 }}>
@@ -2331,6 +2336,14 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             color={getValue(field) === 'N' ? 'inherit' : 'inherit'}
             onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange(field, getValue(field) === 'N' ? null : 'N'); }}
           >N</Button>
+          {(extraOptions || []).map((opt) => (
+            <Button
+              key={opt}
+              variant={getValue(field) === opt ? 'contained' : 'outlined'}
+              color={getValue(field) === opt ? 'primary' : 'inherit'}
+              onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange(field, getValue(field) === opt ? null : opt); }}
+            >{opt}</Button>
+          ))}
         </ButtonGroup>
       </Grid>
     </Grid>
@@ -3018,8 +3031,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
     const emailDistAutoText = getEmailDistributionAutoText();
 
-    // 変更4: cw_request_email_site が空でない場合は必須表示
-    const isSiteDueDateRequired = !!(getValue('cw_request_email_site'));
+    // 変更4: cw_request_email_site が「Y」（依頼する）の場合のみ必須表示
+    // 「不要」（外注しない）や「N」のときは納期予定日を必須にしない
+    const isSiteDueDateRequired = getValue('cw_request_email_site') === 'Y';
     const siteDueDateLabel = `サイト登録納期予定日${isSiteDueDateRequired ? '*（必須）' : '*'}`;
 
     // 図面作成依頼を触ったかどうか（いずれかの図面作成依頼フィールドに値がある）
@@ -3204,6 +3218,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <EditableYesNo
           label={!getValue('cw_request_email_site') ? 'CWの方へ依頼メール（サイト登録）*（必須）' : 'CWの方へ依頼メール（サイト登録）*'}
           field="cw_request_email_site"
+          extraOptions={['不要']}
           labelColor={!getValue('cw_request_email_site') ? 'error' : undefined}
         />
         <EditableButtonSelect label="CWの方*" field="cw_person" options={['浅沼様（土日OK, 平日は中１日あけて納期）', '山崎様']} />
@@ -3266,7 +3281,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             label="物件一覧に行追加*"
             field="property_list_row_added"
             options={['追加済', '未']}
-            labelColor={getValue('cw_request_email_site') ? 'error' : 'text.secondary'}
+            labelColor={getValue('cw_request_email_site') === 'Y' ? 'error' : 'text.secondary'}
           />
           {/* 地積測量図・字図が「未」かつ「追加済」の場合、athome確認を必須表示 */}
           {getValue('property_list_row_added') === '追加済' &&
