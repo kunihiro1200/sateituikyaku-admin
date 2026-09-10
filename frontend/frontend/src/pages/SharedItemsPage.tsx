@@ -221,7 +221,7 @@ export default function SharedItemsPage() {
       if (!dateB) return -1;
       return new Date(dateB).getTime() - new Date(dateA).getTime();
     });
-  }, [allSharedItems, searchQuery, selectedLocation, selectedUnconfirmedStaff]);
+  }, [allSharedItems, searchQuery, selectedLocation, selectedUnconfirmedStaff, unconfirmedItemIds]);
 
   // サイドバー用カテゴリー集計（出現順を維持）
   const locationCategories = useMemo(() => {
