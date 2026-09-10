@@ -349,9 +349,6 @@ router.post('/backfill-call-log', async (req: Request, res: Response) => {
 
 
 
-// 全てのルートに認証を適用（sidebar-countsの後に配置）
-router.use(authenticate);
-
 /**
  * GET /api/sellers/sync-ieul-competitors
  * イエウールデータシートのK列（いふう記入欄）をスキャンして
@@ -455,6 +452,9 @@ router.get('/sync-ieul-competitors', async (_req: Request, res: Response) => {
     return res.status(500).json({ error: error.message });
   }
 });
+
+// 全てのルートに認証を適用（sidebar-countsの後に配置）
+router.use(authenticate);
 
 
 /**
