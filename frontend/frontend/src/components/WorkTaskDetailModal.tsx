@@ -1492,6 +1492,26 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       return;
     }
 
+    // 媒介契約タブ：仲介手数料「他」の上長確認チェック
+    // GASがB23を転記して mediation_commission_type === '他' の場合、山本/国広/不要のいずれかが必須
+    {
+      const commissionType = getValue('mediation_commission_type');
+      if (commissionType === '他') {
+        const approvedYamamoto = getValue('mediation_commission_approval_yamamoto');
+        const approvedKunihiro = getValue('mediation_commission_approval_kunihiro');
+        const approvedUnnecessary = getValue('mediation_commission_approval_unnecessary');
+        if (!approvedYamamoto && !approvedKunihiro && !approvedUnnecessary) {
+          setValidationWarningDialog({
+            open: true,
+            title: '上長の許可が確認できません',
+            emptyFields: ['仲介手数料が「他」になっています。「山本」「国広」「不要」のいずれかにチェックを入れてから保存してください。'],
+            onConfirmAction: 'supervisor_approval_required',
+          });
+          return;
+        }
+      }
+    }
+
     // 上長承認チェック: 仲介手数料と通常仲介手数料に差異がある場合、国広または山本のチェックが必須
     {
       const ct = (getValue('contract_type') || '') as string;
@@ -1506,10 +1526,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       const checkSeller = ct !== '他社片手';
       const checkBuyer = ct === '専任両手' || ct === '一般両手' || ct === '他社片手' || ct.includes('自社');
       const sellerDiscrepant = checkSeller &&
-        stdFeeSeller != null && feeSeller != null && feeSeller !== '' &&
+        feeSeller != null && feeSeller !== '' &&
+        Number(stdFeeSeller) > 0 &&
         Math.round(Number(stdFeeSeller)) !== Math.round(Number(feeSeller));
       const buyerDiscrepant = checkBuyer &&
-        stdFeeBuyer != null && feeBuyer != null && feeBuyer !== '' &&
+        feeBuyer != null && feeBuyer !== '' &&
+        Number(stdFeeBuyer) > 0 &&
         Math.round(Number(stdFeeBuyer)) !== Math.round(Number(feeBuyer));
       const hasFeeDiscrepancy = sellerDiscrepant || buyerDiscrepant;
       if (hasFeeDiscrepancy) {
@@ -2927,6 +2949,70 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableField label="媒介作成締め日" field="mediation_deadline" type="date" />
       <EditableField label="媒介作成完了" field="mediation_completed" type="date" />
       <EditableButtonSelect label="媒介作成者" field="mediation_creator" options={normalInitials} />
+
+      {/* 仲介手数料が「他」の場合の上長確認（GASがB23を転記した結果に基づいて表示） */}
+      {getValue('mediation_commission_type') === '他' && (() => {
+        const approvedYamamoto = !!getValue('mediation_commission_approval_yamamoto');
+        const approvedKunihiro = !!getValue('mediation_commission_approval_kunihiro');
+        const approvedUnnecessary = !!getValue('mediation_commission_approval_unnecessary');
+        const noneChecked = !approvedYamamoto && !approvedKunihiro && !approvedUnnecessary;
+        return (
+          <Box sx={{
+            mb: 1.5,
+            p: 1.5,
+            borderRadius: 1,
+            border: noneChecked ? '2px solid #d32f2f' : '1px solid #ce93d8',
+            bgcolor: noneChecked ? '#fff3f3' : '#f9f0fc',
+          }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, color: noneChecked ? '#d32f2f' : '#7b1fa2', mb: 0.5 }}>
+              ⚠️ 仲介手数料が「他」になっており、上長の確認をとっておりません
+            </Typography>
+            <Typography variant="body2" sx={{ color: noneChecked ? '#d32f2f' : '#7b1fa2', mb: 1 }}>
+              必ず許可を取ってください
+            </Typography>
+            <FormGroup row>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={approvedYamamoto}
+                    onChange={(e) => handleFieldChange('mediation_commission_approval_yamamoto', e.target.checked)}
+                    size="small"
+                    sx={{ color: noneChecked ? '#d32f2f' : undefined }}
+                  />
+                }
+                label={<Typography variant="body2" sx={{ fontWeight: 600 }}>山本</Typography>}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={approvedKunihiro}
+                    onChange={(e) => handleFieldChange('mediation_commission_approval_kunihiro', e.target.checked)}
+                    size="small"
+                    sx={{ color: noneChecked ? '#d32f2f' : undefined }}
+                  />
+                }
+                label={<Typography variant="body2" sx={{ fontWeight: 600 }}>国広</Typography>}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={approvedUnnecessary}
+                    onChange={(e) => handleFieldChange('mediation_commission_approval_unnecessary', e.target.checked)}
+                    size="small"
+                    sx={{ color: noneChecked ? '#d32f2f' : undefined }}
+                  />
+                }
+                label={<Typography variant="body2" sx={{ fontWeight: 600 }}>不要</Typography>}
+              />
+            </FormGroup>
+            {noneChecked && (
+              <Typography variant="caption" sx={{ color: '#d32f2f' }}>
+                いずれかにチェックしないと保存できません
+              </Typography>
+            )}
+          </Box>
+        );
+      })()}
 
       {/* お渡し手段（GASから転記、編集不可） */}
       <EditableField label="お渡し手段" field="mediation_delivery_method" readOnly />
@@ -4910,10 +4996,12 @@ https://docs.google.com/document/d/12vr8d5TQ-fWd7kQeOFmBe6Dd5kbt1dqaU0cjO9y2xnI/
             const checkSeller = ct !== '他社片手';
             const checkBuyer = ct === '専任両手' || ct === '一般両手' || ct === '他社片手' || ct.includes('自社');
             const sellerDiscrepant = checkSeller &&
-              stdFeeSeller != null && feeSeller != null && feeSeller !== '' &&
+              feeSeller != null && feeSeller !== '' &&
+              Number(stdFeeSeller) > 0 &&
               Math.round(Number(stdFeeSeller)) !== Math.round(Number(feeSeller));
             const buyerDiscrepant = checkBuyer &&
-              stdFeeBuyer != null && feeBuyer != null && feeBuyer !== '' &&
+              feeBuyer != null && feeBuyer !== '' &&
+              Number(stdFeeBuyer) > 0 &&
               Math.round(Number(stdFeeBuyer)) !== Math.round(Number(feeBuyer));
             if (!sellerDiscrepant && !buyerDiscrepant) return null;
             const approvedKunihiro = !!getValue('supervisor_approval_kunihiro');
