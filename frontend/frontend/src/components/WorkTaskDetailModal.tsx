@@ -30,6 +30,9 @@ import {
   AccordionDetails,
   useMediaQuery,
   useTheme,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon, Check as CheckIcon, WarningAmber as WarningAmberIcon, Email as EmailIcon, Image as ImageIcon, EditNote as EditNoteIcon, OpenInNew } from '@mui/icons-material';
@@ -1489,12 +1492,52 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       return;
     }
 
+    // 上長承認チェック: 仲介手数料と通常仲介手数料に差異がある場合、国広または山本のチェックが必須
+    {
+      const ct = (getValue('contract_type') || '') as string;
+      const feeBuyer = getValue('brokerage_fee_buyer');
+      const feeSeller = getValue('brokerage_fee_seller');
+      const stdFeeBuyer = getValue('standard_brokerage_fee_buyer');
+      const stdFeeSeller = getValue('standard_brokerage_fee_seller');
+      // 契約形態に応じて売・買それぞれをチェック対象にするか決定
+      // 他社片手: 買のみ（売は関係なし）
+      // 専任両手・一般両手・その他両手系: 売も買もチェック
+      // それ以外（専任片手・一般片手・空欄等）: 売のみ
+      const checkSeller = ct !== '他社片手';
+      const checkBuyer = ct === '専任両手' || ct === '一般両手' || ct === '他社片手' || ct.includes('自社');
+      const sellerDiscrepant = checkSeller &&
+        stdFeeSeller != null && feeSeller != null && feeSeller !== '' &&
+        Math.round(Number(stdFeeSeller)) !== Math.round(Number(feeSeller));
+      const buyerDiscrepant = checkBuyer &&
+        stdFeeBuyer != null && feeBuyer != null && feeBuyer !== '' &&
+        Math.round(Number(stdFeeBuyer)) !== Math.round(Number(feeBuyer));
+      const hasFeeDiscrepancy = sellerDiscrepant || buyerDiscrepant;
+      if (hasFeeDiscrepancy) {
+        const approvedKunihiro = getValue('supervisor_approval_kunihiro');
+        const approvedYamamoto = getValue('supervisor_approval_yamamoto');
+        if (!approvedKunihiro && !approvedYamamoto) {
+          setValidationWarningDialog({
+            open: true,
+            title: '上長の許可が確認できません',
+            emptyFields: ['仲介手数料と通常仲介手数料に差異があります。「国広」または「山本」のチェックボックスにチェックを入れてから保存してください。'],
+            onConfirmAction: 'supervisor_approval_required',
+          });
+          return;
+        }
+      }
+    }
+
     await executeSave();
   };
 
   const handleValidationWarningConfirm = async () => {
     const action = validationWarningDialog.onConfirmAction;
     setValidationWarningDialog(prev => ({ ...prev, open: false }));
+
+    // 上長承認未チェックは確認ボタンを押しても保存しない（チェックを促すだけ）
+    if (action === 'supervisor_approval_required') {
+      return;
+    }
 
     if (action === 'cadastral') {
       // 地積測量図警告をスキップして要件1チェックへ
@@ -4857,6 +4900,68 @@ https://docs.google.com/document/d/12vr8d5TQ-fWd7kQeOFmBe6Dd5kbt1dqaU0cjO9y2xnI/
               </Typography>
             </Grid>
           </Grid>
+          {/* 上長承認チェックボックス: 仲介手数料と通常仲介手数料に差異がある場合のみ表示 */}
+          {(() => {
+            const ct = (getValue('contract_type') || '') as string;
+            const feeBuyer = getValue('brokerage_fee_buyer');
+            const feeSeller = getValue('brokerage_fee_seller');
+            const stdFeeBuyer = getValue('standard_brokerage_fee_buyer');
+            const stdFeeSeller = getValue('standard_brokerage_fee_seller');
+            const checkSeller = ct !== '他社片手';
+            const checkBuyer = ct === '専任両手' || ct === '一般両手' || ct === '他社片手' || ct.includes('自社');
+            const sellerDiscrepant = checkSeller &&
+              stdFeeSeller != null && feeSeller != null && feeSeller !== '' &&
+              Math.round(Number(stdFeeSeller)) !== Math.round(Number(feeSeller));
+            const buyerDiscrepant = checkBuyer &&
+              stdFeeBuyer != null && feeBuyer != null && feeBuyer !== '' &&
+              Math.round(Number(stdFeeBuyer)) !== Math.round(Number(feeBuyer));
+            if (!sellerDiscrepant && !buyerDiscrepant) return null;
+            const approvedKunihiro = !!getValue('supervisor_approval_kunihiro');
+            const approvedYamamoto = !!getValue('supervisor_approval_yamamoto');
+            const neitherChecked = !approvedKunihiro && !approvedYamamoto;
+            return (
+              <Box sx={{
+                mb: 1.5,
+                p: 1.5,
+                borderRadius: 1,
+                border: neitherChecked ? '2px solid #d32f2f' : '1px solid #ce93d8',
+                bgcolor: neitherChecked ? '#fff3f3' : '#f9f0fc',
+              }}>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: neitherChecked ? '#d32f2f' : '#7b1fa2', mb: 0.5 }}>
+                  ⚠️ 上長の許可とっているか？
+                </Typography>
+                <FormGroup row>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={approvedKunihiro}
+                        onChange={(e) => handleFieldChange('supervisor_approval_kunihiro', e.target.checked)}
+                        size="small"
+                        sx={{ color: neitherChecked ? '#d32f2f' : undefined }}
+                      />
+                    }
+                    label={<Typography variant="body2" sx={{ fontWeight: 600 }}>国広</Typography>}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={approvedYamamoto}
+                        onChange={(e) => handleFieldChange('supervisor_approval_yamamoto', e.target.checked)}
+                        size="small"
+                        sx={{ color: neitherChecked ? '#d32f2f' : undefined }}
+                      />
+                    }
+                    label={<Typography variant="body2" sx={{ fontWeight: 600 }}>山本</Typography>}
+                  />
+                </FormGroup>
+                {neitherChecked && (
+                  <Typography variant="caption" sx={{ color: '#d32f2f' }}>
+                    どちらかにチェックしないと保存できません
+                  </Typography>
+                )}
+              </Box>
+            );
+          })()}
           <EditableButtonSelect label="キャンペーン" field="campaign" options={['あり', 'なし']} />
           {/* 減額理由他: AND(売買契約締め日が入力済み かつ >2025/9/1, OR(仲介手数料（買）or（売）入力済み), OR(通常仲介手数料と異なる)) */}
           {(() => {
