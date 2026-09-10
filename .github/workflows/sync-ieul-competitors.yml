@@ -18,7 +18,7 @@ jobs:
           echo "sync-ieul-competitors 開始: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 
           RESPONSE=$(curl -s -w "\n%{http_code}" \
-            "https://baikyaku-property-site3.vercel.app/api/sellers/sync-ieul-competitors")
+            "https://sateituikyaku-admin-backend.vercel.app/api/sellers/sync-ieul-competitors")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | head -n-1)
