@@ -48,6 +48,7 @@ import { getActiveEmployees, Employee } from '../services/employeeService';
 import { getSenderAddress, saveSenderAddress, validateSenderAddress } from '../utils/senderAddressStorage';
 import SenderAddressSelector from './SenderAddressSelector';
 import RichTextEmailEditor from './RichTextEmailEditor';
+import CommissionDiscountSheet from './CommissionDiscountSheet';
 import ImageSelectorModal from './ImageSelectorModal';
 import DocumentModal from './DocumentModal';
 import { useAuthStore } from '../store/authStore';
@@ -1024,6 +1025,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [tokiKodateResult, setTokiKodateResult] = useState<any>(null);
   const [tokiKodateDialog, setTokiKodateDialog] = useState(false);
   const [tokiKodateWriteLoading, setTokiKodateWriteLoading] = useState(false);
+
+  // 仲介手数料割引ダイアログのstate
+  const [commissionDiscountDialogOpen, setCommissionDiscountDialogOpen] = useState(false);
+  const [commissionDiscountReason, setCommissionDiscountReason] = useState('');
+  const commissionDiscountSheetRef = useRef<HTMLDivElement>(null);
 
   // ハザード関係タブのstate
   const [hazardPdfFile, setHazardPdfFile] = useState<File | null>(null);
@@ -5708,6 +5714,17 @@ ${pageUrl}`;
                   {tokiTochiLoading ? '読取中...' : '📄 謄本'}
                 </Button>
               )}
+              {/* 仲介手数料割引ボタン: 媒介契約タブのみ表示（スマホ） */}
+              {tabIndex === 0 && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => setCommissionDiscountDialogOpen(true)}
+                  sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#ad1457', '&:hover': { bgcolor: '#880e4f' }, fontSize: '0.75rem', px: 1, py: 0.4, minWidth: 0 }}
+                >
+                  💴 仲介手数料割引
+                </Button>
+              )}
               {(tabIndex === 2 || tabIndex === 4) && (
                 <Button variant="contained" size="small" disabled={!getValue('spreadsheet_url')}
                   onClick={() => { const url = getValue('spreadsheet_url'); if (url) window.open(buildLedgerSheetUrl(url), '_blank', 'noopener,noreferrer'); }}
@@ -5958,6 +5975,17 @@ ${pageUrl}`;
                     sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#0277bd', '&:hover': { bgcolor: '#01579b' } }}
                   >
                     {tokiTochiLoading ? '読取中...' : '📄 謄本'}
+                  </Button>
+                )}
+                {/* 仲介手数料割引ボタン: 媒介契約タブのみ表示（PC） */}
+                {tabIndex === 0 && (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => setCommissionDiscountDialogOpen(true)}
+                    sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#ad1457', '&:hover': { bgcolor: '#880e4f' }, fontSize: '0.85rem', px: 1.5 }}
+                  >
+                    💴 仲介手数料割引
                   </Button>
                 )}
                 {(tabIndex === 2 || tabIndex === 4) && (
@@ -6895,6 +6923,112 @@ ${pageUrl}`;
             disabled={sendingEmail || !emailRecipient}
           >
             {sendingEmail ? <CircularProgress size={20} /> : '送信'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 仲介手数料割引ダイアログ */}
+      <Dialog
+        open={commissionDiscountDialogOpen}
+        onClose={() => setCommissionDiscountDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{ sx: { maxHeight: '95vh' } }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>💴 仲介手数料割引申請書</Typography>
+          <IconButton onClick={() => setCommissionDiscountDialogOpen(false)} size="small">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent dividers sx={{ overflow: 'auto' }}>
+          {/* 割引理由入力欄 */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, color: '#555' }}>
+              仲介手数料割引理由
+            </Typography>
+            <TextField
+              multiline
+              minRows={4}
+              maxRows={10}
+              fullWidth
+              placeholder="割引の理由を入力してください"
+              value={commissionDiscountReason}
+              onChange={(e) => setCommissionDiscountReason(e.target.value)}
+              variant="outlined"
+              size="small"
+            />
+          </Box>
+
+          {/* 印刷プレビュー */}
+          <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, color: '#555' }}>
+            印刷プレビュー
+          </Typography>
+          <Box
+            sx={{
+              border: '1px solid #ddd',
+              borderRadius: 1,
+              overflow: 'auto',
+              bgcolor: '#f5f5f5',
+              display: 'flex',
+              justifyContent: 'center',
+              p: 1,
+            }}
+          >
+            <Box sx={{ transform: 'scale(0.75)', transformOrigin: 'top center', width: '210mm', mb: '-52mm' }}>
+              <CommissionDiscountSheet
+                ref={commissionDiscountSheetRef}
+                printDate={new Date().toISOString().split('T')[0]}
+                propertyNumber={propertyNumber || ''}
+                propertyAddress={getValue('property_address') || ''}
+                sellerName={getValue('seller_name') || ''}
+                salesAssignee={getValue('sales_assignee') || (employee?.display_name || employee?.name || '')}
+                mediationType={getValue('mediation_type') || ''}
+                discountReason={commissionDiscountReason}
+              />
+            </Box>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+          <Button onClick={() => setCommissionDiscountDialogOpen(false)} color="inherit">
+            閉じる
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              const sheetEl = commissionDiscountSheetRef.current;
+              if (!sheetEl) return;
+              // 印刷用スタイルを注入してwindow.printを呼ぶ
+              const style = document.createElement('style');
+              style.innerHTML = `
+                @media print {
+                  body > * { display: none !important; }
+                  #commission-discount-print-root { display: block !important; }
+                  @page { size: A4 portrait; margin: 0; }
+                }
+              `;
+              document.head.appendChild(style);
+
+              const printRoot = document.createElement('div');
+              printRoot.id = 'commission-discount-print-root';
+              printRoot.style.display = 'none';
+              printRoot.appendChild(sheetEl.cloneNode(true));
+              document.body.appendChild(printRoot);
+
+              const cleanup = () => {
+                if (document.head.contains(style)) document.head.removeChild(style);
+                if (document.body.contains(printRoot)) document.body.removeChild(printRoot);
+                window.removeEventListener('afterprint', cleanup);
+              };
+              window.addEventListener('afterprint', cleanup);
+
+              window.print();
+            }}
+            sx={{ bgcolor: '#ad1457', '&:hover': { bgcolor: '#880e4f' }, fontWeight: 700 }}
+          >
+            🖨️ 印刷する
           </Button>
         </DialogActions>
       </Dialog>
