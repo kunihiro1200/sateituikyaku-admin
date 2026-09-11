@@ -961,13 +961,26 @@ ${bodyHtml}
     replyTo?: string;  // 返信先メールアドレス（Reply-Toヘッダー用）
   }): Promise<EmailResult> {
     try {
-      // GMAIL_REFRESH_TOKEN が未設定の場合、google_calendar_tokens からトークンを取得
-      if (!process.env.GMAIL_REFRESH_TOKEN) {
+      // 毎回フレッシュな認証クライアントを取得（ウォームスタートでのトークン腐れ防止）
+      let gmailAuthClient: OAuth2Client;
+      if (process.env.GMAIL_REFRESH_TOKEN) {
+        const clientId = process.env.GMAIL_CLIENT_ID || process.env.GOOGLE_CALENDAR_CLIENT_ID;
+        const clientSecret = process.env.GMAIL_CLIENT_SECRET || process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
+        const redirectUri = process.env.GMAIL_REDIRECT_URI || process.env.GOOGLE_CALENDAR_REDIRECT_URI;
+        gmailAuthClient = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+        gmailAuthClient.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
+        try {
+          const { credentials } = await gmailAuthClient.refreshAccessToken();
+          gmailAuthClient.setCredentials(credentials);
+        } catch (refreshError: any) {
+          console.error('[sendEmailWithCcAndAttachments] アクセストークンリフレッシュ失敗:', refreshError.message);
+          throw new Error('Gmail認証トークンの更新に失敗しました。Google連携を確認してください。');
+        }
+      } else {
         try {
           const { GoogleAuthService } = await import('./GoogleAuthService');
           const googleAuthService = new GoogleAuthService();
-          const authenticatedClient = await googleAuthService.getAuthenticatedClient();
-          this.oauth2Client = authenticatedClient;
+          gmailAuthClient = await googleAuthService.getAuthenticatedClient();
         } catch (authError: any) {
           console.error('Failed to get authenticated client from GoogleAuthService:', authError);
           throw new Error('Gmail認証が設定されていません。Google連携を行ってください。');
@@ -982,7 +995,7 @@ ${bodyHtml}
       const encodedFromHeader = this.encodeFrom(params.from);
       console.log(`  From (encoded): ${encodedFromHeader}`);
 
-      const gmail = google.gmail({ version: 'v1', auth: this.oauth2Client });
+      const gmail = google.gmail({ version: 'v1', auth: gmailAuthClient });
 
       const boundary = '----=_Part_' + Date.now();
       const encodedSubject = this.encodeSubject(params.subject);
@@ -1102,20 +1115,37 @@ ${bodyHtml}
     totalCount: number;
     message: string;
   }> {
-    // GMAIL_REFRESH_TOKEN が未設定の場合、google_calendar_tokens からトークンを取得
-    if (!process.env.GMAIL_REFRESH_TOKEN) {
+    // 毎回フレッシュな認証クライアントを取得する（ウォームスタートでの
+    // アクセストークン腐れ・インスタンス変数の競合を防ぐため this.oauth2Client を使わない）
+    let gmailAuthClient: OAuth2Client;
+    if (process.env.GMAIL_REFRESH_TOKEN) {
+      // 環境変数にリフレッシュトークンがある場合は新しいクライアントを作り直す
+      const clientId = process.env.GMAIL_CLIENT_ID || process.env.GOOGLE_CALENDAR_CLIENT_ID;
+      const clientSecret = process.env.GMAIL_CLIENT_SECRET || process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
+      const redirectUri = process.env.GMAIL_REDIRECT_URI || process.env.GOOGLE_CALENDAR_REDIRECT_URI;
+      gmailAuthClient = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+      gmailAuthClient.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
+      // アクセストークンを明示的にリフレッシュ（60分で期限切れになるため毎回取得）
+      try {
+        const { credentials } = await gmailAuthClient.refreshAccessToken();
+        gmailAuthClient.setCredentials(credentials);
+      } catch (refreshError: any) {
+        console.error('[sendDistributionEmail] アクセストークンリフレッシュ失敗:', refreshError.message);
+        throw new Error('Gmail認証トークンの更新に失敗しました。Google連携を確認してください。');
+      }
+    } else {
+      // 環境変数がない場合は google_calendar_tokens テーブルから取得
       try {
         const { GoogleAuthService } = await import('./GoogleAuthService');
         const googleAuthService = new GoogleAuthService();
-        const authenticatedClient = await googleAuthService.getAuthenticatedClient();
-        this.oauth2Client = authenticatedClient;
+        gmailAuthClient = await googleAuthService.getAuthenticatedClient();
       } catch (authError: any) {
         console.error('Failed to get authenticated client from GoogleAuthService:', authError);
         throw new Error('Gmail認証が設定されていません。Google連携を行ってください。');
       }
     }
 
-    const gmail = google.gmail({ version: 'v1', auth: this.oauth2Client });
+    const gmail = google.gmail({ version: 'v1', auth: gmailAuthClient });
     const encodedSubject = this.encodeSubject(params.subject);
     const hasAttachments = params.attachments && params.attachments.length > 0;
 
