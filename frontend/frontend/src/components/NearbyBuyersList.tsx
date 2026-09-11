@@ -239,7 +239,7 @@ function resolveArea(verified: number | null | undefined, normal: number | null 
   return null;
 }
 
-// メール本文テンプレート生成関数
+// メール本文テンプレート生成関数（{buyerName}プレースホルダーはバックエンドが個別置換）
 function buildEmailTemplate(params: {
   buyerName: string | null;
   address: string | null;
@@ -248,7 +248,7 @@ function buildEmailTemplate(params: {
   propertyType: string | null | undefined;
   isFukuoka?: boolean;
 }): string {
-  const name = params.buyerName ?? '{氏名}';
+  const name = params.buyerName ?? '{buyerName}';
   const address = params.address ?? '';
   const landArea = params.landArea != null ? String(params.landArea) : '';
   const buildingArea = params.buildingArea != null ? String(params.buildingArea) : '';
@@ -313,7 +313,7 @@ function buildBuybackEmailTemplate(params: {
   isFukuoka?: boolean;
   accountName?: string;
 }): string {
-  const name = params.buyerName ?? '{氏名}';
+  const name = params.buyerName ?? '{buyerName}';
   const address = params.address ?? '';
   const landArea = params.landArea != null ? String(params.landArea) : '';
   const buildingArea = params.buildingArea != null ? String(params.buildingArea) : '';
@@ -684,27 +684,15 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
     const buildingArea = resolveArea(propertyDetails?.buildingAreaVerified, propertyDetails?.buildingArea);
     const effectivePropNum = propertyNumber || propertyNumberState;
     const isFukuoka = effectivePropNum ? effectivePropNum.includes('FI') : false;
-    let bodyTemplate: string;
-    if (candidatesWithEmail.length === 1) {
-      const buyerName = candidatesWithEmail[0].name || null;
-      bodyTemplate = buildEmailTemplate({
-        buyerName,
-        address: propertyDetails?.address ?? null,
-        landArea,
-        buildingArea,
-        propertyType: effectivePropertyType,
-        isFukuoka,
-      });
-    } else {
-      bodyTemplate = buildEmailTemplate({
-        buyerName: null,
-        address: propertyDetails?.address ?? null,
-        landArea,
-        buildingArea,
-        propertyType: effectivePropertyType,
-        isFukuoka,
-      });
-    }
+    // 一括送信のため、氏名はバックエンドの{buyerName}置換に委ねる（人数問わずnull）
+    const bodyTemplate = buildEmailTemplate({
+      buyerName: null,
+      address: propertyDetails?.address ?? null,
+      landArea,
+      buildingArea,
+      propertyType: effectivePropertyType,
+      isFukuoka,
+    });
     setEmailSubject(subject);
     setEmailBody(bodyTemplate);
     setEmailModalOpen(true);
@@ -720,33 +708,25 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
       const effectivePropertyNumber = propertyNumber || propertyNumberState;
       const attachmentPayloads = convertImageFilesToAttachments(attachments);
 
-      // 並列送信ではなく逐次送信（Gmail APIのレート制限・認証競合を回避）
-      let successCount = 0;
-      let failedCount = 0;
-      for (const candidate of candidatesWithEmail) {
-        try {
-          const buyerName = candidate.name || 'お客様';
-          const personalizedBody = body.replace(/{氏名}/g, buyerName);
-          await api.post('/api/emails/send-distribution', {
-            senderAddress: 'tenant@ifoo-oita.com',
-            recipients: [{ email: candidate.email!, buyerNumber: candidate.buyer_number }],
-            subject,
-            body: personalizedBody,
-            propertyNumber: effectivePropertyNumber || undefined,
-            source: 'nearby_buyers',
-            replyTo,
-            ...(attachmentPayloads.length > 0 ? { attachments: attachmentPayloads } : {}),
-          });
-          successCount++;
-          // Gmail API レート制限対策：送信間隔を300ms空ける
-          if (candidatesWithEmail.indexOf(candidate) < candidatesWithEmail.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
-        } catch (err: any) {
-          console.error(`[NearbyBuyersList] Failed to send email to ${candidate.email}:`, err);
-          failedCount++;
-        }
-      }
+      // 全受信者を1リクエストで一括送信（バックエンド側で{buyerName}を個別置換）
+      const recipients = candidatesWithEmail.map(c => ({
+        email: c.email!,
+        name: c.name || 'お客様',
+        buyerNumber: c.buyer_number,
+      }));
+      const result = await api.post('/api/emails/send-distribution', {
+        senderAddress: 'tenant@ifoo-oita.com',
+        recipients,
+        subject,
+        body,
+        propertyNumber: effectivePropertyNumber || undefined,
+        source: 'nearby_buyers',
+        replyTo,
+        ...(attachmentPayloads.length > 0 ? { attachments: attachmentPayloads } : {}),
+      });
+
+      const successCount: number = result.data?.successCount ?? candidatesWithEmail.length;
+      const failedCount: number = result.data?.failedCount ?? 0;
 
       if (failedCount === 0) {
         setSnackbar({ open: true, message: `メールを送信しました (${successCount}件)`, severity: 'success' });
@@ -755,6 +735,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
       }
       setSelectedBuyers(new Set());
     } catch (error: any) {
+      console.error('[NearbyBuyersList] Failed to send email:', error);
       setSnackbar({ open: true, message: error.message || 'メール送信に失敗しました', severity: 'error' });
       throw error;
     }
@@ -782,29 +763,16 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
     const isFukuoka = effectivePropNum ? effectivePropNum.includes('FI') : false;
     const accountName = employee?.name || employee?.initials || 'アカウント名';
     
-    let bodyTemplate: string;
-    if (candidatesWithEmail.length === 1) {
-      const buyerName = candidatesWithEmail[0].name || null;
-      bodyTemplate = buildBuybackEmailTemplate({
-        buyerName,
-        address: propertyDetails?.address ?? null,
-        landArea,
-        buildingArea,
-        propertyType: effectivePropertyType,
-        isFukuoka,
-        accountName,
-      });
-    } else {
-      bodyTemplate = buildBuybackEmailTemplate({
-        buyerName: null,
-        address: propertyDetails?.address ?? null,
-        landArea,
-        buildingArea,
-        propertyType: effectivePropertyType,
-        isFukuoka,
-        accountName,
-      });
-    }
+    // 一括送信のため、氏名はバックエンドの{buyerName}置換に委ねる（人数問わずnull）
+    const bodyTemplate = buildBuybackEmailTemplate({
+      buyerName: null,
+      address: propertyDetails?.address ?? null,
+      landArea,
+      buildingArea,
+      propertyType: effectivePropertyType,
+      isFukuoka,
+      accountName,
+    });
     setEmailSubject(subject);
     setEmailBody(bodyTemplate);
     setEmailModalOpen(true);
