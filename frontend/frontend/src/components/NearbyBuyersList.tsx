@@ -708,6 +708,48 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
       const effectivePropertyNumber = propertyNumber || propertyNumberState;
       const attachmentPayloads = convertImageFilesToAttachments(attachments);
 
+      // ローカルBase64画像をDriveにアップロードしてIDに変換（Vercel 4.5MB上限対策）
+      const sellerNum = effectivePropertyNumber;
+      const resolvedPayloads: AttachmentPayload[] = await Promise.all(
+        attachmentPayloads.map(async (payload, idx) => {
+          if (!('base64Data' in payload) || !payload.base64Data) return payload;
+          const localFile = attachments[idx]?.localFile;
+          if (!localFile || !sellerNum) return payload; // ファイル・番号なければBase64のまま
+          try {
+            const formData = new FormData();
+            formData.append('files', localFile, localFile.name);
+            const uploadRes = await api.post(
+              `/api/drive/folders/${sellerNum}/files/batch`,
+              formData,
+              { headers: { 'Content-Type': 'multipart/form-data' } }
+            );
+            const uploadedId = uploadRes.data?.files?.[0]?.id;
+            if (uploadedId) {
+              return { id: uploadedId, name: payload.name } as AttachmentPayload;
+            }
+          } catch (uploadErr) {
+            console.warn('[NearbyBuyersList] Drive upload failed, using base64 fallback:', uploadErr);
+          }
+          return payload;
+        })
+      );
+
+      // Driveアップロード後も残ったBase64があればサイズチェック
+      const fallbackBytes = resolvedPayloads.reduce((sum, p) => {
+        if ('base64Data' in p && p.base64Data) {
+          return sum + Math.ceil(p.base64Data.length * 0.75);
+        }
+        return sum;
+      }, 0);
+      if (fallbackBytes > 3 * 1024 * 1024) {
+        setSnackbar({
+          open: true,
+          message: `添付ファイルが大きすぎて送信できません（${(fallbackBytes / 1024 / 1024).toFixed(1)}MB）。\n画像枚数を減らして再送信してください。`,
+          severity: 'error',
+        });
+        return;
+      }
+
       // 全受信者を1リクエストで一括送信（バックエンド側で{buyerName}を個別置換）
       const recipients = candidatesWithEmail.map(c => ({
         email: c.email!,
@@ -722,7 +764,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
         propertyNumber: effectivePropertyNumber || undefined,
         source: 'nearby_buyers',
         replyTo,
-        ...(attachmentPayloads.length > 0 ? { attachments: attachmentPayloads } : {}),
+        ...(resolvedPayloads.length > 0 ? { attachments: resolvedPayloads } : {}),
       });
 
       const successCount: number = result.data?.successCount ?? candidatesWithEmail.length;
