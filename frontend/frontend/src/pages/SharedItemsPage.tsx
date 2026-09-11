@@ -321,6 +321,21 @@ export default function SharedItemsPage() {
             共有スプシ
           </Button>
           <Button
+            variant="outlined"
+            startIcon={<OpenInNewIcon />}
+            onClick={() => window.open('https://docs.google.com/spreadsheets/d/1cjjgZ-_kNVqR2gjtHMh4CoFhgTzhH_yjr-QU2ucejoI/edit?gid=0#gid=0', '_blank')}
+            sx={{
+              borderColor: '#9c27b0',
+              color: '#9c27b0',
+              '&:hover': {
+                borderColor: '#7b1fa2',
+                bgcolor: '#f3e5f520',
+              },
+            }}
+          >
+            新システム改善
+          </Button>
+          <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => navigate('/shared-items/new')}
