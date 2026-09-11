@@ -226,14 +226,14 @@ const CommissionDiscountSheet = React.forwardRef<HTMLDivElement, CommissionDisco
             ▍ 上長確認サイン
           </Typography>
 
-          <Box sx={{ display: 'flex', gap: '8mm', justifyContent: 'center' }}>
-            {/* サイン枠1 */}
+          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+            {/* サイン枠（1つのみ） */}
             <Box
               sx={{
-                flex: 1,
+                width: '60mm',
                 border: '1px solid #888',
                 borderRadius: '4px',
-                height: '28mm',
+                height: '32mm',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -242,43 +242,7 @@ const CommissionDiscountSheet = React.forwardRef<HTMLDivElement, CommissionDisco
                 bgcolor: '#fff',
               }}
             >
-              <Typography sx={{ fontSize: '8.5pt', color: '#666' }}>上長</Typography>
-            </Box>
-
-            {/* サイン枠2 */}
-            <Box
-              sx={{
-                flex: 1,
-                border: '1px solid #888',
-                borderRadius: '4px',
-                height: '28mm',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                pb: '2mm',
-                bgcolor: '#fff',
-              }}
-            >
-              <Typography sx={{ fontSize: '8.5pt', color: '#666' }}>確認者</Typography>
-            </Box>
-
-            {/* サイン枠3（承認） */}
-            <Box
-              sx={{
-                flex: 1,
-                border: '1px solid #888',
-                borderRadius: '4px',
-                height: '28mm',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                pb: '2mm',
-                bgcolor: '#fff',
-              }}
-            >
-              <Typography sx={{ fontSize: '8.5pt', color: '#666' }}>承認</Typography>
+              <Typography sx={{ fontSize: '8.5pt', color: '#666' }}>上長確認サイン（自筆）</Typography>
             </Box>
           </Box>
         </Box>
