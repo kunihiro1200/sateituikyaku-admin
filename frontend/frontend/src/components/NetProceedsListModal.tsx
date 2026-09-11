@@ -253,7 +253,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
       const netProceeds = priceYen - brokerageFee - stampDuty - mortgageRelease - taxAmount;
       return { priceYen, brokerageFee, stampDuty, mortgageRelease, transferTax: taxAmount, netProceeds };
     });
-  }, [maxPriceMan, minPriceMan, hasMortgage, mortgageReleaseFee, taxMode, acquisitionCostMan, purchaseYear, isLand]);
+  }, [maxPriceMan, minPriceMan, priceStepMan, hasMortgage, mortgageReleaseFee, taxMode, acquisitionCostMan, purchaseYear, isLand]);
 
   // 税計算の詳細（代表値: 最高額で表示）
   const taxDetail = useMemo(() => {
