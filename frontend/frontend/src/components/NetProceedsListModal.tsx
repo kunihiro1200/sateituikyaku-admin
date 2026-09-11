@@ -171,6 +171,8 @@ export const NetProceedsListModal: React.FC<Props> = ({
   const [minPriceMan, setMinPriceMan] = useState(
     initialMinPrice ? Math.round(initialMinPrice / 10_000).toString() : ''
   );
+  // 価格の刻み幅（万円単位）: 100 / 200 / 300 / 500 / 1000
+  const [priceStepMan, setPriceStepMan] = useState<100 | 200 | 300 | 500 | 1000>(100);
 
   // 抵当権抹消：taxMode='unknown_mortgage'（取得費不明・抵当権抹消費用あり）のときのみtrue
 
@@ -229,7 +231,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
     const maxYen = parseFloat(maxPriceMan) * 10_000 || 0;
     const minYen = parseFloat(minPriceMan) * 10_000 || 0;
     if (maxYen <= 0) return [];
-    const step = 1_000_000; // 100万刻み
+    const step = priceStepMan * 10_000; // 選択された刻み幅（万円→円）
     const prices: number[] = [];
     for (let p = maxYen; p >= (minYen > 0 ? minYen : maxYen - step * 9); p -= step) {
       prices.push(p);
@@ -328,6 +330,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
           const d = res.data.data;
           if (d.maxPriceMan) setMaxPriceMan(d.maxPriceMan);
           if (d.minPriceMan) setMinPriceMan(d.minPriceMan);
+          if (d.priceStepMan && [100, 200, 300, 500, 1000].includes(d.priceStepMan)) setPriceStepMan(d.priceStepMan);
           if (d.taxMode) setTaxMode(d.taxMode);
           if (d.acquisitionCostMan) setAcquisitionCostMan(d.acquisitionCostMan);
           if (d.purchaseYear) setPurchaseYear(d.purchaseYear);
@@ -344,7 +347,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
     try {
       const { default: api } = await import('../services/api');
       await api.post(`/api/document-drafts/${initialSellerNumber}/net_proceeds`, {
-        data: { maxPriceMan, minPriceMan, taxMode, acquisitionCostMan, purchaseYear },
+        data: { maxPriceMan, minPriceMan, priceStepMan, taxMode, acquisitionCostMan, purchaseYear },
       });
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
@@ -423,6 +426,37 @@ export const NetProceedsListModal: React.FC<Props> = ({
                   <TextField fullWidth size="small" label="最低価格（万円）" type="number"
                     value={minPriceMan} onChange={e => setMinPriceMan(e.target.value)}
                     helperText="空欄=最高額から9段階" />
+                </Grid>
+                {/* 価格刻み幅選択 */}
+                <Grid item xs={12}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                    価格の下げ刻み
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                    {([100, 200, 300, 500, 1000] as const).map(step => (
+                      <Button
+                        key={step}
+                        size="small"
+                        variant={priceStepMan === step ? 'contained' : 'outlined'}
+                        onClick={() => setPriceStepMan(step)}
+                        sx={{
+                          minWidth: 0,
+                          px: 1.2,
+                          py: 0.3,
+                          fontSize: '0.72rem',
+                          fontWeight: priceStepMan === step ? 700 : 400,
+                          bgcolor: priceStepMan === step ? NAVY : undefined,
+                          borderColor: NAVY,
+                          color: priceStepMan === step ? '#fff' : NAVY,
+                          '&:hover': {
+                            bgcolor: priceStepMan === step ? '#082447' : `${NAVY}11`,
+                          },
+                        }}
+                      >
+                        {step === 1000 ? '1000万' : `${step}万`}
+                      </Button>
+                    ))}
+                  </Box>
                 </Grid>
               </Grid>
 
