@@ -75,15 +75,19 @@ const VIEWING_PREP_UNCONFIRMED_START_DATE = '2026-09-03';
 /**
  * 「内覧準備資料未」かどうかを判定（BuyerService の isViewingPrepUnconfirmed と同じロジック）
  * - 内覧日が入力済み、かつ VIEWING_PREP_UNCONFIRMED_START_DATE 以降
+ * - 買主番号が「FK」始まり（福岡買主）ではない
  * - 物件番号が「FI」始まり（福岡物件）ではない
  * - viewing_prep_calendar_confirmed_at が未入力（「カレンダー●OK」ボタン未押下）
  * - 今日が締切日（内覧日の前日、木曜内覧のみ2日前=火曜）以降
  * - 締切日を過ぎたら内覧当日以降も表示は消さない
  */
-function isViewingPrepUnconfirmedFrontend(buyer: { viewing_date?: string | null; viewing_prep_calendar_confirmed_at?: string | null; property_number?: string | null }): boolean {
+function isViewingPrepUnconfirmedFrontend(buyer: { viewing_date?: string | null; viewing_prep_calendar_confirmed_at?: string | null; property_number?: string | null; buyer_number?: string | null }): boolean {
   if (!buyer.viewing_date) return false;
   if (buyer.viewing_prep_calendar_confirmed_at) return false;
   if (String(buyer.viewing_date).substring(0, 10) < VIEWING_PREP_UNCONFIRMED_START_DATE) return false;
+
+  // FK買主（福岡買主）は除外
+  if (buyer.buyer_number && /^FK/i.test(String(buyer.buyer_number))) return false;
 
   // FI物件（福岡物件）は除外
   const firstPropertyNumber = buyer.property_number ? String(buyer.property_number).split(',')[0].trim() : '';
