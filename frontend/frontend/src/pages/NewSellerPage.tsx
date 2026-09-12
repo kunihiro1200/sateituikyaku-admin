@@ -950,6 +950,7 @@ export default function NewSellerPage() {
                     <MenuItem value="専任→他社専任">専任→他社専任</MenuItem>
                     <MenuItem value="一般→他決">一般→他決</MenuItem>
                     <MenuItem value="他社買取">他社買取</MenuItem>
+                    <MenuItem value="自社買取">自社買取</MenuItem>
                     <MenuItem value="訪問後（担当付）追客不要">訪問後（担当付）追客不要</MenuItem>
                   </Select>
                 </FormControl>
