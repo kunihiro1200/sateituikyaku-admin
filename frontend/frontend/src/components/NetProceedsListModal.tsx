@@ -216,7 +216,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
   const hasMortgage = taxMode === 'unknown_mortgage' || taxMode === 'none_mortgage' || taxMode === 'known_mortgage';
 
   // 空項目（なし・空項目）: 任意の項目名と金額を入力できる
-  const [emptyItemLabel, setEmptyItemLabel] = useState('');
+  const [emptyItemLabel, setEmptyItemLabel] = useState('解体費用');
   const [emptyItemAmountMan, setEmptyItemAmountMan] = useState('');
   // 抵当権抹消費用の金額：売主番号がFIを含む場合は5万円、含まない場合は3万円
   const isFiSeller = initialSellerNumber.trim().toUpperCase().includes('FI');
@@ -809,9 +809,9 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         : p.taxMode === 'unknown_mortgage' ? 38 : 40;
       const mortgageLeft  = p.taxMode === 'none_mortgage' ? 100 : p.taxMode === 'known_mortgage' ? 89 : 77; // 印紙代の左側（none_mortgageは+10mm+2mm+2mm、known_mortgageは+20mm-1mm右にずらし済み）
       // none_empty: 空項目列 X座標（仲介手数料の右隣）
-      const emptyItemLeft = 83;
+      const emptyItemLeft = 86;
       const stampLeft     = p.taxMode === 'none_mortgage' ? 130 : p.taxMode === 'none' ? 111
-        : p.taxMode === 'none_empty' ? 121
+        : p.taxMode === 'none_empty' ? 124
         : p.taxMode === 'known_mortgage' ? 107
         : p.taxMode === 'known' ? 95
         : p.taxMode === 'unknown_mortgage' ? 97 : 74;
