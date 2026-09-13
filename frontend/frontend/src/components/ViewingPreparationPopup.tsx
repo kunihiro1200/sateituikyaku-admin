@@ -470,7 +470,14 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
                           cursor: 'pointer',
                           '&:hover': { opacity: 0.7 },
                         }}
-                        onClick={() => setNearbyMapModalOpen(true)}
+                        onClick={() => {
+                          if (googleMapUrl) {
+                            setNearbyMapModalOpen(true);
+                          } else {
+                            // 他社物件：URLが無いので「何でも近隣MAP」ページを開く
+                            window.open('/buyers/nearby-map', '_blank');
+                          }
+                        }}
                       >
                         🗺️ クリックして表示
                       </Box>
@@ -645,8 +652,8 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
       />
     )}
 
-    {/* 近隣MAPモーダル（google_map_url または 他社物件の住所から表示） */}
-    {(googleMapUrl || (isOtherCompanyProperty && address && String(address).trim() !== '')) && (
+    {/* 近隣MAPモーダル（自社物件でgoogle_map_urlがある場合のみ） */}
+    {googleMapUrl && (
       <NearbyMapModal
         open={nearbyMapModalOpen}
         onClose={() => setNearbyMapModalOpen(false)}
