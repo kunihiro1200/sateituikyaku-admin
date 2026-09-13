@@ -1067,7 +1067,6 @@ export function generateExtraPage1Html(base: string, isFI: boolean = false): str
   <div style="display:flex;align-items:center;margin-bottom:10px;">
     <span style="font-size:9pt;margin-right:8px;">🐾</span>
     <span style="font-size:11pt;font-weight:bold;">購入までの行程</span>
-    <div style="margin-left:12px;background:#f0f0f0;border-radius:4px;padding:2px 10px;font-size:8pt;">物件探しはこちらから！</div>
   </div>
   <!-- フロー図（画像） -->
   <img src="${base}/ifoo-assets/flow-chart.png" style="width:100%;margin-bottom:14px;display:block;"/>
