@@ -1046,7 +1046,9 @@ export function generateAllPagesCashRepeaterHtml(buyer: Record<string,unknown>, 
 export function generateExtraPage1Html(base: string, isFI: boolean = false): string {
   const imgFamily = `${base}/ifoo-assets/flow-main.png`;
   const imgIcon   = isFI ? `${base}/ifoo-assets/kujira-fudosan-logo.png` : `${base}/ifoo-assets/ifoo-logo-yellow.png`;
-  const imgOitaQr = `${base}/ifoo-assets/oita-qr-box.png`;
+  const imgQrMiraiEco = `${base}/ifoo-assets/qr-mirai-eco-2026.png`;
+  const imgQrMadoRenove = `${base}/ifoo-assets/qr-mado-renove-2026.png`;
+  const imgQrKyutouShoene = `${base}/ifoo-assets/qr-kyutou-shoene-2026.png`;
   const F = '"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif';
   const yellow = '#f5c518';
   const pink = '#f4b8b8';
@@ -1113,7 +1115,20 @@ export function generateExtraPage1Html(base: string, isFI: boolean = false): str
         ●先進的窓リノベ2026事業<br>　https://window-renovation2026.env.go.jp/<br>
         ●給湯省エネ2026事業<br>　https://kyutou-shoene2026.meti.go.jp/<br>
         ●長期優良住宅化リフォーム推進事業　ほか<br><br>
-        <img src="${imgOitaQr}" style="width:100%;display:${isFI ? 'none' : 'block'};margin-top:6px;"/>
+        <div style="display:flex;gap:6px;margin-top:6px;justify-content:space-between;">
+          <div style="flex:1;text-align:center;">
+            <img src="${imgQrMiraiEco}" style="width:100%;max-width:80px;display:block;margin:0 auto;"/>
+            <div style="font-size:6.5pt;margin-top:2px;">みらいエコ住宅2026事業</div>
+          </div>
+          <div style="flex:1;text-align:center;">
+            <img src="${imgQrMadoRenove}" style="width:100%;max-width:80px;display:block;margin:0 auto;"/>
+            <div style="font-size:6.5pt;margin-top:2px;">先進的窓リノベ2026事業</div>
+          </div>
+          <div style="flex:1;text-align:center;">
+            <img src="${imgQrKyutouShoene}" style="width:100%;max-width:80px;display:block;margin:0 auto;"/>
+            <div style="font-size:6.5pt;margin-top:2px;">給湯省エネ2026事業</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
