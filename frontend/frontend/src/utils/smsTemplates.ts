@@ -30,7 +30,9 @@ export function generateSmsBody(
   }
 ): string {
   // sellerName が null/undefined の場合は「オーナー」で代替する（要件4.5）
-  const sellerName = params.sellerName ?? 'オーナー';
+  // 末尾に「様」が含まれている場合は除去する（テンプレート側で「様」を付与するため二重敬称を防ぐ）
+  const rawSellerName = params.sellerName ?? 'オーナー';
+  const sellerName = rawSellerName.replace(/\s*様\s*$/, '') || 'オーナー';
   // address が null/undefined の場合は空文字で代替する
   const address = params.address ?? '';
   // FI 物件番号の場合はくじら不動産（株式会社いふう）を使用

@@ -55,6 +55,33 @@ describe('generateSmsBody - ユニットテスト', () => {
       expect(body).toContain('山田太郎様');
       expect(body).toContain('株式会社いふう');
     });
+
+    it('sellerName に既に「様」が含まれる場合、「様」を二重に付与しない', () => {
+      const body = generateSmsBody('viewing_inquiry', {
+        sellerName: '松木　慶介様',
+        address: '大分市関園150-1',
+      });
+      expect(body).toContain('松木　慶介様');
+      expect(body).not.toContain('様様');
+    });
+
+    it('sellerName の末尾に空白付きの「様」があっても二重に付与しない', () => {
+      const body = generateSmsBody('viewing_inquiry', {
+        sellerName: '山田太郎 様',
+        address: '大分市舞鶴町1-3-30',
+      });
+      expect(body).not.toContain('様様');
+      expect(body).toContain('山田太郎様');
+    });
+
+    it('sellerName が「様」のみの場合は「オーナー」で代替される', () => {
+      const body = generateSmsBody('viewing_inquiry', {
+        sellerName: '様',
+        address: '大分市舞鶴町1-3-30',
+      });
+      expect(body).toContain('オーナー様');
+      expect(body).not.toContain('様様');
+    });
   });
 
   describe('空テンプレート', () => {
@@ -117,7 +144,10 @@ describe('generateSmsBody - プロパティベーステスト', () => {
           fc.string({ minLength: 1 }),
           (address, sellerName) => {
             const body = generateSmsBody('viewing_inquiry', { address, sellerName });
-            return body.includes(address) && body.includes(sellerName);
+            // テンプレート側で「様」を付与するため、末尾の「様」は正規化される。
+            // 正規化後が空になる場合は「オーナー」で代替される。
+            const normalizedName = sellerName.replace(/\s*様\s*$/, '') || 'オーナー';
+            return body.includes(address) && body.includes(normalizedName);
           }
         ),
         { numRuns: 100 }
