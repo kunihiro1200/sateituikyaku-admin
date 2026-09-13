@@ -831,7 +831,11 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         // unknown_mortgage/none_mortgage/known_mortgage(抵当権抹消費用あり)のみ抵当権抹消費用列を印紙代の左側に表示
         hasMortgageCol ? npBox(mortgageLeft, rowTop, 18, rowH, fmtM(row.mortgageRelease), 12, 600, '#1a1a1a', debug, i===0?'抵当権抹消':'') : '',
         // none_empty: 空項目列（仲介手数料の右、印紙代の左）
-        hasEmptyItemCol ? npBox(emptyItemLeft, rowTop, 35, rowH, emptyItemCostYen > 0 ? fmtM(emptyItemCostYen) : '─', 11, 600, '#1a1a1a', debug, i===0 ? (p.emptyItemLabel || '項目') : '') : '',
+        // i===0: ヘッダー行 → 項目名を白文字で表示
+        // i>0:   データ行  → 金額を黒文字で表示（金額未入力時は '─'）
+        hasEmptyItemCol ? npBox(emptyItemLeft, rowTop, 35, rowH,
+          i === 0 ? (p.emptyItemLabel || '解体費用') : (emptyItemCostYen > 0 ? fmtM(emptyItemCostYen) : '─'),
+          11, 600, i === 0 ? '#ffffff' : '#1a1a1a', debug, '') : '',
         npBox(stampLeft,     rowTop, p.taxMode === 'unknown_mortgage' ? 16 : (p.taxMode === 'none_empty' ? 35 : 18), rowH, fmtM(row.stampDuty),    12, 600, '#1a1a1a', debug, i===0?'印紙代':''),
         // template3(none/none_mortgage/none_empty)は取得費・譲渡所得税列なし
         (p.taxMode === 'unknown' || p.taxMode === 'unknown_mortgage') ? npBox( acqCostLeft, rowTop, p.taxMode === 'unknown_mortgage' ? 22 : 28, rowH, acqCost > 0 ? fmtM(acqCost) : '', 12, 600, '#1a1a1a', debug, i===0?'取得費':'') : '',
