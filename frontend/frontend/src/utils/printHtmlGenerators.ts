@@ -1266,8 +1266,49 @@ export function generateExtraPage3Html(base: string = '', isFI: boolean = false)
       <tr><td style="${tdS}" rowspan="2">ろうきん</td><td style="${tdS}">ローンセンターおあいた</td><td style="${tdS}">大分市寿町1-3（大分支店3F）</td><td style="${tdS}">097-536-6366</td><td style="${tdS}">水、土、祝</td></tr>
       <tr><td style="${tdS}">鶴崎支店</td><td style="${tdS}">大分市中鶴崎2-3-18</td><td style="${tdS}">097-521-8101</td><td style="${tdS}">土、日、祝</td></tr>
       <tr><td style="${tdS}">伊予銀行</td><td style="${tdS}">大分支店</td><td style="${tdS}">大分市府内町3-1-9</td><td style="${tdS}">097-532-6171</td><td style="${tdS}">土、日、祝</td></tr>
+      <tr><td style="${tdS}">西日本シティ銀行</td><td style="${tdS}">大分支店</td><td style="${tdS}">大分市府内町3-1-7</td><td style="${tdS}">097-532-1231</td><td style="${tdS}">土、日、祝</td></tr>
+      <tr><td style="${tdS}">豊和銀行</td><td style="${tdS}">本店営業部</td><td style="${tdS}">大分市王子中町4-10</td><td style="${tdS}">097-534-2612</td><td style="${tdS}">土、日、祝</td></tr>
+      <tr><td style="${tdS}">大分みらい信用金庫</td><td style="${tdS}">大分支店・府内中央支店</td><td style="${tdS}">大分市府内町1-2-8</td><td style="${tdS}">097-534-0131</td><td style="${tdS}">土、日、祝</td></tr>
     </table>
     <div style="margin-bottom:10px;font-size:8.5pt;font-weight:bold;">大分銀行の無料シミュレーションはこちら（30秒）→<br><span style="font-weight:normal;">※現在、9割のお客様が変動金利を選択されております（ご参考まで）</span></div>
+    <!-- 大分の銀行QRリスト -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
+      <tr>
+        <th style="${thS}">金融機関</th>
+        <th style="${thS}">シュミレーション</th>
+        <th style="${thS}">ネットで仮審査</th>
+      </tr>
+      <tr>
+        <td style="${tdS};font-weight:bold;text-align:center;">大分銀行</td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/OITABANK_SHUMI.png" style="max-width:90px;max-height:90px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/OITABANK_KARISHINSA.png" style="max-width:90px;max-height:90px;display:block;margin:0 auto;"/></td>
+      </tr>
+      <tr>
+        <td style="${tdS};font-weight:bold;text-align:center;">ろうきん</td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/ROKIN_SHUMI.png" style="max-width:90px;max-height:90px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/ROKIN_KARISHINSA.png" style="max-width:90px;max-height:90px;display:block;margin:0 auto;"/></td>
+      </tr>
+      <tr>
+        <td style="${tdS};font-weight:bold;text-align:center;">伊予銀行</td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/IYO_SHUMI.png" style="max-width:90px;max-height:90px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/IYO_KARISHINSA.png" style="max-width:90px;max-height:90px;display:block;margin:0 auto;"/></td>
+      </tr>
+      <tr>
+        <td style="${tdS};font-weight:bold;text-align:center;">西日本シティ銀行</td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/NISHINIHONCITY_SHUMI.png" style="max-width:90px;max-height:90px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/NISHINIHONCITY_SHUMI.png" style="max-width:90px;max-height:90px;display:block;margin:0 auto;"/></td>
+      </tr>
+      <tr>
+        <td style="${tdS};font-weight:bold;text-align:center;">豊和銀行</td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/HOWA_SHUMI.png" style="max-width:90px;max-height:90px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;color:#999;font-size:7.5pt;">ー</td>
+      </tr>
+      <tr>
+        <td style="${tdS};font-weight:bold;text-align:center;">大分みらい信用金庫</td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/OITAMIRAI_SHUMI.png" style="max-width:90px;max-height:90px;display:block;margin:0 auto;"/></td>
+        <td style="${tdS};text-align:center;"><img src="${base}/ifoo-assets/OITAMIRAI_KARISHINSA.png" style="max-width:90px;max-height:90px;display:block;margin:0 auto;"/></td>
+      </tr>
+    </table>
   `;
 
   return `
