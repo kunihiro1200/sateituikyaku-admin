@@ -787,7 +787,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
 
     <!-- none_empty / none_mortgage_empty: 空列ヘッダー（テンプレート画像の表ヘッダー行に重ねて項目名を白文字で表示） -->
     ${(p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty') ? npBox(
-      p.taxMode === 'none_mortgage_empty' ? 100 : 86,
+      86,
       138, 35, 10,
       (p.emptyItemLabel || '解体費用\n（税込）').replace(/\n/g, '<br>'),
       11, 400, '#ffffff', debug, 'emptyHeader',
@@ -818,20 +818,20 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
       const acqCost = (p.taxMode === 'unknown' || p.taxMode === 'unknown_mortgage')
         ? Math.round(row.priceYen * 0.05)
         : 0;
-      // none_empty: 仲介手数料45mm→空項目列→印紙代→手残り金額
-      // none_mortgage_empty: 仲介手数料38mm→抵当権抹消費用→空項目列→印紙代→手残り金額
-      //   (template3_teitou_direct をベースに空項目列を抵当権抹消の右に追加)
+      // none_empty: 仲介手数料43mm→空項目列(86mm)→印紙代(124mm)→手残り金額
+      // none_mortgage_empty: 仲介手数料43mm→空項目列(86mm)→抵当権抹消費用(106mm)→印紙代(124mm)→手残り金額
+      //   (template3_teitou_empty の列順: 仲介手数料→空項目→抵当権抹消→印紙代→手残り)
       // template3のみ仲介手数料50mm、印紙代111mm / template4は仲介手数料45mm、印紙代91mm
       // unknown_mortgage(template2_teitou)・none_mortgage(template3_teitou_direct)・known_mortgage(template4_teitou)は
       // 「抵当権抹消費用」列を印紙代の左側に挿入するため他モードより列幅を詰める
       const brokerageLeft = (p.taxMode === 'none' || p.taxMode === 'none_mortgage') ? 50
-        : p.taxMode === 'none_empty' ? 43
-        : p.taxMode === 'none_mortgage_empty' ? 38
+        : (p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty') ? 43
         : (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? 45
         : p.taxMode === 'unknown_mortgage' ? 38 : 40;
-      const mortgageLeft  = p.taxMode === 'none_mortgage' ? 100 : p.taxMode === 'none_mortgage_empty' ? 77 : p.taxMode === 'known_mortgage' ? 89 : 77; // 印紙代の左側（none_mortgageは+10mm+2mm+2mm、known_mortgageは+20mm-1mm右にずらし済み）
-      // none_empty: 空項目列 X座標（仲介手数料の右隣） / none_mortgage_empty: 抵当権抹消の右隣
-      const emptyItemLeft = p.taxMode === 'none_mortgage_empty' ? 100 : 86;
+      // none_mortgage_empty: 空項目の右に抵当権抹消列
+      const mortgageLeft  = p.taxMode === 'none_mortgage' ? 100 : p.taxMode === 'none_mortgage_empty' ? 106 : p.taxMode === 'known_mortgage' ? 89 : 77;
+      // none_empty / none_mortgage_empty: 空項目列は仲介手数料(43mm)の右隣 = 86mm
+      const emptyItemLeft = 86;
       const stampLeft     = p.taxMode === 'none_mortgage' ? 130 : p.taxMode === 'none_mortgage_empty' ? 124 : p.taxMode === 'none' ? 111
         : p.taxMode === 'none_empty' ? 124
         : p.taxMode === 'known_mortgage' ? 107
@@ -852,9 +852,9 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         npBox(brokerageLeft, rowTop, p.taxMode === 'unknown_mortgage' ? 28 : p.taxMode === 'none_mortgage_empty' ? 28 : p.taxMode === 'none_empty' ? 35 : 32, rowH, fmtM(row.brokerageFee), 12, 600, '#1a1a1a', debug, i===0?'仲介手数料':''),
         // unknown_mortgage/none_mortgage/known_mortgage(抵当権抹消費用あり)のみ抵当権抹消費用列を印紙代の左側に表示
         hasMortgageCol ? npBox(mortgageLeft, rowTop, 18, rowH, fmtM(row.mortgageRelease), 12, 600, '#1a1a1a', debug, i===0?'抵当権抹消':'') : '',
-        // none_empty / none_mortgage_empty: 空項目列
+        // none_empty / none_mortgage_empty: 空項目列（仲介手数料の右）
         hasEmptyItemCol ? npBox(emptyItemLeft, rowTop,
-          p.taxMode === 'none_mortgage_empty' ? 20 : 35,
+          p.taxMode === 'none_mortgage_empty' ? 18 : 35,
           rowH,
           emptyItemCostYen > 0 ? fmtM(emptyItemCostYen) : '─',
           12, 600, '#1a1a1a', debug, '') : '',
