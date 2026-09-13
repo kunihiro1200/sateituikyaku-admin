@@ -451,8 +451,8 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
               />
             </ListItem>
           ))}
-          {/* 近隣MAP（google_map_urlがある場合のみ表示） */}
-          {googleMapUrl && (
+          {/* 近隣MAP（google_map_urlがある場合、または他社物件で住所がある場合に表示） */}
+          {(googleMapUrl || (isOtherCompanyProperty && address && String(address).trim() !== '')) && (
             <ListItem
               component="li"
               sx={{ display: 'list-item', py: 0.5 }}
@@ -645,8 +645,8 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
       />
     )}
 
-    {/* 近隣MAPモーダル */}
-    {googleMapUrl && (
+    {/* 近隣MAPモーダル（google_map_url または 他社物件の住所から表示） */}
+    {(googleMapUrl || (isOtherCompanyProperty && address && String(address).trim() !== '')) && (
       <NearbyMapModal
         open={nearbyMapModalOpen}
         onClose={() => setNearbyMapModalOpen(false)}
