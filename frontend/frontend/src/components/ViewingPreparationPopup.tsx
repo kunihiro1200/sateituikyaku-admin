@@ -12,6 +12,8 @@ import {
   Box,
   Tooltip,
   CircularProgress,
+  TextField,
+  MenuItem,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
@@ -132,117 +134,119 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
   const [printingCashRepeater, setPrintingCashRepeater] = useState(false);
   const [printingOther, setPrintingOther] = useState(false);
 
+  // 他社物件の内覧準備資料（白黒）用の手入力フォーム
+  const [manualInputOpen, setManualInputOpen] = useState(false);
+  const [manualProp, setManualProp] = useState({
+    address: '',
+    property_type: '',
+    price: '',
+    floor_plan: '',
+    structure: '',
+    land_area: '',
+    building_area: '',
+    property_tax: '',
+    management_fee: '',
+    reserve_fund: '',
+    parking: '',
+    delivery: '',
+    pre_viewing_notes: '',
+  });
+
+  // 他社物件情報（住所）を初期値として1回だけフォームにセット
+  React.useEffect(() => {
+    if (isOtherCompanyProperty && !manualProp.address) {
+      const initAddr = (otherCompanyValue ? String(otherCompanyValue).trim() : '') || (address ? String(address).trim() : '');
+      if (initAddr) setManualProp((prev) => ({ ...prev, address: initAddr }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOtherCompanyProperty, open]);
+
+  // 手入力フォームの内容を印刷ジェネレータが受け取る物件オブジェクトに変換
+  const buildManualProperty = (): Record<string, any> => {
+    const num = (v: string) => {
+      const n = Number(String(v).replace(/[^\d.-]/g, ''));
+      return Number.isFinite(n) && String(v).trim() !== '' ? n : undefined;
+    };
+    return {
+      property_number: '',
+      address: manualProp.address || '',
+      display_address: manualProp.address || '',
+      property_type: manualProp.property_type || undefined,
+      price: num(manualProp.price),
+      floor_plan: manualProp.floor_plan || undefined,
+      structure: manualProp.structure || undefined,
+      land_area: num(manualProp.land_area),
+      building_area: num(manualProp.building_area),
+      property_tax: num(manualProp.property_tax),
+      management_fee: num(manualProp.management_fee),
+      reserve_fund: num(manualProp.reserve_fund),
+      parking: manualProp.parking || undefined,
+      delivery: manualProp.delivery || undefined,
+      pre_viewing_notes: manualProp.pre_viewing_notes || undefined,
+    };
+  };
+
   function getTodayStr(): string {
     const d = new Date();
     return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
   }
 
+  // 生成したHTMLをiframeで印刷する共通処理
+  const printHtmlViaIframe = (html: string, setBusy: (v: boolean) => void) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) { setBusy(false); document.body.removeChild(iframe); return; }
+    doc.open(); doc.write(html); doc.close();
+    const cleanup = () => { setTimeout(() => { try { document.body.removeChild(iframe); } catch (_) {} setBusy(false); }, 1000); };
+    const doPrint = () => { try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch (_) {} cleanup(); };
+    if (iframe.contentDocument?.readyState === 'complete') { setTimeout(doPrint, 800); }
+    else { iframe.onload = () => setTimeout(doPrint, 800); setTimeout(doPrint, 2000); }
+  };
+
+  // 印刷対象の物件データ配列を取得する
+  // - 他社物件: 手入力フォームの内容を1件の物件として返す
+  // - 自社物件: linkedProperties を API から取得する
+  const resolvePropertyDetails = async (): Promise<Record<string, any>[]> => {
+    if (isOtherCompanyProperty) {
+      return [buildManualProperty()];
+    }
+    const { default: api } = await import('../services/api');
+    return Promise.all(
+      (linkedProperties || []).map((lp: Record<string, any>) =>
+        api.get(`/api/property-listings/${lp.property_number}`).then((r: any) => r.data)
+      )
+    );
+  };
+
+  // 汎用の印刷実行（バリアントごとのHTML生成関数を指定）
+  const runPrint = (
+    generatorKey: 'generateAllPagesHtml' | 'generateAllPagesCashHtml' | 'generateAllPagesRepeaterHtml' | 'generateAllPagesCashRepeaterHtml',
+    setBusy: (v: boolean) => void,
+  ) => {
+    if (!buyer) return;
+    // 他社物件は手入力フォームが必要
+    if (!isOtherCompanyProperty && (!linkedProperties || linkedProperties.length === 0)) return;
+    setBusy(true);
+    resolvePropertyDetails().then((propertyDetails) => {
+      import('../utils/printHtmlGenerators').then((mod) => {
+        const generator = mod[generatorKey] as (b: Record<string, unknown>, p: Record<string, unknown>[], t: string) => string;
+        const html = generator(buyer, propertyDetails, getTodayStr());
+        printHtmlViaIframe(html, setBusy);
+      }).catch(() => setBusy(false));
+    }).catch(() => setBusy(false));
+  };
+
   // 内覧準備資料１（白黒）印刷
-  const handlePrint1 = () => {
-    if (!buyer || !linkedProperties || linkedProperties.length === 0) return;
-    setPrinting1(true);
-    import('../services/api').then(({ default: api }) => {
-      Promise.all(
-        linkedProperties.map((lp: Record<string, any>) =>
-          api.get(`/api/property-listings/${lp.property_number}`).then((r: any) => r.data)
-        )
-      ).then((propertyDetails) => {
-        import('../utils/printHtmlGenerators').then(({ generateAllPagesHtml }) => {
-          const html = generateAllPagesHtml(buyer, propertyDetails, getTodayStr());
-          const iframe = document.createElement('iframe');
-          iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
-          document.body.appendChild(iframe);
-          const doc = iframe.contentDocument || iframe.contentWindow?.document;
-          if (!doc) { setPrinting1(false); document.body.removeChild(iframe); return; }
-          doc.open(); doc.write(html); doc.close();
-          const cleanup = () => { setTimeout(() => { try { document.body.removeChild(iframe); } catch (_) {} setPrinting1(false); }, 1000); };
-          const doPrint = () => { try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch (_) {} cleanup(); };
-          if (iframe.contentDocument?.readyState === 'complete') { setTimeout(doPrint, 800); }
-          else { iframe.onload = () => setTimeout(doPrint, 800); setTimeout(doPrint, 2000); }
-        });
-      }).catch(() => { setPrinting1(false); });
-    }).catch(() => { setPrinting1(false); });
-  };
-
+  const handlePrint1 = () => runPrint('generateAllPagesHtml', setPrinting1);
   // 内覧準備資料（自己資金）印刷
-  const handlePrintCash = () => {
-    if (!buyer || !linkedProperties || linkedProperties.length === 0) return;
-    setPrintingCash(true);
-    import('../services/api').then(({ default: api }) => {
-      Promise.all(
-        linkedProperties.map((lp: Record<string, any>) =>
-          api.get(`/api/property-listings/${lp.property_number}`).then((r: any) => r.data)
-        )
-      ).then((propertyDetails) => {
-        import('../utils/printHtmlGenerators').then(({ generateAllPagesCashHtml }) => {
-          const html = generateAllPagesCashHtml(buyer, propertyDetails, getTodayStr());
-          const iframe = document.createElement('iframe');
-          iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
-          document.body.appendChild(iframe);
-          const doc = iframe.contentDocument || iframe.contentWindow?.document;
-          if (!doc) { setPrintingCash(false); document.body.removeChild(iframe); return; }
-          doc.open(); doc.write(html); doc.close();
-          const cleanup = () => { setTimeout(() => { try { document.body.removeChild(iframe); } catch (_) {} setPrintingCash(false); }, 1000); };
-          const doPrint = () => { try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch (_) {} cleanup(); };
-          if (iframe.contentDocument?.readyState === 'complete') { setTimeout(doPrint, 800); }
-          else { iframe.onload = () => setTimeout(doPrint, 800); setTimeout(doPrint, 2000); }
-        });
-      }).catch(() => { setPrintingCash(false); });
-    }).catch(() => { setPrintingCash(false); });
-  };
-
+  const handlePrintCash = () => runPrint('generateAllPagesCashHtml', setPrintingCash);
   // 内覧準備資料（リピーター）印刷
-  const handlePrintRepeater = () => {
-    if (!buyer || !linkedProperties || linkedProperties.length === 0) return;
-    setPrintingRepeater(true);
-    import('../services/api').then(({ default: api }) => {
-      Promise.all(
-        linkedProperties.map((lp: Record<string, any>) =>
-          api.get(`/api/property-listings/${lp.property_number}`).then((r: any) => r.data)
-        )
-      ).then((propertyDetails) => {
-        import('../utils/printHtmlGenerators').then(({ generateAllPagesRepeaterHtml }) => {
-          const html = generateAllPagesRepeaterHtml(buyer, propertyDetails, getTodayStr());
-          const iframe = document.createElement('iframe');
-          iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
-          document.body.appendChild(iframe);
-          const doc = iframe.contentDocument || iframe.contentWindow?.document;
-          if (!doc) { setPrintingRepeater(false); document.body.removeChild(iframe); return; }
-          doc.open(); doc.write(html); doc.close();
-          const cleanup = () => { setTimeout(() => { try { document.body.removeChild(iframe); } catch (_) {} setPrintingRepeater(false); }, 1000); };
-          const doPrint = () => { try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch (_) {} cleanup(); };
-          if (iframe.contentDocument?.readyState === 'complete') { setTimeout(doPrint, 800); }
-          else { iframe.onload = () => setTimeout(doPrint, 800); setTimeout(doPrint, 2000); }
-        });
-      }).catch(() => { setPrintingRepeater(false); });
-    }).catch(() => { setPrintingRepeater(false); });
-  };
-
+  const handlePrintRepeater = () => runPrint('generateAllPagesRepeaterHtml', setPrintingRepeater);
   // 内覧準備資料（自己資金・リピーター）印刷
   const handlePrintCashRepeater = () => {
-    if (!buyer || !linkedProperties || linkedProperties.length === 0) return;
-    setPrintingCashRepeater(true);
-    import('../services/api').then(({ default: api }) => {
-      Promise.all(
-        linkedProperties.map((lp: Record<string, any>) =>
-          api.get(`/api/property-listings/${lp.property_number}`).then((r: any) => r.data)
-        )
-      ).then((propertyDetails) => {
-        import('../utils/printHtmlGenerators').then(({ generateAllPagesCashRepeaterHtml }) => {
-          const html = generateAllPagesCashRepeaterHtml(buyer, propertyDetails, getTodayStr());
-          const iframe = document.createElement('iframe');
-          iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
-          document.body.appendChild(iframe);
-          const doc = iframe.contentDocument || iframe.contentWindow?.document;
-          if (!doc) { setPrintingCashRepeater(false); document.body.removeChild(iframe); return; }
-          doc.open(); doc.write(html); doc.close();
-          const cleanup = () => { setTimeout(() => { try { document.body.removeChild(iframe); } catch (_) {} setPrintingCashRepeater(false); }, 1000); };
-          const doPrint = () => { try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch (_) {} cleanup(); };
-          if (iframe.contentDocument?.readyState === 'complete') { setTimeout(doPrint, 800); }
-          else { iframe.onload = () => setTimeout(doPrint, 800); setTimeout(doPrint, 2000); }
-        });
-      }).catch(() => { setPrintingCashRepeater(false); });
-    }).catch(() => { setPrintingCashRepeater(false); });
+    runPrint('generateAllPagesCashRepeaterHtml', setPrintingCashRepeater);
   };
 
   // 内覧準備資料２（カラー）印刷
@@ -334,15 +338,29 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
           <ListItem component="li" sx={{ display: 'list-item', py: 0.5 }}>
             <ListItemText
               primary={
-                hasPropertyNumber && linkedProperties && linkedProperties.length > 0 ? (
+                (hasPropertyNumber && linkedProperties && linkedProperties.length > 0) || isOtherCompanyProperty ? (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                     <Typography component="span">内覧準備資料（白黒）：</Typography>
+                    {isOtherCompanyProperty && (
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={() => setManualInputOpen(true)}
+                        sx={{
+                          bgcolor: '#455a64',
+                          fontSize: '0.75rem',
+                          '&:hover': { bgcolor: '#37474f' },
+                        }}
+                      >
+                        内容を入力
+                      </Button>
+                    )}
                     <Button
                       variant="outlined"
                       size="small"
                       startIcon={printing1 ? <CircularProgress size={14} color="inherit" /> : <PrintIcon />}
                       onClick={handlePrint1}
-                      disabled={printing1 || !buyer || !linkedProperties || linkedProperties.length === 0}
+                      disabled={printing1 || !buyer || (!isOtherCompanyProperty && (!linkedProperties || linkedProperties.length === 0))}
                       sx={{
                         borderColor: '#4caf50',
                         color: '#2e7d32',
@@ -357,7 +375,7 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
                       size="small"
                       startIcon={printingCash ? <CircularProgress size={14} color="inherit" /> : <PrintIcon />}
                       onClick={handlePrintCash}
-                      disabled={printingCash || !buyer || !linkedProperties || linkedProperties.length === 0}
+                      disabled={printingCash || !buyer || (!isOtherCompanyProperty && (!linkedProperties || linkedProperties.length === 0))}
                       sx={{
                         borderColor: '#1976d2',
                         color: '#1565c0',
@@ -372,7 +390,7 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
                       size="small"
                       startIcon={printingRepeater ? <CircularProgress size={14} color="inherit" /> : <PrintIcon />}
                       onClick={handlePrintRepeater}
-                      disabled={printingRepeater || !buyer || !linkedProperties || linkedProperties.length === 0}
+                      disabled={printingRepeater || !buyer || (!isOtherCompanyProperty && (!linkedProperties || linkedProperties.length === 0))}
                       sx={{
                         borderColor: '#ff9800',
                         color: '#e65100',
@@ -387,7 +405,7 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
                       size="small"
                       startIcon={printingCashRepeater ? <CircularProgress size={14} color="inherit" /> : <PrintIcon />}
                       onClick={handlePrintCashRepeater}
-                      disabled={printingCashRepeater || !buyer || !linkedProperties || linkedProperties.length === 0}
+                      disabled={printingCashRepeater || !buyer || (!isOtherCompanyProperty && (!linkedProperties || linkedProperties.length === 0))}
                       sx={{
                         borderColor: '#9c27b0',
                         color: '#6a1b9a',
@@ -661,6 +679,132 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
         address={address || ''}
       />
     )}
+
+    {/* 他社物件：内覧準備資料（白黒）の内容手入力ダイアログ */}
+    <Dialog open={manualInputOpen} onClose={() => setManualInputOpen(false)} maxWidth="sm" fullWidth>
+      <DialogTitle>内覧準備資料（白黒）の内容を入力</DialogTitle>
+      <DialogContent>
+        <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mb: 2 }}>
+          他社物件は物件データが無いため、印刷する内容をここで入力してください。空欄の項目は印刷されません。
+        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 0.5 }}>
+          <TextField
+            label="所在地・住居表示"
+            value={manualProp.address}
+            onChange={(e) => setManualProp((p) => ({ ...p, address: e.target.value }))}
+            fullWidth
+            size="small"
+            multiline
+          />
+          <TextField
+            label="種別"
+            value={manualProp.property_type}
+            onChange={(e) => setManualProp((p) => ({ ...p, property_type: e.target.value }))}
+            fullWidth
+            size="small"
+            select
+          >
+            <MenuItem value="">（未選択）</MenuItem>
+            <MenuItem value="マ">マンション</MenuItem>
+            <MenuItem value="戸">戸建て</MenuItem>
+            <MenuItem value="土">土地</MenuItem>
+            <MenuItem value="他">その他</MenuItem>
+          </TextField>
+          <TextField
+            label="価格（円）"
+            value={manualProp.price}
+            onChange={(e) => setManualProp((p) => ({ ...p, price: e.target.value }))}
+            fullWidth
+            size="small"
+            placeholder="例: 25000000"
+          />
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField
+              label="間取り"
+              value={manualProp.floor_plan}
+              onChange={(e) => setManualProp((p) => ({ ...p, floor_plan: e.target.value }))}
+              fullWidth
+              size="small"
+            />
+            <TextField
+              label="構造"
+              value={manualProp.structure}
+              onChange={(e) => setManualProp((p) => ({ ...p, structure: e.target.value }))}
+              fullWidth
+              size="small"
+            />
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField
+              label="土地面積（m²）"
+              value={manualProp.land_area}
+              onChange={(e) => setManualProp((p) => ({ ...p, land_area: e.target.value }))}
+              fullWidth
+              size="small"
+            />
+            <TextField
+              label="建物面積（m²）"
+              value={manualProp.building_area}
+              onChange={(e) => setManualProp((p) => ({ ...p, building_area: e.target.value }))}
+              fullWidth
+              size="small"
+            />
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField
+              label="固定資産税（円）"
+              value={manualProp.property_tax}
+              onChange={(e) => setManualProp((p) => ({ ...p, property_tax: e.target.value }))}
+              fullWidth
+              size="small"
+            />
+            <TextField
+              label="管理費（円）"
+              value={manualProp.management_fee}
+              onChange={(e) => setManualProp((p) => ({ ...p, management_fee: e.target.value }))}
+              fullWidth
+              size="small"
+            />
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField
+              label="積立金（円）"
+              value={manualProp.reserve_fund}
+              onChange={(e) => setManualProp((p) => ({ ...p, reserve_fund: e.target.value }))}
+              fullWidth
+              size="small"
+            />
+            <TextField
+              label="駐車場"
+              value={manualProp.parking}
+              onChange={(e) => setManualProp((p) => ({ ...p, parking: e.target.value }))}
+              fullWidth
+              size="small"
+            />
+          </Box>
+          <TextField
+            label="引渡し"
+            value={manualProp.delivery}
+            onChange={(e) => setManualProp((p) => ({ ...p, delivery: e.target.value }))}
+            fullWidth
+            size="small"
+          />
+          <TextField
+            label="内覧前伝達事項"
+            value={manualProp.pre_viewing_notes}
+            onChange={(e) => setManualProp((p) => ({ ...p, pre_viewing_notes: e.target.value }))}
+            fullWidth
+            size="small"
+            multiline
+            minRows={2}
+          />
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setManualInputOpen(false)} variant="outlined">閉じる</Button>
+        <Button onClick={() => setManualInputOpen(false)} variant="contained">この内容で確定</Button>
+      </DialogActions>
+    </Dialog>
     </>
   );
 };
