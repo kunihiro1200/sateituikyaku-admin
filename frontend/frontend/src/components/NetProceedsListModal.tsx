@@ -787,7 +787,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
 
     <!-- none_empty / none_mortgage_empty: 空列ヘッダー（テンプレート画像の表ヘッダー行に重ねて項目名を白文字で表示） -->
     ${(p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty') ? npBox(
-      p.taxMode === 'none_mortgage_empty' ? 83 : 86,
+      p.taxMode === 'none_mortgage_empty' ? 81 : 86,
       138, 35, 10,
       (p.emptyItemLabel || '解体費用\n（税込）').replace(/\n/g, '<br>'),
       11, 400, '#ffffff', debug, 'emptyHeader',
@@ -833,7 +833,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
       const mortgageLeft  = p.taxMode === 'none_mortgage' ? 100 : p.taxMode === 'none_mortgage_empty' ? 115 : p.taxMode === 'known_mortgage' ? 89 : 77;
       // none_empty: 空項目列 = 86mm / none_mortgage_empty: 空項目列 = 89mm（金額）
       const emptyItemLeft = p.taxMode === 'none_mortgage_empty' ? 89 : 86;
-      const stampLeft     = p.taxMode === 'none_mortgage' ? 130 : p.taxMode === 'none_mortgage_empty' ? 136 : p.taxMode === 'none' ? 111
+      const stampLeft     = p.taxMode === 'none_mortgage' ? 130 : p.taxMode === 'none_mortgage_empty' ? 137 : p.taxMode === 'none' ? 111
         : p.taxMode === 'none_empty' ? 124
         : p.taxMode === 'known_mortgage' ? 107
         : p.taxMode === 'known' ? 95
