@@ -748,6 +748,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
   return `<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8"><title>手残りリスト</title>
 <base href="${p.baseUrl || ''}/" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@700&display=swap" rel="stylesheet" />
 <style>
   @page{size:A4 portrait;margin:0;}
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -777,7 +778,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
          プレビューのデバッグモードで実際のテンプレート画像とズレていないか確認し、必要に応じて調整すること。 -->
 
     <!-- none_empty: 空列ヘッダー（テンプレート画像の表ヘッダー行に重ねて項目名を白文字で表示） -->
-    ${p.taxMode === 'none_empty' ? npBox(86, 140, 35, 8, p.emptyItemLabel || '解体費用', 12, 700, '#ffffff', debug, 'emptyHeader', 'justify-content:center;') : ''}
+    ${p.taxMode === 'none_empty' ? npBox(86, 140, 35, 8, p.emptyItemLabel || '解体費用', 12, 700, '#ffffff', debug, 'emptyHeader', 'justify-content:center;font-family:\'Noto Serif JP\',serif;') : ''}
 
     ${((p.taxMode === 'none' || p.taxMode === 'none_mortgage' || p.taxMode === 'none_empty') ? p.rows.slice(0, 9) : (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? p.rows.slice(0, 12) : p.rows.slice(0, 9)).map((row, i) => {
       // template2(取得費不明) / template2_teitou(取得費不明・抵当権抹消費用あり): baseTop=180, 行間9mm
