@@ -777,7 +777,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
          プレビューのデバッグモードで実際のテンプレート画像とズレていないか確認し、必要に応じて調整すること。 -->
 
     <!-- none_empty: 空列ヘッダー（テンプレート画像の表ヘッダー行に重ねて項目名を白文字で表示） -->
-    ${p.taxMode === 'none_empty' ? npBox(86, 146, 35, 8, p.emptyItemLabel || '解体費用', 10, 700, '#ffffff', debug, 'emptyHeader', 'justify-content:center;') : ''}
+    ${p.taxMode === 'none_empty' ? npBox(86, 142, 35, 8, p.emptyItemLabel || '解体費用', 12, 700, '#ffffff', debug, 'emptyHeader', 'justify-content:center;font-family:\'Noto Sans JP\',\'Hiragino Kaku Gothic Pro\',\'Meiryo\',sans-serif;') : ''}
 
     ${((p.taxMode === 'none' || p.taxMode === 'none_mortgage' || p.taxMode === 'none_empty') ? p.rows.slice(0, 9) : (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? p.rows.slice(0, 12) : p.rows.slice(0, 9)).map((row, i) => {
       // template2(取得費不明) / template2_teitou(取得費不明・抵当権抹消費用あり): baseTop=180, 行間9mm
@@ -828,7 +828,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
       const hasEmptyItemCol = p.taxMode === 'none_empty';
       const hasTaxCols = p.taxMode !== 'none' && p.taxMode !== 'none_mortgage' && p.taxMode !== 'none_empty';
       // none_empty: 空項目金額（万円→円）
-      const emptyItemCostYen = hasEmptyItemCol ? (parseFloat(p.emptyItemAmountMan || '') || 0) * 10_000 : 0;
+      const emptyItemCostYen = hasEmptyItemCol ? (parseFloat((p.emptyItemAmountMan || '').trim()) || 0) * 10_000 : 0;
       return [
         npBox(  6, rowTop, p.taxMode === 'unknown_mortgage' ? 30 : 32, rowH, fmtM(row.priceYen),     12, 600, '#1a1a1a', debug, i===0?'売却価格':''),
         npBox(brokerageLeft, rowTop, p.taxMode === 'unknown_mortgage' ? 28 : (p.taxMode === 'none_empty' ? 35 : 32), rowH, fmtM(row.brokerageFee), 12, 600, '#1a1a1a', debug, i===0?'仲介手数料':''),
@@ -837,7 +837,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         // none_empty: 空項目列（仲介手数料の右、印紙代の左）- 全データ行で金額を黒文字表示
         hasEmptyItemCol ? npBox(emptyItemLeft, rowTop, 35, rowH,
           emptyItemCostYen > 0 ? fmtM(emptyItemCostYen) : '─',
-          11, 600, '#1a1a1a', debug, '') : '',
+          12, 600, '#1a1a1a', debug, '') : '',
         npBox(stampLeft,     rowTop, p.taxMode === 'unknown_mortgage' ? 16 : (p.taxMode === 'none_empty' ? 35 : 18), rowH, fmtM(row.stampDuty),    12, 600, '#1a1a1a', debug, i===0?'印紙代':''),
         // template3(none/none_mortgage/none_empty)は取得費・譲渡所得税列なし
         (p.taxMode === 'unknown' || p.taxMode === 'unknown_mortgage') ? npBox( acqCostLeft, rowTop, p.taxMode === 'unknown_mortgage' ? 22 : 28, rowH, acqCost > 0 ? fmtM(acqCost) : '', 12, 600, '#1a1a1a', debug, i===0?'取得費':'') : '',
