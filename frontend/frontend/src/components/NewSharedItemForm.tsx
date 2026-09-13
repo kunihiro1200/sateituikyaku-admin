@@ -181,7 +181,6 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
         'タイトル': title,
         '内容': content,
         '共有日': sharingDate,
-        '共有できていない': staffNotShared.join(','),
         'PDF1': pdfUrls[0] || '',
         'PDF2': pdfUrls[1] || '',
         'PDF3': pdfUrls[2] || '',
@@ -201,6 +200,20 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
       };
 
       await api.post('/api/shared-items', payload);
+
+      // 未確認スタッフをDBに保存（詳細画面はスプレッドシートではなくDBを参照するため）
+      if (staffNotShared.length > 0) {
+        try {
+          await Promise.all(
+            staffNotShared.map((staffName) =>
+              api.post(`/api/shared-items/${nextId}/unconfirmed-staff`, { staffName })
+            )
+          );
+        } catch (staffError) {
+          console.error('Failed to save unconfirmed staff:', staffError);
+          // スタッフ保存失敗は全体の保存を止めない
+        }
+      }
 
       // 画像コメントは別途DBに保存
       if (images.some(img => img.comment)) {
