@@ -51,7 +51,7 @@ const DEPRECIATION_RATE_WOOD = 0.046;
 
 /** 譲渡所得税計算 */
 export interface TransferTaxInput {
-  mode: 'unknown' | 'known' | 'none' | 'unknown_mortgage' | 'none_mortgage' | 'known_mortgage';
+  mode: 'unknown' | 'known' | 'none' | 'unknown_mortgage' | 'none_mortgage' | 'known_mortgage' | 'none_empty';
   salePrice: number;         // 円
   acquisitionCost?: number;  // 円（取得費明確の場合）
   purchaseYear?: number;     // 購入年（建物減価償却計算用）
@@ -72,7 +72,7 @@ export const calcTransferTax = (input: TransferTaxInput): {
   const currentYear = new Date().getFullYear();
   const saleYear = input.saleYear ?? currentYear;
 
-  if (input.mode === 'none' || input.mode === 'none_mortgage') {
+  if (input.mode === 'none' || input.mode === 'none_mortgage' || input.mode === 'none_empty') {
     return { taxAmount: 0, taxableGain: 0, acquisitionCostUsed: 0, holdingYears: 0, isLongTerm: false, depreciationAmount: 0, buildingAcquisitionCost: 0 };
   }
 
@@ -188,6 +188,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
       'template2_teitou.png', 'template2_oita_teitou.png',
       'template3_teitou_direct.png', 'template3_oita_teitou_direct.png',
       'template4_teitou.png', 'template4_oita_teitou.png',
+      'template3_empty.png', 'template3_oita_empty.png',
     ];
     templates.forEach(name => {
       const url = `/sale-schedule/illustrations/${name}`;
@@ -203,13 +204,17 @@ export const NetProceedsListModal: React.FC<Props> = ({
   }, []);
 
   // 譲渡所得税
-  const [taxMode, setTaxMode] = useState<'unknown' | 'known' | 'none' | 'unknown_mortgage' | 'none_mortgage' | 'known_mortgage'>('none');
+  const [taxMode, setTaxMode] = useState<'unknown' | 'known' | 'none' | 'unknown_mortgage' | 'none_mortgage' | 'known_mortgage' | 'none_empty'>('none');
   const [acquisitionCostMan, setAcquisitionCostMan] = useState('');
   const [purchaseYear, setPurchaseYear] = useState('');
 
   // 抵当権抹消費用：taxMode='unknown_mortgage'（取得費不明・抵当権抹消費用あり）／'none_mortgage'（なし・抵当権抹消費用あり）
   // ／'known_mortgage'（取得費明確・抵当権抹消費用あり）のときのみtrue
   const hasMortgage = taxMode === 'unknown_mortgage' || taxMode === 'none_mortgage' || taxMode === 'known_mortgage';
+
+  // 空項目（なし・空項目）: 任意の項目名と金額を入力できる
+  const [emptyItemLabel, setEmptyItemLabel] = useState('');
+  const [emptyItemAmountMan, setEmptyItemAmountMan] = useState('');
   // 抵当権抹消費用の金額：売主番号がFIを含む場合は5万円、含まない場合は3万円
   const isFiSeller = initialSellerNumber.trim().toUpperCase().includes('FI');
   const mortgageReleaseFee = isFiSeller ? 50_000 : 30_000;
@@ -242,6 +247,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
       const brokerageFee = calcBrokerageFee(priceYen);
       const stampDuty = calcStampDuty(priceYen);
       const mortgageRelease = hasMortgage ? mortgageReleaseFee : 0;
+      const emptyItemCost = taxMode === 'none_empty' ? (parseFloat(emptyItemAmountMan) || 0) * 10_000 : 0;
       const { taxAmount } = calcTransferTax({
         mode: taxMode,
         salePrice: priceYen,
@@ -250,10 +256,10 @@ export const NetProceedsListModal: React.FC<Props> = ({
         purchaseYear: (!isLand && purchaseYear) ? parseInt(purchaseYear) : undefined,
         saleYear: new Date().getFullYear(),
       });
-      const netProceeds = priceYen - brokerageFee - stampDuty - mortgageRelease - taxAmount;
+      const netProceeds = priceYen - brokerageFee - stampDuty - mortgageRelease - taxAmount - emptyItemCost;
       return { priceYen, brokerageFee, stampDuty, mortgageRelease, transferTax: taxAmount, netProceeds };
     });
-  }, [maxPriceMan, minPriceMan, priceStepMan, hasMortgage, mortgageReleaseFee, taxMode, acquisitionCostMan, purchaseYear, isLand]);
+  }, [maxPriceMan, minPriceMan, priceStepMan, hasMortgage, mortgageReleaseFee, taxMode, acquisitionCostMan, purchaseYear, isLand, emptyItemAmountMan]);
 
   // 税計算の詳細（代表値: 最高額で表示）
   const taxDetail = useMemo(() => {
@@ -283,6 +289,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
     if (mode === 'unknown_mortgage') return `template2${sfx}_teitou.png`;
     if (mode === 'none_mortgage') return isOitaMode ? 'template3_oita_teitou_direct.png' : 'template3_teitou_direct.png';
     if (mode === 'known_mortgage') return `template4${sfx}_teitou.png`;
+    if (mode === 'none_empty') return isOitaMode ? 'template3_oita_empty.png' : 'template3_empty.png';
     return mode === 'none' ? `template3${sfx}.png`
       : mode === 'known' ? `template4${sfx}.png`
       : `template2${sfx}.png`;
@@ -296,6 +303,8 @@ export const NetProceedsListModal: React.FC<Props> = ({
       sellerNumber: initialSellerNumber,
       baseUrl: window.location.origin,
       templateDataUrl: imgCache[tplName],
+      emptyItemLabel,
+      emptyItemAmountMan,
       fmtMan: (yen: number, approx = false) => {
         const man = yen / 10_000;
         const str = Number.isInteger(man) ? `${man.toLocaleString()}万円` : `${man.toFixed(2)}万円`;
@@ -334,6 +343,8 @@ export const NetProceedsListModal: React.FC<Props> = ({
           if (d.taxMode) setTaxMode(d.taxMode);
           if (d.acquisitionCostMan) setAcquisitionCostMan(d.acquisitionCostMan);
           if (d.purchaseYear) setPurchaseYear(d.purchaseYear);
+          if (d.emptyItemLabel) setEmptyItemLabel(d.emptyItemLabel);
+          if (d.emptyItemAmountMan) setEmptyItemAmountMan(d.emptyItemAmountMan);
         }
       } catch {
         // 保存データなし → 初期値のまま
@@ -347,7 +358,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
     try {
       const { default: api } = await import('../services/api');
       await api.post(`/api/document-drafts/${initialSellerNumber}/net_proceeds`, {
-        data: { maxPriceMan, minPriceMan, priceStepMan, taxMode, acquisitionCostMan, purchaseYear },
+        data: { maxPriceMan, minPriceMan, priceStepMan, taxMode, acquisitionCostMan, purchaseYear, emptyItemLabel, emptyItemAmountMan },
       });
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
@@ -471,6 +482,8 @@ export const NetProceedsListModal: React.FC<Props> = ({
                   <FormControlLabel value="none" control={<Radio size="small" />} label="なし" />
                   <FormControlLabel value="none_mortgage" control={<Radio size="small" />}
                     label={<Typography variant="body2">なし・抵当権抹消費用あり</Typography>} />
+                  <FormControlLabel value="none_empty" control={<Radio size="small" />}
+                    label={<Typography variant="body2">なし・空項目</Typography>} />
                   <FormControlLabel value="unknown" control={<Radio size="small" />}
                     label={<Typography variant="body2">あり ─ 取得費不明（売価の5%で計算）</Typography>} />
                   <FormControlLabel value="unknown_mortgage" control={<Radio size="small" />}
@@ -481,6 +494,27 @@ export const NetProceedsListModal: React.FC<Props> = ({
                     label={<Typography variant="body2">あり ─ 取得費明確・抵当権抹消費用あり</Typography>} />
                 </RadioGroup>
               </FormControl>
+
+              {taxMode === 'none_empty' && (
+                <Grid container spacing={1} sx={{ mt: 0.5 }}>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth size="small" label="項目名（手動入力）"
+                      placeholder="例: 引越し費用"
+                      value={emptyItemLabel}
+                      onChange={e => setEmptyItemLabel(e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth size="small" label="金額（万円）" type="number"
+                      placeholder="例: 50"
+                      value={emptyItemAmountMan}
+                      onChange={e => setEmptyItemAmountMan(e.target.value)}
+                    />
+                  </Grid>
+                </Grid>
+              )}
 
               {(taxMode === 'known' || taxMode === 'known_mortgage') && (
                 <Grid container spacing={1} sx={{ mt: 0.5 }}>
@@ -565,6 +599,8 @@ export const NetProceedsListModal: React.FC<Props> = ({
                     sellerNumber: initialSellerNumber,
                     baseUrl: window.location.origin,
                     templateDataUrl: imgCache[getTemplateName(taxMode, initialSellerNumber)],
+                    emptyItemLabel,
+                    emptyItemAmountMan,
                     fmtMan: (yen: number, approx = false) => {
                       const man = yen / 10_000;
                       const str = Number.isInteger(man) ? `${man.toLocaleString()}万円` : `${man.toFixed(2)}万円`;
@@ -659,7 +695,7 @@ interface BuildHtmlParams {
   propertyAddress: string;
   rows: NetProceedsRow[];
   hasMortgage: boolean;
-  taxMode: 'unknown' | 'known' | 'none' | 'unknown_mortgage' | 'none_mortgage' | 'known_mortgage';
+  taxMode: 'unknown' | 'known' | 'none' | 'unknown_mortgage' | 'none_mortgage' | 'known_mortgage' | 'none_empty';
   acquisitionCostMan: string;
   purchaseYear: string;
   taxDetail: ReturnType<typeof calcTransferTax> | null;
@@ -668,6 +704,8 @@ interface BuildHtmlParams {
   sellerNumber?: string; // 売主番号（FI で始まらない場合は _oita テンプレートを使用）
   baseUrl?: string;      // srcDoc内でのベースURL（window.location.origin）
   templateDataUrl?: string; // Base64エンコードされた背景画像（srcDoc内で外部URL不可のため）
+  emptyItemLabel?: string;  // なし・空項目: 項目名
+  emptyItemAmountMan?: string; // なし・空項目: 金額（万円単位の文字列）
 }
 
 function buildNetProceedsHtml(p: BuildHtmlParams): string {
@@ -692,6 +730,8 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     ? (isOita ? 'template3_oita_teitou_direct.png?v=20260816a' : 'template3_teitou_direct.png?v=20260816a')
     : p.taxMode === 'known_mortgage'
     ? `template4${suffix}_teitou.png?v=20260816b`
+    : p.taxMode === 'none_empty'
+    ? (isOita ? 'template3_oita_empty.png?v=20260913a' : 'template3_empty.png?v=20260913a')
     : p.taxMode === 'none'
     ? `template3${suffix}.png?v=20260807c`
     : p.taxMode === 'known'
@@ -721,7 +761,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     ${debug ? buildNpDebugGrid() : ''}
 
     <!-- ① 物件所在地（確定済み・変更禁止） -->
-    ${npBox(46, (p.taxMode === 'none' || p.taxMode === 'none_mortgage') ? 37 : (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? 32 : 38, 144, 7, propertyAddress || '', 13.5, 600, '#1a1a1a', debug, 'propertyAddress',
+    ${npBox(46, (p.taxMode === 'none' || p.taxMode === 'none_mortgage' || p.taxMode === 'none_empty') ? 37 : (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? 32 : 38, 144, 7, propertyAddress || '', 13.5, 600, '#1a1a1a', debug, 'propertyAddress',
       'justify-content:flex-start;padding-left:1mm;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;align-items:flex-start;')}
 
     <!-- ② 売主名（確定済み・変更禁止） -->
@@ -732,14 +772,14 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     <!-- ※ unknown_mortgage(template2_teitou)・none_mortgage(template3_teitou_direct)・known_mortgage(template4_teitou)は
          座位未確定のため、それぞれ最も近いモード(unknown/none/known)と同じ座標を暫定使用。
          プレビューのデバッグモードで実際のテンプレート画像とズレていないか確認し、必要に応じて調整すること。 -->
-    ${((p.taxMode === 'none' || p.taxMode === 'none_mortgage') ? p.rows.slice(0, 9) : (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? p.rows.slice(0, 12) : p.rows.slice(0, 9)).map((row, i) => {
+    ${((p.taxMode === 'none' || p.taxMode === 'none_mortgage' || p.taxMode === 'none_empty') ? p.rows.slice(0, 9) : (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? p.rows.slice(0, 12) : p.rows.slice(0, 9)).map((row, i) => {
       // template2(取得費不明) / template2_teitou(取得費不明・抵当権抹消費用あり): baseTop=180, 行間9mm
-      // template3(なし) / template3_teitou_direct(なし・抵当権抹消費用あり): baseTop=155(-1mm上), 行間10mm(+1mm)
+      // template3(なし) / template3_teitou_direct(なし・抵当権抹消費用あり) / template3_empty(なし・空項目): baseTop=155(-1mm上), 行間10mm(+1mm)
       // template4(取得費明確) / template4_teitou(取得費明確・抵当権抹消費用あり): baseTop=146, 1-2行目9mm・3-4行目8mm・5行目以降9mm
-      const baseTop = (p.taxMode === 'unknown' || p.taxMode === 'unknown_mortgage') ? 180 : (p.taxMode === 'none' || p.taxMode === 'none_mortgage') ? 155 : 146;
+      const baseTop = (p.taxMode === 'unknown' || p.taxMode === 'unknown_mortgage') ? 180 : (p.taxMode === 'none' || p.taxMode === 'none_mortgage' || p.taxMode === 'none_empty') ? 155 : 146;
       const rowInterval = (p.taxMode === 'known' || p.taxMode === 'known_mortgage')
         ? (i < 2 ? 9 : i < 4 ? 8 : 9)
-        : (p.taxMode === 'none' || p.taxMode === 'none_mortgage') ? 10 : 9;
+        : (p.taxMode === 'none' || p.taxMode === 'none_mortgage' || p.taxMode === 'none_empty') ? 10 : 9;
       // template4: 累積オフセットで正確に計算
       // i=0:+0, i=1:+9, i=2:+17, i=3:+25, i=4:+34, i=5:+43, ...
       const rowTop = (p.taxMode === 'known' || p.taxMode === 'known_mortgage')
@@ -756,14 +796,19 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
       const acqCost = (p.taxMode === 'unknown' || p.taxMode === 'unknown_mortgage')
         ? Math.round(row.priceYen * 0.05)
         : 0;
+      // none_empty: 仲介手数料45mm→空項目列→印紙代→手残り金額
       // template3のみ仲介手数料50mm、印紙代111mm / template4は仲介手数料45mm、印紙代91mm
       // unknown_mortgage(template2_teitou)・none_mortgage(template3_teitou_direct)・known_mortgage(template4_teitou)は
       // 「抵当権抹消費用」列を印紙代の左側に挿入するため他モードより列幅を詰める
       const brokerageLeft = (p.taxMode === 'none' || p.taxMode === 'none_mortgage') ? 50
+        : p.taxMode === 'none_empty' ? 44
         : (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? 45
         : p.taxMode === 'unknown_mortgage' ? 38 : 40;
       const mortgageLeft  = p.taxMode === 'none_mortgage' ? 100 : p.taxMode === 'known_mortgage' ? 89 : 77; // 印紙代の左側（none_mortgageは+10mm+2mm+2mm、known_mortgageは+20mm-1mm右にずらし済み）
+      // none_empty: 空項目列 X座標（仲介手数料の右隣）
+      const emptyItemLeft = 88;
       const stampLeft     = p.taxMode === 'none_mortgage' ? 130 : p.taxMode === 'none' ? 111
+        : p.taxMode === 'none_empty' ? 128
         : p.taxMode === 'known_mortgage' ? 107
         : p.taxMode === 'known' ? 95
         : p.taxMode === 'unknown_mortgage' ? 97 : 74;
@@ -771,16 +816,21 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
       // template3のみ譲渡所得税+4mm / template4は手残り金額+2mm / unknown_mortgageは+2mm・フォント1段階小さく
       const transferTaxLeft = p.taxMode === 'none' ? 135 : p.taxMode === 'unknown_mortgage' ? 138 : 131;
       const transferTaxFontSize = p.taxMode === 'unknown_mortgage' ? 11 : 12;
-      const netProceedsLeft = (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? 163 : p.taxMode === 'unknown_mortgage' ? 164 : 161;
+      const netProceedsLeft = (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? 163 : p.taxMode === 'unknown_mortgage' ? 164 : p.taxMode === 'none_empty' ? 162 : 161;
       const hasMortgageCol = p.taxMode === 'unknown_mortgage' || p.taxMode === 'none_mortgage' || p.taxMode === 'known_mortgage';
-      const hasTaxCols = p.taxMode !== 'none' && p.taxMode !== 'none_mortgage';
+      const hasEmptyItemCol = p.taxMode === 'none_empty';
+      const hasTaxCols = p.taxMode !== 'none' && p.taxMode !== 'none_mortgage' && p.taxMode !== 'none_empty';
+      // none_empty: 空項目金額（万円→円）
+      const emptyItemCostYen = hasEmptyItemCol ? (parseFloat(p.emptyItemAmountMan || '') || 0) * 10_000 : 0;
       return [
         npBox(  6, rowTop, p.taxMode === 'unknown_mortgage' ? 30 : 32, rowH, fmtM(row.priceYen),     12, 600, '#1a1a1a', debug, i===0?'売却価格':''),
-        npBox(brokerageLeft, rowTop, p.taxMode === 'unknown_mortgage' ? 28 : 32, rowH, fmtM(row.brokerageFee), 12, 600, '#1a1a1a', debug, i===0?'仲介手数料':''),
+        npBox(brokerageLeft, rowTop, p.taxMode === 'unknown_mortgage' ? 28 : (p.taxMode === 'none_empty' ? 28 : 32), rowH, fmtM(row.brokerageFee), 12, 600, '#1a1a1a', debug, i===0?'仲介手数料':''),
         // unknown_mortgage/none_mortgage/known_mortgage(抵当権抹消費用あり)のみ抵当権抹消費用列を印紙代の左側に表示
         hasMortgageCol ? npBox(mortgageLeft, rowTop, 18, rowH, fmtM(row.mortgageRelease), 12, 600, '#1a1a1a', debug, i===0?'抵当権抹消':'') : '',
-        npBox(stampLeft,     rowTop, p.taxMode === 'unknown_mortgage' ? 16 : 18, rowH, fmtM(row.stampDuty),    12, 600, '#1a1a1a', debug, i===0?'印紙代':''),
-        // template3(none/none_mortgage)は取得費・譲渡所得税列なし
+        // none_empty: 空項目列（仲介手数料の右、印紙代の左）
+        hasEmptyItemCol ? npBox(emptyItemLeft, rowTop, 28, rowH, emptyItemCostYen > 0 ? fmtM(emptyItemCostYen) : (i === 0 && p.emptyItemLabel ? '' : ''), 11, 600, '#1a1a1a', debug, i===0 ? (p.emptyItemLabel || '項目') : '') : '',
+        npBox(stampLeft,     rowTop, p.taxMode === 'unknown_mortgage' ? 16 : (p.taxMode === 'none_empty' ? 18 : 18), rowH, fmtM(row.stampDuty),    12, 600, '#1a1a1a', debug, i===0?'印紙代':''),
+        // template3(none/none_mortgage/none_empty)は取得費・譲渡所得税列なし
         (p.taxMode === 'unknown' || p.taxMode === 'unknown_mortgage') ? npBox( acqCostLeft, rowTop, p.taxMode === 'unknown_mortgage' ? 22 : 28, rowH, acqCost > 0 ? fmtM(acqCost) : '', 12, 600, '#1a1a1a', debug, i===0?'取得費':'') : '',
         (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? npBox( 94, rowTop, 28, rowH, '', 12, 600, '#1a1a1a', debug, '') : '',
         hasTaxCols ? npBox(transferTaxLeft, rowTop, 30, rowH, fmtM(row.transferTax, true), transferTaxFontSize, 600, '#1a1a1a', debug, i===0?'譲渡所得税':'') : '',
