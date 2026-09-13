@@ -787,7 +787,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
 
     <!-- none_empty / none_mortgage_empty: 空列ヘッダー（テンプレート画像の表ヘッダー行に重ねて項目名を白文字で表示） -->
     ${(p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty') ? npBox(
-      p.taxMode === 'none_mortgage_empty' ? 86 : 86,
+      p.taxMode === 'none_mortgage_empty' ? 83 : 86,
       138, 35, 10,
       (p.emptyItemLabel || '解体費用\n（税込）').replace(/\n/g, '<br>'),
       11, 400, '#ffffff', debug, 'emptyHeader',
@@ -819,7 +819,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         ? Math.round(row.priceYen * 0.05)
         : 0;
       // none_empty: 仲介手数料43mm→空項目列(86mm)→印紙代(124mm)→手残り金額
-      // none_mortgage_empty: 仲介手数料48mm→空項目列(89mm)→抵当権抹消費用(113mm)→印紙代(133mm)→手残り金額(162mm)
+      // none_mortgage_empty: 仲介手数料48mm→空項目列(89mm)→抵当権抹消費用(115mm)→印紙代(136mm)→手残り金額(162mm)
       //   (template3_teitou_empty の列順: 仲介手数料→空項目→抵当権抹消→印紙代→手残り)
       // template3のみ仲介手数料50mm、印紙代111mm / template4は仲介手数料45mm、印紙代91mm
       // unknown_mortgage(template2_teitou)・none_mortgage(template3_teitou_direct)・known_mortgage(template4_teitou)は
@@ -830,10 +830,10 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         : (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? 45
         : p.taxMode === 'unknown_mortgage' ? 38 : 40;
       // none_mortgage_empty: 空項目の右に抵当権抹消列
-      const mortgageLeft  = p.taxMode === 'none_mortgage' ? 100 : p.taxMode === 'none_mortgage_empty' ? 113 : p.taxMode === 'known_mortgage' ? 89 : 77;
+      const mortgageLeft  = p.taxMode === 'none_mortgage' ? 100 : p.taxMode === 'none_mortgage_empty' ? 115 : p.taxMode === 'known_mortgage' ? 89 : 77;
       // none_empty: 空項目列 = 86mm / none_mortgage_empty: 空項目列 = 89mm（金額）
       const emptyItemLeft = p.taxMode === 'none_mortgage_empty' ? 89 : 86;
-      const stampLeft     = p.taxMode === 'none_mortgage' ? 130 : p.taxMode === 'none_mortgage_empty' ? 133 : p.taxMode === 'none' ? 111
+      const stampLeft     = p.taxMode === 'none_mortgage' ? 130 : p.taxMode === 'none_mortgage_empty' ? 136 : p.taxMode === 'none' ? 111
         : p.taxMode === 'none_empty' ? 124
         : p.taxMode === 'known_mortgage' ? 107
         : p.taxMode === 'known' ? 95
