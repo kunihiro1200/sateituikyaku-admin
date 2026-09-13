@@ -1063,11 +1063,6 @@ export function generateExtraPage1Html(base: string, isFI: boolean = false): str
     <div style="font-size:18pt;font-weight:bold;">住まい購入の流れ</div>
     <img src="${imgFamily}" height="90" style="margin-left:auto;"/>
   </div>
-  <!-- 購入までの行程 -->
-  <div style="display:flex;align-items:center;margin-bottom:10px;">
-    <span style="font-size:9pt;margin-right:8px;">🐾</span>
-    <span style="font-size:11pt;font-weight:bold;">購入までの行程</span>
-  </div>
   <!-- フロー図（画像） -->
   <img src="${base}/ifoo-assets/flow-chart.png" style="width:100%;margin-bottom:14px;display:block;"/>
   <!-- 押さえておきたい税 -->
