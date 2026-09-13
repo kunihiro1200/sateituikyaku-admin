@@ -10,6 +10,7 @@ export interface ViewingPreparationButtonProps {
   address?: string | null | undefined;
   buyer?: Record<string, any> | null;
   linkedProperties?: Array<Record<string, any>>;
+  otherCompanyProperty?: string | null | undefined;
 }
 
 /**
@@ -24,6 +25,7 @@ export const ViewingPreparationButton: React.FC<ViewingPreparationButtonProps> =
   address,
   buyer,
   linkedProperties,
+  otherCompanyProperty,
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -50,6 +52,7 @@ export const ViewingPreparationButton: React.FC<ViewingPreparationButtonProps> =
         address={address}
         buyer={buyer}
         linkedProperties={linkedProperties}
+        otherCompanyProperty={otherCompanyProperty}
       />
     </>
   );

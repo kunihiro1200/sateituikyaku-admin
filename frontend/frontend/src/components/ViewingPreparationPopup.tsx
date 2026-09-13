@@ -30,6 +30,8 @@ export interface ViewingPreparationPopupProps {
   address?: string | null | undefined;
   buyer?: Record<string, any> | null;
   linkedProperties?: Array<Record<string, any>>;
+  /** 他社物件情報（buyer.other_company_property）。値があれば他社物件とみなす */
+  otherCompanyProperty?: string | null | undefined;
 }
 
 // 固定リンク定数（ATBBのみ）
@@ -108,12 +110,19 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
   address,
   buyer,
   linkedProperties,
+  otherCompanyProperty,
 }) => {
   const hasBuyerNumber = buyerNumber != null && buyerNumber !== '';
   // 物件番号があるかどうか：propertyNumber プロップ、かつ linkedProperties に有効な物件番号を持つものがある
   const hasPropertyNumber = (propertyNumber != null && propertyNumber !== '')
     && (linkedProperties != null && linkedProperties.length > 0
         && linkedProperties.some((lp) => lp.property_number != null && lp.property_number !== ''));
+  // 他社物件かどうか（buyer.other_company_property に値がある、または明示的に渡された）
+  const otherCompanyValue = otherCompanyProperty ?? (buyer?.other_company_property as string | null | undefined);
+  const isOtherCompanyProperty = !hasPropertyNumber
+    && otherCompanyValue != null && String(otherCompanyValue).trim() !== '';
+  // 2〜6の資料を表示するかどうか：自社物件（hasPropertyNumber）または他社物件
+  const showMaterials = hasPropertyNumber || isOtherCompanyProperty;
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
   const [nearbyMapModalOpen, setNearbyMapModalOpen] = useState(false);
   const [printing1, setPrinting1] = useState(false);
@@ -398,7 +407,7 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
             />
           </ListItem>
           {/* 内覧準備資料（カラー） */}
-          {(hasPropertyNumber && linkedProperties && linkedProperties.length > 0) && (
+          {showMaterials && (
             <ListItem component="li" sx={{ display: 'list-item', py: 0.5 }}>
               <ListItemText
                 primary={
@@ -559,9 +568,31 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
               />
             </ListItem>
           )}
+          {/* 他社物件の評価ポイント（物件番号が無いため未入力表示） */}
+          {isOtherCompanyProperty && (
+            <ListItem
+              component="li"
+              sx={{ display: 'list-item', py: 0.5 }}
+            >
+              <ListItemText
+                primary={
+                  <Box>
+                    <Typography component="span">
+                      評価ポイント！：
+                    </Typography>
+                    <Box sx={{ mt: 0.5 }}>
+                      <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
+                        評価ポイント未入力
+                      </Typography>
+                    </Box>
+                  </Box>
+                }
+              />
+            </ListItem>
+          )}
           {/* その他資料（アフターメンテナンス＋e暮らしサポート） - FI物件以外 */}
-          {hasPropertyNumber && linkedProperties && linkedProperties.length > 0 && (() => {
-            const propNum = ((linkedProperties[0]?.property_number as string) || '').toUpperCase();
+          {showMaterials && (() => {
+            const propNum = ((linkedProperties?.[0]?.property_number as string) || '').toUpperCase();
             const isFI = propNum.includes('FI');
             return !isFI;
           })() && (
