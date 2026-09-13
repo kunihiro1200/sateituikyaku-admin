@@ -151,7 +151,7 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
     return await uploadFileToStorage(uploadedFile.file, type);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (sendChatAfter = false) => {
     if (!validate()) return;
 
     setSaving(true);
@@ -259,13 +259,13 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
         }
       }
 
-      // 共有場が「他」かつチャット送信が有効な場合、保存後にチャット送信
-      if (sharingLocation === '他' && (scheduledChatDatetime || chatSuccess)) {
+      // チャット送信ボタン経由の場合は保存後にチャット送信
+      if (sendChatAfter && sharingLocation === '他') {
         try {
           await handleChatSend(nextId);
         } catch (chatError) {
           console.error('チャット送信エラー:', chatError);
-          // チャット送信失敗は全体の保存を止めない
+          // チャット送信失敗は保存成功を取り消さない
         }
       }
 
@@ -318,12 +318,14 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
     }
   };
 
-  const handleChatSendClick = () => {
+  const handleChatSendClick = async () => {
     if (!validate()) {
       setApiError('必須項目を入力してからチャット送信してください');
       return;
     }
-    handleChatSend();
+    // 新規作成の場合は先に保存してからチャット送信する
+    // （チャット送信にはアイテムIDが必要なため）
+    await handleSave(true);
   };
 
   return (
@@ -647,13 +649,45 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
                 size="small"
                 InputLabelProps={{ shrink: true }}
                 sx={{ mt: 0.5 }}
-                helperText="未入力の場合は保存時に即時送信"
+                helperText="未入力の場合は今すぐ送信ボタンで即時送信"
               />
             </Grid>
             <Grid item xs={12}>
-              <Alert severity="info" sx={{ fontSize: '0.875rem' }}>
-                💬 <strong>チャット送信</strong>: 保存すると指定した日時（または即時）にGoogle Chatへ送信されます
+              <Box sx={{ p: 1.5, bgcolor: '#fff3e0', borderRadius: 1, border: '1px solid #ffb74d' }}>
+                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={includeWarningText}
+                    onChange={(e) => setIncludeWarningText(e.target.checked)}
+                    style={{ marginRight: 8, width: 18, height: 18, cursor: 'pointer' }}
+                  />
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#e65100' }}>
+                    **「共有できていないスタッフ」の自分のアカウントにチェックして必ず保存してください**
+                  </Typography>
+                </label>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, ml: 3.5 }}>
+                  ※ チェックを入れると、チャット送信時に上記の注意文が含まれます
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={12}>
+              <Alert severity="info" sx={{ fontSize: '0.875rem', mb: 1 }}>
+                💬 <strong>チャット送信</strong>: 保存後に「今すぐ送信」または予定日時を指定して送信できます
               </Alert>
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={handleChatSendClick}
+                disabled={sendingChat || saving}
+                startIcon={sendingChat ? <CircularProgress size={16} color="inherit" /> : undefined}
+                sx={{
+                  bgcolor: '#7e57c2',
+                  '&:hover': { bgcolor: '#5e35b1' },
+                  fontWeight: 'bold',
+                }}
+              >
+                {sendingChat ? '送信中...' : scheduledChatDatetime ? '予約送信' : '今すぐ送信'}
+              </Button>
             </Grid>
           </>
         )}
