@@ -778,7 +778,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
          プレビューのデバッグモードで実際のテンプレート画像とズレていないか確認し、必要に応じて調整すること。 -->
 
     <!-- none_empty: 空列ヘッダー（テンプレート画像の表ヘッダー行に重ねて項目名を白文字で表示） -->
-    ${p.taxMode === 'none_empty' ? npBox(86, 140, 35, 8, p.emptyItemLabel || '解体費用', 12, 700, '#ffffff', debug, 'emptyHeader', 'justify-content:center;font-family:\'Noto Serif JP\',serif;') : ''}
+    ${p.taxMode === 'none_empty' ? npBox(86, 138, 35, 8, p.emptyItemLabel || '解体費用', 12, 400, '#ffffff', debug, 'emptyHeader', 'justify-content:center;font-family:\'Noto Serif JP\',serif;') : ''}
 
     ${((p.taxMode === 'none' || p.taxMode === 'none_mortgage' || p.taxMode === 'none_empty') ? p.rows.slice(0, 9) : (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? p.rows.slice(0, 12) : p.rows.slice(0, 9)).map((row, i) => {
       // template2(取得費不明) / template2_teitou(取得費不明・抵当権抹消費用あり): baseTop=180, 行間9mm
