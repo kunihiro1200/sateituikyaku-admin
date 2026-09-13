@@ -216,7 +216,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
   const hasMortgage = taxMode === 'unknown_mortgage' || taxMode === 'none_mortgage' || taxMode === 'known_mortgage';
 
   // 空項目（なし・空項目）: 任意の項目名と金額を入力できる
-  const [emptyItemLabel, setEmptyItemLabel] = useState('解体費用');
+  const [emptyItemLabel, setEmptyItemLabel] = useState('解体費用\n（税込）');
   const [emptyItemAmountMan, setEmptyItemAmountMan] = useState('');
   // 抵当権抹消費用の金額：売主番号がFIを含む場合は5万円、含まない場合は3万円
   const isFiSeller = initialSellerNumber.trim().toUpperCase().includes('FI');
@@ -306,7 +306,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
       sellerNumber: initialSellerNumber,
       baseUrl: window.location.origin,
       templateDataUrl: imgCache[tplName],
-      emptyItemLabel,
+      emptyItemLabel: emptyItemLabel.replace(/\n/g, '<br>'),
       emptyItemAmountMan,
       fmtMan: (yen: number, approx = false) => {
         const man = yen / 10_000;
@@ -506,6 +506,8 @@ export const NetProceedsListModal: React.FC<Props> = ({
                       placeholder="例: 引越し費用"
                       value={emptyItemLabel}
                       onChange={e => setEmptyItemLabel(e.target.value)}
+                      multiline
+                      rows={2}
                     />
                   </Grid>
                   <Grid item xs={12}>
@@ -602,7 +604,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
                     sellerNumber: initialSellerNumber,
                     baseUrl: window.location.origin,
                     templateDataUrl: imgCache[getTemplateName(taxMode, initialSellerNumber)],
-                    emptyItemLabel,
+                    emptyItemLabel: emptyItemLabel.replace(/\n/g, '<br>'),
                     emptyItemAmountMan,
                     fmtMan: (yen: number, approx = false) => {
                       const man = yen / 10_000;
@@ -778,7 +780,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
          プレビューのデバッグモードで実際のテンプレート画像とズレていないか確認し、必要に応じて調整すること。 -->
 
     <!-- none_empty: 空列ヘッダー（テンプレート画像の表ヘッダー行に重ねて項目名を白文字で表示） -->
-    ${p.taxMode === 'none_empty' ? npBox(86, 138, 35, 8, p.emptyItemLabel || '解体費用', 12, 400, '#ffffff', debug, 'emptyHeader', 'justify-content:center;font-family:\'Noto Serif JP\',serif;') : ''}
+    ${p.taxMode === 'none_empty' ? npBox(86, 138, 35, 10, (p.emptyItemLabel || '解体費用\n（税込）').replace(/\n/g, '<br>'), 11, 400, '#ffffff', debug, 'emptyHeader', 'justify-content:center;text-align:center;font-family:\'Noto Serif JP\',serif;white-space:normal;line-height:1.3;flex-direction:column;') : ''}
 
     ${((p.taxMode === 'none' || p.taxMode === 'none_mortgage' || p.taxMode === 'none_empty') ? p.rows.slice(0, 9) : (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? p.rows.slice(0, 12) : p.rows.slice(0, 9)).map((row, i) => {
       // template2(取得費不明) / template2_teitou(取得費不明・抵当権抹消費用あり): baseTop=180, 行間9mm
