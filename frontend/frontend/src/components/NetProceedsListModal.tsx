@@ -282,7 +282,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
 
   const fmtMan = (yen: number, approx = false) => {
     const man = yen / 10_000;
-    const str = Number.isInteger(man) ? `${man.toLocaleString()}万円` : `${man.toFixed(2)}万円`;
+    const str = Number.isInteger(man) ? `${man.toLocaleString()}万円` : `${parseFloat(man.toFixed(2))}万円`;
     return approx ? `約${str}` : str;
   };
 
@@ -312,7 +312,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
       emptyItemAmountMan,
       fmtMan: (yen: number, approx = false) => {
         const man = yen / 10_000;
-        const str = Number.isInteger(man) ? `${man.toLocaleString()}万円` : `${man.toFixed(2)}万円`;
+        const str = Number.isInteger(man) ? `${man.toLocaleString()}万円` : `${parseFloat(man.toFixed(2))}万円`;
         return approx ? `約${str}` : str;
       },
       debug: false,
@@ -612,7 +612,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
                     emptyItemAmountMan,
                     fmtMan: (yen: number, approx = false) => {
                       const man = yen / 10_000;
-                      const str = Number.isInteger(man) ? `${man.toLocaleString()}万円` : `${man.toFixed(2)}万円`;
+                      const str = Number.isInteger(man) ? `${man.toLocaleString()}万円` : `${parseFloat(man.toFixed(2))}万円`;
                       return approx ? `約${str}` : str;
                     },
                     debug: debugMode,
