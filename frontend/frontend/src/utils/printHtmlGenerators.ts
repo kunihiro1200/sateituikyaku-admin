@@ -1087,7 +1087,7 @@ export function generateExtraPage1Html(base: string, isFI: boolean = false): str
         【原則】<br>宅地……評価額×4%<br>住宅……評価額×4%<br><br>
         【軽減措置】<br>・宅地……評価額×1/2×3%－控除額<br>・住宅……（評価額－控除額）×3%<br>
         　住宅の基礎控除最大1,200万円<br>　（新築年月日により変動、条件あり）<br>
-        ＊2027年3月31日まで<br>＊不動産を取得した日から60日以内に申告すること！
+        ＊<span style="color:#e53935;font-weight:bold;">2027年3月31日まで</span><br>＊不動産を取得した日から<span style="color:#e53935;font-weight:bold;">60日以内</span>に申告すること！
       </div>
       <div style="display:flex;align-items:center;margin-bottom:6px;">
         <span style="background:${yellow};border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-weight:bold;font-size:8pt;margin-right:6px;">02</span>
@@ -1095,7 +1095,7 @@ export function generateExtraPage1Html(base: string, isFI: boolean = false): str
       </div>
       <div style="font-size:8pt;line-height:1.8;">
         ＊毎年末の住宅ローン残高<br>＊住宅の取得対価<br>上記いずれか少ない方の金額の0.7%が13年間（中古住宅13年、認定なしは10年）に渡り所得税の額から控除！<br><br>
-        【条件】<br>＊合計所得が2000万円以下であること<br>　（床面積40㎡以上50㎡未満は1000万円以下）<br>＊住宅ローンの借入期間が10年以上<br>＊新築住宅は省エネ基準への適合が必須<br>＊中古住宅は昭和57年1月1日以降に建築、または耐震基準適合証明書が必要
+        【条件】<br>＊<span style="color:#e53935;font-weight:bold;">合計所得が2000万円以下</span>であること<br>　（床面積40㎡以上50㎡未満は1000万円以下）<br>＊住宅ローンの借入期間が<span style="color:#e53935;font-weight:bold;">10年以上</span><br>＊新築住宅は省エネ基準への適合が必須<br>＊中古住宅は<span style="color:#e53935;font-weight:bold;">昭和57年1月1日以降</span>に建築、または耐震基準適合証明書が必要
       </div>
     </div>
     <!-- 右列 -->
