@@ -787,7 +787,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
 
     <!-- none_empty / none_mortgage_empty: 空列ヘッダー（テンプレート画像の表ヘッダー行に重ねて項目名を白文字で表示） -->
     ${(p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty') ? npBox(
-      86,
+      p.taxMode === 'none_mortgage_empty' ? 89 : 86,
       138, 35, 10,
       (p.emptyItemLabel || '解体費用\n（税込）').replace(/\n/g, '<br>'),
       11, 400, '#ffffff', debug, 'emptyHeader',
@@ -819,20 +819,21 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         ? Math.round(row.priceYen * 0.05)
         : 0;
       // none_empty: 仲介手数料43mm→空項目列(86mm)→印紙代(124mm)→手残り金額
-      // none_mortgage_empty: 仲介手数料43mm→空項目列(86mm)→抵当権抹消費用(106mm)→印紙代(124mm)→手残り金額
+      // none_mortgage_empty: 仲介手数料46mm→空項目列(89mm)→抵当権抹消費用(111mm)→印紙代(129mm)→手残り金額
       //   (template3_teitou_empty の列順: 仲介手数料→空項目→抵当権抹消→印紙代→手残り)
       // template3のみ仲介手数料50mm、印紙代111mm / template4は仲介手数料45mm、印紙代91mm
       // unknown_mortgage(template2_teitou)・none_mortgage(template3_teitou_direct)・known_mortgage(template4_teitou)は
       // 「抵当権抹消費用」列を印紙代の左側に挿入するため他モードより列幅を詰める
       const brokerageLeft = (p.taxMode === 'none' || p.taxMode === 'none_mortgage') ? 50
-        : (p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty') ? 43
+        : p.taxMode === 'none_mortgage_empty' ? 46
+        : (p.taxMode === 'none_empty') ? 43
         : (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? 45
         : p.taxMode === 'unknown_mortgage' ? 38 : 40;
       // none_mortgage_empty: 空項目の右に抵当権抹消列
-      const mortgageLeft  = p.taxMode === 'none_mortgage' ? 100 : p.taxMode === 'none_mortgage_empty' ? 106 : p.taxMode === 'known_mortgage' ? 89 : 77;
-      // none_empty / none_mortgage_empty: 空項目列は仲介手数料(43mm)の右隣 = 86mm
-      const emptyItemLeft = 86;
-      const stampLeft     = p.taxMode === 'none_mortgage' ? 130 : p.taxMode === 'none_mortgage_empty' ? 124 : p.taxMode === 'none' ? 111
+      const mortgageLeft  = p.taxMode === 'none_mortgage' ? 100 : p.taxMode === 'none_mortgage_empty' ? 111 : p.taxMode === 'known_mortgage' ? 89 : 77;
+      // none_empty: 空項目列 = 86mm / none_mortgage_empty: 空項目列 = 89mm
+      const emptyItemLeft = p.taxMode === 'none_mortgage_empty' ? 89 : 86;
+      const stampLeft     = p.taxMode === 'none_mortgage' ? 130 : p.taxMode === 'none_mortgage_empty' ? 129 : p.taxMode === 'none' ? 111
         : p.taxMode === 'none_empty' ? 124
         : p.taxMode === 'known_mortgage' ? 107
         : p.taxMode === 'known' ? 95
