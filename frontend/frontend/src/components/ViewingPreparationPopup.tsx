@@ -14,6 +14,8 @@ import {
   CircularProgress,
   TextField,
   MenuItem,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
@@ -134,6 +136,8 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
   const [printingCashRepeater, setPrintingCashRepeater] = useState(false);
   const [printingOther, setPrintingOther] = useState(false);
 
+  // 他社物件の版（大分版 / 福岡版）。福岡版のとき property_number を 'FI' 扱いにして各ジェネレータの福岡分岐を有効化する
+  const [otherRegion, setOtherRegion] = useState<'oita' | 'fukuoka'>('oita');
   // 他社物件の内覧準備資料（白黒）用の手入力フォーム
   const [manualInputOpen, setManualInputOpen] = useState(false);
   const [manualProp, setManualProp] = useState({
@@ -168,7 +172,8 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
       return Number.isFinite(n) && String(v).trim() !== '' ? n : undefined;
     };
     return {
-      property_number: '',
+      // 福岡版はジェネレータの isFI 判定（property_number に 'FI' が含まれる）を有効にするため 'FI' を渡す
+      property_number: otherRegion === 'fukuoka' ? 'FI' : '',
       address: manualProp.address || '',
       display_address: manualProp.address || '',
       property_type: manualProp.property_type || undefined,
@@ -253,9 +258,11 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
   const handlePrint2 = () => {
     if (!buyer) return;
     setPrinting2(true);
-    const propertyNumber = (linkedProperties && linkedProperties.length > 0)
-      ? (linkedProperties[0].property_number || '')
-      : '';
+    const propertyNumber = isOtherCompanyProperty
+      ? (otherRegion === 'fukuoka' ? 'FI' : '')  // 他社物件は選択した版で福岡/大分を切替
+      : ((linkedProperties && linkedProperties.length > 0)
+        ? (linkedProperties[0].property_number || '')
+        : '');
     import('../utils/printHtmlGenerators').then(({ generateViewingPrep2Html }) => {
       const html = generateViewingPrep2Html(buyer, getTodayStr(), propertyNumber);
       const iframe = document.createElement('iframe');
@@ -306,6 +313,24 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
         >
           ※準備前にカレンダーに●をつけてください
         </Typography>
+
+        {/* 他社物件：1・2の版（大分版 / 福岡版）を選択 */}
+        {isOtherCompanyProperty && (
+          <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <Typography component="span" sx={{ fontSize: '0.85rem', fontWeight: 'bold' }}>
+              版（1・2に反映）：
+            </Typography>
+            <ToggleButtonGroup
+              value={otherRegion}
+              exclusive
+              size="small"
+              onChange={(_, val) => { if (val) setOtherRegion(val); }}
+            >
+              <ToggleButton value="oita">大分版（いふう）</ToggleButton>
+              <ToggleButton value="fukuoka">福岡版（くじら不動産）</ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+        )}
 
         {/* 買主番号・物件番号コピーエリア */}
         <Box sx={{ mb: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
