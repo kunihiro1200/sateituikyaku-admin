@@ -1085,15 +1085,15 @@ export function generateExtraPage1Html(base: string, isFI: boolean = false): str
         【原則】<br>宅地……評価額×4%<br>住宅……評価額×4%<br><br>
         【軽減措置】<br>・宅地……評価額×1/2×3%－控除額<br>・住宅……（評価額－控除額）×3%<br>
         　住宅の基礎控除最大1,200万円<br>　（新築年月日により変動、条件あり）<br>
-        ＊2024年3月31日まで<br>＊不動産を取得した日から60日以内に申告すること！
+        ＊2027年3月31日まで<br>＊不動産を取得した日から60日以内に申告すること！
       </div>
       <div style="display:flex;align-items:center;margin-bottom:6px;">
         <span style="background:${yellow};border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-weight:bold;font-size:8pt;margin-right:6px;">02</span>
         <span style="font-weight:bold;font-size:9.5pt;">住宅ローン控除</span>
       </div>
       <div style="font-size:8pt;line-height:1.8;">
-        ＊毎年末の住宅ローン残高<br>＊住宅の取得対価<br>上記いずれか少ない方の金額の0.7%が13年間（中古住宅10年）に渡り所得税の額から控除！<br><br>
-        【条件】<br>＊年収が2000万円以下であること<br>＊住宅ローンの借入期間が10年以上<br>（昭和57年以降に建築された住宅）<br>⇒耐震基準適合証明書が必要
+        ＊毎年末の住宅ローン残高<br>＊住宅の取得対価<br>上記いずれか少ない方の金額の0.7%が13年間（中古住宅13年、認定なしは10年）に渡り所得税の額から控除！<br><br>
+        【条件】<br>＊合計所得が2000万円以下であること<br>　（床面積40㎡以上50㎡未満は1000万円以下）<br>＊住宅ローンの借入期間が10年以上<br>＊新築住宅は省エネ基準への適合が必須<br>＊中古住宅は昭和57年1月1日以降に建築、または耐震基準適合証明書が必要
       </div>
     </div>
     <!-- 右列 -->
@@ -1103,15 +1103,15 @@ export function generateExtraPage1Html(base: string, isFI: boolean = false): str
         <span style="font-weight:bold;font-size:9.5pt;">リフォームの優遇措置</span>
       </div>
       <div style="font-size:8pt;line-height:1.8;">
-        〈子育てエコホーム支援事業〉<br>
-        対象のリフォーム工事を行った世帯（子育て世帯以外も）を対象に、<span style="color:#e53935;font-weight:bold;">最大60万円</span>の補助が受けられるものです。<br>
-        交付申請期間：2024年4月2日〜予算上限に達するまで（遅くとも2024年12月31日）<br>
-        対象工事：住宅の省エネ改修（必須）、子育て／防災性向上／バリアフリー改修他<br><br>
-        詳細は下記サイトをご確認ください。<br>「子育てエコホーム支援事業」<br>https://kosodate-ecohome.mlit.go.jp/<br><br>
-        〈建築物グリーン化促進事業〉<br>
-        ●既存住宅における断熱リフォーム支援事業<br>
-        ●先進的窓リノベ2024事業<br>
-        ●給湯省エネ2024事業<br>
+        ＼みらいエコ住宅2026事業（Me住宅2026）／<br>
+        対象のリフォーム工事を行った世帯（子育て世帯以外も）を対象に、<span style="color:#e53935;font-weight:bold;">最大100万円</span>の補助が受けられるものです。<br>
+        交付申請期間：予算上限に達するまで（遅くとも2026年12月31日）<br>
+        対象工事：住宅の省エネ改修（開口部・躯体の断熱改修が必須）、子育て／防災性向上／バリアフリー改修他<br><br>
+        詳細は下記サイトをご確認ください。<br>「みらいエコ住宅2026事業」<br>https://mirai-eco2026.mlit.go.jp/<br><br>
+        〈住宅省エネ2026キャンペーン〉<br>
+        ●みらいエコ住宅2026事業<br>
+        ●先進的窓リノベ2026事業<br>　https://window-renovation2026.env.go.jp/<br>
+        ●給湯省エネ2026事業<br>　https://kyutou-shoene2026.meti.go.jp/<br>
         ●長期優良住宅化リフォーム推進事業　ほか<br><br>
         <img src="${imgOitaQr}" style="width:100%;display:${isFI ? 'none' : 'block'};margin-top:6px;"/>
       </div>
