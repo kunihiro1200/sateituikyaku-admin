@@ -259,6 +259,7 @@ export default function BuyerViewingResultPage() {
   const [campaignHandedOver, setCampaignHandedOver] = useState(false); // 10万円キャンペーンお渡し済みチェック
   const [askedNumberOfVisitors, setAskedNumberOfVisitors] = useState(false); // 何人来るか聞いたかチェック
   const [hasChildren, setHasChildren] = useState(false); // 子供がいるチェック
+  const [calendarReflected, setCalendarReflected] = useState(false); // カレンダーに反映したかチェック
   const [offerPdfFile, setOfferPdfFile] = useState<File | null>(null); // 買付PDF添付
   const [normalInitials, setNormalInitials] = useState<string[]>([]);
   const [calendarOpened, setCalendarOpened] = useState(false); // カレンダーを開いたかどうか
@@ -444,6 +445,8 @@ export default function BuyerViewingResultPage() {
       // 何人来るか聞いたか・子供がいるチェックの初期値をセット
       setAskedNumberOfVisitors(res.data.asked_number_of_visitors === true);
       setHasChildren(res.data.has_children === true);
+      // カレンダーに反映したかチェックの初期値をセット
+      setCalendarReflected(res.data.calendar_reflected === true);
       // property_numberがあれば買主リストを取得（linkedPropertiesが空の場合のフォールバック）
       if (res.data.property_number) {
         fetchPropertyBuyers(res.data.property_number);
@@ -1429,6 +1432,64 @@ export default function BuyerViewingResultPage() {
                     📅 カレンダーで開く
                   </Button>
               )}
+              {/* カレンダーに反映しましたか？チェック（内覧日があるとき必須・未チェックで点滅強調） */}
+              {buyer.viewing_date && (() => {
+                const reflectMissing = !calendarReflected;
+                return (
+                  <Box
+                    sx={{
+                      mt: 0.5,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.75,
+                      p: reflectMissing ? 0.75 : 0.5,
+                      borderRadius: 1,
+                      border: reflectMissing ? '2px solid' : '1px solid',
+                      borderColor: reflectMissing ? 'error.main' : '#e0e0e0',
+                      bgcolor: reflectMissing ? 'rgba(255, 205, 210, 0.35)' : 'transparent',
+                      transition: 'all 0.3s ease',
+                      ...(reflectMissing
+                        ? {
+                            animation: 'calendarReflectPulse 1.5s ease-in-out infinite',
+                            '@keyframes calendarReflectPulse': {
+                              '0%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.5)' },
+                              '70%': { boxShadow: '0 0 0 6px rgba(211, 47, 47, 0)' },
+                              '100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' },
+                            },
+                          }
+                        : {}),
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      id="calendar-reflected-check"
+                      checked={calendarReflected}
+                      onChange={async (e) => {
+                        const checked = e.target.checked;
+                        setCalendarReflected(checked);
+                        try {
+                          await handleInlineFieldSave('calendar_reflected', checked);
+                        } catch (err) {
+                          setCalendarReflected(!checked);
+                        }
+                      }}
+                      style={{ width: 18, height: 18, cursor: 'pointer', flexShrink: 0 }}
+                    />
+                    <label
+                      htmlFor="calendar-reflected-check"
+                      style={{
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold',
+                        color: reflectMissing ? '#d32f2f' : undefined,
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      カレンダーに反映しましたか？{reflectMissing ? ' *必須' : ''}
+                    </label>
+                  </Box>
+                );
+              })()}
             </Box>
 
             {/* 時間 */}
