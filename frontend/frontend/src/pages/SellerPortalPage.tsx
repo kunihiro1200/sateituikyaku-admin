@@ -208,18 +208,39 @@ export default function SellerPortalPage() {
 
 const IFOO_INFO = {
   name: '株式会社いふう',
+  catchcopy: '大分の建売・中古住宅・土地専門',
   address: '〒870-0044 大分市舞鶴町1丁目3-30 STビル1F',
-  tel: '097-533-2022',
-  email: 'tenant@ifoo-oita.com',
-  hp: 'https://ifoo-oita.com/',
+  telDisplay: 'TEL 097-533-2022',
+  telHref: 'tel:0975332022',
+  emailHref: 'mailto:tenant@ifoo-oita.com',
+  hpDisplay: 'ifoo-oita.com',
+  hpHref: 'https://ifoo-oita.com/',
 };
 
 const KUJIRA_INFO = {
   name: '株式会社くじら不動産',
+  catchcopy: '福岡の不動産売却サポート',
   address: '〒810-0073 福岡市中央区舞鶴3－1－10',
-  tel: '092-401-5331',
-  email: 'tenant@ifoo-oita.com',
-  hp: 'https://kujira-fudosan.com/',
+  telDisplay: 'TEL 092-401-5331',
+  telHref: 'tel:0924015331',
+  emailHref: 'mailto:tenant@info-oita.com',
+  hpDisplay: 'kujira-fudosan.com',
+  hpHref: 'https://kujira-fudosan.com/',
+};
+
+/** リンクテキスト共通スタイル */
+const linkSx = {
+  display: 'inline-block',
+  color: '#1A237E',
+  textDecoration: 'none',
+  minHeight: 44,
+  lineHeight: '44px',
+  px: 0.5,
+  '&:hover': {
+    textDecoration: 'underline',
+    textDecorationColor: '#C9A84C',
+    textUnderlineOffset: '3px',
+  },
 };
 
 function CompanySignature({ sellerNumber }: { sellerNumber: string }) {
@@ -230,54 +251,76 @@ function CompanySignature({ sellerNumber }: { sellerNumber: string }) {
     <Box
       sx={{
         mt: 2,
-        p: 2.5,
+        mb: 2,
+        p: 3,
         borderRadius: 3,
-        bgcolor: '#f5f5f5',
-        border: '1px solid #e0e0e0',
-        fontSize: '0.85rem',
-        lineHeight: 1.9,
+        bgcolor: '#FAFAFA',
+        border: '1px solid #E0E0E0',
+        textAlign: 'center',
       }}
     >
-      <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
+      {/* ゴールドの横線 */}
+      <Box sx={{ height: '1px', bgcolor: '#C9A84C', mb: 2, mx: 'auto', width: '40%' }} />
+
+      {/* 会社名 */}
+      <Typography
+        variant="subtitle1"
+        fontWeight="bold"
+        sx={{ color: '#1A237E', letterSpacing: '0.05em', mb: 0.25 }}
+      >
         {info.name}
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+
+      {/* キャッチコピー */}
+      <Typography
+        variant="caption"
+        sx={{ color: '#888', letterSpacing: '0.08em', display: 'block', mb: 1.5 }}
+      >
+        {info.catchcopy}
+      </Typography>
+
+      {/* 住所 */}
+      <Typography variant="caption" sx={{ color: '#888', display: 'block', mb: 1.5 }}>
         {info.address}
       </Typography>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-        <Typography variant="body2">
-          📞{' '}
-          <Box
-            component="a"
-            href={`tel:${info.tel.replace(/-/g, '')}`}
-            sx={{ color: 'primary.main', textDecoration: 'none', fontWeight: 'bold' }}
-          >
-            {info.tel}
-          </Box>
-        </Typography>
-        <Typography variant="body2">
-          ✉️{' '}
-          <Box
-            component="a"
-            href={`mailto:${info.email}`}
-            sx={{ color: 'primary.main', textDecoration: 'none' }}
-          >
-            {info.email}
-          </Box>
-        </Typography>
-        <Typography variant="body2">
-          🌐{' '}
-          <Box
-            component="a"
-            href={info.hp}
-            target="_blank"
-            rel="noopener noreferrer"
-            sx={{ color: 'primary.main', textDecoration: 'none' }}
-          >
-            {info.hp}
-          </Box>
-        </Typography>
+
+      {/* ゴールドの横線（細め） */}
+      <Box sx={{ height: '1px', bgcolor: '#E8D9AA', mb: 2, mx: 'auto', width: '60%' }} />
+
+      {/* 連絡先（縦並び・中央揃え） */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+        {/* 電話 */}
+        <Box
+          component="a"
+          href={info.telHref}
+          sx={{ ...linkSx, fontWeight: 600, fontSize: '0.95rem', letterSpacing: '0.04em' }}
+        >
+          {info.telDisplay}
+        </Box>
+
+        {/* メール */}
+        <Box
+          component="a"
+          href={info.emailHref}
+          sx={{ ...linkSx, fontSize: '0.875rem' }}
+        >
+          メールでお問い合わせ
+        </Box>
+
+        {/* Webサイト */}
+        <Box
+          component="a"
+          href={info.hpHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={{ ...linkSx, fontSize: '0.875rem' }}
+        >
+          {info.hpDisplay}
+        </Box>
       </Box>
+
+      {/* ゴールドの横線 */}
+      <Box sx={{ height: '1px', bgcolor: '#C9A84C', mt: 2, mx: 'auto', width: '40%' }} />
     </Box>
   );
 }
