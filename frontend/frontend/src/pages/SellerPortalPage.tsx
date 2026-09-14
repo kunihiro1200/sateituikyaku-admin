@@ -208,7 +208,7 @@ export default function SellerPortalPage() {
 
 const IFOO_INFO = {
   name: '株式会社いふう',
-  catchcopy: '大分の建売・中古住宅・土地専門',
+  catchcopy: '',
   address: '〒870-0044 大分市舞鶴町1丁目3-30 STビル1F',
   telDisplay: 'TEL 097-533-2022',
   telHref: 'tel:0975332022',
@@ -272,12 +272,14 @@ function CompanySignature({ sellerNumber }: { sellerNumber: string }) {
       </Typography>
 
       {/* キャッチコピー */}
-      <Typography
-        variant="caption"
-        sx={{ color: '#888', letterSpacing: '0.08em', display: 'block', mb: 1.5 }}
-      >
-        {info.catchcopy}
-      </Typography>
+      {info.catchcopy && (
+        <Typography
+          variant="caption"
+          sx={{ color: '#888', letterSpacing: '0.08em', display: 'block', mb: 1.5 }}
+        >
+          {info.catchcopy}
+        </Typography>
+      )}
 
       {/* 住所 */}
       <Typography variant="caption" sx={{ color: '#888', display: 'block', mb: 1.5 }}>
