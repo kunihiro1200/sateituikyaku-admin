@@ -800,8 +800,8 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
          座位未確定のため、それぞれ最も近いモード(unknown/none/known)と同じ座標を暫定使用。
          プレビューのデバッグモードで実際のテンプレート画像とズレていないか確認し、必要に応じて調整すること。 -->
 
-    <!-- none_empty / none_mortgage_empty / known_empty: 空列ヘッダー（テンプレート画像の表ヘッダー行に重ねて項目名を白文字で表示） -->
-    ${(p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty' || p.taxMode === 'known_empty') ? npBox(
+    <!-- none_empty / none_mortgage_empty / known_empty / unknown_mortgage_empty: 空列ヘッダー -->
+    ${(p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty' || p.taxMode === 'known_empty' || p.taxMode === 'unknown_mortgage_empty') ? npBox(
       p.taxMode === 'none_mortgage_empty' ? 81 : p.taxMode === 'known_empty' ? 96 : p.taxMode === 'unknown_mortgage_empty' ? 96 : 86,
       p.taxMode === 'known_empty' ? 167 : p.taxMode === 'unknown_mortgage_empty' ? 163 : 138, 28, 10,
       (p.emptyItemLabel || '解体費用\n（税込）').replace(/\n/g, '<br>'),
@@ -858,8 +858,8 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         : p.taxMode === 'unknown_mortgage_empty' ? 97 : p.taxMode === 'unknown_mortgage' ? 97 : 74;
       const acqCostLeft   = p.taxMode === 'unknown_mortgage' ? 115 : 94;
       // template3のみ譲渡所得税+4mm / template4は手残り金額+2mm / unknown_mortgageは+2mm・フォント1段階小さく
-      const transferTaxLeft = p.taxMode === 'none' ? 135 : p.taxMode === 'unknown_mortgage' ? 138 : 131;
-      const transferTaxFontSize = p.taxMode === 'unknown_mortgage' ? 11 : 12;
+      const transferTaxLeft = p.taxMode === 'none' ? 135 : p.taxMode === 'unknown_mortgage' ? 138 : p.taxMode === 'unknown_mortgage_empty' ? 143 : p.taxMode === 'known_empty' ? 138 : 131;
+      const transferTaxFontSize = (p.taxMode === 'unknown_mortgage' || p.taxMode === 'unknown_mortgage_empty') ? 11 : 12;
       const netProceedsLeft = (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? 163 : p.taxMode === 'unknown_mortgage' ? 164 : p.taxMode === 'none_mortgage_empty' ? 162 : (p.taxMode === 'none_empty') ? 161 : 161;
       const hasMortgageCol = p.taxMode === 'unknown_mortgage' || p.taxMode === 'none_mortgage' || p.taxMode === 'known_mortgage' || p.taxMode === 'none_mortgage_empty' || p.taxMode === 'unknown_mortgage_empty';
       const hasEmptyItemCol = p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty' || p.taxMode === 'known_empty' || p.taxMode === 'unknown_mortgage_empty';
@@ -881,7 +881,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         // template3(none/none_mortgage/none_empty)は取得費・譲渡所得税列なし
         (p.taxMode === 'unknown' || p.taxMode === 'unknown_mortgage') ? npBox( acqCostLeft, rowTop, p.taxMode === 'unknown_mortgage' ? 22 : 28, rowH, acqCost > 0 ? fmtM(acqCost) : '', 12, 600, '#1a1a1a', debug, i===0?'取得費':'') : '',
         (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? npBox( 94, rowTop, 28, rowH, '', 12, 600, '#1a1a1a', debug, '') : '',
-        hasTaxCols ? npBox(transferTaxLeft, rowTop, 30, rowH, fmtM(row.transferTax, true), transferTaxFontSize, 600, '#1a1a1a', debug, i===0?'譲渡所得税':'') : '',
+        hasTaxCols ? npBox(transferTaxLeft, rowTop, 30, rowH, `${Math.round(row.transferTax / 10_000).toLocaleString()}万円`, transferTaxFontSize, 600, '#1a1a1a', debug, i===0?'譲渡所得税':'') : '',
         npBox(netProceedsLeft, rowTop, 42, rowH, fmtM(row.netProceeds),  13, 900, '#c0392b', debug, i===0?'手残り金額':''),
       ].join('');
     }).join('')}
