@@ -222,14 +222,43 @@ export default function NetProceedsCard({
       )}
 
       {!detailedLoading && !detailedResult && (
-        <Button
-          fullWidth
-          variant="outlined"
-          sx={{ mt: 2 }}
-          onClick={() => setWizardOpen(true)}
-        >
-          税金なども含めた手取額を計算
-        </Button>
+        <Box sx={{ mt: 2 }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={() => setWizardOpen(true)}
+            sx={{
+              backgroundColor: '#EAF4FF',
+              borderColor: '#3B82F6',
+              color: '#1565C0',
+              fontWeight: 600,
+              minHeight: 44,
+              borderRadius: '8px',
+              fontSize: '0.95rem',
+              textTransform: 'none',
+              justifyContent: 'space-between',
+              px: 2,
+              '&:hover': {
+                backgroundColor: '#D0E8FF',
+                borderColor: '#2563EB',
+              },
+              '&:active': {
+                backgroundColor: '#BFDBFE',
+                borderColor: '#1D4ED8',
+              },
+            }}
+          >
+            税金なども含めた手取額を計算
+            <Typography component="span" sx={{ fontSize: '1.1rem', lineHeight: 1 }}>›</Typography>
+          </Button>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: 'block', textAlign: 'center', mt: 0.5 }}
+          >
+            譲渡所得税・抵当権抹消費用などを反映できます
+          </Typography>
+        </Box>
       )}
 
       <InlineChatSection
