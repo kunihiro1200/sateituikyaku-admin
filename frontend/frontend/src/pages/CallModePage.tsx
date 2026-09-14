@@ -977,6 +977,14 @@ const CallModePage = () => {
   const savedCommentsRef = useRef<string>(''); // loadAllData クロージャ内でdirty判定に使用
   const editableCommentsRef = useRef<string>(''); // loadAllData クロージャ内でdirty判定に使用
   const [savingComments, setSavingComments] = useState(false);
+  // コメント自動保存のデバウンスタイマー（売主切替時にキャンセルするために ref で管理）
+  const commentsAutoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // doSaveComments の最新版を ref で保持（売主切替前に前の売主のコメントを保存するために使用）
+  const doSaveCommentsRef = useRef<() => Promise<void>>(async () => {});
+  // doSaveComments が参照する id / editableComments を ref で保持
+  // （クロージャで直接参照すると売主切替後に古い値が残る問題を防ぐ）
+  const currentSellerIdRef = useRef<string | undefined>(undefined);
+  const currentEditableCommentsRef = useRef<string>('');
   
   // 保存処理のロック（同時実行を防ぐ）
   const savingLockRef = useRef<boolean>(false);
@@ -1827,11 +1835,19 @@ const CallModePage = () => {
     setActivities([]);
     setActivitiesLoaded(false);
     // 売主が切り替わったらコメントをリセット（前の売主のコメントが残らないようにする）
-    // ref も同時にリセットしないと loadAllData の dirty チェックが誤判定する
-    setEditableComments('');
-    setSavedComments('');
+    // ① デバウンスタイマーをキャンセル（残っていると新売主のIDに対して前の内容で保存が走る）
+    if (commentsAutoSaveTimerRef.current) {
+      clearTimeout(commentsAutoSaveTimerRef.current);
+      commentsAutoSaveTimerRef.current = null;
+    }
+    // ② doSaveComments が参照するIDを新しいIDに更新（タイマーキャンセル後に更新して安全に）
+    currentSellerIdRef.current = id;
+    // ③ ref も同時にリセットしないと loadAllData の dirty チェックが誤判定する
     editableCommentsRef.current = '';
     savedCommentsRef.current = '';
+    currentEditableCommentsRef.current = '';
+    setEditableComments('');
+    setSavedComments('');
     loadAllData();
     // 売主が切り替わったら選択画像をリセット（前の売主の添付が残らないようにする）
     setSelectedImages([]);
@@ -2094,11 +2110,22 @@ const CallModePage = () => {
     setCommentsEditedThisVisit(true);
 
     // デバウンス処理（1.5秒後に保存）
+    // タイマーを ref で保持しておき、売主切替時にキャンセルできるようにする
+    if (commentsAutoSaveTimerRef.current) {
+      clearTimeout(commentsAutoSaveTimerRef.current);
+    }
     const timeoutId = setTimeout(() => {
-      doSaveComments();
+      commentsAutoSaveTimerRef.current = null;
+      doSaveCommentsRef.current();
     }, 1500); // 1.5秒のデバウンス
+    commentsAutoSaveTimerRef.current = timeoutId;
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      clearTimeout(timeoutId);
+      if (commentsAutoSaveTimerRef.current === timeoutId) {
+        commentsAutoSaveTimerRef.current = null;
+      }
+    };
   }, [editableComments, savedComments, savingComments, unreachableConfirmOpen, unreachableStatus]);
 
   // ステータスセクションの自動保存を削除
@@ -2349,10 +2376,16 @@ const CallModePage = () => {
   // コメントのref同期（loadAllData クロージャ内でdirty判定に使用）
   useEffect(() => {
     editableCommentsRef.current = editableComments;
+    // doSaveComments が参照する最新コメントも同期
+    currentEditableCommentsRef.current = editableComments;
   }, [editableComments]);
   useEffect(() => {
     savedCommentsRef.current = savedComments;
   }, [savedComments]);
+  // doSaveComments が参照する売主IDを常に最新に保つ
+  useEffect(() => {
+    currentSellerIdRef.current = id;
+  }, [id]);
 
   // イエウールデータシート（仲介会社名・価格・取引様態）を取得
   useEffect(() => {
@@ -3323,22 +3356,33 @@ const CallModePage = () => {
       console.warn('⚠️ 保存処理が既に実行中です。スキップします。');
       return;
     }
+
+    // 保存対象のIDとコメントを ref から取得
+    // （クロージャで id / editableComments を参照すると、売主切替後に古い値や
+    //   新売主の空コメントで上書きしてしまう問題を防ぐ）
+    const targetId = currentSellerIdRef.current;
+    const targetComments = currentEditableCommentsRef.current;
+
+    if (!targetId) {
+      console.warn('⚠️ 保存対象のIDが取得できません。スキップします。');
+      return;
+    }
     
     try {
       savingLockRef.current = true; // ロックを取得
       setSavingComments(true);
       setError(null);
 
-      console.log('💾 コメントを保存中...', { comments: editableComments.substring(0, 50) });
+      console.log('💾 コメントを保存中...', { id: targetId, comments: targetComments.substring(0, 50) });
 
       // HTMLをそのまま保存（太字・色などの書式を保持）
-      await api.put(`/api/sellers/${id}`, {
-        comments: editableComments,
+      await api.put(`/api/sellers/${targetId}`, {
+        comments: targetComments,
       });
 
       console.log('✅ コメント保存成功');
       setSuccessMessage('コメントを保存しました');
-      setSavedComments(editableComments); // 保存済み状態を更新
+      setSavedComments(targetComments); // 保存済み状態を更新
       setTimeout(() => {
         setSuccessMessage(null);
       }, 3000);
@@ -3350,6 +3394,8 @@ const CallModePage = () => {
       savingLockRef.current = false; // ロックを解放
     }
   };
+  // doSaveComments の最新クロージャを ref に同期（売主切替前の保存用）
+  doSaveCommentsRef.current = doSaveComments;
 
   // 不通確認ダイアログ：「通電OK」として保存し、保留中の遷移を実行する
   const handleSaveCommentsAsTsudenOK = async () => {
