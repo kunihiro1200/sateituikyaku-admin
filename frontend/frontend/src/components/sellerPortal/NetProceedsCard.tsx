@@ -225,11 +225,12 @@ export default function NetProceedsCard({
         <Box sx={{ mt: 2 }}>
           <Button
             fullWidth
-            variant="outlined"
+            variant="contained"
+            disableElevation
             onClick={() => setWizardOpen(true)}
             sx={{
               backgroundColor: '#EAF4FF',
-              borderColor: '#3B82F6',
+              border: '1px solid #3B82F6',
               color: '#1565C0',
               fontWeight: 600,
               minHeight: 44,
@@ -238,13 +239,16 @@ export default function NetProceedsCard({
               textTransform: 'none',
               justifyContent: 'space-between',
               px: 2,
+              boxShadow: 'none',
               '&:hover': {
                 backgroundColor: '#D0E8FF',
-                borderColor: '#2563EB',
+                border: '1px solid #2563EB',
+                boxShadow: 'none',
               },
               '&:active': {
                 backgroundColor: '#BFDBFE',
-                borderColor: '#1D4ED8',
+                border: '1px solid #1D4ED8',
+                boxShadow: 'none',
               },
             }}
           >
