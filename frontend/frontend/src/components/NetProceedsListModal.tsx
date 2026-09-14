@@ -797,7 +797,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     <!-- none_empty / none_mortgage_empty / known_empty: 空列ヘッダー（テンプレート画像の表ヘッダー行に重ねて項目名を白文字で表示） -->
     ${(p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty' || p.taxMode === 'known_empty') ? npBox(
       p.taxMode === 'none_mortgage_empty' ? 81 : p.taxMode === 'known_empty' ? 96 : 86,
-      p.taxMode === 'known_empty' ? 165 : 138, 28, 10,
+      p.taxMode === 'known_empty' ? 167 : 138, 28, 10,
       (p.emptyItemLabel || '解体費用\n（税込）').replace(/\n/g, '<br>'),
       11, 400, '#ffffff', debug, 'emptyHeader',
       'justify-content:center;text-align:center;font-family:\'Noto Serif JP\',serif;white-space:normal;line-height:1.3;flex-direction:column;'
