@@ -278,13 +278,15 @@ const computeBaseStatus = (task: WorkTask): string => {
   }
 
   // 6. 要台帳作成
+  // 「決済終わりましたのチャット」が送信された（settlement_completed_chat に値が入った）
+  // タイミングで台帳作成に上げる。決済日が今日でも、チャットが飛べば対象にする。
   // ※ sales_contract_deadline が settlement_date より将来の場合は、
   //    settlement_date はデフォルト値とみなして無視する
   if (
     isBlank(task.ledger_created) &&
     isBlank(task.on_hold) &&
+    isNotBlank(task.settlement_completed_chat) &&
     isNotBlank(task.settlement_date) &&
-    dateLt(task.settlement_date, today()) &&
     isNotBlank(task.sales_contract_deadline) &&
     !dateGte(task.sales_contract_deadline, parseDate(task.settlement_date) ?? today())
   ) {
