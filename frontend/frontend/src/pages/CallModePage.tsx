@@ -1826,6 +1826,12 @@ const CallModePage = () => {
     // 売主切替直後に前の売主の送信履歴を表示しない
     setActivities([]);
     setActivitiesLoaded(false);
+    // 売主が切り替わったらコメントをリセット（前の売主のコメントが残らないようにする）
+    // ref も同時にリセットしないと loadAllData の dirty チェックが誤判定する
+    setEditableComments('');
+    setSavedComments('');
+    editableCommentsRef.current = '';
+    savedCommentsRef.current = '';
     loadAllData();
     // 売主が切り替わったら選択画像をリセット（前の売主の添付が残らないようにする）
     setSelectedImages([]);
