@@ -805,8 +805,10 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
       p.taxMode === 'none_mortgage_empty' ? 81 : p.taxMode === 'known_empty' ? 96 : p.taxMode === 'unknown_mortgage_empty' ? 111 : 86,
       p.taxMode === 'known_empty' ? 167 : p.taxMode === 'unknown_mortgage_empty' ? 168 : 138, 28, 10,
       (p.emptyItemLabel || '解体費用\n（税込）').replace(/\n/g, '<br>'),
-      11, p.taxMode === 'unknown_mortgage_empty' ? 300 : 400, '#ffffff', debug, 'emptyHeader',
-      'justify-content:center;text-align:center;font-family:\'Noto Serif JP\',serif;white-space:normal;line-height:1.3;flex-direction:column;'
+      11, p.taxMode === 'unknown_mortgage_empty' ? 200 : 400, '#ffffff', debug, 'emptyHeader',
+      p.taxMode === 'unknown_mortgage_empty'
+        ? 'justify-content:center;text-align:center;font-family:\'Noto Sans JP\',sans-serif;white-space:normal;line-height:1.3;flex-direction:column;'
+        : 'justify-content:center;text-align:center;font-family:\'Noto Serif JP\',serif;white-space:normal;line-height:1.3;flex-direction:column;'
     ) : ''}
 
     ${((p.taxMode === 'none' || p.taxMode === 'none_mortgage' || p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty') ? p.rows.slice(0, 9) : (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? p.rows.slice(0, 12) : p.rows.slice(0, 9)).map((row, i) => {
