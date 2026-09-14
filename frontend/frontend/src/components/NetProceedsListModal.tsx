@@ -802,10 +802,10 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
 
     <!-- none_empty / none_mortgage_empty / known_empty / unknown_mortgage_empty: 空列ヘッダー -->
     ${(p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty' || p.taxMode === 'known_empty' || p.taxMode === 'unknown_mortgage_empty') ? npBox(
-      p.taxMode === 'none_mortgage_empty' ? 81 : p.taxMode === 'known_empty' ? 96 : p.taxMode === 'unknown_mortgage_empty' ? 106 : 86,
+      p.taxMode === 'none_mortgage_empty' ? 81 : p.taxMode === 'known_empty' ? 96 : p.taxMode === 'unknown_mortgage_empty' ? 111 : 86,
       p.taxMode === 'known_empty' ? 167 : p.taxMode === 'unknown_mortgage_empty' ? 168 : 138, 28, 10,
       (p.emptyItemLabel || '解体費用\n（税込）').replace(/\n/g, '<br>'),
-      11, 400, '#ffffff', debug, 'emptyHeader',
+      11, p.taxMode === 'unknown_mortgage_empty' ? 300 : 400, '#ffffff', debug, 'emptyHeader',
       'justify-content:center;text-align:center;font-family:\'Noto Serif JP\',serif;white-space:normal;line-height:1.3;flex-direction:column;'
     ) : ''}
 
