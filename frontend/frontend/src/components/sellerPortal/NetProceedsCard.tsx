@@ -228,7 +228,7 @@ export default function NetProceedsCard({
           sx={{ mt: 2 }}
           onClick={() => setWizardOpen(true)}
         >
-          その他費用も差し引く
+          税金なども含めた手取額を計算
         </Button>
       )}
 
