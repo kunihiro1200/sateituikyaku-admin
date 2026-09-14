@@ -3450,7 +3450,11 @@ const CallModePage = () => {
     const isFollowingUp = editedStatus?.includes('追客中');
     const isNotUnreachable = unreachableStatus === '通電OK';
     if (isAfterJan2026 && isFollowingUp && isNotUnreachable && !editedConfidence) {
-      setError('確度を選択してください');
+      // setError はページ全体をエラー画面に置き換えてしまうため、
+      // 確度フィールドまでスクロール＆点滅ハイライトで入力を促す
+      confidenceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setConfidenceHighlight(true);
+      setTimeout(() => setConfidenceHighlight(false), 2500);
       return;
     }
 
