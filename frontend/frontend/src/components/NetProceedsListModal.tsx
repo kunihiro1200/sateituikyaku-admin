@@ -58,6 +58,7 @@ export interface TransferTaxInput {
   saleYear?: number;         // 売却年（所有期間計算用）
   landRatio?: number;        // 土地割合 0~1（デフォルト0.3）
   buildingRatio?: number;    // 建物割合（デフォルト0.7）
+  extraExpense?: number;     // 追加譲渡費用（解体費等）円
 }
 
 export const calcTransferTax = (input: TransferTaxInput): {
@@ -100,8 +101,8 @@ export const calcTransferTax = (input: TransferTaxInput): {
     acquisitionCostUsed = landCost + buildingBookValue;
   }
 
-  // 譲渡所得 = 売買価格 - 取得費 - 仲介手数料（譲渡費用）
-  const transferExpense = calcBrokerageFee(input.salePrice);
+  // 譲渡所得 = 売買価格 - 取得費 - 仲介手数料（譲渡費用）- 追加譲渡費用（解体費等）
+  const transferExpense = calcBrokerageFee(input.salePrice) + (input.extraExpense || 0);
   const gain = input.salePrice - acquisitionCostUsed - transferExpense;
   const taxableGain = Math.max(gain, 0);
 
@@ -260,6 +261,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
         // 土地は建物なし・減価償却不要のため purchaseYear を渡さない（長期前提）
         purchaseYear: (!isLand && purchaseYear) ? parseInt(purchaseYear) : undefined,
         saleYear: new Date().getFullYear(),
+        extraExpense: taxMode === 'known_empty' ? emptyItemCost : 0,
       });
       const netProceeds = priceYen - brokerageFee - stampDuty - mortgageRelease - taxAmount - emptyItemCost;
       return { priceYen, brokerageFee, stampDuty, mortgageRelease, transferTax: taxAmount, netProceeds };
@@ -278,6 +280,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
       // 土地は建物なし・減価償却不要のため purchaseYear を渡さない
       purchaseYear: (!isLand && purchaseYear) ? parseInt(purchaseYear) : undefined,
       saleYear: new Date().getFullYear(),
+      extraExpense: taxMode === 'known_empty' ? (parseFloat(emptyItemAmountMan) || 0) * 10_000 : 0,
     });
   }, [taxMode, maxPriceMan, acquisitionCostMan, purchaseYear, isLand]);
 
@@ -794,7 +797,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     <!-- none_empty / none_mortgage_empty: 空列ヘッダー（テンプレート画像の表ヘッダー行に重ねて項目名を白文字で表示） -->
     ${(p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty' || p.taxMode === 'known_empty') ? npBox(
       p.taxMode === 'none_mortgage_empty' ? 81 : p.taxMode === 'known_empty' ? 81 : 86,
-      p.taxMode === 'known_empty' ? 120 : 138, 35, 10,
+      138, 35, 10,
       (p.emptyItemLabel || '解体費用\n（税込）').replace(/\n/g, '<br>'),
       11, 400, '#ffffff', debug, 'emptyHeader',
       'justify-content:center;text-align:center;font-family:\'Noto Serif JP\',serif;white-space:normal;line-height:1.3;flex-direction:column;'
@@ -853,7 +856,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
       const netProceedsLeft = (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? 163 : p.taxMode === 'unknown_mortgage' ? 164 : p.taxMode === 'none_mortgage_empty' ? 162 : (p.taxMode === 'none_empty') ? 161 : 161;
       const hasMortgageCol = p.taxMode === 'unknown_mortgage' || p.taxMode === 'none_mortgage' || p.taxMode === 'known_mortgage' || p.taxMode === 'none_mortgage_empty';
       const hasEmptyItemCol = p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty' || p.taxMode === 'known_empty';
-      const hasTaxCols = p.taxMode !== 'none' && p.taxMode !== 'none_mortgage' && p.taxMode !== 'none_empty' && p.taxMode !== 'none_mortgage_empty' && p.taxMode !== 'known_empty';
+      const hasTaxCols = p.taxMode !== 'none' && p.taxMode !== 'none_mortgage' && p.taxMode !== 'none_empty' && p.taxMode !== 'none_mortgage_empty';
       // none_empty: 空項目金額（万円→円）
       const emptyItemCostYen = hasEmptyItemCol ? (parseFloat((p.emptyItemAmountMan || '').trim()) || 0) * 10_000 : 0;
       return [
