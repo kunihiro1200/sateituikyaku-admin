@@ -84,7 +84,7 @@ export const calcTransferTax = (input: TransferTaxInput): {
   let buildingAcquisitionCost = 0;
   let holdingYears = 0;
 
-  if (input.mode === 'unknown' || input.mode === 'unknown_mortgage') {
+  if (input.mode === 'unknown' || input.mode === 'unknown_mortgage' || input.mode === 'known_empty') {
     // 取得費不明: 売買価格の5%
     acquisitionCostUsed = Math.round(input.salePrice * 0.05);
   } else {
@@ -495,12 +495,12 @@ export const NetProceedsListModal: React.FC<Props> = ({
                     label={<Typography variant="body2">なし・抵当権抹消費用あり・空項目</Typography>} />
                   <FormControlLabel value="unknown" control={<Radio size="small" />}
                     label={<Typography variant="body2">あり ─ 取得費不明（売価の5%で計算）</Typography>} />
+                  <FormControlLabel value="known_empty" control={<Radio size="small" />}
+                    label={<Typography variant="body2">あり ─ 取得費不明・空項目</Typography>} />
                   <FormControlLabel value="unknown_mortgage" control={<Radio size="small" />}
                     label={<Typography variant="body2">あり ─ 取得費不明・抵当権抹消費用あり</Typography>} />
                   <FormControlLabel value="known" control={<Radio size="small" />}
                     label={<Typography variant="body2">あり ─ 取得費明確</Typography>} />
-                  <FormControlLabel value="known_empty" control={<Radio size="small" />}
-                    label={<Typography variant="body2">あり ─ 取得費明確・空項目</Typography>} />
                   <FormControlLabel value="known_mortgage" control={<Radio size="small" />}
                     label={<Typography variant="body2">あり ─ 取得費明確・抵当権抹消費用あり</Typography>} />
                 </RadioGroup>
@@ -779,11 +779,11 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     ${debug ? buildNpDebugGrid() : ''}
 
     <!-- ① 物件所在地（確定済み・変更禁止） -->
-    ${npBox(46, (p.taxMode === 'none' || p.taxMode === 'none_mortgage' || p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty') ? 37 : (p.taxMode === 'known' || p.taxMode === 'known_mortgage' || p.taxMode === 'known_empty') ? 32 : 38, 144, 7, propertyAddress || '', 13.5, 600, '#1a1a1a', debug, 'propertyAddress',
+    ${npBox(46, (p.taxMode === 'none' || p.taxMode === 'none_mortgage' || p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty') ? 37 : (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? 32 : 38, 144, 7, propertyAddress || '', 13.5, 600, '#1a1a1a', debug, 'propertyAddress',
       'justify-content:flex-start;padding-left:1mm;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;align-items:flex-start;')}
 
     <!-- ② 売主名（確定済み・変更禁止） -->
-    ${npBox(46, (p.taxMode === 'known' || p.taxMode === 'known_mortgage' || p.taxMode === 'known_empty') ? 43 : 47, 104, 7, ownerDisplay, 14, 600, '#1a1a1a', debug, 'ownerName', 'justify-content:flex-start;padding-left:1mm;')}
+    ${npBox(46, (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? 43 : 47, 104, 7, ownerDisplay, 14, 600, '#1a1a1a', debug, 'ownerName', 'justify-content:flex-start;padding-left:1mm;')}
 
     <!-- ③〜⑧ 表（行ごとにY座標固定・X座標共通） -->
     <!-- 行間: 7mm固定 / 列X座標確定済み -->
@@ -800,7 +800,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
       'justify-content:center;text-align:center;font-family:\'Noto Serif JP\',serif;white-space:normal;line-height:1.3;flex-direction:column;'
     ) : ''}
 
-    ${((p.taxMode === 'none' || p.taxMode === 'none_mortgage' || p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty') ? p.rows.slice(0, 9) : (p.taxMode === 'known' || p.taxMode === 'known_mortgage' || p.taxMode === 'known_empty') ? p.rows.slice(0, 12) : p.rows.slice(0, 9)).map((row, i) => {
+    ${((p.taxMode === 'none' || p.taxMode === 'none_mortgage' || p.taxMode === 'none_empty' || p.taxMode === 'none_mortgage_empty') ? p.rows.slice(0, 9) : (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? p.rows.slice(0, 12) : p.rows.slice(0, 9)).map((row, i) => {
       // template2(取得費不明) / template2_teitou(取得費不明・抵当権抹消費用あり): baseTop=180, 行間9mm
       // template3(なし) / template3_teitou_direct(なし・抵当権抹消費用あり) / template3_empty(なし・空項目) / template3_teitou_empty(なし・抵当権抹消費用あり・空項目): baseTop=155(-1mm上), 行間10mm(+1mm)
       // template4(取得費明確) / template4_teitou(取得費明確・抵当権抹消費用あり): baseTop=146, 1-2行目9mm・3-4行目8mm・5行目以降9mm
