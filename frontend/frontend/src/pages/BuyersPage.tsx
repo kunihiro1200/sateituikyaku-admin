@@ -26,6 +26,7 @@ import {
   Snackbar,
 } from '@mui/material';
 import { Search as SearchIcon, Sync as SyncIcon, Clear as ClearIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
@@ -597,6 +598,17 @@ export default function BuyersPage() {
     }
   };
 
+  const handleCopyBuyerNumber = async (buyerNumber: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(buyerNumber);
+      setSnackbarMessage(`${buyerNumber} をコピーしました`);
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('クリップボードへのコピーに失敗しました:', error);
+    }
+  };
+
   // ステータス選択時にURLパラメータを同期する
   const handleStatusSelect = (status: string | null) => {
     setSelectedCalculatedStatus(status);
@@ -917,12 +929,29 @@ export default function BuyersPage() {
                       <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
                           <Box
+                            onClick={(e) => buyer.buyer_number && handleCopyBuyerNumber(buyer.buyer_number, e)}
                             sx={{
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: 0.5,
+                              cursor: buyer.buyer_number ? 'pointer' : 'default',
                             }}
                           >
+                            <Typography
+                              variant="body2"
+                              fontWeight="bold"
+                              sx={{
+                                color: buyer.buyer_number?.startsWith('FK')
+                                  ? '#d32f2f'
+                                  : SECTION_COLORS.buyer.main,
+                                fontSize: '14px',
+                              }}
+                            >
+                              {buyer.buyer_number || '-'}
+                            </Typography>
+                            {buyer.buyer_number && (
+                              <ContentCopyIcon sx={{ fontSize: 14 }} />
+                            )}
                             {buyer.buyer_number && (() => {
                               const active = (presenceState[buyer.buyer_number] || [])
                                 .filter(r => Date.now() - new Date(r.entered_at).getTime() < 30 * 60 * 1000);
@@ -1015,6 +1044,7 @@ export default function BuyersPage() {
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                  <TableCell>買主番号</TableCell>
                   <TableCell sx={{ width: 60 }}>対応中</TableCell>
                   <TableCell>氏名</TableCell>
                   <TableCell>物件所在地</TableCell>
@@ -1035,11 +1065,11 @@ export default function BuyersPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={9} align="center">読み込み中...</TableCell>
+                    <TableCell colSpan={10} align="center">読み込み中...</TableCell>
                   </TableRow>
                 ) : buyers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} align="center">買主データが見つかりませんでした</TableCell>
+                    <TableCell colSpan={10} align="center">買主データが見つかりませんでした</TableCell>
                   </TableRow>
                 ) : (
                   buyers.map((buyer) => {
@@ -1051,6 +1081,32 @@ export default function BuyersPage() {
                         sx={{ cursor: 'pointer' }}
                         onClick={() => handleRowClick(buyer.buyer_number, buyer.viewing_date)}
                       >
+                        <TableCell>
+                          <Box
+                            onClick={(e) => buyer.buyer_number && handleCopyBuyerNumber(buyer.buyer_number, e)}
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              cursor: buyer.buyer_number ? 'pointer' : 'default',
+                              '&:hover .copy-icon': { visibility: 'visible' },
+                            }}
+                          >
+                            <Typography
+                              variant="body2"
+                              fontWeight="bold"
+                              sx={{ color: buyer.buyer_number?.startsWith('FK') ? '#d32f2f' : SECTION_COLORS.buyer.main }}
+                            >
+                              {buyer.buyer_number || '-'}
+                            </Typography>
+                            {buyer.buyer_number && (
+                              <ContentCopyIcon
+                                className="copy-icon"
+                                sx={{ fontSize: 14, visibility: 'hidden' }}
+                              />
+                            )}
+                          </Box>
+                        </TableCell>
                         <TableCell>
                           {buyer.buyer_number && (() => {
                             const active = (presenceState[buyer.buyer_number] || [])
