@@ -72,6 +72,9 @@ export const CACHE_KEYS = {
   SELLERS_ASSIGNEE_INITIALS: 'sellers_assignee_initials',
   SELLERS_LIST: 'sellers_list',
   SELLER_DETAIL: 'seller_detail', // 売主詳細（一覧→通話モードのプリフェッチ用）
+  CALLMODE_SIDEBAR_COUNTS: 'callmode_sidebar_counts',   // 通話モード用サイドバーカウント
+  CALLMODE_CATEGORY_SELLER_IDS: 'callmode_category_seller_ids', // 通話モード NEXTボタン用カテゴリ売主ID一覧
+  CALLMODE_SIDEBAR_SELLERS: 'callmode_sidebar_sellers', // 通話モード用サイドバー売主一覧
 } as const;
 
 /**

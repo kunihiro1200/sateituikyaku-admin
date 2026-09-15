@@ -863,7 +863,7 @@ const CallModePage = () => {
   }, [tempFilterId, listSortBy, listSortOrder]);
   
   // カテゴリフィルター（当日TEL分など）の売主ID一覧を取得（NEXTボタン用）
-  // selectedCategory が変わるたびに再取得する
+  // selectedCategory が変わるたびに再取得する（3分フロントキャッシュ付き）
   useEffect(() => {
     // 一時フィルターがある場合はそちらを優先するので取得しない
     if (tempFilterId || !selectedCategory || selectedCategory === 'all') {
@@ -871,6 +871,15 @@ const CallModePage = () => {
       return;
     }
     const fetchCategorySellerIds = async () => {
+      // カテゴリ＋ソート条件でキャッシュキーを生成
+      const vaKey = selectedVisitAssignee || '';
+      const cacheKey = `${CACHE_KEYS.CALLMODE_CATEGORY_SELLER_IDS}:${selectedCategory}:${listSortBy}:${listSortOrder}:${vaKey}`;
+      const cached = pageDataCache.get<string[]>(cacheKey);
+      if (cached) {
+        console.log(`[CallModePage] カテゴリ売主ID キャッシュヒット: ${selectedCategory} (${cached.length}件)`);
+        setCategorySellerIds(cached);
+        return;
+      }
       try {
         const params: any = {
           page: 1,
@@ -887,6 +896,8 @@ const CallModePage = () => {
         const sellersRes = await api.get('/api/sellers', { params });
         const ids: string[] = (sellersRes.data.data || []).map((s: any) => s.id);
         setCategorySellerIds(ids);
+        // 3分キャッシュ（カテゴリ内を順番に見ている間は再取得不要）
+        pageDataCache.set(cacheKey, ids, 3 * 60 * 1000);
       } catch (err) {
         console.warn('[CallModePage] カテゴリ売主一覧取得失敗:', err);
       }
@@ -2133,13 +2144,22 @@ const CallModePage = () => {
   // 古い値で保存されてしまう問題があったため、明示的な保存ボタン押下のみに変更
   // （2026/8/27 修正）
 
-  // サイドバー用のカテゴリカウントを取得（APIから直接取得）
+  // サイドバー用のカテゴリカウントを取得（5分フロントキャッシュ付き）
   const fetchSidebarCounts = useCallback(async () => {
+    // キャッシュが有効ならAPIを叩かない（通話モードページを開くたびの再取得を防ぐ）
+    const cached = pageDataCache.get<any>(CACHE_KEYS.CALLMODE_SIDEBAR_COUNTS);
+    if (cached) {
+      console.log('📊 サイドバーカウント キャッシュヒット');
+      setSidebarCounts(cached);
+      return;
+    }
     try {
       console.log('📊 サイドバーカウント取得開始...');
       const response = await api.get('/api/sellers/sidebar-counts');
       console.log('✅ サイドバーカウント取得完了:', response.data);
       setSidebarCounts(response.data);
+      // 5分間キャッシュ（SellersPage の SELLERS_SIDEBAR_COUNTS と TTL を合わせる）
+      pageDataCache.set(CACHE_KEYS.CALLMODE_SIDEBAR_COUNTS, response.data, 5 * 60 * 1000);
     } catch (error) {
       console.error('❌ サイドバーカウント取得エラー:', error);
       // エラー時はカウントを0にリセット
@@ -2158,6 +2178,7 @@ const CallModePage = () => {
 
   // サイドバー用の売主リストを取得する関数
   // サイドバーに表示されるカテゴリの売主のみを取得（全売主ではない）
+  // 3分フロントキャッシュ付き（同じ営担で複数売主を巡回する間は再取得しない）
   const fetchSidebarSellers = useCallback(async () => {
     const currentSeller = sellerRef.current;
     
@@ -2180,6 +2201,18 @@ const CallModePage = () => {
       setSidebarLoading(false);
       return;
     }
+
+    // 営担ごとにキャッシュ（同一営担の売主を巡回している間は同じリストを使い回す）
+    const sidebarCacheKey = `${CACHE_KEYS.CALLMODE_SIDEBAR_SELLERS}:${currentVisitAssignee}`;
+    const cachedSellers = pageDataCache.get<any[]>(sidebarCacheKey);
+    if (cachedSellers) {
+      console.log(`[CallModePage] サイドバー売主一覧 キャッシュヒット: ${currentVisitAssignee} (${cachedSellers.length}件)`);
+      setSidebarSellers(cachedSellers);
+      setSidebarLoading(false);
+      // サイドバーカウントだけバックグラウンドで取得（こちらも既にキャッシュ済みなら即返る）
+      fetchSidebarCounts();
+      return;
+    }
     
     try {
       // fetchSidebarSellers（pageSize=500）と fetchSidebarCounts を並列取得
@@ -2200,8 +2233,9 @@ const CallModePage = () => {
       ]);
       
       const allSellers = response.data?.data || [];
-      
       setSidebarSellers(allSellers);
+      // 3分キャッシュ（同じ営担で複数売主を巡回する間は再取得不要）
+      pageDataCache.set(sidebarCacheKey, allSellers, 3 * 60 * 1000);
     } catch (error: any) {
       console.error('❌ サイドバー売主リスト取得エラー:', error);
       setSidebarSellers([]);
