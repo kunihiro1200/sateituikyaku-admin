@@ -306,7 +306,7 @@ function CompanySignature({ sellerNumber }: { sellerNumber: string }) {
           href={info.emailHref}
           sx={{ ...linkSx, fontSize: '0.875rem' }}
         >
-          メールでお問い合わせ
+          tenant@ifoo-oita.com
         </Box>
 
         {/* Webサイト */}
