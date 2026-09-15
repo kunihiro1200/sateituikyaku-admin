@@ -34,7 +34,6 @@ import { useNavigate } from 'react-router-dom';
 //  専任解除, 一般解除]
 type Counts = {
   ym: string;
-  auto: number;      // 自動更新
   senRyo: number;    // 専任両手
   senKata: number;   // 専任片手
   ipRyo: number;     // 一般両手
@@ -50,16 +49,18 @@ type Counts = {
   ipKaijo: number;   // 一般媒介解除
 };
 
+// 第2引数（旧「自動更新」列）は集計に使わないため受け取るだけで破棄する。
+// これにより既存のデータ行（c('2019/1', 1, 2, 0, ...)）を書き換えずに済む。
 const c = (
   ym: string,
-  auto: number, senRyo: number, senKata: number,
+  _auto: number, senRyo: number, senKata: number,
   ipRyo: number, ipKata: number, ipTa: number,
   otherKata: number, otherRyo: number,
   buyLB: number, buyResale: number,
   refKata: number, refRyo: number,
   senKaijo: number, ipKaijo: number,
 ): Counts => ({
-  ym, auto, senRyo, senKata, ipRyo, ipKata, ipTa,
+  ym, senRyo, senKata, ipRyo, ipKata, ipTa,
   otherKata, otherRyo, buyLB, buyResale, refKata, refRyo, senKaijo, ipKaijo,
 });
 
@@ -203,7 +204,6 @@ function fmtPct(v: number | null): string {
 function sumCounts(rows: Counts[]): Counts {
   return rows.reduce<Counts>((acc, r) => ({
     ym: acc.ym,
-    auto: acc.auto + r.auto,
     senRyo: acc.senRyo + r.senRyo,
     senKata: acc.senKata + r.senKata,
     ipRyo: acc.ipRyo + r.ipRyo,
@@ -218,7 +218,7 @@ function sumCounts(rows: Counts[]): Counts {
     senKaijo: acc.senKaijo + r.senKaijo,
     ipKaijo: acc.ipKaijo + r.ipKaijo,
   }), {
-    ym: '', auto: 0, senRyo: 0, senKata: 0, ipRyo: 0, ipKata: 0, ipTa: 0,
+    ym: '', senRyo: 0, senKata: 0, ipRyo: 0, ipKata: 0, ipTa: 0,
     otherKata: 0, otherRyo: 0, buyLB: 0, buyResale: 0, refKata: 0, refRyo: 0,
     senKaijo: 0, ipKaijo: 0,
   });
@@ -239,7 +239,7 @@ function sliceByPeriod(from: string, to: string): Counts[] {
 }
 
 const COLUMNS = [
-  '自動更新', '専任両手', '専任片手', '一般両手', '一般片手', '一般他決',
+  '専任両手', '専任片手', '一般両手', '一般片手', '一般他決',
   '他社物件片手', '他社物件両手', '自社買取（リースバック）', '自社買取（転売）',
   '買取紹介（片手）', '買取紹介（両手）', '専任解除', '一般媒介解除', '計（他決除く）',
 ];
@@ -248,7 +248,7 @@ const RATE_COLUMNS = ['専任・両手率', '一般・両手率', '一般・片�
 
 function countCells(r: Counts): (number)[] {
   return [
-    r.auto, r.senRyo, r.senKata, r.ipRyo, r.ipKata, r.ipTa,
+    r.senRyo, r.senKata, r.ipRyo, r.ipKata, r.ipTa,
     r.otherKata, r.otherRyo, r.buyLB, r.buyResale, r.refKata, r.refRyo,
     r.senKaijo, r.ipKaijo, totalExclOther(r),
   ];
