@@ -301,13 +301,21 @@ function CompanySignature({ sellerNumber }: { sellerNumber: string }) {
         </Box>
 
         {/* メール */}
-        <Box
-          component="a"
+        <a
           href={info.emailHref}
-          sx={{ ...linkSx, fontSize: '0.875rem' }}
+          style={{
+            display: 'inline-block',
+            color: '#1A237E',
+            textDecoration: 'none',
+            minHeight: 44,
+            lineHeight: '44px',
+            paddingLeft: 4,
+            paddingRight: 4,
+            fontSize: '0.875rem',
+          }}
         >
           {info.emailHref.replace('mailto:', '')}
-        </Box>
+        </a>
 
         {/* Webサイト */}
         <Box
