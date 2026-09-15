@@ -104,10 +104,21 @@ router.post('/suumo-buyer-transfer', async (req: Request, res: Response) => {
     const buyerNumber = maxNumber + 1;
     console.log(`[suumo-buyer-transfer] 買主番号採番: ${buyerNumber} (E列の行数: ${columnEValues.length}, 最大値: ${maxNumber})`);
 
-    // 重複チェック（同じ電話番号が既にある場合はスキップ）- skipDuplicateCheck=trueで無視可能
+    // 受付日（今日の日付・JST）※重複チェックの受付日比較にも使うため先に算出する
+    const today = new Date();
+    const jstOffset = 9 * 60 * 60 * 1000;
+    const jstToday = new Date(today.getTime() + jstOffset);
+    const receptionDate = `${jstToday.getUTCFullYear()}/${String(jstToday.getUTCMonth() + 1).padStart(2, '0')}/${String(jstToday.getUTCDate()).padStart(2, '0')}`;
+
+    // 重複チェック - skipDuplicateCheck=trueで無視可能
+    // 【重複判定ルール】
+    //   電話番号が一致 かつ 受付日も同じ  → 同じメールの二重処理とみなしてスキップ
+    //   電話番号が一致 でも 受付日が違う  → 別時期の再問い合わせとして登録する（残す）
+    // ※ 受付日はメール受信日（＝今日）が入るため、同じ人が別日に問い合わせれば別レコードになる。
     if (tel && !req.body.skipDuplicateCheck) {
       const headers = await buyerSheetsClient.getHeaders();
       const phoneColIndex = headers.findIndex(h => h.includes('電話番号'));
+      const receptionDateColIndex = headers.findIndex(h => h.includes('受付日'));
 
       if (phoneColIndex >= 0) {
         const colToLetter = (col: number): string => {
@@ -119,18 +130,42 @@ router.post('/suumo-buyer-transfer', async (req: Request, res: Response) => {
           }
           return letter;
         };
+
+        // 受付日を YYYY/MM/DD に正規化して比較する（"2026/9/1" と "2026/09/01" を同一視）
+        const normalizeDate = (raw: string): string => {
+          const m = String(raw || '').match(/(\d{4})[\/\-年](\d{1,2})[\/\-月](\d{1,2})/);
+          if (!m) return '';
+          return `${m[1]}/${String(m[2]).padStart(2, '0')}/${String(m[3]).padStart(2, '0')}`;
+        };
+        const newReceptionDateNorm = normalizeDate(receptionDate);
+
         const phoneColLetter = colToLetter(phoneColIndex);
         const rawPhoneColumn = await buyerSheetsClient.readRawRange(`${phoneColLetter}2:${phoneColLetter}`);
+
+        // 受付日の列も取得（存在する場合のみ）
+        let rawReceptionColumn: any[][] = [];
+        if (receptionDateColIndex >= 0) {
+          const receptionColLetter = colToLetter(receptionDateColIndex);
+          rawReceptionColumn = await buyerSheetsClient.readRawRange(`${receptionColLetter}2:${receptionColLetter}`);
+        }
 
         for (let i = 0; i < rawPhoneColumn.length; i++) {
           const existingPhone = String(rawPhoneColumn[i]?.[0] || '').replace(/[-\s－　]/g, '');
           if (existingPhone === tel) {
+            const existingReceptionDateNorm = normalizeDate(rawReceptionColumn[i]?.[0]);
+            // 受付日が両方とも取得でき、かつ異なる場合は「別時期の再問い合わせ」として登録を続行
+            if (newReceptionDateNorm && existingReceptionDateNorm && newReceptionDateNorm !== existingReceptionDateNorm) {
+              const existingBuyerNumber = rawEColumn[i]?.[0] || '不明';
+              console.log(`[suumo-buyer-transfer] 電話番号は既存買主 ${existingBuyerNumber} と一致するが受付日が異なる（既存:${existingReceptionDateNorm} / 今回:${newReceptionDateNorm}）→ 別問い合わせとして登録`);
+              continue;
+            }
+            // 受付日も一致（または受付日が判定不能）→ 二重処理とみなしてスキップ
             const existingBuyerNumber = rawEColumn[i]?.[0] || '不明';
-            console.log(`[suumo-buyer-transfer] ⏭ 重複スキップ: 電話番号が既存買主 ${existingBuyerNumber} と一致`);
+            console.log(`[suumo-buyer-transfer] ⏭ 重複スキップ: 電話番号＋受付日が既存買主 ${existingBuyerNumber} と一致`);
             return res.json({
               success: true,
               skipped: true,
-              message: `重複スキップ: 電話番号が既存買主 ${existingBuyerNumber} と一致するため登録しませんでした`,
+              message: `重複スキップ: 電話番号と受付日が既存買主 ${existingBuyerNumber} と一致するため登録しませんでした`,
               duplicateBuyer: existingBuyerNumber,
             });
           }
@@ -153,12 +188,6 @@ router.post('/suumo-buyer-transfer', async (req: Request, res: Response) => {
     const hearingComment = commentParts.length > 0
       ? `【以下自動転記（SUUMO反響）】\n${commentParts.join('\n')}`
       : '【自動転記（SUUMO反響）】';
-
-    // 受付日（今日の日付・JST）
-    const today = new Date();
-    const jstOffset = 9 * 60 * 60 * 1000;
-    const jstToday = new Date(today.getTime() + jstOffset);
-    const receptionDate = `${jstToday.getUTCFullYear()}/${String(jstToday.getUTCMonth() + 1).padStart(2, '0')}/${String(jstToday.getUTCDate()).padStart(2, '0')}`;
 
     // フィールドマッピング（athome-buyer-transfer と同じカラム名を使用）
     const rowData: Record<string, string> = {
