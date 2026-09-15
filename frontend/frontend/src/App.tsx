@@ -45,6 +45,7 @@ import SharedItemDetailPage from './pages/SharedItemDetailPage';
 import NewSharedItemPage from './pages/NewSharedItemPage';
 import ReviewCampaignStatsPage from './pages/ReviewCampaignStatsPage';
 import SalesMeetingAgendaPage from './pages/SalesMeetingAgendaPage';
+import SalesMeetingContractStatsPage from './pages/SalesMeetingContractStatsPage';
 import BuyerNearbyPropertiesPage from './pages/BuyerNearbyPropertiesPage';
 import NearbyBuyersPage from './pages/NearbyBuyersPage';
 import OtherCompanyDistributionPage from './pages/OtherCompanyDistributionPage';
@@ -438,6 +439,14 @@ function App() {
         element={
           <ProtectedRoute>
             <SalesMeetingAgendaPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shared-items/sales-meeting-stats"
+        element={
+          <ProtectedRoute>
+            <SalesMeetingContractStatsPage />
           </ProtectedRoute>
         }
       />
