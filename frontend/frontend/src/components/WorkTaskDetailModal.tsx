@@ -7005,8 +7005,8 @@ ${pageUrl}`;
               style.innerHTML = `
                 @media print {
                   body > * { display: none !important; }
-                  #commission-discount-print-root { display: block !important; }
-                  @page { size: A4 portrait; margin: 0; }
+                  #commission-discount-print-root { display: block !important; width: 210mm; margin: 0 auto; }
+                  @page { size: A4 portrait; margin: 10mm; }
                 }
               `;
               document.head.appendChild(style);

@@ -109,9 +109,9 @@ const CommissionDiscountSheet = React.forwardRef<HTMLDivElement, CommissionDisco
           color: '#000',
           boxSizing: 'border-box',
           '@media print': {
-            width: '210mm',
-            minHeight: '297mm',
-            p: '16mm 18mm 14mm',
+            width: '190mm',  // @page margin: 10mm × 2 = 20mm を差し引いた印刷領域幅
+            minHeight: '277mm',
+            p: '6mm 8mm 6mm',
             margin: 0,
           },
         }}
