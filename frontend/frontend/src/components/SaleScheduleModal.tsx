@@ -82,7 +82,8 @@ export interface SaleScheduleData {
   ownerName: string;
   propertyAddress: string;
   assessPrice?: number;
-  listPrice?: number;      // 売出価格（査定額最高値）
+  listPrice?: number;          // 売出価格（数値・内部用）
+  listPriceRange?: string;     // 売出価格表示文字列「4,190」または「4,190〜3,690」
   minimumPrice?: number;   // 最低価格（下限値・内部用）
   minPriceRange?: string;  // 最低価格範囲表示「5,890〜5,390」
   startYear?: number;
@@ -162,12 +163,16 @@ function convertDb(seller: Record<string, unknown>, pl: Record<string, unknown> 
     minPriceRange = Math.round(sortedDesc[0] / 10000).toLocaleString();
   }
 
+  // 売出価格範囲文字列（初期値は単値。手動で「4,190〜3,690」のように書き換え可）
+  const listPriceRange = listPriceMan != null ? listPriceMan.toLocaleString() : undefined;
+
   return {
     propertyNo: (seller?.sellerNumber as string) || (seller?.seller_number as string) || '',
     ownerName: (seller?.name as string) || '',
     propertyAddress: (seller?.propertyAddress as string) || (seller?.property_address as string) || '',
     assessPrice: highestAssess ? Math.round(highestAssess / 10000) : undefined,
     listPrice: listPriceMan,
+    listPriceRange,
     minimumPrice: minPriceMan,
     minPriceRange,
     startYear:sy, startMonth:sm, marketingYear:my, marketingStartMonth:ms, marketingEndMonth:me, marketingEndYear:mey,
@@ -345,8 +350,8 @@ function buildA4Html(d: SaleScheduleData, debug = false, sellerNumber = '', imgS
     <!-- ② 物件所在地 fs可変→大きめに -->
     ${makeAddressBox(d.propertyAddress||'', debug, B.address)}
 
-    <!-- ③ 売出価格（数値のみ）fs:14→18pt ゴールド太字 -->
-    ${makeBox(B.listPrice, fmtNum(d.listPrice), 18, 900, GOLD, debug)}
+    <!-- ③ 売出価格（範囲表示対応）fs:14→18pt ゴールド太字 -->
+    ${makeBox(B.listPrice, d.listPriceRange || fmtNum(d.listPrice), 18, 900, GOLD, debug)}
 
     <!-- ④ 最低価格（1行・ゴールド太字） -->
     ${makeBox(B.minPrice, d.minPriceRange || fmtNum(d.minimumPrice), 15, 900, GOLD, debug)}
@@ -412,6 +417,9 @@ export const SaleScheduleModal: React.FC<Props> = ({
     ? Math.round(initHighest / 10000)
     : initialAssessPrice ? Math.round(initialAssessPrice / 10000) : undefined;
 
+  // 売出価格範囲文字列（初期値は単値。手動で「4,190〜3,690」のように書き換え可）
+  const initListPriceRange = initListPrice != null ? initListPrice.toLocaleString() : undefined;
+
   // 最低価格範囲 = 「最高値〜中間値」
   let initMinPriceRange: string | undefined;
   if (initHighest && initSecond) {
@@ -443,7 +451,8 @@ export const SaleScheduleModal: React.FC<Props> = ({
     ownerName: initialOwnerName,
     propertyAddress: initialPropertyAddress,
     assessPrice: initHighest ? Math.round(initHighest/10000) : undefined,
-    listPrice: initListPrice,           // 売出価格 = 査定額最高値
+    listPrice: initListPrice,           // 売出価格 = 査定額最高値（数値・内部用）
+    listPriceRange: initListPriceRange, // 売出価格表示文字列（初期値は単値・手動で範囲指定可）
     minimumPrice: undefined,
     minPriceRange: initMinPriceRange,   // 最低価格範囲 = 「最高〜中間」
     startYear:sy, startMonth:sm, marketingYear:my, marketingStartMonth:ms, marketingEndMonth:me, marketingEndYear:mey,
@@ -596,8 +605,10 @@ export const SaleScheduleModal: React.FC<Props> = ({
                   onChange={setStr('propertyAddress')} multiline rows={2} />
               </Grid>
               <Grid item xs={12}>
-                <TextField fullWidth size="small" label="売出価格（万円）" type="number"
-                  value={data.listPrice??''} onChange={setNum('listPrice')} />
+                <TextField fullWidth size="small" label="売出価格（万円）"
+                  value={data.listPriceRange ?? ''}
+                  onChange={e => setData(p => ({ ...p, listPriceRange: e.target.value }))}
+                  helperText="例: 4,190〜3,690（自動生成・手動修正可）" />
               </Grid>
               <Grid item xs={12}>
                 <TextField fullWidth size="small" label="最低価格（範囲表示）"
