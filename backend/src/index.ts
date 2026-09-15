@@ -57,6 +57,7 @@ import driveRoutes from './routes/drive';
 import workTaskRoutes from './routes/workTasks';
 import sharedItemsRoutes from './routes/sharedItems';
 import salesMeetingAgendaRoutes from './routes/salesMeetingAgenda';
+import salesMeetingFiStatsRoutes from './routes/salesMeetingFiStats';
 import propertyListingRoutes from './routes/propertyListings';
 import buyerRoutes from './routes/buyers';
 import buyerSidebarCountsRoutes from './routes/buyer-sidebar-counts';
@@ -1068,6 +1069,7 @@ app.use('/api/gmail', authenticate, gmailRoutes);
 app.use('/api/test-email', testEmailRoutes);
 app.use('/api/shared-items', sharedItemsRoutes); // 共有アイテムAPI（認証不要）
 app.use('/api/sales-meeting-agenda', salesMeetingAgendaRoutes); // 営業会議 議題API（認証不要）
+app.use('/api/sales-meeting', salesMeetingFiStatsRoutes); // 営業会議 FI成約集計API（認証不要）
 app.use('/api/public/inquiries', publicInquiriesRoutes);
 app.use('/api/public', publicPropertiesRoutes);
 app.use('/api/geocode', geocodeRoutes);
