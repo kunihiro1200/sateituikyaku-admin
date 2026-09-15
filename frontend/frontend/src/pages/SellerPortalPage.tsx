@@ -223,7 +223,7 @@ const KUJIRA_INFO = {
   address: '〒810-0073 福岡市中央区舞鶴3－1－10',
   telDisplay: 'TEL 092-401-5331',
   telHref: 'tel:0924015331',
-  emailHref: 'mailto:tenant@info-oita.com',
+  emailHref: 'mailto:tenant@ifoo-oita.com',
   hpDisplay: 'kujira-fudosan.com',
   hpHref: 'https://kujira-fudosan.com/',
 };
