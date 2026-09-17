@@ -4,6 +4,7 @@ import {
   Menu,
   MenuItem,
   ButtonGroup,
+  Divider,
 } from '@mui/material';
 import SmsIcon from '@mui/icons-material/Sms';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
@@ -19,10 +20,45 @@ interface SmsDropdownButtonProps {
   senderName?: string;
   onSmsSent?: () => void;
   preViewingNotes?: string;
+  /** 次電日（next_call_date）が自動セットされたときに親へ通知（画面の再描画・再取得用） */
+  onNextCallDateUpdated?: (nextCallDate: string) => void;
 }
 
 const VIEWING_FORM_BASE = 'https://docs.google.com/forms/d/e/1FAIpQLSefXwsYKryraVM4jtnLgcYtboUg3w-lx7tasftVA47E5jXUlQ/viewform?usp=pp_url';
 const PUBLIC_SITE_URL = 'https://property-site-frontend-kappa.vercel.app/public/properties';
+
+// ①②③④の返信テンプレートのメニュー項目スタイル（薄緑背景で識別しやすくする）
+const REPLY_ITEM_SX = {
+  backgroundColor: '#e8f5e9',
+  '&:hover': { backgroundColor: '#c8e6c9' },
+} as const;
+
+// メール配信の希望条件を入力してもらうフォーム（③④で使用）
+// TODO: 実際の配信希望条件フォームURLが用意でき次第、差し替える
+const EMAIL_PREF_FORM_URL = 'https://docs.google.com/forms/d/e/REPLACE_WITH_EMAIL_PREF_FORM/viewform';
+
+// 内覧希望者へのヒアリング項目（①内覧希望／②日程調整中の予約案内で共通利用）
+const VIEWING_HEARING_ITEMS = [
+  '・ご希望日時（候補を3つほど挙げてください）',
+  '・内覧に来られる人数（大人○名・子供○名）',
+  '・内覧は初めてでいらっしゃいますか',
+  '・いつ頃までのお引っ越しをご希望ですか',
+  '・ご購入はローン・自己資金のどちらをお考えですか',
+  '・ローンの場合、仮審査を受けられたことはございますか',
+].join('\n');
+
+/**
+ * 現在日時から指定した「月数後」の日付を YYYY-MM-DD 形式で返す
+ * 次電日（next_call_date）の自動セットに使用する
+ */
+const addMonthsISO = (months: number): string => {
+  const d = new Date();
+  d.setMonth(d.getMonth() + months);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
 
 export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
   phoneNumber,
@@ -34,6 +70,7 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
   senderName,
   onSmsSent,
   preViewingNotes,
+  onNextCallDateUpdated,
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -93,6 +130,48 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
       message = `${name}様\nお世話になっております。${emptyCompany}の${senderDisplay}です。\n今後ともどうぞよろしくお願いいたします。`;
     } else if (templateId === 'post_viewing_thanks') {
       message = `${name}様\n\nお世話になっております。㈱いふうです。\n本日は、貴重な時間を割いていただき、誠にありがとうございました。\n弊社としましては、${name}様の不動産の購入のお手伝いをスタッフ一同で精一杯努めてまいりたいと思っております。\nご内覧いただいた中でご不明点などございましたらお気軽にお申し付けください。\nまた、いただいているメールアドレス宛に公開前物件等の配信をいたします。\n他社様の掲載物件もご紹介できますので気になる物件がございましたらお声がけいただけますと幸いです。\nリフォーム、補助金制度などについてもご相談も承っております。\n今後ともどうぞよろしくお願い致します。\n\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri\n★非公開の情報はこちらから検索可能です↓↓\n${PUBLIC_SITE_URL}${signature}`;
+    } else if (templateId === 'status_check') {
+      // 状況確認SMS：①②③④で番号返信を促す
+      const companyName = hasFI ? 'くじら不動産' : '㈱いふう';
+      const staff = senderName || '担当';
+      message = `${name}様\n${companyName}の${staff}です。\n先日は物件のお問い合わせをいただき、誠にありがとうございました。\nその後の物件探しのご状況について、一度お伺いできればと思いご連絡いたしました。\n\n①内覧希望\n②内覧希望だが日程調整中\n③この物件の内覧はしないが、未公開物件や新着物件の情報が欲しい\n④物件探しはしていない\n\n差し支えなければ、現在のご状況を番号だけでもご返信いただけますと幸いです。\nよろしくお願いいたします。${signature}`;
+    } else if (templateId === 'reply_1_viewing') {
+      // ①内覧希望の返信：お礼＋ヒアリング
+      message = `${name}様\n\nご返信ありがとうございます。承知いたしました。\n内覧のご予約をお取りしますので、下記についてお答えいただけますでしょうか？\n\n${VIEWING_HEARING_ITEMS}\n\nご返信をお待ちしております。よろしくお願いいたします。${signature}`;
+    } else if (templateId === 'reply_2_scheduling') {
+      // ②内覧希望だが日程調整中：お礼＋予約フォーム（ヒアリング内容も明記）＋次電日1か月後
+      message = `${name}様\n\nご返信ありがとうございます。承知いたしました。\n内覧がお決まりになりましたら、下記のフォームよりご予約ください↓↓\n${viewingFormUrl}\n\nご予約の際は、あわせて下記についてもお知らせいただけますと幸いです。\n${VIEWING_HEARING_ITEMS}\n\n日程がお決まりでない場合も、決まり次第いつでもご連絡ください。改めてこちらからもご状況をお伺いいたします。\nよろしくお願いいたします。${signature}`;
+    } else if (templateId === 'reply_3_info_only') {
+      // ③情報だけ欲しい：お礼＋メール配信希望条件フォーム＋次電日3か月後
+      message = `${name}様\n\nご返信ありがとうございます。承知いたしました。\n今後、ご希望条件に合った未公開物件や新着物件をメールにてご案内いたします。\n下記フォームよりご希望条件をご入力ください↓↓\n${EMAIL_PREF_FORM_URL}\n\n配信メールの中で気になる物件がございましたら、お気軽にお問い合わせください。\nよろしくお願いいたします。${signature}`;
+    } else if (templateId === 'reply_4_not_searching') {
+      // ④物件探ししていない：お礼＋メール配信フォーム（追客不要）
+      message = `${name}様\n\nご返信ありがとうございます。承知いたしました。\n今後、物件をお探しの際は、お気軽にお問い合わせください。\nまた、ご希望であれば未公開物件や新着物件をメールにてご案内いたします。ご希望の場合は下記フォームよりご登録ください↓↓\n${EMAIL_PREF_FORM_URL}\n\n今後ともどうぞよろしくお願いいたします。${signature}`;
+    } else if (templateId === 'followup_1month_unreachable') {
+      // ★1か月後・不通メール（②の追客用）：日程確認＋予約フォーム、次電日さらに1か月後
+      message = `${name}様\n\nお世話になっております。${hasFI ? 'くじら不動産' : '㈱いふう'}です。\nその後、内覧のご日程はお決まりになりましたでしょうか？\nお決まりになりましたら、下記フォームよりご予約ください↓↓\n${viewingFormUrl}\n\nご不明な点がございましたら、お気軽にお問い合わせください。\nよろしくお願いいたします。${signature}`;
+    } else if (templateId === 'followup_3month_unreachable') {
+      // ★3か月後・不通メール（③の追客用）：物件探し状況伺い、次電日さらに3か月後
+      message = `${name}様\n\nお世話になっております。${hasFI ? 'くじら不動産' : '㈱いふう'}です。\nその後、物件探しのご状況はいかがでしょうか？\nご希望条件に合った物件が出ましたらメールにてご案内いたしますので、気になる物件がございましたらお気軽にお問い合わせください。\n引き続きどうぞよろしくお願いいたします。${signature}`;
+    }
+
+    // 返信テンプレートに応じて次電日（next_call_date）を自動セットする
+    // ②内覧希望だが日程調整中 → 1か月後 / ③情報だけ欲しい → 3か月後
+    // ★1か月後不通 → さらに1か月後 / ★3か月後不通 → さらに3か月後
+    const nextCallMonthsMap: Record<string, number> = {
+      reply_2_scheduling: 1,
+      reply_3_info_only: 3,
+      followup_1month_unreachable: 1,
+      followup_3month_unreachable: 3,
+    };
+    const monthsToAdd = nextCallMonthsMap[templateId];
+    if (monthsToAdd) {
+      const nextCallDate = addMonthsISO(monthsToAdd);
+      api.put(`/api/buyers/${buyerNumber}`, { next_call_date: nextCallDate })
+        .then(() => {
+          onNextCallDateUpdated?.(nextCallDate);
+        })
+        .catch((err: any) => console.warn('次電日の自動セットに失敗:', err));
     }
 
     if (message) {
@@ -174,6 +253,18 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
         <MenuItem onClick={() => sendSms('no_response_offer', '反応なし（買付あり不適合）')}>反応なし（買付あり不適合）</MenuItem>
         <MenuItem onClick={() => sendSms('pinrich', '物件指定なし（Pinrich）')}>物件指定なし（Pinrich）</MenuItem>
         <MenuItem onClick={() => sendSms('empty_greeting', '空')}>空</MenuItem>
+        <Divider />
+        {/* 状況確認SMS（①②③④の番号返信を促す） */}
+        <MenuItem onClick={() => sendSms('status_check', '状況確認SMS（①②③④）')}>状況確認SMS（①②③④）</MenuItem>
+        {/* ①②③④の返信テンプレート（薄緑背景・次電日自動セット） */}
+        <MenuItem sx={REPLY_ITEM_SX} onClick={() => sendSms('reply_1_viewing', '①内覧希望の返信')}>①内覧希望の返信</MenuItem>
+        <MenuItem sx={REPLY_ITEM_SX} onClick={() => sendSms('reply_2_scheduling', '②日程調整中の返信（次電日+1ヶ月）')}>②日程調整中の返信（次電日+1ヶ月）</MenuItem>
+        <MenuItem sx={REPLY_ITEM_SX} onClick={() => sendSms('reply_3_info_only', '③情報希望の返信（次電日+3ヶ月）')}>③情報希望の返信（次電日+3ヶ月）</MenuItem>
+        <MenuItem sx={REPLY_ITEM_SX} onClick={() => sendSms('reply_4_not_searching', '④物件探しなしの返信')}>④物件探しなしの返信</MenuItem>
+        <Divider />
+        {/* 不通時の追客メール（手動送信・次電日を再セット） */}
+        <MenuItem onClick={() => sendSms('followup_1month_unreachable', '★1ヶ月後不通メール（次電日+1ヶ月）')}>★1ヶ月後不通メール（次電日+1ヶ月）</MenuItem>
+        <MenuItem onClick={() => sendSms('followup_3month_unreachable', '★3ヶ月後不通メール（次電日+3ヶ月）')}>★3ヶ月後不通メール（次電日+3ヶ月）</MenuItem>
       </Menu>
     </>
   );
