@@ -26,7 +26,6 @@ import api from '../services/api';
  * 元データ（Googleスプレッドシート）を移植。
  * - 他決理由別（①〜㉔・不明）× 年（2024 / 2025 / 2026）: 専任 / 訪問後他決 / 未訪問他決
  *   勝率はこのページで計算する（勝率 = 専任 /（専任 + 訪問後他決））。
- * - 対策していない（訪問後他決 / 未訪問他決）
  * - 競合別: 専任 / 訪問後他決 / 未訪問他決（各年）+ 他決理由の内訳
  * - 各営業の特性: 担当者（K / U / Y / I / 林 / 麻）ごとの専任理由・他決理由
  *
@@ -59,39 +58,36 @@ type ReasonRow = {
   y2024: YearTriple;
   y2025: YearTriple;
   y2026: YearTriple;
-  // 対策していない（2024）
-  noMeasureVisit: number;   // 訪問後他決
-  noMeasureNoVisit: number; // 未訪問他決
 };
 
 const t = (sen: number, visit: number, noVisit: number): YearTriple => ({ sen, visit, noVisit });
 
 const REASON_ROWS: ReasonRow[] = [
-  { reason: '①知り合い',                 y2024: t(7, 7, 10),  y2025: t(9, 12, 13),  y2026: t(10, 15, 14), noMeasureVisit: 1, noMeasureNoVisit: 6 },
-  { reason: '②価格が高い',               y2024: t(11, 17, 8), y2025: t(30, 6, 7),   y2026: t(38, 8, 9),   noMeasureVisit: 3, noMeasureNoVisit: 2 },
-  { reason: '③決定権者の把握',           y2024: t(1, 2, 6),   y2025: t(0, 1, 0),    y2026: t(0, 1, 0),    noMeasureVisit: 2, noMeasureNoVisit: 6 },
-  { reason: '④連絡不足',                 y2024: t(0, 5, 13),  y2025: t(1, 0, 1),    y2026: t(1, 0, 1),    noMeasureVisit: 2, noMeasureNoVisit: 11 },
-  { reason: '⑤購入物件の紹介',           y2024: t(3, 2, 4),   y2025: t(2, 0, 1),    y2026: t(4, 2, 1),    noMeasureVisit: 0, noMeasureNoVisit: 1 },
-  { reason: '⑥購入希望者がいる',         y2024: t(0, 6, 1),   y2025: t(7, 0, 2),    y2026: t(7, 2, 2),    noMeasureVisit: 2, noMeasureNoVisit: 0 },
-  { reason: '⑦以前つきあいがあった不動産', y2024: t(9, 1, 3),   y2025: t(2, 1, 1),    y2026: t(5, 1, 1),    noMeasureVisit: 0, noMeasureNoVisit: 2 },
-  { reason: '⑧ヒアリング不足',           y2024: t(0, 0, 12),  y2025: t(1, 5, 1),    y2026: t(1, 5, 1),    noMeasureVisit: 0, noMeasureNoVisit: 11 },
-  { reason: '⑨担当者の対応が良い',       y2024: t(29, 0, 1),  y2025: t(30, 4, 0),   y2026: t(40, 4, 0),   noMeasureVisit: 0, noMeasureNoVisit: 0 },
-  { reason: '⑩査定書郵送',               y2024: t(0, 1, 4),   y2025: t(1, 0, 1),    y2026: t(1, 0, 1),    noMeasureVisit: 0, noMeasureNoVisit: 4 },
-  { reason: '⑪１番電話のスピード',       y2024: t(2, 0, 2),   y2025: t(5, 0, 1),    y2026: t(6, 0, 1),    noMeasureVisit: 0, noMeasureNoVisit: 1 },
-  { reason: '⑫対応スピード（訪問１社目もこれに含む）', y2024: t(19, 0, 0), y2025: t(39, 1, 5), y2026: t(48, 2, 5), noMeasureVisit: 0, noMeasureNoVisit: 0 },
-  { reason: '⑬買取保証',                 y2024: t(1, 1, 0),   y2025: t(0, 2, 0),    y2026: t(0, 2, 0),    noMeasureVisit: 0, noMeasureNoVisit: 0 },
-  { reason: '⑭買取額が高い',             y2024: t(0, 0, 1),   y2025: t(0, 4, 0),    y2026: t(0, 5, 0),    noMeasureVisit: 0, noMeasureNoVisit: 0 },
-  { reason: '⑮追客電話の対応',           y2024: t(7, 0, 0),   y2025: t(19, 1, 0),   y2026: t(25, 1, 0),   noMeasureVisit: 0, noMeasureNoVisit: 0 },
-  { reason: '⑯説明が丁寧',               y2024: t(46, 2, 0),  y2025: t(56, 2, 0),   y2026: t(75, 2, 0),   noMeasureVisit: 1, noMeasureNoVisit: 0 },
-  { reason: '⑰詳細な調査',               y2024: t(9, 1, 1),   y2025: t(9, 0, 1),    y2026: t(14, 0, 1),   noMeasureVisit: 0, noMeasureNoVisit: 0 },
-  { reason: '⑱不誠実、やるべきことをしない', y2024: t(3, 0, 0), y2025: t(0, 0, 0),   y2026: t(1, 0, 0),    noMeasureVisit: 0, noMeasureNoVisit: 0 },
-  { reason: '⑲定期的な追客電話',         y2024: t(17, 0, 2),  y2025: t(27, 1, 2),   y2026: t(34, 1, 2),   noMeasureVisit: 0, noMeasureNoVisit: 2 },
-  { reason: '⑳HPの口コミ',               y2024: t(2, 0, 0),   y2025: t(2, 0, 0),    y2026: t(2, 0, 0),    noMeasureVisit: 0, noMeasureNoVisit: 0 },
-  { reason: '㉑売買に強い（物件数、顧客が多い）', y2024: t(6, 1, 0), y2025: t(32, 3, 0), y2026: t(44, 3, 0), noMeasureVisit: 1, noMeasureNoVisit: 0 },
-  { reason: '㉒仲介手数料のサービス',     y2024: t(1, 1, 0),   y2025: t(1, 0, 0),    y2026: t(1, 0, 0),    noMeasureVisit: 0, noMeasureNoVisit: 0 },
-  { reason: '㉓仲介手数料以外のサービス（特典）', y2024: t(1, 0, 0), y2025: t(0, 2, 0),  y2026: t(0, 2, 0),   noMeasureVisit: 0, noMeasureNoVisit: 0 },
-  { reason: '㉔妥当な査定額',             y2024: t(2, 1, 0),   y2025: t(8, 1, 0),    y2026: t(13, 2, 0),   noMeasureVisit: 0, noMeasureNoVisit: 0 },
-  { reason: '不明',                       y2024: t(2, 9, 11),  y2025: t(2, 11, 12),  y2026: t(2, 13, 13),  noMeasureVisit: 3, noMeasureNoVisit: 2 },
+  { reason: '①知り合い',                 y2024: t(7, 7, 10),  y2025: t(9, 12, 13),  y2026: t(10, 15, 14) },
+  { reason: '②価格が高い',               y2024: t(11, 17, 8), y2025: t(30, 6, 7),   y2026: t(38, 8, 9) },
+  { reason: '③決定権者の把握',           y2024: t(1, 2, 6),   y2025: t(0, 1, 0),    y2026: t(0, 1, 0) },
+  { reason: '④連絡不足',                 y2024: t(0, 5, 13),  y2025: t(1, 0, 1),    y2026: t(1, 0, 1) },
+  { reason: '⑤購入物件の紹介',           y2024: t(3, 2, 4),   y2025: t(2, 0, 1),    y2026: t(4, 2, 1) },
+  { reason: '⑥購入希望者がいる',         y2024: t(0, 6, 1),   y2025: t(7, 0, 2),    y2026: t(7, 2, 2) },
+  { reason: '⑦以前つきあいがあった不動産', y2024: t(9, 1, 3),   y2025: t(2, 1, 1),    y2026: t(5, 1, 1) },
+  { reason: '⑧ヒアリング不足',           y2024: t(0, 0, 12),  y2025: t(1, 5, 1),    y2026: t(1, 5, 1) },
+  { reason: '⑨担当者の対応が良い',       y2024: t(29, 0, 1),  y2025: t(30, 4, 0),   y2026: t(40, 4, 0) },
+  { reason: '⑩査定書郵送',               y2024: t(0, 1, 4),   y2025: t(1, 0, 1),    y2026: t(1, 0, 1) },
+  { reason: '⑪１番電話のスピード',       y2024: t(2, 0, 2),   y2025: t(5, 0, 1),    y2026: t(6, 0, 1) },
+  { reason: '⑫対応スピード（訪問１社目もこれに含む）', y2024: t(19, 0, 0), y2025: t(39, 1, 5), y2026: t(48, 2, 5) },
+  { reason: '⑬買取保証',                 y2024: t(1, 1, 0),   y2025: t(0, 2, 0),    y2026: t(0, 2, 0) },
+  { reason: '⑭買取額が高い',             y2024: t(0, 0, 1),   y2025: t(0, 4, 0),    y2026: t(0, 5, 0) },
+  { reason: '⑮追客電話の対応',           y2024: t(7, 0, 0),   y2025: t(19, 1, 0),   y2026: t(25, 1, 0) },
+  { reason: '⑯説明が丁寧',               y2024: t(46, 2, 0),  y2025: t(56, 2, 0),   y2026: t(75, 2, 0) },
+  { reason: '⑰詳細な調査',               y2024: t(9, 1, 1),   y2025: t(9, 0, 1),    y2026: t(14, 0, 1) },
+  { reason: '⑱不誠実、やるべきことをしない', y2024: t(3, 0, 0), y2025: t(0, 0, 0),   y2026: t(1, 0, 0) },
+  { reason: '⑲定期的な追客電話',         y2024: t(17, 0, 2),  y2025: t(27, 1, 2),   y2026: t(34, 1, 2) },
+  { reason: '⑳HPの口コミ',               y2024: t(2, 0, 0),   y2025: t(2, 0, 0),    y2026: t(2, 0, 0) },
+  { reason: '㉑売買に強い（物件数、顧客が多い）', y2024: t(6, 1, 0), y2025: t(32, 3, 0), y2026: t(44, 3, 0) },
+  { reason: '㉒仲介手数料のサービス',     y2024: t(1, 1, 0),   y2025: t(1, 0, 0),    y2026: t(1, 0, 0) },
+  { reason: '㉓仲介手数料以外のサービス（特典）', y2024: t(1, 0, 0), y2025: t(0, 2, 0),  y2026: t(0, 2, 0) },
+  { reason: '㉔妥当な査定額',             y2024: t(2, 1, 0),   y2025: t(8, 1, 0),    y2026: t(13, 2, 0) },
+  { reason: '不明',                       y2024: t(2, 9, 11),  y2025: t(2, 11, 12),  y2026: t(2, 13, 13) },
 ];
 
 // ===========================================================================
@@ -275,8 +271,6 @@ export default function SalesMeetingLossAnalysisPage() {
     y2024: sumTriples(REASON_ROWS.map((r) => r.y2024)),
     y2025: sumTriples(REASON_ROWS.map((r) => r.y2025)),
     y2026: sumTriples(REASON_ROWS.map((r) => r.y2026)),
-    noMeasureVisit: REASON_ROWS.reduce((a, r) => a + r.noMeasureVisit, 0),
-    noMeasureNoVisit: REASON_ROWS.reduce((a, r) => a + r.noMeasureNoVisit, 0),
   };
 
   // 競合別の合計行
@@ -328,7 +322,6 @@ export default function SalesMeetingLossAnalysisPage() {
                   <TableCell colSpan={4} align="center" sx={{ fontWeight: 'bold' }}>2024年</TableCell>
                   <TableCell colSpan={4} align="center" sx={{ fontWeight: 'bold' }}>2025年</TableCell>
                   <TableCell colSpan={4} align="center" sx={{ fontWeight: 'bold' }}>2026年</TableCell>
-                  <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: RED }}>対策していない（2024）</TableCell>
                 </TableRow>
                 <TableRow sx={{ bgcolor: SUBHEADER_BG }}>
                   {['専任', '訪問後他決', '勝率', '未訪問他決',
@@ -336,8 +329,6 @@ export default function SalesMeetingLossAnalysisPage() {
                     '専任', '訪問後他決', '勝率', '未訪問他決'].map((h, i) => (
                     <TableCell key={i} align="right" sx={{ fontWeight: 'bold' }}>{h}</TableCell>
                   ))}
-                  <TableCell align="right" sx={{ fontWeight: 'bold', color: RED }}>訪問後他決</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 'bold', color: RED }}>未訪問他決</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -347,8 +338,6 @@ export default function SalesMeetingLossAnalysisPage() {
                     <YearCells v={r.y2024} />
                     <YearCells v={r.y2025} />
                     <YearCells v={r.y2026} />
-                    <TableCell align="right" sx={{ color: RED }}>{r.noMeasureVisit}</TableCell>
-                    <TableCell align="right" sx={{ color: RED }}>{r.noMeasureNoVisit}</TableCell>
                   </TableRow>
                 ))}
                 <TableRow sx={{ bgcolor: '#fff8e1' }}>
@@ -356,8 +345,6 @@ export default function SalesMeetingLossAnalysisPage() {
                   <YearCells v={reasonTotal.y2024} />
                   <YearCells v={reasonTotal.y2025} />
                   <YearCells v={reasonTotal.y2026} />
-                  <TableCell align="right" sx={{ color: RED, fontWeight: 'bold' }}>{reasonTotal.noMeasureVisit}</TableCell>
-                  <TableCell align="right" sx={{ color: RED, fontWeight: 'bold' }}>{reasonTotal.noMeasureNoVisit}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
