@@ -256,39 +256,28 @@ const isTodayOrAfter = (dateStr: string | Date | undefined | null): boolean => {
  * @returns 訪問日前日対象かどうか
  */
 export const isVisitDayBefore = (seller: Seller | any): boolean => {
-  // デバッグログ
-  console.log('[isVisitDayBefore] Checking seller:', seller.sellerNumber || seller.seller_number);
-  
   if (!hasVisitAssignee(seller)) {
-    console.log('[isVisitDayBefore] No visit assignee');
     return false;
   }
   
   let visitDate = seller.visitDate || seller.visit_date;
   if (!visitDate) {
-    console.log('[isVisitDayBefore] No visit date');
     return false;
   }
-  
-  console.log('[isVisitDayBefore] Original visit_date:', visitDate);
   
   // 🚨 TIMESTAMP型対応: visit_dateから日付部分のみを抽出
   // visit_date は "YYYY-MM-DD HH:MM:SS" または "YYYY-MM-DDTHH:MM:SS.000Z" 形式
   if (typeof visitDate === 'string') {
-    // スペースまたはTで分割して日付部分のみを取得
     if (visitDate.includes(' ')) {
-      visitDate = visitDate.split(' ')[0]; // "YYYY-MM-DD HH:MM:SS" → "YYYY-MM-DD"
+      visitDate = visitDate.split(' ')[0];
     } else if (visitDate.includes('T')) {
-      visitDate = visitDate.split('T')[0]; // "YYYY-MM-DDTHH:MM:SS.000Z" → "YYYY-MM-DD"
+      visitDate = visitDate.split('T')[0];
     }
   }
-  
-  console.log('[isVisitDayBefore] Extracted visit_date:', visitDate);
   
   // visitReminderAssigneeに値がある場合は除外（通知担当が既に割り当て済み）
   const visitReminderAssignee = seller.visitReminderAssignee || seller.visit_reminder_assignee || '';
   if (visitReminderAssignee.trim() !== '') {
-    console.log('[isVisitDayBefore] Visit reminder assignee already set');
     return false;
   }
   
@@ -302,15 +291,10 @@ export const isVisitDayBefore = (seller: Seller | any): boolean => {
   );
   todayDate.setHours(0, 0, 0, 0);
   
-  console.log('[isVisitDayBefore] Today:', todayStr, todayDate);
-  
   // 日付形式が不正な場合はfalseを返す（防御的プログラミング）
   try {
-    const result = isVisitDayBeforeUtil(String(visitDate), todayDate);
-    console.log('[isVisitDayBefore] Result:', result);
-    return result;
+    return isVisitDayBeforeUtil(String(visitDate), todayDate);
   } catch (error) {
-    console.error('[isVisitDayBefore] Invalid visit_date format:', visitDate, error);
     return false;
   }
 };
