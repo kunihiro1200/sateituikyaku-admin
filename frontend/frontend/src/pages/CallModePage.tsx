@@ -6752,9 +6752,6 @@ HP：https://ifoo-oita.com/
                             />
                           )}
                         </Box>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                          件名: {template.subject}
-                        </Typography>
                       </MenuItem>
                     );
                   })}
