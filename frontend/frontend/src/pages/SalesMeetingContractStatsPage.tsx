@@ -330,16 +330,40 @@ function rowsForPeriod(from: string, to: string): Counts[] {
   return MONTHLY.filter((r) => ymNum(r.ym) >= ymNum(from) && ymNum(r.ym) <= ymNum(to));
 }
 
-// 月次テーブルの1行を描画する（区分ラベル付き）
+// 区分（AA/FI/合計）の見た目定義
+type Kind = 'none' | 'aa' | 'fi' | 'total';
+const KIND_STYLE: Record<Kind, { label: string; chipBg: string; chipColor: string; rowBg: string }> = {
+  none:  { label: '',       chipBg: 'transparent', chipColor: 'inherit', rowBg: '#ffffff' },
+  aa:    { label: 'AA 大分', chipBg: '#1565c0',     chipColor: '#fff',    rowBg: '#e3f2fd' },
+  fi:    { label: 'FI 福岡', chipBg: '#2e7d32',     chipColor: '#fff',    rowBg: '#e8f5e9' },
+  total: { label: '合計',    chipBg: '#f9a825',     chipColor: '#000',    rowBg: '#fff8e1' },
+};
+
+// 月次テーブルの1行を描画する（区分チップ付き）
+// topBorder: 月の先頭行に太い上罫線を入れて月のまとまりを見せる
 function MonthRow({
-  label, ym, counts, bold, bg,
-}: { label: string; ym: string; counts: Counts; bold?: boolean; bg?: string }) {
+  kind, ym, counts, topBorder,
+}: { kind: Kind; ym: string; counts: Counts; topBorder?: boolean }) {
   const rates = calcRates(counts);
+  const bold = kind === 'total';
   const cellSx = { fontWeight: bold ? 'bold' : undefined };
+  const style = KIND_STYLE[kind];
+  const rowSx: any = { bgcolor: style.rowBg };
+  if (topBorder) rowSx['& td'] = { borderTop: '2px solid #9575cd' };
   return (
-    <TableRow hover sx={{ bgcolor: bg }}>
-      <TableCell sx={{ fontWeight: bold ? 'bold' : undefined }}>{ym}</TableCell>
-      <TableCell sx={{ whiteSpace: 'nowrap' }}>{label}</TableCell>
+    <TableRow hover sx={rowSx}>
+      <TableCell sx={{ fontWeight: 'bold' }}>{topBorder ? ym : ''}</TableCell>
+      <TableCell sx={{ whiteSpace: 'nowrap' }}>
+        {kind === 'none' ? (
+          <Typography variant="caption" color="text.secondary">—</Typography>
+        ) : (
+          <Chip
+            size="small"
+            label={style.label}
+            sx={{ bgcolor: style.chipBg, color: style.chipColor, fontWeight: 'bold', height: 20 }}
+          />
+        )}
+      </TableCell>
       {countCells(counts).map((v, i) => (
         <TableCell key={i} align="right" sx={cellSx}>{v}</TableCell>
       ))}
@@ -371,11 +395,24 @@ export default function SalesMeetingContractStatsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  // 期別集計（AAのみ = 元データそのまま）
+  // 期のFI合計（2026/4以降の各月のFI集計を期範囲で合算）
+  const fiPeriodTotal = (from: string, to: string): Counts => {
+    const empty: Counts = {
+      ym: '', senRyo: 0, senKata: 0, ipRyo: 0, ipKata: 0, ipTa: 0,
+      otherKata: 0, otherRyo: 0, buyLB: 0, buyResale: 0, refKata: 0, refRyo: 0,
+      senKaijo: 0, ipKaijo: 0,
+    };
+    return MONTHLY
+      .filter((r) => ymNum(r.ym) >= ymNum(from) && ymNum(r.ym) <= ymNum(to) && isFiSplitMonth(r.ym))
+      .reduce((acc, r) => addCounts(acc, fiToCounts(r.ym, fiStats)), empty);
+  };
+
+  // 期別集計（AA=元データ、FI=DB集計、合計=AA+FI）
   const periods = useMemo(() => ([
-    { label: '2024年10月〜2025年9月（期）', rows: sliceByPeriod('2024/10', '2025/9') },
-    { label: '2025年10月〜2026年9月（期）', rows: sliceByPeriod('2025/10', '2026/9') },
-  ]), []);
+    { key: '2024', label: '2024年10月〜2025年9月（期）', aa: sumCounts(sliceByPeriod('2024/10', '2025/9')), hasFi: false, fi: fiPeriodTotal('2024/10', '2025/9') },
+    { key: '2025', label: '2025年10月〜2026年9月（期）', aa: sumCounts(sliceByPeriod('2025/10', '2026/9')), hasFi: true, fi: fiPeriodTotal('2025/10', '2026/9') },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ]), [fiStats]);
 
   // デフォルトで開く期（最新期）
   const [expandedPeriod, setExpandedPeriod] = useState<string>('2025');
@@ -407,15 +444,16 @@ export default function SalesMeetingContractStatsPage() {
         </Typography>
       </Paper>
 
-      {/* 期別集計 */}
+      {/* 期別集計（AA / FI / 合計） */}
       <Typography variant="h6" fontWeight="bold" sx={{ mb: 1, color: '#6a1b9a' }}>
-        期別集計（AA）
+        期別集計
       </Typography>
       <TableContainer component={Paper} sx={{ mb: 4 }}>
         <Table size="small" sx={{ '& td, & th': { whiteSpace: 'nowrap' } }}>
           <TableHead>
             <TableRow sx={{ bgcolor: '#ede7f6' }}>
               <TableCell sx={{ fontWeight: 'bold' }}>期</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>区分</TableCell>
               {COLUMNS.map((col) => (
                 <TableCell key={col} align="right" sx={{ fontWeight: 'bold' }}>{col}</TableCell>
               ))}
@@ -425,21 +463,40 @@ export default function SalesMeetingContractStatsPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {periods.map(({ label, rows }) => {
-              const total = sumCounts(rows);
-              const rates = calcRates(total);
-              return (
-                <TableRow key={label} sx={{ bgcolor: '#fff8e1' }}>
-                  <TableCell sx={{ fontWeight: 'bold' }}>{label}</TableCell>
-                  {countCells(total).map((v, i) => (
-                    <TableCell key={i} align="right" sx={{ fontWeight: 'bold' }}>{v}</TableCell>
-                  ))}
-                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>{fmtPct(rates.senRyoRate)}</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>{fmtPct(rates.ipRyoRate)}</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>{fmtPct(rates.ipKataRate)}</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 'bold', color: '#c62828' }}>{fmtPct(rates.taRate)}</TableCell>
-                </TableRow>
-              );
+            {periods.map(({ key, label, aa, hasFi, fi }) => {
+              // FIが無い期はAA1行のみ。FIがある期はAA/FI/合計の3行。
+              const rowsToShow: { kind: Kind; counts: Counts }[] = hasFi
+                ? [
+                    { kind: 'aa', counts: aa },
+                    { kind: 'fi', counts: fi },
+                    { kind: 'total', counts: addCounts(aa, fi) },
+                  ]
+                : [{ kind: 'none', counts: aa }];
+              return rowsToShow.map((row, idx) => {
+                const rates = calcRates(row.counts);
+                const style = KIND_STYLE[row.kind];
+                const bold = row.kind === 'total' || row.kind === 'none';
+                const cellSx = { fontWeight: bold ? 'bold' : undefined };
+                return (
+                  <TableRow key={`${key}-${row.kind}`} sx={{ bgcolor: style.rowBg }}>
+                    <TableCell sx={{ fontWeight: 'bold' }}>{idx === 0 ? label : ''}</TableCell>
+                    <TableCell>
+                      {row.kind === 'none' ? (
+                        <Chip size="small" label="AA 大分" sx={{ bgcolor: KIND_STYLE.aa.chipBg, color: '#fff', fontWeight: 'bold', height: 20 }} />
+                      ) : (
+                        <Chip size="small" label={style.label} sx={{ bgcolor: style.chipBg, color: style.chipColor, fontWeight: 'bold', height: 20 }} />
+                      )}
+                    </TableCell>
+                    {countCells(row.counts).map((v, i) => (
+                      <TableCell key={i} align="right" sx={cellSx}>{v}</TableCell>
+                    ))}
+                    <TableCell align="right" sx={cellSx}>{fmtPct(rates.senRyoRate)}</TableCell>
+                    <TableCell align="right" sx={cellSx}>{fmtPct(rates.ipRyoRate)}</TableCell>
+                    <TableCell align="right" sx={cellSx}>{fmtPct(rates.ipKataRate)}</TableCell>
+                    <TableCell align="right" sx={{ ...cellSx, color: '#c62828' }}>{fmtPct(rates.taRate)}</TableCell>
+                  </TableRow>
+                );
+              });
             })}
           </TableBody>
         </Table>
@@ -484,17 +541,17 @@ export default function SalesMeetingContractStatsPage() {
                   <TableBody>
                     {rows.map((r) => {
                       if (!isFiSplitMonth(r.ym)) {
-                        // 2026/4より前: 従来どおり1行（AA相当）
-                        return <MonthRow key={r.ym} ym={r.ym} label="—" counts={r} />;
+                        // 2026/4より前: 従来どおり1行（AA相当。区分チップなし）
+                        return <MonthRow key={r.ym} ym={r.ym} kind="none" counts={r} topBorder />;
                       }
-                      // 2026/4以降: AA / FI / 合計 の3行
+                      // 2026/4以降: AA / FI / 合計 の3行（区分チップ付き）
                       const aa = r; // 元データ＝AAのみ
                       const fi = fiToCounts(r.ym, fiStats);
                       const total = addCounts(aa, fi);
                       return [
-                        <MonthRow key={`${r.ym}-aa`} ym={r.ym} label="AA（大分）" counts={aa} bg="#ffffff" />,
-                        <MonthRow key={`${r.ym}-fi`} ym={r.ym} label="FI（福岡）" counts={fi} bg="#e8f5e9" />,
-                        <MonthRow key={`${r.ym}-total`} ym={r.ym} label="合計" counts={total} bold bg="#fff8e1" />,
+                        <MonthRow key={`${r.ym}-aa`} ym={r.ym} kind="aa" counts={aa} topBorder />,
+                        <MonthRow key={`${r.ym}-fi`} ym={r.ym} kind="fi" counts={fi} />,
+                        <MonthRow key={`${r.ym}-total`} ym={r.ym} kind="total" counts={total} />,
                       ];
                     })}
                   </TableBody>
