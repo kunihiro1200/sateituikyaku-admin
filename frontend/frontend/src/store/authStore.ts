@@ -284,7 +284,7 @@ export const useAuthStore = create<AuthState>()(
 
       // 社員情報を取得（必ずAPIから取得、キャッシュを使用しない）
       try {
-        const response = await api.get('/auth/me');
+        const response = await api.get('/auth/me', { timeout: 15000 });
         console.log('✅ Auth check successful, got employee info from API:', {
           name: response.data.name,
           initials: response.data.initials,

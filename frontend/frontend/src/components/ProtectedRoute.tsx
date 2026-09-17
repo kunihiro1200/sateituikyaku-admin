@@ -36,7 +36,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       console.warn('⚠️ Auth check timeout - forcing to login');
       useAuthStore.setState({ isLoading: false, isAuthenticated: false });
       authCheckInProgress = false;
-    }, 5000); // 5秒でタイムアウト
+    }, 20000); // 20秒でタイムアウト（夕方の遅延対策）
 
     checkAuth().finally(() => {
       clearTimeout(timeoutId);
