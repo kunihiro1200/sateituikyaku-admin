@@ -3225,7 +3225,16 @@ export class SellerService extends BaseRepository {
         .select('category, count, label, assignee, updated_at');
 
       if (error || !rows || rows.length === 0) {
-        console.warn('⚠️ [SidebarCounts] Table empty or error, falling back to DB calculation:', error?.message);
+        console.warn('⚠️ [SidebarCounts] Table empty or error, falling back to DB calculation and rebuilding table:', error?.message);
+        // フォールバック計算を実行しつつ、テーブルも非同期で再構築する（DBリスタート後の復旧）
+        import('./SellerSidebarCountsUpdateService').then(({ SellerSidebarCountsUpdateService }) => {
+          const updateService = new SellerSidebarCountsUpdateService(this.supabase);
+          return updateService.updateSellerSidebarCounts();
+        }).then(() => {
+          console.log('✅ [SidebarCounts] Table rebuilt after empty/error');
+        }).catch((rebuildErr: any) => {
+          console.error('❌ [SidebarCounts] Table rebuild failed:', rebuildErr?.message);
+        });
         return this.getSidebarCountsFallback();
       }
 
