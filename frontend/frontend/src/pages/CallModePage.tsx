@@ -1570,6 +1570,17 @@ const CallModePage = () => {
       label: 'キャンセル案内',
       generator: generateCancellationGuidance,
     },
+    // ── SMS専用（Emailに対応なし） ──
+    {
+      id: 'valuation2',
+      label: '査定Sメール２（査定根拠等）',
+      generator: generateValuationSMS2,
+    },
+    {
+      id: 'greeting',
+      label: '空',
+      generator: generateGreetingSMS,
+    },
     // ── 査定理由別（Email order 4-7） ──
     {
       id: 'reason_relocation',
@@ -1662,17 +1673,6 @@ const CallModePage = () => {
       label: '進捗③の返信',
       generator: generateProgressStep3ReplySMS,
       highlight: true, // 薄緑背景
-    },
-    // ── SMS専用（Emailに対応なし・末尾） ──
-    {
-      id: 'valuation2',
-      label: '査定Sメール２（査定根拠等）',
-      generator: generateValuationSMS2,
-    },
-    {
-      id: 'greeting',
-      label: '空',
-      generator: generateGreetingSMS,
     },
   ];
 
