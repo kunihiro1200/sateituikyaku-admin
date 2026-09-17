@@ -90,7 +90,10 @@ export default function WorkTasksPage() {
     setSnackbarSeverity('info');
     setSnackbarOpen(true);
     try {
-      const res = await api.post('/api/work-tasks/manual-sync');
+      // 転記はスプシ→集計表→DB を通して行うため数分かかる。
+      // デフォルトの120秒では途中で切れてしまうので、この呼び出しだけ290秒に延長する
+      // （バックエンドVercel関数のmaxDurationが300秒のため、それより短く設定）
+      const res = await api.post('/api/work-tasks/manual-sync', undefined, { timeout: 290000 });
       setSnackbarMessage(res.data?.message || '転記が完了しました');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);

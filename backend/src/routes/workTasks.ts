@@ -358,16 +358,24 @@ router.delete('/:propertyNumber', async (req: Request, res: Response) => {
 
 /**
  * POST /api/work-tasks/manual-sync
- * 手動転記実行：①コード.gs（スプシ→業務依頼集計表）→ ②GyomuWorkTaskSync.gs（集計表→DB）を順番に実行
+ * 手動転記実行：
+ *   ① コード.gs（スプシ→業務依頼集計表）をGASで実行（これは数秒で完了する）
+ *   ② 集計表→DB の同期は バックエンド内で syncAll() を直接実行する
+ *
+ * 【変更理由 / 過去の障害】
+ * 以前は②を GyomuWorkTaskSync.gs（GAS Web App）へのHTTP呼び出しで行っていたが、
+ * GAS側が全行(約650件)のupsert + CWカウント同期 + 媒介シート同期を同期実行するため、
+ * axiosの300秒タイムアウトを超えて必ず失敗し、「転記実行しても転記されない」状態になっていた。
+ * 集計表→DB は backend の WorkTaskSyncService.syncAll() が同じ処理を行えるため、
+ * GASのタイムアウトに依存しないバックエンド内実行に置き換えた。
  */
 router.post('/manual-sync', async (_req: Request, res: Response) => {
-  // GAS Web App URLs
+  // Step1 のみ GAS を使う（スプシ→業務依頼集計表）
   const STEP1_URL = 'https://script.google.com/macros/s/AKfycbw7WZf6b4f9zjBKS1QWKNBQUKGaw4E_XFDikSesvp49jxGuHAMKgDRUMhhYxZ1vqDc/exec';
-  const STEP2_URL = 'https://script.google.com/macros/s/AKfycbz84oQQ6sI4rcKFFGHYbEFEwpex1J0RTrnoCTgN5xn_HQ-Q7EXItc5T1ei-E_bi/exec';
 
   try {
     console.log('[manual-sync] ステップ1開始: コード.gs（スプシ→業務依頼集計表）');
-    const step1Res = await axios.get(STEP1_URL, { timeout: 300000 }); // 5分タイムアウト
+    const step1Res = await axios.get(STEP1_URL, { timeout: 120000 }); // 2分タイムアウト（Step1は数秒で完了する）
     const step1Data = step1Res.data;
     console.log('[manual-sync] ステップ1完了:', step1Data);
 
@@ -379,24 +387,31 @@ router.post('/manual-sync', async (_req: Request, res: Response) => {
       });
     }
 
-    console.log('[manual-sync] ステップ2開始: GyomuWorkTaskSync.gs（集計表→DB）');
-    const step2Res = await axios.get(STEP2_URL, { timeout: 300000 });
-    const step2Data = step2Res.data;
-    console.log('[manual-sync] ステップ2完了:', step2Data);
+    console.log('[manual-sync] ステップ2開始: 集計表→DB（バックエンド内 syncAll）');
+    const step2Result = await workTaskSyncService.syncAll();
+    console.log(
+      `[manual-sync] ステップ2完了: 成功=${step2Result.successCount}, エラー=${step2Result.errorCount}`
+    );
 
-    if (step2Data?.success === false) {
+    // 全件失敗（＝スプシ取得自体に失敗した等）の場合のみエラー扱いにする
+    if (step2Result.successCount === 0 && step2Result.errorCount > 0) {
       return res.status(500).json({
         step: 2,
         error: 'ステップ2（集計表→DB）でエラーが発生しました',
-        detail: step2Data.error,
+        detail: step2Result.errors.slice(0, 5),
       });
     }
 
     return res.json({
       success: true,
-      message: '転記が完了しました（スプシ→集計表→DB）',
+      message: `転記が完了しました（スプシ→集計表→DB / 成功${step2Result.successCount}件${
+        step2Result.errorCount > 0 ? ` / エラー${step2Result.errorCount}件` : ''
+      }）`,
       step1: step1Data,
-      step2: step2Data,
+      step2: {
+        successCount: step2Result.successCount,
+        errorCount: step2Result.errorCount,
+      },
     });
   } catch (error: any) {
     console.error('[manual-sync] エラー:', error);
