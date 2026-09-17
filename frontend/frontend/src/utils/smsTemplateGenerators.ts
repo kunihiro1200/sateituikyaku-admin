@@ -835,3 +835,101 @@ export const generateProgressStep3ReplySMS = (
 
   return message;
 };
+
+/**
+ * 12. WEB打合せどうですかメール（SMS版）
+ * Email版「WEB打合せどうですかメール」をSMS向けに短縮
+ * FI: くじら不動産、非FI: 株式会社いふう
+ */
+export const generateWebMeetingSMS = (
+  seller: Seller,
+  property: PropertyInfo | null
+): string => {
+  const name = seller.name || '';
+  const propertyAddress = property?.address || seller.propertyAddress || '';
+
+  let message = `${name}様[改行][改行]お世話になっております。大分市舞鶴町にございます不動産会社のいふうです。[改行][改行]${propertyAddress}の訪問打合せが難しい場合、WEBで「売却までの流れ」「税金対策」のご説明も可能です。[改行][改行]ご希望でしたら、このメッセージにご返信いただくか、下記URLよりWEB打合せのご予約をお願いいたします。[改行]http://bit.ly/44U9pjl[改行][改行]ご不明な点がございましたら、お気軽にお問い合わせください。[改行][改行]㈱いふう[改行]<<当社住所>>[改行]TEL: 097-533-2022`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
+
+/**
+ * 13. 査定理由別・住替え先（SMS版）
+ * Email版「（査定理由別）住替え先」をSMS向けに短縮
+ */
+export const generateReasonRelocationSMS = (
+  seller: Seller,
+  property: PropertyInfo | null
+): string => {
+  const name = seller.name || '';
+
+  let message = `${name}様[改行][改行]お世話になっております。大分市舞鶴町にございます不動産会社のいふうです。[改行][改行]先日は査定のご依頼をいただきありがとうございました。[改行][改行]住み替え先の物件についてもご相談を承っております。ご希望の条件などございましたら、お気軽にお問い合わせください。[改行][改行]㈱いふう[改行]<<当社住所>>[改行]TEL: 097-533-2022`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
+
+/**
+ * 14. 査定理由別・相続（SMS版）
+ * Email版「（査定理由別）相続」をSMS向けに短縮
+ */
+export const generateReasonInheritanceSMS = (
+  seller: Seller,
+  property: PropertyInfo | null
+): string => {
+  const name = seller.name || '';
+
+  let message = `${name}様[改行][改行]お世話になっております。大分市舞鶴町にございます不動産会社のいふうです。[改行][改行]先日は査定のご依頼をいただきありがとうございました。[改行][改行]相続に関する手続きや相続登記についてもご相談を承っております。信頼できる司法書士のご紹介も可能ですので、お気軽にお問い合わせください。[改行][改行]㈱いふう[改行]<<当社住所>>[改行]TEL: 097-533-2022`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
+
+/**
+ * 15. 査定理由別・離婚（SMS版）
+ * Email版「（査定理由別）離婚」をSMS向けに短縮
+ */
+export const generateReasonDivorceSMS = (
+  seller: Seller,
+  property: PropertyInfo | null
+): string => {
+  const name = seller.name || '';
+
+  let message = `${name}様[改行][改行]お世話になっております。大分市舞鶴町にございます不動産会社のいふうです。[改行][改行]先日は査定のご依頼をいただきありがとうございました。[改行][改行]不動産の売却に関して、ご不明な点やご相談がございましたら、お気軽にお問い合わせください。[改行][改行]㈱いふう[改行]<<当社住所>>[改行]TEL: 097-533-2022`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
+
+/**
+ * 16. 査定理由別・ローン厳しい（SMS版）
+ * Email版「（査定理由別）ローン厳しい」をSMS向けに短縮
+ */
+export const generateReasonLoanSMS = (
+  seller: Seller,
+  property: PropertyInfo | null
+): string => {
+  const name = seller.name || '';
+
+  let message = `${name}様[改行][改行]お世話になっております。大分市舞鶴町にございます不動産会社のいふうです。[改行][改行]先日は査定のご依頼をいただきありがとうございました。[改行][改行]住宅ローンに関するご相談も承っております。任意売却などの選択肢もございますので、お気軽にお問い合わせください。[改行][改行]㈱いふう[改行]<<当社住所>>[改行]TEL: 097-533-2022`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
+
+/**
+ * 17. 相続登記案内（SMS版）
+ * Email版「相続登記（きざし様へご案内）」をSMS向けに短縮
+ */
+export const generateInheritanceRegistrationSMS = (
+  seller: Seller,
+  property: PropertyInfo | null
+): string => {
+  const name = seller.name || '';
+
+  let message = `${name}様[改行][改行]お世話になっております。大分市舞鶴町にございます不動産会社のいふうです。[改行][改行]相続登記の義務化（2024年4月～）に伴い、相続登記のお手続きをお勧めしております。[改行][改行]信頼できる司法書士事務所のご紹介が可能です。ご相談は無料ですので、お気軽にお問い合わせください。[改行][改行]㈱いふう[改行]<<当社住所>>[改行]TEL: 097-533-2022`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};

@@ -80,6 +80,12 @@ import {
   generateProgressStep3ReplySMS,
   generateOtherDecisionThreeMonthsFollowUpSMS,
   generateOtherDecisionSixMonthsFollowUpSMS,
+  generateWebMeetingSMS,
+  generateReasonRelocationSMS,
+  generateReasonInheritanceSMS,
+  generateReasonDivorceSMS,
+  generateReasonLoanSMS,
+  generateInheritanceRegistrationSMS,
   convertLineBreaks,
   replacePlaceholders,
 } from '../utils/smsTemplateGenerators';
@@ -1621,6 +1627,36 @@ const CallModePage = () => {
       label: '進捗③の返信',
       generator: generateProgressStep3ReplySMS,
       highlight: true, // 薄緑背景
+    },
+    {
+      id: 'web_meeting',
+      label: 'WEB打合せどうですかメール',
+      generator: generateWebMeetingSMS,
+    },
+    {
+      id: 'reason_relocation',
+      label: '（査定理由別）住替え先',
+      generator: generateReasonRelocationSMS,
+    },
+    {
+      id: 'reason_inheritance',
+      label: '（査定理由別）相続',
+      generator: generateReasonInheritanceSMS,
+    },
+    {
+      id: 'reason_divorce',
+      label: '（査定理由別）離婚',
+      generator: generateReasonDivorceSMS,
+    },
+    {
+      id: 'reason_loan',
+      label: '（査定理由別）ローン厳しい',
+      generator: generateReasonLoanSMS,
+    },
+    {
+      id: 'inheritance_registration',
+      label: '相続登記（きざし様へご案内）',
+      generator: generateInheritanceRegistrationSMS,
     },
   ];
 
