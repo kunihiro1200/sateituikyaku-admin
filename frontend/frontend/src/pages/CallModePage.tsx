@@ -1911,6 +1911,14 @@ const CallModePage = () => {
     currentEditableCommentsRef.current = '';
     setEditableComments('');
     setSavedComments('');
+    // 査定額をリセット（前の売主の査定額が loadAllData 完了前に残らないようにする）
+    setEditedValuationAmount1('');
+    setEditedValuationAmount2('');
+    setEditedValuationAmount3('');
+    setEditedManualValuationAmount1('');
+    setEditedManualValuationAmount2('');
+    setEditedManualValuationAmount3('');
+    setIsManualValuation(false);
     loadAllData();
     // 売主が切り替わったら選択画像をリセット（前の売主の添付が残らないようにする）
     setSelectedImages([]);
