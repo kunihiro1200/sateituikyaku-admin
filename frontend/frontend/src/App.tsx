@@ -48,6 +48,7 @@ import SalesMeetingAgendaPage from './pages/SalesMeetingAgendaPage';
 import SalesMeetingContractStatsPage from './pages/SalesMeetingContractStatsPage';
 import SalesMeetingSalesStatsPage from './pages/SalesMeetingSalesStatsPage';
 import SalesMeetingLossAnalysisPage from './pages/SalesMeetingLossAnalysisPage';
+import MoneyForwardExpensePage from './pages/MoneyForwardExpensePage';
 import BuyerNearbyPropertiesPage from './pages/BuyerNearbyPropertiesPage';
 import NearbyBuyersPage from './pages/NearbyBuyersPage';
 import OtherCompanyDistributionPage from './pages/OtherCompanyDistributionPage';
@@ -465,6 +466,14 @@ function App() {
         element={
           <ProtectedRoute>
             <SalesMeetingLossAnalysisPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shared-items/money-forward-expenses"
+        element={
+          <ProtectedRoute>
+            <MoneyForwardExpensePage />
           </ProtectedRoute>
         }
       />

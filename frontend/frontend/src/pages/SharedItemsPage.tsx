@@ -943,6 +943,16 @@ export default function SharedItemsPage() {
                 />
                 <OpenInNewIcon sx={{ fontSize: '0.9rem', color: '#1565c0', ml: 0.5 }} />
               </ListItemButton>
+              {/* マネーフォワード経費集計 */}
+              <ListItemButton
+                onClick={() => navigate('/shared-items/money-forward-expenses')}
+                sx={{ py: 0.75, pl: 3, borderRadius: 1, '&:hover': { backgroundColor: '#bbdefb' } }}
+              >
+                <ListItemText
+                  primary="経費集計（マネーフォワードCSV）"
+                  primaryTypographyProps={{ variant: 'body2', fontSize: '0.8rem', color: '#1565c0' }}
+                />
+              </ListItemButton>
               {/* ランキング表示ボタン */}
               <Box sx={{ px: 1, pt: 1, pb: 0.5 }}>
                 <Typography variant="caption" sx={{ px: 0.5, color: '#1565c0', fontWeight: 'bold' }}>
