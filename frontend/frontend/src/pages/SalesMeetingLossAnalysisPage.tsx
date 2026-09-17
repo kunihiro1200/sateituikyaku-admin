@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Container,
   Box,
@@ -14,9 +14,11 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Chip,
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 /**
  * 営業会議「他決分析」ページ
@@ -219,9 +221,50 @@ function sumTriples(rows: YearTriple[]): YearTriple {
   );
 }
 
+// 他決分析集計API（backend: /api/sales-meeting/loss-analysis-stats）の型
+// 担当者名 -> 理由名 -> { 2024, 2025, 2026 } の他決件数
+type LossStats = Record<string, Record<string, { 2024: number; 2025: number; 2026: number }>>;
+
+// 対象担当者（林 / 麻 / K）のキー対応（表の列キー）
+const DYNAMIC_STAFF: { label: string; key: keyof StaffCounts }[] = [
+  { label: '林', key: 'hayashi' },
+  { label: '麻', key: 'asa' },
+  { label: 'K', key: 'K' },
+];
+
 export default function SalesMeetingLossAnalysisPage() {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState<string>('reasons');
+  const [lossStats, setLossStats] = useState<LossStats | null>(null);
+  const [lossLoaded, setLossLoaded] = useState(false);
+
+  // 林 / 麻 / K の他決件数をDBから集計取得（元スプレッドシートのCOUNTIFS相当）
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/api/sales-meeting/loss-analysis-stats')
+      .then((res) => {
+        if (!cancelled) setLossStats(res.data?.data ?? {});
+      })
+      .catch(() => {
+        if (!cancelled) setLossStats({}); // 失敗時は 0 扱いで表示継続
+      })
+      .finally(() => {
+        if (!cancelled) setLossLoaded(true);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  // API結果を STAFF_ROWS にマージする（他決理由の 林/麻/K を上書き）。
+  // 元シートの各営業の特性は「年合算の他決件数」なので、2024+2025+2026 を足す。
+  const staffRows: StaffReasonRow[] = STAFF_ROWS.map((r) => {
+    if (!lossStats) return r;
+    const loss = { ...r.loss };
+    for (const { label, key } of DYNAMIC_STAFF) {
+      const yc = lossStats[label]?.[r.reason];
+      loss[key] = yc ? (yc[2024] + yc[2025] + yc[2026]) : 0;
+    }
+    return { ...r, loss };
+  });
 
   // 他決理由別の合計行
   const reasonTotal = {
@@ -239,8 +282,8 @@ export default function SalesMeetingLossAnalysisPage() {
     y2026: sumTriples(COMPETITOR_ROWS.map((r) => r.y2026)),
   };
 
-  const staffSenTotal = sumStaff(STAFF_ROWS, (r) => r.sen);
-  const staffLossTotal = sumStaff(STAFF_ROWS, (r) => r.loss);
+  const staffSenTotal = sumStaff(staffRows, (r) => r.sen);
+  const staffLossTotal = sumStaff(staffRows, (r) => r.loss);
 
   return (
     <Container maxWidth={false} sx={{ py: 3, px: 2 }}>
@@ -262,6 +305,8 @@ export default function SalesMeetingLossAnalysisPage() {
         <Typography variant="body2" sx={{ color: PURPLE }}>
           他決理由・競合・各営業の特性を集計しています。勝率＝専任 ÷（専任＋訪問後他決）で自動計算。
           各営業の特性は担当者（K / U / Y / I / 林 / 麻）ごとに集計しています。
+          林・麻・K の他決件数は売主データ（状況＝他決→追客／追客不要、営担、契約年月＝他決判明時点、競合名・理由）から
+          自動集計しています（2024〜2026年合算）。
         </Typography>
       </Paper>
 
@@ -363,7 +408,10 @@ export default function SalesMeetingLossAnalysisPage() {
       {/* ============ 3) 各営業の特性 ============ */}
       <Accordion expanded={expanded === 'staff'} onChange={() => setExpanded(expanded === 'staff' ? '' : 'staff')} disableGutters>
         <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: HEADER_BG }}>
-          <Typography fontWeight="bold" sx={{ color: PURPLE }}>各営業の特性（K / U / Y / I / 林 / 麻）</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography fontWeight="bold" sx={{ color: PURPLE }}>各営業の特性（K / U / Y / I / 林 / 麻）</Typography>
+            {!lossLoaded && <Chip size="small" label="林・麻・Kの他決を集計中…" />}
+          </Box>
         </AccordionSummary>
         <AccordionDetails sx={{ p: 0 }}>
           <TableContainer>
@@ -384,7 +432,7 @@ export default function SalesMeetingLossAnalysisPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {STAFF_ROWS.map((r) => (
+                {staffRows.map((r) => (
                   <TableRow key={r.reason} hover>
                     <TableCell sx={{ fontWeight: 'bold' }}>{r.reason}</TableCell>
                     {STAFF_NAMES.map((n) => (
