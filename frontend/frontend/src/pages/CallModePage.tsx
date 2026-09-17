@@ -6755,21 +6755,6 @@ HP：https://ifoo-oita.com/
                         <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                           件名: {template.subject}
                         </Typography>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{
-                            fontSize: '0.7rem',
-                            mt: 0.5,
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}
-                        >
-                          {template.body}
-                        </Typography>
                       </MenuItem>
                     );
                   })}
