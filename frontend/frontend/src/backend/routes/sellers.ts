@@ -83,7 +83,6 @@ router.get(
     query('firstCaller').optional().isString().withMessage('First caller must be a string'),
     query('duplicateConfirmed').optional().isBoolean().withMessage('Duplicate confirmed must be a boolean'),
   ],
-  ],
   async (req: Request, res: Response) => {
     try {
       const errors = validationResult(req);
