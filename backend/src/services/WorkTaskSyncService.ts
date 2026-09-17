@@ -173,12 +173,60 @@ export class WorkTaskSyncService {
 
       console.log(`取得行数: ${rows.length}`);
 
+      // スプシで空の場合、DBの既存値を保持するカラム
+      // （画面から保存した値がスプシ空値で上書きされて消えないようにするため）
+      const fieldsToPreserve = [
+        'storage_url',
+        'site_registration_requester',
+        'site_registration_requestor',
+        'cw_request_email_site',
+        'cw_request_email_floor_plan',
+        'cw_request_email_2f_above',
+        'site_registration_confirmed',
+        'site_registration_confirm_request_date',
+        'site_registration_ok_sent',
+        'mediation_deadline',
+        'mediation_completed',
+        'mediation_creator',
+      ];
+
+      // 【高速化】既存の保持対象フィールドを1クエリで一括取得する。
+      // 以前は行ごとに SELECT + upsert していたため約650行で1,300回のDB往復が発生し、
+      // Vercel関数(300秒)がタイムアウトして「転記されない」原因になっていた。
+      const existingMap: Record<string, any> = {};
+      {
+        const selectCols = ['property_number', ...fieldsToPreserve].join(',');
+        const pageSize = 1000;
+        let from = 0;
+        // 全件をページングで取得（work_tasks は数百件なので1〜2ページで完了）
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data: existingRows, error: fetchErr } = await this.supabase
+            .from('work_tasks')
+            .select(selectCols)
+            .range(from, from + pageSize - 1);
+          if (fetchErr) {
+            console.error('既存work_tasks取得エラー:', fetchErr.message);
+            break;
+          }
+          const batch = existingRows || [];
+          for (const r of batch as any[]) {
+            if (r && r.property_number) existingMap[r.property_number] = r;
+          }
+          if (batch.length < pageSize) break;
+          from += pageSize;
+        }
+      }
+
+      // 全行をDBレコードに変換（保持ロジックはメモリ上のexistingMapで適用）
+      const recordsToUpsert: WorkTaskData[] = [];
+      const nowIso = new Date().toISOString();
+
       for (let i = 0; i < rows.length; i++) {
         const rowNumber = i + 2; // 1-indexed, ヘッダー行を除く
         const row = rows[i];
 
         try {
-          // 行データをオブジェクトに変換
           const sheetRow: Record<string, any> = {};
           headers.forEach((header: string, index: number) => {
             sheetRow[header] = row[index] || '';
@@ -203,60 +251,54 @@ export class WorkTaskSyncService {
 
           // データ変換
           const workTaskData = this.columnMapper.mapToDatabase(sheetRow);
-          workTaskData.synced_at = new Date().toISOString();
+          workTaskData.synced_at = nowIso;
 
-          // スプシで空の場合、DBの既存値を保持する（画面から保存した値が消えないように）
-          const fieldsToPreserve = [
-            'storage_url',
-            'site_registration_requester',
-            'site_registration_requestor',
-            'cw_request_email_site',
-            'cw_request_email_floor_plan',
-            'cw_request_email_2f_above',
-            'site_registration_confirmed',
-            'site_registration_confirm_request_date',
-            'site_registration_ok_sent',
-            'mediation_deadline',
-            'mediation_completed',
-            'mediation_creator',
-          ];
-          const emptyPreserveFields = fieldsToPreserve.filter(f => !workTaskData[f]);
-          if (emptyPreserveFields.length > 0) {
-            const { data: existing } = await this.supabase
-              .from('work_tasks')
-              .select(emptyPreserveFields.join(','))
-              .eq('property_number', propertyNumber)
-              .single();
-            if (existing) {
-              for (const field of emptyPreserveFields) {
-                if (existing[field]) {
-                  workTaskData[field] = existing[field];
-                }
+          // スプシが空の保持対象フィールドは、既存DB値で埋める
+          const existing = existingMap[propertyNumber];
+          if (existing) {
+            for (const field of fieldsToPreserve) {
+              if (!workTaskData[field] && existing[field]) {
+                workTaskData[field] = existing[field];
               }
             }
           }
 
-          // Upsert処理
-          const { error: upsertError } = await this.supabase
-            .from('work_tasks')
-            .upsert(workTaskData, {
-              onConflict: 'property_number',
-            });
-
-          if (upsertError) {
-            errors.push({
-              rowNumber,
-              propertyNumber,
-              error: upsertError.message,
-            });
-          } else {
-            successCount++;
-          }
+          recordsToUpsert.push(workTaskData);
         } catch (rowError: any) {
           errors.push({
             rowNumber,
             error: rowError.message,
           });
+        }
+      }
+
+      // 【高速化】まとめてバッチupsert（500件ずつ）
+      const UPSERT_BATCH = 500;
+      for (let j = 0; j < recordsToUpsert.length; j += UPSERT_BATCH) {
+        const batch = recordsToUpsert.slice(j, j + UPSERT_BATCH);
+        const { error: upsertError } = await this.supabase
+          .from('work_tasks')
+          .upsert(batch, { onConflict: 'property_number' });
+
+        if (upsertError) {
+          // バッチ失敗時は1件ずつ再試行して問題行を特定
+          console.error(`バッチupsertエラー: ${upsertError.message} → 1件ずつ再試行`);
+          for (const rec of batch) {
+            const { error: singleErr } = await this.supabase
+              .from('work_tasks')
+              .upsert(rec, { onConflict: 'property_number' });
+            if (singleErr) {
+              errors.push({
+                rowNumber: 0,
+                propertyNumber: rec.property_number,
+                error: singleErr.message,
+              });
+            } else {
+              successCount++;
+            }
+          }
+        } else {
+          successCount += batch.length;
         }
       }
 
