@@ -93,7 +93,7 @@ const FundingPlanSheet = React.forwardRef<HTMLDivElement, FundingPlanSheetProps>
     const today = printDate || todayStr();
     const isFI = (propertyNumber || '').toUpperCase().includes('FI');
     const isFK = (buyerNumber || '').toUpperCase().startsWith('FK');
-    const footerText = isFI
+    const footerText = (isFI || isFK)
       ? '株式会社くじら不動産　福岡市中央区舞鶴3－1－10　TEL:092-401-5331'
       : '㈱いふう　大分市舞鶴町1-3-30　TEL:097-533-2022　MAIL: tenant@ifoo-oita.com';
     const hendo_lender = isFK ? '福岡銀行' : '大分銀行';

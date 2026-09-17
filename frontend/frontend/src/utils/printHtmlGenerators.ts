@@ -397,7 +397,7 @@ export function generatePage3Html(propertyAddress: string, viewingDate: string =
 export function generatePage4Html(propertyAddress: string, propertyPrice: number | null, propertyType: string | undefined, today: string, propertyNumber: string = '', buyerNumber: string = ''): string {
   const isFI = propertyNumber.toUpperCase().includes('FI');
   const isFK = buyerNumber.toUpperCase().startsWith('FK');
-  const footerText = isFI
+  const footerText = (isFI || isFK)
     ? '株式会社くじら不動産　福岡市中央区舞鶴3－1－10　TEL:092-401-5331'
     : '㈱いふう　大分市舞鶴町1-3-30　TEL:097-533-2022　MAIL: tenant@ifoo-oita.com';
   const hendo_lender = isFK ? '福岡銀行' : '大分銀行';
@@ -500,7 +500,7 @@ export function generatePage4Html(propertyAddress: string, propertyPrice: number
 export function generatePage4RepeaterHtml(propertyAddress: string, propertyPrice: number | null, propertyType: string | undefined, today: string, propertyNumber: string = '', buyerNumber: string = ''): string {
   const isFI = propertyNumber.toUpperCase().includes('FI');
   const isFK = buyerNumber.toUpperCase().startsWith('FK');
-  const footerText = isFI
+  const footerText = (isFI || isFK)
     ? '株式会社くじら不動産　福岡市中央区舞鶴3－1－10　TEL:092-401-5331'
     : '㈱いふう　大分市舞鶴町1-3-30　TEL:097-533-2022　MAIL: tenant@ifoo-oita.com';
   const hendo_lender = isFK ? '福岡銀行' : '大分銀行';
@@ -600,9 +600,10 @@ export function generatePage4RepeaterHtml(propertyAddress: string, propertyPrice
 // ============================================================
 // ページ4（自己資金・リピーター版）: 資金計画書 - 仲介手数料2%・住宅ローン欄なし・銀行関連費用なし
 // ============================================================
-export function generatePage4CashRepeaterHtml(propertyAddress: string, propertyPrice: number | null, propertyType: string | undefined, today: string, propertyNumber: string = ''): string {
+export function generatePage4CashRepeaterHtml(propertyAddress: string, propertyPrice: number | null, propertyType: string | undefined, today: string, propertyNumber: string = '', buyerNumber: string = ''): string {
   const isFI = propertyNumber.toUpperCase().includes('FI');
-  const footerText = isFI
+  const isFK = buyerNumber.toUpperCase().startsWith('FK');
+  const footerText = (isFI || isFK)
     ? '株式会社くじら不動産　福岡市中央区舞鶴3－1－10　TEL:092-401-5331'
     : '㈱いふう　大分市舞鶴町1-3-30　TEL:097-533-2022　MAIL: tenant@ifoo-oita.com';
   const price = propertyPrice || 0;
@@ -662,9 +663,10 @@ export function generatePage4CashRepeaterHtml(propertyAddress: string, propertyP
 // ============================================================
 // ページ4（自己資金版）: 資金計画書 - 住宅ローン欄なし・銀行関連費用なし
 // ============================================================
-export function generatePage4CashHtml(propertyAddress: string, propertyPrice: number | null, propertyType: string | undefined, today: string, propertyNumber: string = ''): string {
+export function generatePage4CashHtml(propertyAddress: string, propertyPrice: number | null, propertyType: string | undefined, today: string, propertyNumber: string = '', buyerNumber: string = ''): string {
   const isFI = propertyNumber.toUpperCase().includes('FI');
-  const footerText = isFI
+  const isFK = buyerNumber.toUpperCase().startsWith('FK');
+  const footerText = (isFI || isFK)
     ? '株式会社くじら不動産　福岡市中央区舞鶴3－1－10　TEL:092-401-5331'
     : '㈱いふう　大分市舞鶴町1-3-30　TEL:097-533-2022　MAIL: tenant@ifoo-oita.com';
   const price = propertyPrice || 0;
@@ -942,7 +944,7 @@ export function generateAllPagesCashHtml(buyer: Record<string,unknown>, property
     pages.push(generatePage1Html(buyer, property, today));
     pages.push(generatePage2Html(addr, price, propNum));
     pages.push(generatePage3Html(addr, viewingDateStr, propNum));
-    pages.push(generatePage4CashHtml(addr, price, ptype, today, propNum));
+    pages.push(generatePage4CashHtml(addr, price, ptype, today, propNum, buyerNumber));
     pages.push(generatePage5Html());
     // 物件価格1500万円以上の場合のみキャンペーンシートを追加
     if (price != null && price >= 15000000) {
@@ -1019,7 +1021,7 @@ export function generateAllPagesCashRepeaterHtml(buyer: Record<string,unknown>, 
     pages.push(generatePage1Html(buyer, property, today));
     pages.push(generatePage2Html(addr, price, propNum));
     pages.push(generatePage3Html(addr, viewingDateStr, propNum));
-    pages.push(generatePage4CashRepeaterHtml(addr, price, ptype, today, propNum));
+    pages.push(generatePage4CashRepeaterHtml(addr, price, ptype, today, propNum, buyerNumber));
     pages.push(generatePage5Html());
     if (price != null && price >= 15000000) {
       pages.push(generatePage6CampaignHtml(buyerNumber, viewingDateStr));
