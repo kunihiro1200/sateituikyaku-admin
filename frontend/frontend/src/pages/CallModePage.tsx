@@ -1537,8 +1537,22 @@ const CallModePage = () => {
     '㉗熱意',
   ];
 
-  // SMSテンプレート定義（優先テンプレートの後に残りを表示）
+  // SMSテンプレート定義
+  // 表示順はおおむねEmailテンプレート（emailTemplates.ts の order）に合わせている。
+  // Emailに対応が無いSMS専用テンプレート（査定Sメール２・空）は末尾にまとめる。
   const smsTemplates: SMSTemplate[] = [
+    // ── 査定額案内（Email order 1-2） ──
+    {
+      id: 'valuation',
+      label: '査定Sメール',
+      generator: generateValuationSMS,
+    },
+    {
+      id: 'valuation_net_proceeds',
+      label: '査定Sメール（手残り）',
+      generator: generateNetProceedsValuationSMS,
+    },
+    // ── 不通確認（Email order 2） ──
     {
       id: 'initial_cancellation',
       label: '不通時SMSメール',
@@ -1546,93 +1560,17 @@ const CallModePage = () => {
       generator: generateInitialCancellationGuidance,
     },
     {
-      id: 'cancellation',
-      label: 'キャンセル案内',
-      generator: generateCancellationGuidance,
-    },
-    {
-      id: 'valuation',
-      label: '査定Sメール',
-      generator: generateValuationSMS,
-    },
-    {
-      id: 'valuation2',
-      label: '査定Sメール２（査定根拠等）',
-      generator: generateValuationSMS2,
-    },
-    {
       id: 'unreachable_after_valuation_check',
       label: '不通・査定後の状況確認メール',
       generator: generateUnreachableAfterValuationCheckSMS,
     },
+    // ── キャンセル案内（Email order 3） ──
     {
-      id: 'valuation_net_proceeds',
-      label: '査定Sメール（手残り）',
-      generator: generateNetProceedsValuationSMS,
+      id: 'cancellation',
+      label: 'キャンセル案内',
+      generator: generateCancellationGuidance,
     },
-    {
-      id: 'long_term_customer',
-      label: '除外前・長期客Sメール',
-      generator: generateLongTermCustomerSMS,
-    },
-    {
-      id: 'visit_reminder',
-      label: '訪問事前通知メール',
-      generator: generateVisitReminderSMS,
-    },
-    {
-      id: 'post_visit_thank_you',
-      label: '訪問後御礼メール',
-      generator: generatePostVisitThankYouSMS,
-    },
-    {
-      id: 'call_reminder',
-      label: '当社が電話したというリマインドメール',
-      generator: generateCallReminderSMS,
-    },
-    {
-      id: 'unvisited_other_decision',
-      label: '未訪問他決の理由伺い',
-      generator: generateUnvisitedOtherDecisionSMS,
-    },
-    {
-      id: 'greeting',
-      label: '空',
-      generator: generateGreetingSMS,
-    },
-    {
-      id: 'other_decision_three_months_followup',
-      label: '他決→3ヶ月後追客',
-      generator: generateOtherDecisionThreeMonthsFollowUpSMS,
-    },
-    {
-      id: 'other_decision_six_months_followup',
-      label: '他決→追客（6ヶ月後）',
-      generator: generateOtherDecisionSixMonthsFollowUpSMS,
-    },
-    {
-      id: 'progress_step1_reply',
-      label: '進捗①の返信',
-      generator: generateProgressStep1ReplySMS,
-      highlight: true, // 薄緑背景
-    },
-    {
-      id: 'progress_step2_reply',
-      label: '進捗②の返信',
-      generator: generateProgressStep2ReplySMS,
-      highlight: true, // 薄緑背景
-    },
-    {
-      id: 'progress_step3_reply',
-      label: '進捗③の返信',
-      generator: generateProgressStep3ReplySMS,
-      highlight: true, // 薄緑背景
-    },
-    {
-      id: 'web_meeting',
-      label: 'WEB打合せどうですかメール',
-      generator: generateWebMeetingSMS,
-    },
+    // ── 査定理由別（Email order 4-7） ──
     {
       id: 'reason_relocation',
       label: '（査定理由別）住替え先',
@@ -1653,10 +1591,88 @@ const CallModePage = () => {
       label: '（査定理由別）ローン厳しい',
       generator: generateReasonLoanSMS,
     },
+    // ── 除外前・長期客（Email order 8） ──
+    {
+      id: 'long_term_customer',
+      label: '除外前・長期客Sメール',
+      generator: generateLongTermCustomerSMS,
+    },
+    // ── リマインド（Email order 9） ──
+    {
+      id: 'call_reminder',
+      label: '当社が電話したというリマインドメール',
+      generator: generateCallReminderSMS,
+    },
+    // ── WEB打合せ（Email order 10） ──
+    {
+      id: 'web_meeting',
+      label: 'WEB打合せどうですかメール',
+      generator: generateWebMeetingSMS,
+    },
+    // ── 訪問前日通知（Email order 11） ──
+    {
+      id: 'visit_reminder',
+      label: '訪問事前通知メール',
+      generator: generateVisitReminderSMS,
+    },
+    // ── 訪問後御礼（Email order 12） ──
+    {
+      id: 'post_visit_thank_you',
+      label: '訪問後御礼メール',
+      generator: generatePostVisitThankYouSMS,
+    },
+    // ── 相続登記（Email order 13） ──
     {
       id: 'inheritance_registration',
       label: '相続登記（きざし様へご案内）',
       generator: generateInheritanceRegistrationSMS,
+    },
+    // ── 未訪問他決の理由伺い（Email order 14/17） ──
+    {
+      id: 'unvisited_other_decision',
+      label: '未訪問他決の理由伺い',
+      generator: generateUnvisitedOtherDecisionSMS,
+    },
+    // ── 他決追客（Email order 15-16） ──
+    {
+      id: 'other_decision_three_months_followup',
+      label: '他決→3ヶ月後追客',
+      generator: generateOtherDecisionThreeMonthsFollowUpSMS,
+    },
+    {
+      id: 'other_decision_six_months_followup',
+      label: '他決→追客（6ヶ月後）',
+      generator: generateOtherDecisionSixMonthsFollowUpSMS,
+    },
+    // ── 進捗①②③の返信（Email order 19-21） ──
+    {
+      id: 'progress_step1_reply',
+      label: '進捗①の返信',
+      generator: generateProgressStep1ReplySMS,
+      highlight: true, // 薄緑背景
+    },
+    {
+      id: 'progress_step2_reply',
+      label: '進捗②の返信',
+      generator: generateProgressStep2ReplySMS,
+      highlight: true, // 薄緑背景
+    },
+    {
+      id: 'progress_step3_reply',
+      label: '進捗③の返信',
+      generator: generateProgressStep3ReplySMS,
+      highlight: true, // 薄緑背景
+    },
+    // ── SMS専用（Emailに対応なし・末尾） ──
+    {
+      id: 'valuation2',
+      label: '査定Sメール２（査定根拠等）',
+      generator: generateValuationSMS2,
+    },
+    {
+      id: 'greeting',
+      label: '空',
+      generator: generateGreetingSMS,
     },
   ];
 
