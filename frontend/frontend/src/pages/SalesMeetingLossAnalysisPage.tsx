@@ -222,8 +222,9 @@ function sumTriples(rows: YearTriple[]): YearTriple {
 }
 
 // 他決分析集計API（backend: /api/sales-meeting/loss-analysis-stats）の型
-// 担当者名 -> 理由名 -> { 2024, 2025, 2026 } の他決件数
-type LossStats = Record<string, Record<string, { 2024: number; 2025: number; 2026: number }>>;
+// 担当者名 -> 理由名 -> { sen, loss } それぞれ { 2024, 2025, 2026 } の件数
+type YearCounts = { 2024: number; 2025: number; 2026: number };
+type LossStats = Record<string, Record<string, { sen: YearCounts; loss: YearCounts }>>;
 
 // 対象担当者（林 / 麻 / K）のキー対応（表の列キー）
 const DYNAMIC_STAFF: { label: string; key: keyof StaffCounts }[] = [
@@ -254,16 +255,19 @@ export default function SalesMeetingLossAnalysisPage() {
     return () => { cancelled = true; };
   }, []);
 
-  // API結果を STAFF_ROWS にマージする（他決理由の 林/麻/K を上書き）。
-  // 元シートの各営業の特性は「年合算の他決件数」なので、2024+2025+2026 を足す。
+  // API結果を STAFF_ROWS にマージする（専任理由・他決理由の 林/麻/K を上書き）。
+  // 元シートの各営業の特性は「年合算の件数」なので、2024+2025+2026 を足す。
+  const sumYc = (yc?: YearCounts) => (yc ? yc[2024] + yc[2025] + yc[2026] : 0);
   const staffRows: StaffReasonRow[] = STAFF_ROWS.map((r) => {
     if (!lossStats) return r;
+    const sen = { ...r.sen };
     const loss = { ...r.loss };
     for (const { label, key } of DYNAMIC_STAFF) {
-      const yc = lossStats[label]?.[r.reason];
-      loss[key] = yc ? (yc[2024] + yc[2025] + yc[2026]) : 0;
+      const cell = lossStats[label]?.[r.reason];
+      sen[key] = sumYc(cell?.sen);
+      loss[key] = sumYc(cell?.loss);
     }
-    return { ...r, loss };
+    return { ...r, sen, loss };
   });
 
   // 他決理由別の合計行
@@ -305,8 +309,8 @@ export default function SalesMeetingLossAnalysisPage() {
         <Typography variant="body2" sx={{ color: PURPLE }}>
           他決理由・競合・各営業の特性を集計しています。勝率＝専任 ÷（専任＋訪問後他決）で自動計算。
           各営業の特性は担当者（K / U / Y / I / 林 / 麻）ごとに集計しています。
-          林・麻・K の他決件数は売主データ（状況＝他決→追客／追客不要、営担、契約年月＝他決判明時点、競合名・理由）から
-          自動集計しています（2024〜2026年合算）。
+          林・麻・K の専任・他決件数は売主データから自動集計しています（2024〜2026年合算）。
+          専任＝状況「専任媒介／他決→専任」、他決＝状況「他決→追客／追客不要」を、営担・契約年月（他決判明時点）・競合名理由で集計。
         </Typography>
       </Paper>
 
@@ -410,7 +414,7 @@ export default function SalesMeetingLossAnalysisPage() {
         <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: HEADER_BG }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography fontWeight="bold" sx={{ color: PURPLE }}>各営業の特性（K / U / Y / I / 林 / 麻）</Typography>
-            {!lossLoaded && <Chip size="small" label="林・麻・Kの他決を集計中…" />}
+            {!lossLoaded && <Chip size="small" label="林・麻・Kの専任・他決を集計中…" />}
           </Box>
         </AccordionSummary>
         <AccordionDetails sx={{ p: 0 }}>

@@ -22,12 +22,19 @@ function getSupabase() {
  *   - AM列（契約年月 他決は分かった時点）が対象年の範囲           → sellers.contract_year_month
  *   - AB列（営担）= 担当者名                                     → sellers.visit_assignee
  *
- * このAPIは特に「林 / 麻 / K」の担当者について、理由別・年別の他決件数を返す。
+ * このAPIは特に「林 / 麻 / K」の担当者について、理由別・年別の
+ * 専任件数（status = 専任媒介 / 他決→専任）と他決件数（status = 他決→追客 / 他決→追客不要）を返す。
  * （既存データが無い場合は 0 が返る＝新規担当者でも安全）
  */
 
-// 他決とみなすステータス（元数式の AC列 条件）
+// 他決とみなすステータス（元数式の AC列 条件 / 他決理由側）
 const LOSS_STATUSES = ['他決→追客', '他決→追客不要'];
+
+// 専任とみなすステータス（元数式の AC列 条件 / 専任理由側）
+const SEN_STATUSES = ['専任媒介', '他決→専任'];
+
+// 集計に必要な全ステータス（1回のクエリで両方取得する）
+const ALL_STATUSES = [...LOSS_STATUSES, ...SEN_STATUSES];
 
 // 集計対象の担当者（イニシャル）。フロントの表と揃える。
 const TARGET_ASSIGNEES = ['林', '麻', 'K'];
@@ -83,8 +90,12 @@ function yearOf(dateStr: string | null): number | null {
   return d.getUTCFullYear();
 }
 
-type ReasonYearCounts = Record<string, { 2024: number; 2025: number; 2026: number }>;
-type AssigneeStats = Record<string, ReasonYearCounts>;
+// 理由ごとに 専任 / 他決 それぞれの年別件数を持つ
+type YearCounts = { 2024: number; 2025: number; 2026: number };
+type ReasonCounts = Record<string, { sen: YearCounts; loss: YearCounts }>;
+type AssigneeStats = Record<string, ReasonCounts>;
+
+const emptyYearCounts = (): YearCounts => ({ 2024: 0, 2025: 0, 2026: 0 });
 
 /**
  * GET /api/sales-meeting/loss-analysis-stats
@@ -92,11 +103,17 @@ type AssigneeStats = Record<string, ReasonYearCounts>;
  * レスポンス:
  * {
  *   data: {
- *     '林': { '①知り合い': { '2024': n, '2025': n, '2026': n }, ... },
+ *     '林': {
+ *       '①知り合い': { sen: { '2024': n, '2025': n, '2026': n }, loss: { ... } },
+ *       ...
+ *     },
  *     '麻': { ... },
  *     'K':  { ... }
  *   }
  * }
+ *
+ * sen  = 専任理由側（status = 専任媒介 / 他決→専任）
+ * loss = 他決理由側（status = 他決→追客 / 他決→追客不要）
  */
 router.get('/loss-analysis-stats', async (_req: Request, res: Response) => {
   try {
@@ -120,7 +137,7 @@ router.get('/loss-analysis-stats', async (_req: Request, res: Response) => {
       const { data, error } = await supabase
         .from('sellers')
         .select('status, visit_assignee, competitor_name_and_reason, competitor_name, contract_year_month')
-        .in('status', LOSS_STATUSES)
+        .in('status', ALL_STATUSES)
         .gte('contract_year_month', start)
         .lte('contract_year_month', end)
         .in('visit_assignee', TARGET_ASSIGNEES)
@@ -132,12 +149,12 @@ router.get('/loss-analysis-stats', async (_req: Request, res: Response) => {
       from += pageSize;
     }
 
-    // 集計器を初期化（対象担当者 × 全理由 × 3年 を 0 で用意）
+    // 集計器を初期化（対象担当者 × 全理由 × {sen,loss} × 3年 を 0 で用意）
     const stats: AssigneeStats = {};
     for (const a of TARGET_ASSIGNEES) {
       stats[a] = {};
       for (const r of REASONS) {
-        stats[a][r] = { 2024: 0, 2025: 0, 2026: 0 };
+        stats[a][r] = { sen: emptyYearCounts(), loss: emptyYearCounts() };
       }
     }
 
@@ -151,6 +168,13 @@ router.get('/loss-analysis-stats', async (_req: Request, res: Response) => {
       const year = yearOf(row.contract_year_month);
       if (year !== 2024 && year !== 2025 && year !== 2026) continue;
 
+      const status = (row.status || '').trim();
+      // 専任側か他決側か（どちらでもなければスキップ）
+      let side: 'sen' | 'loss' | null = null;
+      if (SEN_STATUSES.includes(status)) side = 'sen';
+      else if (LOSS_STATUSES.includes(status)) side = 'loss';
+      if (!side) continue;
+
       // 理由テキスト（competitor_name_and_reason 優先、無ければ competitor_name）
       const reasonText = (row.competitor_name_and_reason || row.competitor_name || '').trim();
 
@@ -161,7 +185,7 @@ router.get('/loss-analysis-stats', async (_req: Request, res: Response) => {
         if (hit) matched = hit.reason;
       }
 
-      (stats[assignee][matched] as any)[year] += 1;
+      (stats[assignee][matched][side] as any)[year] += 1;
     }
 
     res.json({ data: stats });
