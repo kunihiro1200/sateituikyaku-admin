@@ -243,6 +243,7 @@ export function ViewingPreparationPrintButton({
             propertyType={property.property_type}
             printDate={today}
             propertyNumber={property.property_number || ''}
+            buyerNumber={buyer?.buyer_number as string || ''}
           />
         ),
       },

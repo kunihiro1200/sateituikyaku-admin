@@ -394,11 +394,13 @@ export function generatePage3Html(propertyAddress: string, viewingDate: string =
 // ============================================================
 // ページ4: 資金計画書
 // ============================================================
-export function generatePage4Html(propertyAddress: string, propertyPrice: number | null, propertyType: string | undefined, today: string, propertyNumber: string = ''): string {
+export function generatePage4Html(propertyAddress: string, propertyPrice: number | null, propertyType: string | undefined, today: string, propertyNumber: string = '', buyerNumber: string = ''): string {
   const isFI = propertyNumber.toUpperCase().includes('FI');
+  const isFK = buyerNumber.toUpperCase().startsWith('FK');
   const footerText = isFI
     ? '株式会社くじら不動産　福岡市中央区舞鶴3－1－10　TEL:092-401-5331'
     : '㈱いふう　大分市舞鶴町1-3-30　TEL:097-533-2022　MAIL: tenant@ifoo-oita.com';
+  const hendo_lender = isFK ? '福岡銀行' : '大分銀行';
   const price = propertyPrice || 0;
   const inshi = price<=1000000?500:price<=5000000?1000:price<=10000000?5000:price<=50000000?10000:30000;
   const shoyuken = price>=10000000?300000:200000;
@@ -455,7 +457,7 @@ export function generatePage4Html(propertyAddress: string, propertyPrice: number
       <tr style="${thF}">
         ${['借入先','借入期間（年）','借入金額','金利','月額返済額','ボーナス返済（2回）'].map(h=>`<th style="${td};text-align:center;font-size:8pt;">${h}</th>`).join('')}
       </tr>
-      ${loanRow('大分銀行',1.30,m_hendo)}
+      ${loanRow(hendo_lender,1.30,m_hendo)}
     </table>
     <div style="font-size:9pt;font-weight:bold;margin-bottom:4px;">【住宅ローン】★フラット35（固定金利）</div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
@@ -495,11 +497,13 @@ export function generatePage4Html(propertyAddress: string, propertyPrice: number
 // ============================================================
 // ページ4（リピーター版）: 資金計画書 - 仲介手数料2%
 // ============================================================
-export function generatePage4RepeaterHtml(propertyAddress: string, propertyPrice: number | null, propertyType: string | undefined, today: string, propertyNumber: string = ''): string {
+export function generatePage4RepeaterHtml(propertyAddress: string, propertyPrice: number | null, propertyType: string | undefined, today: string, propertyNumber: string = '', buyerNumber: string = ''): string {
   const isFI = propertyNumber.toUpperCase().includes('FI');
+  const isFK = buyerNumber.toUpperCase().startsWith('FK');
   const footerText = isFI
     ? '株式会社くじら不動産　福岡市中央区舞鶴3－1－10　TEL:092-401-5331'
     : '㈱いふう　大分市舞鶴町1-3-30　TEL:097-533-2022　MAIL: tenant@ifoo-oita.com';
+  const hendo_lender = isFK ? '福岡銀行' : '大分銀行';
   const price = propertyPrice || 0;
   const inshi = price<=1000000?500:price<=5000000?1000:price<=10000000?5000:price<=50000000?10000:30000;
   const shoyuken = price>=10000000?300000:200000;
@@ -556,7 +560,7 @@ export function generatePage4RepeaterHtml(propertyAddress: string, propertyPrice
       <tr style="${thF}">
         ${['借入先','借入期間（年）','借入金額','金利','月額返済額','ボーナス返済（2回）'].map(h=>`<th style="${td};text-align:center;font-size:8pt;">${h}</th>`).join('')}
       </tr>
-      ${loanRow('大分銀行',1.30,m_hendo)}
+      ${loanRow(hendo_lender,1.30,m_hendo)}
     </table>
     <div style="font-size:9pt;font-weight:bold;margin-bottom:4px;">【住宅ローン】★フラット35（固定金利）</div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
@@ -899,7 +903,7 @@ export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDeta
     pages.push(generatePage1Html(buyer, property, today));
     pages.push(generatePage2Html(addr, price, propNum));
     pages.push(generatePage3Html(addr, viewingDateStr, propNum));
-    pages.push(generatePage4Html(addr, price, ptype, today, propNum));
+    pages.push(generatePage4Html(addr, price, ptype, today, propNum, buyerNumber));
     pages.push(generatePage5Html());
     // 物件価格1500万円以上の場合のみキャンペーンシートを追加
     if (price != null && price >= 15000000) {
@@ -977,7 +981,7 @@ export function generateAllPagesRepeaterHtml(buyer: Record<string,unknown>, prop
     pages.push(generatePage1Html(buyer, property, today));
     pages.push(generatePage2Html(addr, price, propNum));
     pages.push(generatePage3Html(addr, viewingDateStr, propNum));
-    pages.push(generatePage4RepeaterHtml(addr, price, ptype, today, propNum));
+    pages.push(generatePage4RepeaterHtml(addr, price, ptype, today, propNum, buyerNumber));
     pages.push(generatePage5Html());
     if (price != null && price >= 15000000) {
       pages.push(generatePage6CampaignHtml(buyerNumber, viewingDateStr));

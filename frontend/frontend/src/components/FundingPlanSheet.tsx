@@ -11,6 +11,7 @@ interface FundingPlanSheetProps {
   propertyType?: string; // 種別（マンション判定に使用）
   printDate?: string;
   propertyNumber?: string;
+  buyerNumber?: string; // FK判定に使用（FKなら福岡銀行）
 }
 
 // ============================================================
@@ -87,13 +88,15 @@ const cellSx = {
 // ============================================================
 
 const FundingPlanSheet = React.forwardRef<HTMLDivElement, FundingPlanSheetProps>(
-  ({ propertyAddress, propertyPrice, propertyType, printDate, propertyNumber }, ref) => {
+  ({ propertyAddress, propertyPrice, propertyType, printDate, propertyNumber, buyerNumber }, ref) => {
     const price = propertyPrice || 0;
     const today = printDate || todayStr();
     const isFI = (propertyNumber || '').toUpperCase().includes('FI');
+    const isFK = (buyerNumber || '').toUpperCase().startsWith('FK');
     const footerText = isFI
       ? '株式会社くじら不動産　福岡市中央区舞鶴3－1－10　TEL:092-401-5331'
       : '㈱いふう　大分市舞鶴町1-3-30　TEL:097-533-2022　MAIL: tenant@ifoo-oita.com';
+    const hendo_lender = isFK ? '福岡銀行' : '大分銀行';
 
     // 諸経費内訳
     const inshi = calcInshiDai(price);
@@ -200,7 +203,7 @@ const FundingPlanSheet = React.forwardRef<HTMLDivElement, FundingPlanSheetProps>
           【住宅ローン】★変動金利
         </Typography>
         <LoanTable
-          lender="大分銀行"
+          lender={hendo_lender}
           years={35}
           borrowing={borrowing}
           rate={0.95}
