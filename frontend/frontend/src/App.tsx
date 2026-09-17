@@ -46,6 +46,8 @@ import NewSharedItemPage from './pages/NewSharedItemPage';
 import ReviewCampaignStatsPage from './pages/ReviewCampaignStatsPage';
 import SalesMeetingAgendaPage from './pages/SalesMeetingAgendaPage';
 import SalesMeetingContractStatsPage from './pages/SalesMeetingContractStatsPage';
+import SalesMeetingSalesStatsPage from './pages/SalesMeetingSalesStatsPage';
+import SalesMeetingLossAnalysisPage from './pages/SalesMeetingLossAnalysisPage';
 import BuyerNearbyPropertiesPage from './pages/BuyerNearbyPropertiesPage';
 import NearbyBuyersPage from './pages/NearbyBuyersPage';
 import OtherCompanyDistributionPage from './pages/OtherCompanyDistributionPage';
@@ -447,6 +449,22 @@ function App() {
         element={
           <ProtectedRoute>
             <SalesMeetingContractStatsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shared-items/sales-meeting-sales-stats"
+        element={
+          <ProtectedRoute>
+            <SalesMeetingSalesStatsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shared-items/sales-meeting-loss-analysis"
+        element={
+          <ProtectedRoute>
+            <SalesMeetingLossAnalysisPage />
           </ProtectedRoute>
         }
       />

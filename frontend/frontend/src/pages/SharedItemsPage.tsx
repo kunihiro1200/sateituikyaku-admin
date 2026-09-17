@@ -549,6 +549,36 @@ export default function SharedItemsPage() {
                 sx={{ flex: 1, minWidth: 0 }}
               />
             </ListItemButton>
+            <ListItemButton
+              onClick={() => navigate('/shared-items/sales-meeting-sales-stats')}
+              sx={{
+                py: 1,
+                pl: 3,
+                borderRadius: 1,
+                '&:hover': { backgroundColor: '#e1bee7' },
+              }}
+            >
+              <ListItemText
+                primary="売買仲介"
+                primaryTypographyProps={{ variant: 'body2', color: '#6a1b9a' }}
+                sx={{ flex: 1, minWidth: 0 }}
+              />
+            </ListItemButton>
+            <ListItemButton
+              onClick={() => navigate('/shared-items/sales-meeting-loss-analysis')}
+              sx={{
+                py: 1,
+                pl: 3,
+                borderRadius: 1,
+                '&:hover': { backgroundColor: '#e1bee7' },
+              }}
+            >
+              <ListItemText
+                primary="他決分析"
+                primaryTypographyProps={{ variant: 'body2', color: '#6a1b9a' }}
+                sx={{ flex: 1, minWidth: 0 }}
+              />
+            </ListItemButton>
             {locationCategories
               .filter(({ label }) => label === '契約率チーム' || label === '物件数チーム')
               .map(({ label, count }) => (
