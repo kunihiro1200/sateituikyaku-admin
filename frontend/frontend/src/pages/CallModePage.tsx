@@ -1911,7 +1911,45 @@ const CallModePage = () => {
     currentEditableCommentsRef.current = '';
     setEditableComments('');
     setSavedComments('');
-    // 査定額をリセット（前の売主の査定額が loadAllData 完了前に残らないようにする）
+    // ── 売主依存stateを loadAllData() 前に全てリセット ──
+    // （loadAllData は非同期なので、完了前に前の売主のデータが画面に残るのを防ぐ）
+
+    // 不通ステータス
+    setUnreachableStatus(null);
+    setSavedUnreachableStatus(null);
+
+    // ステータス・確度・次電日
+    setEditedStatus('追客中');
+    setSavedStatus('追客中');
+    setEditedConfidence('');
+    setSavedConfidence('');
+    setEditedNextCallDate('');
+    setSavedNextCallDate('');
+
+    // 専任・他決系
+    setEditedExclusiveDecisionDate('');
+    setSavedExclusiveDecisionDate('');
+    setEditedCompetitors([]);
+    setSavedCompetitors([]);
+    setEditedExclusiveOtherDecisionFactors([]);
+    setSavedExclusiveOtherDecisionFactors([]);
+    setEditedCompetitorNameAndReason('');
+    setSavedCompetitorNameAndReason('');
+    setEditedExclusiveOtherDecisionMeeting('');
+    setSavedExclusiveOtherDecisionMeeting('');
+    setEditedExclusiveOtherDecisionMeetingNote('');
+    setSavedExclusiveOtherDecisionMeetingNote('');
+    setEditedUnvisitedOtherDecisionMemo('');
+    setSavedUnvisitedOtherDecisionMemo('');
+    setExclusionDate('');
+    setExclusionAction('');
+
+    // Pinrich
+    setEditedPinrichStatus('');
+
+    // 査定計算
+    setEditedFixedAssetTaxRoadPrice('');
+    setValuationAssignee('');
     setEditedValuationAmount1('');
     setEditedValuationAmount2('');
     setEditedValuationAmount3('');
@@ -1919,6 +1957,32 @@ const CallModePage = () => {
     setEditedManualValuationAmount2('');
     setEditedManualValuationAmount3('');
     setIsManualValuation(false);
+    setEditedValuationMethod('');
+    setEditedUnitPrice1('');
+    setEditedUnitPrice2('');
+    setEditedUnitPrice3('');
+    setSalesCaseRows([
+      { id: '1', floor: '', exclusiveArea: '', price: '', yearMonth: '' },
+      { id: '2', floor: '', exclusiveArea: '', price: '', yearMonth: '' },
+      { id: '3', floor: '', exclusiveArea: '', price: '', yearMonth: '' },
+    ]);
+    setAiValuation(null);
+    setAiValuationError(null);
+
+    // 郵送
+    setMailingStatus('');
+    setMailingDoneBy('');
+    setMailingDoneAt('');
+    setMailingAddress('');
+    setMailingAddressConfirmed(false);
+
+    // コミュニケーション
+    setEditedPhoneContactPerson('');
+    setEditedPreferredContactTime('');
+    setEditedContactMethod('');
+    setEditedFirstCallPerson('');
+    setSavedFirstCallPerson('');
+
     loadAllData();
     // 売主が切り替わったら選択画像をリセット（前の売主の添付が残らないようにする）
     setSelectedImages([]);
