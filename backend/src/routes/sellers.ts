@@ -1201,9 +1201,19 @@ router.get('/visit-ranking', async (req: Request, res: Response) => {
 
       await sheetsClient.authenticate();
 
-      const rawData = await sheetsRateLimiter.executeRequest(async () => {
-        return await sheetsClient.readRawRange('A:G');
-      });
+      // タイムアウト付きで取得（8秒で諦める）
+      // 追客ログが積み上がるとSheetsの呼び出しだけでVercelのタイムアウトを超えるため
+      const rawData = await Promise.race([
+        sheetsRateLimiter.executeRequest(async () => {
+          return await sheetsClient.readRawRange('A:G');
+        }),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+      ]);
+
+      if (rawData === null) {
+        console.warn('[VisitRanking] Google Sheets fetch timed out after 8s, skipping call counts');
+        throw new Error('SHEETS_TIMEOUT');
+      }
 
       if (rawData && rawData.length > 0) {
         const headers = rawData[0];
@@ -1411,18 +1421,27 @@ router.get('/call-tracking-ranking', async (req: Request, res: Response) => {
 
     await sheetsClient.authenticate();
 
-    // レート制限を適用してデータ取得（A列からG列まで広めに取得）
-    const rawData = await sheetsRateLimiter.executeRequest(async () => {
-      return await sheetsClient.readRawRange('A:G');
-    });
+    // タイムアウト付きで取得（8秒で諦める）
+    // 追客ログが積み上がるとSheetsの呼び出しだけでVercelのタイムアウトを超えるため
+    const rawDataOrNull = await Promise.race([
+      sheetsRateLimiter.executeRequest(async () => {
+        return await sheetsClient.readRawRange('A:G');
+      }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+    ]);
 
-    if (!rawData || rawData.length === 0) {
+    if (!rawDataOrNull || rawDataOrNull.length === 0) {
+      if (rawDataOrNull === null) {
+        console.warn('[CallTrackingRanking] Google Sheets fetch timed out after 8s');
+      }
       return res.json({
         period: { from: fromDate, to: toDate },
         rankings: [],
         updatedAt: new Date().toISOString(),
       });
     }
+
+    const rawData = rawDataOrNull;
 
     // ヘッダー行からインデックスを動的に取得
     const headers = rawData[0];
