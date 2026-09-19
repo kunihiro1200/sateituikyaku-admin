@@ -123,6 +123,11 @@ export class SpreadsheetSyncService {
       // デバッグ用: コメント混入バグ調査のため、DB→スプシ書き込み時にどの内容・どの行に書くか記録する
       // （別売主のコメントが混入する不具合の原因調査用。原因判明後に削除可）
       console.log(`🔍 [SpreadsheetSync] ${seller.seller_number} (id=${seller.id}): コメントをシートに書き込み予定 -> "${String(sheetRow['コメント'] || '').slice(0, 80)}"`);
+      // DBのコメントが空の場合はスプシのコメントを上書きしない
+      // （通話モードページで入力したコメントが、DB→スプシ同期のタイミングずれで消えるのを防ぐ）
+      if (!sheetRow['コメント']) {
+        delete sheetRow['コメント'];
+      }
 
       // 既存行を検索（リトライロジック付き）
       const existingRowIndex = await this.findRowBySellerIdWithRetry(seller.seller_number);
@@ -241,6 +246,10 @@ export class SpreadsheetSyncService {
 
           // スプレッドシート形式に変換
           const sheetRow = this.columnMapper.mapToSheet(decryptedSeller as SellerData);
+          // DBのコメントが空の場合はスプシのコメントを上書きしない
+          if (!sheetRow['コメント']) {
+            delete sheetRow['コメント'];
+          }
 
           // 売主番号で既存行を検索（リトライロジック付き）
           const existingRowIndex = await this.findRowBySellerIdWithRetry(seller.seller_number);
