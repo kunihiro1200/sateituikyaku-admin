@@ -531,13 +531,16 @@ export class SellerPortalService extends BaseRepository {
     const loanBalance = input.loanBalance ?? 0;
     const mortgageReleaseFee = input.mortgageReleaseFee ?? 0;
 
+    // 種別がマンション（区分所有）の場合はRC/SRC償却率(0.022)、それ以外は木造(0.046)
+    const apartmentFlag = isApartment(seller.propertyType ?? null);
+
     // チャレンジ価格（最高査定額）ベースの計算根拠を1件だけ算出して返す
-    const taxBreakdown = calcTransferTax({ ...input.transferTax, salePrice: maxYen });
+    const taxBreakdown = calcTransferTax({ ...input.transferTax, salePrice: maxYen, isApartment: apartmentFlag });
 
     const rows = prices.map((priceYen) => {
       const brokerageFee = calcBrokerageFee(priceYen);
       const stampDuty = calcStampDuty(priceYen);
-      const { taxAmount } = calcTransferTax({ ...input.transferTax, salePrice: priceYen });
+      const { taxAmount } = calcTransferTax({ ...input.transferTax, salePrice: priceYen, isApartment: apartmentFlag });
       const netProceeds =
         priceYen - brokerageFee - stampDuty - loanBalance - mortgageReleaseFee - taxAmount;
       return {

@@ -44,10 +44,11 @@ export const calcStampDuty = (priceYen: number): number => {
 };
 
 /** 減価償却費計算（建物部分）
- * 木造: 耐用年数22年（0.046）、RC: 47年（0.022）、軽量鉄骨: 27年（0.038）
- * デフォルトは木造
+ * 木造: 耐用年数22年（0.046）、RC/SRC: 47年（0.022）、軽量鉄骨: 27年（0.038）
+ * マンション（区分所有）はRC/SRC、戸建て・その他は木造をデフォルトとする
  */
 const DEPRECIATION_RATE_WOOD = 0.046;
+const DEPRECIATION_RATE_RC = 0.022;
 
 /** 譲渡所得税計算 */
 export interface TransferTaxInput {
@@ -59,6 +60,7 @@ export interface TransferTaxInput {
   landRatio?: number;        // 土地割合 0~1（デフォルト0.3）
   buildingRatio?: number;    // 建物割合（デフォルト0.7）
   extraExpense?: number;     // 追加譲渡費用（解体費等）円
+  isApartment?: boolean;     // マンション（区分所有）の場合 true → RC/SRC 償却率(0.022)を使用
 }
 
 export const calcTransferTax = (input: TransferTaxInput): {
@@ -95,7 +97,9 @@ export const calcTransferTax = (input: TransferTaxInput): {
     const purchaseYear = input.purchaseYear ?? (saleYear - 10);
     holdingYears = saleYear - purchaseYear;
     // 建物減価償却: 取得価額 × 0.9 × 償却率 × 経過年数
-    depreciationAmount = Math.round(buildingAcquisitionCost * 0.9 * DEPRECIATION_RATE_WOOD * Math.max(holdingYears, 1));
+    // マンション(RC/SRC): 0.022、戸建て・その他(木造): 0.046
+    const depreciationRate = input.isApartment ? DEPRECIATION_RATE_RC : DEPRECIATION_RATE_WOOD;
+    depreciationAmount = Math.round(buildingAcquisitionCost * 0.9 * depreciationRate * Math.max(holdingYears, 1));
     const buildingBookValue = Math.max(buildingAcquisitionCost - depreciationAmount, Math.round(buildingAcquisitionCost * 0.05));
     const landCost = Math.round(totalCost * landRatio);
     acquisitionCostUsed = landCost + buildingBookValue;
@@ -180,6 +184,9 @@ export const NetProceedsListModal: React.FC<Props> = ({
   // 種別が土地かどうか（土地は建物がないため築年数・減価償却不要）
   const isLand = initialPropertyType === 'land' || (initialPropertyType || '').includes('土');
 
+  // 種別がマンション（区分所有）かどうか → RC/SRC 償却率(0.022)を使用
+  const isApartment = initialPropertyType === 'apartment' || (initialPropertyType || '').includes('マ');
+
   // テンプレート画像をBase64でキャッシュ（srcDoc内で外部画像が読めない問題の対策）
   const [imgCache, setImgCache] = useState<Record<string, string>>({});
   React.useEffect(() => {
@@ -263,11 +270,12 @@ export const NetProceedsListModal: React.FC<Props> = ({
         purchaseYear: (!isLand && purchaseYear) ? parseInt(purchaseYear) : undefined,
         saleYear: new Date().getFullYear(),
         extraExpense: (taxMode === 'known_empty' || taxMode === 'unknown_mortgage_empty') ? emptyItemCost : 0,
+        isApartment,
       });
       const netProceeds = priceYen - brokerageFee - stampDuty - mortgageRelease - taxAmount - emptyItemCost;
       return { priceYen, brokerageFee, stampDuty, mortgageRelease, transferTax: taxAmount, netProceeds };
     });
-  }, [maxPriceMan, minPriceMan, priceStepMan, hasMortgage, mortgageReleaseFee, taxMode, acquisitionCostMan, purchaseYear, isLand, emptyItemAmountMan]);
+  }, [maxPriceMan, minPriceMan, priceStepMan, hasMortgage, mortgageReleaseFee, taxMode, acquisitionCostMan, purchaseYear, isLand, isApartment, emptyItemAmountMan]);
 
   // 税計算の詳細（代表値: 最高額で表示）
   const taxDetail = useMemo(() => {
@@ -282,8 +290,9 @@ export const NetProceedsListModal: React.FC<Props> = ({
       purchaseYear: (!isLand && purchaseYear) ? parseInt(purchaseYear) : undefined,
       saleYear: new Date().getFullYear(),
       extraExpense: (taxMode === 'known_empty' || taxMode === 'unknown_mortgage_empty') ? (parseFloat(emptyItemAmountMan) || 0) * 10_000 : 0,
+      isApartment,
     });
-  }, [taxMode, maxPriceMan, acquisitionCostMan, purchaseYear, isLand, emptyItemAmountMan]);
+  }, [taxMode, maxPriceMan, acquisitionCostMan, purchaseYear, isLand, isApartment, emptyItemAmountMan]);
 
   const fmtMan = (yen: number, approx = false) => {
     const man = yen / 10_000;
@@ -558,7 +567,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
                     <Alert severity="info" sx={{ fontSize: '0.7rem', py: 0 }}>
                       {isLand
                         ? '土地は建物がないため減価償却はありません。5年超所有: 長期譲渡所得税率20.315%。'
-                        : '土地:建物＝3:7で按分。建物は木造(0.046)で減価償却。5年超所有: 長期譲渡所得税率20.315%。'}
+                        : `土地:建物＝3:7で按分。建物は${isApartment ? 'RC/SRC(0.022)' : '木造(0.046)'}で減価償却。5年超所有: 長期譲渡所得税率20.315%。`}
                     </Alert>
                   </Grid>
                 </Grid>

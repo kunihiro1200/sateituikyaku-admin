@@ -29,8 +29,9 @@ export const calcStampDuty = (priceYen: number): number => {
   return 320_000;
 };
 
-/** 建物の減価償却率（木造、耐用年数22年相当） */
+/** 建物の減価償却率（木造: 耐用年数22年、RC/SRC: 47年） */
 const DEPRECIATION_RATE_WOOD = 0.046;
+const DEPRECIATION_RATE_RC = 0.022;
 
 export interface TransferTaxInput {
   mode: 'unknown' | 'known' | 'none' | 'unknown_mortgage' | 'none_mortgage' | 'known_mortgage';
@@ -49,6 +50,8 @@ export interface TransferTaxInput {
    * （取得費を聞かずに済ませるためのフラグ。売却サポートページの質問スキップ用）。
    */
   assumeFullyCoveredBySpecialDeduction?: boolean;
+  /** マンション（区分所有）の場合 true → RC/SRC 償却率(0.022)を使用。戸建て・土地は false（木造:0.046） */
+  isApartment?: boolean;
 }
 
 export interface TransferTaxResult {
@@ -97,8 +100,10 @@ export const calcTransferTax = (input: TransferTaxInput): TransferTaxResult => {
     buildingAcquisitionCost = Math.round(totalCost * buildingRatio);
     const purchaseYear = input.purchaseYear ?? saleYear - 10;
     holdingYears = saleYear - purchaseYear;
+    // マンション(RC/SRC): 0.022、戸建て・その他(木造): 0.046
+    const depreciationRate = input.isApartment ? DEPRECIATION_RATE_RC : DEPRECIATION_RATE_WOOD;
     const depreciationBase = Math.round(
-      buildingAcquisitionCost * 0.9 * DEPRECIATION_RATE_WOOD * Math.max(holdingYears, 1)
+      buildingAcquisitionCost * 0.9 * depreciationRate * Math.max(holdingYears, 1)
     );
     depreciationAmount = depreciationBase;
     const buildingBookValue = Math.max(
