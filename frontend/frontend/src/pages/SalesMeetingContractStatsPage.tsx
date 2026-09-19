@@ -440,7 +440,7 @@ export default function SalesMeetingContractStatsPage() {
         <Typography variant="body2" sx={{ mt: 0.5, color: '#6a1b9a' }}>
           専任両手率・一般両手率・一般片手率・他決率はこのページで自動計算しています。
           2026年4月以降はAA（大分）とFI（福岡）に分けて表示します。
-          FIは物件リストの買付（成約種別）から自動集計（契約日→買付日→決済日→配信日の順で月を判定）。
+          FI（福岡）は買主リスト（FK）の「★最新状況」の成約種別を内覧日ベースで自動集計しています。
         </Typography>
       </Paper>
 
