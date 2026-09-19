@@ -7006,7 +7006,7 @@ ${pageUrl}`;
                 @media print {
                   body > * { display: none !important; }
                   #commission-discount-print-root { display: block !important; }
-                  @page { size: A4 portrait; margin: 0; }
+                  @page { size: A4 portrait; margin: 15mm 18mm; }
                 }
               `;
               document.head.appendChild(style);
