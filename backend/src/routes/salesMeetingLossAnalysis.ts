@@ -17,10 +17,13 @@ function getSupabase() {
  * このシステムの sellers テーブルに置き換えて集計する。
  *
  * 元数式の条件 → DBカラム対応:
- *   - AC列（状況（当社））= 「他決→追客」または「他決→追客不要」 → sellers.status
- *   - AQ列（競合名・理由）に 理由名を含む                       → sellers.competitor_name_and_reason
- *   - AM列（契約年月 他決は分かった時点）が対象年の範囲           → sellers.contract_year_month
- *   - AB列（営担）= 担当者名                                     → sellers.visit_assignee
+ *   - AC列（状況（当社））= 他決/専任のステータス            → sellers.status
+ *   - 理由（専任・他決要因）= 「①知り合い」等の丸数字付き     → sellers.exclusive_other_decision_factor
+ *   - AM列（契約年月 他決は分かった時点）が対象年の範囲       → sellers.contract_year_month
+ *   - AB列（営担）= 担当者名（林 / 麻 / K）                   → sellers.visit_assignee
+ *
+ * ※ 通話モードページの「ステータス（状況（当社））」「営担」「専任・他決要因」で判定する。
+ * ※ 理由は表記ゆれに強くするため、先頭の丸数字（①〜㉔）だけで照合する。
  *
  * このAPIは特に「林 / 麻 / K」の担当者について、理由別・年別の
  * 専任件数（status = 専任媒介 / 他決→専任）と他決件数（status = 他決→追客 / 他決→追客不要）を返す。
@@ -68,12 +71,28 @@ const REASONS = [
   '不明',
 ];
 
-// 理由名から照合キー（丸数字などの接頭記号を除いた本文）を作る。
-// competitor_name_and_reason には理由本文だけが入っていることが多いため、
-// 接頭記号を落として部分一致で判定する。
-function reasonMatchKey(reason: string): string {
-  // 先頭の丸数字（①②…㉔）や記号を除去
-  return reason.replace(/^[\u2460-\u24FF\u3251-\u32BF①-⑳㉑-㉔0-9\.\s]+/, '').trim();
+// 丸数字 → REASONS のラベル への対応表（先頭の丸数字で引く）。
+// 「不明」は丸数字を持たないので対象外（該当なし時のフォールバックに使う）。
+const CIRCLED_TO_REASON: Record<string, string> = {};
+for (const r of REASONS) {
+  const ch = r.trim()[0];
+  if ('①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔'.includes(ch)) {
+    CIRCLED_TO_REASON[ch] = r;
+  }
+}
+
+// 丸数字（①〜㉔）の文字集合。理由の識別に使う。
+// 売主リストの「専任・他決要因」(exclusive_other_decision_factor) は
+// 「①知り合い」「⑫対応スピード」のように丸数字＋本文で保存されるため、
+// 先頭の丸数字だけを取り出して照合する（本文の表記ゆれに強い）。
+const CIRCLED = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔';
+
+// 文字列の先頭にある丸数字を返す（無ければ null）
+function leadingCircled(text: string): string | null {
+  const t = text.trim();
+  if (t.length === 0) return null;
+  const ch = t[0];
+  return CIRCLED.includes(ch) ? ch : null;
 }
 
 // 年の範囲（JST基準で年の1/1〜12/31）を ISO 文字列で返す
@@ -128,15 +147,14 @@ router.get('/loss-analysis-stats', async (_req: Request, res: Response) => {
     const rows: Array<{
       status: string | null;
       visit_assignee: string | null;
-      competitor_name_and_reason: string | null;
-      competitor_name: string | null;
+      exclusive_other_decision_factor: string | null;
       contract_year_month: string | null;
     }> = [];
 
     for (;;) {
       const { data, error } = await supabase
         .from('sellers')
-        .select('status, visit_assignee, competitor_name_and_reason, competitor_name, contract_year_month')
+        .select('status, visit_assignee, exclusive_other_decision_factor, contract_year_month')
         .in('status', ALL_STATUSES)
         .gte('contract_year_month', start)
         .lte('contract_year_month', end)
@@ -158,9 +176,6 @@ router.get('/loss-analysis-stats', async (_req: Request, res: Response) => {
       }
     }
 
-    // 理由の照合キーを事前計算
-    const reasonKeys = REASONS.map((r) => ({ reason: r, key: reasonMatchKey(r) }));
-
     for (const row of rows) {
       const assignee = (row.visit_assignee || '').trim();
       if (!TARGET_ASSIGNEES.includes(assignee)) continue;
@@ -175,15 +190,11 @@ router.get('/loss-analysis-stats', async (_req: Request, res: Response) => {
       else if (LOSS_STATUSES.includes(status)) side = 'loss';
       if (!side) continue;
 
-      // 理由テキスト（competitor_name_and_reason 優先、無ければ competitor_name）
-      const reasonText = (row.competitor_name_and_reason || row.competitor_name || '').trim();
-
-      // どの理由に該当するか判定（部分一致）。該当が無ければ「不明」に集計。
-      let matched = '不明';
-      if (reasonText) {
-        const hit = reasonKeys.find((rk) => rk.key && reasonText.includes(rk.key));
-        if (hit) matched = hit.reason;
-      }
+      // 理由は「専任・他決要因」(exclusive_other_decision_factor) の先頭丸数字で判定する。
+      // 例: 「①知り合い」→ ①。丸数字が無い/未記入は「不明」に集計。
+      const factor = (row.exclusive_other_decision_factor || '').trim();
+      const ch = leadingCircled(factor);
+      const matched = (ch && CIRCLED_TO_REASON[ch]) ? CIRCLED_TO_REASON[ch] : '不明';
 
       (stats[assignee][matched][side] as any)[year] += 1;
     }
