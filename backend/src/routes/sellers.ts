@@ -3565,11 +3565,29 @@ router.put('/:id', async (req: Request, res: Response) => {
       ]);
       const isStatusOnlyUpdate = Object.keys(req.body).every(k => STATUS_UPDATE_FIELDS.has(k));
 
+      // コメント・接触制限フィールドのみの更新も非同期化
+      // （通話モードページで頻繁に呼ばれるため、Sheets同期のawaitでタイムアウトしやすい）
+      const COMMENT_OR_RESTRICTION_FIELDS = new Set([
+        'comments', 'emailSendDisabled', 'smsSendDisabled', 'phoneCallDisabled',
+        'unreachableStatus',
+      ]);
+      const isCommentOrRestrictionUpdate = Object.keys(req.body).every(k => COMMENT_OR_RESTRICTION_FIELDS.has(k));
+
       if (isMailingOnlyUpdate) {
         console.log(`⚡ [SpreadsheetSync] Skipping sync for mailing-only update of seller ${req.params.id}`);
       } else if (isStatusOnlyUpdate) {
         console.log(`⚡ [SpreadsheetSync] Async sync for status-only update of seller ${req.params.id}`);
         // ステータス更新は非同期で同期（レスポンスをブロックしない）
+        createSpreadsheetSyncService().then(syncService => {
+          if (syncService) {
+            syncService.syncToSpreadsheet(req.params.id).catch(e =>
+              console.error('⚠️ [SpreadsheetSync] Async sync error:', e)
+            );
+          }
+        });
+      } else if (isCommentOrRestrictionUpdate) {
+        console.log(`⚡ [SpreadsheetSync] Async sync for comment/restriction update of seller ${req.params.id}`);
+        // コメント・接触制限更新は非同期で同期（Sheets待ちタイムアウトを防ぐ）
         createSpreadsheetSyncService().then(syncService => {
           if (syncService) {
             syncService.syncToSpreadsheet(req.params.id).catch(e =>
