@@ -175,7 +175,7 @@ const CommissionDiscountSheet = React.forwardRef<HTMLDivElement, CommissionDisco
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <div style={{
               width: '80mm',
-              height: '38mm',
+              height: '32mm',
               border: '1.5px solid #888',
               borderRadius: '3px',
               display: 'flex',
@@ -192,7 +192,7 @@ const CommissionDiscountSheet = React.forwardRef<HTMLDivElement, CommissionDisco
         </div>
 
         {/* フッター */}
-        <div style={{ marginTop: '6mm', textAlign: 'center' }}>
+        <div style={{ marginTop: '3mm', textAlign: 'center' }}>
           <span style={{ fontSize: '12pt', color: '#888' }}>
             株式会社威風　／　株式会社くじら不動産
           </span>
