@@ -150,7 +150,7 @@ const CommissionDiscountSheet = React.forwardRef<HTMLDivElement, CommissionDisco
           <div style={{
             border: '1px solid #bbb',
             borderRadius: '2px',
-            minHeight: '80mm',
+            minHeight: '55mm',
             padding: '4mm 6mm',
             backgroundColor: '#fafafa',
             wordBreak: 'break-all',
@@ -175,7 +175,7 @@ const CommissionDiscountSheet = React.forwardRef<HTMLDivElement, CommissionDisco
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <div style={{
               width: '80mm',
-              height: '45mm',
+              height: '38mm',
               border: '1.5px solid #888',
               borderRadius: '3px',
               display: 'flex',
