@@ -6976,7 +6976,7 @@ ${pageUrl}`;
               p: 1,
             }}
           >
-            <Box sx={{ transform: 'scale(0.75)', transformOrigin: 'top center', width: '210mm', mb: '-52mm' }}>
+            <Box sx={{ transform: 'scale(0.75)', transformOrigin: 'top center', width: '210mm', mb: '-55mm' }}>
               <CommissionDiscountSheet
                 ref={commissionDiscountSheetRef}
                 printDate={new Date().toISOString().split('T')[0]}
@@ -7006,8 +7006,7 @@ ${pageUrl}`;
                 @media print {
                   body > * { display: none !important; }
                   #commission-discount-print-root { display: block !important; }
-                  #commission-discount-print-root > * { width: 100% !important; min-height: auto !important; padding: 0 !important; margin: 0 !important; box-sizing: border-box !important; }
-                  @page { size: A4 portrait; margin: 12mm 15mm; }
+                  @page { size: A4 portrait; margin: 0; }
                 }
               `;
               document.head.appendChild(style);

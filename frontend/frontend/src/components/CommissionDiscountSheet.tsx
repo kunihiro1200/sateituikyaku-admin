@@ -47,10 +47,10 @@ const CommissionDiscountSheet = React.forwardRef<HTMLDivElement, CommissionDisco
 
     // ラベル行：幅固定せず flex で自然に広がる
     const FieldRow = ({ label, value }: { label: string; value?: string }) => (
-      <Box sx={{ display: 'flex', alignItems: 'flex-end', mb: '5mm', gap: '4mm' }}>
+      <Box sx={{ display: 'flex', alignItems: 'flex-end', mb: '4mm', gap: '4mm' }}>
         <Typography
           sx={{
-            fontSize: '14pt',
+            fontSize: '11pt',
             fontWeight: 600,
             minWidth: '5.5em',
             flexShrink: 0,
@@ -60,8 +60,8 @@ const CommissionDiscountSheet = React.forwardRef<HTMLDivElement, CommissionDisco
         >
           {label}
         </Typography>
-        <Box sx={{ flex: 1, borderBottom: '1.5px solid #444', pb: '1mm', minHeight: '8mm' }}>
-          <Typography sx={{ fontSize: '14pt', fontWeight: 400, lineHeight: 1.4 }}>
+        <Box sx={{ flex: 1, borderBottom: '1.5px solid #444', pb: '1mm', minHeight: '7mm' }}>
+          <Typography sx={{ fontSize: '11pt', fontWeight: 400, lineHeight: 1.4 }}>
             {value || '\u00a0'}
           </Typography>
         </Box>
@@ -72,91 +72,90 @@ const CommissionDiscountSheet = React.forwardRef<HTMLDivElement, CommissionDisco
       <Box
         ref={ref}
         sx={{
-          // 画面表示用は 210mm 固定
           width: '210mm',
           minHeight: '297mm',
-          p: '15mm 18mm 12mm',
+          p: '12mm 15mm 12mm',
           bgcolor: '#fff',
           fontFamily: '"Noto Sans JP", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif',
           color: '#000',
           boxSizing: 'border-box',
-          // 印刷時：幅を 100% にしてブラウザの印刷領域に合わせる
           '@media print': {
-            width: '100%',
-            minHeight: 'auto',
-            p: '0',
+            width: '210mm',
+            minHeight: '297mm',
+            p: '12mm 15mm 12mm',
             margin: '0',
+            boxSizing: 'border-box',
           },
         }}
       >
         {/* 日付 */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: '5mm' }}>
-          <Typography sx={{ fontSize: '11pt', color: '#444' }}>{dateDisplay}</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: '4mm' }}>
+          <Typography sx={{ fontSize: '10pt', color: '#444' }}>{dateDisplay}</Typography>
         </Box>
 
         {/* タイトル */}
         <Typography
           sx={{
-            fontSize: '22pt',
+            fontSize: '18pt',
             fontWeight: 'bold',
             textAlign: 'center',
-            letterSpacing: '0.3em',
-            mb: '9mm',
-            borderBottom: '3px solid #000',
-            pb: '4mm',
+            letterSpacing: '0.25em',
+            mb: '7mm',
+            borderBottom: '2.5px solid #000',
+            pb: '3mm',
           }}
         >
           仲介手数料　割引申請書
         </Typography>
 
         {/* 物件情報 */}
-        <Box sx={{ border: '2px solid #555', borderRadius: '4px', p: '6mm 8mm 3mm', mb: '8mm' }}>
-          <Typography sx={{ fontSize: '11pt', fontWeight: 700, color: '#555', mb: '5mm' }}>
+        <Box sx={{ border: '1.5px solid #555', borderRadius: '3px', p: '5mm 7mm 2mm', mb: '6mm' }}>
+          <Typography sx={{ fontSize: '10pt', fontWeight: 700, color: '#555', mb: '4mm' }}>
             ▍ 物件情報
           </Typography>
           <FieldRow label="物件番号" value={propertyNumber} />
           <FieldRow label="物件住所" value={propertyAddress} />
           <FieldRow label="売主名" value={sellerName} />
           <FieldRow label="営業担当" value={salesAssignee} />
-          <Box sx={{ mb: 0 }}>
+          <Box sx={{ mb: '2mm' }}>
             <FieldRow label="媒介形態" value={mediationType} />
           </Box>
         </Box>
 
         {/* 割引理由 */}
-        <Box sx={{ border: '2px solid #555', borderRadius: '4px', p: '6mm 8mm', mb: '8mm' }}>
-          <Typography sx={{ fontSize: '11pt', fontWeight: 700, color: '#555', mb: '4mm' }}>
+        <Box sx={{ border: '1.5px solid #555', borderRadius: '3px', p: '5mm 7mm', mb: '6mm' }}>
+          <Typography sx={{ fontSize: '10pt', fontWeight: 700, color: '#555', mb: '3mm' }}>
             ▍ 仲介手数料割引理由
           </Typography>
           <Box
             sx={{
-              border: '1.5px solid #bbb',
-              borderRadius: '3px',
-              minHeight: '85mm',
+              border: '1px solid #bbb',
+              borderRadius: '2px',
+              minHeight: '90mm',
               p: '4mm 5mm',
               bgcolor: '#fafafa',
               wordBreak: 'break-all',
               whiteSpace: 'pre-wrap',
             }}
           >
-            <Typography sx={{ fontSize: '13pt', lineHeight: 2.0, color: '#111' }}>
+            <Typography sx={{ fontSize: '11pt', lineHeight: 1.8, color: '#111' }}>
               {discountReason || ''}
             </Typography>
           </Box>
         </Box>
 
         {/* 上長確認サイン */}
-        <Box sx={{ border: '2px solid #555', borderRadius: '4px', p: '6mm 8mm 8mm' }}>
-          <Typography sx={{ fontSize: '11pt', fontWeight: 700, color: '#555', mb: '6mm' }}>
+        <Box sx={{ border: '1.5px solid #555', borderRadius: '3px', p: '5mm 7mm 7mm' }}>
+          <Typography sx={{ fontSize: '10pt', fontWeight: 700, color: '#555', mb: '5mm' }}>
             ▍ 上長確認サイン
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'center' }}>
             <Box
               sx={{
-                width: '75mm',
-                height: '42mm',
+                width: '80mm',
+                height: '45mm',
                 border: '1.5px solid #888',
-                borderRadius: '4px',
+                borderRadius: '3px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -165,14 +164,14 @@ const CommissionDiscountSheet = React.forwardRef<HTMLDivElement, CommissionDisco
                 bgcolor: '#fff',
               }}
             >
-              <Typography sx={{ fontSize: '10pt', color: '#666' }}>上長確認サイン（自筆）</Typography>
+              <Typography sx={{ fontSize: '9pt', color: '#666' }}>上長確認サイン（自筆）</Typography>
             </Box>
           </Box>
         </Box>
 
         {/* フッター */}
-        <Box sx={{ mt: '8mm', textAlign: 'center' }}>
-          <Typography sx={{ fontSize: '10pt', color: '#888' }}>
+        <Box sx={{ mt: '6mm', textAlign: 'center' }}>
+          <Typography sx={{ fontSize: '9pt', color: '#888' }}>
             株式会社威風　／　株式会社くじら不動産
           </Typography>
         </Box>
