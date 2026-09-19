@@ -2660,6 +2660,76 @@ export class EnhancedAutoSyncService {
       // スプシで値が変更されてもDBには反映しない。DBでの作業を保護するため。
       console.log('\n⏭️  Phase 2: Seller Update Sync (Disabled - insert only policy)');
 
+      // Phase 2.5: コメント復元同期
+      // 「スプシにコメントがあってDBが空」の場合のみDBを復元する。
+      // 通話モードページでのコメント削除保存などでDBが空になっても、
+      // スプシにコメントが残っていれば自動で復元される。
+      // 逆方向（DBにコメントがあってスプシが空）はSpreadsheetSyncService側で保護済み。
+      console.log('\n🔁 Phase 2.5: Comment Restore Sync (sheet→DB, only when DB is empty)');
+      try {
+        const allSheetRows = await this.getSpreadsheetData();
+        const sheetCommentMap = new Map<string, string>();
+
+        for (const row of allSheetRows) {
+          const sellerNumber = row['売主番号'];
+          if (!sellerNumber || typeof sellerNumber !== 'string' || !/^[A-Z]{2}\d+$/.test(sellerNumber)) continue;
+          const sheetComment = (row['コメント'] || '').trim();
+          if (!sheetComment) continue; // スプシが空なら対象外
+          sheetCommentMap.set(sellerNumber, sheetComment);
+        }
+
+        if (sheetCommentMap.size > 0) {
+          const pageSize = 1000;
+          let offset = 0;
+          let hasMore = true;
+          let restored = 0;
+
+          while (hasMore) {
+            const { data: dbSellers, error: dbError } = await this.supabase
+              .from('sellers')
+              .select('seller_number, comments')
+              .is('deleted_at', null)
+              .range(offset, offset + pageSize - 1);
+
+            if (dbError || !dbSellers || dbSellers.length === 0) {
+              hasMore = false;
+              break;
+            }
+
+            for (const dbSeller of dbSellers) {
+              const sn = dbSeller.seller_number;
+              // DBのコメントが空（null または ''）であり、スプシにコメントがある場合のみ復元
+              const dbEmpty = !dbSeller.comments || dbSeller.comments.trim() === '';
+              if (!dbEmpty) continue;
+              const sheetComment = sheetCommentMap.get(sn);
+              if (!sheetComment) continue;
+
+              const { error: updateError } = await this.supabase
+                .from('sellers')
+                .update({ comments: sheetComment, updated_at: new Date().toISOString() })
+                .eq('seller_number', sn);
+
+              if (updateError) {
+                console.error(`❌ [Phase 2.5] ${sn}: コメント復元失敗 - ${updateError.message}`);
+              } else {
+                restored++;
+                console.log(`✅ [Phase 2.5] ${sn}: コメント復元成功 -> "${sheetComment.slice(0, 60)}"`);
+              }
+            }
+
+            offset += pageSize;
+            if (dbSellers.length < pageSize) hasMore = false;
+          }
+
+          console.log(`✅ Phase 2.5 completed: ${restored} sellers restored`);
+        } else {
+          console.log('✅ Phase 2.5: No sheet comments found');
+        }
+      } catch (phase25Error: any) {
+        console.error('❌ Phase 2.5 error (non-fatal):', phase25Error.message);
+        // Phase 2.5のエラーは非致命的（他のPhaseを続行する）
+      }
+
       // Phase 3: 削除同期 - 削除された売主を検出してソフトデリート
       if (this.isDeletionSyncEnabled()) {
         console.log('\n🗑️  Phase 3: Seller Deletion Sync');
