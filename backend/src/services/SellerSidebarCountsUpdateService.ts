@@ -157,6 +157,7 @@ export class SellerSidebarCountsUpdateService {
           .neq('visit_assignee', '')
           .lt('visit_date', todayJST),
         // 3. 当日TEL（担当）用データ
+        // 「追客中」系（追客中・除外後追客中等）と「他決→追客」の両方を対象とする
         this.supabase
           .from('sellers')
           .select('visit_assignee')
@@ -164,7 +165,7 @@ export class SellerSidebarCountsUpdateService {
           .not('visit_assignee', 'is', null)
           .neq('visit_assignee', '')
           .lte('next_call_date', todayJST)
-          .ilike('status', '%追客中%')
+          .or('status.ilike.%追客中%,status.eq.他決→追客')
           .not('status', 'ilike', '%追客不要%')
           .not('status', 'ilike', '%専任媒介%')
           .not('status', 'ilike', '%一般媒介%')
@@ -964,7 +965,7 @@ export class SellerSidebarCountsUpdateService {
         .not('visit_assignee', 'is', null)
         .neq('visit_assignee', '')
         .lte('next_call_date', todayJST)
-        .ilike('status', '%追客中%')
+        .or('status.ilike.%追客中%,status.eq.他決→追客')
         .not('status', 'ilike', '%追客不要%')
         .not('status', 'ilike', '%専任媒介%')
         .not('status', 'ilike', '%一般媒介%')

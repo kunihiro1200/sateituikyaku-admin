@@ -460,9 +460,9 @@ export const isTodayCallAssigned = (seller: Seller | any): boolean => {
     return false;
   }
   
-  // 状況（当社）に「追客中」が含まれるかチェック
+  // 状況（当社）に「追客中」が含まれる、または「他決→追客」であるかチェック
   const status = seller.status || '';
-  if (!status.includes('追客中')) {
+  if (!status.includes('追客中') && status !== '他決→追客') {
     return false;
   }
   
