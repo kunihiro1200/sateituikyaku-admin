@@ -267,15 +267,15 @@ export default function PropertySidebarStatus({
       }
     });
 
-    // 看板有り物件カテゴリー（一般公開中物件 かつ signboard === '有'）
+    // 看板有り物件カテゴリー（公開中物件 かつ signboard === '有'）
     const signboardCount = listings.filter(l =>
-      l.sidebar_status === '一般公開中物件' && l.signboard === '有'
+      l.atbb_status?.includes('公開中') && !l.atbb_status?.includes('非公開') && l.signboard === '有'
     ).length;
     if (signboardCount > 0) counts['看板有り物件'] = signboardCount;
 
-    // 海見える物件カテゴリー（一般公開中物件 かつ sea_view === '見える' かつ 非公開でない）
+    // 海見える物件カテゴリー（公開中物件 かつ sea_view === '見える' かつ 非公開でない）
     const seaViewCount = listings.filter(l =>
-      l.sidebar_status === '一般公開中物件' && l.sea_view === '見える' && !l.atbb_status?.includes('非公開')
+      l.atbb_status?.includes('公開中') && !l.atbb_status?.includes('非公開') && l.sea_view === '見える'
     ).length;
     if (seaViewCount > 0) counts['海見える物件'] = seaViewCount;
 

@@ -410,14 +410,14 @@ export default function PropertyListingsPage() {
           l.atbb_status === '非公開（配信メールのみ）' && l.private_mail_delivery === '未'
         );
       } else if (sidebarStatus === '看板有り物件') {
-        // 「看板有り物件」: 一般公開中物件 かつ signboard === '有'
+        // 「看板有り物件」: 公開中物件 かつ signboard === '有'
         listings = listings.filter(l =>
-          l.sidebar_status === '一般公開中物件' && l.signboard === '有'
+          l.atbb_status?.includes('公開中') && !isPrivateStatus(l.atbb_status) && l.signboard === '有'
         );
       } else if (sidebarStatus === '海見える物件') {
-        // 「海見える物件」: 一般公開中物件 かつ sea_view === '見える' かつ 非公開でない
+        // 「海見える物件」: 公開中物件 かつ sea_view === '見える' かつ 非公開でない
         listings = listings.filter(l =>
-          l.sidebar_status === '一般公開中物件' && l.sea_view === '見える' && !isPrivateStatus(l.atbb_status)
+          l.atbb_status?.includes('公開中') && !isPrivateStatus(l.atbb_status) && l.sea_view === '見える'
         );
       } else {
         listings = listings.filter(l => l.sidebar_status === sidebarStatus);
