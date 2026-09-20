@@ -26,6 +26,8 @@ interface PropertyListing {
   general_mediation_private?: string;
   // 非公開配信メールフィールド
   private_mail_delivery?: string;
+  // 看板
+  signboard?: string;
   [key: string]: any;
 }
 
@@ -55,6 +57,7 @@ const STATUS_PRIORITY: Record<string, number> = {
   '非公開予定（確認後）': 11,
   // 優先度低グループ（末尾）
   '一般公開中物件': 20,
+  '看板有り物件': 20.5,
   'Y専任公開中': 21,
   '麻専任公開中': 22,
   '久専任公開中': 23,
@@ -260,6 +263,12 @@ export default function PropertySidebarStatus({
         counts[status] = (counts[status] || 0) + 1;
       }
     });
+
+    // 看板有り物件カテゴリー（一般公開中物件 かつ signboard === '有'）
+    const signboardCount = listings.filter(l =>
+      l.sidebar_status === '一般公開中物件' && l.signboard === '有'
+    ).length;
+    if (signboardCount > 0) counts['看板有り物件'] = signboardCount;
 
     // 他社物件カテゴリー（sidebar_status で判別）
     const tashaFukuokaCount = listings.filter(l => l.sidebar_status === '他社物件_福岡').length;

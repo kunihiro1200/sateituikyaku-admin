@@ -2559,13 +2559,17 @@ export default function PropertyListingDetailPage() {
             <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
               <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>看板</Typography>
               {isHeaderEditMode ? (
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={editedData.signboard !== undefined ? editedData.signboard : (data.signboard || '')}
-                  onChange={(e) => handleFieldChange('signboard', e.target.value)}
-                  sx={{ mt: 0.5 }}
-                />
+                <FormControl size="small" fullWidth sx={{ mt: 0.5 }}>
+                  <Select
+                    value={editedData.signboard !== undefined ? (editedData.signboard || '') : (data.signboard || '')}
+                    onChange={(e) => handleFieldChange('signboard', e.target.value || null)}
+                    displayEmpty
+                  >
+                    <MenuItem value=""><em>未選択</em></MenuItem>
+                    <MenuItem value="有">有</MenuItem>
+                    <MenuItem value="無">無</MenuItem>
+                  </Select>
+                </FormControl>
               ) : (
                 <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
                   {data.signboard || '-'}
