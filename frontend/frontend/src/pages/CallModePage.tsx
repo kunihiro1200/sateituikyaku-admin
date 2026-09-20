@@ -10648,11 +10648,10 @@ HP：https://ifoo-oita.com/
               address={propInfo.address || seller?.propertyAddress || ''}
             />
 
-            {/* マッチング（売りたい）ボタン - コメント入力欄の上に配置 */}
-            <Box sx={{ mt: 2, mb: 2, display: 'flex', justifyContent: 'center' }}>
+            {/* マッチング（売りたい）ボタン ＋ キャンセル依頼済みボタン（左右並び） */}
+            <Box sx={{ mt: 2, mb: 2, display: 'flex', justifyContent: 'center', gap: 1, flexWrap: 'wrap' }}>
               <Button
                 variant={(seller as any)?.matchUpdatedAt ? 'contained' : 'outlined'}
-                color="secondary"
                 size="small"
                 onClick={async () => {
                   try {
@@ -10715,27 +10714,37 @@ HP：https://ifoo-oita.com/
                     alert(`マッチング状態の更新に失敗しました: ${err?.response?.data?.error?.message || err?.message || '不明なエラー'}`);
                   }
                 }}
-                sx={{ fontSize: '0.85rem' }}
+                sx={{
+                  fontSize: '0.85rem',
+                  ...((seller as any)?.matchUpdatedAt ? {
+                    backgroundColor: '#6a1b9a',
+                    color: '#fff',
+                    '&:hover': { backgroundColor: '#4a148c' },
+                  } : {
+                    color: '#6a1b9a',
+                    borderColor: '#6a1b9a',
+                  }),
+                }}
               >
                 🏠 この物件と買主をマッチング{(seller as any)?.matchUpdatedAt ? '（解除）' : ''}
               </Button>
-            </Box>
 
-            {/* ユーザーよりキャンセル依頼済みボタン（サイト＝ウの場合のみ表示） */}
-            {seller.site === 'ウ' && (
-              <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
+              {/* ユーザーよりキャンセル依頼済みボタン（サイト＝ウの場合のみ表示） */}
+              {seller.site === 'ウ' && (
                 <Button
                   variant={(seller as any)?.userCancelRequested ? 'contained' : 'outlined'}
-                  color={(seller as any)?.userCancelRequested ? 'error' : 'inherit'}
                   size="small"
                   onClick={async () => {
                     const newVal = !(seller as any)?.userCancelRequested;
+                    // オプティミスティックUI：先にUIを更新してから保存
+                    setSeller((prev: any) => prev ? { ...prev, userCancelRequested: newVal } : prev);
                     try {
                       await api.put(`/api/sellers/${seller.id}`, {
                         userCancelRequested: newVal,
                       });
-                      setSeller((prev: any) => prev ? { ...prev, userCancelRequested: newVal } : prev);
                     } catch (err: any) {
+                      // 失敗時は元に戻す
+                      setSeller((prev: any) => prev ? { ...prev, userCancelRequested: !newVal } : prev);
                       console.error('キャンセル依頼フラグ保存エラー:', err);
                       alert('保存に失敗しました');
                     }
@@ -10744,19 +10753,19 @@ HP：https://ifoo-oita.com/
                     fontWeight: 'bold',
                     fontSize: '0.85rem',
                     ...((seller as any)?.userCancelRequested ? {
-                      backgroundColor: '#d32f2f',
+                      backgroundColor: '#e65100',
                       color: '#fff',
-                      '&:hover': { backgroundColor: '#b71c1c' },
+                      '&:hover': { backgroundColor: '#bf360c' },
                     } : {
-                      color: '#757575',
-                      borderColor: '#bdbdbd',
+                      color: '#e65100',
+                      borderColor: '#e65100',
                     }),
                   }}
                 >
-                  {(seller as any)?.userCancelRequested ? '✅ ユーザーよりキャンセル依頼済み' : 'ユーザーよりキャンセル依頼済み'}
+                  {(seller as any)?.userCancelRequested ? '✅ キャンセル依頼済み' : '🔲 ユーザーよりキャンセル依頼済み'}
                 </Button>
-              </Box>
-            )}
+              )}
+            </Box>
 
             {/* コメント入力・編集エリア（直接書き込み可能） */}
             <Box sx={{ mb: 2 }}>
