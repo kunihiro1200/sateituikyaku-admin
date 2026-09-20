@@ -62,6 +62,9 @@ function getInitialTabIndexFromCategory(category: string | null): number {
   return 0;
 }
 
+// 表示から除外する物件番号（業務依頼リストのどのカテゴリにも、Allにも出さない）
+const HIDDEN_PROPERTY_NUMBERS = new Set<string>(['AA10204']);
+
 export default function WorkTasksPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -99,7 +102,9 @@ export default function WorkTasksPage() {
       setSnackbarOpen(true);
       // データを再取得
       const response = await api.get('/api/work-tasks', { params: { limit: 1000 } });
-      setAllWorkTasks(Array.isArray(response.data?.data) ? response.data.data : []);
+      const syncData = (Array.isArray(response.data?.data) ? response.data.data : [])
+        .filter((t: WorkTask) => !HIDDEN_PROPERTY_NUMBERS.has(t.property_number));
+      setAllWorkTasks(syncData);
     } catch (err: any) {
       const msg = err?.response?.data?.error || '転記中にエラーが発生しました';
       setSnackbarMessage(msg);
@@ -191,7 +196,7 @@ export default function WorkTasksPage() {
     if (!forceRefresh) {
       const cached = pageDataCache.get<WorkTask[]>(CACHE_KEYS.WORK_TASKS);
       if (cached) {
-        setAllWorkTasks(cached);
+        setAllWorkTasks(cached.filter((t) => !HIDDEN_PROPERTY_NUMBERS.has(t.property_number)));
         setLoading(false);
         return;
       }
@@ -207,7 +212,8 @@ export default function WorkTasksPage() {
           orderDirection: 'desc',
         },
       });
-      const data = response.data.data || [];
+      const rawData = response.data.data || [];
+      const data = rawData.filter((t: WorkTask) => !HIDDEN_PROPERTY_NUMBERS.has(t.property_number));
       pageDataCache.set(CACHE_KEYS.WORK_TASKS, data);
       setAllWorkTasks(data);
     } catch (error) {
