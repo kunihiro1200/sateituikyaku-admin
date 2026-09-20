@@ -1850,6 +1850,10 @@ export class SellerService extends BaseRepository {
                 .not('status', 'ilike', '%他社買取%');
             } else {
               // 当日TEL（担当）（営担が指定のイニシャルまたはフルネーム AND 次電日が今日以前 AND 追客中を含むまたは他決→追客）
+              // ⚠️ Supabaseで .or() を複数チェーンすると競合するため、全条件を1つの .or() にまとめる
+              // 例: (visit_assignee=K OR visit_assignee=国広智子) AND (status ILIKE %追客中% OR status=他決→追客)
+              // → .or() を2回使うと後者が前者を上書きする問題があるため、サブクエリ形式で記述
+              const statusOrCondition = 'status.ilike.%追客中%,status.eq.他決→追客';
               query = query
                 .not('visit_assignee', 'is', null)
                 .neq('visit_assignee', '')
@@ -1861,6 +1865,7 @@ export class SellerService extends BaseRepository {
                 .not('status', 'ilike', '%専任媒介%')
                 .not('status', 'ilike', '%一般媒介%')
                 .not('status', 'ilike', '%他社買取%');
+              console.log(`[todayCallAssigned] assignee=${assignee} fullName=${fullName} assigneeOrCondition=${assigneeOrCondition}`);
             }
           } else if (dynamicCategory.startsWith('todayCallWithInfo:')) {
             // 当日TEL（内容）ラベル別 - ページネーション前にIDを特定する方式に変更
