@@ -860,6 +860,9 @@ export class SellerService extends BaseRepository {
     if ((data as any).visitThankYouSent !== undefined) {
       updates.visit_thank_you_sent = (data as any).visitThankYouSent;
     }
+    if ((data as any).userCancelRequested !== undefined) {
+      updates.user_cancel_requested = (data as any).userCancelRequested;
+    }
     if ((data as any).visitCalendarConfirmed !== undefined) {
       updates.visit_calendar_confirmed = (data as any).visitCalendarConfirmed;
       updates.visit_calendar_confirmed_at = (data as any).visitCalendarConfirmed ? new Date() : null;
@@ -2827,6 +2830,8 @@ export class SellerService extends BaseRepository {
         postalCode: seller.postal_code || undefined,
         // 訪問後お礼メール送信済みフラグ
         visitThankYouSent: seller.visit_thank_you_sent || false,
+        // ユーザーよりキャンセル依頼済みフラグ
+        userCancelRequested: seller.user_cancel_requested || false,
         // 訪問カレンダー確認済みフラグ（「訪問カレンダー●OK」ボタン）
         visitCalendarConfirmed: seller.visit_calendar_confirmed || false,
         visitCalendarConfirmedAt: seller.visit_calendar_confirmed_at || undefined,

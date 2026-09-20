@@ -10721,6 +10721,43 @@ HP：https://ifoo-oita.com/
               </Button>
             </Box>
 
+            {/* ユーザーよりキャンセル依頼済みボタン（サイト＝ウの場合のみ表示） */}
+            {seller.site === 'ウ' && (
+              <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
+                <Button
+                  variant={(seller as any)?.userCancelRequested ? 'contained' : 'outlined'}
+                  color={(seller as any)?.userCancelRequested ? 'error' : 'inherit'}
+                  size="small"
+                  onClick={async () => {
+                    const newVal = !(seller as any)?.userCancelRequested;
+                    try {
+                      await api.put(`/api/sellers/${seller.id}`, {
+                        userCancelRequested: newVal,
+                      });
+                      setSeller((prev: any) => prev ? { ...prev, userCancelRequested: newVal } : prev);
+                    } catch (err: any) {
+                      console.error('キャンセル依頼フラグ保存エラー:', err);
+                      alert('保存に失敗しました');
+                    }
+                  }}
+                  sx={{
+                    fontWeight: 'bold',
+                    fontSize: '0.85rem',
+                    ...((seller as any)?.userCancelRequested ? {
+                      backgroundColor: '#d32f2f',
+                      color: '#fff',
+                      '&:hover': { backgroundColor: '#b71c1c' },
+                    } : {
+                      color: '#757575',
+                      borderColor: '#bdbdbd',
+                    }),
+                  }}
+                >
+                  {(seller as any)?.userCancelRequested ? '✅ ユーザーよりキャンセル依頼済み' : 'ユーザーよりキャンセル依頼済み'}
+                </Button>
+              </Box>
+            )}
+
             {/* コメント入力・編集エリア（直接書き込み可能） */}
             <Box sx={{ mb: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>

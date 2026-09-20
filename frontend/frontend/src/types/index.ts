@@ -181,6 +181,7 @@ export interface Seller {
   visitReminderAssignee?: string;          // 訪問事前通知メール担当
   visitCalendarConfirmed?: boolean;        // 訪問カレンダー確認済みフラグ（「訪問カレンダー●OK」ボタン）
   visitCalendarConfirmedAt?: string | Date; // 訪問カレンダー確認日時
+  userCancelRequested?: boolean;           // ユーザーよりキャンセル依頼済みフラグ（サイト＝ウのみ）
   exclusiveScript?: string;
   priceLossListEntered?: boolean;
   companyIntroduction?: string;
