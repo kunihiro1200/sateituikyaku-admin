@@ -176,13 +176,12 @@ interface CwCountData {
   floorPlan500: string | null;
   siteRegistration: string | null;
   siteRegistrationAsanuma: string | null;
-  siteRegistrationYamazaki: string | null;
 }
 
 // CWカウント取得フック
 // GASが定期同期するcw_countsテーブルから「現在計」を取得
 function useCwCounts(): CwCountData {
-  const [data, setData] = useState<CwCountData>({ floorPlan300: null, floorPlan500: null, siteRegistration: null, siteRegistrationAsanuma: null, siteRegistrationYamazaki: null });
+  const [data, setData] = useState<CwCountData>({ floorPlan300: null, floorPlan500: null, siteRegistration: null, siteRegistrationAsanuma: null });
 
   useEffect(() => {
     const fetchCwCounts = async () => {
@@ -190,16 +189,15 @@ function useCwCounts(): CwCountData {
         const { data: rows, error } = await supabase
           .from('cw_counts')
           .select('item_name, current_total')
-          .in('item_name', ['間取図（300円）', '間取図（500円）', 'サイト登録', 'サイト登録（山崎様）']);
+          .in('item_name', ['間取図（300円）', '間取図（500円）', 'サイト登録']);
 
         if (error || !rows) return;
 
-        const result: CwCountData = { floorPlan300: null, floorPlan500: null, siteRegistration: null, siteRegistrationAsanuma: null, siteRegistrationYamazaki: null };
+        const result: CwCountData = { floorPlan300: null, floorPlan500: null, siteRegistration: null, siteRegistrationAsanuma: null };
         rows.forEach(row => {
           if (row.item_name === '間取図（300円）') result.floorPlan300 = row.current_total;
           if (row.item_name === '間取図（500円）') result.floorPlan500 = row.current_total;
           if (row.item_name === 'サイト登録') { result.siteRegistration = row.current_total; result.siteRegistrationAsanuma = row.current_total; }
-          if (row.item_name === 'サイト登録（山崎様）') result.siteRegistrationYamazaki = row.current_total;
         });
         setData(result);
       } catch {
@@ -3133,9 +3131,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       const spreadsheetUrl = getValue('spreadsheet_url') || '';
       const storageUrl = getValue('storage_url') || '';
 
-      let cwName = '浅沼様';
-      const cwPerson = getValue('cw_person') || '';
-      if (cwPerson.includes('山崎')) cwName = '山崎様';
+      const cwName = '浅沼様';
 
       let text = `${cwName}\nお世話になっております。\nサイト登録関係お願いします。\n物件番号：${propertyNumber}\n物件所在地：${propertyAddress}\n当社依頼日：${requestDate}（${requester}）\n当社の希望納期：${dueDate}`;
       if (panorama) text += `\nパノラマ：${panorama}`;
@@ -3255,10 +3251,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     // 日付変更時の上限チェック
     const checkDueDateLimit = (dateStr: string | null): string => {
       if (!dateStr) return '';
-      const cwPerson = getValue('cw_person') || '';
-      // 浅沼様の場合のみチェック（山崎を含まない場合＝浅沼様）
-      if (cwPerson.includes('山崎')) return '';
-
       const dateOnly = dateStr.split('T')[0];
       const currentCount = siteDueDateCounts[dateOnly] || 0;
       const targetDate = new Date(dateOnly + 'T00:00:00');
@@ -3356,7 +3348,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           extraOptions={['不要']}
           labelColor={!getValue('cw_request_email_site') ? 'error' : undefined}
         />
-        <EditableButtonSelect label="CWの方*" field="cw_person" options={['浅沼様（土日OK, 平日は中１日あけて納期）', '山崎様']} />
+        <EditableButtonSelect label="CWの方*" field="cw_person" options={['浅沼様（土日OK, 平日は中１日あけて納期）']} />
         <EditableField label="メール配信" field="email_distribution" />
         <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
           <Grid item xs={4}>
@@ -3632,14 +3624,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 variant={getValue('site_registration_ok_sent') === '浅' ? 'contained' : 'outlined'}
                 color={getValue('site_registration_ok_sent') === '浅' ? 'primary' : 'inherit'}
                 onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('site_registration_ok_sent', getValue('site_registration_ok_sent') === '浅' ? null : '浅'); }}
-                sx={!getValue('site_registration_ok_sent') && !(getValue('cw_person') || '').includes('山崎') ? { fontWeight: 700, borderColor: 'primary.main', borderWidth: 2, color: 'primary.main', backgroundColor: 'rgba(25, 118, 210, 0.08)' } : undefined}
+                sx={!getValue('site_registration_ok_sent') ? { fontWeight: 700, borderColor: 'primary.main', borderWidth: 2, color: 'primary.main', backgroundColor: 'rgba(25, 118, 210, 0.08)' } : undefined}
               >浅</Button>
-              <Button
-                variant={getValue('site_registration_ok_sent') === '山' ? 'contained' : 'outlined'}
-                color={getValue('site_registration_ok_sent') === '山' ? 'primary' : 'inherit'}
-                onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('site_registration_ok_sent', getValue('site_registration_ok_sent') === '山' ? null : '山'); }}
-                sx={!getValue('site_registration_ok_sent') && (getValue('cw_person') || '').includes('山崎') ? { fontWeight: 700, borderColor: 'primary.main', borderWidth: 2, color: 'primary.main', backgroundColor: 'rgba(25, 118, 210, 0.08)' } : undefined}
-              >山</Button>
             </ButtonGroup>
           </Grid>
         </Grid>
@@ -3678,8 +3664,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <ReadOnlyDisplayField
           label=""
           value={
-            cwCounts.siteRegistrationAsanuma || cwCounts.siteRegistrationYamazaki
-              ? `サイト登録（CW) 浅沼様 現在計⇒ ${cwCounts.siteRegistrationAsanuma || '-'} / 山崎様 現在計⇒ ${cwCounts.siteRegistrationYamazaki || '-'}`
+            cwCounts.siteRegistrationAsanuma
+              ? `サイト登録（CW) 浅沼様 現在計⇒ ${cwCounts.siteRegistrationAsanuma}`
               : cwCounts.siteRegistration ? `サイト登録（CW)計⇒ ${cwCounts.siteRegistration}` : '-'
           }
         />

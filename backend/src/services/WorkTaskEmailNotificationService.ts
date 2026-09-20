@@ -26,7 +26,6 @@ export interface EmailRule {
   /**
    * true の場合、triggerField 自体が変わらなくても `cw_person`（CWの方）が変更され、
    * かつ triggerField が triggerValues を満たしている（例: 'Y'）ときに再送信する。
-   * 「CWの方を山崎→浅沼に変えたのにメールが飛ばない」問題への対応。
    */
   retriggerOnCwPersonChange?: boolean;
 }
@@ -131,55 +130,10 @@ const SITE_REGISTRATION_OK_BODY =
   '㈱いふう<br>TEL:097-533-2022<br>MAIL: tenant@ifoo-oita.com' +
   '</body></html>';
 
-/** サイト登録依頼メールの本文テンプレート（HTML形式）- 山崎様宛 */
-const SITE_REGISTRATION_REQUEST_BODY_YAMAZAKI =
-  '<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Arial, Helvetica, \'Noto Sans JP\', sans-serif;font-size:14px;line-height:1.4;">' +
-  '山崎様<br>お世話になっております。<br>サイト登録関係お願いします。<br>' +
-  '物件番号：{物件番号}<br>' +
-  'コメント：{コメント（サイト登録）}<br>' +
-  '{メール配信コメント}' +
-  '物件所在地：{物件所在}<br>' +
-  '当社依頼日：{サイト登録依頼日} {サイト登録依頼者}<br>' +
-  '当社の希望納期：{サイト登録納期予定日}<br>' +
-  '{パノラマ行}' +
-  '間取図格納時期：{間取図完了予定}<br>' +
-  '詳細：<a href="{スプシURL}">スプレッドシート</a><br>' +
-  '格納先：<a href="{格納先URL}">格納先フォルダ</a><br>' +
-  'ご不明点等がございましたら、こちらに返信していただければと思います。<br><br>' +
-  '㈱いふう<br>TEL:097-533-2022<br>MAIL: tenant@ifoo-oita.com' +
-  '</body></html>';
-
-/** サイト登録確認OKメールの本文テンプレート（HTML形式）- 山崎様宛 */
-const SITE_REGISTRATION_OK_BODY_YAMAZAKI =
-  '<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Arial, Helvetica, \'Noto Sans JP\', sans-serif;font-size:14px;line-height:1.4;">' +
-  '山崎様<br>お世話になっております。<br>サイト登録ありがとうございました。OKでした。<br>' +
-  '{サイト登録確認OKコメント}<br>' +
-  '物件番号：{物件番号}<br>' +
-  '物件所在地：{物件所在}<br>' +
-  '詳細：<a href="{スプシURL}">スプレッドシート</a><br>' +
-  'ご不明点等がございましたら、こちらに返信していただければと思います。<br><br>' +
-  '㈱いふう<br>TEL:097-533-2022<br>MAIL: tenant@ifoo-oita.com' +
-  '</body></html>';
-
 /** 間取図格納済み連絡メールの本文テンプレート（HTML形式）- 浅沼様宛 */
 const FLOOR_PLAN_STORED_BODY =
   '<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Arial, Helvetica, \'Noto Sans JP\', sans-serif;font-size:14px;line-height:1.4;">' +
   '浅沼様<br>お世話になっております。<br>間取図格納済みです。<br>' +
-  '{格納先URL}<br>' +
-  '物件番号：{物件番号}<br>' +
-  '物件所在地：{物件所在}<br>' +
-  '当社依頼日：{サイト登録依頼日} {サイト登録依頼者}<br>' +
-  '当社の希望納期：{サイト登録納期予定日}<br>' +
-  '{パノラマ行}' +
-  '詳細：<a href="{スプシURL}">スプレッドシート</a><br>' +
-  'ご不明点等がございましたら、こちらに返信していただければと思います。<br><br>' +
-  '㈱いふう<br>TEL:097-533-2022<br>MAIL: tenant@ifoo-oita.com' +
-  '</body></html>';
-
-/** 間取図格納済み連絡メールの本文テンプレート（HTML形式）- 山崎様宛 */
-const FLOOR_PLAN_STORED_BODY_YAMAZAKI =
-  '<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Arial, Helvetica, \'Noto Sans JP\', sans-serif;font-size:14px;line-height:1.4;">' +
-  '山崎様<br>お世話になっております。<br>間取図格納済みです。<br>' +
   '{格納先URL}<br>' +
   '物件番号：{物件番号}<br>' +
   '物件所在地：{物件所在}<br>' +
@@ -411,11 +365,10 @@ export class WorkTaskEmailNotificationService {
     beforeData: Record<string, any>,
     afterData: Record<string, any>
   ): Promise<void> {
-    // CWの方（cw_person）が変更されたか（山崎⇔浅沼の切り替え判定は「山崎を含むか」で行う）
+    // CWの方（cw_person）が変更されたか
     const cwPersonBefore = String(beforeData['cw_person'] ?? '');
     const cwPersonAfter = String(afterData['cw_person'] ?? '');
-    const cwPersonChanged =
-      cwPersonBefore.includes('山崎') !== cwPersonAfter.includes('山崎');
+    const cwPersonChanged = cwPersonBefore !== cwPersonAfter;
 
     for (const rule of EMAIL_RULES) {
       const beforeValue = beforeData[rule.triggerField];
@@ -451,26 +404,14 @@ export class WorkTaskEmailNotificationService {
         let bodyTemplate = rule.bodyTemplate;
 
         if (rule.to === '__dynamic_cw_person__') {
-          const cwPerson: string = afterData['cw_person'] ?? '';
-          if (cwPerson.includes('山崎')) {
-            toAddress = 'mgmv00vmgm@gmail.com';
-            if (rule.bodyTemplate === '__dynamic_site_registration_request__') {
-              bodyTemplate = SITE_REGISTRATION_REQUEST_BODY_YAMAZAKI;
-            } else if (rule.bodyTemplate === '__dynamic_site_registration_ok__') {
-              bodyTemplate = SITE_REGISTRATION_OK_BODY_YAMAZAKI;
-            } else if (rule.bodyTemplate === '__dynamic_floor_plan_stored__') {
-              bodyTemplate = FLOOR_PLAN_STORED_BODY_YAMAZAKI;
-            }
-          } else {
-            // デフォルト: 浅沼様
-            toAddress = 'shiraishi8biz@gmail.com';
-            if (rule.bodyTemplate === '__dynamic_site_registration_request__') {
-              bodyTemplate = SITE_REGISTRATION_REQUEST_BODY;
-            } else if (rule.bodyTemplate === '__dynamic_site_registration_ok__') {
-              bodyTemplate = SITE_REGISTRATION_OK_BODY;
-            } else if (rule.bodyTemplate === '__dynamic_floor_plan_stored__') {
-              bodyTemplate = FLOOR_PLAN_STORED_BODY;
-            }
+          // 宛先は浅沼様
+          toAddress = 'shiraishi8biz@gmail.com';
+          if (rule.bodyTemplate === '__dynamic_site_registration_request__') {
+            bodyTemplate = SITE_REGISTRATION_REQUEST_BODY;
+          } else if (rule.bodyTemplate === '__dynamic_site_registration_ok__') {
+            bodyTemplate = SITE_REGISTRATION_OK_BODY;
+          } else if (rule.bodyTemplate === '__dynamic_floor_plan_stored__') {
+            bodyTemplate = FLOOR_PLAN_STORED_BODY;
           }
         }
 

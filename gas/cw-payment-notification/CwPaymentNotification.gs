@@ -17,7 +17,7 @@ var CW_NOTIFICATION_CONFIG = {
   SHEET_NAME: 'CWカウント',
   CHECK_ROW: 5,           // 監視する行
   START_COL: 2,           // B列 = 2
-  END_COL: 9,             // I列 = 9（山崎様のサイト登録を含む）
+  END_COL: 8,             // H列 = 8
   THRESHOLD: 10,          // 通知閾値
   RECIPIENT: 'tenant@ifoo-oita.com',
   SUBJECT: 'CWに支払いと仮契約（新規発注）お願いします',
@@ -29,8 +29,7 @@ var CW_NOTIFICATION_CONFIG = {
     5: '重説資料取得のみ',
     6: '重説入力のみ',
     7: '重説資料取得・入力',
-    8: '間取り図修正',
-    9: 'サイト登録（山崎様）'
+    8: '間取り図修正'
   }
 };
 

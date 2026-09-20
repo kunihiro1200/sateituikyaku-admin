@@ -880,8 +880,7 @@ function syncCwCounts() {
     var targets = [
       '間取図（300円）',
       '間取図（500円）',
-      'サイト登録',
-      'サイト登録（山崎様）'
+      'サイト登録'
     ];
 
     var records = [];
@@ -966,13 +965,26 @@ function doGet(e) {
 // ============================================================
 // 個別物件スプシ「媒介依頼」シートB23を読み取ってDBに反映
 // B23 = 仲介手数料の種別（「他」の場合にフロントエンドで上長確認チェックが必須になる）
+//
+// 【2026-09-19 修正】タイムアウト対策
+//   従来は毎回全行（600超）を openById + PATCH していて1800秒タイムアウトしていた。
+//   対策:
+//   1. 実行時間の予算制（MEDIATION_MAX_RUN_MS）で途中終了し、続きは次回トリガーで再開
+//   2. 処理位置カーソルを PropertiesService に保存（全行を数回に分けて巡回）
+//   3. B23値をキャッシュし、変化のない物件は openById 自体をスキップ
 // ============================================================
+
+var MEDIATION_CURSOR_KEY = 'MEDIATION_SYNC_CURSOR';   // 次に処理する行(0始まり)
+var MEDIATION_CACHE_KEY  = 'MEDIATION_B23_CACHE';     // { propertyNumber: b23Value }
+var MEDIATION_MAX_RUN_MS = 4 * 60 * 1000;             // 1回あたり最大4分で切り上げ
+var MEDIATION_MAX_OPENS  = 60;                        // 1回あたり openById する最大件数（安全弁）
 
 /**
  * 業務依頼シートの各行に紐付く個別物件スプシを開き、
  * 「媒介依頼」シートのB23を読み取って mediation_commission_type をPATCHする。
  *
  * スプシURLがある行のみ処理。読み取り失敗はスキップ（ログに記録）。
+ * 時間予算・オープン上限で途中終了し、続きは次回トリガーで再開する。
  */
 function syncMediationSheetCells() {
   var startTime = new Date();
@@ -992,6 +1004,7 @@ function syncMediationSheetCells() {
     var lastCol = sheet.getLastColumn();
     var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
     var rawValues = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    var totalRows = rawValues.length;
 
     // 列インデックスを取得
     var propNumIdx = -1;
@@ -1005,14 +1018,47 @@ function syncMediationSheetCells() {
       return;
     }
 
+    // カーソルとキャッシュを復元
+    var props = PropertiesService.getScriptProperties();
+    var cursor = parseInt(props.getProperty(MEDIATION_CURSOR_KEY) || '0', 10);
+    if (isNaN(cursor) || cursor < 0 || cursor >= totalRows) cursor = 0;
+
+    var cache = {};
+    try {
+      cache = JSON.parse(props.getProperty(MEDIATION_CACHE_KEY) || '{}');
+    } catch (e) {
+      cache = {};
+    }
+
     var successCount = 0;
     var skipCount = 0;
     var errorCount = 0;
+    var cacheHitCount = 0;
+    var opensThisRun = 0;
 
-    for (var i = 0; i < rawValues.length; i++) {
+    var i = cursor;
+    var processed = 0;
+
+    // totalRows 件を上限に、時間予算・オープン上限の範囲でぐるっと巡回する
+    while (processed < totalRows) {
+      // 時間予算チェック（超えたら中断して続きは次回）
+      if ((new Date() - startTime) > MEDIATION_MAX_RUN_MS) {
+        Logger.log('時間予算に到達。中断して次回続行します。');
+        break;
+      }
+      // openById 上限チェック（安全弁）
+      if (opensThisRun >= MEDIATION_MAX_OPENS) {
+        Logger.log('openById 上限に到達。中断して次回続行します。');
+        break;
+      }
+
       var row = rawValues[i];
       var propertyNumber = String(row[propNumIdx] || '').trim();
       var spreadsheetUrl = String(row[urlIdx] || '').trim();
+
+      // 次の行へ進める（先に進めておくことで break 時のカーソルが正しくなる）
+      i = (i + 1) % totalRows;
+      processed++;
 
       if (!propertyNumber || !spreadsheetUrl) {
         skipCount++;
@@ -1029,6 +1075,8 @@ function syncMediationSheetCells() {
 
       try {
         var indivSs = SpreadsheetApp.openById(spreadsheetId);
+        opensThisRun++;
+
         var mediationSheet = indivSs.getSheetByName('媒介依頼');
         if (!mediationSheet) {
           skipCount++;
@@ -1038,9 +1086,16 @@ function syncMediationSheetCells() {
         var b23Value = String(mediationSheet.getRange('B23').getValue() || '').trim();
         var commissionType = b23Value || null;
 
+        // キャッシュと同じ値なら PATCH をスキップ（前回と変化なし）
+        if (cache[propertyNumber] === (commissionType === null ? '' : commissionType)) {
+          cacheHitCount++;
+          continue;
+        }
+
         var result = patchMediationCommissionType(propertyNumber, commissionType);
         if (result.success) {
           successCount++;
+          cache[propertyNumber] = (commissionType === null ? '' : commissionType);
         } else {
           errorCount++;
           Logger.log('PATCH失敗: ' + propertyNumber + ' - ' + result.error);
@@ -1052,12 +1107,37 @@ function syncMediationSheetCells() {
       }
     }
 
+    // カーソルとキャッシュを保存
+    props.setProperty(MEDIATION_CURSOR_KEY, String(i));
+    try {
+      props.setProperty(MEDIATION_CACHE_KEY, JSON.stringify(cache));
+    } catch (e) {
+      Logger.log('キャッシュ保存失敗（サイズ超過の可能性）: ' + e.toString());
+    }
+
     var duration = (new Date() - startTime) / 1000;
-    Logger.log('=== 媒介依頼シートB23同期完了: 成功=' + successCount + ', スキップ=' + skipCount + ', エラー=' + errorCount + ', ' + duration + '秒 ===');
+    Logger.log('=== 媒介依頼シートB23同期完了: 成功=' + successCount +
+      ', キャッシュ一致=' + cacheHitCount +
+      ', スキップ=' + skipCount +
+      ', エラー=' + errorCount +
+      ', 今回処理=' + processed + '/' + totalRows +
+      ', 次回開始行=' + i +
+      ', ' + duration + '秒 ===');
 
   } catch (e) {
     Logger.log('ERROR: syncMediationSheetCells - ' + e.toString());
   }
+}
+
+/**
+ * 媒介依頼同期のカーソルとキャッシュをリセットする（手動実行用）。
+ * キャッシュが壊れた場合や、全件を強制的に再同期したいときに使う。
+ */
+function resetMediationSyncState() {
+  var props = PropertiesService.getScriptProperties();
+  props.deleteProperty(MEDIATION_CURSOR_KEY);
+  props.deleteProperty(MEDIATION_CACHE_KEY);
+  Logger.log('媒介依頼同期のカーソルとキャッシュをリセットしました');
 }
 
 /**

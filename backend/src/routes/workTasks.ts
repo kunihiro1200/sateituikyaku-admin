@@ -126,10 +126,9 @@ router.get('/site-due-date-counts', async (req: Request, res: Response) => {
       return res.status(500).json({ error: error.message });
     }
 
-    // 浅沼様のみフィルタリング（山崎を含まないもの = 浅沼様）
+    // 浅沼様のみフィルタリング
     const asanumaRows = (rows || []).filter((row: any) => {
       if (!row.cw_person) return false;
-      if (row.cw_person.includes('山崎')) return false;
       // exclude指定がある場合はその物件番号を除外
       if (exclude && row.property_number === exclude) return false;
       return true;
