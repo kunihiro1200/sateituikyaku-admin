@@ -414,6 +414,11 @@ export default function PropertyListingsPage() {
         listings = listings.filter(l =>
           l.sidebar_status === '一般公開中物件' && l.signboard === '有'
         );
+      } else if (sidebarStatus === '海見える物件') {
+        // 「海見える物件」: 一般公開中物件 かつ sea_view === '見える'
+        listings = listings.filter(l =>
+          l.sidebar_status === '一般公開中物件' && l.sea_view === '見える'
+        );
       } else {
         listings = listings.filter(l => l.sidebar_status === sidebarStatus);
       }

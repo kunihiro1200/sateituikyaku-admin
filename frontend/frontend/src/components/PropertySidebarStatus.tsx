@@ -28,6 +28,8 @@ interface PropertyListing {
   private_mail_delivery?: string;
   // 看板
   signboard?: string;
+  // 海
+  sea_view?: string;
   [key: string]: any;
 }
 
@@ -58,6 +60,7 @@ const STATUS_PRIORITY: Record<string, number> = {
   // 優先度低グループ（末尾）
   '一般公開中物件': 20,
   '看板有り物件': 20.5,
+  '海見える物件': 20.6,
   'Y専任公開中': 21,
   '麻専任公開中': 22,
   '久専任公開中': 23,
@@ -269,6 +272,12 @@ export default function PropertySidebarStatus({
       l.sidebar_status === '一般公開中物件' && l.signboard === '有'
     ).length;
     if (signboardCount > 0) counts['看板有り物件'] = signboardCount;
+
+    // 海見える物件カテゴリー（一般公開中物件 かつ sea_view === '見える'）
+    const seaViewCount = listings.filter(l =>
+      l.sidebar_status === '一般公開中物件' && l.sea_view === '見える'
+    ).length;
+    if (seaViewCount > 0) counts['海見える物件'] = seaViewCount;
 
     // 他社物件カテゴリー（sidebar_status で判別）
     const tashaFukuokaCount = listings.filter(l => l.sidebar_status === '他社物件_福岡').length;

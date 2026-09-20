@@ -186,6 +186,8 @@ interface PropertyListing {
   house_maker?: string;
   // 看板
   signboard?: string;
+  // 海
+  sea_view?: string;
 }
 
 interface Buyer {
@@ -2573,6 +2575,28 @@ export default function PropertyListingDetailPage() {
               ) : (
                 <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
                   {data.signboard || '-'}
+                </Typography>
+              )}
+            </Grid>
+          )}
+          {(editedData.property_type ?? data?.property_type) !== 'マンション' && (
+            <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
+              <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>海</Typography>
+              {isHeaderEditMode ? (
+                <FormControl size="small" fullWidth sx={{ mt: 0.5 }}>
+                  <Select
+                    value={editedData.sea_view !== undefined ? (editedData.sea_view || '') : (data.sea_view || '')}
+                    onChange={(e) => handleFieldChange('sea_view', e.target.value || null)}
+                    displayEmpty
+                  >
+                    <MenuItem value=""><em>未選択</em></MenuItem>
+                    <MenuItem value="見える">見える</MenuItem>
+                    <MenuItem value="見えない">見えない</MenuItem>
+                  </Select>
+                </FormControl>
+              ) : (
+                <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
+                  {data.sea_view || '-'}
                 </Typography>
               )}
             </Grid>
