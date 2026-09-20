@@ -273,9 +273,9 @@ export default function PropertySidebarStatus({
     ).length;
     if (signboardCount > 0) counts['看板有り物件'] = signboardCount;
 
-    // 海見える物件カテゴリー（一般公開中物件 かつ sea_view === '見える'）
+    // 海見える物件カテゴリー（一般公開中物件 かつ sea_view === '見える' かつ 非公開でない）
     const seaViewCount = listings.filter(l =>
-      l.sidebar_status === '一般公開中物件' && l.sea_view === '見える'
+      l.sidebar_status === '一般公開中物件' && l.sea_view === '見える' && !l.atbb_status?.includes('非公開')
     ).length;
     if (seaViewCount > 0) counts['海見える物件'] = seaViewCount;
 
