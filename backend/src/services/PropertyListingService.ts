@@ -121,6 +121,7 @@ export class PropertyListingService {
         offer_status,
         price_reduction_scheduled_date,
         private_mail_delivery,
+        signboard,
         created_at,
         updated_at
       `, { count: 'exact' });
