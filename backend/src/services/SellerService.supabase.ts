@@ -1822,32 +1822,46 @@ export class SellerService extends BaseRepository {
               .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
               .gte('contract_year_month', `${yearMonth}-01`)
               .lt('contract_year_month', nextMonthStart);
-          } else if (dynamicCategory.startsWith('visitAssigned:')) {
-            const assignee = dynamicCategory.replace('visitAssigned:', '');
-            // 担当者別（営担が指定のイニシャルの全売主、一般媒介・専任媒介・追客不要・他社買取は除外）
-            query = query
-              .not('visit_assignee', 'is', null)
-              .neq('visit_assignee', '')
-              .neq('visit_assignee', '外す')
-              .eq('visit_assignee', assignee)
-              .not('status', 'ilike', '%一般媒介%')
-              .not('status', 'ilike', '%専任媒介%')
-              .not('status', 'ilike', '%追客不要%')
-              .not('status', 'ilike', '%他社買取%');
-          } else if (dynamicCategory.startsWith('todayCallAssigned:')) {
-            const assignee = dynamicCategory.replace('todayCallAssigned:', '');
-            // 当日TEL（担当）（営担が指定のイニシャル AND 次電日が今日以前 AND 追客中を含むまたは他決→追客 AND 追客不要を含まない AND 専任媒介・一般媒介・他社買取を除外）
-            query = query
-              .not('visit_assignee', 'is', null)
-              .neq('visit_assignee', '')
-              .neq('visit_assignee', '外す')
-              .eq('visit_assignee', assignee)
-              .lte('next_call_date', todayJST)
-              .or('status.ilike.%追客中%,status.eq.他決→追客')
-              .not('status', 'ilike', '%追客不要%')
-              .not('status', 'ilike', '%専任媒介%')
-              .not('status', 'ilike', '%一般媒介%')
-              .not('status', 'ilike', '%他社買取%');
+          } else if (dynamicCategory.startsWith('visitAssigned:') || dynamicCategory.startsWith('todayCallAssigned:')) {
+            const isVisitAssigned = dynamicCategory.startsWith('visitAssigned:');
+            const assignee = dynamicCategory.replace(isVisitAssigned ? 'visitAssigned:' : 'todayCallAssigned:', '');
+
+            // イニシャルに対応するフルネームを employees テーブルから取得（表記揺れ対応）
+            const { data: empData } = await this.supabase
+              .from('employees')
+              .select('initials, name')
+              .eq('initials', assignee);
+            const fullName = empData?.[0]?.name;
+            // visit_assignee = イニシャル OR フルネーム の両方にマッチ
+            const assigneeOrCondition = fullName
+              ? `visit_assignee.eq.${assignee},visit_assignee.eq.${fullName}`
+              : `visit_assignee.eq.${assignee}`;
+
+            if (isVisitAssigned) {
+              // 担当者別（営担が指定のイニシャルまたはフルネームの全売主、一般媒介・専任媒介・追客不要・他社買取は除外）
+              query = query
+                .not('visit_assignee', 'is', null)
+                .neq('visit_assignee', '')
+                .neq('visit_assignee', '外す')
+                .or(assigneeOrCondition)
+                .not('status', 'ilike', '%一般媒介%')
+                .not('status', 'ilike', '%専任媒介%')
+                .not('status', 'ilike', '%追客不要%')
+                .not('status', 'ilike', '%他社買取%');
+            } else {
+              // 当日TEL（担当）（営担が指定のイニシャルまたはフルネーム AND 次電日が今日以前 AND 追客中を含むまたは他決→追客）
+              query = query
+                .not('visit_assignee', 'is', null)
+                .neq('visit_assignee', '')
+                .neq('visit_assignee', '外す')
+                .or(assigneeOrCondition)
+                .lte('next_call_date', todayJST)
+                .or('status.ilike.%追客中%,status.eq.他決→追客')
+                .not('status', 'ilike', '%追客不要%')
+                .not('status', 'ilike', '%専任媒介%')
+                .not('status', 'ilike', '%一般媒介%')
+                .not('status', 'ilike', '%他社買取%');
+            }
           } else if (dynamicCategory.startsWith('todayCallWithInfo:')) {
             // 当日TEL（内容）ラベル別 - ページネーション前にIDを特定する方式に変更
             // 旧方式（DBクエリ + JS後フィルタ）ではページネーションとラベルフィルタが競合して0件になる問題があった
