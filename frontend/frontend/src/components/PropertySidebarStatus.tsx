@@ -320,7 +320,7 @@ export default function PropertySidebarStatus({
       statusCountsの参照: Object.keys(statusCounts).length
     });
     
-    const list: Array<{ key: string; label: string; count: number; isHighPriorityBg?: boolean; isSeninBg?: boolean; isDivider?: boolean; isRed?: boolean; isBoldRed?: boolean }> = [
+    const list: Array<{ key: string; label: string; count: number; isHighPriorityBg?: boolean; isSeninBg?: boolean; isSignboardBg?: boolean; isDivider?: boolean; isRed?: boolean; isBoldRed?: boolean }> = [
       { key: 'all', label: 'すべて', count: statusCounts.all }
     ];
 
@@ -349,10 +349,11 @@ export default function PropertySidebarStatus({
       // 専任公開中系（X専任公開中）にも薄い背景色
       const isSeninBg = key.endsWith('専任公開中') || key === '専任・公開中';
       const isHighBg = !isSeninBg && (HIGH_PRIORITY_BG_STATUSES.has(key) || key.startsWith('未報告'));
+      const isSignboardBg = key === '看板有り物件' || key === '海見える物件';
       // 一般媒介の未完了は太字赤字、それ以外の高優先度は赤字
       const isBoldRed = key === '未完了' && generalMediationIncompleteCount > 0;
       const isRed = HIGH_PRIORITY_RED_STATUSES.has(key);
-      list.push({ key, label: key, count, isHighPriorityBg: isHighBg, isSeninBg, isRed, isBoldRed });
+      list.push({ key, label: key, count, isHighPriorityBg: isHighBg, isSeninBg, isSignboardBg, isRed, isBoldRed });
     });
 
     // 他社物件セクション（末尾に追加）
@@ -412,6 +413,11 @@ export default function PropertySidebarStatus({
                     bgcolor: 'rgba(227, 242, 253, 0.8)',
                     '&:hover': { bgcolor: 'rgba(187, 222, 251, 0.8)' },
                     '&.Mui-selected': { bgcolor: 'rgba(144, 202, 249, 0.6)' },
+                  }),
+                  ...(item.isSignboardBg && {
+                    bgcolor: 'rgba(232, 245, 233, 0.9)',
+                    '&:hover': { bgcolor: 'rgba(200, 230, 201, 0.9)' },
+                    '&.Mui-selected': { bgcolor: 'rgba(165, 214, 167, 0.7)' },
                   }),
                 }}
               >
