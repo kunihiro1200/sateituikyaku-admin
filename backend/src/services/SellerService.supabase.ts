@@ -1402,15 +1402,13 @@ export class SellerService extends BaseRepository {
             .lt('visit_date', todayJST);
           break;
         case 'todayCallAssigned':
-          // 当日TEL（担当）（営担あり AND 次電日が今日以前 AND 追客中を含む AND 追客不要・専任媒介・一般媒介・他社買取を除外）
-          // 🔧 修正: カウント計算（SellerSidebarCountsUpdateService）と条件を一致させる
-          // - .ilike('status', '%追客中%') を追加（カウント計算と一致）
-          // - .not('status', 'ilike', '%他社買取%') を追加（カウント計算と一致）
+          // 当日TEL（担当）（営担あり AND 次電日が今日以前 AND 追客中を含むまたは他決→追客 AND 追客不要・専任媒介・一般媒介・他社買取を除外）
+          // 🔧 修正: 「他決→追客」は「追客中」を含まないため or 条件で対応
           query = query
             .not('visit_assignee', 'is', null)
             .neq('visit_assignee', '')
             .lte('next_call_date', todayJST)
-            .ilike('status', '%追客中%')
+            .or('status.ilike.%追客中%,status.eq.他決→追客')
             .not('status', 'ilike', '%追客不要%')
             .not('status', 'ilike', '%専任媒介%')
             .not('status', 'ilike', '%一般媒介%')
@@ -1838,14 +1836,14 @@ export class SellerService extends BaseRepository {
               .not('status', 'ilike', '%他社買取%');
           } else if (dynamicCategory.startsWith('todayCallAssigned:')) {
             const assignee = dynamicCategory.replace('todayCallAssigned:', '');
-            // 当日TEL（担当）（営担が指定のイニシャル AND 次電日が今日以前 AND 追客中を含む AND 追客不要を含まない AND 専任媒介・一般媒介・他社買取を除外）
+            // 当日TEL（担当）（営担が指定のイニシャル AND 次電日が今日以前 AND 追客中を含むまたは他決→追客 AND 追客不要を含まない AND 専任媒介・一般媒介・他社買取を除外）
             query = query
               .not('visit_assignee', 'is', null)
               .neq('visit_assignee', '')
               .neq('visit_assignee', '外す')
               .eq('visit_assignee', assignee)
               .lte('next_call_date', todayJST)
-              .ilike('status', '%追客中%')
+              .or('status.ilike.%追客中%,status.eq.他決→追客')
               .not('status', 'ilike', '%追客不要%')
               .not('status', 'ilike', '%専任媒介%')
               .not('status', 'ilike', '%一般媒介%')
@@ -3425,7 +3423,7 @@ export class SellerService extends BaseRepository {
         .not('visit_assignee', 'is', null)
         .neq('visit_assignee', '')
         .lte('next_call_date', todayJST)
-        .ilike('status', '%追客中%')
+        .or('status.ilike.%追客中%,status.eq.他決→追客')
         .not('status', 'ilike', '%追客不要%')
         .not('status', 'ilike', '%専任媒介%')
         .not('status', 'ilike', '%一般媒介%')
