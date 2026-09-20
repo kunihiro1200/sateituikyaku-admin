@@ -81,6 +81,28 @@ async function sendScheduledChats() {
       try {
         console.log(`\n📤 送信中: スプレッドシートID=${scheduled.spreadsheet_item_id}, 予定時刻=${scheduled.scheduled_datetime}`);
 
+        // ── 二重送信防止チェック ──────────────────────────────────────
+        // 同一 spreadsheet_item_id で既に送信済みのレコードがある場合はスキップ
+        // （chat_sent_at の更新が失敗して NULL のまま残ったゾンビレコード対策）
+        const { data: alreadySent } = await supabase
+          .from('shared_item_scheduled_chats')
+          .select('id, chat_sent_at')
+          .eq('spreadsheet_item_id', scheduled.spreadsheet_item_id)
+          .not('chat_sent_at', 'is', null)
+          .limit(1);
+
+        if (alreadySent && alreadySent.length > 0) {
+          console.log(`⚠️  スキップ（二重送信防止）: spreadsheet_item_id=${scheduled.spreadsheet_item_id} は既に送信済み (sent_at=${alreadySent[0].chat_sent_at})`);
+          // このゾンビレコードを削除して再発を防ぐ
+          await supabase
+            .from('shared_item_scheduled_chats')
+            .delete()
+            .eq('id', scheduled.id);
+          console.log(`🗑️  ゾンビレコード削除: id=${scheduled.id}`);
+          continue;
+        }
+        // ─────────────────────────────────────────────────────────────
+
         // スプレッドシートからアイテムを検索
         const item = allItems.find((i: any) => i.id === scheduled.spreadsheet_item_id);
         
@@ -133,6 +155,17 @@ async function sendScheduledChats() {
 
           if (updateError) {
             console.error(`⚠️  chat_sent_at更新エラー (ID=${scheduled.id}):`, updateError.message);
+            // chat_sent_at 更新失敗時はレコード削除にフォールバック（ゾンビ化防止）
+            const { error: deleteError } = await supabase
+              .from('shared_item_scheduled_chats')
+              .delete()
+              .eq('id', scheduled.id);
+            if (deleteError) {
+              console.error(`⚠️  フォールバック削除も失敗 (ID=${scheduled.id}):`, deleteError.message);
+            } else {
+              console.log(`🗑️  フォールバック削除完了（ゾンビ化防止）: id=${scheduled.id}`);
+              successCount++;
+            }
           } else {
             console.log(`✅ 送信成功 (スプレッドシートID=${scheduled.spreadsheet_item_id})`);
             successCount++;
