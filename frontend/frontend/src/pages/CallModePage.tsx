@@ -2565,15 +2565,20 @@ const CallModePage = () => {
           const freshData = freshResponse.data;
           if (freshData && freshData.id) {
             pageDataCache.set(sellerDetailCacheKey(id!), freshData, 30 * 1000);
-            setSeller(freshData);
-            setProperty(freshData.property || null);
             // 保存処理中でない場合のみ編集値・saved* を更新（保存直後のバックグラウンド取得でボタン色が狂わないようにする）
+            // ⚠️ setSeller より先に unreachableStatus 等をセットすること。
+            // setSeller を先に呼ぶと seller.firstCallPerson 等が更新され、
+            // editedFirstCallPerson との不一致で自動保存useEffectが発火し、
+            // unreachableStatus がまだ古い値（null 含む）のまま保存APIが走って
+            // 不通ステータスが消えるバグが発生する。
             if (!savingLockRef.current) {
               setUnreachableStatus(freshData.unreachableStatus || null);
               setSavedUnreachableStatus(freshData.unreachableStatus || null);
               setEditedFirstCallPerson(freshData.firstCallPerson || '');
               setSavedFirstCallPerson(freshData.firstCallPerson || '');
             }
+            setSeller(freshData);
+            setProperty(freshData.property || null);
             // コメントが未保存（dirty）の場合は上書きしない
             if (editableCommentsRef.current === savedCommentsRef.current) {
               setEditableComments(freshData.comments || '');
@@ -2623,9 +2628,10 @@ const CallModePage = () => {
       }
       
       console.log('[CallModePage] setSeller前 matchUpdatedAt:', sellerData.matchUpdatedAt);
-      setSeller(sellerData);
+      // unreachableStatus を setSeller より先にセットする（バックグラウンド取得と同じ理由）
       setUnreachableStatus(sellerData.unreachableStatus || null);
       setSavedUnreachableStatus(sellerData.unreachableStatus || null);
+      setSeller(sellerData);
       // コメントが未保存（dirty）の場合は上書きしない
       if (editableCommentsRef.current === savedCommentsRef.current) {
         setEditableComments(sellerData.comments || '');
