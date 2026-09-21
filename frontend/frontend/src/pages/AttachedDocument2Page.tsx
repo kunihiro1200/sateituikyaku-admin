@@ -435,6 +435,134 @@ export default function AttachedDocument2Page() {
   </table>
 </div>
 
+<div class="page" style="page-break-before: always; font-family: 'Hiragino Kaku Gothic Pro','Yu Gothic','MS Gothic',sans-serif; font-size: 8.5pt; color: #000;">
+  <h2 style="text-align:center; font-size: 13pt; margin: 0 0 6pt; border: 2pt solid #000; padding: 4pt; text-align: center;">【取得書類】</h2>
+  <p style="font-size: 8pt; margin: 0 0 4pt;">取得前に「ぜんりん」「熊本」「下水道管図」を印刷していくこと。<br>「自分の住所記載の印鑑」を忘れないこと。　※別府の場合は「下水道管図」は印刷不可</p>
+  <div style="display:flex; gap: 6pt; margin-bottom: 8pt; align-items: center;">
+    <span style="font-weight:bold;">物件名 【</span>
+    <div style="flex:1; border-bottom: 1pt solid #000; min-height: 12pt;"></div>
+    <span style="font-weight:bold;">】</span>
+    <span style="margin-left: 10pt;">年　　月　　日</span>
+  </div>
+
+  <div style="font-weight:bold; font-size:9.5pt; background:#000; color:#fff; padding: 3pt 6pt; margin-bottom: 0;">1．取得書類一覧</div>
+  <table style="width:100%; border-collapse:collapse; margin-bottom: 8pt; font-size: 8pt;">
+    <thead>
+      <tr style="background:#ddd;">
+        <td style="border:1pt solid #000; padding:3pt 5pt; width:55%;">項　　目</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; width:12%;">取得者</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; width:12%;">日　付</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt;">備　考</td>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td style="border:1pt solid #000; padding:3pt 5pt;">固定資産税公課証明</td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td></tr>
+      <tr><td style="border:1pt solid #000; padding:3pt 5pt;">建築概要書＆証明書</td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td></tr>
+      <tr><td style="border:1pt solid #000; padding:3pt 5pt;">用途地域図（別府は備考欄に記入）<br>（宅地造成工事規制区域か必ず確認）</td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt; font-size:7.5pt;">景観　環境　居住誘導　宅地造成</td></tr>
+      <tr><td style="border:1pt solid #000; padding:3pt 5pt;">道路台地図（別府の場合はゼンリンの住宅情報より<br>目視等を取得後、役所で確認）</td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td></tr>
+      <tr><td style="border:1pt solid #000; padding:3pt 5pt;">市道証明書（市道の場合のみ）</td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt; font-size:7.5pt;">番号：</td></tr>
+      <tr><td style="border:1pt solid #000; padding:3pt 5pt;">別府市：指定道路図の番号（例：10）</td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt; font-size:7.5pt;">番号：</td></tr>
+      <tr><td style="border:1pt solid #000; padding:3pt 5pt;">道路種類確認（市道でない場合その管轄がどこなのか）<br>（位置指定道路確認）</td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td></tr>
+      <tr><td style="border:1pt solid #000; padding:3pt 5pt;">上水道の前面道路の配管図</td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td></tr>
+      <tr><td style="border:1pt solid #000; padding:3pt 5pt;">上水道の敷地内配管図</td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td></tr>
+      <tr><td style="border:1pt solid #000; padding:3pt 5pt;">公共下水か浄化槽か「下水道管図」を調べても不明な場合は確認する</td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td></tr>
+      <tr><td style="border:1pt solid #000; padding:3pt 5pt; font-size:7.5pt;">※別府市：公共下水の場合　下水道台帳施設平面図の番号（例：71-3-(3)）</td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt;"></td><td style="border:1pt solid #000; padding:3pt 5pt; font-size:7.5pt;">番号：</td></tr>
+    </tbody>
+  </table>
+
+  <div style="font-weight:bold; font-size:9.5pt; background:#000; color:#fff; padding: 3pt 6pt; margin-bottom: 0;">2．接道の状況</div>
+  <table style="width:100%; border-collapse:collapse; margin-bottom: 4pt; font-size: 8pt;">
+    <thead>
+      <tr style="background:#ddd;">
+        <td style="border:1pt solid #000; padding:3pt 5pt; width:18%;">接道方向</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; width:18%;">公・私道の別</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; width:24%;">接面道路の種類※</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; width:20%;">幅　員</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt;">接道長さ</td>
+      </tr>
+    </thead>
+    <tbody>
+      ${['','','',''].map(() => `<tr>
+        <td style="border:1pt solid #000; padding:3pt 5pt; height:14pt;"></td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; text-align:center;">▼</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; text-align:center;">▼</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt;">　　　　m</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt;">　　　　m</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>
+  <p style="font-size: 7pt; margin: 0 0 6pt; line-height: 1.6;">
+    ※道路の種類　ア、建築基準法第42条第1項第1号の道路　イ、同条第1項第2号の道路　ウ、同条第1項第3号の道路　エ、同条第1項第4号の道路<br>
+    オ、同条第1項第5号の道路（位置指定道路）（指定番号：　　年　月　日　第　　　号）<br>
+    カ、同条第2項道路（幅員4m以上16m未満のため、道路中心線から（12m－0.3m）後退した線が敷地と道路の境界線とみなされます。）<br>
+    キ、建築基準法第42条の道路に該当しません。（原則として建築不可、ただし例外あり。）
+  </p>
+
+  <div style="font-weight:bold; font-size:9.5pt; background:#000; color:#fff; padding: 3pt 6pt; margin-bottom: 0;">3．ライフライン（上下水道等）</div>
+  <table style="width:100%; border-collapse:collapse; margin-bottom: 4pt; font-size: 8pt;">
+    <thead>
+      <tr style="background:#ddd;">
+        <td style="border:1pt solid #000; padding:3pt 5pt; width:4%;"></td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; width:12%;">項　目</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; width:38%;">直ちに利用可能な施設※</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt;">配管等の状況</td>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="border:1pt solid #000; padding:3pt 5pt; text-align:center; vertical-align:middle;">①</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; font-weight:bold; vertical-align:middle;">飲用水</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt;">水道（公営）　▼</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; font-size:7.5pt; line-height:1.7;">
+          前面道路配管　（□有　□無）　口径（　　　mm）<br>
+          敷地内引込管　（□有　□無　口径（　　　mm）<br>
+          私設管の有無　（□有　□無　▼）
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1pt solid #000; padding:3pt 5pt; text-align:center; vertical-align:middle;">②</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; font-weight:bold; vertical-align:middle;">汚水</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; font-size:7.5pt; line-height:1.7;">
+          □ 公共下水　□ 個別浄化槽（合併）<br>
+          □ 個別浄化槽（単独）　□ 集中浄化槽<br>
+          □ 浸透式　□ 無
+        </td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; font-size:7.5pt; line-height:1.7;">
+          前面道路配管　（□有　□無）<br>
+          私設管の有無　（□有　□無）<br>
+          浄化槽施設の必要（□有　□無）
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1pt solid #000; padding:3pt 5pt; text-align:center; vertical-align:middle;">③</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; font-weight:bold; vertical-align:middle;">雑排水</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; font-size:7.5pt; line-height:1.7;">
+          □ 公共下水　□ 個別浄化槽（合併）<br>
+          □ 個別浄化槽（単独）　□ 集中浄化槽<br>
+          □ 側溝等　□ 浸透式　□ 無
+        </td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; font-size:7.5pt; line-height:1.7;">
+          前面道路配管　（□有　□無）<br>
+          私設管の有無　（□有　□無）
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1pt solid #000; padding:3pt 5pt; text-align:center; vertical-align:middle;">④</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; font-weight:bold; vertical-align:middle;">雨水</td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; font-size:7.5pt; line-height:1.7;">
+          □ 公共下水　□ 側溝<br>
+          □ 浸透式　□ 無
+        </td>
+        <td style="border:1pt solid #000; padding:3pt 5pt; font-size:7.5pt;">浄化槽への雨水の流入はできません。</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="font-size: 7pt; margin: 0; line-height: 1.6;">
+    ※大分市東野台の上水道は由布市で管理しており、電話で確認できます。下記に電話後、住所と地図をFAXで送付してください。<br>
+    「由布市　伐聞庁舎水道課」　TEL：097-583-1111（代表）　FAX：097-583-1719
+  </p>
+</div>
+
   <script>window.onload = function(){ window.print(); }</script>
 </body>
 </html>`;
