@@ -38,6 +38,8 @@ export interface AttachedDocument2Data {
   road_contact?: string | null;
   // 共通
   property_tax?: string | null;
+  parking?: string | null;
+  pet?: string | null;
 }
 
 const EMPTY_RESPONSE = (sellerId: string) => ({
@@ -61,6 +63,8 @@ const EMPTY_RESPONSE = (sellerId: string) => ({
   road_width: null,
   road_contact: null,
   property_tax: null,
+  parking: null,
+  pet: null,
 });
 
 // 売主の添付資料２入力項目を取得
@@ -116,6 +120,8 @@ router.put('/sellers/:sellerId/attached-document2', async (req: Request, res: Re
       road_width: body.road_width || null,
       road_contact: body.road_contact || null,
       property_tax: body.property_tax || null,
+      parking: body.parking || null,
+      pet: body.pet || null,
       updated_at: new Date().toISOString(),
       updated_by: body.updated_by || null,
     };
