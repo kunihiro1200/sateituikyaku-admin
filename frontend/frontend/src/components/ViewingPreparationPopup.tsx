@@ -589,12 +589,22 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
             >
               <ListItemText
                 primary={
-                  <Typography component="span">
-                    {link.label}：
-                    <a href={link.url} target="_blank" rel="noopener noreferrer">
-                      {link.description ?? link.label}
-                    </a>
-                  </Typography>
+                  <Box>
+                    <Typography component="span">
+                      {link.label}：
+                      <a href={link.url} target="_blank" rel="noopener noreferrer">
+                        {link.description ?? link.label}
+                      </a>
+                    </Typography>
+                    {isOtherCompanyProperty && (
+                      <Typography
+                        component="div"
+                        sx={{ color: 'error.main', fontSize: '0.8rem', fontWeight: 'bold', mt: 0.3 }}
+                      >
+                        他社へ資料取り寄せ
+                      </Typography>
+                    )}
+                  </Box>
                 }
               />
             </ListItem>
