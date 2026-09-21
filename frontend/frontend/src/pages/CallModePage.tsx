@@ -79,6 +79,7 @@ import {
   generateProgressStep2ReplySMS,
   generateProgressStep3ReplySMS,
   generateOtherDecisionThreeMonthsFollowUpSMS,
+  generateOtherDecisionThreeMonthsFollowUpPerfectImageSMS,
   generateOtherDecisionSixMonthsFollowUpSMS,
   generateWebMeetingSMS,
   generateReasonRelocationSMS,
@@ -1635,6 +1636,11 @@ const CallModePage = () => {
       id: 'other_decision_three_months_followup',
       label: '他決→3ヶ月後追客',
       generator: generateOtherDecisionThreeMonthsFollowUpSMS,
+    },
+    {
+      id: 'other_decision_three_months_followup_perfect_image',
+      label: '他決→3ヶ月後追客（他社画像完璧）',
+      generator: generateOtherDecisionThreeMonthsFollowUpPerfectImageSMS,
     },
     {
       id: 'other_decision_six_months_followup',
@@ -5093,6 +5099,7 @@ HP：https://ifoo-oita.com/
            template.id === 'progress_step2_reply' ||
            template.id === 'progress_step3_reply' ||
            template.id === 'other_decision_three_months_followup' ||
+           template.id === 'other_decision_three_months_followup_perfect_image' ||
            template.id === 'other_decision_six_months_followup')
           ? template.generator(seller!, property, myLastName)
           : template.generator(seller!, property);

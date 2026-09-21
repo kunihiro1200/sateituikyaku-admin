@@ -663,6 +663,49 @@ export const generateOtherDecisionThreeMonthsFollowUpSMS = (
 };
 
 /**
+ * 11a. 他決→3ヶ月後追客（他社画像完璧）
+ * 他社で販売中・画像が整っているケース向けの3ヶ月後追客
+ * FI → くじら不動産、AA → 株式会社いふう
+ * @param staffLastName 送信者の名字（例: 「国広」）
+ */
+export const generateOtherDecisionThreeMonthsFollowUpPerfectImageSMS = (
+  seller: Seller,
+  property: PropertyInfo | null,
+  staffLastName?: string
+): string => {
+  const name = seller.name || '';
+  const accountName = extractLastName(staffLastName);
+
+  // 売主番号でFI/AA判定
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? 'くじら不動産' : '株式会社いふう';
+
+  // 物件住所（そのまま使用）
+  const fullAddress = property?.address || seller.propertyAddress || '';
+
+  const message = [
+    `${name}様`,
+    ``,
+    `ご無沙汰しております。くじら不動産の${accountName}です。`,
+    ``,
+    `本日、${fullAddress}周辺で物件をお探しのお客様からお問い合わせがあり、以前ご相談いただいたことを思い出しご連絡しました。`,
+    ``,
+    `その後、ご売却状況はいかがでしょうか？`,
+    ``,
+    `現在の広告も拝見しましたが、もしまだご成約に至っていないようでしたら、販売を始めてから一定期間も経っていますので、一度販売方法や価格の見せ方を変えてみるのも一つかと思います。`,
+    ``,
+    `不動産会社が変わることで、紹介するお客様や販売の進め方も変わります。`,
+    ``,
+    `当社にもこのエリアでお探しのお客様がいらっしゃいますので、もし少しでも今後の進め方を迷われていましたら、一度お話しできれば幸いです。`,
+    ``,
+    `${companyName}　${accountName}`,
+  ].join('[改行]');
+
+  // プレースホルダー置換
+  return replacePlaceholders(message, seller, staffLastName);
+};
+
+/**
  * 11. 他決→追客（6ヶ月後）
  * 他社で販売開始から6ヶ月経過後の販売戦略見直し提案
  * FI → くじら不動産、AA → 株式会社いふう
