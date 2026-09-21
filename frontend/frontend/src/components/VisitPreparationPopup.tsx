@@ -248,6 +248,22 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         </Box>
       ),
     },
+    // 1.5. 添付資料２（システム内で入力・保存するA4資料）
+    {
+      label: '添付資料２',
+      content: sellerId ? (
+        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+          <a href={`/sellers/${sellerId}/attached-document2`} target="_blank" rel="noopener noreferrer">
+            添付資料２
+          </a>
+          <Typography component="span" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
+            （片面印刷）
+          </Typography>
+        </Box>
+      ) : (
+        <span>（リンクなし）</span>
+      ),
+    },
     // 2. ぜんりん（ログイン情報付き）
     {
       label: 'ぜんりん',

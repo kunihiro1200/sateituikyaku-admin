@@ -87,6 +87,7 @@ import koteiKazeiCompareRoutes from './routes/koteiKazeiCompare';
 import tokiExtractRoutes from './routes/tokiExtract';
 import sellerPortalRoutes from './routes/sellerPortal';
 import evaluationPointsRoutes from './routes/evaluationPoints';
+import sellerAttachedDocument2Routes from './routes/sellerAttachedDocument2';
 import propertyPreviewRoutes from './routes/propertyPreview';
 import tateuriPreviewRoutes from './routes/tateuriPreview';
 import scrapedUrlsRoutes from './routes/scraped-urls';
@@ -1085,6 +1086,7 @@ app.use('/api/kotei-kazei-compare', koteiKazeiCompareRoutes); // 固定資産税
 app.use('/api/toki-extract', tokiExtractRoutes); // 謄本読み取りAPI（認証不要 - /api catchallより前に登録）
 app.use('/api/seller-portal', sellerPortalRoutes); // 売却サポートページ（顧客向け/portal/*は認証不要トークン検証、/admin/*はauthenticate必須）
 app.use('/api', evaluationPointsRoutes); // 評価ポイントAPI（売主ごと）
+app.use('/api', sellerAttachedDocument2Routes); // 訪問準備「添付資料２」API（売主ごと）
 app.use('/api/scraped-urls', scrapedUrlsRoutes); // スクレイピングURL重複チェック（認証不要 - /api catchallより前に登録）
 app.use('/api/hazard', hazardAnalyzeRoutes); // ハザードマップAI解析（認証不要 - /api catchallより前に登録）
 app.use('/api', inquiryHistoryRoutes);
