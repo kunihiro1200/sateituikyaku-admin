@@ -145,7 +145,7 @@ function generatePreDaySmsBody(buyer: {
   const companyName = isFukuoka ? '㈱くじら不動産' : '㈱いふう';
   const phoneNumber = isFukuoka ? '092-401-5331' : '097-533-2022';
 
-  return `【内覧のご連絡　☆返信不可☆】\n${name}様\nお世話になっております。${companyName}です。\n${dayWord}の${dateLabel} ${timeStr}から${propertyAddress}の内覧をよろしくお願いいたします。${mapLine}\nこのメールは返信不可となっておりますので、何かございましたら下記連絡先へお願いいたします。\n【電話】(10時～18時）*水曜定休\n${phoneNumber}\n【メールアドレス】\ntenant@ifoo-oita.com\nそれではお会いできるのを楽しみにしております。\n${companyName}`;
+  return `【内覧のご連絡　☆返信不可☆】\n${name}様\nお世話になっております。${companyName}です。\n${dayWord}の${dateLabel} ${timeStr}から${propertyAddress}の内覧をよろしくお願いいたします。\nこのメールは返信不可となっておりますので、何かございましたら下記連絡先へお願いいたします。\n【電話】(10時～18時）*水曜定休\n${phoneNumber}\n【メールアドレス】tenant@ifoo-oita.com\nそれではお会いできるのを楽しみにしております。\n${companyName}${mapLine}`;
 }
 
 /**
