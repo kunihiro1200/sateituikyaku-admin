@@ -23,6 +23,7 @@ import PrintIcon from '@mui/icons-material/Print';
 import HouseMakerModal from './HouseMakerModal';
 import NearbyMapModal from './NearbyMapModal';
 import { EvaluationPointsDisplay } from './EvaluationPointsEditor';
+import type { BuyerDuplicateMatch } from './BuyerDuplicateCard';
 
 export interface ViewingPreparationPopupProps {
   open: boolean;
@@ -36,6 +37,8 @@ export interface ViewingPreparationPopupProps {
   linkedProperties?: Array<Record<string, any>>;
   /** 他社物件情報（buyer.other_company_property）。値があれば他社物件とみなす */
   otherCompanyProperty?: string | null | undefined;
+  /** 買主重複（同一人物の他レコード）。それぞれの内覧日で「何回目」を算出する */
+  buyerDuplicates?: BuyerDuplicateMatch[];
 }
 
 // 固定リンク定数（ATBBのみ）
@@ -52,56 +55,79 @@ interface CopyButtonProps {
   label: string;
 }
 
+/** 内覧日を YYYY/MM/DD 形式の文字列にする（表示用）。パースできなければ生値を返す */
+function formatViewingDate(value: string | Date | null | undefined): string {
+  if (value == null || value === '') return '';
+  const d = new Date(value as any);
+  if (isNaN(d.getTime())) return String(value).slice(0, 10);
+  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** 内覧日を比較用のキー（YYYY-MM-DD）にする。無効なら null */
+function viewingDateKey(value: string | Date | null | undefined): string | null {
+  if (value == null || value === '') return null;
+  const d = new Date(value as any);
+  if (isNaN(d.getTime())) {
+    const s = String(value).slice(0, 10);
+    return s || null;
+  }
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 /**
- * 買主の過去内覧情報から「今回が何回目の内覧か」を算出する。
+ * 「今回が何回目の内覧か」を、買主重複（同一人物の他レコード）の内覧日から算出する。
  *
- * データの実態：
- * - 現在の内覧は buyer.viewing_date（最新の内覧日）
- * - 過去の内覧は自由入力の以下フィールドに記録される
- *   - past_viewing_1（スプシ「2度目以降過去内覧」）
- *   - past_viewing_properties（スプシ「過去の内覧物件」）
- *   - past_viewing_2 / past_viewing_3（旧フィールド。値があれば加算）
+ * 考え方：
+ * - この買主自身の viewing_date（今回の内覧）
+ * - 買主重複それぞれの viewingDate
+ * を集め、内覧日が入っているものだけを「1回の内覧」として数える。
+ * 同じ内覧日の重複は1回に丸める。
  *
- * 自由入力のため厳密な回数は取れないが、過去内覧の記録があれば
- * 「過去に他物件の内覧あり」とみなし、行数（改行・区切り）で件数を概算する。
+ * 過去（他レコード）に内覧日が1件も無ければ null（＝今回が初回、バッジ非表示）。
  *
- * @returns 過去内覧が無ければ null（＝初回内覧）。あれば { count, pastText }
+ * @returns { count, ordinal, history } または null
+ *   - count: 内覧の総回数（今回を含む）
+ *   - ordinal: 今回が何回目か
+ *   - history: 内覧日の一覧（新しい順）
  */
 function computeViewingOrdinal(
-  buyer?: Record<string, any> | null
-): { count: number; pastText: string } | null {
+  buyer?: Record<string, any> | null,
+  buyerDuplicates?: BuyerDuplicateMatch[]
+): { count: number; ordinal: number; history: string[] } | null {
   if (!buyer) return null;
 
-  // 過去内覧の自由入力フィールドを集める
-  const rawSources: Array<string | null | undefined> = [
-    buyer.past_viewing_1,
-    buyer.past_viewing_2,
-    buyer.past_viewing_3,
-    buyer.past_viewing_properties,
-  ];
+  // 今回の内覧日（この買主レコード）
+  const currentKey = viewingDateKey(buyer.viewing_date);
 
-  // 各フィールドを行単位に分解して、意味のある行だけ抽出
-  const pastEntries: string[] = [];
-  for (const src of rawSources) {
-    if (src == null) continue;
-    const text = String(src).trim();
-    if (text === '') continue;
-    // 改行・「、」「,」で区切って複数件を数える
-    const lines = text
-      .split(/\r?\n|、|,/)
-      .map((l) => l.trim())
-      .filter((l) => l !== '');
-    pastEntries.push(...lines);
+  // 買主重複それぞれの内覧日
+  const dupKeys: string[] = [];
+  for (const dup of buyerDuplicates || []) {
+    const k = viewingDateKey(dup?.buyerInfo?.viewingDate);
+    if (k) dupKeys.push(k);
   }
 
-  if (pastEntries.length === 0) {
-    // 過去内覧の記録なし → 初回内覧
+  // 他レコードに内覧日が1件も無ければ、複数回内覧の判定はできない → 非表示
+  if (dupKeys.length === 0) {
     return null;
   }
 
-  // 今回の内覧（1件）を加えた回数
-  const count = pastEntries.length + 1;
-  return { count, pastText: pastEntries.join(' / ') };
+  // 全内覧日（今回＋重複）をユニーク化
+  const allKeys = new Set<string>();
+  if (currentKey) allKeys.add(currentKey);
+  for (const k of dupKeys) allKeys.add(k);
+
+  const sortedDesc = Array.from(allKeys).sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+  const count = sortedDesc.length;
+
+  // 今回が何回目か：今回の内覧日が全体の中で古い方から数えて何番目か
+  let ordinal = count;
+  if (currentKey) {
+    const sortedAsc = Array.from(allKeys).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    ordinal = sortedAsc.indexOf(currentKey) + 1;
+  }
+
+  const history = sortedDesc.map((k) => formatViewingDate(k));
+  return { count, ordinal, history };
 }
 
 /** ワンクリックコピーボタン */
@@ -167,6 +193,7 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
   buyer,
   linkedProperties,
   otherCompanyProperty,
+  buyerDuplicates,
 }) => {
   const hasBuyerNumber = buyerNumber != null && buyerNumber !== '';
   // 物件番号があるかどうか：propertyNumber プロップ、かつ linkedProperties に有効な物件番号を持つものがある
@@ -179,8 +206,8 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
     && otherCompanyValue != null && String(otherCompanyValue).trim() !== '';
   // 2〜6の資料を表示するかどうか：自社物件（hasPropertyNumber）または他社物件
   const showMaterials = hasPropertyNumber || isOtherCompanyProperty;
-  // 過去に他物件で内覧した場合、今回が何回目かを算出（過去内覧が無ければ null）
-  const viewingOrdinal = computeViewingOrdinal(buyer);
+  // 買主重複それぞれの内覧日から、今回が何回目かを算出（過去内覧が無ければ null）
+  const viewingOrdinal = computeViewingOrdinal(buyer, buyerDuplicates);
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
   const [nearbyMapModalOpen, setNearbyMapModalOpen] = useState(false);
   const [printing1, setPrinting1] = useState(false);
@@ -368,7 +395,7 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
           ※準備前にカレンダーに●をつけてください
         </Typography>
 
-        {/* 内覧回数：過去に他物件で内覧している場合は「今回が何回目か」を表示 */}
+        {/* 内覧回数：買主重複の内覧日から「今回が何回目か」を表示 */}
         {viewingOrdinal && (
           <Box
             sx={{
@@ -380,13 +407,15 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
             }}
           >
             <Typography sx={{ fontWeight: 'bold', color: '#e65100' }}>
-              🔁 今回で {viewingOrdinal.count} 回目の内覧（過去に他物件の内覧あり）
+              🔁 今回で {viewingOrdinal.ordinal} 回目の内覧（過去に他物件の内覧あり／計{viewingOrdinal.count}回）
             </Typography>
-            <Typography
-              sx={{ fontSize: '0.8rem', color: 'text.secondary', mt: 0.3, whiteSpace: 'pre-wrap' }}
-            >
-              過去の内覧：{viewingOrdinal.pastText}
-            </Typography>
+            {viewingOrdinal.history.length > 0 && (
+              <Typography
+                sx={{ fontSize: '0.8rem', color: 'text.secondary', mt: 0.3 }}
+              >
+                内覧日：{viewingOrdinal.history.join(' / ')}
+              </Typography>
+            )}
           </Box>
         )}
 

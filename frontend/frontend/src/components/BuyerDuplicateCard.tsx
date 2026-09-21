@@ -17,6 +17,7 @@ export interface BuyerDuplicateMatch {
     buyerNumber?: string;
     name?: string;
     receptionDate?: string | Date;
+    viewingDate?: string | Date | null;
     propertyNumber?: string | null;
     propertyAddress?: string | null;
     latestStatus?: string | null;
