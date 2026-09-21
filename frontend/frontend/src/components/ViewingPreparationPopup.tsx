@@ -52,6 +52,58 @@ interface CopyButtonProps {
   label: string;
 }
 
+/**
+ * 買主の過去内覧情報から「今回が何回目の内覧か」を算出する。
+ *
+ * データの実態：
+ * - 現在の内覧は buyer.viewing_date（最新の内覧日）
+ * - 過去の内覧は自由入力の以下フィールドに記録される
+ *   - past_viewing_1（スプシ「2度目以降過去内覧」）
+ *   - past_viewing_properties（スプシ「過去の内覧物件」）
+ *   - past_viewing_2 / past_viewing_3（旧フィールド。値があれば加算）
+ *
+ * 自由入力のため厳密な回数は取れないが、過去内覧の記録があれば
+ * 「過去に他物件の内覧あり」とみなし、行数（改行・区切り）で件数を概算する。
+ *
+ * @returns 過去内覧が無ければ null（＝初回内覧）。あれば { count, pastText }
+ */
+function computeViewingOrdinal(
+  buyer?: Record<string, any> | null
+): { count: number; pastText: string } | null {
+  if (!buyer) return null;
+
+  // 過去内覧の自由入力フィールドを集める
+  const rawSources: Array<string | null | undefined> = [
+    buyer.past_viewing_1,
+    buyer.past_viewing_2,
+    buyer.past_viewing_3,
+    buyer.past_viewing_properties,
+  ];
+
+  // 各フィールドを行単位に分解して、意味のある行だけ抽出
+  const pastEntries: string[] = [];
+  for (const src of rawSources) {
+    if (src == null) continue;
+    const text = String(src).trim();
+    if (text === '') continue;
+    // 改行・「、」「,」で区切って複数件を数える
+    const lines = text
+      .split(/\r?\n|、|,/)
+      .map((l) => l.trim())
+      .filter((l) => l !== '');
+    pastEntries.push(...lines);
+  }
+
+  if (pastEntries.length === 0) {
+    // 過去内覧の記録なし → 初回内覧
+    return null;
+  }
+
+  // 今回の内覧（1件）を加えた回数
+  const count = pastEntries.length + 1;
+  return { count, pastText: pastEntries.join(' / ') };
+}
+
 /** ワンクリックコピーボタン */
 const CopyButton: React.FC<CopyButtonProps> = ({ text, label }) => {
   const [copied, setCopied] = useState(false);
@@ -127,6 +179,8 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
     && otherCompanyValue != null && String(otherCompanyValue).trim() !== '';
   // 2〜6の資料を表示するかどうか：自社物件（hasPropertyNumber）または他社物件
   const showMaterials = hasPropertyNumber || isOtherCompanyProperty;
+  // 過去に他物件で内覧した場合、今回が何回目かを算出（過去内覧が無ければ null）
+  const viewingOrdinal = computeViewingOrdinal(buyer);
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
   const [nearbyMapModalOpen, setNearbyMapModalOpen] = useState(false);
   const [printing1, setPrinting1] = useState(false);
@@ -313,6 +367,28 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
         >
           ※準備前にカレンダーに●をつけてください
         </Typography>
+
+        {/* 内覧回数：過去に他物件で内覧している場合は「今回が何回目か」を表示 */}
+        {viewingOrdinal && (
+          <Box
+            sx={{
+              mb: 2,
+              p: 1.2,
+              borderRadius: 1,
+              bgcolor: '#fff3e0',
+              border: '1px solid #ffb74d',
+            }}
+          >
+            <Typography sx={{ fontWeight: 'bold', color: '#e65100' }}>
+              🔁 今回で {viewingOrdinal.count} 回目の内覧（過去に他物件の内覧あり）
+            </Typography>
+            <Typography
+              sx={{ fontSize: '0.8rem', color: 'text.secondary', mt: 0.3, whiteSpace: 'pre-wrap' }}
+            >
+              過去の内覧：{viewingOrdinal.pastText}
+            </Typography>
+          </Box>
+        )}
 
         {/* 他社物件：1・2の版（大分版 / 福岡版）を選択 */}
         {isOtherCompanyProperty && (
