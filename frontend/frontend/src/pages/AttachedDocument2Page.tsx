@@ -83,6 +83,11 @@ interface DocumentFields {
   property_tax: string;
   parking: string;
   pet: string;
+  // 現地調査チェックリスト memo
+  site_check_memo1: string;
+  site_check_memo2: string;
+  site_check_memo3: string;
+  site_check_memo4: string;
 }
 
 const EMPTY_FIELDS: DocumentFields = {
@@ -107,6 +112,10 @@ const EMPTY_FIELDS: DocumentFields = {
   property_tax: '',
   parking: '',
   pet: '',
+  site_check_memo1: '',
+  site_check_memo2: '',
+  site_check_memo3: '',
+  site_check_memo4: '',
 };
 
 /** 万円表示 */
@@ -170,6 +179,10 @@ export default function AttachedDocument2Page() {
         property_tax: d.property_tax || '',
         parking: d.parking || '',
         pet: d.pet || '',
+        site_check_memo1: d.site_check_memo1 || '',
+        site_check_memo2: d.site_check_memo2 || '',
+        site_check_memo3: d.site_check_memo3 || '',
+        site_check_memo4: d.site_check_memo4 || '',
       });
       setIsDirty(false);
     } catch (err: any) {
@@ -300,6 +313,7 @@ export default function AttachedDocument2Page() {
   .lbl { background: #f0f0f0; font-weight: bold; white-space: nowrap; width: 52pt; }
   .val { min-height: 12pt; }
   .narrow { width: 48pt; }
+  textarea { width: 100%; box-sizing: border-box; font-family: inherit; font-size: 8pt; border: none; outline: none; resize: none; background: transparent; padding: 0; }
 </style>
 </head>
 <body>
@@ -362,6 +376,65 @@ export default function AttachedDocument2Page() {
   </table>
   </div>
 </div>
+
+<div class="page" style="page-break-before: always;">
+  <table class="info-table" style="margin-bottom:6pt">
+    <tr><td colspan="3" class="lbl" style="background:#222;color:#fff;font-size:10pt;padding:5pt 6pt;width:auto">現地調査</td></tr>
+    <tr>
+      <td style="border:1pt solid #888;padding:3pt 5pt;width:52pt;font-size:8.5pt;vertical-align:top">□ memo<br><br><textarea style="width:100%;border:none;font-size:8pt;resize:none;font-family:inherit;min-height:20pt">${fields.site_check_memo1 || ''}</textarea></td>
+      <td style="border:1pt solid #888;padding:3pt 5pt;width:80pt;font-size:8.5pt;vertical-align:top;font-weight:bold">境界、越境</td>
+      <td style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt;vertical-align:top">・目視で確認、できない場合は<br>　売主または隣地の方に聞く<br>・区画整理地域であらわれる場合が多い</td>
+    </tr>
+    <tr>
+      <td style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt;vertical-align:top">□ memo<br><br><textarea style="width:100%;border:none;font-size:8pt;resize:none;font-family:inherit;min-height:40pt">${fields.site_check_memo2 || ''}</textarea></td>
+      <td style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt;vertical-align:top;font-weight:bold">配水管（上水）<br>浄化槽</td>
+      <td style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt;vertical-align:top">・量水器boxを開け、メーターが回っていないか、何mm口径か、水道番号調べる<br>・配管の太さは目視でどちらが太いかチェック<br>配水管（下水）公共下水の場合問題なし。浄化槽の場合、一般か集中かの確認<br>・集中浄化槽の場合、場所と管理人（会社）費用負担がどこで発生するか（自治会費なども）確認。<br>・以前浄化槽の使用をしていた場合、埋設している可能性が高い（要登記記載）</td>
+    </tr>
+    <tr>
+      <td style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt;vertical-align:top">□ memo<br><br><textarea style="width:100%;border:none;font-size:8pt;resize:none;font-family:inherit;min-height:20pt">${fields.site_check_memo3 || ''}</textarea></td>
+      <td style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt;vertical-align:top;font-weight:bold">擁壁、<br>崖の確認</td>
+      <td style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt;vertical-align:top">基本的に目視で確認、測量<br>・すでに許可が下りているかどうか<br>開発登録簿を確認（市役所の開発指導課）<br>・その他の法令に引っかかっていないか確認</td>
+    </tr>
+    <tr>
+      <td style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt;vertical-align:top">□ memo<br><br><textarea style="width:100%;border:none;font-size:8pt;resize:none;font-family:inherit;min-height:20pt">${fields.site_check_memo4 || ''}</textarea></td>
+      <td style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt;vertical-align:top;font-weight:bold">都市ガス<br>or<br>プロパンガス</td>
+      <td style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt;vertical-align:top">お家の引き込み管を見る<br>・プロパンガスの場合、LPガスと記載または設置場所がある</td>
+    </tr>
+  </table>
+
+  <table class="info-table">
+    <tr><td colspan="3" class="lbl" style="background:#222;color:#fff;font-size:10pt;padding:5pt 6pt;width:auto">確認事項</td></tr>
+    <tr>
+      <td style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt;width:100pt">□ 固定資産税</td>
+      <td colspan="2" style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt">${fields.property_tax || ''}</td>
+    </tr>
+    <tr>
+      <td colspan="3" style="border:1pt solid #888;padding:3pt 5pt;font-size:8pt">※新築の場合軽減税率あり（戸建では3年以内、マンションは5年以内）</td>
+    </tr>
+    <tr>
+      <td style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt">□ 駐車場</td>
+      <td colspan="2" style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt">${fields.parking || `<span style="color:#bbb">${isMansion ? '機械式の場合　高さ、奥行き、幅を確認' : '堀車庫の場合は高さ、幅、奥行き M'}</span>`}</td>
+    </tr>
+    <tr>
+      <td style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt">□ 内覧時</td>
+      <td colspan="2" style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt">曜日・時間　　　　　　　立会有無　　連絡<br>空家の場合　鍵（現地　　　　　　　　1200・事務所）</td>
+    </tr>
+    ${isMansion ? `
+    <tr>
+      <td style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt">□ 温泉</td>
+      <td colspan="2" style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt">管理会社　　　変更料　　　　　使用料　　　　/月<br>自主管理　ルールや管理方法<br>無の場合新たに引込できる？</td>
+    </tr>
+    <tr>
+      <td style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt">□ ペット</td>
+      <td style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt">${fields.pet || ''}</td>
+      <td style="border:1pt solid #888;padding:3pt 5pt;font-size:8.5pt">※可　OR　不可　頭数や種別</td>
+    </tr>` : ''}
+    <tr>
+      <td colspan="3" style="border:1pt solid #888;padding:3pt 5pt;font-size:8pt">※不具合箇所・リフォーム履歴等は告知書付帯設備表で確認</td>
+    </tr>
+  </table>
+</div>
+
   <script>window.onload = function(){ window.print(); }</script>
 </body>
 </html>`;
@@ -637,6 +710,33 @@ export default function AttachedDocument2Page() {
                 )}
               </Box>
             </Paper>
+
+            {/* ── 2枚目：現地調査チェックリスト ── */}
+            <Box sx={{ mt: 3, pt: 2, borderTop: '3px dashed #aaa' }}>
+              <Typography sx={{ fontWeight: 'bold', fontSize: '10pt', mb: 1, color: '#555' }}>
+                ▼ 2枚目：現地調査チェックリスト
+              </Typography>
+
+              {/* 現地調査 */}
+              <Paper variant="outlined" sx={{ mb: 1 }}>
+                <Box sx={{ p: 0.8, bgcolor: '#222', borderRadius: '3px 3px 0 0' }}>
+                  <Typography sx={{ fontWeight: 'bold', fontSize: '10pt', color: '#fff' }}>現地調査</Typography>
+                </Box>
+                {[
+                  { key: 'site_check_memo1' as const, label: '境界、越境' },
+                  { key: 'site_check_memo2' as const, label: '配水管（上水）浄化槽' },
+                  { key: 'site_check_memo3' as const, label: '擁壁、崖の確認' },
+                  { key: 'site_check_memo4' as const, label: '都市ガス or プロパンガス' },
+                ].map((row, idx, arr) => (
+                  <Box key={row.key} sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 0.8, borderBottom: idx < arr.length - 1 ? '1px solid #ccc' : 'none' }}>
+                    <Typography sx={{ fontSize: '8.5pt', color: '#555', flexShrink: 0 }}>□ memo</Typography>
+                    <Typography sx={{ fontSize: '8.5pt', width: 100, flexShrink: 0, fontWeight: 'bold' }}>{row.label}</Typography>
+                    <TextField fullWidth size="small" value={fields[row.key]} onChange={(e) => set(row.key, e.target.value)}
+                      sx={{ '& .MuiOutlinedInput-root': { fontSize: '8.5pt' } }} />
+                  </Box>
+                ))}
+              </Paper>
+            </Box>
 
           </Box>
         </Container>

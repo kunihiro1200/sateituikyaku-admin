@@ -40,6 +40,11 @@ export interface AttachedDocument2Data {
   property_tax?: string | null;
   parking?: string | null;
   pet?: string | null;
+  // 現地調査チェックリスト memo
+  site_check_memo1?: string | null;
+  site_check_memo2?: string | null;
+  site_check_memo3?: string | null;
+  site_check_memo4?: string | null;
 }
 
 const EMPTY_RESPONSE = (sellerId: string) => ({
@@ -65,6 +70,10 @@ const EMPTY_RESPONSE = (sellerId: string) => ({
   property_tax: null,
   parking: null,
   pet: null,
+  site_check_memo1: null,
+  site_check_memo2: null,
+  site_check_memo3: null,
+  site_check_memo4: null,
 });
 
 // 売主の添付資料２入力項目を取得
@@ -122,6 +131,10 @@ router.put('/sellers/:sellerId/attached-document2', async (req: Request, res: Re
       property_tax: body.property_tax || null,
       parking: body.parking || null,
       pet: body.pet || null,
+      site_check_memo1: body.site_check_memo1 || null,
+      site_check_memo2: body.site_check_memo2 || null,
+      site_check_memo3: body.site_check_memo3 || null,
+      site_check_memo4: body.site_check_memo4 || null,
       updated_at: new Date().toISOString(),
       updated_by: body.updated_by || null,
     };
