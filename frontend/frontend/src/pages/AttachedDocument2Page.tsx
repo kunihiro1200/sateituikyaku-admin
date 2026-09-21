@@ -105,17 +105,6 @@ const EMPTY_FIELDS: DocumentFields = {
   property_tax: '',
 };
 
-/** 印刷用枠付きテキストの共通スタイル */
-const printBoxSx = {
-  minHeight: '6mm',
-  border: '1px solid #999',
-  borderRadius: '2px',
-  px: 0.8,
-  py: 0.3,
-  fontSize: '9pt',
-  whiteSpace: 'pre-wrap' as const,
-};
-
 /** 万円表示 */
 const fmt = (amount?: number) =>
   amount ? `${Math.round(amount / 10000).toLocaleString()}万円` : '';
@@ -240,6 +229,137 @@ export default function AttachedDocument2Page() {
 
   const visitSchedule = fmtDatetime((seller?.appointmentDate as string) || (seller?.visitDate as string));
 
+  // ── 印刷用HTMLを別ウィンドウで開く ──
+  const generatePrintHtml = () => {
+    const cb = (checked: boolean) => checked ? '☑' : '☐';
+    const landText = (landArea ? `${landArea}㎡` : '-') + (landVerified ? `　（当社調べ：${landVerified}㎡）` : '');
+    const buildText = (buildArea ? `${buildArea}㎡` : '-') + (buildVerified ? `　（当社調べ：${buildVerified}㎡）` : '');
+
+    const mansionSection = isMansion ? `
+      <table class="info-table" style="margin-bottom:6pt">
+        <tr><td class="lbl" colspan="2">近隣募集・成約事例</td></tr>
+        <tr><td colspan="2" style="padding:4pt 6pt;font-size:9pt;">
+          ${cb(fields.currently_listed_same_building_checked)} 現在募集中（同マンション）　
+          ${cb(fields.same_building_sold_case_checked)} 同マンションの成約事例　
+          ${cb(fields.nearby_mansion_sold_case_checked)} 周辺のマンションの成約事例
+        </td></tr>
+      </table>
+      <table class="info-table" style="margin-bottom:6pt">
+        <tr>
+          <td class="lbl" style="width:60pt">管理費</td>
+          <td class="val">${fields.management_fee || ''}</td>
+          <td class="lbl" style="width:60pt">修繕積立金</td>
+          <td class="val">${fields.repair_reserve_fund || ''}</td>
+        </tr>
+      </table>` : `
+      <table class="info-table" style="margin-bottom:6pt">
+        <tr><td colspan="4" style="padding:4pt 6pt;font-size:9pt;">
+          ${cb(fields.current_nearby_listing_checked)} 現在の近隣募集中　
+          ${cb(fields.past_sold_case_checked)} 過去成約事例
+        </td></tr>
+      </table>
+      <table class="info-table" style="margin-bottom:6pt">
+        <tr>
+          <td class="lbl" style="width:60pt">境界標（杭）</td>
+          <td class="val">${fields.boundary_stake || ''}</td>
+          <td class="lbl" style="width:50pt">道路幅</td>
+          <td class="val">${fields.road_width || ''}</td>
+          <td class="lbl" style="width:40pt">接道</td>
+          <td class="val">${fields.road_contact || ''}</td>
+        </tr>
+      </table>`;
+
+
+    return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>添付資料２ - ${seller?.sellerNumber || ''}</title>
+<style>
+  @page { size: A4; margin: 8mm; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Hiragino Kaku Gothic Pro','Yu Gothic','MS Gothic',sans-serif; font-size: 9pt; color: #000; margin: 0; padding: 0; }
+  h1 { font-size: 14pt; font-weight: bold; margin: 0 0 2pt; border-bottom: 2pt solid #000; padding-bottom: 3pt; }
+  .sub { font-size: 8pt; color: #555; margin-bottom: 6pt; }
+  .row2 { display: flex; gap: 6pt; margin-bottom: 6pt; }
+  .row2 > div { flex: 1; border: 1pt solid #888; padding: 5pt; }
+  .section-title { font-weight: bold; font-size: 8.5pt; border-bottom: 1pt solid #ccc; padding-bottom: 2pt; margin-bottom: 4pt; }
+  .info-line { font-size: 8pt; line-height: 1.7; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6pt; margin-bottom: 6pt; }
+  .box { border: 1pt solid #888; padding: 5pt; }
+  .box-lbl { font-size: 7.5pt; color: #555; }
+  .box-val { font-size: 10pt; font-weight: bold; }
+  .comment-box { border: 1pt solid #888; padding: 5pt; margin-bottom: 6pt; font-size: 8pt; white-space: pre-wrap; line-height: 1.5; max-height: 80pt; overflow: hidden; }
+  .info-table { width: 100%; border-collapse: collapse; margin-bottom: 6pt; border: 1pt solid #888; }
+  .info-table td { border: 1pt solid #888; padding: 3pt 5pt; font-size: 8.5pt; vertical-align: middle; }
+  .lbl { background: #f0f0f0; font-weight: bold; white-space: nowrap; width: 56pt; }
+  .val { min-height: 14pt; }
+  .narrow { width: 52pt; }
+</style>
+</head>
+<body>
+  <h1>添付資料２</h1>
+  ${seller?.sellerNumber ? `<div class="sub">売主番号：${seller.sellerNumber}</div>` : ''}
+
+  <div class="row2">
+    <div>
+      <div class="section-title">物件情報</div>
+      <div class="info-line">
+        <div><strong>住所：</strong>${propertyAddress}</div>
+        <div><strong>種別：</strong>${propertyType}　<strong>現況：</strong>${currentStatus}</div>
+        <div><strong>土地：</strong>${landText}</div>
+        <div><strong>建物：</strong>${buildText}</div>
+        <div><strong>築年：</strong>${buildYear || '-'}　<strong>構造：</strong>${structure}　<strong>間取り：</strong>${floorPlan}</div>
+      </div>
+    </div>
+    <div>
+      <div class="section-title">売主情報</div>
+      <div class="info-line">
+        <div><strong>氏名：</strong>${seller?.name || '-'}</div>
+        <div><strong>住所：</strong>${seller?.address || '-'}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="box"><div class="box-lbl">査定額</div><div class="box-val">${valuationDisplay}</div></div>
+    <div class="box"><div class="box-lbl">訪問予定日時</div><div class="box-val">${visitSchedule}</div></div>
+  </div>
+
+  <div class="comment-box"><strong style="font-size:7.5pt;color:#555;">コメント内容</strong><br>${(seller?.comments || '（コメントなし）').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+
+  <table class="info-table">
+    <tr>
+      <td class="lbl">小学校</td><td class="val">${fields.elementary_school_name || ''}</td><td class="val narrow">${fields.elementary_school_walk || ''}</td>
+      <td class="lbl">中学校</td><td class="val">${fields.junior_high_school_name || ''}</td><td class="val narrow">${fields.junior_high_school_walk || ''}</td>
+    </tr>
+    <tr>
+      <td class="lbl">最寄り駅</td><td class="val">${fields.nearest_station_name || ''}</td><td class="val narrow">${fields.nearest_station_walk || ''}</td>
+      <td class="lbl">最寄りバス停</td><td class="val">${fields.nearest_bus_stop_name || ''}</td><td class="val narrow">${fields.nearest_bus_stop_walk || ''}</td>
+    </tr>
+  </table>
+
+  ${mansionSection}
+
+  <table class="info-table">
+    <tr>
+      <td class="lbl" style="width:56pt">固定資産税</td>
+      <td class="val">${fields.property_tax || ''}</td>
+    </tr>
+  </table>
+
+  <script>window.onload = function(){ window.print(); }</script>
+</body>
+</html>`;
+  };
+
+  const handlePrint = async () => {
+    if (isDirty) { const ok = await handleSave(); if (!ok) return; }
+    const html = generatePrintHtml();
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); }
+  };
+
   // ── ヘルパー：横2列入力行（名称 + 徒歩分） ──
   const RowPair = ({
     label,
@@ -251,32 +371,21 @@ export default function AttachedDocument2Page() {
     walkKey: keyof DocumentFields;
   }) => (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.8, borderBottom: '1px solid #ccc' }}>
-      {/* ラベル */}
       <Typography sx={{ width: 90, flexShrink: 0, fontWeight: 'bold', fontSize: '9.5pt' }}>{label}</Typography>
-      {/* 名称 */}
       <TextField
         size="small" variant="outlined" placeholder="学校名・駅名等"
         value={fields[nameKey] as string}
         onChange={(e) => set(nameKey, e.target.value)}
-        className="no-print"
         sx={{ flex: 2, '& .MuiOutlinedInput-root': { fontSize: '9.5pt' }, '& input::placeholder': { color: '#bbb', opacity: 1 } }}
         inputProps={{ style: { color: fields[nameKey] ? '#000' : '#bbb' } }}
       />
-      <Box className="print-only-field" sx={{ ...printBoxSx, flex: 2 }}>
-        {(fields[nameKey] as string) || '\u00A0'}
-      </Box>
-      {/* 徒歩分 */}
       <TextField
         size="small" variant="outlined" placeholder="徒歩○分"
         value={fields[walkKey] as string}
         onChange={(e) => set(walkKey, e.target.value)}
-        className="no-print"
         sx={{ flex: 1, '& .MuiOutlinedInput-root': { fontSize: '9.5pt' }, '& input::placeholder': { color: '#bbb', opacity: 1 } }}
         inputProps={{ style: { color: fields[walkKey] ? '#000' : '#bbb' } }}
       />
-      <Box className="print-only-field" sx={{ ...printBoxSx, flex: 1 }}>
-        {(fields[walkKey] as string) || '\u00A0'}
-      </Box>
     </Box>
   );
 
@@ -287,14 +396,6 @@ export default function AttachedDocument2Page() {
   return (
     <>
       <style>{`
-        .print-only-field { display: none; }
-        @media print {
-          .no-print { display: none !important; }
-          .print-only-field { display: flex !important; align-items: center; }
-          body { margin: 0; padding: 0; }
-          .print-page { width: 190mm; margin: 0 auto; }
-          @page { size: A4; margin: 8mm; }
-        }
         @media screen { .print-page { max-width: 800px; margin: 0 auto; } }
       `}</style>
 
@@ -415,7 +516,7 @@ export default function AttachedDocument2Page() {
                 {/* マンション：チェックボックス3種 */}
                 <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
                   <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', mb: 0.5 }}>近隣募集・成約事例</Typography>
-                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }} className="no-print">
+                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                     {([
                       { key: 'currently_listed_same_building_checked' as const, label: '現在募集中（同マンション）' },
                       { key: 'same_building_sold_case_checked' as const, label: '同マンションの成約事例' },
@@ -425,16 +526,6 @@ export default function AttachedDocument2Page() {
                         control={<Checkbox size="small" checked={fields[c.key]} onChange={(e) => set(c.key, e.target.checked)} />}
                         label={<Typography sx={{ fontSize: '9pt' }}>{c.label}</Typography>}
                       />
-                    ))}
-                  </Box>
-                  {/* 印刷用 */}
-                  <Box className="print-only-field" sx={{ display: 'flex', gap: 3, fontSize: '9pt', flexWrap: 'wrap' }}>
-                    {([
-                      { key: 'currently_listed_same_building_checked' as const, label: '現在募集中（同マンション）' },
-                      { key: 'same_building_sold_case_checked' as const, label: '同マンションの成約事例' },
-                      { key: 'nearby_mansion_sold_case_checked' as const, label: '周辺のマンションの成約事例' },
-                    ]).map((c) => (
-                      <span key={c.key}>{fields[c.key] ? '☑' : '☐'} {c.label}</span>
                     ))}
                   </Box>
                 </Paper>
@@ -450,8 +541,7 @@ export default function AttachedDocument2Page() {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Typography sx={{ fontWeight: 'bold', fontSize: '9.5pt', flexShrink: 0, width: 72 }}>{f.label}</Typography>
                           <TextField fullWidth size="small" value={fields[f.key]} onChange={(e) => set(f.key, e.target.value)}
-                            className="no-print" sx={{ '& .MuiOutlinedInput-root': { fontSize: '9.5pt' } }} />
-                          <Box className="print-only-field" sx={{ ...printBoxSx, flex: 1 }}>{fields[f.key] || '\u00A0'}</Box>
+                            sx={{ '& .MuiOutlinedInput-root': { fontSize: '9.5pt' } }} />
                         </Box>
                       </Grid>
                     ))}
@@ -462,7 +552,7 @@ export default function AttachedDocument2Page() {
               <>
                 {/* マンション以外：チェックボックス2種 横並び */}
                 <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
-                  <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }} className="no-print">
+                  <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                     {([
                       { key: 'current_nearby_listing_checked' as const, label: '現在の近隣募集中' },
                       { key: 'past_sold_case_checked' as const, label: '過去成約事例' },
@@ -471,15 +561,6 @@ export default function AttachedDocument2Page() {
                         control={<Checkbox size="small" checked={fields[c.key]} onChange={(e) => set(c.key, e.target.checked)} />}
                         label={<Typography sx={{ fontSize: '9pt' }}>{c.label}</Typography>}
                       />
-                    ))}
-                  </Box>
-                  {/* 印刷用 */}
-                  <Box className="print-only-field" sx={{ display: 'flex', gap: 4, fontSize: '9pt' }}>
-                    {([
-                      { key: 'current_nearby_listing_checked' as const, label: '現在の近隣募集中' },
-                      { key: 'past_sold_case_checked' as const, label: '過去成約事例' },
-                    ]).map((c) => (
-                      <span key={c.key}>{fields[c.key] ? '☑' : '☐'} {c.label}</span>
                     ))}
                   </Box>
                 </Paper>
@@ -495,8 +576,7 @@ export default function AttachedDocument2Page() {
                       <Grid item xs={4} key={f.key}>
                         <Typography sx={{ fontWeight: 'bold', fontSize: '9.5pt', mb: 0.4 }}>{f.label}</Typography>
                         <TextField fullWidth size="small" value={fields[f.key]} onChange={(e) => set(f.key, e.target.value)}
-                          className="no-print" sx={{ '& .MuiOutlinedInput-root': { fontSize: '9.5pt' } }} />
-                        <Box className="print-only-field" sx={printBoxSx}>{fields[f.key] || '\u00A0'}</Box>
+                          sx={{ '& .MuiOutlinedInput-root': { fontSize: '9.5pt' } }} />
                       </Grid>
                     ))}
                   </Grid>
@@ -509,8 +589,7 @@ export default function AttachedDocument2Page() {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <Typography sx={{ fontWeight: 'bold', fontSize: '9.5pt', flexShrink: 0, width: 80 }}>固定資産税</Typography>
                 <TextField fullWidth size="small" value={fields.property_tax} onChange={(e) => set('property_tax', e.target.value)}
-                  className="no-print" sx={{ '& .MuiOutlinedInput-root': { fontSize: '9.5pt' } }} />
-                <Box className="print-only-field" sx={{ ...printBoxSx, flex: 1 }}>{fields.property_tax || '\u00A0'}</Box>
+                  sx={{ '& .MuiOutlinedInput-root': { fontSize: '9.5pt' } }} />
               </Box>
             </Paper>
 
