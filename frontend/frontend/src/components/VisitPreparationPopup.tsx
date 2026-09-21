@@ -254,7 +254,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
       content: sellerId ? (
         <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
           <a href={`/sellers/${sellerId}/attached-document2`} target="_blank" rel="noopener noreferrer">
-            添付資料２
+            添付資料２（試作中）
           </a>
           <Typography component="span" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
             （片面印刷）
