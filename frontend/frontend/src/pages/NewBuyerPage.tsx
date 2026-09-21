@@ -47,6 +47,7 @@ import {
   FLOOR_PLAN_OPTIONS,
 } from '../utils/buyerDesiredConditionsOptions';
 import { normalizeEmail } from '../utils/stringUtils';
+import { isJapaneseHolidayDateStr } from '../utils/japaneseHolidays';
 
 export default function NewBuyerPage() {
   const navigate = useNavigate();
@@ -254,6 +255,16 @@ export default function NewBuyerPage() {
     
     if (!name) {
       setError('氏名は必須です');
+      return;
+    }
+
+    // I・Y は祝日休みのため、後続担当が I/Y のときは祝日の内覧日を登録させない
+    if (
+      viewingDate &&
+      (followUpAssignee === 'I' || followUpAssignee === 'Y') &&
+      isJapaneseHolidayDateStr(String(viewingDate).slice(0, 10))
+    ) {
+      setError(`後続担当が ${followUpAssignee} のため、祝日（${String(viewingDate).slice(0, 10)}）の内覧予約はできません。別の日を選択するか、後続担当を変更してください。`);
       return;
     }
 

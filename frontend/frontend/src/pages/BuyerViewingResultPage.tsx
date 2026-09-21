@@ -25,6 +25,7 @@ import { InlineEditableField } from '../components/InlineEditableField';
 import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../components/RichTextCommentEditor';
 import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
 import { VIEWING_UNCONFIRMED_OPTIONS } from '../utils/buyerDetailFieldOptions';
+import { isJapaneseHolidayDateStr } from '../utils/japaneseHolidays';
 import { ValidationService } from '../services/ValidationService';
 import PreDayEmailButton from '../components/PreDayEmailButton';
 import SmsIcon from '@mui/icons-material/Sms';
@@ -107,7 +108,7 @@ function generatePreDaySmsBody(buyer: {
   name?: string | null;
   viewing_date?: string | null;
   viewing_time?: string | null;
-}, propertyAddress: string, googleMapUrl: string): string {
+}, propertyAddress: string, googleMapUrl: string, isFukuoka: boolean = false): string {
   const name = buyer.name || 'お客様';
   const dateStr = buyer.viewing_date || '';
   const parts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-');
@@ -140,7 +141,11 @@ function generatePreDaySmsBody(buyer: {
   }
   const mapLine = googleMapUrl ? `\n${googleMapUrl}` : '';
 
-  return `【内覧のご連絡　☆返信不可☆】\n${name}様\nお世話になっております。㈱いふうです。\n${dayWord}の${dateLabel} ${timeStr}から${propertyAddress}の内覧をよろしくお願いいたします。${mapLine}\nこのメールは返信不可となっておりますので、何かございましたら下記連絡先へお願いいたします。\n【電話】(10時～18時）*水曜定休\n097-533-2022\n【メールアドレス】\ntenant@ifoo-oita.com\nそれではお会いできるのを楽しみにしております。\n㈱いふう`;
+  // 福岡の物件は「くじら不動産」表記・電話番号にする
+  const companyName = isFukuoka ? '㈱くじら不動産' : '㈱いふう';
+  const phoneNumber = isFukuoka ? '092-401-5331' : '097-533-2022';
+
+  return `【内覧のご連絡　☆返信不可☆】\n${name}様\nお世話になっております。${companyName}です。\n${dayWord}の${dateLabel} ${timeStr}から${propertyAddress}の内覧をよろしくお願いいたします。\nこのメールは返信不可となっておりますので、何かございましたら下記連絡先へお願いいたします。\n【電話】(10時～18時）*水曜定休\n${phoneNumber}\n【メールアドレス】tenant@ifoo-oita.com\nそれではお会いできるのを楽しみにしております。\n${companyName}${mapLine}`;
 }
 
 /**
@@ -691,6 +696,19 @@ export default function BuyerViewingResultPage() {
   const handleSaveLatestViewingDate = useCallback(
     async (newValue: any) => {
       console.log('[BuyerViewingResultPage] InlineEditableField onSave called with:', newValue);
+
+      // I・Y は祝日休みのため、後続担当が I/Y のときは祝日の内覧日を設定させない
+      const currentAssignee = buyerRef.current?.follow_up_assignee || '';
+      const dateStr = newValue ? String(newValue).slice(0, 10) : '';
+      if (
+        dateStr &&
+        (currentAssignee === 'I' || currentAssignee === 'Y') &&
+        isJapaneseHolidayDateStr(dateStr)
+      ) {
+        alert(`後続担当が ${currentAssignee} のため、祝日（${dateStr}）の内覧予約はできません。別の日を選択するか、後続担当を変更してください。`);
+        return;
+      }
+
       await handleInlineFieldSave('viewing_date', newValue);
       // 内覧日が設定された場合、ダブルブッキングチェック
       if (newValue && buyerRef.current) {
@@ -1261,7 +1279,11 @@ export default function BuyerViewingResultPage() {
                   ? (property?.display_address || property?.address || property?.property_address || buyer.other_company_property || '')
                   : (property?.address || property?.display_address || property?.property_address || buyer.other_company_property || '');
                 const googleMapUrl = property?.google_map_url || '';
-                const smsBody = generatePreDaySmsBody(buyer, address, googleMapUrl);
+                // 福岡（くじら不動産）判定: 物件番号がFI始まり、または買主番号がFI/FK始まり
+                const propNumUpper = String(property?.property_number || '').toUpperCase();
+                const buyerNumUpper = String(buyer.buyer_number || buyer_number || '').toUpperCase();
+                const isFukuoka = propNumUpper.startsWith('FI') || buyerNumUpper.startsWith('FI') || buyerNumUpper.startsWith('FK');
+                const smsBody = generatePreDaySmsBody(buyer, address, googleMapUrl, isFukuoka);
                 const smsLink = `sms:${buyer.phone_number}?body=${encodeURIComponent(smsBody)}`;
                 return (
                   <Button
@@ -1766,7 +1788,17 @@ export default function BuyerViewingResultPage() {
                       onClick={async () => {
                         // 同じボタンを2度クリックしたら値をクリア
                         const newValue = buyer.follow_up_assignee === staff.value ? '' : staff.value;
-                        
+
+                        // I・Y は祝日休みのため、内覧日が祝日のときは選択させない
+                        if (
+                          (newValue === 'I' || newValue === 'Y') &&
+                          buyer.viewing_date &&
+                          isJapaneseHolidayDateStr(String(buyer.viewing_date).slice(0, 10))
+                        ) {
+                          alert(`${newValue} は祝日休みのため、祝日（${String(buyer.viewing_date).slice(0, 10)}）の内覧予約はできません。別の日を選択するか、後続担当を変更してください。`);
+                          return;
+                        }
+
                         // 楽観的UI更新: 即座にUIを更新
                         setBuyer(prev => prev ? { ...prev, follow_up_assignee: newValue } : prev);
                         buyerRef.current = buyer ? { ...buyer, follow_up_assignee: newValue } : null;

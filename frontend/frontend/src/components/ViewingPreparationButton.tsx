@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@mui/material';
 import { ViewingPreparationPopup } from './ViewingPreparationPopup';
+import type { BuyerDuplicateMatch } from './BuyerDuplicateCard';
 
 export interface ViewingPreparationButtonProps {
   buyerNumber: string | null | undefined;
@@ -11,6 +12,8 @@ export interface ViewingPreparationButtonProps {
   buyer?: Record<string, any> | null;
   linkedProperties?: Array<Record<string, any>>;
   otherCompanyProperty?: string | null | undefined;
+  /** 買主重複（同一人物の他レコード）。それぞれの内覧日で「何回目」を算出する */
+  buyerDuplicates?: BuyerDuplicateMatch[];
 }
 
 /**
@@ -26,6 +29,7 @@ export const ViewingPreparationButton: React.FC<ViewingPreparationButtonProps> =
   buyer,
   linkedProperties,
   otherCompanyProperty,
+  buyerDuplicates,
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -53,6 +57,7 @@ export const ViewingPreparationButton: React.FC<ViewingPreparationButtonProps> =
         buyer={buyer}
         linkedProperties={linkedProperties}
         otherCompanyProperty={otherCompanyProperty}
+        buyerDuplicates={buyerDuplicates}
       />
     </>
   );

@@ -3450,6 +3450,7 @@ router.get('/:id/buyer-duplicates', async (req: Request, res: Response) => {
         buyerNumber: rb.buyer_number,
         name: rb.name ?? '',
         receptionDate: rb.reception_date ?? undefined,
+        viewingDate: rb.viewing_date ?? null,
         propertyNumber: rb.property_number ?? null,
         propertyAddress: resolveAddress(rb),
         latestStatus: rb.latest_status ?? null,

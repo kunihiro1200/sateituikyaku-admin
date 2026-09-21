@@ -45,6 +45,7 @@ import { SECTION_COLORS } from '../theme/sectionColors';
 import { Seller, PropertyInfo, Activity, SellerStatus, ConfidenceLevel, DuplicateMatch, SelectedImages, DriveImage } from '../types';
 import { getDisplayName, extractLastName } from '../utils/employeeUtils';
 import { formatDateTime } from '../utils/dateFormat';
+import { isJapaneseHolidayDateStr } from '../utils/japaneseHolidays';
 import CallLogDisplay, { CallLogDisplayHandle } from '../components/CallLogDisplay';
 import CallRankingDisplay from '../components/CallRankingDisplay';
 import { SMS_TEMPLATE_ASSIGNEE_MAP, EMAIL_TEMPLATE_ASSIGNEE_MAP } from '../components/AssigneeSection';
@@ -3335,6 +3336,15 @@ const CallModePage = () => {
    * 「I（角井）」選択時に割合チェックを行い、15%超の場合は警告ダイアログを表示する
    */
   const handleVisitAssigneeChange = async (newValue: string) => {
+    // I・Y は祝日休みのため、訪問予定日が祝日のときは選択させない
+    if ((newValue === 'I' || newValue === 'Y') && editedAppointmentDate) {
+      const datePart = editedAppointmentDate.split('T')[0];
+      if (isJapaneseHolidayDateStr(datePart)) {
+        alert(`${newValue} は祝日休みのため、祝日（${datePart}）の訪問予約はできません。別の日を選択してください。`);
+        return;
+      }
+    }
+
     if (newValue === 'I') {
       setLoadingKadoiCheck(true);
       try {
@@ -3908,6 +3918,16 @@ const CallModePage = () => {
   };
 
   const handleSaveAppointment = async (keepEditing: boolean = false) => {
+    // 最終ガード: I・Y は祝日休みのため、祝日の訪問予約は保存させない
+    if (
+      (editedAssignedTo === 'I' || editedAssignedTo === 'Y') &&
+      editedAppointmentDate &&
+      isJapaneseHolidayDateStr(editedAppointmentDate.split('T')[0])
+    ) {
+      alert(`${editedAssignedTo} は祝日休みのため、祝日（${editedAppointmentDate.split('T')[0]}）の訪問予約は保存できません。別の日を選択するか、担当を変更してください。`);
+      return;
+    }
+
     try {
       setSavingAppointment(true);
       setError(null);
@@ -8715,6 +8735,17 @@ HP：https://ifoo-oita.com/
                           const datePart = e.target.value;
                           const timePart = editedAppointmentDate ? (editedAppointmentDate.split('T')[1] || '00:00') : '00:00';
                           const newDate = datePart ? `${datePart}T${timePart}` : '';
+
+                          // I・Y は祝日休みのため、担当が I/Y のときは祝日を選ばせない
+                          if (
+                            datePart &&
+                            (editedAssignedTo === 'I' || editedAssignedTo === 'Y') &&
+                            isJapaneseHolidayDateStr(datePart)
+                          ) {
+                            alert(`${editedAssignedTo} は祝日休みのため、祝日（${datePart}）の訪問予約はできません。別の日を選択するか、担当を変更してください。`);
+                            return;
+                          }
+
                           setEditedAppointmentDate(newDate);
 
                           // 訪問日を削除した場合、営担と訪問査定取得者もクリア

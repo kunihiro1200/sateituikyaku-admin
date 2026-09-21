@@ -1870,6 +1870,7 @@ export default function BuyerDetailPage() {
             buyer={buyer}
             linkedProperties={linkedProperties}
             otherCompanyProperty={buyer?.other_company_property}
+            buyerDuplicates={buyerDuplicates}
           />
           {/* 近隣物件ボタン */}
           {linkedProperties.length > 0 && (
@@ -1949,6 +1950,10 @@ export default function BuyerDetailPage() {
               senderName={employee?.name || ''}
               onSmsSent={fetchActivities}
               preViewingNotes={linkedProperties[0]?.pre_viewing_notes || ''}
+              onNextCallDateUpdated={(nextCallDate) => {
+                // 返信テンプレート送信で次電日が自動セットされたら画面へ即時反映
+                setBuyer((prev: any) => prev ? { ...prev, next_call_date: nextCallDate } : prev);
+              }}
             />
           )}
           {false && buyer?.phone_number && (
