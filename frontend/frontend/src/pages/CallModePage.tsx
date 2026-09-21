@@ -1381,6 +1381,9 @@ const CallModePage = () => {
   const [editedPhoneContactPerson, setEditedPhoneContactPerson] = useState<string>('');
   const [editedPreferredContactTime, setEditedPreferredContactTime] = useState<string>('');
   const [editedContactMethod, setEditedContactMethod] = useState<string>('');
+  const [savedPhoneContactPerson, setSavedPhoneContactPerson] = useState<string>(''); // 保存済み値（変更検知用）
+  const [savedPreferredContactTime, setSavedPreferredContactTime] = useState<string>(''); // 保存済み値（変更検知用）
+  const [savedContactMethod, setSavedContactMethod] = useState<string>(''); // 保存済み値（変更検知用）
   const [editedFirstCallPerson, setEditedFirstCallPerson] = useState<string>('');
   const [savedFirstCallPerson, setSavedFirstCallPerson] = useState<string>(''); // 保存済み値（変更検知用）
   const [savingCommunication, setSavingCommunication] = useState(false);
@@ -1972,6 +1975,9 @@ const CallModePage = () => {
     setEditedPhoneContactPerson('');
     setEditedPreferredContactTime('');
     setEditedContactMethod('');
+    setSavedPhoneContactPerson('');
+    setSavedPreferredContactTime('');
+    setSavedContactMethod('');
     setEditedFirstCallPerson('');
     setSavedFirstCallPerson('');
 
@@ -2145,6 +2151,9 @@ const CallModePage = () => {
       setEditedPhoneContactPerson(seller.phoneContactPerson || '');
       setEditedPreferredContactTime(seller.preferredContactTime || '');
       setEditedContactMethod(seller.contactMethod || '');
+      setSavedPhoneContactPerson(seller.phoneContactPerson || '');
+      setSavedPreferredContactTime(seller.preferredContactTime || '');
+      setSavedContactMethod(seller.contactMethod || '');
       setEditedFirstCallPerson(seller.firstCallPerson || '');
       isInitialLoadRef.current = true; // 初回ロードフラグをリセット
     }
@@ -2170,11 +2179,16 @@ const CallModePage = () => {
     }
 
     // 変更がない場合はスキップ（不通ステータスも自動保存対象に含める）
+    // ⚠️ seller.* との比較は行わない。
+    // バックグラウンド取得で setSeller() が呼ばれると seller.phoneContactPerson 等が変化し、
+    // 依存配列の変化→useEffect再実行→hasChanges=true→自動保存発火という連鎖で
+    // unreachableStatus が古い値（null）のまま保存 API が走り不通ステータスが消えるバグが発生する。
+    // saved* 変数との比較のみに統一することでこの問題を根本解決する。
     const hasChanges = 
-      editedPhoneContactPerson !== (seller.phoneContactPerson || '') ||
-      editedPreferredContactTime !== (seller.preferredContactTime || '') ||
-      editedContactMethod !== (seller.contactMethod || '') ||
-      editedFirstCallPerson !== (seller.firstCallPerson || '') ||
+      editedPhoneContactPerson !== savedPhoneContactPerson ||
+      editedPreferredContactTime !== savedPreferredContactTime ||
+      editedContactMethod !== savedContactMethod ||
+      editedFirstCallPerson !== savedFirstCallPerson ||
       (unreachableStatus || null) !== savedUnreachableStatus;
 
     if (!hasChanges) return;
@@ -2204,6 +2218,9 @@ const CallModePage = () => {
         });
 
         console.log('✅ コミュニケーションフィールドを自動保存しました');
+        setSavedPhoneContactPerson(editedPhoneContactPerson || '');
+        setSavedPreferredContactTime(editedPreferredContactTime || '');
+        setSavedContactMethod(editedContactMethod || '');
         setSavedFirstCallPerson(editedFirstCallPerson || '');
         setSavedUnreachableStatus(unreachableStatus || null);
       } catch (err: any) {
@@ -2216,7 +2233,7 @@ const CallModePage = () => {
     }, 1000); // 1秒のデバウンス
 
     return () => clearTimeout(timeoutId);
-  }, [editedPhoneContactPerson, editedPreferredContactTime, editedContactMethod, editedFirstCallPerson, unreachableStatus, savedUnreachableStatus, seller?.phoneContactPerson, seller?.preferredContactTime, seller?.contactMethod, seller?.firstCallPerson, id]);
+  }, [editedPhoneContactPerson, editedPreferredContactTime, editedContactMethod, editedFirstCallPerson, unreachableStatus, savedUnreachableStatus, savedPhoneContactPerson, savedPreferredContactTime, savedContactMethod, savedFirstCallPerson, id]);
 
   // コメントの自動保存
   // 不通が「不通」の状態でコメントが編集された場合、確認ポップアップは自動保存時ではなく
@@ -2583,6 +2600,12 @@ const CallModePage = () => {
               setSavedUnreachableStatus(freshData.unreachableStatus || null);
               setEditedFirstCallPerson(freshData.firstCallPerson || '');
               setSavedFirstCallPerson(freshData.firstCallPerson || '');
+              setEditedPhoneContactPerson(freshData.phoneContactPerson || '');
+              setSavedPhoneContactPerson(freshData.phoneContactPerson || '');
+              setEditedPreferredContactTime(freshData.preferredContactTime || '');
+              setSavedPreferredContactTime(freshData.preferredContactTime || '');
+              setEditedContactMethod(freshData.contactMethod || '');
+              setSavedContactMethod(freshData.contactMethod || '');
             }
             setSeller(freshData);
             setProperty(freshData.property || null);
@@ -2856,6 +2879,9 @@ const CallModePage = () => {
       setEditedPhoneContactPerson(sellerData.phoneContactPerson || '');
       setEditedPreferredContactTime(sellerData.preferredContactTime || '');
       setEditedContactMethod(sellerData.contactMethod || '');
+      setSavedPhoneContactPerson(sellerData.phoneContactPerson || '');
+      setSavedPreferredContactTime(sellerData.preferredContactTime || '');
+      setSavedContactMethod(sellerData.contactMethod || '');
       setEditedFirstCallPerson(sellerData.firstCallPerson || '');
       setSavedFirstCallPerson(sellerData.firstCallPerson || '');
 
@@ -3462,6 +3488,9 @@ const CallModePage = () => {
       // 保存済み値を更新（ボタンのハイライトをリセット）
       setSavedUnreachableStatus(unreachableStatus || null);
       setSavedFirstCallPerson(editedFirstCallPerson || '');
+      setSavedPhoneContactPerson(editedPhoneContactPerson || '');
+      setSavedPreferredContactTime(editedPreferredContactTime || '');
+      setSavedContactMethod(editedContactMethod || '');
       
       // 成功メッセージを3秒後に消す
       setTimeout(() => {
