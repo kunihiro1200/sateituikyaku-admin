@@ -25,6 +25,7 @@ import { InlineEditableField } from '../components/InlineEditableField';
 import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../components/RichTextCommentEditor';
 import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
 import { VIEWING_UNCONFIRMED_OPTIONS } from '../utils/buyerDetailFieldOptions';
+import { isJapaneseHolidayDateStr } from '../utils/japaneseHolidays';
 import { ValidationService } from '../services/ValidationService';
 import PreDayEmailButton from '../components/PreDayEmailButton';
 import SmsIcon from '@mui/icons-material/Sms';
@@ -691,6 +692,19 @@ export default function BuyerViewingResultPage() {
   const handleSaveLatestViewingDate = useCallback(
     async (newValue: any) => {
       console.log('[BuyerViewingResultPage] InlineEditableField onSave called with:', newValue);
+
+      // I・Y は祝日休みのため、後続担当が I/Y のときは祝日の内覧日を設定させない
+      const currentAssignee = buyerRef.current?.follow_up_assignee || '';
+      const dateStr = newValue ? String(newValue).slice(0, 10) : '';
+      if (
+        dateStr &&
+        (currentAssignee === 'I' || currentAssignee === 'Y') &&
+        isJapaneseHolidayDateStr(dateStr)
+      ) {
+        alert(`後続担当が ${currentAssignee} のため、祝日（${dateStr}）の内覧予約はできません。別の日を選択するか、後続担当を変更してください。`);
+        return;
+      }
+
       await handleInlineFieldSave('viewing_date', newValue);
       // 内覧日が設定された場合、ダブルブッキングチェック
       if (newValue && buyerRef.current) {
@@ -1766,7 +1780,17 @@ export default function BuyerViewingResultPage() {
                       onClick={async () => {
                         // 同じボタンを2度クリックしたら値をクリア
                         const newValue = buyer.follow_up_assignee === staff.value ? '' : staff.value;
-                        
+
+                        // I・Y は祝日休みのため、内覧日が祝日のときは選択させない
+                        if (
+                          (newValue === 'I' || newValue === 'Y') &&
+                          buyer.viewing_date &&
+                          isJapaneseHolidayDateStr(String(buyer.viewing_date).slice(0, 10))
+                        ) {
+                          alert(`${newValue} は祝日休みのため、祝日（${String(buyer.viewing_date).slice(0, 10)}）の内覧予約はできません。別の日を選択するか、後続担当を変更してください。`);
+                          return;
+                        }
+
                         // 楽観的UI更新: 即座にUIを更新
                         setBuyer(prev => prev ? { ...prev, follow_up_assignee: newValue } : prev);
                         buyerRef.current = buyer ? { ...buyer, follow_up_assignee: newValue } : null;
