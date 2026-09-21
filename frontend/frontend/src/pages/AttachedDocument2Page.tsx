@@ -203,11 +203,6 @@ export default function AttachedDocument2Page() {
     }
   };
 
-  const handlePrint = async () => {
-    if (isDirty) { const ok = await handleSave(); if (!ok) return; }
-    window.print();
-  };
-
   // ── 物件情報（property優先、なければseller直接フィールド） ──
   const propertyAddress = seller?.property?.address || seller?.propertyAddress || seller?.property_address || '-';
   const propertyType    = seller?.property?.propertyType || seller?.propertyType || '-';
