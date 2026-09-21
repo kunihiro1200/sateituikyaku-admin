@@ -273,26 +273,31 @@ export default function AttachedDocument2Page() {
 <style>
   @page { size: A4; margin: 8mm; }
   * { box-sizing: border-box; }
-  body { font-family: 'Hiragino Kaku Gothic Pro','Yu Gothic','MS Gothic',sans-serif; font-size: 9pt; color: #000; margin: 0; padding: 0; }
-  h1 { font-size: 14pt; font-weight: bold; margin: 0 0 2pt; border-bottom: 2pt solid #000; padding-bottom: 3pt; }
-  .sub { font-size: 8pt; color: #555; margin-bottom: 6pt; }
-  .row2 { display: flex; gap: 6pt; margin-bottom: 6pt; }
-  .row2 > div { flex: 1; border: 1pt solid #888; padding: 5pt; }
-  .section-title { font-weight: bold; font-size: 8.5pt; border-bottom: 1pt solid #ccc; padding-bottom: 2pt; margin-bottom: 4pt; }
-  .info-line { font-size: 8pt; line-height: 1.7; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6pt; margin-bottom: 6pt; }
-  .box { border: 1pt solid #888; padding: 5pt; }
-  .box-lbl { font-size: 7.5pt; color: #555; }
+  html, body { height: 100%; margin: 0; padding: 0; }
+  body { font-family: 'Hiragino Kaku Gothic Pro','Yu Gothic','MS Gothic',sans-serif; font-size: 9pt; color: #000; }
+  .page { display: flex; flex-direction: column; height: 277mm; padding: 0; }
+  h1 { font-size: 13pt; font-weight: bold; margin: 0 0 1pt; border-bottom: 2pt solid #000; padding-bottom: 2pt; flex-shrink: 0; }
+  .sub { font-size: 8pt; color: #555; margin-bottom: 4pt; flex-shrink: 0; }
+  .row2 { display: flex; gap: 5pt; margin-bottom: 5pt; flex-shrink: 0; }
+  .row2 > div { flex: 1; border: 1pt solid #888; padding: 4pt; }
+  .section-title { font-weight: bold; font-size: 8.5pt; border-bottom: 1pt solid #ccc; padding-bottom: 2pt; margin-bottom: 3pt; }
+  .info-line { font-size: 8pt; line-height: 1.6; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5pt; margin-bottom: 5pt; flex-shrink: 0; }
+  .box { border: 1pt solid #888; padding: 4pt; }
+  .box-lbl { font-size: 7pt; color: #555; }
   .box-val { font-size: 10pt; font-weight: bold; }
-  .comment-box { border: 1pt solid #888; padding: 5pt; margin-bottom: 6pt; font-size: 8pt; white-space: pre-wrap; line-height: 1.5; max-height: 80pt; overflow: hidden; }
-  .info-table { width: 100%; border-collapse: collapse; margin-bottom: 6pt; border: 1pt solid #888; }
-  .info-table td { border: 1pt solid #888; padding: 3pt 5pt; font-size: 8.5pt; vertical-align: middle; }
-  .lbl { background: #f0f0f0; font-weight: bold; white-space: nowrap; width: 56pt; }
-  .val { min-height: 14pt; }
-  .narrow { width: 52pt; }
+  .comment-box { border: 1pt solid #888; padding: 5pt; margin-bottom: 5pt; font-size: 7.5pt; white-space: pre-wrap; line-height: 1.45; overflow: hidden; flex: 1; min-height: 0; }
+  .comment-lbl { font-size: 7pt; color: #555; font-weight: bold; margin-bottom: 2pt; }
+  .tables-block { flex-shrink: 0; }
+  .info-table { width: 100%; border-collapse: collapse; margin-bottom: 4pt; border: 1pt solid #888; }
+  .info-table td { border: 1pt solid #888; padding: 2pt 4pt; font-size: 8pt; vertical-align: middle; }
+  .lbl { background: #f0f0f0; font-weight: bold; white-space: nowrap; width: 52pt; }
+  .val { min-height: 12pt; }
+  .narrow { width: 48pt; }
 </style>
 </head>
 <body>
+<div class="page">
   <h1>添付資料２</h1>
   ${seller?.sellerNumber ? `<div class="sub">売主番号：${seller.sellerNumber}</div>` : ''}
 
@@ -321,8 +326,12 @@ export default function AttachedDocument2Page() {
     <div class="box"><div class="box-lbl">訪問予定日時</div><div class="box-val">${visitSchedule}</div></div>
   </div>
 
-  <div class="comment-box"><strong style="font-size:7.5pt;color:#555;">コメント内容</strong><br>${(seller?.comments || '（コメントなし）').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+  <div class="comment-box">
+    <div class="comment-lbl">コメント内容</div>
+    ${(seller?.comments || '（コメントなし）').replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+  </div>
 
+  <div class="tables-block">
   <table class="info-table">
     <tr>
       <td class="lbl">小学校</td><td class="val">${fields.elementary_school_name || ''}</td><td class="val narrow">${fields.elementary_school_walk || ''}</td>
@@ -338,11 +347,12 @@ export default function AttachedDocument2Page() {
 
   <table class="info-table">
     <tr>
-      <td class="lbl" style="width:56pt">固定資産税</td>
+      <td class="lbl" style="width:52pt">固定資産税</td>
       <td class="val">${fields.property_tax || ''}</td>
     </tr>
   </table>
-
+  </div>
+</div>
   <script>window.onload = function(){ window.print(); }</script>
 </body>
 </html>`;
