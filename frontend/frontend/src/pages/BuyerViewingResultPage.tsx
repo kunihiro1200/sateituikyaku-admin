@@ -108,7 +108,7 @@ function generatePreDaySmsBody(buyer: {
   name?: string | null;
   viewing_date?: string | null;
   viewing_time?: string | null;
-}, propertyAddress: string, googleMapUrl: string): string {
+}, propertyAddress: string, googleMapUrl: string, isFukuoka: boolean = false): string {
   const name = buyer.name || 'お客様';
   const dateStr = buyer.viewing_date || '';
   const parts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-');
@@ -141,7 +141,11 @@ function generatePreDaySmsBody(buyer: {
   }
   const mapLine = googleMapUrl ? `\n${googleMapUrl}` : '';
 
-  return `【内覧のご連絡　☆返信不可☆】\n${name}様\nお世話になっております。㈱いふうです。\n${dayWord}の${dateLabel} ${timeStr}から${propertyAddress}の内覧をよろしくお願いいたします。${mapLine}\nこのメールは返信不可となっておりますので、何かございましたら下記連絡先へお願いいたします。\n【電話】(10時～18時）*水曜定休\n097-533-2022\n【メールアドレス】\ntenant@ifoo-oita.com\nそれではお会いできるのを楽しみにしております。\n㈱いふう`;
+  // 福岡の物件は「くじら不動産」表記・電話番号にする
+  const companyName = isFukuoka ? '㈱くじら不動産' : '㈱いふう';
+  const phoneNumber = isFukuoka ? '092-401-5331' : '097-533-2022';
+
+  return `【内覧のご連絡　☆返信不可☆】\n${name}様\nお世話になっております。${companyName}です。\n${dayWord}の${dateLabel} ${timeStr}から${propertyAddress}の内覧をよろしくお願いいたします。${mapLine}\nこのメールは返信不可となっておりますので、何かございましたら下記連絡先へお願いいたします。\n【電話】(10時～18時）*水曜定休\n${phoneNumber}\n【メールアドレス】\ntenant@ifoo-oita.com\nそれではお会いできるのを楽しみにしております。\n${companyName}`;
 }
 
 /**
@@ -1275,7 +1279,11 @@ export default function BuyerViewingResultPage() {
                   ? (property?.display_address || property?.address || property?.property_address || buyer.other_company_property || '')
                   : (property?.address || property?.display_address || property?.property_address || buyer.other_company_property || '');
                 const googleMapUrl = property?.google_map_url || '';
-                const smsBody = generatePreDaySmsBody(buyer, address, googleMapUrl);
+                // 福岡（くじら不動産）判定: 物件番号がFI始まり、または買主番号がFI/FK始まり
+                const propNumUpper = String(property?.property_number || '').toUpperCase();
+                const buyerNumUpper = String(buyer.buyer_number || buyer_number || '').toUpperCase();
+                const isFukuoka = propNumUpper.startsWith('FI') || buyerNumUpper.startsWith('FI') || buyerNumUpper.startsWith('FK');
+                const smsBody = generatePreDaySmsBody(buyer, address, googleMapUrl, isFukuoka);
                 const smsLink = `sms:${buyer.phone_number}?body=${encodeURIComponent(smsBody)}`;
                 return (
                   <Button
