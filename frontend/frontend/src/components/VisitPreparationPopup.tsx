@@ -430,6 +430,9 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
           </a>
           <Typography component="span" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
             （両面カラー印刷　土地建物の場合のみ2-3枚）
+            <Typography component="span" sx={{ color: 'error.main', fontSize: '0.85rem', ml: 1 }}>
+              戸建ては築年数近いものを選択
+            </Typography>
           </Typography>
         </Box>
       ),
