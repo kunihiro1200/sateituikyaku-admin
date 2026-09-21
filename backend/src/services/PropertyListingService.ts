@@ -123,6 +123,7 @@ export class PropertyListingService {
         private_mail_delivery,
         signboard,
         sea_view,
+        hot_spring_status,
         created_at,
         updated_at
       `, { count: 'exact' });

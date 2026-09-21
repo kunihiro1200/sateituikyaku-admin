@@ -30,6 +30,8 @@ interface PropertyListing {
   signboard?: string;
   // 海
   sea_view?: string;
+  // 温泉/引込状況
+  hot_spring_status?: string;
   [key: string]: any;
 }
 
@@ -61,6 +63,7 @@ const STATUS_PRIORITY: Record<string, number> = {
   '一般公開中物件': 20,
   '看板有り物件': 20.5,
   '海見える物件': 20.6,
+  '温泉有り物件': 20.7,
   'Y専任公開中': 21,
   '麻専任公開中': 22,
   '久専任公開中': 23,
@@ -279,6 +282,15 @@ export default function PropertySidebarStatus({
     ).length;
     if (seaViewCount > 0) counts['海見える物件'] = seaViewCount;
 
+    // 温泉有り物件カテゴリー（公開中物件 かつ 温泉/引込状況が「引き込み可」等 かつ 非公開でない）
+    // 判定ロジックは物件情報バーの温泉表示と同一
+    const hotSpringCount = listings.filter(l => {
+      if (!l.atbb_status?.includes('公開中') || l.atbb_status?.includes('非公開')) return false;
+      const status = l.hot_spring_status || '';
+      return (status.includes('引込') || status.includes('引き込み')) && status.includes('可');
+    }).length;
+    if (hotSpringCount > 0) counts['温泉有り物件'] = hotSpringCount;
+
     // 他社物件カテゴリー（sidebar_status で判別）
     const tashaFukuokaCount = listings.filter(l => l.sidebar_status === '他社物件_福岡').length;
     const tashaOitaCount = listings.filter(l => l.sidebar_status === '他社物件_大分').length;
@@ -349,7 +361,7 @@ export default function PropertySidebarStatus({
       // 専任公開中系（X専任公開中）にも薄い背景色
       const isSeninBg = key.endsWith('専任公開中') || key === '専任・公開中';
       const isHighBg = !isSeninBg && (HIGH_PRIORITY_BG_STATUSES.has(key) || key.startsWith('未報告'));
-      const isSignboardBg = key === '看板有り物件' || key === '海見える物件';
+      const isSignboardBg = key === '看板有り物件' || key === '海見える物件' || key === '温泉有り物件';
       // 一般媒介の未完了は太字赤字、それ以外の高優先度は赤字
       const isBoldRed = key === '未完了' && generalMediationIncompleteCount > 0;
       const isRed = HIGH_PRIORITY_RED_STATUSES.has(key);

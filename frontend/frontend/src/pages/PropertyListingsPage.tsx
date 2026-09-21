@@ -419,6 +419,13 @@ export default function PropertyListingsPage() {
         listings = listings.filter(l =>
           l.atbb_status?.includes('公開中') && !isPrivateStatus(l.atbb_status) && l.sea_view === '見える'
         );
+      } else if (sidebarStatus === '温泉有り物件') {
+        // 「温泉有り物件」: 公開中物件 かつ 温泉/引込状況が「引き込み可」等 かつ 非公開でない
+        listings = listings.filter(l => {
+          if (!l.atbb_status?.includes('公開中') || isPrivateStatus(l.atbb_status)) return false;
+          const status = (l as any).hot_spring_status || '';
+          return (status.includes('引込') || status.includes('引き込み')) && status.includes('可');
+        });
       } else {
         listings = listings.filter(l => l.sidebar_status === sidebarStatus);
       }
