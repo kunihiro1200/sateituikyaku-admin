@@ -356,7 +356,7 @@ export default function AttachedDocument2Page() {
       <td class="lbl" style="width:52pt">固定資産税</td>
       <td class="val">${fields.property_tax || `<span style="color:#bbb;font-size:7.5pt">${isMansion ? 'マンションは５年以内に軽減税率あり' : '戸建ては３年以内に軽減税率あり'}</span>`}</td>
       <td class="lbl" style="width:44pt">駐車場</td>
-      <td class="val">${fields.parking || '<span style="color:#bbb;font-size:7.5pt">堀車庫の場合は高さ、幅、奥行き M</span>'}</td>
+      <td class="val">${fields.parking || `<span style="color:#bbb;font-size:7.5pt">${isMansion ? '機械式の場合　高さ、奥行き、幅を確認' : '堀車庫の場合は高さ、幅、奥行き M'}</span>`}</td>
       ${isMansion ? `<td class="lbl" style="width:36pt">ペット</td><td class="val">${fields.pet || ''}</td>` : ''}
     </tr>
   </table>
@@ -619,7 +619,7 @@ export default function AttachedDocument2Page() {
                     fullWidth size="small"
                     value={fields.parking}
                     onChange={(e) => set('parking', e.target.value)}
-                    placeholder="堀車庫の場合は高さ、幅、奥行き M"
+                    placeholder={isMansion ? '機械式の場合　高さ、奥行き、幅を確認' : '堀車庫の場合は高さ、幅、奥行き M'}
                     sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' }, '& input::placeholder': { fontSize: '8pt', color: '#bbb' } }}
                   />
                 </Box>
