@@ -397,8 +397,8 @@ export default function AttachedDocument2Page() {
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
         {/* ヘッダー（印刷時非表示） */}
         <Box className="no-print" sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper', display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Button startIcon={<ArrowBack />} variant="outlined" onClick={() => navigate(-1)} size="small">戻る</Button>
-          <Typography variant="h6" fontWeight="bold">添付資料２</Typography>
+          <Button startIcon={<ArrowBack />} variant="outlined" onClick={() => { if (window.history.length > 1) { navigate(-1); } else { window.close(); } }} size="small">戻る</Button>
+          <Typography variant="h6" fontWeight="bold">添付資料２（試作中）</Typography>
           <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
             <Button startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
               variant="outlined" onClick={handleSave} disabled={saving || !isDirty} size="small"
