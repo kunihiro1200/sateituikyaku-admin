@@ -45,6 +45,9 @@ export interface AttachedDocument2Data {
   site_check_memo2?: string | null;
   site_check_memo3?: string | null;
   site_check_memo4?: string | null;
+  // ハザードマップ・抵当権
+  hazard_map?: string | null;
+  mortgage_info?: string | null;
 }
 
 const EMPTY_RESPONSE = (sellerId: string) => ({
@@ -74,6 +77,8 @@ const EMPTY_RESPONSE = (sellerId: string) => ({
   site_check_memo2: null,
   site_check_memo3: null,
   site_check_memo4: null,
+  hazard_map: null,
+  mortgage_info: null,
 });
 
 // 売主の添付資料２入力項目を取得
@@ -135,6 +140,8 @@ router.put('/sellers/:sellerId/attached-document2', async (req: Request, res: Re
       site_check_memo2: body.site_check_memo2 || null,
       site_check_memo3: body.site_check_memo3 || null,
       site_check_memo4: body.site_check_memo4 || null,
+      hazard_map: body.hazard_map || null,
+      mortgage_info: body.mortgage_info || null,
       updated_at: new Date().toISOString(),
       updated_by: body.updated_by || null,
     };

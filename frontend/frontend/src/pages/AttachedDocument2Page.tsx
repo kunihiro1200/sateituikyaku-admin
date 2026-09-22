@@ -81,6 +81,8 @@ interface DocumentFields {
   site_check_memo2: string;
   site_check_memo3: string;
   site_check_memo4: string;
+  hazard_map: string;
+  mortgage_info: string;
 }
 
 const EMPTY_FIELDS: DocumentFields = {
@@ -109,6 +111,8 @@ const EMPTY_FIELDS: DocumentFields = {
   site_check_memo2: '',
   site_check_memo3: '',
   site_check_memo4: '',
+  hazard_map: '',
+  mortgage_info: '',
 };
 
 const fmt = (amount?: number) =>
@@ -174,6 +178,8 @@ export default function AttachedDocument2Page() {
         site_check_memo2: d.site_check_memo2 || '',
         site_check_memo3: d.site_check_memo3 || '',
         site_check_memo4: d.site_check_memo4 || '',
+        hazard_map: d.hazard_map || '',
+        mortgage_info: d.mortgage_info || '',
       });
       setIsDirty(false);
     } catch (err: any) {
@@ -328,6 +334,10 @@ export default function AttachedDocument2Page() {
       + (seller?.comments || '（コメントなし）').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       + '</div>'
       + '<div class="tblock">'
+      + '<table class="it"><tr>'
+      + '<td class="lbl">ハザードマップ</td><td class="val" style="color:' + (fields.hazard_map ? '#000' : '#bbb') + '">' + (fields.hazard_map || '水害、土砂災害') + '</td>'
+      + '<td class="lbl">抵当権</td><td class="val" style="color:' + (fields.mortgage_info ? '#000' : '#bbb') + '">' + (fields.mortgage_info || '抵当権の種類と抵当権先') + '</td>'
+      + '</tr></table>'
       + '<table class="it"><tr>'
       + '<td class="lbl">小学校</td><td class="val">' + (fields.elementary_school_name || '') + '</td><td class="val narrow">' + (fields.elementary_school_walk || '') + '</td>'
       + '<td class="lbl">中学校</td><td class="val">' + (fields.junior_high_school_name || '') + '</td><td class="val narrow">' + (fields.junior_high_school_walk || '') + '</td>'
@@ -583,6 +593,27 @@ export default function AttachedDocument2Page() {
             <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
               <Typography sx={{ fontWeight: 'bold', fontSize: '8pt', color: '#555', mb: 0.3 }}>コメント内容</Typography>
               <Typography sx={{ fontSize: '8pt', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{seller?.comments || '（コメントなし）'}</Typography>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
+              <Grid container spacing={1.5}>
+                {/* ハザードマップ */}
+                <Grid item xs={6}>
+                  <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', mb: 0.4 }}>ハザードマップ</Typography>
+                  <TextField fullWidth size="small" value={fields.hazard_map}
+                    onChange={(e) => set('hazard_map', e.target.value)}
+                    placeholder="水害、土砂災害"
+                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' }, '& input::placeholder': { color: '#bbb', opacity: 1 } }} />
+                </Grid>
+                {/* 抵当権 */}
+                <Grid item xs={6}>
+                  <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', mb: 0.4 }}>抵当権</Typography>
+                  <TextField fullWidth size="small" value={fields.mortgage_info}
+                    onChange={(e) => set('mortgage_info', e.target.value)}
+                    placeholder="抵当権の種類と抵当権先"
+                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' }, '& input::placeholder': { color: '#bbb', opacity: 1 } }} />
+                </Grid>
+              </Grid>
             </Paper>
 
             <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
