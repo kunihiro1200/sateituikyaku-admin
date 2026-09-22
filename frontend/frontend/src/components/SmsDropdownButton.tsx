@@ -87,7 +87,10 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
     handleClose();
     const name = buyerName || 'お客様';
     const address = propertyAddress;
-    const viewingFormUrl = `${VIEWING_FORM_BASE}&entry.267319544=${buyerNumber}&entry.2056434590=${encodeURIComponent(address)}`;
+    // SMSの文字数を抑えるため、予約フォームURLには買主番号（entry.267319544）のみを付与する。
+    // 住所プリフィル（entry.2056434590）はURLを約90〜100文字長くするため送らない（案A）。
+    // フォーム側は買主番号から物件を特定できる。
+    const viewingFormUrl = `${VIEWING_FORM_BASE}&entry.267319544=${buyerNumber}`;
     const preViewingSection = preViewingNotes
       ? `\n\n${preViewingNotes}`
       : '';

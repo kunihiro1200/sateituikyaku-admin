@@ -33,7 +33,8 @@ function generateSmsMessage(
 
   const name = buyerName || 'お客様';
   const address = propertyAddress;
-  const viewingFormUrl = `${VIEWING_FORM_BASE}&entry.267319544=${buyerNumber}&entry.2056434590=${encodeURIComponent(address)}`;
+  // 本番コードに合わせて、予約フォームURLには買主番号のみを付与する（住所プリフィルは送らない）
+  const viewingFormUrl = `${VIEWING_FORM_BASE}&entry.267319544=${buyerNumber}`;
 
   // 修正済みコード: preViewingNotes が空でない場合のみセクションを追加
   const preViewingSection = preViewingNotes
