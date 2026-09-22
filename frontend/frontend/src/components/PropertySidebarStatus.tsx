@@ -287,7 +287,7 @@ export default function PropertySidebarStatus({
     const hotSpringCount = listings.filter(l => {
       if (!l.atbb_status?.includes('公開中') || l.atbb_status?.includes('非公開')) return false;
       const status = l.hot_spring_status || '';
-      return (status.includes('引込') || status.includes('引き込み')) && status.includes('可');
+      return status === '有' || ((status.includes('引込') || status.includes('引き込み')) && status.includes('可'));
     }).length;
     if (hotSpringCount > 0) counts['温泉有り物件'] = hotSpringCount;
 
