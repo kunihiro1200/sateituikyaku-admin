@@ -49,6 +49,7 @@ import SalesMeetingAgendaPage from './pages/SalesMeetingAgendaPage';
 import SalesMeetingContractStatsPage from './pages/SalesMeetingContractStatsPage';
 import SalesMeetingSalesStatsPage from './pages/SalesMeetingSalesStatsPage';
 import SalesMeetingLossAnalysisPage from './pages/SalesMeetingLossAnalysisPage';
+import SalesMeetingLossTrendPage from './pages/SalesMeetingLossTrendPage';
 import MoneyForwardExpensePage from './pages/MoneyForwardExpensePage';
 import BuyerNearbyPropertiesPage from './pages/BuyerNearbyPropertiesPage';
 import NearbyBuyersPage from './pages/NearbyBuyersPage';
@@ -467,6 +468,14 @@ function App() {
         element={
           <ProtectedRoute>
             <SalesMeetingLossAnalysisPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shared-items/sales-meeting-loss-trend"
+        element={
+          <ProtectedRoute>
+            <SalesMeetingLossTrendPage />
           </ProtectedRoute>
         }
       />
