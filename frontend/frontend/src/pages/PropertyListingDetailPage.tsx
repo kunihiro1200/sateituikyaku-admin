@@ -2611,14 +2611,14 @@ export default function PropertyListingDetailPage() {
                   displayEmpty
                 >
                   <MenuItem value=""><em>未選択</em></MenuItem>
-                  <MenuItem value="引き込み可">引き込み可</MenuItem>
-                  <MenuItem value="引き込み不可">引き込み不可</MenuItem>
+                  <MenuItem value="有">有</MenuItem>
+                  <MenuItem value="無">無</MenuItem>
                 </Select>
               </FormControl>
             ) : (() => {
               const status = data.hot_spring_status || '';
-              // スプレッドシート「温泉/引込状況」が「引き込み可」等のとき温泉有と判定
-              const hasOnsen = (status.includes('引込') || status.includes('引き込み')) && status.includes('可');
+              // 「有」を選択した場合、またはスプレッドシート「温泉/引込状況」が「引き込み可」等のとき温泉有と判定
+              const hasOnsen = status === '有' || ((status.includes('引込') || status.includes('引き込み')) && status.includes('可'));
               return (
                 <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem', color: hasOnsen ? 'success.main' : 'text.primary' }}>
                   {hasOnsen ? '有' : '-'}

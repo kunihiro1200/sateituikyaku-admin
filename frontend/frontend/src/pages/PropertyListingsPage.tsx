@@ -424,7 +424,7 @@ export default function PropertyListingsPage() {
         listings = listings.filter(l => {
           if (!l.atbb_status?.includes('公開中') || isPrivateStatus(l.atbb_status)) return false;
           const status = (l as any).hot_spring_status || '';
-          return (status.includes('引込') || status.includes('引き込み')) && status.includes('可');
+          return status === '有' || ((status.includes('引込') || status.includes('引き込み')) && status.includes('可'));
         });
       } else {
         listings = listings.filter(l => l.sidebar_status === sidebarStatus);
