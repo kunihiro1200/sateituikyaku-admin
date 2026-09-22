@@ -607,7 +607,9 @@ export default function AttachedDocument2Page() {
 
             <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
               <Typography sx={{ fontWeight: 'bold', fontSize: '8pt', color: '#555', mb: 0.3 }}>コメント内容</Typography>
-              <Typography sx={{ fontSize: '8pt', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{seller?.comments || '（コメントなし）'}</Typography>
+              <Typography sx={{ fontSize: '8pt', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                {seller?.comments ? seller.comments.replace(/<[^>]+>/g, '') : '（コメントなし）'}
+              </Typography>
             </Paper>
 
             <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
