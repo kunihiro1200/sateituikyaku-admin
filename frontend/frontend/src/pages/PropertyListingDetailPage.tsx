@@ -2945,6 +2945,21 @@ export default function PropertyListingDetailPage() {
                       )}
                     </Grid>
                   )}
+                  {(isViewingInfoEditMode || data.viewing_available_date) && (
+                    <Grid item xs={12}>
+                      <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>内覧可能日</Typography>
+                      {isViewingInfoEditMode ? (
+                        <TextField
+                          fullWidth
+                          size="small"
+                          value={editedData.viewing_available_date !== undefined ? editedData.viewing_available_date : (data.viewing_available_date || '')}
+                          onChange={(e) => handleFieldChange('viewing_available_date', e.target.value)}
+                        />
+                      ) : (
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.viewing_available_date}</Typography>
+                      )}
+                    </Grid>
+                  )}
                   {(isViewingInfoEditMode || data.viewing_parking) && (
                     <Grid item xs={12}>
                       <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>内覧時駐車場</Typography>
@@ -3064,21 +3079,6 @@ export default function PropertyListingDetailPage() {
                       </Grid>
                     );
                   })()}
-                  {(isViewingInfoEditMode || data.viewing_available_date) && (
-                    <Grid item xs={6}>
-                      <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>内覧可能日</Typography>
-                      {isViewingInfoEditMode ? (
-                        <TextField
-                          fullWidth
-                          size="small"
-                          value={editedData.viewing_available_date !== undefined ? editedData.viewing_available_date : (data.viewing_available_date || '')}
-                          onChange={(e) => handleFieldChange('viewing_available_date', e.target.value)}
-                        />
-                      ) : (
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.viewing_available_date}</Typography>
-                      )}
-                    </Grid>
-                  )}
                   {(isViewingInfoEditMode || data.building_viewing) && (
                     <Grid item xs={6}>
                       <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>建物内覧</Typography>
