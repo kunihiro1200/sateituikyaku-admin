@@ -395,11 +395,24 @@ export default function AttachedDocument2Page() {
 
     // ── 3枚目 ──
     const B = (s: string) => '<td style="border:1pt solid #000;padding:3pt 5pt;' + s + '">';
-    const items: [string, string][] = [
+    const isFukuoka = !!(seller?.sellerNumber?.startsWith('FI'));
+
+    // 取得書類一覧（大分版 / 福岡版）
+    const items: [string, string][] = isFukuoka ? [
+      ['固定資産税公課証明', '博多区役所２F（委任状、本人確認書の写し）'],
+      ['建築概要書', '福岡市役所４F　６番窓口　PCで物件検索、証明書の交付申請　２〜３日後発行'],
+      ['用途地域図（別府は備考欄に記入）<br>（宅地造成工事規制区域か必ず確認）', '用途地域図、関連規制情報案内表（写し）（福岡市役所４F　都市計画課）'],
+      ['道路台帳図（別府の場合はゼンリンの住宅情報より<br>目視等を取得後、役所で確認）', 'WEB取得'],
+      ['市道証明書（市道の場合のみ）', '市道以外の確認、証明書（福岡市役所４F奥の窓口）'],
+      ['別府市：指定道路図の番号（例：10）', '番号：'],
+      ['上水道の前面道路の配管図', 'WEB取得'],
+      ['上水道の敷地内配管図', 'おそらく水道局'],
+      ['公共下水か浄化槽か「下水道管図」を調べても不明な場合は確認する', 'WEB取得'],
+    ] : [
       ['固定資産税公課証明', ''],
       ['建築概要書＆証明書', ''],
       ['用途地域図（別府は備考欄に記入）<br>（宅地造成工事規制区域か必ず確認）', '景観　環境　居住誘導　宅地造成'],
-      ['道路台地図（別府の場合はゼンリンの住宅情報より<br>目視等を取得後、役所で確認）', ''],
+      ['道路台帳図（別府の場合はゼンリンの住宅情報より<br>目視等を取得後、役所で確認）', ''],
       ['市道証明書（市道の場合のみ）', '番号：'],
       ['別府市：指定道路図の番号（例：10）', '番号：'],
       ['道路種類確認（市道でない場合その管轄がどこなのか）<br>（位置指定道路確認）', ''],
@@ -413,7 +426,7 @@ export default function AttachedDocument2Page() {
       + '<p style="font-size:8pt;margin:0 0 4pt">取得前に「ぜんりん」「熊本」「下水道管図」を印刷していくこと。<br>「自分の住所記載の印鑑」を忘れないこと。　※別府の場合は「下水道管図」は印刷不可</p>'
       + '<div style="display:flex;gap:6pt;margin-bottom:8pt;align-items:center">'
       + '<span style="font-weight:bold">物件名 【</span>'
-      + '<div style="flex:1;border-bottom:1pt solid #000;min-height:12pt"></div>'
+      + '<div style="flex:1;border-bottom:1pt solid #000;min-height:12pt;font-size:9pt;padding-bottom:1pt">' + propertyAddress + '</div>'
       + '<span style="font-weight:bold">】</span>'
       + '<span style="margin-left:10pt">年　　月　　日</span>'
       + '</div>'
