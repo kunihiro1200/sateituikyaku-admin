@@ -218,7 +218,26 @@ export default function AttachedDocument2Page() {
     }
   };
 
-  // ── 物件情報 ──
+  // コメントのHTMLタグを完全除去するヘルパー
+  const stripHtml = (html: string): string => {
+    if (!html) return '';
+    return html
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<\/div>/gi, '\n')
+      .replace(/<\/tr>/gi, '\n')
+      .replace(/<\/td>/gi, '\t')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
   const propertyAddress = seller?.property?.address || seller?.propertyAddress || seller?.property_address || '-';
   const propertyType    = seller?.property?.propertyType || seller?.propertyType || '-';
   const landArea        = seller?.property?.landArea ?? seller?.landArea;
@@ -331,7 +350,7 @@ export default function AttachedDocument2Page() {
       + '<div class="box"><div class="blbl">訪問予定日時</div><div class="bval">' + visitSchedule + '</div></div>'
       + '</div>'
       + '<div class="cbox"><div class="clbl">コメント内容</div>'
-      + (seller?.comments || '（コメントなし）').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      + (seller?.comments ? stripHtml(seller.comments) : '（コメントなし）')
       + '</div>'
       + '<div class="tblock">'
       + '<table class="it"><tr>'
@@ -608,7 +627,7 @@ export default function AttachedDocument2Page() {
             <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
               <Typography sx={{ fontWeight: 'bold', fontSize: '8pt', color: '#555', mb: 0.3 }}>コメント内容</Typography>
               <Typography sx={{ fontSize: '8pt', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
-                {seller?.comments ? seller.comments.replace(/<[^>]+>/g, '') : '（コメントなし）'}
+                {seller?.comments ? stripHtml(seller.comments) : '（コメントなし）'}
               </Typography>
             </Paper>
 
