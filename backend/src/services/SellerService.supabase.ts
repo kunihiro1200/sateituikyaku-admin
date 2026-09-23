@@ -3234,8 +3234,11 @@ export class SellerService extends BaseRepository {
       const { data: rows, error } = await this.table('seller_sidebar_counts')
         .select('category, count, label, assignee, updated_at');
 
-      if (error || !rows || rows.length === 0) {
-        console.warn('⚠️ [SidebarCounts] Table empty or error, falling back to DB calculation and rebuilding table:', error?.message);
+      // テーブルが空、またはメインカテゴリー（todayCall）が欠落している場合はフォールバック
+      // ⚠️ Cronが途中でクラッシュした場合、テーブルに行が残っていてもtodayCall系が欠落することがある
+      const hasTodayCallRow = rows.some((r: any) => r.category === 'todayCall' && !r.label && !r.assignee);
+      if (error || !rows || rows.length === 0 || !hasTodayCallRow) {
+        console.warn('⚠️ [SidebarCounts] Table empty, error, or missing todayCall row — falling back to DB calculation and rebuilding table:', error?.message);
         // フォールバック計算を実行しつつ、テーブルも非同期で再構築する（DBリスタート後の復旧）
         import('./SellerSidebarCountsUpdateService').then(({ SellerSidebarCountsUpdateService }) => {
           const updateService = new SellerSidebarCountsUpdateService(this.supabase);
