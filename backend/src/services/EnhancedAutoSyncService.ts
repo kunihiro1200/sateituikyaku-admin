@@ -892,9 +892,10 @@ export class EnhancedAutoSyncService {
           }
 
           // unreachable_statusの比較
+          // スプシが空欄でDBに値がある場合は差分とみなさない（通話モードで設定した値をスプシ空欄で消さないため）
           const dbUnreachableStatus = dbSeller.unreachable_status || '';
           const sheetUnreachable = sheetUnreachableStatus || '';
-          if (sheetUnreachable !== dbUnreachableStatus) {
+          if (sheetUnreachable !== dbUnreachableStatus && sheetUnreachable !== '') {
             needsUpdate = true;
           }
 
@@ -1359,9 +1360,14 @@ export class EnhancedAutoSyncService {
       status: mappedData.status || '追客中',
       pinrich_status: mappedData.pinrich_status || null,
       is_unreachable: this.convertIsUnreachable(row['不通']),
-      unreachable_status: row['不通'] ? String(row['不通']) : null,
       updated_at: new Date().toISOString(),
     };
+
+    // unreachable_status: スプシに値がある場合のみ更新（空欄の場合はDBの値を保持）
+    // 理由: 通話モードページで設定した不通ステータスが、スプシ空欄の同期で消えてしまうため
+    if (row['不通']) {
+      updateData.unreachable_status = String(row['不通']);
+    }
 
     // comments: スプシに値がある場合のみ更新（空欄の場合はDBの値を保持）
     // 理由: 通話モードページでコメントを更新した後、スプシへの書き戻しが
@@ -1733,9 +1739,13 @@ export class EnhancedAutoSyncService {
       next_call_date: mappedData.next_call_date || null,
       pinrich_status: mappedData.pinrich_status || null,
       is_unreachable: this.convertIsUnreachable(row['不通']),
-      unreachable_status: row['不通'] ? String(row['不通']) : null,
       comments: row['コメント'] ? String(row['コメント']) : null,
     };
+    // unreachable_status: スプシに値がある場合のみ設定（空欄の場合はDBの値を保持）
+    // 理由: 通話モードページで設定した不通ステータスが、スプシ空欄の同期で消えてしまうため
+    if (row['不通']) {
+      encryptedData.unreachable_status = String(row['不通']);
+    }
     // デバッグ用: コメント混入バグ調査のため、新規行作成時にどの内容を書き込むか記録する
     // （別売主のコメントが混入する不具合の原因調査用。原因判明後に削除可）
     console.log(`🔍 [syncSingleSeller] ${sellerNumber}: 新規作成コメント -> "${String(row['コメント'] || '').slice(0, 80)}"`);
