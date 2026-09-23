@@ -129,6 +129,12 @@ export class SpreadsheetSyncService {
         delete sheetRow['コメント'];
       }
 
+      // DBの不通が空の場合はスプシの不通欄を上書きしない
+      // （通話モードページで設定した不通ステータスが、同期タイミングずれで消えるのを防ぐ二重保護）
+      if (!sheetRow['不通']) {
+        delete sheetRow['不通'];
+      }
+
       // 既存行を検索（リトライロジック付き）
       const existingRowIndex = await this.findRowBySellerIdWithRetry(seller.seller_number);
 
@@ -249,6 +255,10 @@ export class SpreadsheetSyncService {
           // DBのコメントが空の場合はスプシのコメントを上書きしない
           if (!sheetRow['コメント']) {
             delete sheetRow['コメント'];
+          }
+          // DBの不通が空の場合はスプシの不通欄を上書きしない
+          if (!sheetRow['不通']) {
+            delete sheetRow['不通'];
           }
 
           // 売主番号で既存行を検索（リトライロジック付き）
