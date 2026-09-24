@@ -1276,6 +1276,20 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           buyer_contact_tel: normalizePhoneNumber(editedData.buyer_contact_tel) ?? null,
         }),
       };
+      // サイト登録締め日と公開予定日は常に同じ日で保存する。
+      // 片方だけ編集された場合や、既存データで片方だけ入っている場合も、両方を同じ値に揃える。
+      // getValue は補完ロジックを含むため、ここでは生の値（editedData → data）で判定する。
+      {
+        const rawDeadline = editedData.site_registration_deadline !== undefined
+          ? editedData.site_registration_deadline : data?.site_registration_deadline;
+        const rawPublish = editedData.publish_scheduled_date !== undefined
+          ? editedData.publish_scheduled_date : data?.publish_scheduled_date;
+        if (!isEmpty(rawDeadline) && isEmpty(rawPublish)) {
+          normalizedData.publish_scheduled_date = rawDeadline;
+        } else if (!isEmpty(rawPublish) && isEmpty(rawDeadline)) {
+          normalizedData.site_registration_deadline = rawPublish;
+        }
+      }
       await api.put(`/api/work-tasks/${propertyNumber}`, normalizedData);
       setSnackbar({ open: true, message: '保存しました', severity: 'success' });
       await fetchData(true);
@@ -1754,6 +1768,14 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     const raw = editedData[field] !== undefined ? editedData[field] : data?.[field];
     if (field === 'seller_contact_tel' || field === 'buyer_contact_tel') {
       return normalizePhoneNumber(raw) ?? raw;
+    }
+    // サイト登録締め日と公開予定日は同じ日。片方が空の場合はもう片方の値で補完して表示する
+    if (field === 'site_registration_deadline' || field === 'publish_scheduled_date') {
+      if (isEmpty(raw)) {
+        const otherField = field === 'site_registration_deadline' ? 'publish_scheduled_date' : 'site_registration_deadline';
+        const otherRaw = editedData[otherField] !== undefined ? editedData[otherField] : data?.[otherField];
+        if (!isEmpty(otherRaw)) return otherRaw;
+      }
     }
     return raw;
   };
