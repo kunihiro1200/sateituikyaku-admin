@@ -34,12 +34,15 @@ interface PropertyData {
   sales_assignee?: string;
   suumo_url?: string;
   suumo_registered?: string | null;
+  suumo_registration_done?: string | null;
+  publish_notice_email?: string | null;
   reins_certificate_email?: string | null;
   cc_assignee?: string | null;
   report_date_setting?: string | null;
   reins_url?: string | null;
   address?: string | null;
   sales_price?: number | null;
+  atbb_status?: string | null;
 }
 
 interface Employee {
@@ -152,12 +155,16 @@ export default function ReinsRegistrationPage() {
         sales_assignee: d.sales_assignee ?? '',
         suumo_url: d.suumo_url ?? '',
         suumo_registered: d.suumo_registered ?? null,
+        suumo_registration_done: d.suumo_registration_done ?? null,
+        publish_notice_email: d.publish_notice_email ?? null,
         reins_certificate_email: d.reins_certificate_email ?? null,
         cc_assignee: d.cc_assignee ?? null,
         report_date_setting: d.report_date_setting ?? null,
         reins_url: d.reins_url ?? null,
         address: d.address ?? null,
         sales_price: d.sales_price ?? null,
+        atbb_status: d.atbb_status ?? null,
+        property_number: d.property_number ?? propertyNumber,
       });
       setSuumoUrlInput(d.suumo_url ?? '');
 
@@ -376,6 +383,13 @@ export default function ReinsRegistrationPage() {
     }
   };
 
+  // SUUMO登録・公開お知らせメールの判定対象か（ATBB=一般・公開中 かつ AA14824以降）
+  const effectivePropertyNumber = data?.property_number ?? propertyNumber ?? '';
+  const aaMatch = /^AA(\d+)$/.exec(effectivePropertyNumber.trim());
+  const aaNumber = aaMatch ? parseInt(aaMatch[1], 10) : NaN;
+  const isGeneralPublicTarget =
+    (data?.atbb_status ?? '') === '一般・公開中' && !isNaN(aaNumber) && aaNumber >= 14824;
+
   return (
     <Container maxWidth="sm" sx={{ py: 4 }}>
       {/* ヘッダー */}
@@ -513,8 +527,56 @@ export default function ReinsRegistrationPage() {
             </Box>
           </Paper>
 
+          {/* SUUMO登録（済/未）: 一般・公開中(AA14824以降)のみ表示 */}
+          {isGeneralPublicTarget && (
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1.5 }}>
+                SUUMO登録
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                {['済', '未'].map((option) => (
+                  <Button
+                    key={option}
+                    variant={data?.suumo_registration_done === option ? 'contained' : 'outlined'}
+                    onClick={() => handleUpdate('suumo_registration_done', option)}
+                    disabled={updating === 'suumo_registration_done'}
+                    sx={{ minWidth: 80 }}
+                  >
+                    {updating === 'suumo_registration_done' ? <CircularProgress size={16} /> : option}
+                  </Button>
+                ))}
+              </Box>
+            </Paper>
+          )}
+
+          {/* 公開お知らせメール配信（済/未）: 一般・公開中(AA14824以降)のみ表示 */}
+          {isGeneralPublicTarget && (
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1.5 }}>
+                公開お知らせメール配信
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                {['済', '未'].map((option) => (
+                  <Button
+                    key={option}
+                    variant={data?.publish_notice_email === option ? 'contained' : 'outlined'}
+                    onClick={() => handleUpdate('publish_notice_email', option)}
+                    disabled={updating === 'publish_notice_email'}
+                    sx={{ minWidth: 80 }}
+                  >
+                    {updating === 'publish_notice_email' ? <CircularProgress size={16} /> : option}
+                  </Button>
+                ))}
+              </Box>
+            </Paper>
+          )}
+
           {/* 残りのフィールド */}
-          {REINS_FIELDS.filter((f) => f.key !== 'reins_certificate_email').map((field) => (
+          {/* ※ 一般・公開中(AA14824以降)では「報告日設定」を非表示にする */}
+          {REINS_FIELDS
+            .filter((f) => f.key !== 'reins_certificate_email')
+            .filter((f) => !(f.key === 'report_date_setting' && isGeneralPublicTarget))
+            .map((field) => (
             <Paper key={field.key} sx={{ p: 3 }}>
               <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1.5 }}>
                 {field.label}

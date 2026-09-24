@@ -116,6 +116,8 @@ export class PropertyListingService {
         single_listing,
         suumo_url,
         suumo_registered,
+        suumo_registration_done,
+        publish_notice_email,
         reins_certificate_email,
         display_address,
         offer_status,

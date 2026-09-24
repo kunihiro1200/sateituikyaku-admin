@@ -10,6 +10,8 @@ export interface PropertyListing {
   single_listing: string | null;
   suumo_url: string | null;
   suumo_registered: string | null;
+  suumo_registration_done?: string | null;   // SUUMO登録（済/未）: 一般・公開中(AA14824以降)向け
+  publish_notice_email?: string | null;       // 公開お知らせメール配信（済/未）: 一般・公開中(AA14824以降)向け
   offer_status: string | null;
   report_date: string | null;
   report_assignee: string | null;
@@ -33,6 +35,8 @@ export const PROPERTY_STATUS_DEFINITIONS = [
   { key: 'today_publish', label: '本日公開予定', color: '#4caf50' },
   { key: 'suumo_required', label: 'SUUMO URL　要登録', color: '#2196f3' },
   { key: 'reins_suumo_required', label: 'レインズ登録＋SUUMO URL 要登録', color: '#3f51b5' },
+  { key: 'suumo_registration', label: 'SUUMO登録', color: '#1976d2' },
+  { key: 'publish_notice', label: '公開お知らせメール', color: '#0288d1' },
   { key: 'offer_no_viewing', label: '買付申込み（内覧なし）２', color: '#00bcd4' },
   { key: 'pre_publish', label: '公開前情報', color: '#607d8b' },
   { key: 'private_email_only', label: '非公開（配信メールのみ）', color: '#795548' },
@@ -209,6 +213,19 @@ export const calculatePropertyStatus = (
     }
   }
 
+  // 6.5 一般・公開中（AA14824以降）: SUUMO登録・公開お知らせメールの済/未
+  // ※ 判定開始基準: 物件番号 AA14824 以降。それ未満のAA物件・他プレフィックス物件は対象外
+  if (isGeneralPublicTarget(listing)) {
+    // SUUMO登録が未（S不要でもない）→ SUUMO登録カテゴリー
+    if (listing.suumo_registration_done !== '済' && listing.suumo_registered !== 'S不要') {
+      return PROPERTY_STATUS_DEFINITIONS.find(s => s.key === 'suumo_registration')!;
+    }
+    // 公開お知らせメールが未 → 公開お知らせメールカテゴリー
+    if (listing.publish_notice_email !== '済') {
+      return PROPERTY_STATUS_DEFINITIONS.find(s => s.key === 'publish_notice')!;
+    }
+  }
+
   // 7. 買付申込み（内覧なし）の条件
   const offerStatus = listing.offer_status || '';
   const offerConditions = [
@@ -287,6 +304,33 @@ export const filterByStatus = (
     return status.key === statusKey;
   });
 };
+
+// SUUMO登録・公開お知らせメール判定を開始する基準物件番号（この番号以降のAA物件が対象）
+// 2026-09-24 から AA14824 を基準に判定開始
+const GENERAL_PUBLIC_TARGET_MIN_AA_NUMBER = 14824;
+
+/**
+ * 物件番号が「AA + 数値」形式のとき、その数値部分を返す。それ以外はnull。
+ * 例: 'AA14824' → 14824
+ */
+export function parseAaPropertyNumber(propertyNumber: string | null | undefined): number | null {
+  if (!propertyNumber) return null;
+  const m = /^AA(\d+)$/.exec(propertyNumber.trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  return isNaN(n) ? null : n;
+}
+
+/**
+ * SUUMO登録・公開お知らせメールの判定対象かどうか。
+ * 条件: ATBB状況が「一般・公開中」 かつ 物件番号が AA14824 以降のAA物件。
+ */
+export function isGeneralPublicTarget(listing: PropertyListing): boolean {
+  if ((listing.atbb_status || '') !== '一般・公開中') return false;
+  const aaNumber = parseAaPropertyNumber(listing.property_number);
+  if (aaNumber === null) return false;
+  return aaNumber >= GENERAL_PUBLIC_TARGET_MIN_AA_NUMBER;
+}
 
 /**
  * atbb_statusに「非公開」が含まれるかチェック
