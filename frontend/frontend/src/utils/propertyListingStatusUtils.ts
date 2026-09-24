@@ -35,8 +35,7 @@ export const PROPERTY_STATUS_DEFINITIONS = [
   { key: 'today_publish', label: '本日公開予定', color: '#4caf50' },
   { key: 'suumo_required', label: 'SUUMO URL　要登録', color: '#2196f3' },
   { key: 'reins_suumo_required', label: 'レインズ登録＋SUUMO URL 要登録', color: '#3f51b5' },
-  { key: 'suumo_registration', label: 'SUUMO登録', color: '#1976d2' },
-  { key: 'publish_notice', label: '公開お知らせメール', color: '#0288d1' },
+  { key: 'suumo_publish_notice', label: 'SUUMO登録+公開お知らせメール', color: '#1976d2' },
   { key: 'offer_no_viewing', label: '買付申込み（内覧なし）２', color: '#00bcd4' },
   { key: 'pre_publish', label: '公開前情報', color: '#607d8b' },
   { key: 'private_email_only', label: '非公開（配信メールのみ）', color: '#795548' },
@@ -213,16 +212,11 @@ export const calculatePropertyStatus = (
     }
   }
 
-  // 6.5 一般・公開中（AA14824以降）: SUUMO登録・公開お知らせメールの済/未
+  // 6.5 一般・公開中（AA14824以降）: 公開お知らせメール配信が未 → SUUMO登録+公開お知らせメール
   // ※ 判定開始基準: 物件番号 AA14824 以降。それ未満のAA物件・他プレフィックス物件は対象外
   if (isGeneralPublicTarget(listing)) {
-    // SUUMO登録が未（S不要でもない）→ SUUMO登録カテゴリー
-    if (listing.suumo_registration_done !== '済' && listing.suumo_registered !== 'S不要') {
-      return PROPERTY_STATUS_DEFINITIONS.find(s => s.key === 'suumo_registration')!;
-    }
-    // 公開お知らせメールが未 → 公開お知らせメールカテゴリー
     if (listing.publish_notice_email !== '済') {
-      return PROPERTY_STATUS_DEFINITIONS.find(s => s.key === 'publish_notice')!;
+      return PROPERTY_STATUS_DEFINITIONS.find(s => s.key === 'suumo_publish_notice')!;
     }
   }
 

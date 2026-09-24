@@ -386,12 +386,9 @@ export default function PropertyListingsPage() {
       } else if (sidebarStatus === 'レインズ登録＋SUUMO URL 要登録') {
         // 「レインズ登録＋SUUMO URL 要登録」は動的判定（DBのsidebar_statusに依存しない）
         listings = listings.filter(l => calculatePropertyStatus(l as any, workTaskMap).key === 'reins_suumo_required');
-      } else if (sidebarStatus === 'SUUMO登録') {
-        // 「SUUMO登録」は動的判定（一般・公開中 かつ AA14824以降 かつ SUUMO登録が未）
-        listings = listings.filter(l => calculatePropertyStatus(l as any, workTaskMap).key === 'suumo_registration');
-      } else if (sidebarStatus === '公開お知らせメール') {
-        // 「公開お知らせメール」は動的判定（一般・公開中 かつ AA14824以降 かつ 公開お知らせメールが未）
-        listings = listings.filter(l => calculatePropertyStatus(l as any, workTaskMap).key === 'publish_notice');
+      } else if (sidebarStatus === 'SUUMO登録+公開お知らせメール') {
+        // 「SUUMO登録+公開お知らせメール」は動的判定（一般・公開中 かつ AA14824以降 かつ 公開お知らせメールが未）
+        listings = listings.filter(l => calculatePropertyStatus(l as any, workTaskMap).key === 'suumo_publish_notice');
       } else if (['Y専任公開中', '麻専任公開中', '久専任公開中', 'U専任公開中', '林・専任公開中', '林専任公開中', 'K専任公開中', 'R専任公開中', 'I専任公開中'].includes(sidebarStatus)) {
         // 担当者別専任公開中：sidebar_statusが一致するか、古いデータ('専任・公開中')でsales_assigneeが一致するものを含む
         const assigneeMap: Record<string, string[]> = {
@@ -632,8 +629,7 @@ export default function PropertyListingsPage() {
     if (
       sidebarStatus === 'レインズ登録＋SUUMO URL 要登録' ||
       sidebarStatus === 'SUUMO URL　要登録' ||
-      sidebarStatus === 'SUUMO登録' ||
-      sidebarStatus === '公開お知らせメール'
+      sidebarStatus === 'SUUMO登録+公開お知らせメール'
     ) {
       console.log('[handleRowClick] レインズ登録ページへ直接遷移');
       navigate(`/property-listings/${propertyNumber}/reins-registration`);
