@@ -3738,6 +3738,8 @@ TEL：097-533-2022`;
                                   color="primary"
                                   onClick={async () => {
                                     const newValue = isSelected ? '' : option;
+                                    // 「業者問合せ」の場合の★最新状況の自動セット値（D:配信・追客不要案件）
+                                    const BROKER_INQUIRY_LATEST_STATUS = 'D:配信・追客不要案件（業者や確度が低く追客不要案件等）';
                                     // 業者問合せ選択時は配信メールを「不要」に自動セット（UI即時反映）
                                     // また、法人名が空の場合は氏名・会社名を法人名に自動コピー
                                     setBuyer((prev: any) => {
@@ -3750,9 +3752,24 @@ TEL：097-533-2022`;
                                           updated.company_name = prev.name.trim();
                                         }
                                       }
+                                      // 「業者問合せ」の場合は★最新状況を「D」に自動セット
+                                      if (newValue === '業者問合せ') {
+                                        updated.latest_status = BROKER_INQUIRY_LATEST_STATUS;
+                                      }
                                       return updated;
                                     });
                                     handleFieldChange(section.title, field.key, newValue);
+                                    // 「業者問合せ」の場合は★最新状況を「D」に即時保存（他フィールド保存より先に行う）
+                                    if (newValue === '業者問合せ') {
+                                      handleFieldChange('問合せ内容', 'latest_status', BROKER_INQUIRY_LATEST_STATUS);
+                                      // ★最新状況の必須ハイライトを解除
+                                      setMissingRequiredFields(prev => {
+                                        const next = new Set(prev);
+                                        next.delete('latest_status');
+                                        return next;
+                                      });
+                                      await handleInlineFieldSave('latest_status', BROKER_INQUIRY_LATEST_STATUS);
+                                    }
                                     // 業者問合せ選択時は distribution_type も即時保存
                                     if (newValue === '業者問合せ' || newValue === '業者（両手）') {
                                       handleFieldChange('問合せ内容', 'distribution_type', '不要');
