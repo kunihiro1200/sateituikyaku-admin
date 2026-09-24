@@ -46,6 +46,12 @@ let _moduleLevelStatusCache: {
 } | null = null;
 const _MODULE_STATUS_CACHE_TTL = 30 * 60 * 1000; // 30分
 
+// 進行中の全件取得＋ステータス計算を共有するためのインフライトPromise。
+// 同一プロセス内で /sidebar-counts と /status-categories-with-buyers が
+// ほぼ同時に呼ばれた場合、両方が独立して重い全件取得を走らせるのを防ぐ
+// （キャッシュはまだ載っていないが取得は進行中、という隙間を埋める）。
+let _inflightBuyersWithStatus: Promise<any[]> | null = null;
+
 // 他社物件新着配信用のキャッシュ（TTL: 10分）
 const distributionCache = new NodeCache({ stdTTL: 600 });
 
@@ -73,6 +79,8 @@ export function isVendorBuyer(brokerInquiry: string | null | undefined): boolean
  */
 export async function invalidateBuyerStatusCache(): Promise<void> {
   _moduleLevelStatusCache = null;
+  // 進行中の取得も破棄する（古いデータで温め直さないため）
+  _inflightBuyersWithStatus = null;
   console.log('[BuyerService] Buyer status cache invalidated');
   
   // 買付率統計のキャッシュを無効化
@@ -2325,7 +2333,6 @@ export class BuyerService {
     for (const { data } of listingsBatchResults) {
       if (data) allListingsData.push(...data);
     }
-    console.log(`🔍 [DEBUG] fetchAllBuyers - property_listings取得件数: ${allListingsData.length}`);
 
     // 2バッチ目以降を並列取得（既に1バッチ目は取得済み）
     const batchCount = Math.ceil(totalCount / PAGE_SIZE);
@@ -2406,45 +2413,37 @@ export class BuyerService {
       return _moduleLevelStatusCache.buyers;
     }
 
-    const allBuyers = await this.fetchAllBuyers();
+    // 既に同じ計算が進行中なら、その Promise を共有して二重の全件取得を防ぐ
+    if (_inflightBuyersWithStatus) {
+      return _inflightBuyersWithStatus;
+    }
 
-    const buyers = allBuyers.map(buyer => {
-      try {
-        // 🚨 デバッグ: 買主7176・7340・7342のデータを記録
-        if (['7176', '7340', '7342'].includes(buyer.buyer_number)) {
-          console.log(`🔍 [DEBUG] Buyer ${buyer.buyer_number} data before calculateBuyerStatus:`, JSON.stringify({
-            buyer_number: buyer.buyer_number,
-            next_call_date: buyer.next_call_date,
-            follow_up_assignee: buyer.follow_up_assignee,
-            inquiry_email_phone: buyer.inquiry_email_phone,
-            inquiry_email_reply: buyer.inquiry_email_reply,
-            viewing_date: buyer.viewing_date,
-            latest_viewing_date: buyer.latest_viewing_date,
-            broker_inquiry: buyer.broker_inquiry,
-            notification_sender: buyer.notification_sender,
-            three_calls_confirmed: buyer.three_calls_confirmed,
-            valuation_survey: buyer.valuation_survey,
-            broker_survey: buyer.broker_survey,
-          }, null, 2));
-        }
-        
-        const statusResult = calculateBuyerStatus(buyer);
-        
-        // 🚨 デバッグ: 買主7176・7340・7342のステータス計算結果を記録
-        if (['7176', '7340', '7342'].includes(buyer.buyer_number)) {
-          console.log(`🔍 [DEBUG] Buyer ${buyer.buyer_number} statusResult:`, JSON.stringify(statusResult, null, 2));
-        }
-        
-        return { ...buyer, calculated_status: statusResult.status, status_priority: statusResult.priority, status_matched_condition: statusResult.matchedCondition };
-      } catch (error) {
-        console.error(`[BuyerService] Error calculating status for buyer ${buyer.buyer_number}:`, error);
-        console.error(`[BuyerService] Buyer data:`, JSON.stringify(buyer, null, 2));
-        return { ...buyer, calculated_status: '', status_priority: 999 };
-      }
-    });
+    _inflightBuyersWithStatus = (async () => {
+      const startedAt = Date.now();
+      const allBuyers = await this.fetchAllBuyers();
 
-    _moduleLevelStatusCache = { buyers, computedAt: now };
-    return buyers;
+      const buyers = allBuyers.map(buyer => {
+        try {
+          const statusResult = calculateBuyerStatus(buyer);
+          return { ...buyer, calculated_status: statusResult.status, status_priority: statusResult.priority, status_matched_condition: statusResult.matchedCondition };
+        } catch (error) {
+          // 正常系では発火しない。全件分の巨大ログを避けるため buyer_number のみ出す
+          console.error(`[BuyerService] Error calculating status for buyer ${buyer.buyer_number}:`, error);
+          return { ...buyer, calculated_status: '', status_priority: 999 };
+        }
+      });
+
+      _moduleLevelStatusCache = { buyers, computedAt: Date.now() };
+      console.log(`[INFO] fetchAllBuyersWithStatus computed ${buyers.length} buyers in ${Date.now() - startedAt}ms`);
+      return buyers;
+    })();
+
+    try {
+      return await _inflightBuyersWithStatus;
+    } finally {
+      // 完了・失敗いずれでもインフライトを解放（次回はキャッシュ or 再取得に委ねる）
+      _inflightBuyersWithStatus = null;
+    }
   }
 
   /**

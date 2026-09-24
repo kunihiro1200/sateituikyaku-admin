@@ -116,6 +116,28 @@ export function getBuyerTodayCallWithInfoLabel(buyer: BuyerData): string {
   return `当日TEL(${parts.join('・')})`;
 }
 
+/**
+ * 「内覧日前日」の条件を満たすか判定する
+ * - viewing_date が入力済み
+ * - broker_inquiry が「業者問合せ」でない
+ * - notification_sender が空（＝内覧前日メール未送信）
+ * - 今日が内覧日の前営業日（木曜内覧は2日前、それ以外は1日前）
+ *
+ * 次電日が入っていても「内覧日前日」を優先させるため、Priority 1.5（当日TEL）でも
+ * この判定を使って除外する。
+ */
+export function isViewingDayBefore(buyer: BuyerData): boolean {
+  return and(
+    isNotBlank(buyer.viewing_date),
+    not(equals(buyer.broker_inquiry, '業者問合せ')),
+    isBlank(buyer.notification_sender),
+    or(
+      and(isTomorrow(buyer.viewing_date), not(equals(getDayOfWeek(buyer.viewing_date), '木曜日'))),
+      and(isDaysFromToday(buyer.viewing_date, 2), equals(getDayOfWeek(buyer.viewing_date), '木曜日'))
+    )
+  );
+}
+
 export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
   try {
     // Priority 1: 査定アンケート回答あり
@@ -127,11 +149,13 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
     // Priority 1.5: 業者問い合わせ かつ 次電日が今日以前 → 当日TELを優先
     // 業者問い合わせで内覧日が入っている場合でも次電日を反映させる
     // ※ broker_inquiryの有無に関わらず、内覧日が設定されていて次電日が今日以前なら当日TELを優先
+    // ※ ただし「内覧日前日」に該当する場合は、次電日が入っていても内覧日前日を優先する（Priority 3で判定）
     if (
       and(
         isNotBlank(buyer.next_call_date),
         isTodayOrPast(buyer.next_call_date),
-        isNotBlank(buyer.viewing_date)
+        isNotBlank(buyer.viewing_date),
+        not(isViewingDayBefore(buyer))
       )
     ) {
       // 担当が「業者」の場合はサイドバーの担当カテゴリから除外されるため、担当なし扱いにする
@@ -160,17 +184,8 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
     }
 
     // Priority 3: 内覧日前日（業者問合せは除外、通知送信者が入力済みの場合も除外）
-    if (
-      and(
-        isNotBlank(buyer.viewing_date),
-        not(equals(buyer.broker_inquiry, '業者問合せ')),
-        isBlank(buyer.notification_sender),
-        or(
-          and(isTomorrow(buyer.viewing_date), not(equals(getDayOfWeek(buyer.viewing_date), '木曜日'))),
-          and(isDaysFromToday(buyer.viewing_date, 2), equals(getDayOfWeek(buyer.viewing_date), '木曜日'))
-        )
-      )
-    ) {
+    // 次電日が今日以前でも、内覧日前日に該当する場合はこちらを優先する（Priority 1.5で除外済み）
+    if (isViewingDayBefore(buyer)) {
       const status = '内覧日前日';
       return { status, priority: 3, matchedCondition: '内覧日の前日（木曜日は2日前）', color: getStatusColor(status) };
     }
@@ -457,21 +472,18 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
       if (isNotBlank(buyer.next_call_date) && isTodayOrPast(buyer.next_call_date)) {
         // 次電日が今日以前 → 当日TEL(林) として担当カテゴリのサブ扱い
         const status = `当日TEL(${assignee})`;
-        console.log(`[calculateBuyerStatusComplete] Priority 23-30: ${status} for buyer:`, buyer.buyer_number);
         return { status, priority, matchedCondition: `担当${assignee}: 次電日が当日以前`, color: getStatusColor('当日TEL') };
       }
 
       // Priority 36: 内覧済み(イニシャル) - 内覧日が過去の場合（次電日が今日以前でない場合のみ）
       if (isNotBlank(buyer.viewing_date) && isPast(buyer.viewing_date)) {
         const status = `内覧済み(${assignee})`;
-        console.log(`[calculateBuyerStatusComplete] Priority 36: ${status} for buyer:`, buyer.buyer_number);
         return { status, priority: 36, matchedCondition: `内覧済み(${assignee})`, color: getStatusColor('内覧済み') };
       }
       
       // Priority 37: 担当(イニシャル) - 通常の担当カテゴリ
       // latest_status や next_call_date が null でも、follow_up_assignee または project_assignee があれば担当カテゴリに分類
       const status = `担当(${assignee})`;
-      console.log(`[calculateBuyerStatusComplete] Priority 37: ${status} for buyer:`, buyer.buyer_number);
       return { status, priority: 37, matchedCondition: `担当${assignee}`, color: getStatusColor(`担当(${assignee})`) };
     }
 
@@ -485,7 +497,6 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
       )
     ) {
       const status = '内覧済み';
-      console.log(`[calculateBuyerStatusComplete] Priority 38: ${status} for buyer:`, buyer.buyer_number);
       return { status, priority: 38, matchedCondition: '内覧済み', color: getStatusColor(status) };
     }
 
