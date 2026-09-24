@@ -110,6 +110,7 @@ interface PropertyListing {
   commission_from_buyer?: number;
   listing_price?: number;
   property_tax?: number;
+  property_tax_approx?: boolean;
   structure?: string;
   construction_year_month?: string;
   floor_plan?: string;

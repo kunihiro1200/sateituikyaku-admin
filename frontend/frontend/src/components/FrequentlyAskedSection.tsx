@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Grid, TextField, Link } from '@mui/material';
+import { Box, Typography, Grid, TextField, Link, FormControlLabel, Checkbox } from '@mui/material';
 
 // テキスト内のURLを検出してリンク化するヘルパー関数
 function renderTextWithLinks(text: string): React.ReactNode {
@@ -28,6 +28,7 @@ interface FrequentlyAskedSectionProps {
   data: {
     pre_viewing_notes?: string;
     property_tax?: number;
+    property_tax_approx?: boolean;
     management_fee?: number;
     reserve_fund?: number;
     parking?: string;
@@ -106,20 +107,35 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
                 固定資産税
               </Typography>
               {isEditMode ? (
-                <TextField
-                  fullWidth
-                  size="small"
-                  type="number"
-                  value={formatPrice(getValue('property_tax'))}
-                  onChange={(e) => onFieldChange('property_tax', e.target.value ? Number(e.target.value) : null)}
-                  placeholder="円"
-                  InputProps={{
-                    endAdornment: <Typography sx={{ ml: 1 }}>円</Typography>,
-                  }}
-                />
+                <>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="number"
+                    value={formatPrice(getValue('property_tax'))}
+                    onChange={(e) => onFieldChange('property_tax', e.target.value ? Number(e.target.value) : null)}
+                    placeholder="円"
+                    InputProps={{
+                      endAdornment: <Typography sx={{ ml: 1 }}>円</Typography>,
+                    }}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={!!getValue('property_tax_approx', false)}
+                        onChange={(e) => onFieldChange('property_tax_approx', e.target.checked)}
+                      />
+                    }
+                    label={<Typography sx={{ fontSize: '0.7rem' }}>「約」を付けて表示</Typography>}
+                    sx={{ ml: 0 }}
+                  />
+                </>
               ) : (
                 <Typography variant="body2">
-                  {data.property_tax ? `¥${data.property_tax.toLocaleString()}` : '-'}
+                  {data.property_tax
+                    ? `${data.property_tax_approx ? '約' : ''}¥${data.property_tax.toLocaleString()}`
+                    : '-'}
                 </Typography>
               )}
             </Box>
