@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useTheme, useMediaQuery } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -160,6 +160,12 @@ interface InquiryHistory {
   inquirySource: string | null;
   status: string | null;
   isCurrent: boolean;
+}
+
+// テンプレート名を正規化して照合する（全角半角・空白の表記揺れを吸収）。
+// 売主リスト通話モードの normalizeEmailTemplateName と同じ方式。
+function normalizeTemplateName(value: unknown): string {
+  return String(value || '').normalize('NFKC').replace(/\s+/g, '').toLowerCase();
 }
 
 interface Activity {
@@ -330,6 +336,33 @@ export default function BuyerDetailPage() {
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailModalProperties, setEmailModalProperties] = useState<PropertyListing[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
+
+  // 送信済みテンプレートの判定用キー（売主リスト通話モードと同じ方式）。
+  // activity_logs（action='sms' / 'email'）のテンプレートID・テンプレート名から
+  // 「送信済み」を表すキーの集合を作り、SMS/Gmail送信メニューの色付けに使う。
+  // SMS送信済みキー: id:<templateId> と name:<正規化テンプレート名>
+  const sentSmsTemplateKeys = useMemo(() => {
+    const keys = new Set<string>();
+    activities.forEach((activity) => {
+      if (activity.action !== 'sms') return;
+      const metadata = activity.metadata || {};
+      if (metadata.templateId) keys.add(`id:${String(metadata.templateId)}`);
+      if (metadata.templateName) keys.add(`name:${normalizeTemplateName(metadata.templateName)}`);
+    });
+    return keys;
+  }, [activities]);
+
+  // メール送信済みキー: 正規化テンプレート名（Gmailはテンプレート名で照合）
+  const sentEmailTemplateNames = useMemo(() => {
+    const keys = new Set<string>();
+    activities.forEach((activity) => {
+      if (activity.action !== 'email') return;
+      const metadata = activity.metadata || {};
+      if (metadata.templateName) keys.add(normalizeTemplateName(metadata.templateName));
+    });
+    return keys;
+  }, [activities]);
+
   // 売主リストとの重複（名前・電話番号・メールアドレスで判定）
   const [sellerDuplicates, setSellerDuplicates] = useState<DuplicateMatch[]>([]);
   const [sellerDuplicatesLoading, setSellerDuplicatesLoading] = useState(false);
@@ -1906,6 +1939,7 @@ export default function BuyerDetailPage() {
             size="small"
             variant="contained"
             onEmailSent={fetchActivities}
+            sentTemplateNames={sentEmailTemplateNames}
           />
 
           {/* 電話番号ボタン */}
@@ -1949,6 +1983,7 @@ export default function BuyerDetailPage() {
               propertyNumber={linkedProperties[0]?.property_number || ''}
               senderName={employee?.name || ''}
               onSmsSent={fetchActivities}
+              sentTemplateKeys={sentSmsTemplateKeys}
               preViewingNotes={linkedProperties[0]?.pre_viewing_notes || ''}
               onNextCallDateUpdated={(nextCallDate) => {
                 // 返信テンプレート送信で次電日が自動セットされたら画面へ即時反映

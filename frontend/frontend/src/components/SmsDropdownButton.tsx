@@ -5,10 +5,18 @@ import {
   MenuItem,
   ButtonGroup,
   Divider,
+  Box,
+  Chip,
+  Typography,
 } from '@mui/material';
 import SmsIcon from '@mui/icons-material/Sms';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import api from '../services/api';
+
+// テンプレート名を正規化して照合する（全角半角・空白の表記揺れを吸収）
+function normalizeTemplateName(value: unknown): string {
+  return String(value || '').normalize('NFKC').replace(/\s+/g, '').toLowerCase();
+}
 
 interface SmsDropdownButtonProps {
   phoneNumber: string;
@@ -22,16 +30,16 @@ interface SmsDropdownButtonProps {
   preViewingNotes?: string;
   /** 次電日（next_call_date）が自動セットされたときに親へ通知（画面の再描画・再取得用） */
   onNextCallDateUpdated?: (nextCallDate: string) => void;
+  /**
+   * 送信済みSMSテンプレートの照合キー集合（売主リスト通話モードと同じ方式）。
+   * `id:<templateId>` または `name:<正規化テンプレート名>` を格納する。
+   * 該当するメニュー項目はグレー背景＋「送信済み」バッジで表示する。
+   */
+  sentTemplateKeys?: Set<string>;
 }
 
 const VIEWING_FORM_BASE = 'https://docs.google.com/forms/d/e/1FAIpQLSefXwsYKryraVM4jtnLgcYtboUg3w-lx7tasftVA47E5jXUlQ/viewform?usp=pp_url';
 const PUBLIC_SITE_URL = 'https://property-site-frontend-kappa.vercel.app/public/properties';
-
-// ①②③④の返信テンプレートのメニュー項目スタイル（薄緑背景で識別しやすくする）
-const REPLY_ITEM_SX = {
-  backgroundColor: '#e8f5e9',
-  '&:hover': { backgroundColor: '#c8e6c9' },
-} as const;
 
 // メール配信の希望条件を入力してもらうフォーム（③④で使用）
 // TODO: 実際の配信希望条件フォームURLが用意でき次第、差し替える
@@ -71,9 +79,67 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
   onSmsSent,
   preViewingNotes,
   onNextCallDateUpdated,
+  sentTemplateKeys,
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
+
+  // 指定テンプレートが送信済みか判定する（templateId または表示名で照合）
+  const isTemplateSent = (templateId: string, templateName: string): boolean => {
+    if (!sentTemplateKeys || sentTemplateKeys.size === 0) return false;
+    return (
+      sentTemplateKeys.has(`id:${templateId}`) ||
+      sentTemplateKeys.has(`name:${normalizeTemplateName(templateName)}`)
+    );
+  };
+
+  // SMSメニュー項目を描画する共通コンポーネント。
+  // 送信済みなら背景をグレー化し「送信済み」バッジを付ける（売主リスト通話モードと同じ見た目）。
+  const renderSmsMenuItem = (
+    templateId: string,
+    templateName: string,
+    options?: { highlight?: boolean },
+  ) => {
+    const isSent = isTemplateSent(templateId, templateName);
+    const highlight = options?.highlight;
+    // 薄緑背景（①②③④の返信テンプレート）は送信済みで濃い緑にする
+    const backgroundColor = highlight
+      ? (isSent ? '#c8e6c9' : '#e8f5e9')
+      : (isSent ? '#e0e0e0' : '#ffffff');
+    const hoverColor = highlight
+      ? (isSent ? '#a5d6a7' : '#c8e6c9')
+      : (isSent ? '#d6d6d6' : 'action.hover');
+
+    return (
+      <MenuItem
+        key={templateId}
+        onClick={() => sendSms(templateId, templateName)}
+        sx={{
+          backgroundColor,
+          '&:hover': { backgroundColor: hoverColor },
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+          <Typography variant="body2" sx={{ flex: 1 }}>
+            {templateName}
+          </Typography>
+          {isSent && (
+            <Chip
+              label="送信済み"
+              size="small"
+              sx={{
+                height: 20,
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                backgroundColor: '#757575',
+                color: '#fff',
+              }}
+            />
+          )}
+        </Box>
+      </MenuItem>
+    );
+  };
 
   const handleOpen = (e: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(e.currentTarget);
@@ -242,32 +308,32 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
         transformOrigin={{ vertical: 'top', horizontal: 'left' }}
       >
         {isLand ? [
-          <MenuItem key="land_no_permission" onClick={() => sendSms('land_no_permission', '資料請求（土）許可不要')}>資料請求（土）許可不要</MenuItem>,
-          <MenuItem key="minpaku" onClick={() => sendSms('minpaku', '民泊問合せ')}>民泊問合せ</MenuItem>,
-          <MenuItem key="land_need_permission" onClick={() => sendSms('land_need_permission', '資料請求（土）売主要許可')}>資料請求（土）売主要許可</MenuItem>,
+          renderSmsMenuItem('land_no_permission', '資料請求（土）許可不要'),
+          renderSmsMenuItem('minpaku', '民泊問合せ'),
+          renderSmsMenuItem('land_need_permission', '資料請求（土）売主要許可'),
         ] : [
-          <MenuItem key="house_mansion" onClick={() => sendSms('house_mansion', '資料請求（戸・マ）')}>資料請求（戸・マ）</MenuItem>,
+          renderSmsMenuItem('house_mansion', '資料請求（戸・マ）'),
         ]}
-        <MenuItem onClick={() => sendSms('ask_email', 'メールアドレス確認')}>メールアドレス確認</MenuItem>
-        <MenuItem onClick={() => sendSms('offer_no_viewing', '買付あり内覧NG')}>買付あり内覧NG</MenuItem>
-        <MenuItem onClick={() => sendSms('offer_ok_viewing', '買付あり内覧OK')}>買付あり内覧OK</MenuItem>
-        <MenuItem onClick={() => sendSms('post_viewing_thanks', '内覧後御礼メール')}>内覧後御礼メール</MenuItem>
-        <MenuItem onClick={() => sendSms('no_response', '前回問合せ後反応なし')}>前回問合せ後反応なし</MenuItem>
-        <MenuItem onClick={() => sendSms('no_response_offer', '反応なし（買付あり不適合）')}>反応なし（買付あり不適合）</MenuItem>
-        <MenuItem onClick={() => sendSms('pinrich', '物件指定なし（Pinrich）')}>物件指定なし（Pinrich）</MenuItem>
-        <MenuItem onClick={() => sendSms('empty_greeting', '空')}>空</MenuItem>
+        {renderSmsMenuItem('ask_email', 'メールアドレス確認')}
+        {renderSmsMenuItem('offer_no_viewing', '買付あり内覧NG')}
+        {renderSmsMenuItem('offer_ok_viewing', '買付あり内覧OK')}
+        {renderSmsMenuItem('post_viewing_thanks', '内覧後御礼メール')}
+        {renderSmsMenuItem('no_response', '前回問合せ後反応なし')}
+        {renderSmsMenuItem('no_response_offer', '反応なし（買付あり不適合）')}
+        {renderSmsMenuItem('pinrich', '物件指定なし（Pinrich）')}
+        {renderSmsMenuItem('empty_greeting', '空')}
         <Divider />
         {/* 状況確認SMS（①②③④の番号返信を促す） */}
-        <MenuItem onClick={() => sendSms('status_check', '状況確認SMS（①②③④）')}>状況確認SMS（①②③④）</MenuItem>
+        {renderSmsMenuItem('status_check', '状況確認SMS（①②③④）')}
         {/* ①②③④の返信テンプレート（薄緑背景・次電日自動セット） */}
-        <MenuItem sx={REPLY_ITEM_SX} onClick={() => sendSms('reply_1_viewing', '①内覧希望の返信')}>①内覧希望の返信</MenuItem>
-        <MenuItem sx={REPLY_ITEM_SX} onClick={() => sendSms('reply_2_scheduling', '②日程調整中の返信（次電日+1ヶ月）')}>②日程調整中の返信（次電日+1ヶ月）</MenuItem>
-        <MenuItem sx={REPLY_ITEM_SX} onClick={() => sendSms('reply_3_info_only', '③情報希望の返信（次電日+3ヶ月）')}>③情報希望の返信（次電日+3ヶ月）</MenuItem>
-        <MenuItem sx={REPLY_ITEM_SX} onClick={() => sendSms('reply_4_not_searching', '④物件探しなしの返信')}>④物件探しなしの返信</MenuItem>
+        {renderSmsMenuItem('reply_1_viewing', '①内覧希望の返信', { highlight: true })}
+        {renderSmsMenuItem('reply_2_scheduling', '②日程調整中の返信（次電日+1ヶ月）', { highlight: true })}
+        {renderSmsMenuItem('reply_3_info_only', '③情報希望の返信（次電日+3ヶ月）', { highlight: true })}
+        {renderSmsMenuItem('reply_4_not_searching', '④物件探しなしの返信', { highlight: true })}
         <Divider />
         {/* 不通時の追客メール（手動送信・次電日を再セット） */}
-        <MenuItem onClick={() => sendSms('followup_1month_unreachable', '★1ヶ月後不通メール（次電日+1ヶ月）')}>★1ヶ月後不通メール（次電日+1ヶ月）</MenuItem>
-        <MenuItem onClick={() => sendSms('followup_3month_unreachable', '★3ヶ月後不通メール（次電日+3ヶ月）')}>★3ヶ月後不通メール（次電日+3ヶ月）</MenuItem>
+        {renderSmsMenuItem('followup_1month_unreachable', '★1ヶ月後不通メール（次電日+1ヶ月）')}
+        {renderSmsMenuItem('followup_3month_unreachable', '★3ヶ月後不通メール（次電日+3ヶ月）')}
       </Menu>
     </>
   );

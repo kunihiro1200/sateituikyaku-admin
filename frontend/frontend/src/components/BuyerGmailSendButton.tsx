@@ -26,6 +26,11 @@ interface BuyerGmailSendButtonProps {
   size?: 'small' | 'medium' | 'large';
   variant?: 'text' | 'outlined' | 'contained';
   onEmailSent?: () => void; // メール送信成功後のコールバック
+  /**
+   * 送信済みメールテンプレートの照合用（正規化テンプレート名の集合）。
+   * テンプレート選択モーダルで送信済みテンプレをグレー化＋「送信済み」バッジ表示する。
+   */
+  sentTemplateNames?: Set<string>;
 }
 
 /**
@@ -52,6 +57,7 @@ export default function BuyerGmailSendButton({
   size = 'medium',
   variant = 'contained',
   onEmailSent,
+  sentTemplateNames,
 }: BuyerGmailSendButtonProps) {
   const [loading, setLoading] = useState(false);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
@@ -214,6 +220,7 @@ export default function BuyerGmailSendButton({
         propertyType={linkedPropertyType}
         brokerInquiry={brokerInquiry}
         latestViewingDate={latestViewingDate}
+        sentTemplateNames={sentTemplateNames}
       />
 
       {/* Email Composition Modal */}

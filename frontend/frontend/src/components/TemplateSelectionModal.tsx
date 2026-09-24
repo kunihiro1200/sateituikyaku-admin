@@ -26,6 +26,16 @@ interface TemplateSelectionModalProps {
   propertyType?: string;
   brokerInquiry?: string;
   latestViewingDate?: string;
+  /**
+   * 送信済みテンプレートの照合用（正規化テンプレート名の集合）。
+   * 該当テンプレはグレー背景＋「送信済み」バッジで表示する。
+   */
+  sentTemplateNames?: Set<string>;
+}
+
+// テンプレート名を正規化して照合する（全角半角・空白の表記揺れを吸収）
+function normalizeTemplateName(value: unknown): string {
+  return String(value || '').normalize('NFKC').replace(/\s+/g, '').toLowerCase();
 }
 
 /**
@@ -133,6 +143,7 @@ export default function TemplateSelectionModal({
   propertyType,
   brokerInquiry,
   latestViewingDate,
+  sentTemplateNames,
 }: TemplateSelectionModalProps) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -213,38 +224,59 @@ export default function TemplateSelectionModal({
               テンプレートをクリックするとメール編集画面が開きます
             </Typography>
             <List disablePadding>
-              {filteredTemplates.map((template, index) => (
-                <ListItem key={template.id} disablePadding divider={index < filteredTemplates.length - 1}>
-                  <ListItemButton
-                    onClick={() => handleTemplateClick(template)}
-                    sx={{
-                      py: 1.5,
-                      px: 2,
-                      '&:hover': {
-                        backgroundColor: 'primary.50',
-                        '& .template-icon': { opacity: 1 },
-                      },
-                    }}
-                  >
-                    <ListItemText
-                      primary={
-                        <Typography variant="body1" fontWeight={500}>
-                          {template.name}
-                        </Typography>
-                      }
-                    />
-                    <Chip
-                      icon={<EmailIcon sx={{ fontSize: '14px !important' }} />}
-                      label="使用"
-                      size="small"
-                      color="primary"
-                      variant="outlined"
-                      className="template-icon"
-                      sx={{ opacity: 0, transition: 'opacity 0.15s', ml: 1, flexShrink: 0 }}
-                    />
-                  </ListItemButton>
-                </ListItem>
-              ))}
+              {filteredTemplates.map((template, index) => {
+                const isSent = !!sentTemplateNames?.has(normalizeTemplateName(template.name));
+                return (
+                  <ListItem key={template.id} disablePadding divider={index < filteredTemplates.length - 1}>
+                    <ListItemButton
+                      onClick={() => handleTemplateClick(template)}
+                      sx={{
+                        py: 1.5,
+                        px: 2,
+                        // 送信済みテンプレはグレー背景で識別しやすくする（売主リスト通話モードと同じ見た目）
+                        backgroundColor: isSent ? '#e0e0e0' : undefined,
+                        '&:hover': {
+                          backgroundColor: isSent ? '#d6d6d6' : 'primary.50',
+                          '& .template-icon': { opacity: 1 },
+                        },
+                      }}
+                    >
+                      <ListItemText
+                        primary={
+                          <Typography variant="body1" fontWeight={500}>
+                            {template.name}
+                          </Typography>
+                        }
+                      />
+                      {isSent ? (
+                        <Chip
+                          label="送信済み"
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: '0.68rem',
+                            fontWeight: 700,
+                            backgroundColor: '#757575',
+                            color: '#fff',
+                            ml: 1,
+                            flexShrink: 0,
+                          }}
+                        />
+                      ) : (
+                        <Chip
+                          icon={<EmailIcon sx={{ fontSize: '14px !important' }} />}
+                          label="使用"
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                          className="template-icon"
+                          sx={{ opacity: 0, transition: 'opacity 0.15s', ml: 1, flexShrink: 0 }}
+                        />
+                      )}
+                    </ListItemButton>
+                  </ListItem>
+                );
+              })}
             </List>
           </>
         )}
