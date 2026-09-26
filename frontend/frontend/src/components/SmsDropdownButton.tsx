@@ -270,9 +270,6 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
     } else if (templateId === 'offer_cancelled_available') {
       // 買付キャンセル後の案内メール（再度紹介可能）
       message = `${name}様\n\nお世話になっております。\n\n以前お問合せいただきました「${address}」につきまして、他のお客様の申し込みがキャンセルとなり、再度ご紹介できる状況となりましたのでご連絡いたしました。${suumoSection}\n\nご見学希望やお問合せ等ございましたらお気軽にご連絡くださいませ。\n内覧のご予約はこちらから↓↓\n${viewingFormUrl}${hasFI ? '' : `\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri`}\n\n★水曜日は定休日となっておりますのでそれ以外の日程でお願いいたします。${preViewingSection}${signature}`;
-    } else if (templateId === 'offer_cancelled_reintro') {
-      // 買付キャンセル後の案内メール（再紹介・詳細版）
-      message = `${name}様\n\nお世話になっております。\n\n以前お問合せいただきました「${address}」につきまして、他のお客様の申し込みがキャンセルとなり、再度ご紹介できる状況となりましたのでご連絡いたしました。${suumoSection}\n\nご見学希望やお問合せ等ございましたらお気軽にご連絡くださいませ。\n\n内覧ご希望の方はこちらからお願いいたします。\n${viewingFormUrl}${hasFI ? '' : `\n\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri\n★非公開の情報はこちらから検索可能です↓↓\n${PUBLIC_SITE_URL}`}\n\n★水曜日は定休日となっておりますのでそれ以外の日程でお願いいたします。\n\n他にご不明な点等ございましたら、お気軽にお問い合わせください。\nまた、他社物件もご紹介できますので、気になる物件がございましたらお気軽にご連絡ください。${preViewingSection}${signature}`;
     } else if (templateId === 'purchase_campaign') {
       // 購入応援キャンペーン
       const staffName = senderName || '担当';
@@ -391,7 +388,6 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
         {renderSmsMenuItem('offer_no_viewing', '買付あり内覧NG')}
         {renderSmsMenuItem('offer_ok_viewing', '買付あり内覧OK')}
         {renderSmsMenuItem('offer_cancelled_available', '買付キャンセル後の案内')}
-        {renderSmsMenuItem('offer_cancelled_reintro', '買付キャンセル後の案内メール（再紹介）')}
         {renderSmsMenuItem('pre_viewing_hearing', '内覧前ヒアリング')}
         {renderSmsMenuItem('post_viewing_thanks', '内覧後御礼メール')}
         {renderSmsMenuItem('purchase_campaign', '購入応援キャンペーン')}
