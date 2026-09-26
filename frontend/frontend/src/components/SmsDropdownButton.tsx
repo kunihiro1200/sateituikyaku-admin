@@ -203,7 +203,7 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
       // 状況確認SMS：①②③④で番号返信を促す
       const companyName = hasFI ? 'くじら不動産' : '㈱いふう';
       const staff = senderName || '担当';
-      message = `${name}様\n${companyName}の${staff}です。\n先日は物件のお問い合わせをいただき、誠にありがとうございました。\nその後の物件探しのご状況について、一度お伺いできればと思いご連絡いたしました。\n\n①内覧希望\n②内覧希望だが日程調整中\n③この物件の内覧はしないが、未公開物件や新着物件の情報が欲しい\n④物件探しはしていない\n\n差し支えなければ、現在のご状況を番号だけでもご返信いただけますと幸いです。\nよろしくお願いいたします。${signature}`;
+      message = `${name}様\n${companyName}の${staff}です。\n先日は${address}のお問い合わせをいただき、誠にありがとうございました。\nその後の物件探しのご状況について、一度お伺いできればと思いご連絡いたしました。\n\n①内覧希望\n②内覧希望だが日程調整中\n③この物件の内覧はしないが、未公開物件や新着物件の情報が欲しい\n④物件探しはしていない\n\n差し支えなければ、現在のご状況を番号だけでもご返信いただけますと幸いです。\nよろしくお願いいたします。${signature}`;
     } else if (templateId === 'reply_1_viewing') {
       // ①内覧希望の返信：お礼＋ヒアリング
       message = `${name}様\n\nご返信ありがとうございます。承知いたしました。\n内覧のご予約をお取りしますので、下記についてお答えいただけますでしょうか？\n\n${VIEWING_HEARING_ITEMS}\n\nご返信をお待ちしております。よろしくお願いいたします。${signature}`;
