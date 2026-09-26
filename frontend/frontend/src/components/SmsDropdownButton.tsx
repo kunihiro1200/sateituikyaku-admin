@@ -44,10 +44,6 @@ interface SmsDropdownButtonProps {
 const VIEWING_FORM_BASE = 'https://docs.google.com/forms/d/e/1FAIpQLSefXwsYKryraVM4jtnLgcYtboUg3w-lx7tasftVA47E5jXUlQ/viewform?usp=pp_url';
 const PUBLIC_SITE_URL = 'https://property-site-frontend-kappa.vercel.app/public/properties';
 
-// メール配信の希望条件を入力してもらうフォーム（③④で使用）
-// TODO: 実際の配信希望条件フォームURLが用意でき次第、差し替える
-const EMAIL_PREF_FORM_URL = 'https://docs.google.com/forms/d/e/REPLACE_WITH_EMAIL_PREF_FORM/viewform';
-
 // 内覧希望者へのヒアリング項目（①内覧希望／②日程調整中の予約案内で共通利用）
 const VIEWING_HEARING_ITEMS = [
   '・ご希望日時（候補を3つほど挙げてください）',
@@ -254,8 +250,8 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
       // ③情報だけ欲しい：お礼＋配信希望フォーム（bit.ly/3TT9ZIH）＋次電日3か月後
       message = `${name}様\n\nご返信ありがとうございます。承知いたしました。\n今後、ご希望条件に合った未公開物件や新着物件をメールにてご案内いたします。\n下記フォームよりご希望条件をご入力ください↓↓\nhttps://bit.ly/3TT9ZIH\n\n配信メールの中で気になる物件がございましたら、お気軽にお問い合わせください。\nよろしくお願いいたします。${signature}`;
     } else if (templateId === 'reply_4_not_searching') {
-      // ④物件探ししていない：お礼＋メール配信フォーム（追客不要）
-      message = `${name}様\n\nご返信ありがとうございます。承知いたしました。\n今後、物件をお探しの際は、お気軽にお問い合わせください。\nまた、ご希望であれば未公開物件や新着物件をメールにてご案内いたします。ご希望の場合は下記フォームよりご登録ください↓↓\n${EMAIL_PREF_FORM_URL}\n\n今後ともどうぞよろしくお願いいたします。${signature}`;
+      // ④物件探ししていない：お礼＋配信希望フォーム（bit.ly/3TT9ZIH・追客不要）
+      message = `${name}様\n\nご返信ありがとうございます。承知いたしました。\n今後、物件をお探しの際は、お気軽にお問い合わせください。\nまた、ご希望であれば未公開物件や新着物件をメールにてご案内いたします。ご希望の場合は下記フォームよりご登録ください↓↓\nhttps://bit.ly/3TT9ZIH\n\n今後ともどうぞよろしくお願いいたします。${signature}`;
     } else if (templateId === 'followup_1month_unreachable') {
       // ★1か月後・不通メール（②の追客用）：日程確認＋予約フォーム、次電日さらに1か月後
       message = `${name}様\n\nお世話になっております。${hasFI ? 'くじら不動産' : '㈱いふう'}です。\nその後、${address}の内覧のご日程はお決まりになりましたでしょうか？\nお決まりになりましたら、下記フォームよりご予約ください↓↓\n${viewingFormUrl}\n\nご不明な点がございましたら、お気軽にお問い合わせください。\nよろしくお願いいたします。${signature}`;
