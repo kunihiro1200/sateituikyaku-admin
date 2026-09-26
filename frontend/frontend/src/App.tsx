@@ -45,6 +45,7 @@ import ScheduledNotificationsPage from './pages/ScheduledNotificationsPage';
 import SharedItemDetailPage from './pages/SharedItemDetailPage';
 import NewSharedItemPage from './pages/NewSharedItemPage';
 import ReviewCampaignStatsPage from './pages/ReviewCampaignStatsPage';
+import OfficeMeetingStatsPage from './pages/OfficeMeetingStatsPage';
 import SalesMeetingAgendaPage from './pages/SalesMeetingAgendaPage';
 import SalesMeetingContractStatsPage from './pages/SalesMeetingContractStatsPage';
 import SalesMeetingSalesStatsPage from './pages/SalesMeetingSalesStatsPage';
@@ -436,6 +437,14 @@ function App() {
         element={
           <ProtectedRoute>
             <ReviewCampaignStatsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shared-items/office-meeting-stats"
+        element={
+          <ProtectedRoute>
+            <OfficeMeetingStatsPage />
           </ProtectedRoute>
         }
       />
