@@ -976,3 +976,42 @@ export const generateInheritanceRegistrationSMS = (
   message = replacePlaceholders(message, seller);
   return message;
 };
+
+/**
+ * 2回目訪問査定後のお礼メール（SMS版）
+ * Email版「2回目訪問査定後のお礼メール」をSMS向けに短縮
+ * AA → 不動産会社いふう、FI → くじら不動産
+ */
+export const generateSecondVisitThankYouSMS = (
+  seller: Seller,
+  property: PropertyInfo | null,
+  employees?: Employee[]
+): string => {
+  const name = seller.name || '';
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? 'くじら不動産' : '不動産会社いふう';
+
+  let message = `${name}様[改行][改行]お世話になっております。${companyName}です。[改行][改行]本日はお忙しい中、査定書のご説明と今後の販売戦略についてお話しするお時間をいただき誠にありがとうございました。[改行][改行]売出価格や販売方法、販売開始時期につきましては、${name}様のご希望やご状況に合わせて柔軟にご提案させていただきますので、ご不明点やご不安な点等ございましたらいつでもご相談ください。[改行][改行]引き続きどうぞよろしくお願いいたします。`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
+
+/**
+ * 他決になった理由お伺いメール（SMS版）
+ * Email版「他決になった理由お伺いメール」をSMS向けに短縮
+ * AA → 不動産会社いふう、FI → くじら不動産
+ */
+export const generateOtherDecisionReasonInquirySMS = (
+  seller: Seller,
+  property: PropertyInfo | null
+): string => {
+  const name = seller.name || '';
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? 'くじら不動産' : '不動産会社いふう';
+
+  let message = `${name}様[改行][改行]お世話になっております。${companyName}です。[改行][改行]この度はご連絡いただき、誠にありがとうございました。[改行][改行]今後の対応改善に役立てたく、差し支えなければ、他社様を選ばれた理由や決め手となった点をお伺いできますでしょうか。[改行][改行]お手隙の際にご返信いただけましたら幸いです。引き続き何かございましたら、お気軽にご相談くださいませ。`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};

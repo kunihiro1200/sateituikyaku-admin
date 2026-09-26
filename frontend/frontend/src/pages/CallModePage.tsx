@@ -88,6 +88,9 @@ import {
   generateReasonDivorceSMS,
   generateReasonLoanSMS,
   generateInheritanceRegistrationSMS,
+  generateSecondVisitThankYouSMS,
+  generateOtherDecisionReasonInquirySMS,
+  generateAskEmailSMS,
   convertLineBreaks,
   replacePlaceholders,
 } from '../utils/smsTemplateGenerators';
@@ -1622,6 +1625,11 @@ const CallModePage = () => {
       generator: generatePostVisitThankYouSMS,
     },
     {
+      id: 'second_visit_thank_you',
+      label: '2回目訪問査定後のお礼メール',
+      generator: generateSecondVisitThankYouSMS,
+    },
+    {
       id: 'call_reminder',
       label: '当社が電話したというリマインドメール',
       generator: generateCallReminderSMS,
@@ -1630,6 +1638,16 @@ const CallModePage = () => {
       id: 'unvisited_other_decision',
       label: '未訪問他決の理由伺い',
       generator: generateUnvisitedOtherDecisionSMS,
+    },
+    {
+      id: 'other_decision_reason_inquiry',
+      label: '他決になった理由お伺いメール',
+      generator: generateOtherDecisionReasonInquirySMS,
+    },
+    {
+      id: 'ask_email',
+      label: 'メールアドレス確認メール',
+      generator: generateAskEmailSMS,
     },
     {
       id: 'greeting',
@@ -5139,7 +5157,7 @@ HP：https://ifoo-oita.com/
       // generator関数を使用してメッセージ内容を生成
       // 訪問後御礼メール・挨拶の場合は従業員データを渡す
       // call_reminder, progress_step1/2/3 の場合は担当者名字を渡す
-      const generatedContent = (template.id === 'post_visit_thank_you' || template.id === 'greeting')
+      const generatedContent = (template.id === 'post_visit_thank_you' || template.id === 'greeting' || template.id === 'second_visit_thank_you')
         ? template.generator(seller!, property, employees)
         : (template.id === 'call_reminder' || 
            template.id === 'unvisited_other_decision' || 
