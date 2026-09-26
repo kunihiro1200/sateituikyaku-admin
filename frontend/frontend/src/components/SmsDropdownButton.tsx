@@ -28,18 +28,8 @@ interface SmsDropdownButtonProps {
   senderName?: string;
   onSmsSent?: () => void;
   preViewingNotes?: string;
-  /** 内覧日（最新）YYYY-MM-DD 等。内覧前日通知・業者内覧確定テンプレで使用 */
-  viewingDate?: string;
-  /** 内覧時間 HH:MM 等。内覧前日通知・業者内覧確定テンプレで使用 */
-  viewingTime?: string;
-  /** SUUMO URL。内覧前日通知・業者内覧確定・買付キャンセル後案内テンプレで使用 */
+  /** SUUMO URL。買付キャンセル後案内テンプレで使用 */
   suumoUrl?: string;
-  /** Google Map URL。内覧前日通知テンプレで使用 */
-  googleMapUrl?: string;
-  /** 物件の現況。業者内覧確定テンプレで使用 */
-  currentStatus?: string;
-  /** 鍵の情報。業者内覧確定テンプレで使用 */
-  viewingKey?: string;
   /** 次電日（next_call_date）が自動セットされたときに親へ通知（画面の再描画・再取得用） */
   onNextCallDateUpdated?: (nextCallDate: string) => void;
   /**
@@ -99,25 +89,7 @@ const PRE_VIEWING_QA_ITEMS = [
   '・現在のお住まい（持家戸建／持家マンション／賃貸／ほか）：',
 ].join('\n');
 
-/**
- * 内覧日を「●月●日」形式に整形する。変換できない場合は元の値を返す。
- */
-const formatViewingDate = (value?: string): string => {
-  if (!value) return '';
-  const m = value.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-  if (m) return `${parseInt(m[2], 10)}月${parseInt(m[3], 10)}日`;
-  return value;
-};
 
-/**
- * 内覧時間を「〇〇時〇〇分」形式に整形する。変換できない場合は元の値を返す。
- */
-const formatViewingTime = (value?: string): string => {
-  if (!value) return '';
-  const m = value.match(/(\d{1,2}):(\d{2})/);
-  if (m) return `${parseInt(m[1], 10)}時${m[2]}分`;
-  return value;
-};
 
 /**
  * 現在日時から指定した「月数後」の日付を YYYY-MM-DD 形式で返す
@@ -142,12 +114,7 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
   senderName,
   onSmsSent,
   preViewingNotes,
-  viewingDate,
-  viewingTime,
   suumoUrl,
-  googleMapUrl,
-  currentStatus,
-  viewingKey,
   onNextCallDateUpdated,
   sentTemplateKeys,
 }) => {
@@ -241,11 +208,8 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
     const noResponseCompany = hasFI ? 'くじら不動産' : 'いふう';
     const companyShort = hasFI ? '㈱くじら不動産' : '㈱いふう';
 
-    // 内覧日時・URL系の共通セクション（内覧前日通知・業者内覧確定などで使用）
-    const formattedDate = formatViewingDate(viewingDate);
-    const formattedTime = formatViewingTime(viewingTime);
+    // SUUMO URL セクション（買付キャンセル後の案内で使用）
     const suumoSection = suumoUrl ? `\n${suumoUrl}` : '';
-    const mapSection = googleMapUrl ? `\nGoogleMap：${googleMapUrl}` : '';
 
     let message = '';
 
@@ -302,14 +266,6 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
     } else if (templateId === 'house_mansion_no_viewing') {
       // 問合せ返信（戸・マ）内覧案内なし（業者は全てこちら）
       message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n${companyIntro}\n\n所在地：${address}\n上記の物件のお問い合わせ、ありがとうございます。${preViewingSection}\n\nご不明な点等ございましたら、お気軽にお問い合わせください。\nそれでは、引き続きよろしくお願いいたします。${signature}`;
-    } else if (templateId === 'broker_viewing_confirmed') {
-      // 業者（内覧確定）：内覧日時・現況・鍵の案内
-      const genkyoSection = currentStatus ? `\n\n現況は\n${currentStatus}\nとなっております。` : '';
-      const keySection = viewingKey ? `\n\n鍵は\n${viewingKey}\nとなっております。\n尚、鍵は事務所受け取りの場合、当日受け取り・当日返却となっておりますのでご協力よろしくお願いいたします。` : '';
-      message = `${name}様\n\nお世話になっております。${companyShort}です。\n\n${formattedDate}の${formattedTime}に${address}で内覧確定しましたので、よろしくお願い申し上げます。${genkyoSection}${keySection}${suumoSection}\n\n⚠室内スリッパは各業者様でご用意いただくようお願い致します。\n⚠内覧後は、必ず当社までご報告いただきますようお願いいたします。\n\n＊キャンセル等の場合は必ずこちらのメールにご返信ください。${signature}`;
-    } else if (templateId === 'offer_broker_ng') {
-      // 買付あり物件への返信（業者への対応・内覧不可）
-      message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n${companyIntro}\n\n所在地：${address}\n大変申し訳ございませんが、こちらの物件は他のお客様より只今申込みをいただいておりますので内覧ができない状態となっております。\n\n他にご不明な点等ございましたら、お気軽にお問い合わせください。${signature}`;
     } else if (templateId === 'offer_cancelled_available') {
       // 買付キャンセル後の案内メール（再度紹介可能）
       message = `${name}様\n\nお世話になっております。\n\n以前お問合せいただきました「${address}」につきまして、他のお客様の申し込みがキャンセルとなり、再度ご紹介できる状況となりましたのでご連絡いたしました。${suumoSection}\n\nご見学希望やお問合せ等ございましたらお気軽にご連絡くださいませ。\n内覧のご予約はこちらから↓↓\n${viewingFormUrl}${hasFI ? '' : `\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri`}\n\n★水曜日は定休日となっておりますのでそれ以外の日程でお願いいたします。${preViewingSection}${signature}`;
@@ -329,12 +285,6 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
     } else if (templateId === 'pre_viewing_hearing') {
       // 内覧前ヒアリング（事前確認事項）
       message = `${name}様\n\nこのたびはお問い合わせいただき、誠にありがとうございます。\n${companyShort}でございます。\n\n内覧の日程が決まりましたので、ご案内をスムーズに進めるため、下記の項目について事前にお知らせいただけますと幸いです。そのままご記入のうえ、このメールにご返信ください。\n―――――――――――――――――――\n${PRE_VIEWING_QA_ITEMS}\n―――――――――――――――――――\n\nお手数をおかけいたしますが、ご確認のほどよろしくお願いします。\nそれでは当日お会いできるのを楽しみにしております。${signature}`;
-    } else if (templateId === 'pre_day_notice') {
-      // 内覧前日通知
-      message = `${name}様\n\nお世話になっております。${companyShort}です。\n\n${formattedDate}の${formattedTime}に${address}にてお待ちしておりますので、よろしくお願い申し上げます。${suumoSection}${mapSection}\n\nそれではお会いできるのを楽しみにしております。\n\n＊キャンセル等の場合は必ずこちらのメールにご返信ください。\n＊スタッフの個人携帯へのショートメール等はご遠慮いただいております。${signature}`;
-    } else if (templateId === 'pre_day_notice_child') {
-      // 内覧前日通知（子供）
-      message = `${name}様\n\nお世話になっております。${companyShort}です。\n\n${formattedDate}の${formattedTime}に${address}にてお待ちしておりますので、よろしくお願い申し上げます。${suumoSection}${mapSection}\n\nそれではお会いできるのを楽しみにしております。\n\n＊なお、室内には売主様のお荷物や家具・家電などがございますため、安全面への配慮および物件保護の観点から、お子様が室内の物に触れたり、お一人で移動されたりすることのないよう、保護者様にてお見守りいただきますようお願いいたします。\n\n＊キャンセル等の場合は必ずこちらのメールにご返信ください。\n＊スタッフの個人携帯へのショートメール等はご遠慮いただいております。${signature}`;
     }
 
     // 返信テンプレートに応じて次電日（next_call_date）を自動セットする
@@ -434,12 +384,8 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
         {renderSmsMenuItem('ask_email', 'メールアドレス確認')}
         {renderSmsMenuItem('offer_no_viewing', '買付あり内覧NG')}
         {renderSmsMenuItem('offer_ok_viewing', '買付あり内覧OK')}
-        {renderSmsMenuItem('offer_broker_ng', '買付あり内覧NG（業者）')}
         {renderSmsMenuItem('offer_cancelled_available', '買付キャンセル後の案内')}
-        {renderSmsMenuItem('broker_viewing_confirmed', '業者内覧確定')}
         {renderSmsMenuItem('pre_viewing_hearing', '内覧前ヒアリング')}
-        {renderSmsMenuItem('pre_day_notice', '内覧前日通知')}
-        {renderSmsMenuItem('pre_day_notice_child', '内覧前日通知（子供）')}
         {renderSmsMenuItem('post_viewing_thanks', '内覧後御礼メール')}
         {renderSmsMenuItem('purchase_campaign', '購入応援キャンペーン')}
         {renderSmsMenuItem('no_response', '前回問合せ後反応なし')}
