@@ -28,6 +28,18 @@ interface SmsDropdownButtonProps {
   senderName?: string;
   onSmsSent?: () => void;
   preViewingNotes?: string;
+  /** 内覧日（最新）YYYY-MM-DD 等。内覧前日通知・業者内覧確定テンプレで使用 */
+  viewingDate?: string;
+  /** 内覧時間 HH:MM 等。内覧前日通知・業者内覧確定テンプレで使用 */
+  viewingTime?: string;
+  /** SUUMO URL。内覧前日通知・業者内覧確定・買付キャンセル後案内テンプレで使用 */
+  suumoUrl?: string;
+  /** Google Map URL。内覧前日通知テンプレで使用 */
+  googleMapUrl?: string;
+  /** 物件の現況。業者内覧確定テンプレで使用 */
+  currentStatus?: string;
+  /** 鍵の情報。業者内覧確定テンプレで使用 */
+  viewingKey?: string;
   /** 次電日（next_call_date）が自動セットされたときに親へ通知（画面の再描画・再取得用） */
   onNextCallDateUpdated?: (nextCallDate: string) => void;
   /**
@@ -55,6 +67,58 @@ const VIEWING_HEARING_ITEMS = [
   '・ローンの場合、仮審査を受けられたことはございますか',
 ].join('\n');
 
+// 今後の物件紹介の参考にするヒアリング項目（戸・マ／持家ヒアリングで共通利用）
+const INTRO_HEARING_ITEMS = [
+  '・これまでに内覧した物件',
+  '・ご予算（物件のみ／リフォーム金額込み）',
+  '・駐車場必要台数',
+  '・現在のお住まい（持家戸建／持家マンション／賃貸／ほか）',
+  '・ご購入（入居）の希望時期',
+  '・その他、居住人数、間取り、立地などのご希望条件',
+].join('\n');
+
+// 土地用のヒアリング項目（駐車場台数を除く）
+const LAND_HEARING_ITEMS = [
+  '・これまでに内覧した物件',
+  '・ご予算（物件のみ／リフォーム金額込み）',
+  '・現在のお住まい（持家戸建／持家マンション／賃貸／ほか）',
+  '・ご購入（入居）の希望時期',
+  '・その他、居住人数、間取り、立地などのご希望条件',
+].join('\n');
+
+// 内覧前の事前確認事項（内覧前ヒアリングで使用）
+const PRE_VIEWING_QA_ITEMS = [
+  '・ご購入のご希望時期：',
+  '・ご希望のご予算：',
+  '・ご希望の間取り：',
+  '・ご希望の学校区：',
+  '・他の不動産の内覧経験（有無）とその状況：',
+  '・内覧にお越しいただく人数：',
+  '・当日ご来場の車種・色：',
+  '・住宅ローン事前審査の状況（未申込／申込中／承認済など）：',
+  '・現在のお住まい（持家戸建／持家マンション／賃貸／ほか）：',
+].join('\n');
+
+/**
+ * 内覧日を「●月●日」形式に整形する。変換できない場合は元の値を返す。
+ */
+const formatViewingDate = (value?: string): string => {
+  if (!value) return '';
+  const m = value.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (m) return `${parseInt(m[2], 10)}月${parseInt(m[3], 10)}日`;
+  return value;
+};
+
+/**
+ * 内覧時間を「〇〇時〇〇分」形式に整形する。変換できない場合は元の値を返す。
+ */
+const formatViewingTime = (value?: string): string => {
+  if (!value) return '';
+  const m = value.match(/(\d{1,2}):(\d{2})/);
+  if (m) return `${parseInt(m[1], 10)}時${m[2]}分`;
+  return value;
+};
+
 /**
  * 現在日時から指定した「月数後」の日付を YYYY-MM-DD 形式で返す
  * 次電日（next_call_date）の自動セットに使用する
@@ -78,6 +142,12 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
   senderName,
   onSmsSent,
   preViewingNotes,
+  viewingDate,
+  viewingTime,
+  suumoUrl,
+  googleMapUrl,
+  currentStatus,
+  viewingKey,
   onNextCallDateUpdated,
   sentTemplateKeys,
 }) => {
@@ -169,6 +239,13 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
       ? `\n\n株式会社くじら不動産（株式会社いふう）\n〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201\nTEL:092-401-5331\nFAX:092-401-5332\nHP:https://kujira-fudosan.com/`
       : `\n\n株式会社 いふう\nTEL：097-533-2022`;
     const noResponseCompany = hasFI ? 'くじら不動産' : 'いふう';
+    const companyShort = hasFI ? '㈱くじら不動産' : '㈱いふう';
+
+    // 内覧日時・URL系の共通セクション（内覧前日通知・業者内覧確定などで使用）
+    const formattedDate = formatViewingDate(viewingDate);
+    const formattedTime = formatViewingTime(viewingTime);
+    const suumoSection = suumoUrl ? `\n${suumoUrl}` : '';
+    const mapSection = googleMapUrl ? `\nGoogleMap：${googleMapUrl}` : '';
 
     let message = '';
 
@@ -222,6 +299,42 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
     } else if (templateId === 'followup_3month_unreachable') {
       // ★3か月後・不通メール（③の追客用）：物件探し状況伺い、次電日さらに3か月後
       message = `${name}様\n\nお世話になっております。${hasFI ? 'くじら不動産' : '㈱いふう'}です。\nその後、物件探しのご状況はいかがでしょうか？\nご希望条件に合った物件が出ましたらメールにてご案内いたしますので、気になる物件がございましたらお気軽にお問い合わせください。\n引き続きどうぞよろしくお願いいたします。${signature}`;
+    } else if (templateId === 'house_mansion_no_viewing') {
+      // 問合せ返信（戸・マ）内覧案内なし（業者は全てこちら）
+      message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n${companyIntro}\n\n所在地：${address}\n上記の物件のお問い合わせ、ありがとうございます。${preViewingSection}\n\nご不明な点等ございましたら、お気軽にお問い合わせください。\nそれでは、引き続きよろしくお願いいたします。${signature}`;
+    } else if (templateId === 'broker_viewing_confirmed') {
+      // 業者（内覧確定）：内覧日時・現況・鍵の案内
+      const genkyoSection = currentStatus ? `\n\n現況は\n${currentStatus}\nとなっております。` : '';
+      const keySection = viewingKey ? `\n\n鍵は\n${viewingKey}\nとなっております。\n尚、鍵は事務所受け取りの場合、当日受け取り・当日返却となっておりますのでご協力よろしくお願いいたします。` : '';
+      message = `${name}様\n\nお世話になっております。${companyShort}です。\n\n${formattedDate}の${formattedTime}に${address}で内覧確定しましたので、よろしくお願い申し上げます。${genkyoSection}${keySection}${suumoSection}\n\n⚠室内スリッパは各業者様でご用意いただくようお願い致します。\n⚠内覧後は、必ず当社までご報告いただきますようお願いいたします。\n\n＊キャンセル等の場合は必ずこちらのメールにご返信ください。${signature}`;
+    } else if (templateId === 'offer_broker_ng') {
+      // 買付あり物件への返信（業者への対応・内覧不可）
+      message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n${companyIntro}\n\n所在地：${address}\n大変申し訳ございませんが、こちらの物件は他のお客様より只今申込みをいただいておりますので内覧ができない状態となっております。\n\n他にご不明な点等ございましたら、お気軽にお問い合わせください。${signature}`;
+    } else if (templateId === 'offer_cancelled_available') {
+      // 買付キャンセル後の案内メール（再度紹介可能）
+      message = `${name}様\n\nお世話になっております。\n\n以前お問合せいただきました「${address}」につきまして、他のお客様の申し込みがキャンセルとなり、再度ご紹介できる状況となりましたのでご連絡いたしました。${suumoSection}\n\nご見学希望やお問合せ等ございましたらお気軽にご連絡くださいませ。\n内覧のご予約はこちらから↓↓\n${viewingFormUrl}${hasFI ? '' : `\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri`}\n\n★水曜日は定休日となっておりますのでそれ以外の日程でお願いいたします。${preViewingSection}${signature}`;
+    } else if (templateId === 'purchase_campaign') {
+      // 購入応援キャンペーン
+      const staffName = senderName || '担当';
+      message = `${name}様\n\nお世話になっております。${companyShort}の${staffName}です。\n先日は貴重な時間をいただき誠にありがとうございました。\nその後、不動産購入のご状況はいかがでしょうか？\n\n≪キャンペーン対象物件を内覧いただいたお客様限定≫\n《購入応援キャンペーン》\n仲介手数料から10万円をキャッシュバックいたします！\n●条件\n・初めての内覧から1年以内にご成約\n・購入価格が1500万円以上\n\n詳しくはスタッフにお問合せ下さい。\nご不明点や他に気になる物件などございましたら、どうぞお気軽にご連絡くださいませ。${signature}`;
+    } else if (templateId === 'house_mansion_hearing') {
+      // 問合せ返信（戸・マ）＋ヒアリング
+      message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n${companyIntro}\n\n所在地：${address}\n上記の物件のお問い合わせ、ありがとうございます。${preViewingSection}\n\nご不明な点等ございましたら、お気軽にお問い合わせください。\n内覧のご予約はこちらから↓↓\n${viewingFormUrl}\n\nまた、今後ご紹介する物件の参考に、お手すきの際に下記にお答えいただけますと幸いです。\n${INTRO_HEARING_ITEMS}\n\nそれでは、引き続きよろしくお願いいたします。${signature}`;
+    } else if (templateId === 'land_hearing') {
+      // 問合せ返信（土）＋ヒアリング
+      message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n${companyIntro}\n\n所在地：${address}\n上記の物件のお問い合わせ、ありがとうございます。${preViewingSection}\n\n現地確認につきましては、敷地外からはご自由に見ていただいて大丈夫です。\nご不明な点等ございましたら、お気軽にお問い合わせください。\n\nまた、今後ご紹介する物件の参考に、お手すきの際に下記にお答えいただけますと幸いです。\n${LAND_HEARING_ITEMS}\n\nそれでは、引き続きよろしくお願いいたします。${signature}`;
+    } else if (templateId === 'buyer_hearing') {
+      // 持家ヒアリング（物件問合せなし）
+      message = `${name}様\n\nお世話になっております。${companyIntro}\nこの度は当社にお問い合わせ頂き誠にありがとうございました。\n\n今後、周辺エリアで物件をお探しでしたら、メールにて公開前・新着物件をご案内しておりますのでご利用ください。\n他社物件もご紹介できますので、気になる物件がございましたらお気軽にご連絡ください。\n\nまた、今後ご紹介する物件の参考に、お手すきの際に下記にお答えいただけますと幸いです。\n${INTRO_HEARING_ITEMS}\n\nそれでは、引き続きよろしくお願いいたします。${signature}`;
+    } else if (templateId === 'pre_viewing_hearing') {
+      // 内覧前ヒアリング（事前確認事項）
+      message = `${name}様\n\nこのたびはお問い合わせいただき、誠にありがとうございます。\n${companyShort}でございます。\n\n内覧の日程が決まりましたので、ご案内をスムーズに進めるため、下記の項目について事前にお知らせいただけますと幸いです。そのままご記入のうえ、このメールにご返信ください。\n―――――――――――――――――――\n${PRE_VIEWING_QA_ITEMS}\n―――――――――――――――――――\n\nお手数をおかけいたしますが、ご確認のほどよろしくお願いします。\nそれでは当日お会いできるのを楽しみにしております。${signature}`;
+    } else if (templateId === 'pre_day_notice') {
+      // 内覧前日通知
+      message = `${name}様\n\nお世話になっております。${companyShort}です。\n\n${formattedDate}の${formattedTime}に${address}にてお待ちしておりますので、よろしくお願い申し上げます。${suumoSection}${mapSection}\n\nそれではお会いできるのを楽しみにしております。\n\n＊キャンセル等の場合は必ずこちらのメールにご返信ください。\n＊スタッフの個人携帯へのショートメール等はご遠慮いただいております。${signature}`;
+    } else if (templateId === 'pre_day_notice_child') {
+      // 内覧前日通知（子供）
+      message = `${name}様\n\nお世話になっております。${companyShort}です。\n\n${formattedDate}の${formattedTime}に${address}にてお待ちしておりますので、よろしくお願い申し上げます。${suumoSection}${mapSection}\n\nそれではお会いできるのを楽しみにしております。\n\n＊なお、室内には売主様のお荷物や家具・家電などがございますため、安全面への配慮および物件保護の観点から、お子様が室内の物に触れたり、お一人で移動されたりすることのないよう、保護者様にてお見守りいただきますようお願いいたします。\n\n＊キャンセル等の場合は必ずこちらのメールにご返信ください。\n＊スタッフの個人携帯へのショートメール等はご遠慮いただいております。${signature}`;
     }
 
     // 返信テンプレートに応じて次電日（next_call_date）を自動セットする
@@ -311,13 +424,24 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
           renderSmsMenuItem('land_no_permission', '資料請求（土）許可不要'),
           renderSmsMenuItem('minpaku', '民泊問合せ'),
           renderSmsMenuItem('land_need_permission', '資料請求（土）売主要許可'),
+          renderSmsMenuItem('land_hearing', '資料請求（土）＋ヒアリング'),
         ] : [
           renderSmsMenuItem('house_mansion', '資料請求（戸・マ）'),
+          renderSmsMenuItem('house_mansion_no_viewing', '資料請求（戸・マ）内覧案内なし'),
+          renderSmsMenuItem('house_mansion_hearing', '資料請求（戸・マ）＋ヒアリング'),
         ]}
+        {renderSmsMenuItem('buyer_hearing', '持家ヒアリング')}
         {renderSmsMenuItem('ask_email', 'メールアドレス確認')}
         {renderSmsMenuItem('offer_no_viewing', '買付あり内覧NG')}
         {renderSmsMenuItem('offer_ok_viewing', '買付あり内覧OK')}
+        {renderSmsMenuItem('offer_broker_ng', '買付あり内覧NG（業者）')}
+        {renderSmsMenuItem('offer_cancelled_available', '買付キャンセル後の案内')}
+        {renderSmsMenuItem('broker_viewing_confirmed', '業者内覧確定')}
+        {renderSmsMenuItem('pre_viewing_hearing', '内覧前ヒアリング')}
+        {renderSmsMenuItem('pre_day_notice', '内覧前日通知')}
+        {renderSmsMenuItem('pre_day_notice_child', '内覧前日通知（子供）')}
         {renderSmsMenuItem('post_viewing_thanks', '内覧後御礼メール')}
+        {renderSmsMenuItem('purchase_campaign', '購入応援キャンペーン')}
         {renderSmsMenuItem('no_response', '前回問合せ後反応なし')}
         {renderSmsMenuItem('no_response_offer', '反応なし（買付あり不適合）')}
         {renderSmsMenuItem('pinrich', '物件指定なし（Pinrich）')}

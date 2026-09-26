@@ -151,6 +151,10 @@ interface PropertyListing {
   settlement_date?: string;
   pre_viewing_notes?: string;
   house_maker?: string;
+  google_map_url?: string;
+  suumo_url?: string;
+  current_status?: string;
+  viewing_key?: string;
 }
 
 interface InquiryHistory {
@@ -1985,6 +1989,12 @@ export default function BuyerDetailPage() {
               onSmsSent={fetchActivities}
               sentTemplateKeys={sentSmsTemplateKeys}
               preViewingNotes={linkedProperties[0]?.pre_viewing_notes || ''}
+              viewingDate={buyer.viewing_date || ''}
+              viewingTime={buyer.viewing_time || ''}
+              suumoUrl={linkedProperties[0]?.suumo_url || ''}
+              googleMapUrl={linkedProperties[0]?.google_map_url || ''}
+              currentStatus={linkedProperties[0]?.current_status || ''}
+              viewingKey={linkedProperties[0]?.viewing_key || ''}
               onNextCallDateUpdated={(nextCallDate) => {
                 // 返信テンプレート送信で次電日が自動セットされたら画面へ即時反映
                 setBuyer((prev: any) => prev ? { ...prev, next_call_date: nextCallDate } : prev);
