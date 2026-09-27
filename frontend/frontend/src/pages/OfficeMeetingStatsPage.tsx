@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Container,
   Box,
@@ -14,6 +14,10 @@ import {
   IconButton,
   Tooltip,
   Chip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { Refresh as RefreshIcon } from '@mui/icons-material';
 import PageNavigation from '../components/PageNavigation';
@@ -31,12 +35,24 @@ interface StatsRow {
   total: number;
 }
 
-interface StatsData {
-  period: { allTime: boolean };
-  metrics: Metric[];
+interface MonthStats {
+  month: string; // 'YYYY-MM'
   rows: StatsRow[];
   totals: Record<string, number>;
+}
+
+interface StatsData {
+  metrics: Metric[];
+  months: MonthStats[];
+  availableMonths: string[];
   updatedAt: string;
+}
+
+// 'YYYY-MM' → '2026年9月'
+function formatMonthLabel(month: string): string {
+  const [y, m] = month.split('-');
+  if (!y || !m) return month;
+  return `${y}年${parseInt(m, 10)}月`;
 }
 
 export default function OfficeMeetingStatsPage() {
@@ -44,13 +60,23 @@ export default function OfficeMeetingStatsPage() {
   const [data, setData] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await api.get('/api/work-tasks/office-meeting-stats');
-      setData(res.data);
+      const payload: StatsData = res.data;
+      setData(payload);
+      // 最新月（配列先頭）をデフォルト選択
+      if (payload.availableMonths && payload.availableMonths.length > 0) {
+        setSelectedMonth((prev) =>
+          prev && payload.availableMonths.includes(prev) ? prev : payload.availableMonths[0]
+        );
+      } else {
+        setSelectedMonth('');
+      }
     } catch (err: any) {
       setError(err?.response?.data?.error || err?.message || '集計の取得に失敗しました');
     } finally {
@@ -62,21 +88,43 @@ export default function OfficeMeetingStatsPage() {
     fetchStats();
   }, [fetchStats]);
 
+  const currentMonth: MonthStats | null = useMemo(() => {
+    if (!data) return null;
+    return data.months.find((m) => m.month === selectedMonth) || null;
+  }, [data, selectedMonth]);
+
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
       <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
         <Typography variant="h5" fontWeight="bold" sx={{ color: sharedItemsColor.main }}>
-          事務作業集計（スタッフ別・累計）
+          事務作業集計（スタッフ別・月ごと）
         </Typography>
         <Tooltip title="再読み込み">
           <IconButton onClick={fetchStats} size="small" disabled={loading}>
             <RefreshIcon />
           </IconButton>
         </Tooltip>
-        {data && (
+        {data && data.availableMonths.length > 0 && (
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel id="office-stats-month-label">集計月</InputLabel>
+            <Select
+              labelId="office-stats-month-label"
+              label="集計月"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            >
+              {data.availableMonths.map((m) => (
+                <MenuItem key={m} value={m}>
+                  {formatMonthLabel(m)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+        {selectedMonth && (
           <Chip
             size="small"
-            label="全期間の累計"
+            label={formatMonthLabel(selectedMonth)}
             sx={{ bgcolor: sharedItemsColor.light, color: '#fff' }}
           />
         )}
@@ -90,7 +138,7 @@ export default function OfficeMeetingStatsPage() {
       <PageNavigation />
 
       <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>
-        業務依頼の各担当対応数と、送信したメール対応数（値下げ対応・レインズ対応のみ）をスタッフ別に集計しています（これまでの累計）。
+        業務依頼の各担当対応数と、送信したメール対応数（値下げ対応・レインズ対応のみ）を月ごと・スタッフ別に集計しています。
       </Typography>
 
       <Box sx={{ mt: 1 }}>
@@ -100,8 +148,10 @@ export default function OfficeMeetingStatsPage() {
           </Box>
         ) : error ? (
           <Alert severity="error">{error}</Alert>
-        ) : !data || data.rows.length === 0 ? (
+        ) : !data || !data.availableMonths.length ? (
           <Alert severity="info">集計データがありません。</Alert>
+        ) : !currentMonth || currentMonth.rows.length === 0 ? (
+          <Alert severity="info">{formatMonthLabel(selectedMonth)}の集計データがありません。</Alert>
         ) : (
           <Paper sx={{ overflowX: 'auto' }}>
             <Table size="small" stickyHeader>
@@ -125,7 +175,7 @@ export default function OfficeMeetingStatsPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {data.rows.map((row) => (
+                {currentMonth.rows.map((row) => (
                   <TableRow key={row.initial} hover>
                     <TableCell sx={{ fontWeight: 'bold', position: 'sticky', left: 0, bgcolor: '#fff', zIndex: 2 }}>
                       {row.initial}
@@ -150,11 +200,11 @@ export default function OfficeMeetingStatsPage() {
                   </TableCell>
                   {data.metrics.map((m) => (
                     <TableCell key={m.key} align="center" sx={{ fontWeight: 'bold', bgcolor: '#eceff1' }}>
-                      {data.totals[m.key] || 0}
+                      {currentMonth.totals[m.key] || 0}
                     </TableCell>
                   ))}
                   <TableCell align="center" sx={{ fontWeight: 'bold', bgcolor: sharedItemsColor.main, color: '#fff' }}>
-                    {Object.values(data.totals).reduce((a, b) => a + b, 0)}
+                    {Object.values(currentMonth.totals).reduce((a, b) => a + b, 0)}
                   </TableCell>
                 </TableRow>
               </TableBody>
