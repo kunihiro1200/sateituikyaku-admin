@@ -6954,6 +6954,8 @@ HP：https://ifoo-oita.com/
                   {smsTemplates
                     // 専用URL未発行の場合、「査定Sメール２（査定根拠等）」はURL抜けで送信されてしまうため選択肢から外す
                     .filter((template) => template.id !== 'valuation2' || hasPortalUrl)
+                    // サイトHの場合、「キャンセル案内」はSMSでは表示しない（HOME4Uはキャンセル運用対象外のため）
+                    .filter((template) => template.id !== 'cancellation' || (seller?.site || editedSite) !== 'H')
                     .map((template) => {
                     const isSent = isSmsTemplateSent(template);
                     
