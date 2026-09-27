@@ -93,6 +93,7 @@ import {
   generateAskEmailSMS,
   generateSellNowChanceSMS,
   generateTaxDeadlineAssetValueSMS,
+  generateFuturePriceOutlookSMS,
   convertLineBreaks,
   replacePlaceholders,
 } from '../utils/smsTemplateGenerators';
@@ -1625,6 +1626,11 @@ const CallModePage = () => {
       id: 'tax_deadline_asset_value',
       label: '税制優遇の期限と物件の資産価値について',
       generator: generateTaxDeadlineAssetValueSMS,
+    },
+    {
+      id: 'future_price_outlook',
+      label: '今後の不動産価格について',
+      generator: generateFuturePriceOutlookSMS,
     },
     {
       id: 'visit_reminder',

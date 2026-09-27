@@ -1053,3 +1053,22 @@ export const generateTaxDeadlineAssetValueSMS = (
   message = replacePlaceholders(message, seller);
   return message;
 };
+
+/**
+ * 今後の不動産価格について（SMS版）
+ * Email版「今後の不動産価格について」をSMS向けに短縮
+ * AA → 不動産会社いふう、FI → くじら不動産
+ */
+export const generateFuturePriceOutlookSMS = (
+  seller: Seller,
+  property: PropertyInfo | null
+): string => {
+  const name = seller.name || '';
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? 'くじら不動産' : '不動産会社いふう';
+
+  let message = `${name}様[改行][改行]お世話になっております。大分市舞鶴町にございます${companyName}です。既にご売却の検討は落ち着かれた頃でしょうか。[改行][改行]今後の検討材料として、不動産価格の見立てをお伝えさせてください。[改行][改行]最近は「金利上昇」や「建築コスト高騰」が続き、新築価格の上昇で割安な中古へ買い手が流れ、一時的に需要が押し上げられています。[改行][改行]ただ今後は金利負担の増加も予測され、中古価格がこのまま上昇を続けるとは限りません。むしろ「高く売れる今のうちに」と売却に動く方が増え、売り物件が溢れて価格が低下に転じるケースも過去の市況データから予測されます。[改行][改行]先延ばしにしている間に似た条件の物件が次々売り出され、数百万円単位の機会損失が発生するリスクもございます。[改行][改行]実態に即した価格や今後の価格推移の予想をプロの視点でお伝えできます。気になる点がございましたら、このメッセージに「1」とだけご返信ください。[改行][改行]一度お話を聞いて後は連絡不要ということであれば、その旨お伝えいただければ今後当社からのご連絡は一切いたしませんのでご安心ください。[改行][改行]㈱いふう[改行]<<当社住所>>[改行]TEL: 097-533-2022`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
