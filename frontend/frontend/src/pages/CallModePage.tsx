@@ -95,6 +95,7 @@ import {
   generateTaxDeadlineAssetValueSMS,
   generateFuturePriceOutlookSMS,
   generateFirstVisitThankYouSMS,
+  generatePostVisitNoContactSMS,
   convertLineBreaks,
   replacePlaceholders,
 } from '../utils/smsTemplateGenerators';
@@ -1652,6 +1653,11 @@ const CallModePage = () => {
       id: 'second_visit_thank_you',
       label: '2回目訪問査定後のお礼メール',
       generator: generateSecondVisitThankYouSMS,
+    },
+    {
+      id: 'post_visit_no_contact',
+      label: '訪問後に連絡がとれないお客様',
+      generator: generatePostVisitNoContactSMS,
     },
     {
       id: 'call_reminder',
@@ -5181,7 +5187,7 @@ HP：https://ifoo-oita.com/
       // generator関数を使用してメッセージ内容を生成
       // 訪問後御礼メール・挨拶の場合は従業員データを渡す
       // call_reminder, progress_step1/2/3 の場合は担当者名字を渡す
-      const generatedContent = (template.id === 'post_visit_thank_you' || template.id === 'greeting' || template.id === 'second_visit_thank_you' || template.id === 'first_visit_thank_you')
+      const generatedContent = (template.id === 'post_visit_thank_you' || template.id === 'greeting' || template.id === 'second_visit_thank_you' || template.id === 'first_visit_thank_you' || template.id === 'post_visit_no_contact')
         ? template.generator(seller!, property, employees)
         : (template.id === 'call_reminder' || 
            template.id === 'unvisited_other_decision' || 

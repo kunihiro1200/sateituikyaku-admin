@@ -1103,3 +1103,34 @@ export const generateFirstVisitThankYouSMS = (
   message = replacePlaceholders(message, seller);
   return message;
 };
+
+/**
+ * 訪問後に連絡がとれないお客様（SMS版）
+ * Email版「訪問後に連絡がとれないお客様」をSMS向けに短縮
+ * 近い条件で探している買主がいる旨を伝え状況確認する
+ * AA → (株)いふう、FI → (株)くじら不動産
+ */
+export const generatePostVisitNoContactSMS = (
+  seller: Seller,
+  property: PropertyInfo | null,
+  employees?: Employee[]
+): string => {
+  const name = seller.name || '';
+
+  // 担当者名を解決（本文には名字だけを表示）: visitAssignee > assignedTo
+  const assigneeIdentifier = seller.visitAssignee || seller.assignedTo || '';
+  const assigneeName = extractLastName(getEmployeeName(assigneeIdentifier, employees));
+
+  // 売主番号でAA/FI判定
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? '(株)くじら不動産' : '株式会社いふう';
+
+  const greeting = assigneeName
+    ? `${companyName}の${assigneeName}でございます。`
+    : `${companyName}です。`;
+
+  let message = `${name}様[改行][改行]お世話になっております。${greeting}[改行][改行]先日は訪問査定のお時間をいただき、誠にありがとうございました。その後のご状況はいかがでしょうか。[改行][改行]現在、こちらの物件に近い条件でお探しのお客様よりお問い合わせをいただいており、もしご売却のご意向がございましたらご紹介できる可能性があるためご連絡いたしました。[改行][改行]もちろん、ご事情の変化などにより売却を見送られている場合でも差し支えございませんので、その際は一言お知らせいただけますと幸いです。[改行][改行]何かお力になれることがございましたら、どのようなことでもお気軽にご相談ください。何卒よろしくお願いいたします。`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
