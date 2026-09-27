@@ -12,6 +12,59 @@ const SETTLEMENT_CHAT_WEBHOOK_URL = 'https://chat.googleapis.com/v1/spaces/AAAAE
 
 const router = Router();
 const workTaskService = new WorkTaskService();
+
+/**
+ * employees テーブルから「名前/表記揺れ → 正規イニシャル」変換関数を構築する。
+ * 例: "国広智子" → "K"、"ｗ" → "W"、"k" → "K"
+ * （sellers.ts の buildNormalizeInitialMap と同等のロジック）
+ */
+async function buildWorkTaskNormalizeInitialMap(
+  supabase: any
+): Promise<(raw: string) => string> {
+  try {
+    const { data: employees } = await supabase
+      .from('employees')
+      .select('initials, name')
+      .not('initials', 'is', null);
+
+    const nameToInitial = new Map<string, string>();
+    const normalizedInitials = new Map<string, string>();
+
+    for (const emp of (employees as any[]) || []) {
+      const initial: string = emp.initials ? String(emp.initials).trim() : '';
+      const name: string = emp.name ? String(emp.name).trim() : '';
+      if (!initial) continue;
+
+      if (name) nameToInitial.set(name, initial);
+
+      const halfWidth = initial.replace(/[Ａ-Ｚａ-ｚ]/g, (c) =>
+        String.fromCharCode(c.charCodeAt(0) - 0xfee0)
+      );
+      const upper = halfWidth.toUpperCase();
+      if (halfWidth !== initial) normalizedInitials.set(initial, upper);
+      if (upper !== initial && upper !== halfWidth)
+        normalizedInitials.set(halfWidth.toLowerCase(), upper);
+      normalizedInitials.set(initial.toLowerCase(), upper);
+      normalizedInitials.set(halfWidth, upper);
+      normalizedInitials.set(upper, upper);
+    }
+
+    return (raw: string): string => {
+      const trimmed = raw.trim();
+      if (nameToInitial.has(trimmed)) return nameToInitial.get(trimmed)!;
+      const halfWidth = trimmed.replace(/[Ａ-Ｚａ-ｚ]/g, (c) =>
+        String.fromCharCode(c.charCodeAt(0) - 0xfee0)
+      );
+      const upper = halfWidth.toUpperCase();
+      if (normalizedInitials.has(upper)) return normalizedInitials.get(upper)!;
+      if (normalizedInitials.has(trimmed)) return normalizedInitials.get(trimmed)!;
+      return upper || trimmed;
+    };
+  } catch (err) {
+    console.error('[buildWorkTaskNormalizeInitialMap] エラー:', err);
+    return (raw: string) => raw.trim();
+  }
+}
 const workTaskSyncService = new WorkTaskSyncService();
 const emailNotificationService = new WorkTaskEmailNotificationService();
 const staffManagementService = new StaffManagementService();
@@ -93,6 +146,400 @@ router.get('/floor-plan-revision-corrections', async (req: Request, res: Respons
     return res.json(revisions);
   } catch (error: any) {
     console.error('間取図修正履歴取得エラー:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/work-tasks/today-publications
+ * 本日（JST）公開予定の物件一覧を返す。
+ * work_tasks.publish_scheduled_date が当日と一致する物件を返す。
+ * アプリ起動時の「本日サイト公開物件あり」アナウンス表示に使用（メール通知非依存）。
+ */
+router.get('/today-publications', async (req: Request, res: Response) => {
+  try {
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    // JST（UTC+9）の当日 YYYY-MM-DD
+    const now = new Date();
+    const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    const todayJST = `${jst.getUTCFullYear()}-${String(jst.getUTCMonth() + 1).padStart(2, '0')}-${String(jst.getUTCDate()).padStart(2, '0')}`;
+
+    const { data, error } = await supabase
+      .from('work_tasks')
+      .select('property_number, property_address, seller_name, property_type, sales_assignee, publish_scheduled_date')
+      .eq('publish_scheduled_date', todayJST)
+      .not('publish_scheduled_date', 'is', null);
+
+    if (error) {
+      console.error('[today-publications] 取得エラー:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json({
+      date: todayJST,
+      count: (data || []).length,
+      properties: data || [],
+    });
+  } catch (error: any) {
+    console.error('[today-publications] エラー:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/work-tasks/office-meeting-stats
+ * 事務会議用の集計を「月ごと」に返す。
+ *  - 業務依頼（work_tasks）の担当者6項目をスタッフ別にカウント
+ *      媒介作成者 / サイト登録依頼者 / 間取り図確認者 / サイト登録確認者 /
+ *      社員が契約書作成 / 二重チェック（売買契約確認=確認OK）
+ *  - メール送信対応（activity_logs / property_chat_history）のうち
+ *    「値下げ対応」「レインズ対応」を送信者スタッフ別にカウント
+ *    ※ 値下げ対応は送信回数ではなく「対応した物件数（target_id のユニーク数／月・イニシャル別）」で数える。
+ *      レインズ対応は従来どおり送信回数。
+ *
+ * 月別集計の基準日（すべて JST で月境界を切る）:
+ *  - work_tasks       : 各作業の実施日カラム（媒介締め日 / サイト登録納期 / 間取図完了日 等）。
+ *                       充足率96〜100%。取れない行のみ created_at にフォールバック。
+ *  - activity_logs    : created_at（送信日時）
+ *  - property_chat_history : sent_at（送信日時・NOT NULL）
+ *
+ * レスポンス: { metrics, months: [{ month:'YYYY-MM', rows, totals }], availableMonths, updatedAt }
+ *   months は新しい月が先頭（降順）。除外したいイニシャルは ?excludeInitials=U,I,K で指定できる。
+ */
+router.get('/office-meeting-stats', async (req: Request, res: Response) => {
+  try {
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    // 除外イニシャル（カンマ区切り）。指定がなければデフォルトの除外のみ。
+    const excludeParam = (req.query.excludeInitials as string | undefined) || '';
+    const userExcluded = excludeParam
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter((s) => s !== '');
+
+    // ---- employees から名前→イニシャル正規化マップを構築 ----
+    const normalizeInitial = await buildWorkTaskNormalizeInitialMap(supabase);
+
+    // ---- 月キー（JST基準の YYYY-MM）を作るヘルパ ----
+    // 値が 'YYYY-MM-DD...' の日付文字列（work_tasks の DATE カラム等）は、
+    // タイムゾーン変換せず先頭の YYYY-MM をそのまま使う（JSTずれ防止・timezone-handling-rules準拠）。
+    // それ以外（ISO日時・UTC保存の created_at/sent_at 等）は +9h して JST の年月を取る。
+    const toMonthKey = (value: any): string | null => {
+      if (!value) return null;
+      const str = String(value).trim();
+      const ymd = str.match(/^(\d{4})-(\d{2})-\d{2}/);
+      // Z / +09:00 等のタイムゾーン指定が無い純粋な日付/日時文字列はそのまま年月を採用
+      if (ymd && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(str)) {
+        return `${ymd[1]}-${ymd[2]}`;
+      }
+      const d = new Date(str);
+      if (isNaN(d.getTime())) return null;
+      const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+      const y = jst.getUTCFullYear();
+      const m = String(jst.getUTCMonth() + 1).padStart(2, '0');
+      return `${y}-${m}`;
+    };
+
+    // ---- 業務依頼（work_tasks）を取得 ----
+    // 月別集計の基準日は「各作業の実施日カラム」（媒介締め日・サイト登録納期など）を使う。
+    // 実データ調査で充足率96〜100%と確認済み。created_at は登録月であり作業月とずれるため使わない。
+    const { data: tasks, error: taskError } = await supabase
+      .from('work_tasks')
+      .select(
+        [
+          'created_at',
+          'mediation_creator',
+          'mediation_deadline',
+          'site_registration_requester',
+          'site_registration_request_date',
+          'site_registration_due_date',
+          'floor_plan_confirmer',
+          'floor_plan_completed_date',
+          'floor_plan_due_date',
+          'site_registration_confirmer',
+          'site_registration_confirm_request_date',
+          'employee_contract_creation',
+          'sales_contract_confirmed',
+          'sales_contract_assignee',
+          'sales_contract_deadline',
+          'settlement_date',
+        ].join(', ')
+      );
+
+    if (taskError) {
+      console.error('[OfficeMeetingStats] work_tasks 取得エラー:', taskError);
+      return res.status(500).json({ error: taskError.message });
+    }
+
+    // 集計対象の項目定義（key, 担当者カラム, 実施月の基準日カラム）
+    type TaskMetric = {
+      key: string;
+      label: string;
+      assigneeCol: string;
+      // 実施月の基準日カラム（先頭から順に、値が取れた最初のものを採用）。
+      // いずれも取れない行は created_at にフォールバックする。
+      dateCols: string[];
+      // 担当者としてカウントする条件（省略時は担当者が入っていればカウント）
+      predicate?: (row: any) => boolean;
+    };
+    const taskMetrics: TaskMetric[] = [
+      {
+        key: 'mediationCreator',
+        label: '媒介作成者',
+        assigneeCol: 'mediation_creator',
+        dateCols: ['mediation_deadline'],
+      },
+      {
+        key: 'siteRegistrationRequester',
+        label: 'サイト登録依頼者',
+        assigneeCol: 'site_registration_requester',
+        dateCols: ['site_registration_request_date', 'site_registration_due_date'],
+      },
+      {
+        key: 'floorPlanConfirmer',
+        label: '間取り図確認者',
+        assigneeCol: 'floor_plan_confirmer',
+        dateCols: ['floor_plan_completed_date', 'floor_plan_due_date'],
+      },
+      {
+        key: 'siteRegistrationConfirmer',
+        label: 'サイト登録確認者',
+        assigneeCol: 'site_registration_confirmer',
+        dateCols: ['site_registration_confirm_request_date', 'site_registration_due_date'],
+      },
+      {
+        key: 'employeeContractCreation',
+        label: '社員が契約書作成',
+        assigneeCol: 'employee_contract_creation',
+        dateCols: ['sales_contract_deadline', 'settlement_date'],
+      },
+      {
+        // 二重チェック: 売買契約確認が「確認OK」になったものを担当者別にカウント
+        key: 'doubleCheck',
+        label: '二重チェック',
+        assigneeCol: 'sales_contract_assignee',
+        dateCols: ['sales_contract_deadline', 'settlement_date'],
+        predicate: (row: any) => String(row.sales_contract_confirmed || '').includes('OK'),
+      },
+    ];
+
+    // 月別集計コンテナ: { month: { metricKey: { initial: count } } }
+    const monthly: Record<string, Record<string, Record<string, number>>> = {};
+    const ensureBucket = (month: string, metricKey: string): Record<string, number> => {
+      if (!monthly[month]) monthly[month] = {};
+      if (!monthly[month][metricKey]) monthly[month][metricKey] = {};
+      return monthly[month][metricKey];
+    };
+    const addCount = (month: string | null, metricKey: string, initial: string) => {
+      if (!month || !initial) return;
+      const bucket = ensureBucket(month, metricKey);
+      bucket[initial] = (bucket[initial] || 0) + 1;
+    };
+
+    // ---- 業務依頼（work_tasks）を月別に集計 ----
+    // 各作業の実施月は、その作業に対応する日付カラムから決める（実施日に近い順）。
+    // どの日付カラムも取れない場合は created_at にフォールバック。
+    for (const rawRow of tasks || []) {
+      const row = rawRow as any;
+      for (const m of taskMetrics) {
+        const rawAssignee = row[m.assigneeCol];
+        if (!rawAssignee || String(rawAssignee).trim() === '') continue;
+        if (m.predicate && !m.predicate(row)) continue;
+        const initial = normalizeInitial(String(rawAssignee).trim());
+        if (!initial) continue;
+
+        // 実施月の基準日を決定
+        let month: string | null = null;
+        for (const dc of m.dateCols) {
+          month = toMonthKey(row[dc]);
+          if (month) break;
+        }
+        if (!month) month = toMonthKey(row.created_at);
+        if (!month) continue;
+
+        addCount(month, m.key, initial);
+      }
+    }
+
+    // ---- メール送信対応（値下げ / レインズ）を月別に集計 ----
+    // 値下げ判定はテンプレート名「公開前・値下げメール」で行う。
+    // （件名の「価格変更」だけで判定すると「未公開物件のお知らせ」等の一斉配信も誤検出するため）
+    const isPriceReduction = (templateName: string) => templateName.includes('値下げ');
+    const isReins = (text: string) => text.includes('レインズ');
+    // 件名から物件を識別するキーを作る（先頭の【価格変更】等のラベルを除去）
+    const propertyKeyFromSubject = (subject: string): string =>
+      String(subject || '')
+        .replace(/^【[^】]*】/, '')
+        .replace(/\s+/g, '')
+        .trim();
+
+    // (A) activity_logs（action='email'）— 1000件上限を回避するため全件ページング取得
+    //     月別集計の基準日は created_at（送信日時）。
+    const emailLogs: any[] = [];
+    {
+      const PAGE = 1000;
+      let offset = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data: page, error: pageErr } = await supabase
+          .from('activity_logs')
+          .select('metadata, created_at, target_id, employee:employees(initials, name)')
+          .eq('action', 'email')
+          .range(offset, offset + PAGE - 1);
+        if (pageErr) {
+          console.error('[OfficeMeetingStats] activity_logs 取得エラー:', pageErr);
+          break;
+        }
+        if (!page || page.length === 0) break;
+        emailLogs.push(...page);
+        if (page.length < PAGE) break;
+        offset += PAGE;
+      }
+    }
+
+    // 値下げ対応は「送信回数」ではなく「対応した物件数（ユニーク）」で数える。
+    // 値下げメールは買主全員への一斉配信のため、1物件の値下げで同じ件名のログが
+    // 買主の数だけ生成される。物件は「件名（物件所在）」で識別し、同一物件・同一月は1件に丸める。
+    // { month: { initial: Set<物件キー(件名)> } }
+    const priceReductionProperties: Record<string, Record<string, Set<string>>> = {};
+
+    for (const log of emailLogs || []) {
+      const meta = (log as any).metadata || {};
+      const templateName = String(meta.templateName || '');
+      const emp = (log as any).employee;
+      const rawInitial = emp?.initials || emp?.name || '';
+      if (!rawInitial) continue;
+      const initial = normalizeInitial(String(rawInitial).trim());
+      if (!initial) continue;
+      const month = toMonthKey((log as any).created_at);
+      if (!month) continue;
+      if (isPriceReduction(templateName)) {
+        // 件名から物件を識別。件名が空のログは物件単位で数えられないためスキップ
+        const propertyKey = propertyKeyFromSubject(meta.subject);
+        if (propertyKey) {
+          if (!priceReductionProperties[month]) priceReductionProperties[month] = {};
+          if (!priceReductionProperties[month][initial]) priceReductionProperties[month][initial] = new Set<string>();
+          priceReductionProperties[month][initial].add(propertyKey);
+        }
+      }
+      if (isReins(templateName || meta.subject)) addCount(month, 'reinsEmail', initial);
+    }
+
+    // ユニーク物件数を priceReductionEmail の件数として monthly に反映
+    for (const [month, byInitial] of Object.entries(priceReductionProperties)) {
+      const bucket = ensureBucket(month, 'priceReductionEmail');
+      for (const [initial, propSet] of Object.entries(byInitial)) {
+        bucket[initial] = propSet.size;
+      }
+    }
+
+    // 注: 値下げメールは activity_logs を唯一のソースとする。
+    // （1回の送信で activities テーブルにも書かれるため、両方数えると二重計上になる）
+
+    // (C) レインズ対応は property_chat_history（売主へのGMAIL/メール送信履歴）にある。
+    //     「サイト公開＆レインズ登録証明書のご案内」等。activity_logs には無いためこちらで集計。
+    //     月別集計の基準日は sent_at（送信日時・NOT NULL）。
+    const chatRows: any[] = [];
+    {
+      const PAGE = 1000;
+      let offset = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data: page, error: pageErr } = await supabase
+          .from('property_chat_history')
+          .select('subject, message, sender_name, sent_at')
+          .in('chat_type', ['seller_email', 'seller_sms', 'seller_gmail'])
+          .range(offset, offset + PAGE - 1);
+        if (pageErr) {
+          console.error('[OfficeMeetingStats] property_chat_history 取得エラー:', pageErr);
+          break;
+        }
+        if (!page || page.length === 0) break;
+        chatRows.push(...page);
+        if (page.length < PAGE) break;
+        offset += PAGE;
+      }
+    }
+
+    for (const row of chatRows) {
+      const haystack = `${row.subject || ''} ${row.message || ''}`;
+      if (!isReins(haystack)) continue; // レインズのみ（値下げは activity_logs で計上済み）
+      const rawInitial = String(row.sender_name || '').trim();
+      if (!rawInitial) continue;
+      const initial = normalizeInitial(rawInitial);
+      if (!initial) continue;
+      const month = toMonthKey(row.sent_at);
+      if (!month) continue;
+      addCount(month, 'reinsEmail', initial);
+    }
+
+    // 集計対象外のイニシャルを除外
+    // - TENANT / 空 / '-' はプレースホルダ
+    // - IF / T / G / 生 / H / M は共有ページから除外（要望により固定除外）
+    //   ※ I / K / U は表示・集計対象（除外しない）
+    const EXCLUDED = new Set<string>([
+      'TENANT', '', '-',
+      'IF', 'T', 'G', '生', 'H', 'M',
+      ...userExcluded,
+    ]);
+
+    const metrics = [
+      ...taskMetrics.map((m) => ({ key: m.key, label: m.label })),
+      { key: 'priceReductionEmail', label: '値下げ対応物件数' },
+      { key: 'reinsEmail', label: 'レインズ対応メール' },
+    ];
+
+    // ---- 月ごとに rows / totals を構築 ----
+    // 月キーを降順（新しい月が先頭）に並べる
+    const monthKeys = Object.keys(monthly).sort((a, b) => b.localeCompare(a));
+
+    const months = monthKeys.map((month) => {
+      const metricBuckets = monthly[month];
+
+      // この月に登場した全イニシャルを集約
+      const allInitials = new Set<string>();
+      for (const m of metrics) {
+        const bucket = metricBuckets[m.key] || {};
+        for (const init of Object.keys(bucket)) allInitials.add(init);
+      }
+
+      const rows = Array.from(allInitials)
+        .filter((init) => !EXCLUDED.has(init))
+        .map((initial) => {
+          const counts: Record<string, number> = {};
+          let total = 0;
+          for (const m of metrics) {
+            const c = (metricBuckets[m.key] || {})[initial] || 0;
+            counts[m.key] = c;
+            total += c;
+          }
+          return { initial, counts, total };
+        })
+        .sort((a, b) => b.total - a.total || a.initial.localeCompare(b.initial));
+
+      const totals: Record<string, number> = {};
+      for (const m of metrics) {
+        totals[m.key] = rows.reduce((sum, r) => sum + (r.counts[m.key] || 0), 0);
+      }
+
+      return { month, rows, totals };
+    });
+
+    return res.json({
+      metrics,
+      months,
+      availableMonths: monthKeys,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('[OfficeMeetingStats] 集計エラー:', error);
     return res.status(500).json({ error: error.message });
   }
 });

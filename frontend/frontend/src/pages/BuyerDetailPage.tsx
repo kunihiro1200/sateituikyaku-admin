@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useTheme, useMediaQuery } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -151,6 +151,8 @@ interface PropertyListing {
   settlement_date?: string;
   pre_viewing_notes?: string;
   house_maker?: string;
+  google_map_url?: string;
+  suumo_url?: string;
 }
 
 interface InquiryHistory {
@@ -160,6 +162,12 @@ interface InquiryHistory {
   inquirySource: string | null;
   status: string | null;
   isCurrent: boolean;
+}
+
+// テンプレート名を正規化して照合する（全角半角・空白の表記揺れを吸収）。
+// 売主リスト通話モードの normalizeEmailTemplateName と同じ方式。
+function normalizeTemplateName(value: unknown): string {
+  return String(value || '').normalize('NFKC').replace(/\s+/g, '').toLowerCase();
 }
 
 interface Activity {
@@ -330,6 +338,33 @@ export default function BuyerDetailPage() {
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailModalProperties, setEmailModalProperties] = useState<PropertyListing[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
+
+  // 送信済みテンプレートの判定用キー（売主リスト通話モードと同じ方式）。
+  // activity_logs（action='sms' / 'email'）のテンプレートID・テンプレート名から
+  // 「送信済み」を表すキーの集合を作り、SMS/Gmail送信メニューの色付けに使う。
+  // SMS送信済みキー: id:<templateId> と name:<正規化テンプレート名>
+  const sentSmsTemplateKeys = useMemo(() => {
+    const keys = new Set<string>();
+    activities.forEach((activity) => {
+      if (activity.action !== 'sms') return;
+      const metadata = activity.metadata || {};
+      if (metadata.templateId) keys.add(`id:${String(metadata.templateId)}`);
+      if (metadata.templateName) keys.add(`name:${normalizeTemplateName(metadata.templateName)}`);
+    });
+    return keys;
+  }, [activities]);
+
+  // メール送信済みキー: 正規化テンプレート名（Gmailはテンプレート名で照合）
+  const sentEmailTemplateNames = useMemo(() => {
+    const keys = new Set<string>();
+    activities.forEach((activity) => {
+      if (activity.action !== 'email') return;
+      const metadata = activity.metadata || {};
+      if (metadata.templateName) keys.add(normalizeTemplateName(metadata.templateName));
+    });
+    return keys;
+  }, [activities]);
+
   // 売主リストとの重複（名前・電話番号・メールアドレスで判定）
   const [sellerDuplicates, setSellerDuplicates] = useState<DuplicateMatch[]>([]);
   const [sellerDuplicatesLoading, setSellerDuplicatesLoading] = useState(false);
@@ -1850,8 +1885,11 @@ export default function BuyerDetailPage() {
         </Box>
 
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* カレンダー●OKボタン（内覧準備ボタンの左隣、内覧日が入力されている場合のみ表示） */}
-          {buyer?.viewing_date && (
+          {/* カレンダー●OKボタン（内覧準備ボタンの左隣、内覧日が入力されている場合のみ表示）
+              「業者問合せ」の買主は内覧準備カレンダーの対象外のため非表示
+              ※「業者（両手）」は内覧準備を行うため表示する */}
+          {buyer?.viewing_date &&
+            buyer?.broker_inquiry !== '業者問合せ' && (
             <ViewingPrepCalendarOkButton
               buyerNumber={buyer?.buyer_number}
               confirmedAt={buyer?.viewing_prep_calendar_confirmed_at}
@@ -1906,6 +1944,7 @@ export default function BuyerDetailPage() {
             size="small"
             variant="contained"
             onEmailSent={fetchActivities}
+            sentTemplateNames={sentEmailTemplateNames}
           />
 
           {/* 電話番号ボタン */}
@@ -1949,7 +1988,9 @@ export default function BuyerDetailPage() {
               propertyNumber={linkedProperties[0]?.property_number || ''}
               senderName={employee?.name || ''}
               onSmsSent={fetchActivities}
+              sentTemplateKeys={sentSmsTemplateKeys}
               preViewingNotes={linkedProperties[0]?.pre_viewing_notes || ''}
+              suumoUrl={linkedProperties[0]?.suumo_url || ''}
               onNextCallDateUpdated={(nextCallDate) => {
                 // 返信テンプレート送信で次電日が自動セットされたら画面へ即時反映
                 setBuyer((prev: any) => prev ? { ...prev, next_call_date: nextCallDate } : prev);
@@ -2658,6 +2699,37 @@ TEL：097-533-2022`;
                           : '買主様にここの文言が直接メールで届くので、価格は絶対に書かないでください。詳細な住所のみを書いてください。他社名や価格は「建物名/価格」欄に書いてください。'
                       }
                     />
+                  </Grid>
+
+                  {/* 他社サイトURL（athome / SUUMO 等）- DB専用 */}
+                  <Grid item xs={12}>
+                    <InlineEditableField
+                      label="サイトURL"
+                      value={buyer?.other_company_property_url || ''}
+                      fieldName="other_company_property_url"
+                      fieldType="textarea"
+                      onSave={(value) => handleInlineFieldSave('other_company_property_url', value).then(() => {})}
+                      onChange={(fieldName, newValue) => handleFieldChange('他社物件情報', fieldName, newValue)}
+                      buyerId={buyer_number}
+                      enableConflictDetection={false}
+                      showEditIndicator={true}
+                      alwaysShowBorder={true}
+                      helperText="他社サイト（athome / SUUMO 等）の物件ページURLを貼り付けてください。"
+                    />
+                    {buyer?.other_company_property_url &&
+                      String(buyer.other_company_property_url).trim() !== '' && (
+                        <Box sx={{ mt: 0.5 }}>
+                          <Link
+                            href={String(buyer.other_company_property_url).trim()}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            sx={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: 0.5, wordBreak: 'break-all' }}
+                          >
+                            サイトを開く
+                            <LaunchIcon sx={{ fontSize: 12 }} />
+                          </Link>
+                        </Box>
+                      )}
                   </Grid>
 
                   <Grid item xs={12}>
@@ -3738,6 +3810,8 @@ TEL：097-533-2022`;
                                   color="primary"
                                   onClick={async () => {
                                     const newValue = isSelected ? '' : option;
+                                    // 「業者問合せ」の場合の★最新状況の自動セット値（D:配信・追客不要案件）
+                                    const BROKER_INQUIRY_LATEST_STATUS = 'D:配信・追客不要案件（業者や確度が低く追客不要案件等）';
                                     // 業者問合せ選択時は配信メールを「不要」に自動セット（UI即時反映）
                                     // また、法人名が空の場合は氏名・会社名を法人名に自動コピー
                                     setBuyer((prev: any) => {
@@ -3750,9 +3824,24 @@ TEL：097-533-2022`;
                                           updated.company_name = prev.name.trim();
                                         }
                                       }
+                                      // 「業者問合せ」の場合は★最新状況を「D」に自動セット
+                                      if (newValue === '業者問合せ') {
+                                        updated.latest_status = BROKER_INQUIRY_LATEST_STATUS;
+                                      }
                                       return updated;
                                     });
                                     handleFieldChange(section.title, field.key, newValue);
+                                    // 「業者問合せ」の場合は★最新状況を「D」に即時保存（他フィールド保存より先に行う）
+                                    if (newValue === '業者問合せ') {
+                                      handleFieldChange('問合せ内容', 'latest_status', BROKER_INQUIRY_LATEST_STATUS);
+                                      // ★最新状況の必須ハイライトを解除
+                                      setMissingRequiredFields(prev => {
+                                        const next = new Set(prev);
+                                        next.delete('latest_status');
+                                        return next;
+                                      });
+                                      await handleInlineFieldSave('latest_status', BROKER_INQUIRY_LATEST_STATUS);
+                                    }
                                     // 業者問合せ選択時は distribution_type も即時保存
                                     if (newValue === '業者問合せ' || newValue === '業者（両手）') {
                                       handleFieldChange('問合せ内容', 'distribution_type', '不要');

@@ -45,6 +45,8 @@ import ScheduledNotificationsPage from './pages/ScheduledNotificationsPage';
 import SharedItemDetailPage from './pages/SharedItemDetailPage';
 import NewSharedItemPage from './pages/NewSharedItemPage';
 import ReviewCampaignStatsPage from './pages/ReviewCampaignStatsPage';
+import OfficeMeetingStatsPage from './pages/OfficeMeetingStatsPage';
+import BuyerStatsPage from './pages/BuyerStatsPage';
 import SalesMeetingAgendaPage from './pages/SalesMeetingAgendaPage';
 import SalesMeetingContractStatsPage from './pages/SalesMeetingContractStatsPage';
 import SalesMeetingSalesStatsPage from './pages/SalesMeetingSalesStatsPage';
@@ -78,6 +80,7 @@ import YoutoChiikiExplanationPage from './pages/YoutoChiikiExplanationPage';
 const FloorPlanComparePage = lazy(() => import('./pages/FloorPlanComparePage'));
 import ProtectedRoute from './components/ProtectedRoute';
 import SessionExpiredDialog from './components/SessionExpiredDialog';
+import TodayPublicationAnnouncement from './components/TodayPublicationAnnouncement';
 import { GoogleMapsProvider } from './contexts/GoogleMapsContext';
 
 // 認証不要の公開ページパス（checkAuth・warmupApiをスキップ）
@@ -109,6 +112,7 @@ function App() {
   return (
     <GoogleMapsProvider>
       <SessionExpiredDialog />
+      {!isPublicPage && <TodayPublicationAnnouncement />}
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
@@ -436,6 +440,22 @@ function App() {
         element={
           <ProtectedRoute>
             <ReviewCampaignStatsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shared-items/office-meeting-stats"
+        element={
+          <ProtectedRoute>
+            <OfficeMeetingStatsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shared-items/buyer-stats"
+        element={
+          <ProtectedRoute>
+            <BuyerStatsPage />
           </ProtectedRoute>
         }
       />

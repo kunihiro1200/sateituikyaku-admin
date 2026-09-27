@@ -502,6 +502,49 @@ app.get('/api/cron/price-reduction-notification', async (req, res) => {
   }
 });
 
+// Cron Job: 本日公開予定の物件のメール通知（毎日 UTC 00:00 = JST 09:00 に実行）
+// work_tasks.publish_scheduled_date（公開予定日）が当日の物件を4名へ通知
+app.get('/api/cron/publication-notification', async (req, res) => {
+  try {
+    console.log('[Cron Publication] 本日公開予定物件メール通知ジョブ開始');
+
+    // Vercel Cron Jobの認証チェック
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      console.error('[Cron Publication] 認証失敗: 不正なアクセス');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { PublicationNotificationService } = await import('./services/PublicationNotificationService');
+    const service = new PublicationNotificationService();
+
+    // 当日（JST）に公開予定の物件を取得
+    const targets = await service.getTodayTargets();
+    console.log(`[Cron Publication] 本日公開予定物件数: ${targets.length}件`);
+
+    // 対象が0件の場合はメール送信をスキップして正常終了
+    if (targets.length === 0) {
+      console.log('[Cron Publication] 本日公開予定物件なし。メール送信をスキップして終了');
+      return res.status(200).json({ success: true, sent: 0, targetCount: 0 });
+    }
+
+    const result = await service.sendNotification(targets);
+    console.log(`[Cron Publication] 完了: 宛先=${result.sent}名, 対象物件=${result.targetCount}件`);
+
+    return res.status(200).json({
+      success: true,
+      sent: result.sent,
+      targetCount: result.targetCount,
+    });
+  } catch (error: any) {
+    console.error('[Cron Publication] 予期しないエラーが発生:', error.message);
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 // Cron Job: 営業会議（毎月第1月曜）の1週間前に、物件数/契約率チームへ「問い」完成・回答入力依頼を送信
 // （毎日 UTC 00:00 = JST 09:00 に実行。対象日以外は何もせず終了）
 app.get('/api/cron/sales-meeting-notification', async (req, res) => {

@@ -1,0 +1,49 @@
+name: 本日公開物件メール通知
+
+on:
+  schedule:
+    # 毎日 午前0時 (UTC) = 日本時間 午前9時に実行
+    - cron: '0 0 * * *'
+  # 手動実行も可能
+  workflow_dispatch:
+
+jobs:
+  send-publication-notification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: 本日公開物件メール通知を送信
+        env:
+          API_URL: ${{ secrets.SYNC_API_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          echo "本日公開物件メール通知チェック開始: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+
+          # 末尾のスラッシュ・空白・改行を除去して URL を正規化
+          BASE_URL="$(echo -n "$API_URL" | tr -d '[:space:]' | sed 's:/*$::')"
+          if [ -z "$BASE_URL" ]; then
+            echo "❌ SYNC_API_URL が未設定です。GitHub Secrets を確認してください。"
+            exit 1
+          fi
+          TARGET_URL="${BASE_URL}/api/cron/publication-notification"
+          echo "リクエスト先: ${TARGET_URL}"
+
+          # HTTPステータスと本文を分離して取得（curl自体の失敗でも継続）
+          HTTP_CODE=$(curl -sS -o /tmp/resp_body.txt -w "%{http_code}" \
+            -X GET \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            "${TARGET_URL}") || true
+
+          echo "HTTPステータス: ${HTTP_CODE}"
+          echo "レスポンス:"
+          cat /tmp/resp_body.txt || true
+          echo ""
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ 本日公開物件メール通知送信失敗 (HTTP ${HTTP_CODE})"
+            exit 1
+          fi
+
+          echo "✅ 本日公開物件メール通知チェック完了"

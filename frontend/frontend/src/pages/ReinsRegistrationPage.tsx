@@ -34,12 +34,15 @@ interface PropertyData {
   sales_assignee?: string;
   suumo_url?: string;
   suumo_registered?: string | null;
+  suumo_registration_done?: string | null;
+  publish_notice_email?: string | null;
   reins_certificate_email?: string | null;
   cc_assignee?: string | null;
   report_date_setting?: string | null;
   reins_url?: string | null;
   address?: string | null;
   sales_price?: number | null;
+  atbb_status?: string | null;
 }
 
 interface Employee {
@@ -152,12 +155,16 @@ export default function ReinsRegistrationPage() {
         sales_assignee: d.sales_assignee ?? '',
         suumo_url: d.suumo_url ?? '',
         suumo_registered: d.suumo_registered ?? null,
+        suumo_registration_done: d.suumo_registration_done ?? null,
+        publish_notice_email: d.publish_notice_email ?? null,
         reins_certificate_email: d.reins_certificate_email ?? null,
         cc_assignee: d.cc_assignee ?? null,
         report_date_setting: d.report_date_setting ?? null,
         reins_url: d.reins_url ?? null,
         address: d.address ?? null,
         sales_price: d.sales_price ?? null,
+        atbb_status: d.atbb_status ?? null,
+        property_number: d.property_number ?? propertyNumber,
       });
       setSuumoUrlInput(d.suumo_url ?? '');
 
@@ -376,6 +383,13 @@ export default function ReinsRegistrationPage() {
     }
   };
 
+  // SUUMO登録・公開お知らせメールの判定対象か（ATBB=一般・公開中 かつ AA14824以降）
+  const effectivePropertyNumber = data?.property_number ?? propertyNumber ?? '';
+  const aaMatch = /^AA(\d+)$/.exec(effectivePropertyNumber.trim());
+  const aaNumber = aaMatch ? parseInt(aaMatch[1], 10) : NaN;
+  const isGeneralPublicTarget =
+    (data?.atbb_status ?? '') === '一般・公開中' && !isNaN(aaNumber) && aaNumber >= 14824;
+
   return (
     <Container maxWidth="sm" sx={{ py: 4 }}>
       {/* ヘッダー */}
@@ -419,6 +433,8 @@ export default function ReinsRegistrationPage() {
           />
 
           {/* レインズ証明書メール済み + レインズURL（横並び） */}
+          {/* ※ 一般・公開中(AA14824以降)では非表示 */}
+          {!isGeneralPublicTarget && (
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
               {/* レインズ証明書メール済み */}
@@ -457,6 +473,52 @@ export default function ReinsRegistrationPage() {
               </Box>
             </Box>
           </Paper>
+          )}
+
+          {/* 一般・公開中(AA14824以降): 公開お知らせメール配信 → 担当をCCにいれる → Suumo URL の順 */}
+          {isGeneralPublicTarget && (
+            <>
+              {/* 公開お知らせメール配信（済/未） */}
+              <Paper sx={{ p: 3 }}>
+                <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1.5 }}>
+                  公開お知らせメール配信
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  {['済', '未'].map((option) => (
+                    <Button
+                      key={option}
+                      variant={data?.publish_notice_email === option ? 'contained' : 'outlined'}
+                      onClick={() => handleUpdate('publish_notice_email', option)}
+                      disabled={updating === 'publish_notice_email'}
+                      sx={{ minWidth: 80 }}
+                    >
+                      {updating === 'publish_notice_email' ? <CircularProgress size={16} /> : option}
+                    </Button>
+                  ))}
+                </Box>
+              </Paper>
+
+              {/* 担当をCCにいれる（済/未） */}
+              <Paper sx={{ p: 3 }}>
+                <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1.5 }}>
+                  担当をCCにいれる
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  {['済', '未'].map((option) => (
+                    <Button
+                      key={option}
+                      variant={data?.cc_assignee === option ? 'contained' : 'outlined'}
+                      onClick={() => handleUpdate('cc_assignee', option)}
+                      disabled={updating === 'cc_assignee'}
+                      sx={{ minWidth: 80 }}
+                    >
+                      {updating === 'cc_assignee' ? <CircularProgress size={16} /> : option}
+                    </Button>
+                  ))}
+                </Box>
+              </Paper>
+            </>
+          )}
 
           {/* Suumo URLフィールド */}
           <Paper sx={{ p: 3 }}>
@@ -514,7 +576,12 @@ export default function ReinsRegistrationPage() {
           </Paper>
 
           {/* 残りのフィールド */}
-          {REINS_FIELDS.filter((f) => f.key !== 'reins_certificate_email').map((field) => (
+          {/* ※ 一般・公開中(AA14824以降)では「担当をCCにいれる」と「報告日設定」を非表示（担当CCは上部に移動済み） */}
+          {REINS_FIELDS
+            .filter((f) => f.key !== 'reins_certificate_email')
+            .filter((f) => !(f.key === 'report_date_setting' && isGeneralPublicTarget))
+            .filter((f) => !(f.key === 'cc_assignee' && isGeneralPublicTarget))
+            .map((field) => (
             <Paper key={field.key} sx={{ p: 3 }}>
               <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1.5 }}>
                 {field.label}

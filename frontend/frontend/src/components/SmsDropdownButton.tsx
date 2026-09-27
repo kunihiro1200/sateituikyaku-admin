@@ -5,10 +5,19 @@ import {
   MenuItem,
   ButtonGroup,
   Divider,
+  Box,
+  Chip,
+  Typography,
 } from '@mui/material';
 import SmsIcon from '@mui/icons-material/Sms';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import api from '../services/api';
+import { isLand as isLandType } from '../utils/propertyTypeUtils';
+
+// テンプレート名を正規化して照合する（全角半角・空白の表記揺れを吸収）
+function normalizeTemplateName(value: unknown): string {
+  return String(value || '').normalize('NFKC').replace(/\s+/g, '').toLowerCase();
+}
 
 interface SmsDropdownButtonProps {
   phoneNumber: string;
@@ -20,22 +29,20 @@ interface SmsDropdownButtonProps {
   senderName?: string;
   onSmsSent?: () => void;
   preViewingNotes?: string;
+  /** SUUMO URL。買付キャンセル後案内テンプレで使用 */
+  suumoUrl?: string;
   /** 次電日（next_call_date）が自動セットされたときに親へ通知（画面の再描画・再取得用） */
   onNextCallDateUpdated?: (nextCallDate: string) => void;
+  /**
+   * 送信済みSMSテンプレートの照合キー集合（売主リスト通話モードと同じ方式）。
+   * `id:<templateId>` または `name:<正規化テンプレート名>` を格納する。
+   * 該当するメニュー項目はグレー背景＋「送信済み」バッジで表示する。
+   */
+  sentTemplateKeys?: Set<string>;
 }
 
 const VIEWING_FORM_BASE = 'https://docs.google.com/forms/d/e/1FAIpQLSefXwsYKryraVM4jtnLgcYtboUg3w-lx7tasftVA47E5jXUlQ/viewform?usp=pp_url';
 const PUBLIC_SITE_URL = 'https://property-site-frontend-kappa.vercel.app/public/properties';
-
-// ①②③④の返信テンプレートのメニュー項目スタイル（薄緑背景で識別しやすくする）
-const REPLY_ITEM_SX = {
-  backgroundColor: '#e8f5e9',
-  '&:hover': { backgroundColor: '#c8e6c9' },
-} as const;
-
-// メール配信の希望条件を入力してもらうフォーム（③④で使用）
-// TODO: 実際の配信希望条件フォームURLが用意でき次第、差し替える
-const EMAIL_PREF_FORM_URL = 'https://docs.google.com/forms/d/e/REPLACE_WITH_EMAIL_PREF_FORM/viewform';
 
 // 内覧希望者へのヒアリング項目（①内覧希望／②日程調整中の予約案内で共通利用）
 const VIEWING_HEARING_ITEMS = [
@@ -46,6 +53,40 @@ const VIEWING_HEARING_ITEMS = [
   '・ご購入はローン・自己資金のどちらをお考えですか',
   '・ローンの場合、仮審査を受けられたことはございますか',
 ].join('\n');
+
+// 今後の物件紹介の参考にするヒアリング項目（戸・マ／持家ヒアリングで共通利用）
+const INTRO_HEARING_ITEMS = [
+  '・これまでに内覧した物件',
+  '・ご予算（物件のみ／リフォーム金額込み）',
+  '・駐車場必要台数',
+  '・現在のお住まい（持家戸建／持家マンション／賃貸／ほか）',
+  '・ご購入（入居）の希望時期',
+  '・その他、居住人数、間取り、立地などのご希望条件',
+].join('\n');
+
+// 土地用のヒアリング項目（駐車場台数を除く）
+const LAND_HEARING_ITEMS = [
+  '・これまでに内覧した物件',
+  '・ご予算（物件のみ／リフォーム金額込み）',
+  '・現在のお住まい（持家戸建／持家マンション／賃貸／ほか）',
+  '・ご購入（入居）の希望時期',
+  '・その他、居住人数、間取り、立地などのご希望条件',
+].join('\n');
+
+// 内覧前の事前確認事項（内覧前ヒアリングで使用）
+const PRE_VIEWING_QA_ITEMS = [
+  '・ご購入のご希望時期：',
+  '・ご希望のご予算：',
+  '・ご希望の間取り：',
+  '・ご希望の学校区：',
+  '・他の不動産の内覧経験（有無）とその状況：',
+  '・内覧にお越しいただく人数：',
+  '・当日ご来場の車種・色：',
+  '・住宅ローン事前審査の状況（未申込／申込中／承認済など）：',
+  '・現在のお住まい（持家戸建／持家マンション／賃貸／ほか）：',
+].join('\n');
+
+
 
 /**
  * 現在日時から指定した「月数後」の日付を YYYY-MM-DD 形式で返す
@@ -70,10 +111,69 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
   senderName,
   onSmsSent,
   preViewingNotes,
+  suumoUrl,
   onNextCallDateUpdated,
+  sentTemplateKeys,
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
+
+  // 指定テンプレートが送信済みか判定する（templateId または表示名で照合）
+  const isTemplateSent = (templateId: string, templateName: string): boolean => {
+    if (!sentTemplateKeys || sentTemplateKeys.size === 0) return false;
+    return (
+      sentTemplateKeys.has(`id:${templateId}`) ||
+      sentTemplateKeys.has(`name:${normalizeTemplateName(templateName)}`)
+    );
+  };
+
+  // SMSメニュー項目を描画する共通コンポーネント。
+  // 送信済みなら背景をグレー化し「送信済み」バッジを付ける（売主リスト通話モードと同じ見た目）。
+  const renderSmsMenuItem = (
+    templateId: string,
+    templateName: string,
+    options?: { highlight?: boolean },
+  ) => {
+    const isSent = isTemplateSent(templateId, templateName);
+    const highlight = options?.highlight;
+    // 薄緑背景（①②③④の返信テンプレート）は送信済みで濃い緑にする
+    const backgroundColor = highlight
+      ? (isSent ? '#c8e6c9' : '#e8f5e9')
+      : (isSent ? '#e0e0e0' : '#ffffff');
+    const hoverColor = highlight
+      ? (isSent ? '#a5d6a7' : '#c8e6c9')
+      : (isSent ? '#d6d6d6' : 'action.hover');
+
+    return (
+      <MenuItem
+        key={templateId}
+        onClick={() => sendSms(templateId, templateName)}
+        sx={{
+          backgroundColor,
+          '&:hover': { backgroundColor: hoverColor },
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+          <Typography variant="body2" sx={{ flex: 1 }}>
+            {templateName}
+          </Typography>
+          {isSent && (
+            <Chip
+              label="送信済み"
+              size="small"
+              sx={{
+                height: 20,
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                backgroundColor: '#757575',
+                color: '#fff',
+              }}
+            />
+          )}
+        </Box>
+      </MenuItem>
+    );
+  };
 
   const handleOpen = (e: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(e.currentTarget);
@@ -103,6 +203,10 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
       ? `\n\n株式会社くじら不動産（株式会社いふう）\n〒810-0073福岡市中央区舞鶴3-1-10\nオフィスニューガイアセレス赤坂門No.19 -201\nTEL:092-401-5331\nFAX:092-401-5332\nHP:https://kujira-fudosan.com/`
       : `\n\n株式会社 いふう\nTEL：097-533-2022`;
     const noResponseCompany = hasFI ? 'くじら不動産' : 'いふう';
+    const companyShort = hasFI ? '㈱くじら不動産' : '㈱いふう';
+
+    // SUUMO URL セクション（買付キャンセル後の案内で使用）
+    const suumoSection = suumoUrl ? `\n${suumoUrl}` : '';
 
     let message = '';
 
@@ -126,7 +230,7 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
       message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n${companyIntro}\n\n所在地：${address}\n上記の物件のお問い合わせ、ありがとうございます。\nご不明な点等ございましたら、お気軽にお問い合わせください。${preViewingSection}\n\nまた、ご内覧希望の場合は、こちらからご予約お願いいたします↓↓\n${viewingFormUrl}${hasFI ? '' : `\n\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri\n★非公開の物件はこちらから↓↓\n${PUBLIC_SITE_URL}\nお気軽にお問い合わせください。`}\n\nまた、他社物件もご紹介できますので、気になる物件がございましたらお気軽にご連絡ください。${signature}`;
     } else if (templateId === 'ask_email') {
       const askEmailCompany = hasFI ? 'くじら不動産' : '不動産会社いふう';
-      message = `${name}様お世話になっております。${askEmailCompany}です。\n先ほどは物件についてお問い合わせいただき、誠にありがとうございました。\n今後、ご希望条件に合う新着物件やおすすめ物件がございましたら、メールにてご紹介・配信させていただければと思っております。\n差し支えなければ、こちらのショートメールへご確認いただけるメールアドレスをご返信いただけますと幸いです。\nどうぞよろしくお願いいたします。`;
+      message = `${name}様お世話になっております。${askEmailCompany}です。\n先ほどは${address}についてお問い合わせいただき、誠にありがとうございました。\n今後、ご希望条件に合う新着物件やおすすめ物件がございましたら、メールにてご紹介・配信させていただければと思っております。\n差し支えなければ、こちらのショートメールへご確認いただけるメールアドレスをご返信いただけますと幸いです。\nどうぞよろしくお願いいたします。`;
     } else if (templateId === 'empty_greeting') {
       const emptyCompany = hasFI ? '株式会社くじら不動産' : '株式会社いふう';
       const senderDisplay = senderName || '●●';
@@ -134,10 +238,8 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
     } else if (templateId === 'post_viewing_thanks') {
       message = `${name}様\n\nお世話になっております。㈱いふうです。\n本日は、貴重な時間を割いていただき、誠にありがとうございました。\n弊社としましては、${name}様の不動産の購入のお手伝いをスタッフ一同で精一杯努めてまいりたいと思っております。\nご内覧いただいた中でご不明点などございましたらお気軽にお申し付けください。\nまた、いただいているメールアドレス宛に公開前物件等の配信をいたします。\n他社様の掲載物件もご紹介できますので気になる物件がございましたらお声がけいただけますと幸いです。\nリフォーム、補助金制度などについてもご相談も承っております。\n今後ともどうぞよろしくお願い致します。\n\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri\n★非公開の情報はこちらから検索可能です↓↓\n${PUBLIC_SITE_URL}${signature}`;
     } else if (templateId === 'status_check') {
-      // 状況確認SMS：①②③④で番号返信を促す
-      const companyName = hasFI ? 'くじら不動産' : '㈱いふう';
-      const staff = senderName || '担当';
-      message = `${name}様\n${companyName}の${staff}です。\n先日は物件のお問い合わせをいただき、誠にありがとうございました。\nその後の物件探しのご状況について、一度お伺いできればと思いご連絡いたしました。\n\n①内覧希望\n②内覧希望だが日程調整中\n③この物件の内覧はしないが、未公開物件や新着物件の情報が欲しい\n④物件探しはしていない\n\n差し支えなければ、現在のご状況を番号だけでもご返信いただけますと幸いです。\nよろしくお願いいたします。${signature}`;
+      // 状況確認SMS：①②③④で番号返信を促す（物件所在地を明記）
+      message = `${name}様\n\nこの度はお問い合わせありがとうございました。\n${companyIntro}\n\n所在地：${address}\n上記の物件のお問い合わせ、ありがとうございます。\n\nその後の物件探しのご状況について、現在のご希望をお伺いできればと思い、ご連絡いたしました。\n差し支えなければ、下記より現在のご状況に近いものをお選びいただき、番号だけでもご返信いただけますと幸いです。\n\n① 内覧を希望している\n② 内覧を希望しているが、日程を調整中\n③ 今回の物件は内覧しないが、未公開物件や新着物件の情報が欲しい\n④ 現在は物件探しをしていない\n\nまた、上記以外の場合でも、お気軽にご状況をお聞かせください。\nお忙しいところ恐れ入りますが、どうぞよろしくお願いいたします。${hasFI ? '' : `\n\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri\n★非公開の情報はこちらから検索可能です↓↓\n${PUBLIC_SITE_URL}`}\n\n★水曜日は定休日となっておりますのでそれ以外の日程でお願いいたします。\n\nまた、他社物件もご紹介できますので、気になる物件がございましたらお気軽にご連絡ください。${signature}`;
     } else if (templateId === 'reply_1_viewing') {
       // ①内覧希望の返信：お礼＋ヒアリング
       message = `${name}様\n\nご返信ありがとうございます。承知いたしました。\n内覧のご予約をお取りしますので、下記についてお答えいただけますでしょうか？\n\n${VIEWING_HEARING_ITEMS}\n\nご返信をお待ちしております。よろしくお願いいたします。${signature}`;
@@ -145,17 +247,39 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
       // ②内覧希望だが日程調整中：お礼＋予約フォーム（ヒアリング内容も明記）＋次電日1か月後
       message = `${name}様\n\nご返信ありがとうございます。承知いたしました。\n内覧がお決まりになりましたら、下記のフォームよりご予約ください↓↓\n${viewingFormUrl}\n\nご予約の際は、あわせて下記についてもお知らせいただけますと幸いです。\n${VIEWING_HEARING_ITEMS}\n\n日程がお決まりでない場合も、決まり次第いつでもご連絡ください。改めてこちらからもご状況をお伺いいたします。\nよろしくお願いいたします。${signature}`;
     } else if (templateId === 'reply_3_info_only') {
-      // ③情報だけ欲しい：お礼＋メール配信希望条件フォーム＋次電日3か月後
-      message = `${name}様\n\nご返信ありがとうございます。承知いたしました。\n今後、ご希望条件に合った未公開物件や新着物件をメールにてご案内いたします。\n下記フォームよりご希望条件をご入力ください↓↓\n${EMAIL_PREF_FORM_URL}\n\n配信メールの中で気になる物件がございましたら、お気軽にお問い合わせください。\nよろしくお願いいたします。${signature}`;
+      // ③情報だけ欲しい：お礼＋配信希望フォーム（bit.ly/3TT9ZIH）＋次電日3か月後
+      message = `${name}様\n\nご返信ありがとうございます。承知いたしました。\n今後、ご希望条件に合った未公開物件や新着物件をメールにてご案内いたします。\n下記フォームよりご希望条件をご入力ください↓↓\nhttps://bit.ly/3TT9ZIH\n\n配信メールの中で気になる物件がございましたら、お気軽にお問い合わせください。\nよろしくお願いいたします。${signature}`;
     } else if (templateId === 'reply_4_not_searching') {
-      // ④物件探ししていない：お礼＋メール配信フォーム（追客不要）
-      message = `${name}様\n\nご返信ありがとうございます。承知いたしました。\n今後、物件をお探しの際は、お気軽にお問い合わせください。\nまた、ご希望であれば未公開物件や新着物件をメールにてご案内いたします。ご希望の場合は下記フォームよりご登録ください↓↓\n${EMAIL_PREF_FORM_URL}\n\n今後ともどうぞよろしくお願いいたします。${signature}`;
+      // ④物件探ししていない：お礼＋配信希望フォーム（bit.ly/3TT9ZIH・追客不要）
+      message = `${name}様\n\nご返信ありがとうございます。承知いたしました。\n今後、物件をお探しの際は、お気軽にお問い合わせください。\nまた、ご希望であれば未公開物件や新着物件をメールにてご案内いたします。ご希望の場合は下記フォームよりご登録ください↓↓\nhttps://bit.ly/3TT9ZIH\n\n今後ともどうぞよろしくお願いいたします。${signature}`;
     } else if (templateId === 'followup_1month_unreachable') {
-      // ★1か月後・不通メール（②の追客用）：日程確認＋予約フォーム、次電日さらに1か月後
-      message = `${name}様\n\nお世話になっております。${hasFI ? 'くじら不動産' : '㈱いふう'}です。\nその後、内覧のご日程はお決まりになりましたでしょうか？\nお決まりになりましたら、下記フォームよりご予約ください↓↓\n${viewingFormUrl}\n\nご不明な点がございましたら、お気軽にお問い合わせください。\nよろしくお願いいたします。${signature}`;
+      // ★1か月後・不通メール（②の追客用）：所在地明記＋予約フォーム、次電日さらに1か月後
+      message = `${name}様\n\nお世話になっております。\n${companyShort}です。\n\n所在地：${address}\n先日は上記の物件のお問い合わせ、ありがとうございました。\n\n内覧ご希望のお日にちがお決まりになりましたら、下記フォームよりご予約をお願いいたします。\n\n▼内覧予約フォーム\n${viewingFormUrl}\n\nまだ日程がお決まりでない場合も、どうぞお気になさらず、決まり次第ご連絡いただければ大丈夫です。${hasFI ? '' : `\n\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri\n★非公開の情報はこちらから検索可能です↓↓\n${PUBLIC_SITE_URL}`}\n\n★水曜日は定休日となっておりますのでそれ以外の日程でお願いいたします。\n\n他にご不明な点等ございましたら、お気軽にお問い合わせください。\nまた、他社物件もご紹介できますので、気になる物件がございましたらお気軽にご連絡ください。${signature}`;
     } else if (templateId === 'followup_3month_unreachable') {
       // ★3か月後・不通メール（③の追客用）：物件探し状況伺い、次電日さらに3か月後
-      message = `${name}様\n\nお世話になっております。${hasFI ? 'くじら不動産' : '㈱いふう'}です。\nその後、物件探しのご状況はいかがでしょうか？\nご希望条件に合った物件が出ましたらメールにてご案内いたしますので、気になる物件がございましたらお気軽にお問い合わせください。\n引き続きどうぞよろしくお願いいたします。${signature}`;
+      message = `${name}様\n\nお世話になっております。\n${companyShort}です。\n\n所在地：${address}\n以前上記の物件のお問い合わせ、ありがとうございました。\n\nその後、物件探しのご状況はいかがでしょうか？\n今後もご希望条件に合った物件がございましたら、メールにてご案内させていただきます。\n配信した物件の中で気になる物件や、詳しく知りたい物件がございましたら、いつでもお気軽にお問い合わせください。\n\nまた、ご希望条件の変更や追加などございましたら、お気軽にお申し付けください。${hasFI ? '' : `\n\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri\n★非公開の情報はこちらから検索可能です↓↓\n${PUBLIC_SITE_URL}`}\n\n★水曜日は定休日となっておりますのでそれ以外の日程でお願いいたします。\n\n他にご不明な点等ございましたら、お気軽にお問い合わせください。\nまた、他社物件もご紹介できますので、気になる物件がございましたらお気軽にご連絡ください。${signature}`;
+    } else if (templateId === 'house_mansion_no_viewing') {
+      // 問合せ返信（戸・マ）内覧案内なし（業者は全てこちら）
+      message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n${companyIntro}\n\n所在地：${address}\n上記の物件のお問い合わせ、ありがとうございます。${preViewingSection}\n\nご不明な点等ございましたら、お気軽にお問い合わせください。\nそれでは、引き続きよろしくお願いいたします。${signature}`;
+    } else if (templateId === 'offer_cancelled_available') {
+      // 買付キャンセル後の案内メール（再度紹介可能）
+      message = `${name}様\n\nお世話になっております。\n\n以前お問合せいただきました「${address}」につきまして、他のお客様の申し込みがキャンセルとなり、再度ご紹介できる状況となりましたのでご連絡いたしました。${suumoSection}\n\nご見学希望やお問合せ等ございましたらお気軽にご連絡くださいませ。\n内覧のご予約はこちらから↓↓\n${viewingFormUrl}${hasFI ? '' : `\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri`}\n\n★水曜日は定休日となっておりますのでそれ以外の日程でお願いいたします。${preViewingSection}${signature}`;
+    } else if (templateId === 'purchase_campaign') {
+      // 購入応援キャンペーン
+      const staffName = senderName || '担当';
+      message = `${name}様\n\nお世話になっております。${companyShort}の${staffName}です。\n先日は貴重な時間をいただき誠にありがとうございました。\nその後、不動産購入のご状況はいかがでしょうか？\n\n≪キャンペーン対象物件を内覧いただいたお客様限定≫\n《購入応援キャンペーン》\n仲介手数料から10万円をキャッシュバックいたします！\n●条件\n・初めての内覧から1年以内にご成約\n・購入価格が1500万円以上\n\n詳しくはスタッフにお問合せ下さい。\nご不明点や他に気になる物件などございましたら、どうぞお気軽にご連絡くださいませ。${signature}`;
+    } else if (templateId === 'house_mansion_hearing') {
+      // 問合せ返信（戸・マ）＋ヒアリング
+      message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n${companyIntro}\n\n所在地：${address}\n上記の物件のお問い合わせ、ありがとうございます。${preViewingSection}\n\nご不明な点等ございましたら、お気軽にお問い合わせください。\n内覧のご予約はこちらから↓↓\n${viewingFormUrl}\n\nまた、今後ご紹介する物件の参考に、お手すきの際に下記にお答えいただけますと幸いです。\n${INTRO_HEARING_ITEMS}\n\nそれでは、引き続きよろしくお願いいたします。${signature}`;
+    } else if (templateId === 'land_hearing') {
+      // 問合せ返信（土）＋ヒアリング
+      message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n${companyIntro}\n\n所在地：${address}\n上記の物件のお問い合わせ、ありがとうございます。${preViewingSection}\n\n現地確認につきましては、敷地外からはご自由に見ていただいて大丈夫です。\nご不明な点等ございましたら、お気軽にお問い合わせください。\n\nまた、今後ご紹介する物件の参考に、お手すきの際に下記にお答えいただけますと幸いです。\n${LAND_HEARING_ITEMS}\n\nそれでは、引き続きよろしくお願いいたします。${signature}`;
+    } else if (templateId === 'buyer_hearing') {
+      // 持家ヒアリング（物件問合せなし）
+      message = `${name}様\n\nお世話になっております。${companyIntro}\nこの度は当社にお問い合わせ頂き誠にありがとうございました。\n\n今後、周辺エリアで物件をお探しでしたら、メールにて公開前・新着物件をご案内しておりますのでご利用ください。\n他社物件もご紹介できますので、気になる物件がございましたらお気軽にご連絡ください。\n\nまた、今後ご紹介する物件の参考に、お手すきの際に下記にお答えいただけますと幸いです。\n${INTRO_HEARING_ITEMS}\n\nそれでは、引き続きよろしくお願いいたします。${signature}`;
+    } else if (templateId === 'pre_viewing_hearing') {
+      // 内覧前ヒアリング（事前確認事項）
+      message = `${name}様\n\nこのたびはお問い合わせいただき、誠にありがとうございます。\n${companyShort}でございます。\n\n内覧の日程が決まりましたので、ご案内をスムーズに進めるため、下記の項目について事前にお知らせいただけますと幸いです。そのままご記入のうえ、このメールにご返信ください。\n―――――――――――――――――――\n${PRE_VIEWING_QA_ITEMS}\n―――――――――――――――――――\n\nお手数をおかけいたしますが、ご確認のほどよろしくお願いします。\nそれでは当日お会いできるのを楽しみにしております。${signature}`;
     }
 
     // 返信テンプレートに応じて次電日（next_call_date）を自動セットする
@@ -198,7 +322,8 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
     }
   };
 
-  const isLand = propertyType === '土';
+  // 種別判定（「土」「土地」「land」いずれの表記でも土地と判定する）
+  const isLand = isLandType(propertyType);
 
   return (
     <>
@@ -241,33 +366,60 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
         transformOrigin={{ vertical: 'top', horizontal: 'left' }}
       >
+        {/* テンプレートの並び順はGmail送信（買主用スプレッドシート）の順序に合わせている。
+            物件種別（土地／戸・マ）に応じて表示するテンプレートを切り替える点は従来どおり。 */}
+
+        {/* 1. 前回問合せ後反応なし */}
+        {renderSmsMenuItem('no_response', '前回問合せ後反応なし')}
+        {/* 2〜3. 資料請求（戸・マ）系 ／ 6〜7. 資料請求（土）系（種別で切替） */}
         {isLand ? [
-          <MenuItem key="land_no_permission" onClick={() => sendSms('land_no_permission', '資料請求（土）許可不要')}>資料請求（土）許可不要</MenuItem>,
-          <MenuItem key="minpaku" onClick={() => sendSms('minpaku', '民泊問合せ')}>民泊問合せ</MenuItem>,
-          <MenuItem key="land_need_permission" onClick={() => sendSms('land_need_permission', '資料請求（土）売主要許可')}>資料請求（土）売主要許可</MenuItem>,
+          renderSmsMenuItem('land_no_permission', '資料請求（土）許可不要'),
+          renderSmsMenuItem('land_need_permission', '資料請求（土）売主要許可'),
         ] : [
-          <MenuItem key="house_mansion" onClick={() => sendSms('house_mansion', '資料請求（戸・マ）')}>資料請求（戸・マ）</MenuItem>,
+          renderSmsMenuItem('house_mansion', '資料請求（戸・マ）'),
+          renderSmsMenuItem('house_mansion_no_viewing', '資料請求（戸・マ）内覧案内なし'),
         ]}
-        <MenuItem onClick={() => sendSms('ask_email', 'メールアドレス確認')}>メールアドレス確認</MenuItem>
-        <MenuItem onClick={() => sendSms('offer_no_viewing', '買付あり内覧NG')}>買付あり内覧NG</MenuItem>
-        <MenuItem onClick={() => sendSms('offer_ok_viewing', '買付あり内覧OK')}>買付あり内覧OK</MenuItem>
-        <MenuItem onClick={() => sendSms('post_viewing_thanks', '内覧後御礼メール')}>内覧後御礼メール</MenuItem>
-        <MenuItem onClick={() => sendSms('no_response', '前回問合せ後反応なし')}>前回問合せ後反応なし</MenuItem>
-        <MenuItem onClick={() => sendSms('no_response_offer', '反応なし（買付あり不適合）')}>反応なし（買付あり不適合）</MenuItem>
-        <MenuItem onClick={() => sendSms('pinrich', '物件指定なし（Pinrich）')}>物件指定なし（Pinrich）</MenuItem>
-        <MenuItem onClick={() => sendSms('empty_greeting', '空')}>空</MenuItem>
+        {/* 4. 空 */}
+        {renderSmsMenuItem('empty_greeting', '空')}
+        {/* 9. 買付あり内覧NG（キャンセル待ち相当） */}
+        {renderSmsMenuItem('offer_no_viewing', '買付あり内覧NG')}
+        {/* 10. 買付あり内覧OK（随時内覧OK相当） */}
+        {renderSmsMenuItem('offer_ok_viewing', '買付あり内覧OK')}
+        {/* 11. 買付キャンセル後の案内 */}
+        {renderSmsMenuItem('offer_cancelled_available', '買付キャンセル後の案内')}
+        {/* 12. 内覧後御礼メール */}
+        {renderSmsMenuItem('post_viewing_thanks', '内覧後御礼メール')}
+        {/* 15〜16. ＋ヒアリング系（種別で切替） */}
+        {isLand
+          ? renderSmsMenuItem('land_hearing', '資料請求（土）＋ヒアリング')
+          : renderSmsMenuItem('house_mansion_hearing', '資料請求（戸・マ）＋ヒアリング')}
+        {/* 17. 持家ヒアリング */}
+        {renderSmsMenuItem('buyer_hearing', '持家ヒアリング')}
+        {/* 18. 内覧前ヒアリング */}
+        {renderSmsMenuItem('pre_viewing_hearing', '内覧前ヒアリング')}
+        {/* 19. 反応なし（買付あり不適合） */}
+        {renderSmsMenuItem('no_response_offer', '反応なし（買付あり不適合）')}
+        {/* 20. 物件指定なし（Pinrich） */}
+        {renderSmsMenuItem('pinrich', '物件指定なし（Pinrich）')}
         <Divider />
-        {/* 状況確認SMS（①②③④の番号返信を促す） */}
-        <MenuItem onClick={() => sendSms('status_check', '状況確認SMS（①②③④）')}>状況確認SMS（①②③④）</MenuItem>
-        {/* ①②③④の返信テンプレート（薄緑背景・次電日自動セット） */}
-        <MenuItem sx={REPLY_ITEM_SX} onClick={() => sendSms('reply_1_viewing', '①内覧希望の返信')}>①内覧希望の返信</MenuItem>
-        <MenuItem sx={REPLY_ITEM_SX} onClick={() => sendSms('reply_2_scheduling', '②日程調整中の返信（次電日+1ヶ月）')}>②日程調整中の返信（次電日+1ヶ月）</MenuItem>
-        <MenuItem sx={REPLY_ITEM_SX} onClick={() => sendSms('reply_3_info_only', '③情報希望の返信（次電日+3ヶ月）')}>③情報希望の返信（次電日+3ヶ月）</MenuItem>
-        <MenuItem sx={REPLY_ITEM_SX} onClick={() => sendSms('reply_4_not_searching', '④物件探しなしの返信')}>④物件探しなしの返信</MenuItem>
+        {/* 21. 状況確認SMS（①②③④の番号返信を促す） */}
+        {renderSmsMenuItem('status_check', '状況確認SMS（①②③④）')}
+        {/* 22〜25. ①②③④の返信テンプレート（薄緑背景・次電日自動セット） */}
+        {renderSmsMenuItem('reply_1_viewing', '①内覧希望の返信', { highlight: true })}
+        {renderSmsMenuItem('reply_2_scheduling', '②日程調整中の返信（次電日+1ヶ月）', { highlight: true })}
+        {renderSmsMenuItem('reply_3_info_only', '③情報希望の返信（次電日+3ヶ月）', { highlight: true })}
+        {renderSmsMenuItem('reply_4_not_searching', '④物件探しなしの返信', { highlight: true })}
         <Divider />
-        {/* 不通時の追客メール（手動送信・次電日を再セット） */}
-        <MenuItem onClick={() => sendSms('followup_1month_unreachable', '★1ヶ月後不通メール（次電日+1ヶ月）')}>★1ヶ月後不通メール（次電日+1ヶ月）</MenuItem>
-        <MenuItem onClick={() => sendSms('followup_3month_unreachable', '★3ヶ月後不通メール（次電日+3ヶ月）')}>★3ヶ月後不通メール（次電日+3ヶ月）</MenuItem>
+        {/* 26〜27. 不通時の追客メール（手動送信・次電日を再セット） */}
+        {renderSmsMenuItem('followup_1month_unreachable', '★1ヶ月後不通メール（次電日+1ヶ月）')}
+        {renderSmsMenuItem('followup_3month_unreachable', '★3ヶ月後不通メール（次電日+3ヶ月）')}
+        <Divider />
+        {/* 28. 購入応援キャンペーン */}
+        {renderSmsMenuItem('purchase_campaign', '購入応援キャンペーン')}
+        {/* 29. 民泊問合せ */}
+        {renderSmsMenuItem('minpaku', '民泊問合せ')}
+        {/* SMS専用（Gmailに該当テンプレートなし） */}
+        {renderSmsMenuItem('ask_email', 'メールアドレス確認')}
       </Menu>
     </>
   );

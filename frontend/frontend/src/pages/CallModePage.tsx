@@ -70,7 +70,6 @@ import {
   generateValuationSMS2,
   generateNetProceedsValuationSMS,
   generateVisitReminderSMS,
-  generatePostVisitThankYouSMS,
   generateLongTermCustomerSMS,
   generateCallReminderSMS,
   generateUnvisitedOtherDecisionSMS,
@@ -88,6 +87,14 @@ import {
   generateReasonDivorceSMS,
   generateReasonLoanSMS,
   generateInheritanceRegistrationSMS,
+  generateSecondVisitThankYouSMS,
+  generateOtherDecisionReasonInquirySMS,
+  generateAskEmailSMS,
+  generateSellNowChanceSMS,
+  generateTaxDeadlineAssetValueSMS,
+  generateFuturePriceOutlookSMS,
+  generateFirstVisitThankYouSMS,
+  generatePostVisitNoContactSMS,
   convertLineBreaks,
   replacePlaceholders,
 } from '../utils/smsTemplateGenerators';
@@ -164,20 +171,49 @@ function normalizeEmailTemplateName(value: unknown): string {
 }
 
 /** 未送信テンプレートを順番ごとに見分けやすくする淡い背景色。 */
+// 優先度インデックス（0〜9）ごとの淡い背景色。GmailとSMSで共通に使用する。
+const SELLER_TEMPLATE_PRIORITY_COLORS = [
+  '#fff3e0', // 0 不通確認＆キャンセル
+  '#fff8e1', // 1 キャンセルのみ
+  '#e8f5e9', // 2 査定額案内
+  '#fffde7', // 3 今が売却のチャンス
+  '#f1f8e9', // 4 査定理由別
+  '#e0f2f1', // 5 査定額案内（手残り）
+  '#e3f2fd', // 6 WEB打合せ
+  '#f3e5f5', // 7 税制優遇
+  '#e0f7fa', // 8 今後の不動産価格
+  '#fce4ec', // 9 除外前・長期客
+];
+
 function getSellerEmailTemplateBackgroundColor(name: string): string {
-  const colors = [
-    '#fff3e0', // 不通確認＆キャンセル
-    '#fff8e1', // キャンセルのみ
-    '#e8f5e9', // 査定額案内
-    '#fffde7', // 今が売却のチャンス
-    '#f1f8e9', // 査定理由別
-    '#e0f2f1', // 査定額案内（手残り）
-    '#e3f2fd', // WEB打合せ
-    '#f3e5f5', // 税制優遇
-    '#e0f7fa', // 今後の不動産価格
-    '#fce4ec', // 除外前・長期客
-  ];
-  return colors[getSellerEmailTemplatePriority(name)] || '#ffffff';
+  return SELLER_TEMPLATE_PRIORITY_COLORS[getSellerEmailTemplatePriority(name)] || '#ffffff';
+}
+
+/**
+ * SMSテンプレートIDから、Gmailと同じ優先度グループの色を引く。
+ * Gmailの getSellerEmailTemplatePriority に対応するSMS idをマッピングする。
+ * 該当しないものは白（'#ffffff'）。
+ */
+function getSmsTemplateBackgroundColor(templateId: string): string {
+  const SMS_ID_TO_PRIORITY: Record<string, number> = {
+    initial_cancellation: 0,          // 不通確認＆キャンセル
+    cancellation: 1,                  // キャンセルのみ
+    valuation: 2,                     // 査定額案内
+    valuation2: 2,                    // 査定額案内（同グループ）
+    unreachable_after_valuation_check: 2, // 不通・査定後（査定グループ）
+    sell_now_chance: 3,               // 今が売却のチャンス
+    reason_relocation: 4,             // 査定理由別
+    reason_inheritance: 4,
+    reason_divorce: 4,
+    reason_loan: 4,
+    valuation_net_proceeds: 5,        // 査定額案内（手残り）
+    web_meeting: 6,                   // WEB打合せ
+    tax_deadline_asset_value: 7,      // 税制優遇
+    future_price_outlook: 8,          // 今後の不動産価格
+    long_term_customer: 9,            // 除外前・長期客
+  };
+  const priority = SMS_ID_TO_PRIORITY[templateId];
+  return priority !== undefined ? SELLER_TEMPLATE_PRIORITY_COLORS[priority] : '#ffffff';
 }
 
 // ============================================================
@@ -1543,8 +1579,10 @@ const CallModePage = () => {
   ];
 
   // SMSテンプレート定義
-  // 表示順はおおむねEmailテンプレート（emailTemplates.ts の order）に合わせている。
+  // 表示順はGmailテンプレートの並び（getSellerEmailTemplatePriority と emailTemplates.ts の order）に合わせている。
+  // 両方に存在するものはGmailと同じ順序、SMS固有のものは意味的に近い位置に配置する。
   const smsTemplates: SMSTemplate[] = [
+    // --- Gmail優先グループ（getSellerEmailTemplatePriority 0〜9 に対応） ---
     {
       id: 'initial_cancellation',
       label: '不通時SMSメール',
@@ -1572,9 +1610,9 @@ const CallModePage = () => {
       generator: generateUnreachableAfterValuationCheckSMS,
     },
     {
-      id: 'valuation_net_proceeds',
-      label: '査定Sメール（手残り）',
-      generator: generateNetProceedsValuationSMS,
+      id: 'sell_now_chance',
+      label: '今が売却のチャンス',
+      generator: generateSellNowChanceSMS,
     },
     {
       id: 'reason_relocation',
@@ -1597,19 +1635,35 @@ const CallModePage = () => {
       generator: generateReasonLoanSMS,
     },
     {
+      id: 'valuation_net_proceeds',
+      label: '査定Sメール（手残り）',
+      generator: generateNetProceedsValuationSMS,
+    },
+    {
       id: 'web_meeting',
       label: 'WEB打合せどうですかメール',
       generator: generateWebMeetingSMS,
     },
     {
-      id: 'inheritance_registration',
-      label: '相続登記（きざし様へご案内）',
-      generator: generateInheritanceRegistrationSMS,
+      id: 'tax_deadline_asset_value',
+      label: '税制優遇の期限と物件の資産価値について',
+      generator: generateTaxDeadlineAssetValueSMS,
+    },
+    {
+      id: 'future_price_outlook',
+      label: '今後の不動産価格について',
+      generator: generateFuturePriceOutlookSMS,
     },
     {
       id: 'long_term_customer',
       label: '除外前・長期客Sメール',
       generator: generateLongTermCustomerSMS,
+    },
+    // --- 以降は emailTemplates.ts の order 昇順に対応 ---
+    {
+      id: 'call_reminder',
+      label: '当社が電話したというリマインドメール',
+      generator: generateCallReminderSMS,
     },
     {
       id: 'visit_reminder',
@@ -1617,24 +1671,24 @@ const CallModePage = () => {
       generator: generateVisitReminderSMS,
     },
     {
-      id: 'post_visit_thank_you',
-      label: '訪問後御礼メール',
-      generator: generatePostVisitThankYouSMS,
+      id: 'first_visit_thank_you',
+      label: '初回訪問査定後のお礼メール',
+      generator: generateFirstVisitThankYouSMS,
     },
     {
-      id: 'call_reminder',
-      label: '当社が電話したというリマインドメール',
-      generator: generateCallReminderSMS,
+      id: 'second_visit_thank_you',
+      label: '2回目訪問査定後のお礼メール',
+      generator: generateSecondVisitThankYouSMS,
     },
     {
-      id: 'unvisited_other_decision',
-      label: '未訪問他決の理由伺い',
-      generator: generateUnvisitedOtherDecisionSMS,
+      id: 'inheritance_registration',
+      label: '相続登記（ライズアクロス様へご案内）',
+      generator: generateInheritanceRegistrationSMS,
     },
     {
-      id: 'greeting',
-      label: '空',
-      generator: generateGreetingSMS,
+      id: 'other_decision_reason_inquiry',
+      label: '他決になった理由お伺いメール',
+      generator: generateOtherDecisionReasonInquirySMS,
     },
     {
       id: 'other_decision_three_months_followup',
@@ -1650,6 +1704,21 @@ const CallModePage = () => {
       id: 'other_decision_six_months_followup',
       label: '他決→追客（6ヶ月後）',
       generator: generateOtherDecisionSixMonthsFollowUpSMS,
+    },
+    {
+      id: 'unvisited_other_decision',
+      label: '未訪問他決の理由伺い',
+      generator: generateUnvisitedOtherDecisionSMS,
+    },
+    {
+      id: 'post_visit_no_contact',
+      label: '訪問後に連絡がとれないお客様',
+      generator: generatePostVisitNoContactSMS,
+    },
+    {
+      id: 'ask_email',
+      label: 'メールアドレス確認メール',
+      generator: generateAskEmailSMS,
     },
     {
       id: 'progress_step1_reply',
@@ -1668,6 +1737,11 @@ const CallModePage = () => {
       label: '進捗③の返信',
       generator: generateProgressStep3ReplySMS,
       highlight: true,
+    },
+    {
+      id: 'greeting',
+      label: '空',
+      generator: generateGreetingSMS,
     },
   ];
 
@@ -5139,7 +5213,7 @@ HP：https://ifoo-oita.com/
       // generator関数を使用してメッセージ内容を生成
       // 訪問後御礼メール・挨拶の場合は従業員データを渡す
       // call_reminder, progress_step1/2/3 の場合は担当者名字を渡す
-      const generatedContent = (template.id === 'post_visit_thank_you' || template.id === 'greeting')
+      const generatedContent = (template.id === 'greeting' || template.id === 'second_visit_thank_you' || template.id === 'first_visit_thank_you' || template.id === 'post_visit_no_contact')
         ? template.generator(seller!, property, employees)
         : (template.id === 'call_reminder' || 
            template.id === 'unvisited_other_decision' || 
@@ -6936,24 +7010,38 @@ HP：https://ifoo-oita.com/
                   {smsTemplates
                     // 専用URL未発行の場合、「査定Sメール２（査定根拠等）」はURL抜けで送信されてしまうため選択肢から外す
                     .filter((template) => template.id !== 'valuation2' || hasPortalUrl)
+                    // サイトHの場合、「キャンセル案内」はSMSでは表示しない（HOME4Uはキャンセル運用対象外のため）
+                    .filter((template) => template.id !== 'cancellation' || (seller?.site || editedSite) !== 'H')
                     .map((template) => {
                     const isSent = isSmsTemplateSent(template);
                     
-                    // 薄緑背景（進捗①②③）
+                    // 進捗①②③（highlight）は緑背景を維持。
+                    // それ以外はGmailと同じ優先度色（送信済みはグレー）。
                     const backgroundColor = template.highlight 
                       ? (isSent ? '#c8e6c9' : '#e8f5e9')  // 送信済み: 濃い緑、未送信: 薄い緑
-                      : (isSent ? '#e0e0e0' : '#ffffff'); // 通常: グレーまたは白
+                      : (isSent ? '#e0e0e0' : getSmsTemplateBackgroundColor(template.id)); // 送信済み: グレー、未送信: Gmailと同じ色
 
                     return (
                       <MenuItem
                         key={template.id}
                         value={template.id}
                         sx={{
-                          backgroundColor: backgroundColor,
+                          backgroundColor: `${backgroundColor} !important`,
                           '&:hover': {
-                            backgroundColor: template.highlight
-                              ? (isSent ? '#a5d6a7' : '#c8e6c9')
-                              : (isSent ? '#d6d6d6' : 'action.hover'),
+                            backgroundColor: `${
+                              template.highlight
+                                ? (isSent ? '#a5d6a7' : '#c8e6c9')
+                                : (isSent ? '#d6d6d6' : backgroundColor)
+                            } !important`,
+                            filter: template.highlight ? undefined : 'brightness(0.97)',
+                          },
+                          // MUIが開いた直後に先頭項目へ付けるフォーカス色で
+                          // 未送信テンプレートがグレーに見えないよう、種別色を維持する。
+                          '&&.Mui-focusVisible, &&:focus': {
+                            backgroundColor: `${backgroundColor} !important`,
+                          },
+                          '&&.Mui-selected, &&.Mui-selected:hover, &&.Mui-selected.Mui-focusVisible': {
+                            backgroundColor: `${backgroundColor} !important`,
                           },
                         }}
                       >

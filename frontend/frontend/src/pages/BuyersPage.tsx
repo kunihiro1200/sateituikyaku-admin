@@ -81,10 +81,14 @@ const VIEWING_PREP_UNCONFIRMED_START_DATE = '2026-09-03';
  * - 今日が締切日（内覧日の前日、木曜内覧のみ2日前=火曜）以降
  * - 締切日を過ぎたら内覧当日以降も表示は消さない
  */
-function isViewingPrepUnconfirmedFrontend(buyer: { viewing_date?: string | null; viewing_prep_calendar_confirmed_at?: string | null; property_number?: string | null; buyer_number?: string | null }): boolean {
+function isViewingPrepUnconfirmedFrontend(buyer: { viewing_date?: string | null; viewing_prep_calendar_confirmed_at?: string | null; property_number?: string | null; buyer_number?: string | null; broker_inquiry?: string | null }): boolean {
   if (!buyer.viewing_date) return false;
   if (buyer.viewing_prep_calendar_confirmed_at) return false;
   if (String(buyer.viewing_date).substring(0, 10) < VIEWING_PREP_UNCONFIRMED_START_DATE) return false;
+
+  // 「業者問合せ」買主は内覧準備カレンダーの対象外のため除外
+  // ※「業者（両手）」は内覧準備を行うため除外しない
+  if (buyer.broker_inquiry === '業者問合せ') return false;
 
   // FK買主（福岡買主）は除外
   if (buyer.buyer_number && /^FK/i.test(String(buyer.buyer_number))) return false;
@@ -451,8 +455,10 @@ export default function BuyersPage() {
               
               // ステップ2: 全件データをバックグラウンドで非同期取得（23秒かかるがサイドバー表示をブロックしない）
               // URLパラメータがある場合は優先的に取得
+              // ⚠️ このエンドポイントは全買主＋物件を一括処理するため重い。
+              // デフォルト120秒では買主件数増加でタイムアウトするため、この取得だけ180秒に延長する。
               const bgFetchStartTime = Date.now();
-              api.get('/api/buyers/status-categories-with-buyers')
+              api.get('/api/buyers/status-categories-with-buyers', { timeout: 180000 })
                 .then((buyersRes) => {
                   if (cancelled) return;
                   
@@ -580,7 +586,17 @@ export default function BuyersPage() {
   const handleSync = async () => {
     try {
       setSyncing(true);
-      await api.post('/api/buyers/sync');
+      // 同期はスプシ全件を走査するため、既定の120秒では足りないことがある
+      const res = await api.post('/api/buyers/sync', {}, { timeout: 280000 });
+      const { created = 0, skipped = 0, failed = 0 } = res.data || {};
+      setSnackbarMessage(
+        failed > 0
+          ? `同期完了：${created}件追加（既存${skipped}件はスキップ）／${failed}件失敗`
+          : created > 0
+            ? `同期完了：${created}件追加しました（既存${skipped}件はスキップ）`
+            : `同期完了：新規追加はありません（既存${skipped}件はスキップ）`
+      );
+      setSnackbarOpen(true);
       pageDataCache.invalidate(CACHE_KEYS.BUYERS_STATS);
       pageDataCache.invalidate(CACHE_KEYS.BUYERS_WITH_STATUS); // 買主ステータスキャッシュも無効化
       // サイドバーキャッシュをリセット
@@ -591,8 +607,15 @@ export default function BuyersPage() {
       setSidebarLoading(true);
       setDataReady(false);
       setRefetchTrigger(prev => prev + 1);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to sync:', error);
+      const isTimeout = error?.code === 'ECONNABORTED' || String(error?.message || '').includes('timeout');
+      setSnackbarMessage(
+        isTimeout
+          ? '同期がタイムアウトしました。しばらく待ってからもう一度実行してください。'
+          : `同期に失敗しました：${error?.response?.data?.error || error?.message || '不明なエラー'}`
+      );
+      setSnackbarOpen(true);
     } finally {
       setSyncing(false);
     }
@@ -1225,7 +1248,7 @@ export default function BuyersPage() {
       </Box>
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={2000}
+        autoHideDuration={5000}
         onClose={() => setSnackbarOpen(false)}
         message={snackbarMessage}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}

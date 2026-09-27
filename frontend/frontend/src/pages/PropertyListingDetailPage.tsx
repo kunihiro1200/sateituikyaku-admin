@@ -110,6 +110,7 @@ interface PropertyListing {
   commission_from_buyer?: number;
   listing_price?: number;
   property_tax?: number;
+  property_tax_approx?: boolean;
   structure?: string;
   construction_year_month?: string;
   floor_plan?: string;
@@ -2579,8 +2580,7 @@ export default function PropertyListingDetailPage() {
               )}
             </Grid>
           )}
-          {(editedData.property_type ?? data?.property_type) !== 'マンション' && (
-            <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
+          <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
               <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>海</Typography>
               {isHeaderEditMode ? (
                 <FormControl size="small" fullWidth sx={{ mt: 0.5 }}>
@@ -2600,7 +2600,6 @@ export default function PropertyListingDetailPage() {
                 </Typography>
               )}
             </Grid>
-          )}
           <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
             <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>温泉</Typography>
             {isHeaderEditMode ? (

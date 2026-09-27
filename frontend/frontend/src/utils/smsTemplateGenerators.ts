@@ -976,3 +976,161 @@ export const generateInheritanceRegistrationSMS = (
   message = replacePlaceholders(message, seller);
   return message;
 };
+
+/**
+ * 2回目訪問査定後のお礼メール（SMS版）
+ * Email版「2回目訪問査定後のお礼メール」をSMS向けに短縮
+ * AA → 不動産会社いふう、FI → くじら不動産
+ */
+export const generateSecondVisitThankYouSMS = (
+  seller: Seller,
+  property: PropertyInfo | null,
+  employees?: Employee[]
+): string => {
+  const name = seller.name || '';
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? 'くじら不動産' : '不動産会社いふう';
+
+  let message = `${name}様[改行][改行]お世話になっております。${companyName}です。[改行][改行]本日はお忙しい中、査定書のご説明と今後の販売戦略についてお話しするお時間をいただき誠にありがとうございました。[改行][改行]売出価格や販売方法、販売開始時期につきましては、${name}様のご希望やご状況に合わせて柔軟にご提案させていただきますので、ご不明点やご不安な点等ございましたらいつでもご相談ください。[改行][改行]引き続きどうぞよろしくお願いいたします。`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
+
+/**
+ * 他決になった理由お伺いメール（SMS版）
+ * Email版「他決になった理由お伺いメール」をSMS向けに短縮
+ * AA → 不動産会社いふう、FI → くじら不動産
+ */
+export const generateOtherDecisionReasonInquirySMS = (
+  seller: Seller,
+  property: PropertyInfo | null
+): string => {
+  const name = seller.name || '';
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? 'くじら不動産' : '不動産会社いふう';
+
+  let message = `${name}様[改行][改行]お世話になっております。${companyName}です。[改行][改行]この度はご連絡いただき、誠にありがとうございました。[改行][改行]今後の対応改善に役立てたく、差し支えなければ、他社様を選ばれた理由や決め手となった点をお伺いできますでしょうか。[改行][改行]お手隙の際にご返信いただけましたら幸いです。引き続き何かございましたら、お気軽にご相談くださいませ。`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
+
+/**
+ * 今が売却のチャンス（今は売却しないほうが良いケース）（SMS版）
+ * Email版「今が売却のチャンス」をSMS向けに短縮
+ * AA → 不動産会社いふう、FI → くじら不動産
+ */
+export const generateSellNowChanceSMS = (
+  seller: Seller,
+  property: PropertyInfo | null
+): string => {
+  const name = seller.name || '';
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? 'くじら不動産' : '不動産会社いふう';
+
+  let message = `${name}様[改行][改行]お世話になっております。大分市舞鶴町にございます${companyName}です。[改行][改行]お客様のお住まいの地域はニーズが高く、多くの企業から売却のご提案を受けていらっしゃるかと思います。[改行][改行]ただ、ご希望や今後のライフプランによっては「今は動かないほうがいい」というケースも少なくありません。[改行][改行]リフォームでどこまで価値が上がるか、このまま数年持ち続けると将来いくらになるかなど、過去の事例を踏まえた判断材料をお伝えできればと思っております。[改行][改行]一度お話を聞いて後は連絡不要ということであれば、その旨お伝えいただければ今後当社からのご連絡は一切いたしませんのでご安心ください。[改行][改行]住み替え先のご相談や物件紹介もお気軽にどうぞ。[改行][改行]㈱いふう[改行]<<当社住所>>[改行]TEL: 097-533-2022`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
+
+/**
+ * 税制優遇の期限と物件の資産価値について（SMS版）
+ * Email版「税制優遇の期限と物件の資産価値について」をSMS向けに短縮
+ * AA → 不動産会社いふう、FI → くじら不動産
+ */
+export const generateTaxDeadlineAssetValueSMS = (
+  seller: Seller,
+  property: PropertyInfo | null
+): string => {
+  const name = seller.name || '';
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? 'くじら不動産' : '不動産会社いふう';
+
+  let message = `${name}様[改行][改行]お世話になっております。大分市舞鶴町にございます${companyName}です。その後、ご売却の検討状況はいかがでしょうか。[改行][改行]不動産には「築年数が一定を超えると買い手が住宅ローン控除を受けられなくなる」という境界線があり、優遇が使えない物件は市場で選ばれにくくなります。[改行][改行]また、売却時に税金を大幅に抑えられる国の特例にも「居住をやめてから3年目の年末まで」といった期限があります。[改行][改行]先延ばしにしている間にこうした節目を過ぎると、支払う税金が増え手残りが減る可能性がございます。[改行][改行]現在の築年数や状況から見た「注意すべき節目」についてお伝えできればと思います。気になる点がございましたら、このメッセージに「1」とだけご返信ください。[改行][改行]一度お話を聞いて後は連絡不要ということであれば、その旨お伝えいただければ今後当社からのご連絡は一切いたしませんのでご安心ください。[改行][改行]㈱いふう[改行]<<当社住所>>[改行]TEL: 097-533-2022`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
+
+/**
+ * 今後の不動産価格について（SMS版）
+ * Email版「今後の不動産価格について」をSMS向けに短縮
+ * AA → 不動産会社いふう、FI → くじら不動産
+ */
+export const generateFuturePriceOutlookSMS = (
+  seller: Seller,
+  property: PropertyInfo | null
+): string => {
+  const name = seller.name || '';
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? 'くじら不動産' : '不動産会社いふう';
+
+  let message = `${name}様[改行][改行]お世話になっております。大分市舞鶴町にございます${companyName}です。既にご売却の検討は落ち着かれた頃でしょうか。[改行][改行]今後の検討材料として、不動産価格の見立てをお伝えさせてください。[改行][改行]最近は「金利上昇」や「建築コスト高騰」が続き、新築価格の上昇で割安な中古へ買い手が流れ、一時的に需要が押し上げられています。[改行][改行]ただ今後は金利負担の増加も予測され、中古価格がこのまま上昇を続けるとは限りません。むしろ「高く売れる今のうちに」と売却に動く方が増え、売り物件が溢れて価格が低下に転じるケースも過去の市況データから予測されます。[改行][改行]先延ばしにしている間に似た条件の物件が次々売り出され、数百万円単位の機会損失が発生するリスクもございます。[改行][改行]実態に即した価格や今後の価格推移の予想をプロの視点でお伝えできます。気になる点がございましたら、このメッセージに「1」とだけご返信ください。[改行][改行]一度お話を聞いて後は連絡不要ということであれば、その旨お伝えいただければ今後当社からのご連絡は一切いたしませんのでご安心ください。[改行][改行]㈱いふう[改行]<<当社住所>>[改行]TEL: 097-533-2022`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
+
+/**
+ * 初回訪問査定後のお礼メール（SMS版）
+ * Email版「初回訪問査定後のお礼メール」をSMS向けに短縮
+ * 訪問直後の御礼＋査定書準備中の案内
+ * AA → (株)いふう、FI → (株)くじら不動産
+ */
+export const generateFirstVisitThankYouSMS = (
+  seller: Seller,
+  property: PropertyInfo | null,
+  employees?: Employee[]
+): string => {
+  const name = seller.name || '';
+
+  // 担当者名を解決（本文には名字だけを表示）: visitAssignee > assignedTo
+  const assigneeIdentifier = seller.visitAssignee || seller.assignedTo || '';
+  const assigneeName = extractLastName(getEmployeeName(assigneeIdentifier, employees));
+
+  // 売主番号でAA/FI判定
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? '(株)くじら不動産' : '㈱いふう';
+
+  const greeting = assigneeName
+    ? `${companyName}の${assigneeName}です。`
+    : `${companyName}です。`;
+
+  let message = `${name}様[改行][改行]お世話になっております。${greeting}[改行][改行]本日は、訪問査定のため貴重なお時間をいただき、誠にありがとうございました。[改行][改行]弊社といたしましては、${name}様の不動産のご売却がより良い形となるよう、いふうスタッフ一同で精一杯お手伝いさせていただきたいと考えております。[改行][改行]現在、査定内容を整理しておりますので、査定書の準備ができ次第、改めてご連絡させていただきます。[改行][改行]ご不明な点やご相談等ございましたら、どうぞお気軽にご連絡ください。[改行][改行]本日は誠にありがとうございました。今後ともどうぞよろしくお願いいたします。`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
+
+/**
+ * 訪問後に連絡がとれないお客様（SMS版）
+ * Email版「訪問後に連絡がとれないお客様」をSMS向けに短縮
+ * 近い条件で探している買主がいる旨を伝え状況確認する
+ * AA → (株)いふう、FI → (株)くじら不動産
+ */
+export const generatePostVisitNoContactSMS = (
+  seller: Seller,
+  property: PropertyInfo | null,
+  employees?: Employee[]
+): string => {
+  const name = seller.name || '';
+
+  // 担当者名を解決（本文には名字だけを表示）: visitAssignee > assignedTo
+  const assigneeIdentifier = seller.visitAssignee || seller.assignedTo || '';
+  const assigneeName = extractLastName(getEmployeeName(assigneeIdentifier, employees));
+
+  // 売主番号でAA/FI判定
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? '(株)くじら不動産' : '株式会社いふう';
+
+  const greeting = assigneeName
+    ? `${companyName}の${assigneeName}でございます。`
+    : `${companyName}です。`;
+
+  let message = `${name}様[改行][改行]お世話になっております。${greeting}[改行][改行]先日は訪問査定のお時間をいただき、誠にありがとうございました。その後のご状況はいかがでしょうか。[改行][改行]現在、こちらの物件に近い条件でお探しのお客様よりお問い合わせをいただいており、もしご売却のご意向がございましたらご紹介できる可能性があるためご連絡いたしました。[改行][改行]もちろん、ご事情の変化などにより売却を見送られている場合でも差し支えございませんので、その際は一言お知らせいただけますと幸いです。[改行][改行]何かお力になれることがございましたら、どのようなことでもお気軽にご相談ください。何卒よろしくお願いいたします。`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};

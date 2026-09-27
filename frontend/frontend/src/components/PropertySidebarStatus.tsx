@@ -52,6 +52,7 @@ const STATUS_PRIORITY: Record<string, number> = {
   '値下げ未完了': 3,
   'SUUMO URL　要登録': 4,
   'レインズ登録＋SUUMO URL 要登録': 5,
+  'SUUMO登録+公開お知らせメール': 5.5,
   '未報告': 6,
   '一般媒介の掲載確認未': 7,
   '買付申込み（内覧なし）２': 8,
@@ -82,6 +83,7 @@ const HIGH_PRIORITY_RED_STATUSES = new Set([
   '要値下げ',
   'SUUMO URL\u3000要登録',
   'レインズ登録＋SUUMO URL 要登録',
+  'SUUMO登録+公開お知らせメール',
   '非公開（配信メール）要',
 ]);
 
@@ -95,6 +97,7 @@ const HIGH_PRIORITY_BG_STATUSES = new Set([
   '一般媒介の掲載確認未',
   'SUUMO URL\u3000要登録',
   'レインズ登録＋SUUMO URL 要登録',
+  'SUUMO登録+公開お知らせメール',
 ]);
 
 // sales_assignee → 専任公開中ステータス名のマッピング
@@ -224,6 +227,11 @@ export default function PropertySidebarStatus({
       }
       if (computed.key === 'reins_suumo_required') {
         counts['レインズ登録＋SUUMO URL 要登録'] = (counts['レインズ登録＋SUUMO URL 要登録'] || 0) + 1;
+        return;
+      }
+      // 「SUUMO登録+公開お知らせメール」も動的判定（一般・公開中 かつ AA14824以降 かつ 公開お知らせメール未）
+      if (computed.key === 'suumo_publish_notice') {
+        counts['SUUMO登録+公開お知らせメール'] = (counts['SUUMO登録+公開お知らせメール'] || 0) + 1;
         return;
       }
 

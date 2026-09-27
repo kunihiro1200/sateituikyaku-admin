@@ -27,26 +27,20 @@ function parseDateLocal(date: Date | string): Date {
       const day = parseInt(plainMatch[3]);
       // JST日付の00:00:00を表現
       const result = new Date(Date.UTC(year, month, day));
-      console.log('[parseDateLocal] Plain date:', date, '→', result.toISOString());
       return result;
     }
     // タイムゾーン付き（ISO 8601）の場合は UTC に変換してから JST 日付を取得
     const d = new Date(date);
     if (!isNaN(d.getTime())) {
-      console.log('[parseDateLocal] ISO date input:', date);
-      console.log('[parseDateLocal] Parsed as UTC:', d.toISOString());
       // UTC時刻をJST時刻に変換
       const jstMs = d.getTime() + JST_OFFSET_MS;
       const jst = new Date(jstMs);
-      console.log('[parseDateLocal] JST time:', jst.toISOString());
       // JST日付の00:00:00を取得
       const year = jst.getUTCFullYear();
       const month = jst.getUTCMonth();
       const day = jst.getUTCDate();
-      console.log('[parseDateLocal] JST date parts:', year, month, day);
       // JST日付の00:00:00を表現するには、UTC日付をそのまま使用
       const result = new Date(Date.UTC(year, month, day));
-      console.log('[parseDateLocal] Result:', result.toISOString());
       return result;
     }
     return new Date(date);
@@ -58,7 +52,6 @@ function parseDateLocal(date: Date | string): Date {
   const month = jst.getUTCMonth();
   const day = jst.getUTCDate();
   const result = new Date(Date.UTC(year, month, day));
-  console.log('[parseDateLocal] Date object:', date.toISOString(), '→', result.toISOString());
   return result;
 }
 
@@ -154,15 +147,6 @@ export function isTodayOrPast(date: Date | string | null | undefined): boolean {
   const targetDate = parseDateLocal(date);
   if (isNaN(targetDate.getTime())) return false;
   const today = todayJST();
-  
-  // デバッグログ
-  console.log('[isTodayOrPast] Input date:', date);
-  console.log('[isTodayOrPast] Parsed targetDate:', targetDate.toISOString());
-  console.log('[isTodayOrPast] Today JST:', today.toISOString());
-  console.log('[isTodayOrPast] targetDate <= today:', targetDate <= today);
-  console.log('[isTodayOrPast] targetDate.getTime():', targetDate.getTime());
-  console.log('[isTodayOrPast] today.getTime():', today.getTime());
-  
   return targetDate <= today;
 }
 

@@ -1,12 +1,33 @@
 import { useState } from 'react';
-import { Button, CircularProgress, Snackbar, Alert, Typography, Box } from '@mui/material';
+import {
+  Button,
+  ButtonGroup,
+  CircularProgress,
+  Snackbar,
+  Alert,
+  Box,
+  Menu,
+  MenuItem,
+  Chip,
+  Typography,
+  ListItemText,
+} from '@mui/material';
 import EmailIcon from '@mui/icons-material/Email';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { InquiryHistoryItem } from './InquiryHistoryTable';
-import TemplateSelectionModal from './TemplateSelectionModal';
+import TemplateSelectionModal, {
+  filterTemplatesByPropertyType,
+  filterTemplatesByConditions,
+} from './TemplateSelectionModal';
 import BuyerEmailCompositionModal from './BuyerEmailCompositionModal';
 import { EmailTemplate, EmailData, MergedEmailContent } from '../types/emailTemplate';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
+
+// テンプレート名を正規化して照合する（全角半角・空白の表記揺れを吸収）
+function normalizeTemplateName(value: unknown): string {
+  return String(value || '').normalize('NFKC').replace(/\s+/g, '').toLowerCase();
+}
 
 interface BuyerGmailSendButtonProps {
   buyerId: string;
@@ -26,6 +47,11 @@ interface BuyerGmailSendButtonProps {
   size?: 'small' | 'medium' | 'large';
   variant?: 'text' | 'outlined' | 'contained';
   onEmailSent?: () => void; // メール送信成功後のコールバック
+  /**
+   * 送信済みメールテンプレートの照合用（正規化テンプレート名の集合）。
+   * テンプレート選択モーダルで送信済みテンプレをグレー化＋「送信済み」バッジ表示する。
+   */
+  sentTemplateNames?: Set<string>;
 }
 
 /**
@@ -52,6 +78,7 @@ export default function BuyerGmailSendButton({
   size = 'medium',
   variant = 'contained',
   onEmailSent,
+  sentTemplateNames,
 }: BuyerGmailSendButtonProps) {
   const [loading, setLoading] = useState(false);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
@@ -62,6 +89,12 @@ export default function BuyerGmailSendButton({
   
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // 右の▽ドロップダウン（SMS送信ボタンと同じ挙動でテンプレを直接表示）
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const menuOpen = Boolean(menuAnchorEl);
+  const [dropdownTemplates, setDropdownTemplates] = useState<EmailTemplate[]>([]);
+  const [dropdownLoading, setDropdownLoading] = useState(false);
 
   // Get current user email from auth store
   const { employee } = useAuthStore();
@@ -80,6 +113,38 @@ export default function BuyerGmailSendButton({
     // 物件未選択でもテンプレート選択に進む（物件なしの場合は他社物件フィールドを使用）
     setTemplateModalOpen(true);
   };
+
+  // ▽ドロップダウンを開く。開くたびにテンプレを取得してモーダルと同じ条件でフィルタする
+  const handleOpenMenu = async (e: React.MouseEvent<HTMLElement>) => {
+    setMenuAnchorEl(e.currentTarget);
+    setDropdownLoading(true);
+    try {
+      const response = await api.get('/api/email-templates');
+      setDropdownTemplates(response.data);
+    } catch (err) {
+      console.error('[BuyerGmailSendButton] テンプレート取得失敗:', err);
+      setDropdownTemplates([]);
+    } finally {
+      setDropdownLoading(false);
+    }
+  };
+
+  const handleCloseMenu = () => {
+    setMenuAnchorEl(null);
+  };
+
+  // ドロップダウンからテンプレを選択 → モーダルと同じ送信フローに乗せる
+  const handleMenuTemplateSelect = (template: EmailTemplate) => {
+    handleCloseMenu();
+    handleTemplateSelect(template);
+  };
+
+  // モーダルと同じフィルタ（物件種別・業者問合せ・内覧日）を適用したドロップダウン用一覧
+  const filteredDropdownTemplates = filterTemplatesByConditions(
+    filterTemplatesByPropertyType(dropdownTemplates, linkedPropertyType),
+    brokerInquiry,
+    latestViewingDate
+  );
 
   const handleTemplateSelect = async (template: EmailTemplate) => {
     setSelectedTemplate(template);
@@ -188,23 +253,98 @@ export default function BuyerGmailSendButton({
 
   return (
     <>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Button
-          variant={variant}
-          size={size}
-          startIcon={loading ? <CircularProgress size={20} /> : <EmailIcon />}
-          onClick={handleClick}
-          disabled={isDisabled}
-          sx={{
+      <ButtonGroup
+        variant={variant}
+        size={size}
+        disabled={isDisabled}
+        sx={{
+          '& .MuiButton-root': {
             backgroundColor: '#2e7d32',
             color: '#fff',
             '&:hover': { backgroundColor: '#1b5e20' },
             '&:disabled': { backgroundColor: '#a5d6a7', color: '#fff' },
-          }}
+          },
+          '& .MuiButtonGroup-grouped': {
+            borderColor: '#1b5e20 !important',
+          },
+        }}
+      >
+        <Button
+          startIcon={loading ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : <EmailIcon />}
+          onClick={handleClick}
+          sx={{ whiteSpace: 'nowrap', fontWeight: 'bold' }}
         >
           Gmail送信
         </Button>
-      </Box>
+        <Button
+          size="small"
+          onClick={handleOpenMenu}
+          sx={{ px: 0.5, minWidth: 'unset' }}
+        >
+          <ArrowDropDownIcon />
+        </Button>
+      </ButtonGroup>
+
+      {/* ▽ドロップダウン：テンプレを直接一覧表示（SMS送信ボタンと同じUX） */}
+      <Menu
+        anchorEl={menuAnchorEl}
+        open={menuOpen}
+        onClose={handleCloseMenu}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+        slotProps={{ paper: { sx: { maxHeight: 420, minWidth: 280 } } }}
+      >
+        {dropdownLoading && (
+          <MenuItem disabled sx={{ justifyContent: 'center' }}>
+            <CircularProgress size={20} />
+          </MenuItem>
+        )}
+        {!dropdownLoading && filteredDropdownTemplates.length === 0 && (
+          <MenuItem disabled>
+            <Typography variant="body2" color="text.secondary">
+              利用可能なテンプレートがありません
+            </Typography>
+          </MenuItem>
+        )}
+        {!dropdownLoading &&
+          filteredDropdownTemplates.map((template) => {
+            const isSent = !!sentTemplateNames?.has(normalizeTemplateName(template.name));
+            return (
+              <MenuItem
+                key={template.id}
+                onClick={() => handleMenuTemplateSelect(template)}
+                sx={{
+                  backgroundColor: isSent ? '#e0e0e0' : '#ffffff',
+                  '&:hover': { backgroundColor: isSent ? '#d6d6d6' : 'action.hover' },
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                  <ListItemText
+                    primary={
+                      <Typography variant="body2" sx={{ flex: 1 }}>
+                        {template.name}
+                      </Typography>
+                    }
+                  />
+                  {isSent && (
+                    <Chip
+                      label="送信済み"
+                      size="small"
+                      sx={{
+                        height: 20,
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        backgroundColor: '#757575',
+                        color: '#fff',
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+                </Box>
+              </MenuItem>
+            );
+          })}
+      </Menu>
 
       {/* Template Selection Modal */}
       <TemplateSelectionModal
@@ -214,6 +354,7 @@ export default function BuyerGmailSendButton({
         propertyType={linkedPropertyType}
         brokerInquiry={brokerInquiry}
         latestViewingDate={latestViewingDate}
+        sentTemplateNames={sentTemplateNames}
       />
 
       {/* Email Composition Modal */}
