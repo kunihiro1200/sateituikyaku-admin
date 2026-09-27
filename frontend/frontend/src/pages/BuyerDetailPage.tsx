@@ -2698,6 +2698,37 @@ TEL：097-533-2022`;
                     />
                   </Grid>
 
+                  {/* 他社サイトURL（athome / SUUMO 等）- DB専用 */}
+                  <Grid item xs={12}>
+                    <InlineEditableField
+                      label="サイトURL"
+                      value={buyer?.other_company_property_url || ''}
+                      fieldName="other_company_property_url"
+                      fieldType="textarea"
+                      onSave={(value) => handleInlineFieldSave('other_company_property_url', value).then(() => {})}
+                      onChange={(fieldName, newValue) => handleFieldChange('他社物件情報', fieldName, newValue)}
+                      buyerId={buyer_number}
+                      enableConflictDetection={false}
+                      showEditIndicator={true}
+                      alwaysShowBorder={true}
+                      helperText="他社サイト（athome / SUUMO 等）の物件ページURLを貼り付けてください。"
+                    />
+                    {buyer?.other_company_property_url &&
+                      String(buyer.other_company_property_url).trim() !== '' && (
+                        <Box sx={{ mt: 0.5 }}>
+                          <Link
+                            href={String(buyer.other_company_property_url).trim()}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            sx={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: 0.5, wordBreak: 'break-all' }}
+                          >
+                            サイトを開く
+                            <LaunchIcon sx={{ fontSize: 12 }} />
+                          </Link>
+                        </Box>
+                      )}
+                  </Grid>
+
                   <Grid item xs={12}>
                     <InlineEditableField
                       label="建物名/価格"
