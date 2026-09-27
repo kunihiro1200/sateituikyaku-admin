@@ -30,6 +30,10 @@ function isViewingPrepUnconfirmed(buyer: any): boolean {
   if (!buyer.viewing_date) return false;
   if (buyer.viewing_prep_calendar_confirmed_at) return false;
   if (String(buyer.viewing_date).substring(0, 10) < VIEWING_PREP_UNCONFIRMED_START_DATE) return false;
+  // 「業者問合せ」買主は内覧準備カレンダーの対象外のため除外
+  // （「カレンダー●OK」ボタンも非表示のため、このカテゴリに残り続けるのを防ぐ）
+  // ※「業者（両手）」は内覧準備を行うため除外しない
+  if (buyer.broker_inquiry === '業者問合せ') return false;
   // FK買主（福岡買主）は除外
   if (buyer.buyer_number && /^FK/i.test(String(buyer.buyer_number))) return false;
   // FI物件（福岡物件）は除外

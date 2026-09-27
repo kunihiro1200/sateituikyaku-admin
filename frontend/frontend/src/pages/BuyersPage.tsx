@@ -81,10 +81,14 @@ const VIEWING_PREP_UNCONFIRMED_START_DATE = '2026-09-03';
  * - 今日が締切日（内覧日の前日、木曜内覧のみ2日前=火曜）以降
  * - 締切日を過ぎたら内覧当日以降も表示は消さない
  */
-function isViewingPrepUnconfirmedFrontend(buyer: { viewing_date?: string | null; viewing_prep_calendar_confirmed_at?: string | null; property_number?: string | null; buyer_number?: string | null }): boolean {
+function isViewingPrepUnconfirmedFrontend(buyer: { viewing_date?: string | null; viewing_prep_calendar_confirmed_at?: string | null; property_number?: string | null; buyer_number?: string | null; broker_inquiry?: string | null }): boolean {
   if (!buyer.viewing_date) return false;
   if (buyer.viewing_prep_calendar_confirmed_at) return false;
   if (String(buyer.viewing_date).substring(0, 10) < VIEWING_PREP_UNCONFIRMED_START_DATE) return false;
+
+  // 「業者問合せ」買主は内覧準備カレンダーの対象外のため除外
+  // ※「業者（両手）」は内覧準備を行うため除外しない
+  if (buyer.broker_inquiry === '業者問合せ') return false;
 
   // FK買主（福岡買主）は除外
   if (buyer.buyer_number && /^FK/i.test(String(buyer.buyer_number))) return false;

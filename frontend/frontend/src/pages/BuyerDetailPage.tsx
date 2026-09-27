@@ -1885,8 +1885,11 @@ export default function BuyerDetailPage() {
         </Box>
 
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* カレンダー●OKボタン（内覧準備ボタンの左隣、内覧日が入力されている場合のみ表示） */}
-          {buyer?.viewing_date && (
+          {/* カレンダー●OKボタン（内覧準備ボタンの左隣、内覧日が入力されている場合のみ表示）
+              「業者問合せ」の買主は内覧準備カレンダーの対象外のため非表示
+              ※「業者（両手）」は内覧準備を行うため表示する */}
+          {buyer?.viewing_date &&
+            buyer?.broker_inquiry !== '業者問合せ' && (
             <ViewingPrepCalendarOkButton
               buyerNumber={buyer?.buyer_number}
               confirmedAt={buyer?.viewing_prep_calendar_confirmed_at}
