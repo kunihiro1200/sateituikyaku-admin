@@ -1072,3 +1072,34 @@ export const generateFuturePriceOutlookSMS = (
   message = replacePlaceholders(message, seller);
   return message;
 };
+
+/**
+ * 初回訪問査定後のお礼メール（SMS版）
+ * Email版「初回訪問査定後のお礼メール」をSMS向けに短縮
+ * 訪問直後の御礼＋査定書準備中の案内
+ * AA → (株)いふう、FI → (株)くじら不動産
+ */
+export const generateFirstVisitThankYouSMS = (
+  seller: Seller,
+  property: PropertyInfo | null,
+  employees?: Employee[]
+): string => {
+  const name = seller.name || '';
+
+  // 担当者名を解決（本文には名字だけを表示）: visitAssignee > assignedTo
+  const assigneeIdentifier = seller.visitAssignee || seller.assignedTo || '';
+  const assigneeName = extractLastName(getEmployeeName(assigneeIdentifier, employees));
+
+  // 売主番号でAA/FI判定
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? '(株)くじら不動産' : '㈱いふう';
+
+  const greeting = assigneeName
+    ? `${companyName}の${assigneeName}です。`
+    : `${companyName}です。`;
+
+  let message = `${name}様[改行][改行]お世話になっております。${greeting}[改行][改行]本日は、訪問査定のため貴重なお時間をいただき、誠にありがとうございました。[改行][改行]弊社といたしましては、${name}様の不動産のご売却がより良い形となるよう、いふうスタッフ一同で精一杯お手伝いさせていただきたいと考えております。[改行][改行]現在、査定内容を整理しておりますので、査定書の準備ができ次第、改めてご連絡させていただきます。[改行][改行]ご不明な点やご相談等ございましたら、どうぞお気軽にご連絡ください。[改行][改行]本日は誠にありがとうございました。今後ともどうぞよろしくお願いいたします。`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
