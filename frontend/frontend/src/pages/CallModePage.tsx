@@ -92,6 +92,7 @@ import {
   generateOtherDecisionReasonInquirySMS,
   generateAskEmailSMS,
   generateSellNowChanceSMS,
+  generateTaxDeadlineAssetValueSMS,
   convertLineBreaks,
   replacePlaceholders,
 } from '../utils/smsTemplateGenerators';
@@ -1619,6 +1620,11 @@ const CallModePage = () => {
       id: 'sell_now_chance',
       label: '今が売却のチャンス',
       generator: generateSellNowChanceSMS,
+    },
+    {
+      id: 'tax_deadline_asset_value',
+      label: '税制優遇の期限と物件の資産価値について',
+      generator: generateTaxDeadlineAssetValueSMS,
     },
     {
       id: 'visit_reminder',

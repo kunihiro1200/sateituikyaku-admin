@@ -1034,3 +1034,22 @@ export const generateSellNowChanceSMS = (
   message = replacePlaceholders(message, seller);
   return message;
 };
+
+/**
+ * 税制優遇の期限と物件の資産価値について（SMS版）
+ * Email版「税制優遇の期限と物件の資産価値について」をSMS向けに短縮
+ * AA → 不動産会社いふう、FI → くじら不動産
+ */
+export const generateTaxDeadlineAssetValueSMS = (
+  seller: Seller,
+  property: PropertyInfo | null
+): string => {
+  const name = seller.name || '';
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? 'くじら不動産' : '不動産会社いふう';
+
+  let message = `${name}様[改行][改行]お世話になっております。大分市舞鶴町にございます${companyName}です。その後、ご売却の検討状況はいかがでしょうか。[改行][改行]不動産には「築年数が一定を超えると買い手が住宅ローン控除を受けられなくなる」という境界線があり、優遇が使えない物件は市場で選ばれにくくなります。[改行][改行]また、売却時に税金を大幅に抑えられる国の特例にも「居住をやめてから3年目の年末まで」といった期限があります。[改行][改行]先延ばしにしている間にこうした節目を過ぎると、支払う税金が増え手残りが減る可能性がございます。[改行][改行]現在の築年数や状況から見た「注意すべき節目」についてお伝えできればと思います。気になる点がございましたら、このメッセージに「1」とだけご返信ください。[改行][改行]一度お話を聞いて後は連絡不要ということであれば、その旨お伝えいただければ今後当社からのご連絡は一切いたしませんのでご安心ください。[改行][改行]㈱いふう[改行]<<当社住所>>[改行]TEL: 097-533-2022`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
