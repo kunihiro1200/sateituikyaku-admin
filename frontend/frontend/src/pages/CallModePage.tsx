@@ -1551,8 +1551,10 @@ const CallModePage = () => {
   ];
 
   // SMSテンプレート定義
-  // 表示順はおおむねEmailテンプレート（emailTemplates.ts の order）に合わせている。
+  // 表示順はGmailテンプレートの並び（getSellerEmailTemplatePriority と emailTemplates.ts の order）に合わせている。
+  // 両方に存在するものはGmailと同じ順序、SMS固有のものは意味的に近い位置に配置する。
   const smsTemplates: SMSTemplate[] = [
+    // --- Gmail優先グループ（getSellerEmailTemplatePriority 0〜9 に対応） ---
     {
       id: 'initial_cancellation',
       label: '不通時SMSメール',
@@ -1580,9 +1582,9 @@ const CallModePage = () => {
       generator: generateUnreachableAfterValuationCheckSMS,
     },
     {
-      id: 'valuation_net_proceeds',
-      label: '査定Sメール（手残り）',
-      generator: generateNetProceedsValuationSMS,
+      id: 'sell_now_chance',
+      label: '今が売却のチャンス',
+      generator: generateSellNowChanceSMS,
     },
     {
       id: 'reason_relocation',
@@ -1605,24 +1607,14 @@ const CallModePage = () => {
       generator: generateReasonLoanSMS,
     },
     {
+      id: 'valuation_net_proceeds',
+      label: '査定Sメール（手残り）',
+      generator: generateNetProceedsValuationSMS,
+    },
+    {
       id: 'web_meeting',
       label: 'WEB打合せどうですかメール',
       generator: generateWebMeetingSMS,
-    },
-    {
-      id: 'inheritance_registration',
-      label: '相続登記（きざし様へご案内）',
-      generator: generateInheritanceRegistrationSMS,
-    },
-    {
-      id: 'long_term_customer',
-      label: '除外前・長期客Sメール',
-      generator: generateLongTermCustomerSMS,
-    },
-    {
-      id: 'sell_now_chance',
-      label: '今が売却のチャンス',
-      generator: generateSellNowChanceSMS,
     },
     {
       id: 'tax_deadline_asset_value',
@@ -1633,6 +1625,17 @@ const CallModePage = () => {
       id: 'future_price_outlook',
       label: '今後の不動産価格について',
       generator: generateFuturePriceOutlookSMS,
+    },
+    {
+      id: 'long_term_customer',
+      label: '除外前・長期客Sメール',
+      generator: generateLongTermCustomerSMS,
+    },
+    // --- 以降は emailTemplates.ts の order 昇順に対応 ---
+    {
+      id: 'call_reminder',
+      label: '当社が電話したというリマインドメール',
+      generator: generateCallReminderSMS,
     },
     {
       id: 'visit_reminder',
@@ -1655,34 +1658,14 @@ const CallModePage = () => {
       generator: generateSecondVisitThankYouSMS,
     },
     {
-      id: 'post_visit_no_contact',
-      label: '訪問後に連絡がとれないお客様',
-      generator: generatePostVisitNoContactSMS,
-    },
-    {
-      id: 'call_reminder',
-      label: '当社が電話したというリマインドメール',
-      generator: generateCallReminderSMS,
-    },
-    {
-      id: 'unvisited_other_decision',
-      label: '未訪問他決の理由伺い',
-      generator: generateUnvisitedOtherDecisionSMS,
+      id: 'inheritance_registration',
+      label: '相続登記（きざし様へご案内）',
+      generator: generateInheritanceRegistrationSMS,
     },
     {
       id: 'other_decision_reason_inquiry',
       label: '他決になった理由お伺いメール',
       generator: generateOtherDecisionReasonInquirySMS,
-    },
-    {
-      id: 'ask_email',
-      label: 'メールアドレス確認メール',
-      generator: generateAskEmailSMS,
-    },
-    {
-      id: 'greeting',
-      label: '空',
-      generator: generateGreetingSMS,
     },
     {
       id: 'other_decision_three_months_followup',
@@ -1698,6 +1681,21 @@ const CallModePage = () => {
       id: 'other_decision_six_months_followup',
       label: '他決→追客（6ヶ月後）',
       generator: generateOtherDecisionSixMonthsFollowUpSMS,
+    },
+    {
+      id: 'unvisited_other_decision',
+      label: '未訪問他決の理由伺い',
+      generator: generateUnvisitedOtherDecisionSMS,
+    },
+    {
+      id: 'post_visit_no_contact',
+      label: '訪問後に連絡がとれないお客様',
+      generator: generatePostVisitNoContactSMS,
+    },
+    {
+      id: 'ask_email',
+      label: 'メールアドレス確認メール',
+      generator: generateAskEmailSMS,
     },
     {
       id: 'progress_step1_reply',
@@ -1716,6 +1714,11 @@ const CallModePage = () => {
       label: '進捗③の返信',
       generator: generateProgressStep3ReplySMS,
       highlight: true,
+    },
+    {
+      id: 'greeting',
+      label: '空',
+      generator: generateGreetingSMS,
     },
   ];
 
