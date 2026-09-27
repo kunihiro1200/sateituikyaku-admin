@@ -369,7 +369,12 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
     // 集計対象外のイニシャルを除外
     // - TENANT / 空 / '-' はプレースホルダ
     // - U / I / K は事務会議の集計対象外（要望により固定除外）
-    const EXCLUDED = new Set<string>(['TENANT', '', '-', 'U', 'I', 'K', ...userExcluded]);
+    // - IF / T / G / 生 / H / M も共有ページから除外（要望により固定除外）
+    const EXCLUDED = new Set<string>([
+      'TENANT', '', '-', 'U', 'I', 'K',
+      'IF', 'T', 'G', '生', 'H', 'M',
+      ...userExcluded,
+    ]);
 
     const metrics = [
       ...taskMetrics.map((m) => ({ key: m.key, label: m.label })),
