@@ -7026,20 +7026,22 @@ HP：https://ifoo-oita.com/
                         key={template.id}
                         value={template.id}
                         sx={{
-                          backgroundColor: backgroundColor,
+                          backgroundColor: `${backgroundColor} !important`,
                           '&:hover': {
-                            backgroundColor: template.highlight
-                              ? (isSent ? '#a5d6a7' : '#c8e6c9')
-                              : (isSent ? '#d6d6d6' : backgroundColor),
+                            backgroundColor: `${
+                              template.highlight
+                                ? (isSent ? '#a5d6a7' : '#c8e6c9')
+                                : (isSent ? '#d6d6d6' : backgroundColor)
+                            } !important`,
                             filter: template.highlight ? undefined : 'brightness(0.97)',
                           },
                           // MUIが開いた直後に先頭項目へ付けるフォーカス色で
                           // 未送信テンプレートがグレーに見えないよう、種別色を維持する。
                           '&&.Mui-focusVisible, &&:focus': {
-                            backgroundColor,
+                            backgroundColor: `${backgroundColor} !important`,
                           },
                           '&&.Mui-selected, &&.Mui-selected:hover, &&.Mui-selected.Mui-focusVisible': {
-                            backgroundColor,
+                            backgroundColor: `${backgroundColor} !important`,
                           },
                         }}
                       >
