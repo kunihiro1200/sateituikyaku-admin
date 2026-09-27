@@ -366,41 +366,60 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
         transformOrigin={{ vertical: 'top', horizontal: 'left' }}
       >
+        {/* テンプレートの並び順はGmail送信（買主用スプレッドシート）の順序に合わせている。
+            物件種別（土地／戸・マ）に応じて表示するテンプレートを切り替える点は従来どおり。 */}
+
+        {/* 1. 前回問合せ後反応なし */}
+        {renderSmsMenuItem('no_response', '前回問合せ後反応なし')}
+        {/* 2〜3. 資料請求（戸・マ）系 ／ 6〜7. 資料請求（土）系（種別で切替） */}
         {isLand ? [
           renderSmsMenuItem('land_no_permission', '資料請求（土）許可不要'),
           renderSmsMenuItem('land_need_permission', '資料請求（土）売主要許可'),
-          renderSmsMenuItem('land_hearing', '資料請求（土）＋ヒアリング'),
         ] : [
           renderSmsMenuItem('house_mansion', '資料請求（戸・マ）'),
           renderSmsMenuItem('house_mansion_no_viewing', '資料請求（戸・マ）内覧案内なし'),
-          renderSmsMenuItem('house_mansion_hearing', '資料請求（戸・マ）＋ヒアリング'),
         ]}
-        {/* 民泊問合せは全種別で表示 */}
-        {renderSmsMenuItem('minpaku', '民泊問合せ')}
-        {renderSmsMenuItem('buyer_hearing', '持家ヒアリング')}
-        {renderSmsMenuItem('ask_email', 'メールアドレス確認')}
-        {renderSmsMenuItem('offer_no_viewing', '買付あり内覧NG')}
-        {renderSmsMenuItem('offer_ok_viewing', '買付あり内覧OK')}
-        {renderSmsMenuItem('offer_cancelled_available', '買付キャンセル後の案内')}
-        {renderSmsMenuItem('pre_viewing_hearing', '内覧前ヒアリング')}
-        {renderSmsMenuItem('post_viewing_thanks', '内覧後御礼メール')}
-        {renderSmsMenuItem('purchase_campaign', '購入応援キャンペーン')}
-        {renderSmsMenuItem('no_response', '前回問合せ後反応なし')}
-        {renderSmsMenuItem('no_response_offer', '反応なし（買付あり不適合）')}
-        {renderSmsMenuItem('pinrich', '物件指定なし（Pinrich）')}
+        {/* 4. 空 */}
         {renderSmsMenuItem('empty_greeting', '空')}
+        {/* 9. 買付あり内覧NG（キャンセル待ち相当） */}
+        {renderSmsMenuItem('offer_no_viewing', '買付あり内覧NG')}
+        {/* 10. 買付あり内覧OK（随時内覧OK相当） */}
+        {renderSmsMenuItem('offer_ok_viewing', '買付あり内覧OK')}
+        {/* 11. 買付キャンセル後の案内 */}
+        {renderSmsMenuItem('offer_cancelled_available', '買付キャンセル後の案内')}
+        {/* 12. 内覧後御礼メール */}
+        {renderSmsMenuItem('post_viewing_thanks', '内覧後御礼メール')}
+        {/* 15〜16. ＋ヒアリング系（種別で切替） */}
+        {isLand
+          ? renderSmsMenuItem('land_hearing', '資料請求（土）＋ヒアリング')
+          : renderSmsMenuItem('house_mansion_hearing', '資料請求（戸・マ）＋ヒアリング')}
+        {/* 17. 持家ヒアリング */}
+        {renderSmsMenuItem('buyer_hearing', '持家ヒアリング')}
+        {/* 18. 内覧前ヒアリング */}
+        {renderSmsMenuItem('pre_viewing_hearing', '内覧前ヒアリング')}
+        {/* 19. 反応なし（買付あり不適合） */}
+        {renderSmsMenuItem('no_response_offer', '反応なし（買付あり不適合）')}
+        {/* 20. 物件指定なし（Pinrich） */}
+        {renderSmsMenuItem('pinrich', '物件指定なし（Pinrich）')}
         <Divider />
-        {/* 状況確認SMS（①②③④の番号返信を促す） */}
+        {/* 21. 状況確認SMS（①②③④の番号返信を促す） */}
         {renderSmsMenuItem('status_check', '状況確認SMS（①②③④）')}
-        {/* ①②③④の返信テンプレート（薄緑背景・次電日自動セット） */}
+        {/* 22〜25. ①②③④の返信テンプレート（薄緑背景・次電日自動セット） */}
         {renderSmsMenuItem('reply_1_viewing', '①内覧希望の返信', { highlight: true })}
         {renderSmsMenuItem('reply_2_scheduling', '②日程調整中の返信（次電日+1ヶ月）', { highlight: true })}
         {renderSmsMenuItem('reply_3_info_only', '③情報希望の返信（次電日+3ヶ月）', { highlight: true })}
         {renderSmsMenuItem('reply_4_not_searching', '④物件探しなしの返信', { highlight: true })}
         <Divider />
-        {/* 不通時の追客メール（手動送信・次電日を再セット） */}
+        {/* 26〜27. 不通時の追客メール（手動送信・次電日を再セット） */}
         {renderSmsMenuItem('followup_1month_unreachable', '★1ヶ月後不通メール（次電日+1ヶ月）')}
         {renderSmsMenuItem('followup_3month_unreachable', '★3ヶ月後不通メール（次電日+3ヶ月）')}
+        <Divider />
+        {/* 28. 購入応援キャンペーン */}
+        {renderSmsMenuItem('purchase_campaign', '購入応援キャンペーン')}
+        {/* 29. 民泊問合せ */}
+        {renderSmsMenuItem('minpaku', '民泊問合せ')}
+        {/* SMS専用（Gmailに該当テンプレートなし） */}
+        {renderSmsMenuItem('ask_email', 'メールアドレス確認')}
       </Menu>
     </>
   );
