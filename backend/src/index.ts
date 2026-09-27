@@ -502,11 +502,11 @@ app.get('/api/cron/price-reduction-notification', async (req, res) => {
   }
 });
 
-// Cron Job: 本日公開があった物件のメール通知（毎日 UTC 00:00 = JST 09:00 に実行）
-// property_listings.distribution_date（配信日＝公開日）が当日の物件を4名へ通知
+// Cron Job: 本日公開予定の物件のメール通知（毎日 UTC 00:00 = JST 09:00 に実行）
+// work_tasks.publish_scheduled_date（公開予定日）が当日の物件を4名へ通知
 app.get('/api/cron/publication-notification', async (req, res) => {
   try {
-    console.log('[Cron Publication] 本日公開物件メール通知ジョブ開始');
+    console.log('[Cron Publication] 本日公開予定物件メール通知ジョブ開始');
 
     // Vercel Cron Jobの認証チェック
     const authHeader = req.headers.authorization;
@@ -518,13 +518,13 @@ app.get('/api/cron/publication-notification', async (req, res) => {
     const { PublicationNotificationService } = await import('./services/PublicationNotificationService');
     const service = new PublicationNotificationService();
 
-    // 当日（JST）に公開があった物件を取得
+    // 当日（JST）に公開予定の物件を取得
     const targets = await service.getTodayTargets();
-    console.log(`[Cron Publication] 本日公開物件数: ${targets.length}件`);
+    console.log(`[Cron Publication] 本日公開予定物件数: ${targets.length}件`);
 
     // 対象が0件の場合はメール送信をスキップして正常終了
     if (targets.length === 0) {
-      console.log('[Cron Publication] 本日公開物件なし。メール送信をスキップして終了');
+      console.log('[Cron Publication] 本日公開予定物件なし。メール送信をスキップして終了');
       return res.status(200).json({ success: true, sent: 0, targetCount: 0 });
     }
 
