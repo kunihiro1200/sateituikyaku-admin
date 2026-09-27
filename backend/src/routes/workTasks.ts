@@ -151,6 +151,46 @@ router.get('/floor-plan-revision-corrections', async (req: Request, res: Respons
 });
 
 /**
+ * GET /api/work-tasks/today-publications
+ * 本日（JST）公開予定の物件一覧を返す。
+ * work_tasks.publish_scheduled_date が当日と一致する物件を返す。
+ * アプリ起動時の「本日サイト公開物件あり」アナウンス表示に使用（メール通知非依存）。
+ */
+router.get('/today-publications', async (req: Request, res: Response) => {
+  try {
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    // JST（UTC+9）の当日 YYYY-MM-DD
+    const now = new Date();
+    const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    const todayJST = `${jst.getUTCFullYear()}-${String(jst.getUTCMonth() + 1).padStart(2, '0')}-${String(jst.getUTCDate()).padStart(2, '0')}`;
+
+    const { data, error } = await supabase
+      .from('work_tasks')
+      .select('property_number, property_address, seller_name, property_type, sales_assignee, publish_scheduled_date')
+      .eq('publish_scheduled_date', todayJST)
+      .not('publish_scheduled_date', 'is', null);
+
+    if (error) {
+      console.error('[today-publications] 取得エラー:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json({
+      date: todayJST,
+      count: (data || []).length,
+      properties: data || [],
+    });
+  } catch (error: any) {
+    console.error('[today-publications] エラー:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/work-tasks/office-meeting-stats
  * 事務会議用の集計（全期間累積）を返す。
  *  - 業務依頼（work_tasks）の担当者6項目をスタッフ別にカウント
