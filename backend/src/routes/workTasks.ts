@@ -151,14 +151,18 @@ router.get('/floor-plan-revision-corrections', async (req: Request, res: Respons
 });
 
 /**
- * GET /api/work-tasks/office-meeting-stats?month=YYYY-MM
- * 事務会議用の集計を返す。
+ * GET /api/work-tasks/office-meeting-stats
+ * 事務会議用の集計（全期間累積）を返す。
  *  - 業務依頼（work_tasks）の担当者6項目をスタッフ別にカウント
  *      媒介作成者 / サイト登録依頼者 / 間取り図確認者 / サイト登録確認者 /
  *      社員が契約書作成 / 二重チェック（売買契約確認=確認OK）
- *  - メール送信対応（activity_logs, action='email'）のうち「値下げ対応」「レインズ対応」を
- *    送信者スタッフ別にカウント
- * month 未指定なら全期間。指定時は各項目に対応する日付カラムで当月に絞り込む。
+ *  - メール送信対応（activity_logs / activities, type='email'）のうち
+ *    「値下げ対応」「レインズ対応」を送信者スタッフ別にカウント
+ *
+ * ⚠️ work_tasks の各日付カラム（媒介完了日/サイト登録依頼日/確認依頼日/契約締め日）は
+ *    形式がバラバラ・更新が止まっているものが多く、当月フィルタに使えないため
+ *    月別集計は行わず「全期間の累積担当件数」を集計する。
+ *    除外したいイニシャルは ?excludeInitials=U,I,K で指定できる。
  */
 router.get('/office-meeting-stats', async (req: Request, res: Response) => {
   try {
@@ -167,48 +171,28 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
       process.env.SUPABASE_SERVICE_KEY!
     );
 
-    // ---- 期間の決定（JST） ----
-    const monthParam = (req.query.month as string | undefined)?.trim();
-    let year: number;
-    let month0: number; // 0-indexed
-    if (monthParam && /^\d{4}-\d{1,2}$/.test(monthParam)) {
-      const [y, m] = monthParam.split('-').map((v) => parseInt(v, 10));
-      year = y;
-      month0 = m - 1;
-    } else {
-      const now = new Date();
-      const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-      year = jstNow.getUTCFullYear();
-      month0 = jstNow.getUTCMonth();
-    }
-    const lastDay = new Date(Date.UTC(year, month0 + 1, 0)).getUTCDate();
-    const fromDate = `${year}-${String(month0 + 1).padStart(2, '0')}-01`;
-    const toDate = `${year}-${String(month0 + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-    // activity_logs 用の日時範囲（JST当月をUTCに換算）
-    const fromDateTime = new Date(Date.UTC(year, month0, 1) - 9 * 60 * 60 * 1000).toISOString();
-    const toDateTime = new Date(Date.UTC(year, month0 + 1, 1) - 9 * 60 * 60 * 1000).toISOString();
+    // 除外イニシャル（カンマ区切り）。指定がなければデフォルトの除外のみ。
+    const excludeParam = (req.query.excludeInitials as string | undefined) || '';
+    const userExcluded = excludeParam
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter((s) => s !== '');
 
     // ---- employees から名前→イニシャル正規化マップを構築 ----
     const normalizeInitial = await buildWorkTaskNormalizeInitialMap(supabase);
 
     // ---- 業務依頼（work_tasks）を取得 ----
-    // 各項目に紐づく担当者カラムと、期間絞り込みに使う日付カラム
     const { data: tasks, error: taskError } = await supabase
       .from('work_tasks')
       .select(
         [
           'mediation_creator',
-          'mediation_completed',
           'site_registration_requester',
-          'site_registration_request_date',
           'floor_plan_confirmer',
-          'floor_plan_completed_date',
           'site_registration_confirmer',
-          'site_registration_confirm_request_date',
           'employee_contract_creation',
           'sales_contract_confirmed',
           'sales_contract_assignee',
-          'sales_contract_deadline',
         ].join(', ')
       );
 
@@ -217,27 +201,25 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
       return res.status(500).json({ error: taskError.message });
     }
 
-    // 集計対象の項目定義（key, 担当者カラム, 期間絞り込み日付カラム）
+    // 集計対象の項目定義（key, 担当者カラム）
     type TaskMetric = {
       key: string;
       label: string;
       assigneeCol: string;
-      dateCol: string;
       // 担当者としてカウントする条件（省略時は担当者が入っていればカウント）
       predicate?: (row: any) => boolean;
     };
     const taskMetrics: TaskMetric[] = [
-      { key: 'mediationCreator', label: '媒介作成者', assigneeCol: 'mediation_creator', dateCol: 'mediation_completed' },
-      { key: 'siteRegistrationRequester', label: 'サイト登録依頼者', assigneeCol: 'site_registration_requester', dateCol: 'site_registration_request_date' },
-      { key: 'floorPlanConfirmer', label: '間取り図確認者', assigneeCol: 'floor_plan_confirmer', dateCol: 'floor_plan_completed_date' },
-      { key: 'siteRegistrationConfirmer', label: 'サイト登録確認者', assigneeCol: 'site_registration_confirmer', dateCol: 'site_registration_confirm_request_date' },
-      { key: 'employeeContractCreation', label: '社員が契約書作成', assigneeCol: 'employee_contract_creation', dateCol: 'sales_contract_deadline' },
+      { key: 'mediationCreator', label: '媒介作成者', assigneeCol: 'mediation_creator' },
+      { key: 'siteRegistrationRequester', label: 'サイト登録依頼者', assigneeCol: 'site_registration_requester' },
+      { key: 'floorPlanConfirmer', label: '間取り図確認者', assigneeCol: 'floor_plan_confirmer' },
+      { key: 'siteRegistrationConfirmer', label: 'サイト登録確認者', assigneeCol: 'site_registration_confirmer' },
+      { key: 'employeeContractCreation', label: '社員が契約書作成', assigneeCol: 'employee_contract_creation' },
       {
         // 二重チェック: 売買契約確認が「確認OK」になったものを担当者別にカウント
         key: 'doubleCheck',
         label: '二重チェック',
         assigneeCol: 'sales_contract_assignee',
-        dateCol: 'sales_contract_deadline',
         predicate: (row: any) => String(row.sales_contract_confirmed || '').includes('OK'),
       },
     ];
@@ -246,65 +228,94 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
     const taskCounts: Record<string, Record<string, number>> = {};
     for (const m of taskMetrics) taskCounts[m.key] = {};
 
-    const inMonth = (dateVal: any): boolean => {
-      if (!monthParam) return true; // 全期間
-      if (!dateVal) return false;
-      const s = String(dateVal).slice(0, 10);
-      return s >= fromDate && s <= toDate;
-    };
-
     for (const row of tasks || []) {
       for (const m of taskMetrics) {
         const rawAssignee = row[m.assigneeCol];
         if (!rawAssignee || String(rawAssignee).trim() === '') continue;
         if (m.predicate && !m.predicate(row)) continue;
-        if (!inMonth(row[m.dateCol])) continue;
         const initial = normalizeInitial(String(rawAssignee).trim());
         if (!initial) continue;
         taskCounts[m.key][initial] = (taskCounts[m.key][initial] || 0) + 1;
       }
     }
 
-    // ---- メール送信対応（値下げ / レインズ）を activity_logs から集計 ----
-    // action='email' の送信履歴を取得し、subject/templateName でフィルタ
-    let emailQuery = supabase
-      .from('activity_logs')
-      .select('metadata, created_at, employee:employees(initials, name)')
-      .eq('action', 'email');
-    if (monthParam) {
-      emailQuery = emailQuery.gte('created_at', fromDateTime).lt('created_at', toDateTime);
-    }
-    const { data: emailLogs, error: emailError } = await emailQuery;
-
-    if (emailError) {
-      console.error('[OfficeMeetingStats] activity_logs 取得エラー:', emailError);
-      // メール集計は失敗しても業務集計は返す（非致命）
-    }
-
+    // ---- メール送信対応（値下げ / レインズ）を集計（全期間） ----
     const priceReductionCounts: Record<string, number> = {};
     const reinsCounts: Record<string, number> = {};
 
     const isPriceReduction = (text: string) => text.includes('値下げ') || text.includes('価格変更');
     const isReins = (text: string) => text.includes('レインズ');
 
+    // (A) activity_logs（action='email'）— 1000件上限を回避するため全件ページング取得
+    const emailLogs: any[] = [];
+    {
+      const PAGE = 1000;
+      let offset = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data: page, error: pageErr } = await supabase
+          .from('activity_logs')
+          .select('metadata, employee:employees(initials, name)')
+          .eq('action', 'email')
+          .range(offset, offset + PAGE - 1);
+        if (pageErr) {
+          console.error('[OfficeMeetingStats] activity_logs 取得エラー:', pageErr);
+          break;
+        }
+        if (!page || page.length === 0) break;
+        emailLogs.push(...page);
+        if (page.length < PAGE) break;
+        offset += PAGE;
+      }
+    }
+
     for (const log of emailLogs || []) {
       const meta = (log as any).metadata || {};
-      const subject = String(meta.subject || '');
-      const templateName = String(meta.templateName || '');
-      const haystack = `${subject} ${templateName}`;
-
+      const haystack = `${meta.subject || ''} ${meta.templateName || ''}`;
       const emp = (log as any).employee;
-      const rawInitial = emp?.initials || emp?.name || meta.sender_email || '';
+      const rawInitial = emp?.initials || emp?.name || '';
       if (!rawInitial) continue;
       const initial = normalizeInitial(String(rawInitial).trim());
       if (!initial) continue;
+      if (isPriceReduction(haystack)) priceReductionCounts[initial] = (priceReductionCounts[initial] || 0) + 1;
+      if (isReins(haystack)) reinsCounts[initial] = (reinsCounts[initial] || 0) + 1;
+    }
 
-      if (isPriceReduction(haystack)) {
-        priceReductionCounts[initial] = (priceReductionCounts[initial] || 0) + 1;
+    // 注: 値下げメールは activity_logs を唯一のソースとする。
+    // （1回の送信で activities テーブルにも書かれるため、両方数えると二重計上になる）
+
+    // (C) レインズ対応は property_chat_history（売主へのGMAIL/メール送信履歴）にある。
+    //     「サイト公開＆レインズ登録証明書のご案内」等。activity_logs には無いためこちらで集計。
+    const chatRows: any[] = [];
+    {
+      const PAGE = 1000;
+      let offset = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data: page, error: pageErr } = await supabase
+          .from('property_chat_history')
+          .select('subject, message, sender_name')
+          .in('chat_type', ['seller_email', 'seller_sms', 'seller_gmail'])
+          .range(offset, offset + PAGE - 1);
+        if (pageErr) {
+          console.error('[OfficeMeetingStats] property_chat_history 取得エラー:', pageErr);
+          break;
+        }
+        if (!page || page.length === 0) break;
+        chatRows.push(...page);
+        if (page.length < PAGE) break;
+        offset += PAGE;
       }
-      if (isReins(haystack)) {
-        reinsCounts[initial] = (reinsCounts[initial] || 0) + 1;
-      }
+    }
+
+    for (const row of chatRows) {
+      const haystack = `${row.subject || ''} ${row.message || ''}`;
+      if (!isReins(haystack)) continue; // レインズのみ（値下げは activity_logs で計上済み）
+      const rawInitial = String(row.sender_name || '').trim();
+      if (!rawInitial) continue;
+      const initial = normalizeInitial(rawInitial);
+      if (!initial) continue;
+      reinsCounts[initial] = (reinsCounts[initial] || 0) + 1;
     }
 
     // ---- 全スタッフのイニシャル一覧を集約して行として返す ----
@@ -315,8 +326,10 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
     for (const init of Object.keys(priceReductionCounts)) allInitials.add(init);
     for (const init of Object.keys(reinsCounts)) allInitials.add(init);
 
-    // 集計対象外のプレースホルダ的値を除外
-    const EXCLUDED = new Set(['TENANT', '']);
+    // 集計対象外のイニシャルを除外
+    // - TENANT / 空 / '-' はプレースホルダ
+    // - U / I / K は事務会議の集計対象外（要望により固定除外）
+    const EXCLUDED = new Set<string>(['TENANT', '', '-', 'U', 'I', 'K', ...userExcluded]);
 
     const metrics = [
       ...taskMetrics.map((m) => ({ key: m.key, label: m.label })),
@@ -348,7 +361,7 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
     }
 
     return res.json({
-      period: { month: monthParam || `${year}-${String(month0 + 1).padStart(2, '0')}`, from: fromDate, to: toDate, allTime: !monthParam },
+      period: { allTime: true },
       metrics,
       rows,
       totals,
