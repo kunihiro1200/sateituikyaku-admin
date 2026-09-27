@@ -835,7 +835,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         : 86,
       p.taxMode === 'known_empty' ? 167
         : p.taxMode === 'unknown_mortgage_empty' ? 168
-        : (p.taxMode === 'known_with_empty' || p.taxMode === 'known_mortgage_with_empty') ? 129
+        : (p.taxMode === 'known_with_empty' || p.taxMode === 'known_mortgage_with_empty') ? 132
         : 138,
       28, 10,
       (p.emptyItemLabel || '解体費用\n（税込）').replace(/\n/g, '<br>'),
@@ -924,7 +924,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         : p.taxMode === 'unknown_mortgage' ? 138
         : p.taxMode === 'unknown_mortgage_empty' ? 138
         : p.taxMode === 'known_empty' ? 150
-        : p.taxMode === 'known_with_empty' ? 142
+        : p.taxMode === 'known_with_empty' ? 138
         : p.taxMode === 'known_mortgage_with_empty' ? 163
         : 131;
       const transferTaxFontSize = (p.taxMode === 'unknown_mortgage' || p.taxMode === 'unknown_mortgage_empty') ? 11 : 12;
