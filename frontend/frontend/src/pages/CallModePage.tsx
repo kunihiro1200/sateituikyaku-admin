@@ -91,6 +91,7 @@ import {
   generateSecondVisitThankYouSMS,
   generateOtherDecisionReasonInquirySMS,
   generateAskEmailSMS,
+  generateSellNowChanceSMS,
   convertLineBreaks,
   replacePlaceholders,
 } from '../utils/smsTemplateGenerators';
@@ -1613,6 +1614,11 @@ const CallModePage = () => {
       id: 'long_term_customer',
       label: '除外前・長期客Sメール',
       generator: generateLongTermCustomerSMS,
+    },
+    {
+      id: 'sell_now_chance',
+      label: '今が売却のチャンス',
+      generator: generateSellNowChanceSMS,
     },
     {
       id: 'visit_reminder',

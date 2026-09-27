@@ -1015,3 +1015,22 @@ export const generateOtherDecisionReasonInquirySMS = (
   message = replacePlaceholders(message, seller);
   return message;
 };
+
+/**
+ * 今が売却のチャンス（今は売却しないほうが良いケース）（SMS版）
+ * Email版「今が売却のチャンス」をSMS向けに短縮
+ * AA → 不動産会社いふう、FI → くじら不動産
+ */
+export const generateSellNowChanceSMS = (
+  seller: Seller,
+  property: PropertyInfo | null
+): string => {
+  const name = seller.name || '';
+  const sellerNumber = (seller.sellerNumber || '').toUpperCase();
+  const companyName = sellerNumber.includes('FI') ? 'くじら不動産' : '不動産会社いふう';
+
+  let message = `${name}様[改行][改行]お世話になっております。大分市舞鶴町にございます${companyName}です。[改行][改行]お客様のお住まいの地域はニーズが高く、多くの企業から売却のご提案を受けていらっしゃるかと思います。[改行][改行]ただ、ご希望や今後のライフプランによっては「今は動かないほうがいい」というケースも少なくありません。[改行][改行]リフォームでどこまで価値が上がるか、このまま数年持ち続けると将来いくらになるかなど、過去の事例を踏まえた判断材料をお伝えできればと思っております。[改行][改行]一度お話を聞いて後は連絡不要ということであれば、その旨お伝えいただければ今後当社からのご連絡は一切いたしませんのでご安心ください。[改行][改行]住み替え先のご相談や物件紹介もお気軽にどうぞ。[改行][改行]㈱いふう[改行]<<当社住所>>[改行]TEL: 097-533-2022`;
+
+  message = replacePlaceholders(message, seller);
+  return message;
+};
