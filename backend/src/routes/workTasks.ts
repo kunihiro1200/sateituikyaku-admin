@@ -368,10 +368,10 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
 
     // 集計対象外のイニシャルを除外
     // - TENANT / 空 / '-' はプレースホルダ
-    // - U / I / K は事務会議の集計対象外（要望により固定除外）
-    // - IF / T / G / 生 / H / M も共有ページから除外（要望により固定除外）
+    // - IF / T / G / 生 / H / M は共有ページから除外（要望により固定除外）
+    //   ※ I / K / U は表示・集計対象（除外しない）
     const EXCLUDED = new Set<string>([
-      'TENANT', '', '-', 'U', 'I', 'K',
+      'TENANT', '', '-',
       'IF', 'T', 'G', '生', 'H', 'M',
       ...userExcluded,
     ]);
