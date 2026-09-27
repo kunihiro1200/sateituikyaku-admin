@@ -198,6 +198,8 @@ router.get('/today-publications', async (req: Request, res: Response) => {
  *      社員が契約書作成 / 二重チェック（売買契約確認=確認OK）
  *  - メール送信対応（activity_logs / property_chat_history）のうち
  *    「値下げ対応」「レインズ対応」を送信者スタッフ別にカウント
+ *    ※ 値下げ対応は送信回数ではなく「対応した物件数（target_id のユニーク数／月・イニシャル別）」で数える。
+ *      レインズ対応は従来どおり送信回数。
  *
  * 月別集計の基準日（すべて JST=UTC+9 で月境界を切る）:
  *  - work_tasks       : created_at（全行必須・形式安定。各作業の実施日カラムは
@@ -325,7 +327,7 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
       while (true) {
         const { data: page, error: pageErr } = await supabase
           .from('activity_logs')
-          .select('metadata, created_at, employee:employees(initials, name)')
+          .select('metadata, created_at, target_id, employee:employees(initials, name)')
           .eq('action', 'email')
           .range(offset, offset + PAGE - 1);
         if (pageErr) {
@@ -339,6 +341,11 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
       }
     }
 
+    // 値下げ対応は「送信回数」ではなく「対応した物件数（ユニーク）」で数える。
+    // 同一物件に同じ月に複数回送っても1件。物件は activity_logs.target_id（売主ID）で識別する。
+    // { month: { initial: Set<target_id> } }
+    const priceReductionProperties: Record<string, Record<string, Set<string>>> = {};
+
     for (const log of emailLogs || []) {
       const meta = (log as any).metadata || {};
       const haystack = `${meta.subject || ''} ${meta.templateName || ''}`;
@@ -349,8 +356,24 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
       if (!initial) continue;
       const month = toMonthKey((log as any).created_at);
       if (!month) continue;
-      if (isPriceReduction(haystack)) addCount(month, 'priceReductionEmail', initial);
+      if (isPriceReduction(haystack)) {
+        // 物件ID（target_id）が取れないログは物件単位で数えられないためスキップ
+        const propertyId = (log as any).target_id ? String((log as any).target_id) : '';
+        if (propertyId) {
+          if (!priceReductionProperties[month]) priceReductionProperties[month] = {};
+          if (!priceReductionProperties[month][initial]) priceReductionProperties[month][initial] = new Set<string>();
+          priceReductionProperties[month][initial].add(propertyId);
+        }
+      }
       if (isReins(haystack)) addCount(month, 'reinsEmail', initial);
+    }
+
+    // ユニーク物件数を priceReductionEmail の件数として monthly に反映
+    for (const [month, byInitial] of Object.entries(priceReductionProperties)) {
+      const bucket = ensureBucket(month, 'priceReductionEmail');
+      for (const [initial, propSet] of Object.entries(byInitial)) {
+        bucket[initial] = propSet.size;
+      }
     }
 
     // 注: 値下げメールは activity_logs を唯一のソースとする。
@@ -405,7 +428,7 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
 
     const metrics = [
       ...taskMetrics.map((m) => ({ key: m.key, label: m.label })),
-      { key: 'priceReductionEmail', label: '値下げ対応メール' },
+      { key: 'priceReductionEmail', label: '値下げ対応物件数' },
       { key: 'reinsEmail', label: 'レインズ対応メール' },
     ];
 
