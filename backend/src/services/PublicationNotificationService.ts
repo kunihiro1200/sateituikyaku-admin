@@ -13,6 +13,9 @@ const RECIPIENTS = [
 export interface PublicationTarget {
   property_number: string;
   property_address: string | null;
+  seller_name: string | null;
+  property_type: string | null;
+  sales_assignee: string | null;
   publish_scheduled_date: string | null;
 }
 
@@ -60,7 +63,7 @@ export class PublicationNotificationService {
 
     const { data, error } = await this.supabase
       .from('work_tasks')
-      .select('property_number, property_address, publish_scheduled_date')
+      .select('property_number, property_address, seller_name, property_type, sales_assignee, publish_scheduled_date')
       .eq('publish_scheduled_date', todayJST)
       .not('publish_scheduled_date', 'is', null);
 
@@ -74,6 +77,19 @@ export class PublicationNotificationService {
   /**
    * 当日公開物件リストからメール本文を生成する（純粋関数）
    */
+  /** 種別コード（マ/戸/土/他）を名称に変換 */
+  private formatPropertyType(type: string | null): string {
+    if (!type) return '';
+    const map: Record<string, string> = {
+      'マ': 'マンション',
+      '戸': '戸建て',
+      '土': '土地',
+      '他': 'その他',
+    };
+    const t = String(type).trim();
+    return map[t] || t;
+  }
+
   buildEmailBody(targets: PublicationTarget[], todayJST: string): string {
     const lines: string[] = [];
     lines.push('お疲れ様です。');
@@ -81,8 +97,15 @@ export class PublicationNotificationService {
     lines.push(`本日（${todayJST}）公開予定の物件は以下の通りです。（${targets.length}件）`);
     lines.push('');
     targets.forEach((t, i) => {
-      lines.push(`${i + 1}. 物件番号：${t.property_number}`);
+      const typeLabel = this.formatPropertyType(t.property_type);
+      lines.push(`${i + 1}. 物件番号：${t.property_number}${typeLabel ? `（${typeLabel}）` : ''}`);
       lines.push(`   物件住所：${t.property_address || '（住所未登録）'}`);
+      if (t.seller_name && String(t.seller_name).trim()) {
+        lines.push(`   売主：${String(t.seller_name).trim()}`);
+      }
+      if (t.sales_assignee && String(t.sales_assignee).trim()) {
+        lines.push(`   営業担当：${String(t.sales_assignee).trim()}`);
+      }
       lines.push('');
     });
     return lines.join('\n');
