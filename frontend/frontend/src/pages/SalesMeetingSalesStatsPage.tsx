@@ -11,14 +11,11 @@ import {
   TableHead,
   TableRow,
   Button,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   ToggleButton,
   ToggleButtonGroup,
   Chip,
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
@@ -35,24 +32,29 @@ import api from '../services/api';
  * 元シートに合わせて「年（暦年）」単位で保持し、市区・全社の合計を自動で再集計する。
  */
 
-// ---- 年の一覧（元シートの列 + DB自動集計の2026） ----
-// 2020〜2025 は元スプレッドシートの手入力（暦年）。
-// 2026 は DB（property_listings）から自動集計する。
+// ---- 年（＝期の代表年）の一覧 ----
+// 列は「期（決算期：10月〜翌9月）」を表す。数値は各期の代表年。
+// 2020〜2024期は元スプレッドシートの手入力（過去実績は手入力を維持）。
+// 2025期・2026期は業務依頼(work_tasks)から自動集計する（決済日ベース）。
 const STATIC_YEARS = [2020, 2021, 2022, 2023, 2024, 2025] as const;
 const DB_YEARS = [2026] as const;
 const YEARS = [...STATIC_YEARS, ...DB_YEARS] as const;
 type Year = (typeof YEARS)[number];
 
-// ---- 市区・種別の定義 ----
-type CityKey = '大分市' | '別府市' | '他県';
-type TypeKey = '戸建' | 'マンション' | '土地' | '店舗付住宅' | '収益物件' | '空ビル（工場含）' | '店舗（事務所）';
+// 業務依頼(work_tasks)の自動集計で上書きする期（代表年）。
+// これらの期は手入力値ではなく work_tasks の集計値を使う。
+const DB_INJECT_YEARS: readonly Year[] = [2025, 2026];
 
-// 件数は市区×基本3種別（戸建/マンション/土地）のみ元シートに存在
+// ---- 市区・種別の定義 ----
+type CityKey = '大分市' | '別府市' | '福岡県' | '他県';
+type TypeKey = '戸建' | 'マンション' | '土地' | '収益物件' | '店舗（事務所）';
+
+// 件数は市区×基本3種別（戸建/マンション/土地）のみ
 const COUNT_TYPES: TypeKey[] = ['戸建', 'マンション', '土地'];
 
-// 手数料・単価は種別が多い（大分市/別府市のみ全種別、他県は戸建のみ）
+// 手数料・単価の種別（店舗付住宅・空ビル（工場含）は削除）
 const FEE_TYPES: TypeKey[] = [
-  '戸建', 'マンション', '土地', '店舗付住宅', '収益物件', '空ビル（工場含）', '店舗（事務所）',
+  '戸建', 'マンション', '土地', '収益物件', '店舗（事務所）',
 ];
 
 // 年→値 のマップ（欠損は0扱い）
@@ -72,6 +74,7 @@ const COUNTS: Record<CityKey, Partial<Record<TypeKey, YearMap>>> = {
     マンション: { 2020: 6,  2021: 10, 2022: 9,  2023: 12, 2024: 14, 2025: 5 },
     土地:      { 2020: 5,  2021: 5,  2022: 7,  2023: 7,  2024: 16, 2025: 8 },
   },
+  福岡県: {},
   他県: {},
 };
 
@@ -83,20 +86,17 @@ const FEES: Record<CityKey, Partial<Record<TypeKey, YearMap>>> = {
     戸建:              { 2020: 13675200, 2021: 23778150, 2022: 21183585, 2023: 43284650, 2024: 29072100, 2025: 56383310 },
     マンション:         { 2020: 16783364, 2021: 9436600,  2022: 5292100,  2023: 12883518, 2024: 11829400, 2025: 19569000 },
     土地:              { 2020: 6960300,  2021: 19953450, 2022: 24616380, 2023: 26579300, 2024: 19806600, 2025: 33177540 },
-    店舗付住宅:         { 2020: 0, 2021: 0, 2022: 0, 2023: 0, 2024: 0, 2025: 0 },
     収益物件:          { 2020: 11352000, 2021: 0, 2022: 0, 2023: 0, 2024: 3240600, 2025: 0 },
-    '空ビル（工場含）': { 2020: 0, 2021: 0, 2022: 0, 2023: 0, 2024: 0, 2025: 0 },
     '店舗（事務所）':   { 2020: 0, 2021: 0, 2022: 0, 2023: 0, 2024: 0, 2025: 660000 },
   },
   別府市: {
     戸建:              { 2020: 6425600, 2021: 11768900, 2022: 6815600, 2023: 10716200, 2024: 0, 2025: 26238200 },
     マンション:         { 2020: 2115300, 2021: 3466700,  2022: 5159636, 2023: 7595500,  2024: 0, 2025: 10567800 },
     土地:              { 2020: 1529000, 2021: 2030600,  2022: 3892680, 2023: 1772100,  2024: 5920860, 2025: 13296656 },
-    店舗付住宅:         { 2020: 0, 2021: 0, 2022: 0, 2023: 0, 2024: 0, 2025: 0 },
     収益物件:          { 2020: 0, 2021: 0, 2022: 0, 2023: 0, 2024: 0, 2025: 0 },
-    '空ビル（工場含）': { 2020: 0, 2021: 0, 2022: 0, 2023: 0, 2024: 0, 2025: 0 },
     '店舗（事務所）':   { 2020: 0, 2021: 0, 2022: 0, 2023: 0, 2024: 0, 2025: 0 },
   },
+  福岡県: {},
   他県: {
     戸建: { 2020: 1782000 },
   },
@@ -168,31 +168,6 @@ function sumDbForFiscal(db: DbStats | null, from: string, to: string): Record<st
 // これにより既存の v()/合計関数はそのまま使える。
 type Lookup = Record<CityKey, Partial<Record<TypeKey, YearMap>>>;
 
-function buildLookup(
-  base: Lookup,
-  dbYear: Year | null,
-  dbAgg: Record<string, DbCell>,
-  metric: 'count' | 'fee',
-): Lookup {
-  // ディープコピー
-  const out: Lookup = { 大分市: {}, 別府市: {}, 他県: {} };
-  (Object.keys(base) as CityKey[]).forEach((city) => {
-    const types = base[city];
-    (Object.keys(types) as TypeKey[]).forEach((tk) => {
-      out[city][tk] = { ...(types[tk] as YearMap) };
-    });
-  });
-  if (dbYear === null) return out;
-  // DB集計をその年の列として差し込む
-  for (const [cellKey, cell] of Object.entries(dbAgg)) {
-    const [city, type] = cellKey.split('|') as [CityKey, TypeKey];
-    if (!out[city]) continue;
-    if (!out[city][type]) out[city][type] = {};
-    (out[city][type] as YearMap)[dbYear] = metric === 'count' ? cell.count : cell.fee;
-  }
-  return out;
-}
-
 // 全期間テーブル用: 静的データ（暦年＝各期の代表年）に、DB集計を「期範囲」で正しく振り分けて重ねる。
 // 各期の代表年(PeriodDef.year)の列に、その期の会計期間(fiscalFrom〜fiscalTo)のDB集計を差し込む。
 // これにより列は「期（決算期）」を表す（例: 2025列=2025期=2025/10〜2026/9、2026列=2026期=2026/10〜2027/9）。
@@ -202,7 +177,7 @@ function buildAllPeriodsLookup(
   metric: 'count' | 'fee',
 ): Lookup {
   // 静的データをディープコピー
-  const out: Lookup = { 大分市: {}, 別府市: {}, 他県: {} };
+  const out: Lookup = { 大分市: {}, 別府市: {}, 福岡県: {}, 他県: {} };
   (Object.keys(base) as CityKey[]).forEach((city) => {
     const types = base[city];
     (Object.keys(types) as TypeKey[]).forEach((tk) => {
@@ -210,9 +185,17 @@ function buildAllPeriodsLookup(
     });
   });
   if (!db) return out;
-  // DB対象年（2026〜）を含む各期について、期範囲でDB集計してその代表年列に差し込む
+  // 自動集計対象の期（DB_INJECT_YEARS）は、期範囲でwork_tasks集計してその代表年列に差し込む。
+  // 手入力値が残らないよう、対象期の列は一旦クリアしてからDB値を入れる（自動集計で完全上書き）。
   for (const p of PERIOD_DEFS) {
-    if ((DB_YEARS as readonly number[]).indexOf(p.year) === -1) continue;
+    if (DB_INJECT_YEARS.indexOf(p.year) === -1) continue;
+    // その期（代表年）の既存値をクリア
+    (Object.keys(out) as CityKey[]).forEach((city) => {
+      (Object.keys(out[city]) as TypeKey[]).forEach((tk) => {
+        const m = out[city][tk] as YearMap;
+        if (m && p.year in m) delete m[p.year];
+      });
+    });
     const agg = sumDbForFiscal(db, p.fiscalFrom, p.fiscalTo);
     for (const [cellKey, cell] of Object.entries(agg)) {
       const [city, type] = cellKey.split('|') as [CityKey, TypeKey];
@@ -280,7 +263,7 @@ const PURPLE = '#6a1b9a';
 // 件数テーブル
 // ============================================================
 function CountTable({ years, counts, colLabel, showTotal = true }: { years: Year[]; counts: Lookup; colLabel?: (y: Year) => string; showTotal?: boolean }) {
-  const cities: CityKey[] = ['大分市', '別府市'];
+  const cities: CityKey[] = ['大分市', '別府市', '福岡県'];
   const hdr = (y: Year) => (colLabel ? colLabel(y) : String(y));
   return (
     <TableContainer component={Paper} sx={{ mb: 3 }}>
@@ -348,7 +331,7 @@ function CountTable({ years, counts, colLabel, showTotal = true }: { years: Year
 // 仲介手数料テーブル
 // ============================================================
 function FeeTable({ years, fees, colLabel, showTotal = true }: { years: Year[]; fees: Lookup; colLabel?: (y: Year) => string; showTotal?: boolean }) {
-  const cities: CityKey[] = ['大分市', '別府市', '他県'];
+  const cities: CityKey[] = ['大分市', '別府市', '福岡県', '他県'];
   const hdr = (y: Year) => (colLabel ? colLabel(y) : String(y));
   return (
     <TableContainer component={Paper} sx={{ mb: 3 }}>
@@ -421,7 +404,7 @@ function FeeTable({ years, fees, colLabel, showTotal = true }: { years: Year[]; 
 // 単価テーブル（＝手数料 ÷ 件数。件数がある種別のみ）
 // ============================================================
 function UnitTable({ years, counts, fees, colLabel, showTotal = true }: { years: Year[]; counts: Lookup; fees: Lookup; colLabel?: (y: Year) => string; showTotal?: boolean }) {
-  const cities: CityKey[] = ['大分市', '別府市'];
+  const cities: CityKey[] = ['大分市', '別府市', '福岡県'];
   const hdr = (y: Year) => (colLabel ? colLabel(y) : String(y));
   return (
     <TableContainer component={Paper} sx={{ mb: 3 }}>
@@ -503,20 +486,16 @@ function UnitTable({ years, counts, fees, colLabel, showTotal = true }: { years:
 
 type Metric = 'count' | 'fee' | 'unit';
 
-// DB集計を差し込む対象の年（2026）。DB_YEARS の先頭。
-const DB_TARGET_YEAR: Year = DB_YEARS[0];
-
 export default function SalesMeetingSalesStatsPage() {
   const navigate = useNavigate();
   const [metric, setMetric] = useState<Metric>('count');
-  const [expandedPeriod, setExpandedPeriod] = useState<string>('2025');
   const [db, setDb] = useState<DbStats | null>(null);
   const [dbLoaded, setDbLoaded] = useState(false);
 
-  // 2026年分をDBから自動集計（property_listings）
+  // 件数・手数料を業務依頼(work_tasks)から自動集計（決済日ベース）
   useEffect(() => {
     let cancelled = false;
-    api.get('/api/sales-meeting/brokerage-stats', { params: { fromYm: '2026/1' } })
+    api.get('/api/sales-meeting/worktask-brokerage-stats')
       .then((res) => { if (!cancelled) setDb(res.data?.data ?? {}); })
       .catch(() => { if (!cancelled) setDb({}); })
       .finally(() => { if (!cancelled) setDbLoaded(true); });
@@ -543,20 +522,6 @@ export default function SalesMeetingSalesStatsPage() {
     return <UnitTable years={allYears} counts={allCounts} fees={allFees} colLabel={yearColLabel} showTotal={false} />;
   };
 
-  // 期別の描画: その期の代表年1列のみ。
-  // 2026列を含む期は、期範囲（10〜翌9）でDB集計を正確に切って差し込む。
-  const renderPeriod = (p: PeriodDef) => {
-    const years: Year[] = [p.year];
-    // この期に2026列が含まれるか（＝代表年がDB対象年）
-    const dbYear = p.year === DB_TARGET_YEAR ? DB_TARGET_YEAR : null;
-    const dbAgg = dbYear ? sumDbForFiscal(db, p.fiscalFrom, p.fiscalTo) : {};
-    const counts = buildLookup(COUNTS as Lookup, dbYear, dbAgg, 'count');
-    const fees = buildLookup(FEES as Lookup, dbYear, dbAgg, 'fee');
-    if (metric === 'count') return <CountTable years={years} counts={counts} />;
-    if (metric === 'fee') return <FeeTable years={years} fees={fees} />;
-    return <UnitTable years={years} counts={counts} fees={fees} />;
-  };
-
   return (
     <Container maxWidth={false} sx={{ py: 3, px: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
@@ -576,10 +541,12 @@ export default function SalesMeetingSalesStatsPage() {
 
       <Paper sx={{ p: 2, mb: 3, bgcolor: '#f3e5f5' }}>
         <Typography variant="body2" sx={{ color: PURPLE }}>
-          売買仲介の「件数」「仲介手数料」「単価（＝手数料÷件数）」を集計しています。
-          市区ごとの計・全社合計・期合計はすべてこのページで自動計算しています。
-          2020〜2025年は手入力の実績、<b>2026年はDB（物件リスト）から自動集計</b>しています。
-          期は決算期（10月〜翌9月。例：2025期＝2025年10月〜2026年9月）で分けて表示します。
+          売買仲介の「件数」「仲介手数料」「単価（＝手数料÷件数）」を期（決算期：10月〜翌9月）ごとに集計しています。
+          市区ごとの計・全社合計はこのページで自動計算しています。
+          2020〜2024期は手入力の実績、<b>2025期・2026期は業務依頼（決済日ベース）から自動集計</b>しています。
+          件数・手数料は「決済日が入っている業務依頼」を種別（戸建/マンション/土地）で集計し、
+          手数料は入金確認（売/買）が「確認済み」の側の通常仲介手数料を用います（両方確認済みは合算）。
+          福岡県は物件番号にFIを含むものを集計します。
         </Typography>
       </Paper>
 
@@ -600,26 +567,6 @@ export default function SalesMeetingSalesStatsPage() {
         全期間（{YEARS[0]}期〜{YEARS[YEARS.length - 1]}期）
       </Typography>
       {renderAll()}
-
-      {/* 期別 */}
-      <Typography variant="h6" fontWeight="bold" sx={{ mt: 3, mb: 1, color: PURPLE }}>
-        期別（決算期：10月〜翌9月）
-      </Typography>
-      {[...PERIOD_DEFS].reverse().map((p) => (
-        <Accordion
-          key={p.key}
-          expanded={expandedPeriod === p.key}
-          onChange={() => setExpandedPeriod(expandedPeriod === p.key ? '' : p.key)}
-          disableGutters
-        >
-          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: '#ede7f6' }}>
-            <Typography fontWeight="bold" sx={{ color: PURPLE }}>{p.label}</Typography>
-          </AccordionSummary>
-          <AccordionDetails sx={{ p: 1 }}>
-            {renderPeriod(p)}
-          </AccordionDetails>
-        </Accordion>
-      ))}
     </Container>
   );
 }
