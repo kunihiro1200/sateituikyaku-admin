@@ -206,6 +206,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
       'template2_empty.png', 'template2_oita_empty.png',
       'template2_teitou_empty.png', 'template2_oita_teitou_empty.png',
       'template4_empty.png', 'template4_oita_empty.png',
+      'template4_teitou_empty.png', 'template4_oita_teitou_empty.png',
     ];
     templates.forEach(name => {
       // すでにキャッシュ済みならスキップ
@@ -317,7 +318,7 @@ export const NetProceedsListModal: React.FC<Props> = ({
     if (mode === 'known_empty') return isOitaMode ? 'template2_oita_empty.png' : 'template2_empty.png';
     if (mode === 'unknown_mortgage_empty') return isOitaMode ? 'template2_oita_teitou_empty.png' : 'template2_teitou_empty.png';
     if (mode === 'known_with_empty') return isOitaMode ? 'template4_oita_empty.png' : 'template4_empty.png';
-    if (mode === 'known_mortgage_with_empty') return `template4${sfx}_teitou.png`; // 抵当権あり版はteitouテンプレートを流用
+    if (mode === 'known_mortgage_with_empty') return isOitaMode ? 'template4_oita_teitou_empty.png' : 'template4_teitou_empty.png';
     return mode === 'none' ? `template3${sfx}.png`
       : mode === 'known' ? `template4${sfx}.png`
       : `template2${sfx}.png`;
@@ -782,7 +783,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
     : p.taxMode === 'known_with_empty'
     ? (isOita ? 'template4_oita_empty.png?v=20260928a' : 'template4_empty.png?v=20260928a')
     : p.taxMode === 'known_mortgage_with_empty'
-    ? `template4${suffix}_teitou.png?v=20260816b`
+    ? (isOita ? 'template4_oita_teitou_empty.png?v=20260928b' : 'template4_teitou_empty.png?v=20260928b')
     : p.taxMode === 'none'
     ? `template3${suffix}.png?v=20260807c`
     : p.taxMode === 'known'
