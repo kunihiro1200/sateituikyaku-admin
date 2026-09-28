@@ -240,6 +240,11 @@ function ymNum(ym: string): number {
   const [y, m] = ym.split('/').map(Number);
   return y * 12 + (m - 1);
 }
+
+// 自動集計（業務依頼・物件シート）を使う最古の月。
+// 2024年10月〜2025年9月の期は台帳作成済みデータが揃っておらず自動集計だと数字がズレるため、
+// この月より前は必ず従来のハードコード月次データ(MONTHLY=スプレッドシートの手入力値)を使う。
+const AUTO_STATS_FROM_YM = '2025/10';
 const COLUMNS = [
   '専任両手', '専任片手', '一般両手', '一般片手', '一般他決',
   '他社物件片手', '他社物件両手', '自社買取（リースバック）', '自社買取（転売）',
@@ -407,10 +412,16 @@ export default function SalesMeetingContractStatsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  // 指定月のAA件数を返す。業務依頼(work_tasks)にその月のデータがあればAPI値、
-  // 無ければ従来のハードコード月次データ(MONTHLY)を返す。
+  // 指定月のAA件数を返す。
+  // - 2025/10以降: 業務依頼(work_tasks)＋物件シートの自動集計値（あれば）を使う。
+  // - 2025/10より前（2024/10〜2025/9の期など）: 台帳データが揃っていないため、必ず手入力値(MONTHLY)を使う。
   const aaCountsForMonth = (ym: string): Counts => {
-    if (aaStats && Object.prototype.hasOwnProperty.call(aaStats, ym)) {
+    // 2025/10より前（=2024/10〜2025/9の期など）は自動集計を使わず、必ず手入力値(MONTHLY)を使う。
+    if (
+      ymNum(ym) >= ymNum(AUTO_STATS_FROM_YM) &&
+      aaStats &&
+      Object.prototype.hasOwnProperty.call(aaStats, ym)
+    ) {
       return fiToCounts(ym, aaStats); // FiStats→Counts変換はAA/FI共通
     }
     const hard = MONTHLY.find((r) => r.ym === ym);
@@ -473,8 +484,9 @@ export default function SalesMeetingContractStatsPage() {
         </Typography>
         <Typography variant="body2" sx={{ mt: 0.5, color: '#6a1b9a' }}>
           専任両手率・一般両手率・一般片手率・他決率はこのページで自動計算しています。
-          AA（大分）は業務依頼の「契約形態」を決済日ベースで自動集計しています（台帳作成済みのもののみ）。
+          AA（大分）は2025年10月以降、業務依頼の「契約形態」を決済日ベースで自動集計しています（台帳作成済みのもののみ）。
           一般他決・専任解除・一般媒介解除（および他決率）は物件シートの「買付」「状況」から自動集計しています。
+          2024年10月〜2025年9月の期は台帳データが揃っていないため、従来の手入力値をそのまま表示しています。
           2026年4月以降はAA（大分）とFI（福岡）に分けて表示します。
           FI（福岡）は買主リスト（FK）の「★最新状況」の成約種別を内覧日ベースで自動集計しています。
         </Typography>
