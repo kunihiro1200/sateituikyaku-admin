@@ -206,4 +206,156 @@ router.get('/loss-analysis-stats', async (_req: Request, res: Response) => {
   }
 });
 
+// ===========================================================================
+// 競合別集計（専任 / 訪問後他決 / 未訪問他決）× 年
+// ===========================================================================
+//
+// フロント SalesMeetingLossAnalysisPage の「競合別（2024 / 2025 / 2026）」表を
+// 売主データから集計する。1行 = 1競合。各年について:
+//   - 専任        : status ∈ SEN_STATUSES（専任媒介 / 他決→専任）
+//   - 訪問後他決  : status ∈ LOSS_STATUSES（他決→追客 / 他決→追客不要）かつ 営担あり
+//   - 未訪問他決  : status ∈ LOSS_STATUSES かつ 営担なし
+// を、競合名（competitor_name。カンマ区切りの複数競合あり）ごとに数える。
+//
+// 「訪問後他決」= 訪問後予約が入っており（＝営担 visit_assignee あり）、かつ
+// ステータスが「他決→追客」または「他決→追客不要」のもの。（ユーザー定義）
+// contract_year_month（他決は分かった時点）で対象年を判定する。
+
+// フロント COMPETITOR_ROWS と同じ競合名の並び・表記
+const COMPETITOR_NAMES = [
+  '別大興産',
+  'リライフ',
+  'センチュリー21（ハッピーハウス）',
+  'センチュリー２１（ベスト不動産）',
+  'HouseDo(明野店）',
+  'HouseDo下郡㈱ソーリン不動産',
+  'HouseDo（敷戸）',
+  'HouseDo(大分南㈱MIC)',
+  '令和不動産',
+  'Yコーポレーション',
+  '林興産',
+  'ベツダイ',
+  'オリエルホーム',
+  '作州不動産',
+  '久光大分',
+  '玉井不動産',
+  '大京穴吹不動産',
+  '㈱AIC不動産',
+  '榮建トータルハウジング',
+  'サカイ㈱　大分リノベ',
+  '三越商事',
+  '不明',
+];
+
+// 訪問済み（＝訪問後予約が入っている）判定: 営担 visit_assignee に有効な値がある。
+// 「外す」も担当ありとして扱う（サイドバー定義に準拠）。空・null は未訪問。
+function isVisited(visitAssignee: string | null): boolean {
+  return !!(visitAssignee && visitAssignee.trim() !== '');
+}
+
+type TripleCounts = { sen: YearCounts; visit: YearCounts; noVisit: YearCounts };
+type CompetitorStats = Record<string, TripleCounts>;
+
+const emptyTriple = (): TripleCounts => ({
+  sen: emptyYearCounts(),
+  visit: emptyYearCounts(),
+  noVisit: emptyYearCounts(),
+});
+
+/**
+ * GET /api/sales-meeting/competitor-loss-analysis-stats
+ *
+ * レスポンス:
+ * {
+ *   data: {
+ *     '別大興産': {
+ *       sen:     { '2024': n, '2025': n, '2026': n },
+ *       visit:   { '2024': n, '2025': n, '2026': n },  // 訪問後他決（営担あり）
+ *       noVisit: { '2024': n, '2025': n, '2026': n },  // 未訪問他決（営担なし）
+ *     },
+ *     ...
+ *   }
+ * }
+ */
+router.get('/competitor-loss-analysis-stats', async (_req: Request, res: Response) => {
+  try {
+    const supabase = getSupabase();
+
+    const { start } = yearRange(2024);
+    const { end } = yearRange(2026);
+
+    const pageSize = 1000;
+    let from = 0;
+    const rows: Array<{
+      status: string | null;
+      visit_assignee: string | null;
+      competitor_name: string | null;
+      contract_year_month: string | null;
+    }> = [];
+
+    for (;;) {
+      const { data, error } = await supabase
+        .from('sellers')
+        .select('status, visit_assignee, competitor_name, contract_year_month')
+        .in('status', ALL_STATUSES)
+        .gte('contract_year_month', start)
+        .lte('contract_year_month', end)
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      rows.push(...(data as any));
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+
+    // 集計器を初期化（全競合 × {sen,visit,noVisit} × 3年 を 0 で用意）
+    const stats: CompetitorStats = {};
+    for (const name of COMPETITOR_NAMES) {
+      stats[name] = emptyTriple();
+    }
+
+    for (const row of rows) {
+      const year = yearOf(row.contract_year_month);
+      if (year !== 2024 && year !== 2025 && year !== 2026) continue;
+
+      const status = (row.status || '').trim();
+      let side: 'sen' | 'loss' | null = null;
+      if (SEN_STATUSES.includes(status)) side = 'sen';
+      else if (LOSS_STATUSES.includes(status)) side = 'loss';
+      if (!side) continue;
+
+      // 競合名はカンマ区切りの複数競合を含む場合がある。分割して各競合に加算する。
+      // 該当する既知の競合が1つも無ければ「不明」に集計する。
+      const raw = (row.competitor_name || '').trim();
+      const parts = raw
+        ? raw.split(',').map((c) => c.trim()).filter(Boolean)
+        : [];
+      const matchedNames = parts.filter((p) => COMPETITOR_NAMES.includes(p));
+      const targets = matchedNames.length > 0 ? matchedNames : ['不明'];
+
+      // 同一レコードで同じ競合名が重複しても二重計上しない
+      const uniqueTargets = Array.from(new Set(targets));
+
+      for (const name of uniqueTargets) {
+        if (!stats[name]) continue;
+        if (side === 'sen') {
+          stats[name].sen[year] += 1;
+        } else {
+          // 他決: 営担ありなら訪問後他決、なければ未訪問他決
+          if (isVisited(row.visit_assignee)) {
+            stats[name].visit[year] += 1;
+          } else {
+            stats[name].noVisit[year] += 1;
+          }
+        }
+      }
+    }
+
+    res.json({ data: stats });
+  } catch (error: any) {
+    console.error('Failed to compute competitor loss analysis stats:', error);
+    res.status(500).json({ error: '競合別他決分析集計の取得に失敗しました', details: error.message });
+  }
+});
+
 export default router;

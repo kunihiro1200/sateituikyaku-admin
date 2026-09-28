@@ -26,7 +26,9 @@ import api from '../services/api';
  * 元データ（Googleスプレッドシート）を移植。
  * - 他決理由別（①〜㉔・不明）× 年（2024 / 2025 / 2026）: 専任 / 訪問後他決 / 未訪問他決
  *   勝率はこのページで計算する（勝率 = 専任 /（専任 + 訪問後他決））。
- * - 競合別: 専任 / 訪問後他決 / 未訪問他決（各年）+ 他決理由の内訳
+ * - 競合別: 専任 / 訪問後他決 / 未訪問他決（各年）。売主データから自動集計する。
+ *   訪問後他決＝訪問後予約あり（営担あり）＋状況「他決→追客／追客不要」、
+ *   未訪問他決＝営担なし＋状況「他決→追客／追客不要」。
  * - 各営業の特性: 担当者（K / U / Y / I / 林 / 麻）ごとの専任理由・他決理由
  *
  * ※ 人の名前は K・U・Y・I・林・麻 で集計しなおして表示する。
@@ -229,11 +231,20 @@ const DYNAMIC_STAFF: { label: string; key: keyof StaffCounts }[] = [
   { label: 'K', key: 'K' },
 ];
 
+// 競合別集計API（backend: /api/sales-meeting/competitor-loss-analysis-stats）の型
+// 競合名 -> { sen, visit, noVisit } それぞれ { 2024, 2025, 2026 } の件数
+// visit = 訪問後他決（営担あり + 他決→追客/追客不要）
+// noVisit = 未訪問他決（営担なし + 他決→追客/追客不要）
+type CompetitorTriple = { sen: YearCounts; visit: YearCounts; noVisit: YearCounts };
+type CompetitorStats = Record<string, CompetitorTriple>;
+
 export default function SalesMeetingLossAnalysisPage() {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState<string>('reasons');
   const [lossStats, setLossStats] = useState<LossStats | null>(null);
   const [lossLoaded, setLossLoaded] = useState(false);
+  const [competitorStats, setCompetitorStats] = useState<CompetitorStats | null>(null);
+  const [competitorLoaded, setCompetitorLoaded] = useState(false);
 
   // 林 / 麻 / K の他決件数をDBから集計取得（元スプレッドシートのCOUNTIFS相当）
   useEffect(() => {
@@ -247,6 +258,22 @@ export default function SalesMeetingLossAnalysisPage() {
       })
       .finally(() => {
         if (!cancelled) setLossLoaded(true);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  // 競合別の 専任 / 訪問後他決 / 未訪問他決 をDBから集計取得
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/api/sales-meeting/competitor-loss-analysis-stats')
+      .then((res) => {
+        if (!cancelled) setCompetitorStats(res.data?.data ?? {});
+      })
+      .catch(() => {
+        if (!cancelled) setCompetitorStats({}); // 失敗時は静的値で表示継続
+      })
+      .finally(() => {
+        if (!cancelled) setCompetitorLoaded(true);
       });
     return () => { cancelled = true; };
   }, []);
@@ -273,11 +300,21 @@ export default function SalesMeetingLossAnalysisPage() {
     y2026: sumTriples(REASON_ROWS.map((r) => r.y2026)),
   };
 
+  // 競合別の各行をDB集計値で上書きする（APIが取れなければ静的値のまま）。
+  // API: sen / visit（訪問後他決＝営担あり）/ noVisit（未訪問他決＝営担なし）を年別に持つ。
+  const competitorRows: CompetitorRow[] = COMPETITOR_ROWS.map((r) => {
+    const cell = competitorStats?.[r.name];
+    if (!cell) return r;
+    const y = (year: 2024 | 2025 | 2026): YearTriple =>
+      t(cell.sen[year], cell.visit[year], cell.noVisit[year]);
+    return { ...r, y2024: y(2024), y2025: y(2025), y2026: y(2026) };
+  });
+
   // 競合別の合計行
   const compTotal = {
-    y2024: sumTriples(COMPETITOR_ROWS.map((r) => r.y2024)),
-    y2025: sumTriples(COMPETITOR_ROWS.map((r) => r.y2025)),
-    y2026: sumTriples(COMPETITOR_ROWS.map((r) => r.y2026)),
+    y2024: sumTriples(competitorRows.map((r) => r.y2024)),
+    y2025: sumTriples(competitorRows.map((r) => r.y2025)),
+    y2026: sumTriples(competitorRows.map((r) => r.y2026)),
   };
 
   const staffSenTotal = sumStaff(staffRows, (r) => r.sen);
@@ -305,6 +342,8 @@ export default function SalesMeetingLossAnalysisPage() {
           各営業の特性は担当者（K / U / Y / I / 林 / 麻）ごとに集計しています。
           林・麻・K の専任・他決件数は売主データから自動集計しています（2024〜2026年合算）。
           専任＝状況「専任媒介／他決→専任」、他決＝状況「他決→追客／追客不要」を、営担・契約年月（他決判明時点）・競合名理由で集計。
+          競合別の表は売主データから自動集計しています。訪問後他決＝訪問後予約あり（営担あり）＋状況「他決→追客／追客不要」、
+          未訪問他決＝営担なし＋状況「他決→追客／追客不要」で、契約年月（他決判明時点）と競合名で年別に集計。
         </Typography>
       </Paper>
 
@@ -355,7 +394,10 @@ export default function SalesMeetingLossAnalysisPage() {
       {/* ============ 2) 競合別 × 年 ============ */}
       <Accordion expanded={expanded === 'competitors'} onChange={() => setExpanded(expanded === 'competitors' ? '' : 'competitors')} disableGutters>
         <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: HEADER_BG }}>
-          <Typography fontWeight="bold" sx={{ color: PURPLE }}>競合別（2024 / 2025 / 2026）</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography fontWeight="bold" sx={{ color: PURPLE }}>競合別（2024 / 2025 / 2026）</Typography>
+            {!competitorLoaded && <Chip size="small" label="専任・訪問後他決・未訪問他決を集計中…" />}
+          </Box>
         </AccordionSummary>
         <AccordionDetails sx={{ p: 0 }}>
           <TableContainer>
@@ -376,7 +418,7 @@ export default function SalesMeetingLossAnalysisPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {COMPETITOR_ROWS.map((r) => (
+                {competitorRows.map((r) => (
                   <TableRow key={r.name} hover>
                     <TableCell sx={{ fontWeight: 'bold' }}>{r.name}</TableCell>
                     <YearCells v={r.y2024} />
