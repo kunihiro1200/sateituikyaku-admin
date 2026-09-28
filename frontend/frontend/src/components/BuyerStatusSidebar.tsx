@@ -27,6 +27,7 @@ interface CategoryCounts {
   
   // 新規追加（2026年4月）
   inquiryEmailUnanswered?: number;  // 問合メール未対応
+  otherCompanyPropertyUnaddressed?: number;  // 他社物件問合せ未
   brokerInquiry?: number;  // 業者問合せあり
   generalViewingSellerContactPending?: number;  // 一般媒介_内覧後売主連絡未
   viewingPromotionRequired?: number;  // 要内覧促進客
@@ -105,6 +106,8 @@ function getCategoryColor(category: string): string {
     // 新規追加（2026年4月）- 全て赤字
     case 'inquiryEmailUnanswered':
       return '#d32f2f'; // 赤
+    case 'otherCompanyPropertyUnaddressed':
+      return '#d32f2f'; // 赤
     case 'brokerInquiry':
       return '#d32f2f'; // 赤
     case 'generalViewingSellerContactPending':
@@ -157,6 +160,8 @@ function getCategoryLabel(category: string): string {
     // 新規追加（2026年4月）
     case 'inquiryEmailUnanswered':
       return '問合メール未対応';
+    case 'otherCompanyPropertyUnaddressed':
+      return '他社物件問合せ未';
     case 'brokerInquiry':
       return '業者問合せあり';
     case 'generalViewingSellerContactPending':
@@ -313,6 +318,7 @@ export default function BuyerStatusSidebar({
   // 新規追加カテゴリ（2026年4月）- 全て赤字で表示
   const newCategories = [
     'inquiryEmailUnanswered',
+    'otherCompanyPropertyUnaddressed',
     'brokerInquiry',
     'generalViewingSellerContactPending',
     'viewingPromotionRequired',

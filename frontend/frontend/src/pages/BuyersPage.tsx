@@ -153,6 +153,7 @@ export default function BuyersPage() {
     'oneWeekCallUnchecked': '1週間架電未',
     'oneMonthCallUnchecked': '1か月後架電未',
     'inquiryEmailUnanswered': '問合メール未対応',
+    'otherCompanyPropertyUnaddressed': '他社物件問合せ未',
     'brokerInquiry': '業者問合せあり',
     'generalViewingSellerContactPending': '一般媒介_内覧後売主連絡未',
     'viewingPromotionRequired': '要内覧促進客',

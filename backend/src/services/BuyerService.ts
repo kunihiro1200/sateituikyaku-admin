@@ -2582,6 +2582,7 @@ export class BuyerService {
       todayCallAssignedCounts: {} as Record<string, number>,
       projectAssigneeOnlyTodayCallCounts: {} as Record<string, number>,
       inquiryEmailUnanswered: 0,
+      otherCompanyPropertyUnaddressed: 0,  // 他社物件問合せ未
       brokerInquiry: 0,
       generalViewingSellerContactPending: 0,
       viewingPromotionRequired: 0,
@@ -2626,6 +2627,7 @@ export class BuyerService {
       else if (status === '1週間架電未') result.oneWeekCallUnchecked++;
       else if (status === '1か月後架電未') result.oneMonthCallUnchecked++;
       else if (status === '問合メール未対応') result.inquiryEmailUnanswered++;
+      else if (status === '他社物件問合せ未') result.otherCompanyPropertyUnaddressed++;
       else if (status === '業者問合せあり') result.brokerInquiry++;
       else if (status === '一般媒介_内覧後売主連絡未') result.generalViewingSellerContactPending++;
       else if (status === '要内覧促進客') result.viewingPromotionRequired++;
@@ -2995,6 +2997,7 @@ export class BuyerService {
         projectAssigneeOnlyTodayCallCounts: {} as Record<string, number>,  // 🆕 案件担当のみの当日TEL（当日TEL直下に表示）
         // 🆕 新カテゴリ（2026年4月）
         inquiryEmailUnanswered: 0,  // 問合メール未対応
+        otherCompanyPropertyUnaddressed: 0,  // 他社物件問合せ未
         brokerInquiry: 0,  // 業者問合せあり
         generalViewingSellerContactPending: 0,  // 一般媒介_内覧後売主連絡未
         viewingPromotionRequired: 0,  // 要内覧促進客
@@ -3052,6 +3055,8 @@ export class BuyerService {
           }
         } else if (status === '問合メール未対応') {
           result.inquiryEmailUnanswered++;
+        } else if (status === '他社物件問合せ未') {
+          result.otherCompanyPropertyUnaddressed++;
         } else if (status === '業者問合せあり') {
           result.brokerInquiry++;
         } else if (status === '一般媒介_内覧後売主連絡未') {
@@ -3633,12 +3638,13 @@ export class BuyerService {
         console.log(`[getBuyersByStatus] viewingPrepUnconfirmed カテゴリ検出`);
         filteredBuyers = allBuyers.filter((buyer: any) => isViewingPrepUnconfirmed(buyer));
         console.log(`[getBuyersByStatus] viewingPrepUnconfirmed フィルタ結果: ${filteredBuyers.length}件`);
-      } else if (status === 'inquiryEmailUnanswered' || status === 'brokerInquiry' || 
+      } else if (status === 'inquiryEmailUnanswered' || status === 'otherCompanyPropertyUnaddressed' || status === 'brokerInquiry' || 
                  status === 'generalViewingSellerContactPending' || status === 'viewingPromotionRequired') {
         // 新カテゴリの場合（2026年4月追加）- calculated_statusで直接フィルタリング
         console.log(`[getBuyersByStatus] 新カテゴリ検出: status=${status}`);
         const statusMap: Record<string, string> = {
           'inquiryEmailUnanswered': '問合メール未対応',
+          'otherCompanyPropertyUnaddressed': '他社物件問合せ未',
           'brokerInquiry': '業者問合せあり',
           'generalViewingSellerContactPending': '一般媒介_内覧後売主連絡未',
           'viewingPromotionRequired': '要内覧促進客',
@@ -4021,6 +4027,7 @@ export class BuyerService {
       rows.push({ category: 'todayCall', count: categoryCounts.todayCall || 0, label: null, assignee: null, updated_at: now });
       rows.push({ category: 'threeCallUnchecked', count: categoryCounts.threeCallUnchecked || 0, label: null, assignee: null, updated_at: now });
       rows.push({ category: 'inquiryEmailUnanswered', count: categoryCounts.inquiryEmailUnanswered || 0, label: null, assignee: null, updated_at: now });
+      rows.push({ category: 'otherCompanyPropertyUnaddressed', count: categoryCounts.otherCompanyPropertyUnaddressed || 0, label: null, assignee: null, updated_at: now });
       rows.push({ category: 'brokerInquiry', count: categoryCounts.brokerInquiry || 0, label: null, assignee: null, updated_at: now });
       rows.push({ category: 'generalViewingSellerContactPending', count: categoryCounts.generalViewingSellerContactPending || 0, label: null, assignee: null, updated_at: now });
       rows.push({ category: 'viewingPromotionRequired', count: categoryCounts.viewingPromotionRequired || 0, label: null, assignee: null, updated_at: now });
