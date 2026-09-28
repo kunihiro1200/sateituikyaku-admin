@@ -241,6 +241,18 @@ function ymNum(ym: string): number {
   return y * 12 + (m - 1);
 }
 
+// from〜to（両端含む）の各月 'YYYY/M' を配列で返す。MONTHLYに存在しない将来月も生成する。
+function monthsInRange(from: string, to: string): string[] {
+  const [fy, fm] = from.split('/').map(Number);
+  const start = fy * 12 + (fm - 1);
+  const end = ymNum(to);
+  const out: string[] = [];
+  for (let n = start; n <= end; n++) {
+    out.push(`${Math.floor(n / 12)}/${(n % 12) + 1}`);
+  }
+  return out;
+}
+
 // 自動集計（業務依頼・物件シート）を使う最古の月。
 // 2024年10月〜2025年9月の期は台帳作成済みデータが揃っておらず自動集計だと数字がズレるため、
 // この月より前は必ず従来のハードコード月次データ(MONTHLY=スプレッドシートの手入力値)を使う。
@@ -343,15 +355,12 @@ const KIND_STYLE: Record<Kind, { label: string; chipBg: string; chipColor: strin
 };
 
 // 月次データ（期別）で表示する期。
-// 2024年10月〜2025年9月（期）は月内訳を持たないため月次には出さず、2025年10月〜2026年9月（期）のみ月内訳を表示する。
+// 2024年10月〜2025年9月（期）は月内訳を持たないため月次には出さない。
+// 2025年10月〜2026年9月（期）以降を月内訳表示する（来期=2026年10月〜2027年9月も自動集計で表示）。
 const MONTHLY_PERIOD_DEFS = [
   { key: '2025', label: '2025年10月〜2026年9月', from: '2025/10', to: '2026/9' },
+  { key: '2026', label: '2026年10月〜2027年9月', from: '2026/10', to: '2027/9' },
 ];
-
-// 指定期に含まれるMONTHLYの月を返す
-function rowsForPeriod(from: string, to: string): Counts[] {
-  return MONTHLY.filter((r) => ymNum(r.ym) >= ymNum(from) && ymNum(r.ym) <= ymNum(to));
-}
 
 // 月次テーブルの1行を描画する（区分チップ付き）
 // topBorder: 月の先頭行に太い上罫線を入れて月のまとまりを見せる
@@ -441,30 +450,31 @@ export default function SalesMeetingContractStatsPage() {
     };
   };
 
-  // 期範囲のAA合計（各月を aaCountsForMonth で解決して合算）
+  // 期範囲のAA合計（各月を aaCountsForMonth で解決して合算）。
+  // MONTHLYに無い将来月（2026/10以降など）も範囲内の全月を走査して集計できるようにする。
   const aaPeriodTotal = (from: string, to: string): Counts => {
-    const rows = MONTHLY
-      .filter((r) => ymNum(r.ym) >= ymNum(from) && ymNum(r.ym) <= ymNum(to))
-      .map((r) => aaCountsForMonth(r.ym));
+    const rows = monthsInRange(from, to).map((ym) => aaCountsForMonth(ym));
     return sumCounts(rows);
   };
 
-  // 期のFI合計（2026/4以降の各月のFI集計を期範囲で合算）
+  // 期のFI合計（2026/4以降の各月のFI集計を期範囲で合算）。
+  // MONTHLYに依存せず、範囲内の全月（2026/4以降）を走査する。
   const fiPeriodTotal = (from: string, to: string): Counts => {
     const empty: Counts = {
       ym: '', senRyo: 0, senKata: 0, ipRyo: 0, ipKata: 0, ipTa: 0,
       otherKata: 0, otherRyo: 0, buyLB: 0, buyResale: 0, refKata: 0, refRyo: 0,
       senKaijo: 0, ipKaijo: 0,
     };
-    return MONTHLY
-      .filter((r) => ymNum(r.ym) >= ymNum(from) && ymNum(r.ym) <= ymNum(to) && isFiSplitMonth(r.ym))
-      .reduce((acc, r) => addCounts(acc, fiToCounts(r.ym, fiStats)), empty);
+    return monthsInRange(from, to)
+      .filter((ym) => isFiSplitMonth(ym))
+      .reduce((acc, ym) => addCounts(acc, fiToCounts(ym, fiStats)), empty);
   };
 
   // 期別集計（AA=業務依頼の契約形態から自動集計、FI=DB集計、合計=AA+FI）
   const periods = useMemo(() => ([
     { key: '2024', label: '2024年10月〜2025年9月（期）', aa: PERIOD_2024_AA, hasFi: false, fi: fiPeriodTotal('2024/10', '2025/9') },
     { key: '2025', label: '2025年10月〜2026年9月（期）', aa: aaPeriodTotal('2025/10', '2026/9'), hasFi: true, fi: fiPeriodTotal('2025/10', '2026/9') },
+    { key: '2026', label: '2026年10月〜2027年9月（期）', aa: aaPeriodTotal('2026/10', '2027/9'), hasFi: true, fi: fiPeriodTotal('2026/10', '2027/9') },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ]), [fiStats, aaStats]);
 
@@ -564,7 +574,7 @@ export default function SalesMeetingContractStatsPage() {
         </Table>
       </TableContainer>
 
-      {/* 月次データ（期ごとにアコーディオン）。表示は2025年10月〜2026年9月（期）のみ。 */}
+      {/* 月次データ（期ごとにアコーディオン）。2025年10月〜2026年9月（期）以降を表示。 */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
         <Typography variant="h6" fontWeight="bold" sx={{ color: '#6a1b9a' }}>
           月次データ（期別）
@@ -572,8 +582,8 @@ export default function SalesMeetingContractStatsPage() {
       </Box>
 
       {[...MONTHLY_PERIOD_DEFS].reverse().map((p) => {
-        const rows = rowsForPeriod(p.from, p.to);
-        if (rows.length === 0) return null;
+        const months = monthsInRange(p.from, p.to);
+        if (months.length === 0) return null;
         return (
           <Accordion
             key={p.key}
@@ -600,18 +610,18 @@ export default function SalesMeetingContractStatsPage() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {rows.map((r) => {
+                    {months.map((ym) => {
                       // AAは業務依頼(work_tasks)＋物件シートから集計（無い月はMONTHLYにフォールバック）
-                      const aa = aaCountsForMonth(r.ym);
-                      if (!isFiSplitMonth(r.ym)) {
+                      const aa = aaCountsForMonth(ym);
+                      if (!isFiSplitMonth(ym)) {
                         // 2026/4より前: 従来どおり1行（AA相当。区分チップなし）
-                        return <MonthRow key={r.ym} ym={r.ym} kind="none" counts={aa} topBorder />;
+                        return <MonthRow key={ym} ym={ym} kind="none" counts={aa} topBorder />;
                       }
                       // 2026/4以降: AA / FI の2行（区分チップ付き。合計行は表示しない）
-                      const fi = fiToCounts(r.ym, fiStats);
+                      const fi = fiToCounts(ym, fiStats);
                       return [
-                        <MonthRow key={`${r.ym}-aa`} ym={r.ym} kind="aa" counts={aa} topBorder />,
-                        <MonthRow key={`${r.ym}-fi`} ym={r.ym} kind="fi" counts={fi} />,
+                        <MonthRow key={`${ym}-aa`} ym={ym} kind="aa" counts={aa} topBorder />,
+                        <MonthRow key={`${ym}-fi`} ym={ym} kind="fi" counts={fi} />,
                       ];
                     })}
                   </TableBody>
