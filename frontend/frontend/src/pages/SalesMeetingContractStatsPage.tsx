@@ -11,12 +11,9 @@ import {
   TableHead,
   TableRow,
   Button,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   Chip,
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
@@ -316,22 +313,6 @@ function isFiSplitMonth(ym: string): boolean {
   return ymNum(ym) >= ymNum('2026/4');
 }
 
-// 期の定義（決算期: 10月〜翌9月）
-const PERIOD_DEFS = [
-  { key: '2019', label: '2019年10月〜2020年9月', from: '2019/10', to: '2020/9' },
-  { key: '2020', label: '2020年10月〜2021年9月', from: '2020/10', to: '2021/9' },
-  { key: '2021', label: '2021年10月〜2022年9月', from: '2021/10', to: '2022/9' },
-  { key: '2022', label: '2022年10月〜2023年9月', from: '2022/10', to: '2023/9' },
-  { key: '2023', label: '2023年10月〜2024年9月', from: '2023/10', to: '2024/9' },
-  { key: '2024', label: '2024年10月〜2025年9月', from: '2024/10', to: '2025/9' },
-  { key: '2025', label: '2025年10月〜2026年9月', from: '2025/10', to: '2026/9' },
-];
-
-// 期に含まれない古い月（2019/1〜2019/9）はまとめて先頭の期に入れる
-function rowsForPeriod(from: string, to: string): Counts[] {
-  return MONTHLY.filter((r) => ymNum(r.ym) >= ymNum(from) && ymNum(r.ym) <= ymNum(to));
-}
-
 // 区分（AA/FI/合計）の見た目定義
 type Kind = 'none' | 'aa' | 'fi' | 'total';
 const KIND_STYLE: Record<Kind, { label: string; chipBg: string; chipColor: string; rowBg: string }> = {
@@ -341,46 +322,10 @@ const KIND_STYLE: Record<Kind, { label: string; chipBg: string; chipColor: strin
   total: { label: '合計',    chipBg: '#f9a825',     chipColor: '#000',    rowBg: '#fff8e1' },
 };
 
-// 月次テーブルの1行を描画する（区分チップ付き）
-// topBorder: 月の先頭行に太い上罫線を入れて月のまとまりを見せる
-function MonthRow({
-  kind, ym, counts, topBorder,
-}: { kind: Kind; ym: string; counts: Counts; topBorder?: boolean }) {
-  const rates = calcRates(counts);
-  const bold = kind === 'total';
-  const cellSx = { fontWeight: bold ? 'bold' : undefined };
-  const style = KIND_STYLE[kind];
-  const rowSx: any = { bgcolor: style.rowBg };
-  if (topBorder) rowSx['& td'] = { borderTop: '2px solid #9575cd' };
-  return (
-    <TableRow hover sx={rowSx}>
-      <TableCell sx={{ fontWeight: 'bold' }}>{topBorder ? ym : ''}</TableCell>
-      <TableCell sx={{ whiteSpace: 'nowrap' }}>
-        {kind === 'none' ? (
-          <Typography variant="caption" color="text.secondary">—</Typography>
-        ) : (
-          <Chip
-            size="small"
-            label={style.label}
-            sx={{ bgcolor: style.chipBg, color: style.chipColor, fontWeight: 'bold', height: 20 }}
-          />
-        )}
-      </TableCell>
-      {countCells(counts).map((v, i) => (
-        <TableCell key={i} align="right" sx={cellSx}>{v}</TableCell>
-      ))}
-      <TableCell align="right" sx={cellSx}>{fmtPct(rates.senRyoRate)}</TableCell>
-      <TableCell align="right" sx={cellSx}>{fmtPct(rates.ipRyoRate)}</TableCell>
-      <TableCell align="right" sx={cellSx}>{fmtPct(rates.ipKataRate)}</TableCell>
-      <TableCell align="right" sx={{ ...cellSx, color: '#c62828' }}>{fmtPct(rates.taRate)}</TableCell>
-    </TableRow>
-  );
-}
 
 export default function SalesMeetingContractStatsPage() {
   const navigate = useNavigate();
   const [fiStats, setFiStats] = useState<FiStats | null>(null);
-  const [fiLoaded, setFiLoaded] = useState(false);
   // AA（大分）= 業務依頼(work_tasks)の契約形態から自動集計。
   // aaStats に月キー('YYYY/M')があればその月はAPI値を採用し、無ければ従来のMONTHLYを使う。
   const [aaStats, setAaStats] = useState<FiStats | null>(null);
@@ -393,9 +338,6 @@ export default function SalesMeetingContractStatsPage() {
       })
       .catch(() => {
         if (!cancelled) setFiStats({}); // 失敗時はFI=0扱いで表示継続
-      })
-      .finally(() => {
-        if (!cancelled) setFiLoaded(true);
       });
     return () => { cancelled = true; };
   }, []);
@@ -458,9 +400,6 @@ export default function SalesMeetingContractStatsPage() {
     { key: '2025', label: '2025年10月〜2026年9月（期）', aa: aaPeriodTotal('2025/10', '2026/9'), hasFi: true, fi: fiPeriodTotal('2025/10', '2026/9') },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ]), [fiStats, aaStats]);
-
-  // デフォルトで開く期（最新期）
-  const [expandedPeriod, setExpandedPeriod] = useState<string>('2025');
 
   return (
     <Container maxWidth={false} sx={{ py: 3, px: 2 }}>
@@ -550,66 +489,6 @@ export default function SalesMeetingContractStatsPage() {
         </Table>
       </TableContainer>
 
-      {/* 月次データ（期ごとにアコーディオン） */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-        <Typography variant="h6" fontWeight="bold" sx={{ color: '#6a1b9a' }}>
-          月次データ（期別）
-        </Typography>
-        {!fiLoaded && <Chip size="small" label="FI集計を読み込み中…" />}
-      </Box>
-
-      {[...PERIOD_DEFS].reverse().map((p) => {
-        const rows = rowsForPeriod(p.from, p.to);
-        if (rows.length === 0) return null;
-        return (
-          <Accordion
-            key={p.key}
-            expanded={expandedPeriod === p.key}
-            onChange={() => setExpandedPeriod(expandedPeriod === p.key ? '' : p.key)}
-            disableGutters
-          >
-            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: '#ede7f6' }}>
-              <Typography fontWeight="bold" sx={{ color: '#6a1b9a' }}>{p.label}</Typography>
-            </AccordionSummary>
-            <AccordionDetails sx={{ p: 0 }}>
-              <TableContainer>
-                <Table size="small" sx={{ '& td, & th': { whiteSpace: 'nowrap' } }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 'bold', bgcolor: '#f3e5f5' }}>年月</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', bgcolor: '#f3e5f5' }}>区分</TableCell>
-                      {COLUMNS.map((col) => (
-                        <TableCell key={col} align="right" sx={{ fontWeight: 'bold', bgcolor: '#f3e5f5' }}>{col}</TableCell>
-                      ))}
-                      {RATE_COLUMNS.map((col) => (
-                        <TableCell key={col} align="right" sx={{ fontWeight: 'bold', bgcolor: '#f3e5f5', color: '#c62828' }}>{col}</TableCell>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {rows.map((r) => {
-                      // AAは業務依頼(work_tasks)の契約形態から集計（無い月はMONTHLYにフォールバック）
-                      const aa = aaCountsForMonth(r.ym);
-                      if (!isFiSplitMonth(r.ym)) {
-                        // 2026/4より前: 従来どおり1行（AA相当。区分チップなし）
-                        return <MonthRow key={r.ym} ym={r.ym} kind="none" counts={aa} topBorder />;
-                      }
-                      // 2026/4以降: AA / FI / 合計 の3行（区分チップ付き）
-                      const fi = fiToCounts(r.ym, fiStats);
-                      const total = addCounts(aa, fi);
-                      return [
-                        <MonthRow key={`${r.ym}-aa`} ym={r.ym} kind="aa" counts={aa} topBorder />,
-                        <MonthRow key={`${r.ym}-fi`} ym={r.ym} kind="fi" counts={fi} />,
-                        <MonthRow key={`${r.ym}-total`} ym={r.ym} kind="total" counts={total} />,
-                      ];
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </AccordionDetails>
-          </Accordion>
-        );
-      })}
     </Container>
   );
 }
