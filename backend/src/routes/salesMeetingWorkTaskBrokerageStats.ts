@@ -20,6 +20,7 @@ function getSupabase() {
  *             それ以外は property_address から 大分市 / 別府市 / 他県 を判定
  *   - 種別   = property_type（戸/マ/土）。基本3種以外・未入力は集計から除外
  *   - 件数   = 上記条件を満たす1行で +1
+ *   - countLow = 件数のうち売買価格(sales_price)が1000万円以下の件数
  *   - 手数料 = 入金確認が「確認済み」の側の通常仲介手数料(standard_brokerage_fee)を採用
  *       売のみ確認済み → 通常仲介手数料(売)
  *       買のみ確認済み → 通常仲介手数料(買)
@@ -86,12 +87,17 @@ function pickFee(row: any): number {
   return fee;
 }
 
-type Cell = { count: number; fee: number };
+// count: 件数 / fee: 手数料 / countLow: 件数のうち売買価格が1000万円以下の件数
+type Cell = { count: number; fee: number; countLow: number };
 type MonthlyMap = Record<string, Record<string, Cell>>;
+
+// 1000万円（以下判定のしきい値）
+const LOW_PRICE_THRESHOLD = 10_000_000;
 
 /**
  * GET /api/sales-meeting/worktask-brokerage-stats
- * レスポンス: { data: { 'YYYY/M': { '市区|種別': { count, fee } } } }
+ * レスポンス: { data: { 'YYYY/M': { '市区|種別': { count, fee, countLow } } } }
+ *   countLow = その件数のうち、売買価格(sales_price)が1000万円以下の件数
  */
 router.get('/worktask-brokerage-stats', async (_req: Request, res: Response) => {
   try {
@@ -106,7 +112,7 @@ router.get('/worktask-brokerage-stats', async (_req: Request, res: Response) => 
         .select(
           'property_number, property_type, property_address, settlement_date, ' +
           'payment_confirmed_seller, payment_confirmed_buyer, ' +
-          'standard_brokerage_fee_seller, standard_brokerage_fee_buyer'
+          'standard_brokerage_fee_seller, standard_brokerage_fee_buyer, sales_price'
         )
         .range(from, from + pageSize - 1);
       if (error) throw error;
@@ -130,9 +136,14 @@ router.get('/worktask-brokerage-stats', async (_req: Request, res: Response) => 
       const cellKey = `${city}|${type}`;
 
       if (!monthly[ym]) monthly[ym] = {};
-      if (!monthly[ym][cellKey]) monthly[ym][cellKey] = { count: 0, fee: 0 };
+      if (!monthly[ym][cellKey]) monthly[ym][cellKey] = { count: 0, fee: 0, countLow: 0 };
       monthly[ym][cellKey].count += 1;
       monthly[ym][cellKey].fee += fee;
+      // 売買価格が1000万円以下なら countLow を+1（0や未入力は対象外）
+      const price = toNum(row.sales_price);
+      if (price > 0 && price <= LOW_PRICE_THRESHOLD) {
+        monthly[ym][cellKey].countLow += 1;
+      }
     }
 
     res.json({ data: monthly });
