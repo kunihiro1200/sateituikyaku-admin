@@ -242,6 +242,15 @@ function ymNum(ym: string): number {
 // 2024年10月〜2025年9月の期は台帳作成済みデータが揃っておらず自動集計だと数字がズレるため、
 // この月より前は必ず従来のハードコード月次データ(MONTHLY=スプレッドシートの手入力値)を使う。
 const AUTO_STATS_FROM_YM = '2025/10';
+
+// 2024年10月〜2025年9月（期）のAA手入力値（スプレッドシートの期合計）。
+// この期は月内訳が不要になったため、期合計を直接この値で固定表示する。
+const PERIOD_2024_AA: Counts = {
+  ym: '2024',
+  senRyo: 38, senKata: 31, ipRyo: 6, ipKata: 4, ipTa: 30,
+  otherKata: 4, otherRyo: 0, buyLB: 2, buyResale: 1,
+  refKata: 1, refRyo: 0, senKaijo: 9, ipKaijo: 6,
+};
 const COLUMNS = [
   '専任両手', '専任片手', '一般両手', '一般片手', '一般他決',
   '他社物件片手', '他社物件両手', '自社買取（リースバック）', '自社買取（転売）',
@@ -396,7 +405,7 @@ export default function SalesMeetingContractStatsPage() {
 
   // 期別集計（AA=業務依頼の契約形態から自動集計、FI=DB集計、合計=AA+FI）
   const periods = useMemo(() => ([
-    { key: '2024', label: '2024年10月〜2025年9月（期）', aa: aaPeriodTotal('2024/10', '2025/9'), hasFi: false, fi: fiPeriodTotal('2024/10', '2025/9') },
+    { key: '2024', label: '2024年10月〜2025年9月（期）', aa: PERIOD_2024_AA, hasFi: false, fi: fiPeriodTotal('2024/10', '2025/9') },
     { key: '2025', label: '2025年10月〜2026年9月（期）', aa: aaPeriodTotal('2025/10', '2026/9'), hasFi: true, fi: fiPeriodTotal('2025/10', '2026/9') },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ]), [fiStats, aaStats]);
