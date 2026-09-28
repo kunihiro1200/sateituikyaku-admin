@@ -254,6 +254,14 @@ const PERIOD_2024_AA: Counts = {
   otherKata: 4, otherRyo: 0, buyLB: 2, buyResale: 1,
   refKata: 1, refRyo: 0, senKaijo: 9, ipKaijo: 6,
 };
+
+// 期別集計の「計（他決除く）」列を、自動計算値ではなく手入力値で上書きする（AA行のみ）。
+// 現状の自動計算値と実態がズレるため、当面は手入力の確定値を表示する。
+// （参考: 2024期の自動計算=87 / 2025期の自動計算=83）
+const PERIOD_TOTAL_OVERRIDE: Record<string, number> = {
+  '2024': 81,
+  '2025': 88,
+};
 const COLUMNS = [
   '専任両手', '専任片手', '一般両手', '一般片手', '一般他決',
   '他社物件片手', '他社物件両手', '自社買取（リースバック）', '自社買取（転売）',
@@ -525,6 +533,12 @@ export default function SalesMeetingContractStatsPage() {
                 const style = KIND_STYLE[row.kind];
                 const bold = row.kind === 'total' || row.kind === 'none';
                 const cellSx = { fontWeight: bold ? 'bold' : undefined };
+                // 「計（他決除く）」列（countCellsの末尾）を、AA行のみ手入力値で上書きする。
+                const cells = countCells(row.counts);
+                const isAaRow = row.kind === 'aa' || row.kind === 'none';
+                if (isAaRow && PERIOD_TOTAL_OVERRIDE[key] !== undefined) {
+                  cells[cells.length - 1] = PERIOD_TOTAL_OVERRIDE[key];
+                }
                 return (
                   <TableRow key={`${key}-${row.kind}`} sx={{ bgcolor: style.rowBg }}>
                     <TableCell sx={{ fontWeight: 'bold' }}>{idx === 0 ? label : ''}</TableCell>
@@ -535,7 +549,7 @@ export default function SalesMeetingContractStatsPage() {
                         <Chip size="small" label={style.label} sx={{ bgcolor: style.chipBg, color: style.chipColor, fontWeight: 'bold', height: 20 }} />
                       )}
                     </TableCell>
-                    {countCells(row.counts).map((v, i) => (
+                    {cells.map((v, i) => (
                       <TableCell key={i} align="right" sx={cellSx}>{v}</TableCell>
                     ))}
                     <TableCell align="right" sx={cellSx}>{fmtPct(rates.senRyoRate)}</TableCell>
