@@ -25,7 +25,12 @@ import api from '../services/api';
  *
  * 目的：専任は両手を増やす。一般は他決を防ぐ。
  *
- * 元データ（Googleスプレッドシート）を移植し、率はこのページで再計算する。
+ * AA（大分）は業務依頼(work_tasks)の「契約形態」から自動集計する（backend: /api/sales-meeting/aa-contract-stats）。
+ * 「台帳作成済み」(ledger_created)に値がある行のみを決済日ベースで集計する。
+ * 業務依頼にデータが無い過去月は、従来のハードコード月次データ（MONTHLY）をそのまま使う。
+ * FI（福岡）は買主リスト(FK)の「★最新状況」から自動集計する（backend: /api/sales-meeting/fi-contract-stats）。
+ *
+ * 率はこのページで再計算する。
  * 率の定義（元シートから逆算して確定）:
  *   専任両手率 = 専任両手 / (専任両手 + 専任片手)
  *   一般両手率 = 一般両手 / (一般両手 + 一般片手 + 一般他決)
@@ -234,15 +239,6 @@ function ymNum(ym: string): number {
   const [y, m] = ym.split('/').map(Number);
   return y * 12 + (m - 1);
 }
-function sliceByPeriod(from: string, to: string): Counts[] {
-  const f = ymNum(from);
-  const t = ymNum(to);
-  return MONTHLY.filter((r) => {
-    const n = ymNum(r.ym);
-    return n >= f && n <= t;
-  });
-}
-
 const COLUMNS = [
   '専任両手', '専任片手', '一般両手', '一般片手', '一般他決',
   '他社物件片手', '他社物件両手', '自社買取（リースバック）', '自社買取（転売）',
@@ -379,6 +375,9 @@ export default function SalesMeetingContractStatsPage() {
   const navigate = useNavigate();
   const [fiStats, setFiStats] = useState<FiStats | null>(null);
   const [fiLoaded, setFiLoaded] = useState(false);
+  // AA（大分）= 業務依頼(work_tasks)の契約形態から自動集計。
+  // aaStats に月キー('YYYY/M')があればその月はAPI値を採用し、無ければ従来のMONTHLYを使う。
+  const [aaStats, setAaStats] = useState<FiStats | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -395,6 +394,40 @@ export default function SalesMeetingContractStatsPage() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/api/sales-meeting/aa-contract-stats')
+      .then((res) => {
+        if (!cancelled) setAaStats(res.data?.data ?? {});
+      })
+      .catch(() => {
+        if (!cancelled) setAaStats({}); // 失敗時はMONTHLY（ハードコード）にフォールバック
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  // 指定月のAA件数を返す。業務依頼(work_tasks)にその月のデータがあればAPI値、
+  // 無ければ従来のハードコード月次データ(MONTHLY)を返す。
+  const aaCountsForMonth = (ym: string): Counts => {
+    if (aaStats && Object.prototype.hasOwnProperty.call(aaStats, ym)) {
+      return fiToCounts(ym, aaStats); // FiStats→Counts変換はAA/FI共通
+    }
+    const hard = MONTHLY.find((r) => r.ym === ym);
+    return hard ?? {
+      ym, senRyo: 0, senKata: 0, ipRyo: 0, ipKata: 0, ipTa: 0,
+      otherKata: 0, otherRyo: 0, buyLB: 0, buyResale: 0, refKata: 0, refRyo: 0,
+      senKaijo: 0, ipKaijo: 0,
+    };
+  };
+
+  // 期範囲のAA合計（各月を aaCountsForMonth で解決して合算）
+  const aaPeriodTotal = (from: string, to: string): Counts => {
+    const rows = MONTHLY
+      .filter((r) => ymNum(r.ym) >= ymNum(from) && ymNum(r.ym) <= ymNum(to))
+      .map((r) => aaCountsForMonth(r.ym));
+    return sumCounts(rows);
+  };
+
   // 期のFI合計（2026/4以降の各月のFI集計を期範囲で合算）
   const fiPeriodTotal = (from: string, to: string): Counts => {
     const empty: Counts = {
@@ -407,12 +440,12 @@ export default function SalesMeetingContractStatsPage() {
       .reduce((acc, r) => addCounts(acc, fiToCounts(r.ym, fiStats)), empty);
   };
 
-  // 期別集計（AA=元データ、FI=DB集計、合計=AA+FI）
+  // 期別集計（AA=業務依頼の契約形態から自動集計、FI=DB集計、合計=AA+FI）
   const periods = useMemo(() => ([
-    { key: '2024', label: '2024年10月〜2025年9月（期）', aa: sumCounts(sliceByPeriod('2024/10', '2025/9')), hasFi: false, fi: fiPeriodTotal('2024/10', '2025/9') },
-    { key: '2025', label: '2025年10月〜2026年9月（期）', aa: sumCounts(sliceByPeriod('2025/10', '2026/9')), hasFi: true, fi: fiPeriodTotal('2025/10', '2026/9') },
+    { key: '2024', label: '2024年10月〜2025年9月（期）', aa: aaPeriodTotal('2024/10', '2025/9'), hasFi: false, fi: fiPeriodTotal('2024/10', '2025/9') },
+    { key: '2025', label: '2025年10月〜2026年9月（期）', aa: aaPeriodTotal('2025/10', '2026/9'), hasFi: true, fi: fiPeriodTotal('2025/10', '2026/9') },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ]), [fiStats]);
+  ]), [fiStats, aaStats]);
 
   // デフォルトで開く期（最新期）
   const [expandedPeriod, setExpandedPeriod] = useState<string>('2025');
@@ -439,6 +472,7 @@ export default function SalesMeetingContractStatsPage() {
         </Typography>
         <Typography variant="body2" sx={{ mt: 0.5, color: '#6a1b9a' }}>
           専任両手率・一般両手率・一般片手率・他決率はこのページで自動計算しています。
+          AA（大分）は業務依頼の「契約形態」を決済日ベースで自動集計しています（台帳作成済みのもののみ）。
           2026年4月以降はAA（大分）とFI（福岡）に分けて表示します。
           FI（福岡）は買主リスト（FK）の「★最新状況」の成約種別を内覧日ベースで自動集計しています。
         </Typography>
@@ -540,12 +574,13 @@ export default function SalesMeetingContractStatsPage() {
                   </TableHead>
                   <TableBody>
                     {rows.map((r) => {
+                      // AAは業務依頼(work_tasks)の契約形態から集計（無い月はMONTHLYにフォールバック）
+                      const aa = aaCountsForMonth(r.ym);
                       if (!isFiSplitMonth(r.ym)) {
                         // 2026/4より前: 従来どおり1行（AA相当。区分チップなし）
-                        return <MonthRow key={r.ym} ym={r.ym} kind="none" counts={r} topBorder />;
+                        return <MonthRow key={r.ym} ym={r.ym} kind="none" counts={aa} topBorder />;
                       }
                       // 2026/4以降: AA / FI / 合計 の3行（区分チップ付き）
-                      const aa = r; // 元データ＝AAのみ
                       const fi = fiToCounts(r.ym, fiStats);
                       const total = addCounts(aa, fi);
                       return [

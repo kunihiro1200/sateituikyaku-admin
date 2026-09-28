@@ -58,6 +58,7 @@ import workTaskRoutes from './routes/workTasks';
 import sharedItemsRoutes from './routes/sharedItems';
 import salesMeetingAgendaRoutes from './routes/salesMeetingAgenda';
 import salesMeetingFiStatsRoutes from './routes/salesMeetingFiStats';
+import salesMeetingAaStatsRoutes from './routes/salesMeetingAaStats';
 import salesMeetingLossAnalysisRoutes from './routes/salesMeetingLossAnalysis';
 import salesMeetingBrokerageStatsRoutes from './routes/salesMeetingBrokerageStats';
 import propertyListingRoutes from './routes/propertyListings';
@@ -1116,6 +1117,7 @@ app.use('/api/test-email', testEmailRoutes);
 app.use('/api/shared-items', sharedItemsRoutes); // 共有アイテムAPI（認証不要）
 app.use('/api/sales-meeting-agenda', salesMeetingAgendaRoutes); // 営業会議 議題API（認証不要）
 app.use('/api/sales-meeting', salesMeetingFiStatsRoutes); // 営業会議 FI成約集計API（認証不要）
+app.use('/api/sales-meeting', salesMeetingAaStatsRoutes); // 営業会議 AA成約集計API（業務依頼の契約形態ベース・認証不要）
 app.use('/api/sales-meeting', salesMeetingLossAnalysisRoutes); // 営業会議 他決分析集計API（認証不要）
 app.use('/api/sales-meeting', salesMeetingBrokerageStatsRoutes); // 営業会議 売買仲介集計API（認証不要）
 app.use('/api/public/inquiries', publicInquiriesRoutes);
