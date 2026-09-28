@@ -39,8 +39,9 @@ const SEN_STATUSES = ['専任媒介', '他決→専任'];
 // 集計に必要な全ステータス（1回のクエリで両方取得する）
 const ALL_STATUSES = [...LOSS_STATUSES, ...SEN_STATUSES];
 
-// 集計対象の担当者（イニシャル）。フロントの表と揃える。
-const TARGET_ASSIGNEES = ['林', '麻', 'K'];
+// 集計対象の担当者（イニシャル）。フロントの「各営業の特性」表と揃える。
+// K / U / Y / I / 林 / 麻 の6名を専任・他決要因ベースで集計する。
+const TARGET_ASSIGNEES = ['K', 'U', 'Y', 'I', '林', '麻'];
 
 // 集計対象の他決理由（フロントの REASON_ROWS と同じ並び・表記）
 const REASONS = [

@@ -29,7 +29,8 @@ import api from '../services/api';
  * - 競合別: 専任 / 訪問後他決 / 未訪問他決（各年）。売主データから自動集計する。
  *   訪問後他決＝訪問後予約あり（営担あり）＋状況「他決→追客／追客不要」、
  *   未訪問他決＝営担なし＋状況「他決→追客／追客不要」。
- * - 各営業の特性: 担当者（K / U / Y / I / 林 / 麻）ごとの専任理由・他決理由
+ * - 各営業の特性: 担当者（K / U / Y / I / 林 / 麻）ごとの専任理由・他決理由。
+ *   売主データの専任・他決要因（exclusive_other_decision_factor）から自動集計する（2024〜2026年合算）。
  *
  * ※ 人の名前は K・U・Y・I・林・麻 で集計しなおして表示する。
  */
@@ -224,11 +225,16 @@ function sumTriples(rows: YearTriple[]): YearTriple {
 type YearCounts = { 2024: number; 2025: number; 2026: number };
 type LossStats = Record<string, Record<string, { sen: YearCounts; loss: YearCounts }>>;
 
-// 対象担当者（林 / 麻 / K）のキー対応（表の列キー）
+// 対象担当者（K / U / Y / I / 林 / 麻）のキー対応（表の列キー）。
+// 「各営業の特性」表は全員を専任・他決要因（exclusive_other_decision_factor）ベースで
+// 売主データから自動集計する（2024〜2026年合算）。
 const DYNAMIC_STAFF: { label: string; key: keyof StaffCounts }[] = [
+  { label: 'K', key: 'K' },
+  { label: 'U', key: 'U' },
+  { label: 'Y', key: 'Y' },
+  { label: 'I', key: 'I' },
   { label: '林', key: 'hayashi' },
   { label: '麻', key: 'asa' },
-  { label: 'K', key: 'K' },
 ];
 
 // 競合別集計API（backend: /api/sales-meeting/competitor-loss-analysis-stats）の型
@@ -278,8 +284,8 @@ export default function SalesMeetingLossAnalysisPage() {
     return () => { cancelled = true; };
   }, []);
 
-  // API結果を STAFF_ROWS にマージする（専任理由・他決理由の 林/麻/K を上書き）。
-  // 元シートの各営業の特性は「年合算の件数」なので、2024+2025+2026 を足す。
+  // API結果を STAFF_ROWS にマージする（専任理由・他決理由の K/U/Y/I/林/麻 を上書き）。
+  // 各営業の特性は「年合算の件数」なので、2024+2025+2026 を足す。
   const sumYc = (yc?: YearCounts) => (yc ? yc[2024] + yc[2025] + yc[2026] : 0);
   const staffRows: StaffReasonRow[] = STAFF_ROWS.map((r) => {
     if (!lossStats) return r;
@@ -339,9 +345,8 @@ export default function SalesMeetingLossAnalysisPage() {
       <Paper sx={{ p: 2, mb: 3, bgcolor: SUBHEADER_BG }}>
         <Typography variant="body2" sx={{ color: PURPLE }}>
           他決理由・競合・各営業の特性を集計しています。勝率＝専任 ÷（専任＋訪問後他決）で自動計算。
-          各営業の特性は担当者（K / U / Y / I / 林 / 麻）ごとに集計しています。
-          林・麻・K の専任・他決件数は売主データから自動集計しています（2024〜2026年合算）。
-          専任＝状況「専任媒介／他決→専任」、他決＝状況「他決→追客／追客不要」を、営担・契約年月（他決判明時点）・競合名理由で集計。
+          各営業の特性は担当者（K / U / Y / I / 林 / 麻）ごとに、専任・他決要因の入力値から売主データを自動集計しています（2024〜2026年合算）。
+          専任＝状況「専任媒介／他決→専任」、他決＝状況「他決→追客／追客不要」を、営担・契約年月（他決判明時点）・専任他決要因で集計。
           競合別の表は売主データから自動集計しています。訪問後他決＝訪問後予約あり（営担あり）＋状況「他決→追客／追客不要」、
           未訪問他決＝営担なし＋状況「他決→追客／追客不要」で、契約年月（他決判明時点）と競合名で年別に集計。
         </Typography>
@@ -443,7 +448,7 @@ export default function SalesMeetingLossAnalysisPage() {
         <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: HEADER_BG }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography fontWeight="bold" sx={{ color: PURPLE }}>各営業の特性（K / U / Y / I / 林 / 麻）</Typography>
-            {!lossLoaded && <Chip size="small" label="林・麻・Kの専任・他決を集計中…" />}
+            {!lossLoaded && <Chip size="small" label="K/U/Y/I/林/麻の専任・他決を集計中…" />}
           </Box>
         </AccordionSummary>
         <AccordionDetails sx={{ p: 0 }}>
