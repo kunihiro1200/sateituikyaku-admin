@@ -193,9 +193,46 @@ function buildLookup(
   return out;
 }
 
+// 全期間テーブル用: 静的データ（暦年＝各期の代表年）に、DB集計を「期範囲」で正しく振り分けて重ねる。
+// 各期の代表年(PeriodDef.year)の列に、その期の会計期間(fiscalFrom〜fiscalTo)のDB集計を差し込む。
+// これにより列は「期（決算期）」を表す（例: 2025列=2025期=2025/10〜2026/9、2026列=2026期=2026/10〜2027/9）。
+function buildAllPeriodsLookup(
+  base: Lookup,
+  db: DbStats | null,
+  metric: 'count' | 'fee',
+): Lookup {
+  // 静的データをディープコピー
+  const out: Lookup = { 大分市: {}, 別府市: {}, 他県: {} };
+  (Object.keys(base) as CityKey[]).forEach((city) => {
+    const types = base[city];
+    (Object.keys(types) as TypeKey[]).forEach((tk) => {
+      out[city][tk] = { ...(types[tk] as YearMap) };
+    });
+  });
+  if (!db) return out;
+  // DB対象年（2026〜）を含む各期について、期範囲でDB集計してその代表年列に差し込む
+  for (const p of PERIOD_DEFS) {
+    if ((DB_YEARS as readonly number[]).indexOf(p.year) === -1) continue;
+    const agg = sumDbForFiscal(db, p.fiscalFrom, p.fiscalTo);
+    for (const [cellKey, cell] of Object.entries(agg)) {
+      const [city, type] = cellKey.split('|') as [CityKey, TypeKey];
+      if (!out[city]) continue;
+      if (!out[city][type]) out[city][type] = {};
+      (out[city][type] as YearMap)[p.year] = metric === 'count' ? cell.count : cell.fee;
+    }
+  }
+  return out;
+}
+
 // ---- ヘルパ ----
 function v(map: YearMap | undefined, y: Year): number {
   return map?.[y] ?? 0;
+}
+
+// 列見出しの表示ラベル。全期間テーブルは期（決算期）ごとに表示するため「YYYY期」と出す。
+// 各年（＝その期の代表年）を「YYYY期」表記に変換する。
+function yearColLabel(y: Year): string {
+  return `${y}期`;
 }
 
 function fmtNum(n: number): string {
@@ -242,8 +279,9 @@ const PURPLE = '#6a1b9a';
 // ============================================================
 // 件数テーブル
 // ============================================================
-function CountTable({ years, counts }: { years: Year[]; counts: Lookup }) {
+function CountTable({ years, counts, colLabel, showTotal = true }: { years: Year[]; counts: Lookup; colLabel?: (y: Year) => string; showTotal?: boolean }) {
   const cities: CityKey[] = ['大分市', '別府市'];
+  const hdr = (y: Year) => (colLabel ? colLabel(y) : String(y));
   return (
     <TableContainer component={Paper} sx={{ mb: 3 }}>
       <Table size="small" sx={{ '& td, & th': { whiteSpace: 'nowrap' } }}>
@@ -252,9 +290,9 @@ function CountTable({ years, counts }: { years: Year[]; counts: Lookup }) {
             <TableCell sx={{ fontWeight: 'bold' }}>市区</TableCell>
             <TableCell sx={{ fontWeight: 'bold' }}>種別</TableCell>
             {years.map((y) => (
-              <TableCell key={y} align="right" sx={{ fontWeight: 'bold' }}>{y}</TableCell>
+              <TableCell key={y} align="right" sx={{ fontWeight: 'bold' }}>{hdr(y)}</TableCell>
             ))}
-            <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>期合計</TableCell>
+            {showTotal && <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>期合計</TableCell>}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -267,9 +305,11 @@ function CountTable({ years, counts }: { years: Year[]; counts: Lookup }) {
                   {years.map((y) => (
                     <TableCell key={y} align="right">{fmtNum(v(counts[city][tk], y))}</TableCell>
                   ))}
-                  <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
-                    {fmtNum(years.reduce((s, y) => s + v(counts[city][tk], y), 0))}
-                  </TableCell>
+                  {showTotal && (
+                    <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
+                      {fmtNum(years.reduce((s, y) => s + v(counts[city][tk], y), 0))}
+                    </TableCell>
+                  )}
                 </TableRow>
               )),
               <TableRow key={`${city}-sum`} sx={{ bgcolor: '#f3e5f5' }}>
@@ -278,9 +318,11 @@ function CountTable({ years, counts }: { years: Year[]; counts: Lookup }) {
                 {years.map((y) => (
                   <TableCell key={y} align="right" sx={{ fontWeight: 'bold' }}>{fmtNum(cityCountTotal(counts, city, y))}</TableCell>
                 ))}
-                <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
-                  {fmtNum(years.reduce((s, y) => s + cityCountTotal(counts, city, y), 0))}
-                </TableCell>
+                {showTotal && (
+                  <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
+                    {fmtNum(years.reduce((s, y) => s + cityCountTotal(counts, city, y), 0))}
+                  </TableCell>
+                )}
               </TableRow>,
             ]
           ))}
@@ -290,9 +332,11 @@ function CountTable({ years, counts }: { years: Year[]; counts: Lookup }) {
             {years.map((y) => (
               <TableCell key={y} align="right" sx={{ fontWeight: 'bold' }}>{fmtNum(grandCountTotal(counts, y))}</TableCell>
             ))}
-            <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
-              {fmtNum(years.reduce((s, y) => s + grandCountTotal(counts, y), 0))}
-            </TableCell>
+            {showTotal && (
+              <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
+                {fmtNum(years.reduce((s, y) => s + grandCountTotal(counts, y), 0))}
+              </TableCell>
+            )}
           </TableRow>
         </TableBody>
       </Table>
@@ -303,8 +347,9 @@ function CountTable({ years, counts }: { years: Year[]; counts: Lookup }) {
 // ============================================================
 // 仲介手数料テーブル
 // ============================================================
-function FeeTable({ years, fees }: { years: Year[]; fees: Lookup }) {
+function FeeTable({ years, fees, colLabel, showTotal = true }: { years: Year[]; fees: Lookup; colLabel?: (y: Year) => string; showTotal?: boolean }) {
   const cities: CityKey[] = ['大分市', '別府市', '他県'];
+  const hdr = (y: Year) => (colLabel ? colLabel(y) : String(y));
   return (
     <TableContainer component={Paper} sx={{ mb: 3 }}>
       <Table size="small" sx={{ '& td, & th': { whiteSpace: 'nowrap' } }}>
@@ -313,9 +358,9 @@ function FeeTable({ years, fees }: { years: Year[]; fees: Lookup }) {
             <TableCell sx={{ fontWeight: 'bold' }}>市区</TableCell>
             <TableCell sx={{ fontWeight: 'bold' }}>種別</TableCell>
             {years.map((y) => (
-              <TableCell key={y} align="right" sx={{ fontWeight: 'bold' }}>{y}</TableCell>
+              <TableCell key={y} align="right" sx={{ fontWeight: 'bold' }}>{hdr(y)}</TableCell>
             ))}
-            <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>期合計</TableCell>
+            {showTotal && <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>期合計</TableCell>}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -333,9 +378,11 @@ function FeeTable({ years, fees }: { years: Year[]; fees: Lookup }) {
                   {years.map((y) => (
                     <TableCell key={y} align="right">{fmtYen(v(fees[city][tk], y))}</TableCell>
                   ))}
-                  <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
-                    {fmtYen(years.reduce((s, y) => s + v(fees[city][tk], y), 0))}
-                  </TableCell>
+                  {showTotal && (
+                    <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
+                      {fmtYen(years.reduce((s, y) => s + v(fees[city][tk], y), 0))}
+                    </TableCell>
+                  )}
                 </TableRow>
               )),
               <TableRow key={`${city}-sum`} sx={{ bgcolor: '#f3e5f5' }}>
@@ -344,9 +391,11 @@ function FeeTable({ years, fees }: { years: Year[]; fees: Lookup }) {
                 {years.map((y) => (
                   <TableCell key={y} align="right" sx={{ fontWeight: 'bold' }}>{fmtYen(cityFeeTotal(fees, city, y))}</TableCell>
                 ))}
-                <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
-                  {fmtYen(years.reduce((s, y) => s + cityFeeTotal(fees, city, y), 0))}
-                </TableCell>
+                {showTotal && (
+                  <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
+                    {fmtYen(years.reduce((s, y) => s + cityFeeTotal(fees, city, y), 0))}
+                  </TableCell>
+                )}
               </TableRow>,
             ];
           })}
@@ -356,9 +405,11 @@ function FeeTable({ years, fees }: { years: Year[]; fees: Lookup }) {
             {years.map((y) => (
               <TableCell key={y} align="right" sx={{ fontWeight: 'bold' }}>{fmtYen(grandFeeTotal(fees, y))}</TableCell>
             ))}
-            <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
-              {fmtYen(years.reduce((s, y) => s + grandFeeTotal(fees, y), 0))}
-            </TableCell>
+            {showTotal && (
+              <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
+                {fmtYen(years.reduce((s, y) => s + grandFeeTotal(fees, y), 0))}
+              </TableCell>
+            )}
           </TableRow>
         </TableBody>
       </Table>
@@ -369,8 +420,9 @@ function FeeTable({ years, fees }: { years: Year[]; fees: Lookup }) {
 // ============================================================
 // 単価テーブル（＝手数料 ÷ 件数。件数がある種別のみ）
 // ============================================================
-function UnitTable({ years, counts, fees }: { years: Year[]; counts: Lookup; fees: Lookup }) {
+function UnitTable({ years, counts, fees, colLabel, showTotal = true }: { years: Year[]; counts: Lookup; fees: Lookup; colLabel?: (y: Year) => string; showTotal?: boolean }) {
   const cities: CityKey[] = ['大分市', '別府市'];
+  const hdr = (y: Year) => (colLabel ? colLabel(y) : String(y));
   return (
     <TableContainer component={Paper} sx={{ mb: 3 }}>
       <Table size="small" sx={{ '& td, & th': { whiteSpace: 'nowrap' } }}>
@@ -379,9 +431,9 @@ function UnitTable({ years, counts, fees }: { years: Year[]; counts: Lookup; fee
             <TableCell sx={{ fontWeight: 'bold' }}>市区</TableCell>
             <TableCell sx={{ fontWeight: 'bold' }}>種別</TableCell>
             {years.map((y) => (
-              <TableCell key={y} align="right" sx={{ fontWeight: 'bold' }}>{y}</TableCell>
+              <TableCell key={y} align="right" sx={{ fontWeight: 'bold' }}>{hdr(y)}</TableCell>
             ))}
-            <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>期平均</TableCell>
+            {showTotal && <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>期平均</TableCell>}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -399,9 +451,11 @@ function UnitTable({ years, counts, fees }: { years: Year[]; counts: Lookup; fee
                         {fmtUnit(unitPrice(v(fees[city][tk], y), v(counts[city][tk], y)))}
                       </TableCell>
                     ))}
-                    <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
-                      {fmtUnit(unitPrice(feeSum, cntSum))}
-                    </TableCell>
+                    {showTotal && (
+                      <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
+                        {fmtUnit(unitPrice(feeSum, cntSum))}
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               }),
@@ -413,12 +467,14 @@ function UnitTable({ years, counts, fees }: { years: Year[]; counts: Lookup; fee
                     {fmtUnit(unitPrice(cityFeeTotal(fees, city, y), cityCountTotal(counts, city, y)))}
                   </TableCell>
                 ))}
-                <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
-                  {fmtUnit(unitPrice(
-                    years.reduce((s, y) => s + cityFeeTotal(fees, city, y), 0),
-                    years.reduce((s, y) => s + cityCountTotal(counts, city, y), 0),
-                  ))}
-                </TableCell>
+                {showTotal && (
+                  <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
+                    {fmtUnit(unitPrice(
+                      years.reduce((s, y) => s + cityFeeTotal(fees, city, y), 0),
+                      years.reduce((s, y) => s + cityCountTotal(counts, city, y), 0),
+                    ))}
+                  </TableCell>
+                )}
               </TableRow>,
             ]
           ))}
@@ -430,12 +486,14 @@ function UnitTable({ years, counts, fees }: { years: Year[]; counts: Lookup; fee
                 {fmtUnit(unitPrice(grandFeeTotal(fees, y), grandCountTotal(counts, y)))}
               </TableCell>
             ))}
-            <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
-              {fmtUnit(unitPrice(
-                years.reduce((s, y) => s + grandFeeTotal(fees, y), 0),
-                years.reduce((s, y) => s + grandCountTotal(counts, y), 0),
-              ))}
-            </TableCell>
+            {showTotal && (
+              <TableCell align="right" sx={{ fontWeight: 'bold', color: PURPLE }}>
+                {fmtUnit(unitPrice(
+                  years.reduce((s, y) => s + grandFeeTotal(fees, y), 0),
+                  years.reduce((s, y) => s + grandCountTotal(counts, y), 0),
+                ))}
+              </TableCell>
+            )}
           </TableRow>
         </TableBody>
       </Table>
@@ -465,28 +523,24 @@ export default function SalesMeetingSalesStatsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  // 全期間（全年）の合計を出すためのヘルパ
+  // 全期間の列 = 各期の代表年（=期）。DBは期範囲で振り分ける。
   const allYears = useMemo(() => [...YEARS], []);
 
-  // 全期間表示用: 2026年は暦年（2026/1〜2026/12）でDB集計を差し込む
-  const allYearsDbAgg = useMemo(
-    () => sumDbForFiscal(db, '2026/1', '2026/12'),
+  // 全期間表示用: 各年列を「期（決算期）」として扱い、DBは期範囲で正しく差し込む
+  const allCounts = useMemo(
+    () => buildAllPeriodsLookup(COUNTS as Lookup, db, 'count'),
     [db],
   );
-  const allCounts = useMemo(
-    () => buildLookup(COUNTS as Lookup, DB_TARGET_YEAR, allYearsDbAgg, 'count'),
-    [allYearsDbAgg],
-  );
   const allFees = useMemo(
-    () => buildLookup(FEES as Lookup, DB_TARGET_YEAR, allYearsDbAgg, 'fee'),
-    [allYearsDbAgg],
+    () => buildAllPeriodsLookup(FEES as Lookup, db, 'fee'),
+    [db],
   );
 
-  // 全期間の描画（2026列にDB暦年集計を差し込んだルックアップを使用）
+  // 全期間の描画（列は期ごと。期合計/期平均列は非表示）
   const renderAll = () => {
-    if (metric === 'count') return <CountTable years={allYears} counts={allCounts} />;
-    if (metric === 'fee') return <FeeTable years={allYears} fees={allFees} />;
-    return <UnitTable years={allYears} counts={allCounts} fees={allFees} />;
+    if (metric === 'count') return <CountTable years={allYears} counts={allCounts} colLabel={yearColLabel} showTotal={false} />;
+    if (metric === 'fee') return <FeeTable years={allYears} fees={allFees} colLabel={yearColLabel} showTotal={false} />;
+    return <UnitTable years={allYears} counts={allCounts} fees={allFees} colLabel={yearColLabel} showTotal={false} />;
   };
 
   // 期別の描画: その期の代表年1列のみ。
@@ -541,9 +595,9 @@ export default function SalesMeetingSalesStatsPage() {
         <ToggleButton value="unit">単価</ToggleButton>
       </ToggleButtonGroup>
 
-      {/* 全期間合計 */}
+      {/* 全期間（期ごと。列は決算期） */}
       <Typography variant="h6" fontWeight="bold" sx={{ mb: 1, color: PURPLE }}>
-        全期間（{YEARS[0]}〜{YEARS[YEARS.length - 1]}年）
+        全期間（{YEARS[0]}期〜{YEARS[YEARS.length - 1]}期）
       </Typography>
       {renderAll()}
 
