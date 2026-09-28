@@ -460,12 +460,11 @@ export default function SalesMeetingContractStatsPage() {
           </TableHead>
           <TableBody>
             {periods.map(({ key, label, aa, hasFi, fi }) => {
-              // FIが無い期はAA1行のみ。FIがある期はAA/FI/合計の3行。
+              // FIが無い期はAA1行のみ。FIがある期はAA/FIの2行（合計行は表示しない）。
               const rowsToShow: { kind: Kind; counts: Counts }[] = hasFi
                 ? [
                     { kind: 'aa', counts: aa },
                     { kind: 'fi', counts: fi },
-                    { kind: 'total', counts: addCounts(aa, fi) },
                   ]
                 : [{ kind: 'none', counts: aa }];
               return rowsToShow.map((row, idx) => {
