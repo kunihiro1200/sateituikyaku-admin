@@ -23,8 +23,7 @@ function getSupabase() {
  *     ※ 全角/半角スペースや括弧の表記ゆれを吸収して正規化する。
  *   - 月の基準 = settlement_date（決済日）→ sales_contract_deadline（売買契約締め日）→ created_at
  *       決済日が入っていれば決済日ベース。無ければ契約締め日、それも無ければ登録日。
- *   - 集計対象 = 「台帳作成済み」(ledger_created)に値が入っている行のみ。
- *       ledger_created は日付フィールドで、台帳作成が済むと日付が入る。空欄は未作成なので集計しない。
+ *   - 集計対象 = 契約形態(contract_type)が集計対象の値である行すべて（台帳作成済みかどうかは問わない）。
  *
  * 加えて、以下の3項目は物件シート(property_listings)の「買付」(offer_status)と
  * 「状況」(status)から算出する（業務依頼の契約形態には現れないため）:
@@ -131,7 +130,7 @@ router.get('/aa-contract-stats', async (_req: Request, res: Response) => {
     for (;;) {
       const { data, error } = await supabase
         .from('work_tasks')
-        .select('contract_type, settlement_date, sales_contract_deadline, created_at, ledger_created')
+        .select('contract_type, settlement_date, sales_contract_deadline, created_at')
         .range(from, from + pageSize - 1);
       if (error) throw error;
       if (!data || data.length === 0) break;
@@ -143,9 +142,6 @@ router.get('/aa-contract-stats', async (_req: Request, res: Response) => {
     const monthly: Record<string, ReturnType<typeof EMPTY_COUNTS>> = {};
 
     for (const row of rows) {
-      // 台帳作成済み（ledger_created に値がある）行のみ集計する。空欄は未作成なのでスキップ。
-      const ledger = (row.ledger_created ?? '').toString().trim();
-      if (!ledger) continue;
 
       const raw = (row.contract_type || '').trim();
       if (!raw) continue;
