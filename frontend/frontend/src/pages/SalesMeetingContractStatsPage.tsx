@@ -27,7 +27,8 @@ import api from '../services/api';
  *
  * AA（大分）は業務依頼(work_tasks)の「契約形態」から自動集計する（backend: /api/sales-meeting/aa-contract-stats）。
  * 「台帳作成済み」(ledger_created)に値がある行のみを決済日ベースで集計する。
- * 業務依頼にデータが無い過去月は、従来のハードコード月次データ（MONTHLY）をそのまま使う。
+ * さらに一般他決・専任解除・一般媒介解除は物件シート(property_listings)の「買付」「状況」から集計する（同エンドポイント）。
+ * どちらの集計も無い過去月は、従来のハードコード月次データ（MONTHLY）をそのまま使う。
  * FI（福岡）は買主リスト(FK)の「★最新状況」から自動集計する（backend: /api/sales-meeting/fi-contract-stats）。
  *
  * 率はこのページで再計算する。
@@ -473,6 +474,7 @@ export default function SalesMeetingContractStatsPage() {
         <Typography variant="body2" sx={{ mt: 0.5, color: '#6a1b9a' }}>
           専任両手率・一般両手率・一般片手率・他決率はこのページで自動計算しています。
           AA（大分）は業務依頼の「契約形態」を決済日ベースで自動集計しています（台帳作成済みのもののみ）。
+          一般他決・専任解除・一般媒介解除（および他決率）は物件シートの「買付」「状況」から自動集計しています。
           2026年4月以降はAA（大分）とFI（福岡）に分けて表示します。
           FI（福岡）は買主リスト（FK）の「★最新状況」の成約種別を内覧日ベースで自動集計しています。
         </Typography>
