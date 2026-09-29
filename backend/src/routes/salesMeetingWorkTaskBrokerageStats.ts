@@ -19,7 +19,8 @@ function getSupabase() {
  *               入っているだけのため集計しない（営業会議「契約集計」ページと母集団をそろえる）。
  *   - 月基準 = settlement_date（決済日）
  *   - 市区   = 物件番号(property_number)が「FI」を含めば福岡県。
- *             それ以外は property_address から 大分市 / 別府市 / 他県 を判定
+ *             それ以外は property_address から 大分市 / 別府市 を判定。
+ *             福岡でも大分でもない行（他県）は集計しない。
  *   - 種別   = property_type（戸/マ/土）。基本3種以外・未入力は集計から除外
  *   - 件数   = 上記条件を満たす1行で +1
  *   - countLow = 件数のうち売買価格(sales_price)が1000万円以下の件数
@@ -34,19 +35,20 @@ function getSupabase() {
  *   フロント側で期（10月〜翌9月）に集約する。
  */
 
-type CityKey = '大分市' | '別府市' | '福岡県' | '他県';
+type CityKey = '大分市' | '別府市' | '福岡県';
 type TypeKey = '戸建' | 'マンション' | '土地';
 
-// 市区を判定する。
+// 市区を判定する。集計対象は 大分市 / 別府市 / 福岡県 のみ。
 // 物件番号(property_number)が「FI」を含めば福岡県。
-// それ以外は property_address から 大分市 / 別府市 / 他県 を判定。
-function cityFromRow(propertyNumber: string | null, address: string | null): CityKey {
+// それ以外は property_address から 大分市 / 別府市 を判定。
+// どれにも該当しない（＝福岡でも大分でもない）行は null を返し、集計から除外する。
+function cityFromRow(propertyNumber: string | null, address: string | null): CityKey | null {
   const pn = (propertyNumber || '').toUpperCase();
   if (pn.includes('FI')) return '福岡県';
   const a = (address || '').trim();
   if (a.includes('大分市')) return '大分市';
   if (a.includes('別府市')) return '別府市';
-  return '他県';
+  return null; // 他県（福岡でも大分でもない）はカウントしない
 }
 
 // property_type を集計上の種別(戸建/マンション/土地)に変換。該当しなければ null（集計対象外）。
@@ -139,6 +141,7 @@ router.get('/worktask-brokerage-stats', async (_req: Request, res: Response) => 
       if (!type) continue; // 基本3種以外・未入力は除外
 
       const city = cityFromRow(row.property_number, row.property_address);
+      if (!city) continue; // 福岡でも大分でもない行は集計しない（他県は不要）
       const fee = pickFee(row);
       const cellKey = `${city}|${type}`;
 

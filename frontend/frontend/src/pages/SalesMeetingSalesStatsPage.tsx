@@ -45,7 +45,7 @@ type Year = (typeof YEARS)[number];
 const DB_INJECT_YEARS: readonly Year[] = [2024, 2025, 2026];
 
 // ---- 市区・種別の定義 ----
-type CityKey = '大分市' | '別府市' | '福岡県' | '他県';
+type CityKey = '大分市' | '別府市' | '福岡県';
 type TypeKey = '戸建' | 'マンション' | '土地' | '収益物件' | '店舗（事務所）';
 
 // 件数は市区×基本3種別（戸建/マンション/土地）のみ
@@ -68,7 +68,6 @@ const COUNTS: Record<CityKey, Partial<Record<TypeKey, YearMap>>> = {
   大分市: {},
   別府市: {},
   福岡県: {},
-  他県: {},
 };
 
 // ============================================================
@@ -79,7 +78,6 @@ const FEES: Record<CityKey, Partial<Record<TypeKey, YearMap>>> = {
   大分市: {},
   別府市: {},
   福岡県: {},
-  他県: {},
 };
 
 // ---- 期（決算期：10月〜翌9月） ----
@@ -156,7 +154,7 @@ function buildAllPeriodsLookup(
 ): Lookup {
   // countLow（うち1000万以下）は静的データの内訳が無いため、静的値は引き継がず空から作る。
   // count / fee は静的（手入力）データをディープコピーして土台にする。
-  const out: Lookup = { 大分市: {}, 別府市: {}, 福岡県: {}, 他県: {} };
+  const out: Lookup = { 大分市: {}, 別府市: {}, 福岡県: {} };
   if (metric !== 'countLow') {
     (Object.keys(base) as CityKey[]).forEach((city) => {
       const types = base[city];
@@ -340,7 +338,7 @@ function CountTable({
 // 仲介手数料テーブル
 // ============================================================
 function FeeTable({ years, fees, colLabel, showTotal = true }: { years: Year[]; fees: Lookup; colLabel?: (y: Year) => string; showTotal?: boolean }) {
-  const cities: CityKey[] = ['大分市', '別府市', '福岡県', '他県'];
+  const cities: CityKey[] = ['大分市', '別府市', '福岡県'];
   const hdr = (y: Year) => (colLabel ? colLabel(y) : String(y));
   return (
     <TableContainer component={Paper} sx={{ mb: 3 }}>
@@ -357,7 +355,7 @@ function FeeTable({ years, fees, colLabel, showTotal = true }: { years: Year[]; 
         </TableHead>
         <TableBody>
           {cities.map((city) => {
-            // 他県は戸建のみなので、値が入っている種別だけ表示
+            // 値が入っている種別だけ表示
             const typesForCity = FEE_TYPES.filter((tk) =>
               years.some((y) => v(fees[city][tk], y) !== 0) || (fees[city][tk] !== undefined),
             );
@@ -560,7 +558,7 @@ export default function SalesMeetingSalesStatsPage() {
           <b>2024期・2025期・2026期はいずれも業務依頼（決済日ベース・台帳作成済み）から自動集計</b>しています（契約集計ページと同じ母集団）。
           件数・手数料は「決済日が入っていて台帳作成済みの業務依頼」を種別（戸建/マンション/土地）で集計し、
           手数料は入金確認（売/買）が「確認済み」の側の通常仲介手数料を用います（両方確認済みは合算）。
-          福岡県は物件番号にFIを含むものを集計します。
+          福岡県は物件番号にFIを含むものを集計します。集計対象は大分市・別府市・福岡県のみで、それ以外（他県）はカウントしません。
           件数タブの「（うち◯）」は、その件数のうち売買価格が1000万円以下の件数です（自動集計の期のみ）。
         </Typography>
       </Paper>
