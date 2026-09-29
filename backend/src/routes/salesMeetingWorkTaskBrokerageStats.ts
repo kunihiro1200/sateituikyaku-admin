@@ -14,7 +14,9 @@ function getSupabase() {
  * 営業会議「売買仲介」ページ用: 業務依頼(work_tasks)ベースの件数・手数料集計
  *
  * 集計元: work_tasks
- *   - 対象   = settlement_date（決済日）に値がある行のみ
+ *   - 対象   = settlement_date（決済日）に値があり、かつ「台帳作成済み」(ledger_created)に値がある行のみ
+ *             ※ ledger_created が空の行は「決済予定（未確定）」であり、決済日欄に予定日が
+ *               入っているだけのため集計しない（営業会議「契約集計」ページと母集団をそろえる）。
  *   - 月基準 = settlement_date（決済日）
  *   - 市区   = 物件番号(property_number)が「FI」を含めば福岡県。
  *             それ以外は property_address から 大分市 / 別府市 / 他県 を判定
@@ -110,7 +112,7 @@ router.get('/worktask-brokerage-stats', async (_req: Request, res: Response) => 
       const { data, error } = await supabase
         .from('work_tasks')
         .select(
-          'property_number, property_type, property_address, settlement_date, ' +
+          'property_number, property_type, property_address, settlement_date, ledger_created, ' +
           'payment_confirmed_seller, payment_confirmed_buyer, ' +
           'standard_brokerage_fee_seller, standard_brokerage_fee_buyer, sales_price'
         )
@@ -125,6 +127,11 @@ router.get('/worktask-brokerage-stats', async (_req: Request, res: Response) => 
     const monthly: MonthlyMap = {};
 
     for (const row of rows) {
+      // 台帳作成済み（ledger_created に値がある）行のみ集計する。
+      // 空欄は「決済予定（未確定）」で、決済日欄に予定日が入っているだけなので除外する。
+      const ledger = (row.ledger_created ?? '').toString().trim();
+      if (!ledger) continue;
+
       const ym = ymFromDate(row.settlement_date);
       if (!ym) continue; // 決済日が無い行は対象外
 
