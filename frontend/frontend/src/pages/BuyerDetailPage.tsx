@@ -2902,19 +2902,20 @@ TEL：097-533-2022`;
                               variant={isConfirmed ? 'contained' : 'outlined'}
                               color={isConfirmed ? 'success' : 'warning'}
                               onClick={async () => {
-                                if (isConfirmed) return; // 確認済みは変更不可
-                                const confirmedValue = '↑確認済み';
-                                setBuyer((prev: any) => prev ? { ...prev, viewing_survey_confirmed: confirmedValue } : prev);
+                                // トグル：確認済みならクリア、未確認なら確認済みにする
+                                const prevValue = buyer?.viewing_survey_confirmed ?? null;
+                                const nextValue = isConfirmed ? '' : '↑確認済み';
+                                setBuyer((prev: any) => prev ? { ...prev, viewing_survey_confirmed: nextValue } : prev);
                                 try {
-                                  await handleInlineFieldSave('viewing_survey_confirmed', confirmedValue);
+                                  await handleInlineFieldSave('viewing_survey_confirmed', nextValue);
                                 } catch (e) {
-                                  setBuyer((prev: any) => prev ? { ...prev, viewing_survey_confirmed: null } : prev);
+                                  // 失敗時は元の値に戻す
+                                  setBuyer((prev: any) => prev ? { ...prev, viewing_survey_confirmed: prevValue } : prev);
                                 }
                               }}
-                              disabled={isConfirmed}
                               sx={{ fontWeight: 'bold' }}
                             >
-                              {isConfirmed ? '✓ 確認済み' : '↑確認済み'}
+                              {isConfirmed ? '✓ 確認済み（クリックで解除）' : '↑確認済み'}
                             </Button>
                             {isConfirmed && (
                               <Typography variant="caption" color="success.main">
