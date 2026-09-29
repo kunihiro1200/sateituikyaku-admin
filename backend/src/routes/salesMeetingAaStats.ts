@@ -34,6 +34,21 @@ function getSupabase() {
  *   - 他決率 = 一般他決 / (一般両手 + 一般片手 + 一般他決) はフロント側で再計算する。
  */
 
+// 種別キー（戸建/マンション/土地）。売買仲介ページと同じ3種別で分解する。
+type TypeKey = '戸建' | 'マンション' | '土地';
+const TYPE_KEYS: TypeKey[] = ['戸建', 'マンション', '土地'];
+
+// property_type を集計上の種別(戸建/マンション/土地)に変換。該当しなければ null（集計対象外）。
+// ※ 営業会議「売買仲介」ページ(salesMeetingWorkTaskBrokerageStats.ts)と同一ロジックにそろえる。
+function typeFromPropertyType(pt: string | null): TypeKey | null {
+  const t = (pt || '').trim();
+  if (!t) return null;
+  if (t.includes('マンション') || t.startsWith('マ')) return 'マンション';
+  if (t.includes('土地') || t.startsWith('土')) return '土地';
+  if (t.includes('戸建') || t.startsWith('戸')) return '戸建';
+  return null; // 店舗・事務所・倉庫 等は除外
+}
+
 // contract_type（正規化後）→ 集計キー（フロントの Counts と同じキー体系）
 const CONTRACT_TYPE_TO_KEY: Record<string, string> = {
   '専任両手': 'senRyo',
@@ -189,6 +204,75 @@ router.get('/aa-contract-stats', async (_req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Failed to compute AA(work_tasks) contract stats:', error);
     res.status(500).json({ error: 'AA(大分)成約集計の取得に失敗しました', details: error.message });
+  }
+});
+
+/**
+ * GET /api/sales-meeting/aa-contract-stats-by-type
+ *
+ * 営業会議「契約集計」の定義に完全準拠しつつ、契約形態(専任両手/専任片手/…)を
+ * さらに種別(戸建/マンション/土地)ごとに分解したクロス集計を返す。
+ *
+ * 集計元・条件は aa-contract-stats と同一:
+ *   - work_tasks の contract_type（正規化）で契約形態を判定
+ *   - 「台帳作成済み」(ledger_created)に値がある行のみ
+ *   - 月の基準 = 決済日 → 売買契約締め日 → 登録日
+ *   - さらに種別 = property_type を 戸建/マンション/土地 に正規化（3種以外・未入力は除外）
+ *
+ * 注意:
+ *   - 一般他決(ipTa)/専任解除(senKaijo)/一般媒介解除(ipKaijo) は property_listings 由来で
+ *     種別が紐づかないため、この種別別集計には含めない（契約形態＝work_tasks由来のもののみ）。
+ *
+ * レスポンス: { data: { 'YYYY/M': { '戸建': { senRyo, senKata, ... }, 'マンション': {...}, '土地': {...} } } }
+ */
+router.get('/aa-contract-stats-by-type', async (_req: Request, res: Response) => {
+  try {
+    const supabase = getSupabase();
+
+    const pageSize = 1000;
+    let from = 0;
+    const rows: any[] = [];
+    for (;;) {
+      const { data, error } = await supabase
+        .from('work_tasks')
+        .select('contract_type, property_type, settlement_date, sales_contract_deadline, created_at, ledger_created')
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      rows.push(...data);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+
+    // 'YYYY/M' -> 種別 -> Counts
+    const monthly: Record<string, Record<TypeKey, ReturnType<typeof EMPTY_COUNTS>>> = {};
+
+    for (const row of rows) {
+      // 台帳作成済み（ledger_created に値がある）行のみ集計する。空欄は未作成なのでスキップ。
+      const ledger = (row.ledger_created ?? '').toString().trim();
+      if (!ledger) continue;
+
+      const raw = (row.contract_type || '').trim();
+      if (!raw) continue;
+      const key = CONTRACT_TYPE_TO_KEY[normalizeContractType(raw)];
+      if (!key) continue; // 集計対象外の契約形態（自社売主 等）
+
+      const type = typeFromPropertyType(row.property_type);
+      if (!type) continue; // 基本3種以外・未入力は除外
+
+      const ym = pickYmWorkTask(row);
+      if (!ym) continue;
+
+      if (!monthly[ym]) {
+        monthly[ym] = { 戸建: EMPTY_COUNTS(), マンション: EMPTY_COUNTS(), 土地: EMPTY_COUNTS() };
+      }
+      (monthly[ym][type] as any)[key] += 1;
+    }
+
+    res.json({ data: monthly, typeKeys: TYPE_KEYS });
+  } catch (error: any) {
+    console.error('Failed to compute AA(work_tasks) contract stats by type:', error);
+    res.status(500).json({ error: 'AA(大分)成約集計(種別別)の取得に失敗しました', details: error.message });
   }
 });
 

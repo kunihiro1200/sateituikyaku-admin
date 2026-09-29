@@ -399,12 +399,75 @@ function MonthRow({
 }
 
 
+// ============================================================
+// 契約形態 × 種別（戸建/マンション/土地）クロス集計
+// backend: /api/sales-meeting/aa-contract-stats-by-type
+// レスポンス: { data: { 'YYYY/M': { '戸建': Counts, 'マンション': Counts, '土地': Counts } } }
+// 契約集計と同じ定義（台帳作成済み・月基準）で、契約形態をさらに種別ごとに分解したもの。
+// ※ 一般他決/専任解除/一般媒介解除は種別が紐づかないため含まれない（常に0）。
+// ============================================================
+type TypeKey = '戸建' | 'マンション' | '土地';
+const TYPE_KEYS: TypeKey[] = ['戸建', 'マンション', '土地'];
+type ByTypeStats = Record<string, Partial<Record<TypeKey, FiCounts>>>;
+
+// 種別別クロス集計の表示列（他決・解除は種別紐づけ不可のため除外）。
+const BYTYPE_COLUMNS: { label: string; key: keyof FiCounts }[] = [
+  { label: '専任両手', key: 'senRyo' },
+  { label: '専任片手', key: 'senKata' },
+  { label: '一般両手', key: 'ipRyo' },
+  { label: '一般片手', key: 'ipKata' },
+  { label: '他社物件片手', key: 'otherKata' },
+  { label: '他社物件両手', key: 'otherRyo' },
+  { label: '自社買取（リースバック）', key: 'buyLB' },
+  { label: '自社買取（転売）', key: 'buyResale' },
+  { label: '買取紹介（片手）', key: 'refKata' },
+  { label: '買取紹介（両手）', key: 'refRyo' },
+];
+
+// 指定月・種別のCountsを取り出す（無ければ0）
+function byTypeCountsFor(byType: ByTypeStats | null, ym: string, type: TypeKey): FiCounts {
+  const f = byType?.[ym]?.[type];
+  return {
+    senRyo: f?.senRyo ?? 0, senKata: f?.senKata ?? 0,
+    ipRyo: f?.ipRyo ?? 0, ipKata: f?.ipKata ?? 0, ipTa: f?.ipTa ?? 0,
+    otherKata: f?.otherKata ?? 0, otherRyo: f?.otherRyo ?? 0,
+    buyLB: f?.buyLB ?? 0, buyResale: f?.buyResale ?? 0,
+    refKata: f?.refKata ?? 0, refRyo: f?.refRyo ?? 0,
+    senKaijo: f?.senKaijo ?? 0, ipKaijo: f?.ipKaijo ?? 0,
+  };
+}
+
+// 期範囲(from〜to)を種別ごとに合算して返す
+function byTypePeriodTotal(
+  byType: ByTypeStats | null, from: string, to: string,
+): Record<TypeKey, FiCounts> {
+  const acc: Record<TypeKey, FiCounts> = {
+    戸建: byTypeCountsFor(null, '', '戸建'),
+    マンション: byTypeCountsFor(null, '', 'マンション'),
+    土地: byTypeCountsFor(null, '', '土地'),
+  };
+  for (const ym of monthsInRange(from, to)) {
+    for (const t of TYPE_KEYS) {
+      const c = byTypeCountsFor(byType, ym, t);
+      const a = acc[t];
+      a.senRyo += c.senRyo; a.senKata += c.senKata;
+      a.ipRyo += c.ipRyo; a.ipKata += c.ipKata;
+      a.otherKata += c.otherKata; a.otherRyo += c.otherRyo;
+      a.buyLB += c.buyLB; a.buyResale += c.buyResale;
+      a.refKata += c.refKata; a.refRyo += c.refRyo;
+    }
+  }
+  return acc;
+}
+
 export default function SalesMeetingContractStatsPage() {
   const navigate = useNavigate();
   const [fiStats, setFiStats] = useState<FiStats | null>(null);
   // AA（大分）= 業務依頼(work_tasks)の契約形態から自動集計。
   // aaStats に月キー('YYYY/M')があればその月はAPI値を採用し、無ければ従来のMONTHLYを使う。
   const [aaStats, setAaStats] = useState<FiStats | null>(null);
+  // 契約形態 × 種別（戸建/マンション/土地）クロス集計
+  const [byTypeStats, setByTypeStats] = useState<ByTypeStats | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -426,6 +489,18 @@ export default function SalesMeetingContractStatsPage() {
       })
       .catch(() => {
         if (!cancelled) setAaStats({}); // 失敗時はMONTHLY（ハードコード）にフォールバック
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/api/sales-meeting/aa-contract-stats-by-type')
+      .then((res) => {
+        if (!cancelled) setByTypeStats(res.data?.data ?? {});
+      })
+      .catch(() => {
+        if (!cancelled) setByTypeStats({}); // 失敗時は種別別=0扱い
       });
     return () => { cancelled = true; };
   }, []);
@@ -569,6 +644,73 @@ export default function SalesMeetingContractStatsPage() {
                   </TableRow>
                 );
               });
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      {/* 契約形態 × 種別（戸建/マンション/土地）クロス集計 */}
+      <Typography variant="h6" fontWeight="bold" sx={{ mb: 1, color: '#6a1b9a' }}>
+        種別内訳（契約形態 × 戸建／マンション／土地）
+      </Typography>
+      <Paper sx={{ p: 2, mb: 2, bgcolor: '#f3e5f5' }}>
+        <Typography variant="body2" sx={{ color: '#6a1b9a' }}>
+          上の「期別集計」と<b>同じ定義</b>（業務依頼の契約形態・台帳作成済み・決済日ベース）で、
+          各契約形態を<b>種別（戸建／マンション／土地）ごと</b>に分解した内訳です。
+          種別が紐づく契約形態のみ集計するため、一般他決・専任解除・一般媒介解除（物件シート由来）は含みません。
+          戸建／マンション／土地以外の種別（店舗・事務所等）は種別が判定できないため除外しています。
+        </Typography>
+      </Paper>
+      <TableContainer component={Paper} sx={{ mb: 4 }}>
+        <Table size="small" sx={{ '& td, & th': { whiteSpace: 'nowrap' } }}>
+          <TableHead>
+            <TableRow sx={{ bgcolor: '#ede7f6' }}>
+              <TableCell sx={{ fontWeight: 'bold' }}>期</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>種別</TableCell>
+              {BYTYPE_COLUMNS.map((col) => (
+                <TableCell key={col.label} align="right" sx={{ fontWeight: 'bold' }}>{col.label}</TableCell>
+              ))}
+              <TableCell align="right" sx={{ fontWeight: 'bold', color: '#6a1b9a' }}>計</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {/* 2024期は台帳データが揃わず自動集計だとゼロ同然になるため、
+                自動集計が信頼できる2025期以降のみ種別内訳を表示する。 */}
+            {periods.filter((p) => Number(p.key) >= 2025).map((p) => {
+              const totals = byTypePeriodTotal(byTypeStats, `${p.key}/10`, `${Number(p.key) + 1}/9`);
+              // 期の全種別・全契約形態の総計（各種別の計の合計）
+              const rows = TYPE_KEYS.map((t) => {
+                const c = totals[t];
+                const rowTotal = BYTYPE_COLUMNS.reduce((s, col) => s + (c[col.key] as number), 0);
+                return { type: t, counts: c, rowTotal };
+              });
+              const periodTotal = rows.reduce((s, r) => s + r.rowTotal, 0);
+              return [
+                ...rows.map((r, idx) => (
+                  <TableRow
+                    key={`${p.key}-${r.type}`}
+                    hover
+                    sx={idx === 0 ? { '& td': { borderTop: '2px solid #9575cd' } } : undefined}
+                  >
+                    <TableCell sx={{ fontWeight: 'bold' }}>{idx === 0 ? p.label : ''}</TableCell>
+                    <TableCell>{r.type}</TableCell>
+                    {BYTYPE_COLUMNS.map((col) => (
+                      <TableCell key={col.label} align="right">{r.counts[col.key] as number}</TableCell>
+                    ))}
+                    <TableCell align="right" sx={{ fontWeight: 'bold', color: '#6a1b9a' }}>{r.rowTotal}</TableCell>
+                  </TableRow>
+                )),
+                <TableRow key={`${p.key}-sum`} sx={{ bgcolor: '#fff8e1' }}>
+                  <TableCell />
+                  <TableCell sx={{ fontWeight: 'bold' }}>期計</TableCell>
+                  {BYTYPE_COLUMNS.map((col) => (
+                    <TableCell key={col.label} align="right" sx={{ fontWeight: 'bold' }}>
+                      {rows.reduce((s, r) => s + (r.counts[col.key] as number), 0)}
+                    </TableCell>
+                  ))}
+                  <TableCell align="right" sx={{ fontWeight: 'bold', color: '#6a1b9a' }}>{periodTotal}</TableCell>
+                </TableRow>,
+              ];
             })}
           </TableBody>
         </Table>
