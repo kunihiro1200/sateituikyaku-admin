@@ -60,6 +60,8 @@ import salesMeetingAgendaRoutes from './routes/salesMeetingAgenda';
 import salesMeetingFiStatsRoutes from './routes/salesMeetingFiStats';
 import salesMeetingAaStatsRoutes from './routes/salesMeetingAaStats';
 import salesMeetingLossAnalysisRoutes from './routes/salesMeetingLossAnalysis';
+import salesMeetingLossFiAaStatsRoutes from './routes/salesMeetingLossFiAaStats';
+import salesMeetingLossStaffStatsRoutes from './routes/salesMeetingLossStaffStats';
 import salesMeetingBrokerageStatsRoutes from './routes/salesMeetingBrokerageStats';
 import salesMeetingWorkTaskBrokerageStatsRoutes from './routes/salesMeetingWorkTaskBrokerageStats';
 import propertyListingRoutes from './routes/propertyListings';
@@ -1120,6 +1122,8 @@ app.use('/api/sales-meeting-agenda', salesMeetingAgendaRoutes); // 営業会議 
 app.use('/api/sales-meeting', salesMeetingFiStatsRoutes); // 営業会議 FI成約集計API（認証不要）
 app.use('/api/sales-meeting', salesMeetingAaStatsRoutes); // 営業会議 AA成約集計API（業務依頼の契約形態ベース・認証不要）
 app.use('/api/sales-meeting', salesMeetingLossAnalysisRoutes); // 営業会議 他決分析集計API（認証不要）
+app.use('/api/sales-meeting', salesMeetingLossFiAaStatsRoutes); // 営業会議 他決数推移 FI/AA別集計API（認証不要）
+app.use('/api/sales-meeting', salesMeetingLossStaffStatsRoutes); // 営業会議 他決数推移 担当別集計API（認証不要）
 app.use('/api/sales-meeting', salesMeetingBrokerageStatsRoutes); // 営業会議 売買仲介集計API（property_listingsベース・認証不要）
 app.use('/api/sales-meeting', salesMeetingWorkTaskBrokerageStatsRoutes); // 営業会議 売買仲介集計API（work_tasksベース・認証不要）
 app.use('/api/public/inquiries', publicInquiriesRoutes);
