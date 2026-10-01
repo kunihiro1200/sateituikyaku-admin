@@ -14,12 +14,20 @@ export type StaffMetricKey =
   | 'visitAssessment' // 訪問査定数（営担 × 訪問日）
   | 'exclusive' //      専任媒介数（営担 × 専任ステータス × 契約年月）
   | 'loss' //           他決数（営担 × 他決ステータス × 契約年月）
-  | 'lossFi' //         他決数のうち FI（福岡）売主限定・担当別
   | 'general' //        一般媒介数（営担 × 一般媒介 × 契約年月）
   | 'firstCall' //      一番電話（first_call_person × 反響日付）
   | 'visitGet' //       訪問査定取得数（訪問査定取得者 × 訪問取得日）
   | 'assessment' //     査定額算出（査定担当 × 反響日付）
-  | 'followupCall'; //  追客電話（売主追客ログ）
+  | 'followupCall' //   追客電話（売主追客ログ）
+  // FI（福岡）売主限定の担当別版
+  | 'visitAssessmentFi'
+  | 'exclusiveFi'
+  | 'lossFi'
+  | 'generalFi'
+  | 'firstCallFi'
+  | 'visitGetFi'
+  | 'assessmentFi'
+  | 'followupCallFi';
 
 /** initial -> 会計月スロット配列(0=10月…11=9月) */
 export type MetricByInitial = Record<string, number[]>;

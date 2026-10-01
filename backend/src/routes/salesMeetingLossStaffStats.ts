@@ -56,23 +56,38 @@ type MetricKey =
   | 'visitAssessment'
   | 'exclusive'
   | 'loss'
-  | 'lossFi' //        他決数のうち FI（福岡）売主限定・担当別
   | 'general'
   | 'firstCall'
   | 'visitGet'
   | 'assessment'
-  | 'followupCall';
+  | 'followupCall'
+  // FI（福岡）売主限定の担当別版（売主番号が FI で始まるもの）
+  | 'visitAssessmentFi'
+  | 'exclusiveFi'
+  | 'lossFi'
+  | 'generalFi'
+  | 'firstCallFi'
+  | 'visitGetFi'
+  | 'assessmentFi'
+  | 'followupCallFi';
 
 const METRICS: MetricKey[] = [
   'visitAssessment',
   'exclusive',
   'loss',
-  'lossFi',
   'general',
   'firstCall',
   'visitGet',
   'assessment',
   'followupCall',
+  'visitAssessmentFi',
+  'exclusiveFi',
+  'lossFi',
+  'generalFi',
+  'firstCallFi',
+  'visitGetFi',
+  'assessmentFi',
+  'followupCallFi',
 ];
 
 /** FI（福岡）売主かどうか。seller_number が 'FI' で始まる。 */
@@ -231,6 +246,7 @@ async function aggregateFollowupCalls(
       const sellerKey = row[sIdx] ? String(row[sIdx]).trim() : '';
       const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
+      const fi = isFi(sellerKey);
       for (const idx of [fIdx, secIdx]) {
         const raw = row[idx];
         if (!raw || String(raw).trim() === '') continue;
@@ -240,6 +256,7 @@ async function aggregateFollowupCalls(
         if (seen.has(dedupe)) continue;
         seen.add(dedupe);
         addOne(stats, 'followupCall', initial, fs.period, fs.slot);
+        if (fi) addOne(stats, 'followupCallFi', initial, fs.period, fs.slot);
       }
     }
     return true;
@@ -284,16 +301,17 @@ router.get('/loss-staff-stats', async (_req: Request, res: Response) => {
       else if (GENERAL_STATUSES.includes(status)) metric = 'general';
       if (!metric) continue;
       addOne(stats, metric, initial, fs.period, fs.slot);
-      // 他決は FI（福岡）売主限定の担当別も別途集計する
-      if (metric === 'loss' && isFi(row.seller_number)) {
-        addOne(stats, 'lossFi', initial, fs.period, fs.slot);
+      // FI（福岡）売主限定の担当別も別途集計する
+      if (isFi(row.seller_number)) {
+        const fiMetric = (metric + 'Fi') as MetricKey;
+        addOne(stats, fiMetric, initial, fs.period, fs.slot);
       }
     }
 
     // ---- 訪問査定数（営担 × visit_date） ----
     const visitRows = await fetchAll(
       supabase,
-      'visit_assignee, visit_date',
+      'visit_assignee, visit_date, seller_number',
       (q) =>
         q
           .not('visit_assignee', 'is', null)
@@ -309,12 +327,13 @@ router.get('/loss-staff-stats', async (_req: Request, res: Response) => {
       const initial = normalize(row.visit_assignee || '');
       if (!initialSet.has(initial)) continue;
       addOne(stats, 'visitAssessment', initial, fs.period, fs.slot);
+      if (isFi(row.seller_number)) addOne(stats, 'visitAssessmentFi', initial, fs.period, fs.slot);
     }
 
     // ---- 訪問査定取得数（訪問査定取得者 × visit_acquisition_date） ----
     const visitGetRows = await fetchAll(
       supabase,
-      'visit_valuation_acquirer, visit_acquisition_date',
+      'visit_valuation_acquirer, visit_acquisition_date, seller_number',
       (q) =>
         q
           .not('visit_valuation_acquirer', 'is', null)
@@ -330,12 +349,13 @@ router.get('/loss-staff-stats', async (_req: Request, res: Response) => {
       const initial = normalize(row.visit_valuation_acquirer || '');
       if (!initialSet.has(initial)) continue;
       addOne(stats, 'visitGet', initial, fs.period, fs.slot);
+      if (isFi(row.seller_number)) addOne(stats, 'visitGetFi', initial, fs.period, fs.slot);
     }
 
     // ---- 一番電話（first_call_person × inquiry_date） ----
     const firstCallRows = await fetchAll(
       supabase,
-      'first_call_person, inquiry_date',
+      'first_call_person, inquiry_date, seller_number',
       (q) =>
         q
           .not('first_call_person', 'is', null)
@@ -351,12 +371,13 @@ router.get('/loss-staff-stats', async (_req: Request, res: Response) => {
       const initial = normalize(row.first_call_person || '');
       if (!initialSet.has(initial)) continue;
       addOne(stats, 'firstCall', initial, fs.period, fs.slot);
+      if (isFi(row.seller_number)) addOne(stats, 'firstCallFi', initial, fs.period, fs.slot);
     }
 
     // ---- 査定額算出（valuation_assignee × inquiry_date〔反響日付〕） ----
     const assessmentRows = await fetchAll(
       supabase,
-      'valuation_assignee, inquiry_date',
+      'valuation_assignee, inquiry_date, seller_number',
       (q) =>
         q
           .not('valuation_assignee', 'is', null)
@@ -372,6 +393,7 @@ router.get('/loss-staff-stats', async (_req: Request, res: Response) => {
       const initial = normalize(row.valuation_assignee || '');
       if (!initialSet.has(initial)) continue;
       addOne(stats, 'assessment', initial, fs.period, fs.slot);
+      if (isFi(row.seller_number)) addOne(stats, 'assessmentFi', initial, fs.period, fs.slot);
     }
 
     // ---- 追客電話（Google Sheets、全期間一括） ----

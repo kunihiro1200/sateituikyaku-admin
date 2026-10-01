@@ -79,16 +79,23 @@ const LABEL_WIDTH = 220;
  * ここに載っているグループは API 値で動的に行を生成し、載っていないグループ（種別・確度など）は
  * 従来どおりデータファイルの静的値で描画する。
  */
-type StaffGroupDef = { metric: StaffMetricKey; title: string; loss?: boolean; note?: string };
+type StaffGroupDef = {
+  metric: StaffMetricKey;
+  /** FI（福岡）売主限定の担当別 metric。全体行の後に「○○（福岡）」行として差し込む。 */
+  fiMetric?: StaffMetricKey;
+  title: string;
+  loss?: boolean;
+  note?: string;
+};
 const STAFF_GROUPS: Record<string, StaffGroupDef> = {
-  'staff-visit': { metric: 'visitAssessment', title: '訪問査定数（担当別）' },
-  'staff-sen': { metric: 'exclusive', title: '専任媒介数（担当別）' },
-  'staff-loss': { metric: 'loss', title: '他決数（担当別）', loss: true },
-  'first-call': { metric: 'firstCall', title: '一番電話（担当別）' },
-  'followup-call': { metric: 'followupCall', title: '追客電話（担当別）' },
-  'visit-get-staff': { metric: 'visitGet', title: '訪問査定取得数（担当別）' },
-  assessment: { metric: 'assessment', title: '査定額算出（担当別）' },
-  ippan: { metric: 'general', title: '一般媒介（担当別）' },
+  'staff-visit': { metric: 'visitAssessment', fiMetric: 'visitAssessmentFi', title: '訪問査定数（担当別）' },
+  'staff-sen': { metric: 'exclusive', fiMetric: 'exclusiveFi', title: '専任媒介数（担当別）' },
+  'staff-loss': { metric: 'loss', fiMetric: 'lossFi', title: '他決数（担当別）', loss: true },
+  'first-call': { metric: 'firstCall', fiMetric: 'firstCallFi', title: '一番電話（担当別）' },
+  'followup-call': { metric: 'followupCall', fiMetric: 'followupCallFi', title: '追客電話（担当別）' },
+  'visit-get-staff': { metric: 'visitGet', fiMetric: 'visitGetFi', title: '訪問査定取得数（担当別）' },
+  assessment: { metric: 'assessment', fiMetric: 'assessmentFi', title: '査定額算出（担当別）' },
+  ippan: { metric: 'general', fiMetric: 'generalFi', title: '一般媒介（担当別）' },
 };
 
 const STAFF_GROUP_NOTE =
@@ -467,16 +474,25 @@ export default function SalesMeetingLossTrendPage() {
       );
     }
 
-    // 他決数（担当別）には FI（福岡）限定の担当別他決を追記する（担当計には含めない）
-    if (def.metric === 'loss') {
-      const fiBucket = staff[period]?.lossFi ?? {};
+    // FI（福岡）売主限定の担当別を追記する（担当計には含めない）
+    if (def.fiMetric) {
+      const fiBucket = staff[period]?.[def.fiMetric] ?? {};
       const fiInitials = sortInitials(
         Object.keys(fiBucket).filter((ini) => (fiBucket[ini] ?? []).some((v) => v > 0)),
       );
+      const fiTotalMonthly = Array(12).fill(0);
       for (const ini of fiInitials) {
+        const monthly = fiBucket[ini] ?? Array(12).fill(0);
+        for (let i = 0; i < 12; i++) fiTotalMonthly[i] += monthly[i];
         rows.push(
-          renderStaffRow(`lossFi_${ini}`, `${ini}（福岡）`, fiBucket[ini] ?? Array(12).fill(0), {
-            loss: true,
+          renderStaffRow(`${def.fiMetric}_${ini}`, `${ini}（福岡）`, monthly, { loss: def.loss }),
+        );
+      }
+      if (fiInitials.length > 0) {
+        rows.push(
+          renderStaffRow(`${def.fiMetric}_計`, '福岡計', fiTotalMonthly, {
+            loss: def.loss,
+            bold: true,
           }),
         );
       }
@@ -692,8 +708,8 @@ export default function SalesMeetingLossTrendPage() {
                       (staffDef.metric === 'followupCall'
                         ? '（追客電話は「売主追客ログ」から集計）'
                         : '') +
-                      (staffDef.metric === 'loss'
-                        ? '「○○（福岡）」はFI売主限定の担当別他決（担当計には含めません）。'
+                      (staffDef.fiMetric
+                        ? '「○○（福岡）」はFI売主（売主番号がFIで始まる物件）限定の担当別。担当計には含めません。'
                         : '')
                     : rateDef!.note ?? '';
                   const rowCountLabel = followupMissing
