@@ -234,7 +234,7 @@ export default function SharedItemDetailPage() {
 
         // 契約率チーム・物件数チームの場合はチームアンサーも取得
         if (TEAM_MODES.includes(foundItem['共有場'])) {
-          fetchTeamAnswers(foundItem.id);
+          fetchTeamAnswers(foundItem.id, foundItem['タイトル'] || '');
         }
       }
     } catch (error) {
@@ -244,13 +244,14 @@ export default function SharedItemDetailPage() {
     }
   };
 
-  const fetchTeamAnswers = async (itemId: string) => {
+  const fetchTeamAnswers = async (itemId: string, titleFallback: string = '') => {
     try {
       const response = await api.get(`/api/shared-items/${itemId}/team-answers`);
       const data = response.data.data;
       if (data) {
         const answers: TeamAnswers = {
-          question: data.question || '',
+          // question が空のときはスプレッドシートの「タイトル」を初期値として使う
+          question: data.question || titleFallback,
           answer_kuniHiro: data.answer_kunihiro || data.answer_kuniHiro || '',
           answer_yamamoto: data.answer_yamamoto || '',
           answer_ura: data.answer_ura || '',
@@ -264,6 +265,14 @@ export default function SharedItemDetailPage() {
           is_kadoi_visible: data.is_kadoi_visible ?? false,
           is_hayashida_visible: data.is_hayashida_visible ?? false,
           is_aso_visible: data.is_aso_visible ?? false,
+        };
+        setTeamAnswers(answers);
+        setInitialTeamAnswers(answers);
+      } else if (titleFallback) {
+        // team-answers レコード自体が存在しない場合もタイトルを問いの初期値として表示
+        const answers: TeamAnswers = {
+          ...EMPTY_TEAM_ANSWERS,
+          question: titleFallback,
         };
         setTeamAnswers(answers);
         setInitialTeamAnswers(answers);
