@@ -832,7 +832,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         : p.taxMode === 'known_empty' ? 96
         : p.taxMode === 'unknown_mortgage_empty' ? 111
         : p.taxMode === 'known_with_empty' ? 104
-        : p.taxMode === 'known_mortgage_with_empty' ? 94
+        : p.taxMode === 'known_mortgage_with_empty' ? 112
         : 86,
       p.taxMode === 'known_empty' ? 167
         : p.taxMode === 'unknown_mortgage_empty' ? 168
@@ -884,7 +884,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
       // known_with_empty: template4_empty
       //   仲介手数料(48)→印紙代(84)→空項目(105)→取得費(130)→譲渡所得税(142)→手残り(166)
       // known_mortgage_with_empty: template4_teitou を流用
-      //   仲介手数料(48)→抵当権抹消(104)→印紙代(80)→空項目(120)→取得費(143)→譲渡所得税(163)→手残り(185)（暫定・デバッグモードで要確認）
+      //   仲介手数料(45)→抵当権抹消(77)→印紙代(101)→空項目(120)→取得費(130)→譲渡所得税(153)→手残り(175)
       const brokerageLeft = (p.taxMode === 'none' || p.taxMode === 'none_mortgage') ? 50
         : p.taxMode === 'none_mortgage_empty' ? 48
         : (p.taxMode === 'none_empty') ? 43
@@ -892,12 +892,13 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         : (p.taxMode === 'known_empty') ? 38
         : p.taxMode === 'unknown_mortgage' ? 38
         : p.taxMode === 'unknown_mortgage_empty' ? 38
-        : (p.taxMode === 'known_with_empty' || p.taxMode === 'known_mortgage_with_empty') ? 48
+        : p.taxMode === 'known_with_empty' ? 48
+        : p.taxMode === 'known_mortgage_with_empty' ? 45
         : 40;
       const mortgageLeft = p.taxMode === 'none_mortgage' ? 100
         : p.taxMode === 'none_mortgage_empty' ? 115
         : p.taxMode === 'known_mortgage' ? 89
-        : p.taxMode === 'known_mortgage_with_empty' ? 104
+        : p.taxMode === 'known_mortgage_with_empty' ? 77
         : 77;
       // known_with_empty: 空項目=105mm / known_mortgage_with_empty: 空項目=120mm
       const emptyItemLeft = p.taxMode === 'none_mortgage_empty' ? 89
@@ -916,7 +917,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         : p.taxMode === 'unknown_mortgage_empty' ? 97
         : p.taxMode === 'unknown_mortgage' ? 97
         : p.taxMode === 'known_with_empty' ? 84
-        : p.taxMode === 'known_mortgage_with_empty' ? 80
+        : p.taxMode === 'known_mortgage_with_empty' ? 101
         : 74;
       const acqCostLeft = p.taxMode === 'unknown_mortgage' ? 115
         : (p.taxMode === 'known_with_empty' || p.taxMode === 'known_mortgage_with_empty') ? 130
@@ -926,14 +927,14 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         : p.taxMode === 'unknown_mortgage_empty' ? 138
         : p.taxMode === 'known_empty' ? 150
         : p.taxMode === 'known_with_empty' ? 138
-        : p.taxMode === 'known_mortgage_with_empty' ? 163
+        : p.taxMode === 'known_mortgage_with_empty' ? 153
         : 131;
       const transferTaxFontSize = (p.taxMode === 'unknown_mortgage' || p.taxMode === 'unknown_mortgage_empty') ? 11 : 12;
       const netProceedsLeft = (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? 163
         : p.taxMode === 'unknown_mortgage' ? 164
         : p.taxMode === 'none_mortgage_empty' ? 162
         : p.taxMode === 'known_with_empty' ? 166
-        : p.taxMode === 'known_mortgage_with_empty' ? 185
+        : p.taxMode === 'known_mortgage_with_empty' ? 175
         : (p.taxMode === 'none_empty') ? 161
         : 161;
       const hasMortgageCol = p.taxMode === 'unknown_mortgage' || p.taxMode === 'none_mortgage' || p.taxMode === 'known_mortgage' || p.taxMode === 'none_mortgage_empty' || p.taxMode === 'unknown_mortgage_empty' || p.taxMode === 'known_mortgage_with_empty';
