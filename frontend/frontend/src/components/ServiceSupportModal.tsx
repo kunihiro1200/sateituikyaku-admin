@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, Typography, Box, Divider, IconButton,
-  Checkbox,
+  Checkbox, CircularProgress,
 } from '@mui/material';
 import { Close as CloseIcon, Print as PrintIcon } from '@mui/icons-material';
 
@@ -26,6 +26,26 @@ const SERVICE_ITEMS: ServiceItem[] = [
 ];
 
 // ─────────────────────────────────────────
+// 画像をbase64 data URLに変換
+// 新しいウィンドウでもネットワーク参照なしで確実に表示できる
+// ─────────────────────────────────────────
+async function fetchAsBase64(url: string): Promise<string> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return '';
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload  = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return '';
+  }
+}
+
+// ─────────────────────────────────────────
 // Props
 // ─────────────────────────────────────────
 interface ServiceSupportModalProps {
@@ -37,7 +57,7 @@ interface ServiceSupportModalProps {
 }
 
 // ─────────────────────────────────────────
-// 印刷用HTML生成
+// 印刷用HTML生成（imageMap はbase64 data URL）
 // ─────────────────────────────────────────
 function generatePrintHtml(
   title: string,
@@ -45,29 +65,28 @@ function generatePrintHtml(
   propertyAddress: string,
   selectedItems: ServiceItem[],
   isFI: boolean,
-  baseUrl: string,
+  imageMap: Record<string, string>,
 ): string {
   const accentColor = isFI ? '#1B3A6B' : '#00695C';
   const lightBg     = isFI ? '#EBF0F9' : '#E8F5E9';
 
-  // 全体の縦スペース計算
-  // A4 = 297mm, 余白上下10mm, ヘッダー20mm, 物件情報12mm, フッター5mm
-  // カードエリア = 297 - 20 - 20 - 12 - 5 = 240mm
-  // n枚 × (画像 + ラベル) + (n-1) × gap で収める
+  // A4縦スペースに収まるよう画像高さを計算
+  // 使えるカードエリア: 297mm - 上下余白(20mm) - ヘッダー(20mm) - 物件情報(12mm) - フッター(5mm) = 240mm
+  // n枚 × (画像高さ + ラベル7mm) + (n-1) × gap(2mm)
   const n = selectedItems.length;
-  // 1枚あたり高さ(mm) 画像+ラベル: gap=2mm込みで算出
-  const totalArea  = 235;
+  const totalArea  = 240;
   const gapTotal   = Math.max(0, n - 1) * 2;
   const cardHeight = Math.floor((totalArea - gapTotal) / Math.max(n, 1));
-  const imgHeight  = Math.max(cardHeight - 7, 10); // ラベル7mm分引く
+  const imgHeight  = Math.max(cardHeight - 7, 8);
 
   const cardsHtml = selectedItems.map((item) => {
-    const imgSrc = `${baseUrl}/sale-schedule/illustrations/${item.id}.png`;
+    const src = imageMap[item.id] || '';
     return `
       <div class="service-card">
-        <div class="img-wrap">
-          <img src="${imgSrc}" alt="${item.label}" />
-        </div>
+        ${src
+          ? `<div class="img-wrap"><img src="${src}" alt="${item.label}" /></div>`
+          : `<div class="img-placeholder">${item.label}</div>`
+        }
         <div class="card-label">${item.label}</div>
       </div>
     `;
@@ -77,7 +96,6 @@ function generatePrintHtml(
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <base href="${baseUrl}/">
   <title>${title}</title>
   <style>
     @page { size: A4 portrait; margin: 0; }
@@ -162,7 +180,6 @@ function generatePrintHtml(
       overflow: hidden;
       background: #fff;
     }
-    /* 画像コンテナ: 高さ固定 + 上部を表示 */
     .img-wrap {
       width: 100%;
       height: ${imgHeight}mm;
@@ -173,6 +190,16 @@ function generatePrintHtml(
       width: 100%;
       height: auto;
       display: block;
+    }
+    .img-placeholder {
+      width: 100%;
+      height: ${imgHeight}mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f5f7fa;
+      font-size: 9pt;
+      color: #999;
     }
     .card-label {
       font-size: 8pt;
@@ -215,34 +242,7 @@ function generatePrintHtml(
 
     <div class="footer">※ 内容・条件の詳細については担当スタッフまでお問い合わせください。</div>
   </div>
-
-  <script>
-    // 画像がすべてロードされてから印刷ダイアログを開く
-    (function() {
-      function printWhenReady() {
-        var imgs = document.querySelectorAll('img');
-        var total = imgs.length;
-        if (total === 0) { window.print(); return; }
-        var done = 0;
-        function onDone() {
-          done++;
-          if (done >= total) { setTimeout(function() { window.print(); }, 150); }
-        }
-        imgs.forEach(function(img) {
-          if (img.complete && img.naturalWidth > 0) { onDone(); }
-          else {
-            img.addEventListener('load',  onDone);
-            img.addEventListener('error', onDone);
-          }
-        });
-      }
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', printWhenReady);
-      } else {
-        printWhenReady();
-      }
-    })();
-  </script>
+  <script>window.print();</script>
 </body>
 </html>`;
 }
@@ -262,10 +262,10 @@ export default function ServiceSupportModal({
   const accentColor = isFI ? '#1B3A6B' : '#00695C';
   const lightBg     = isFI ? '#EBF0F9' : '#E8F5E9';
 
-  // チェック状態（デフォルト全選択）
   const [checked, setChecked] = useState<Record<string, boolean>>(
     Object.fromEntries(SERVICE_ITEMS.map((item) => [item.id, true])),
   );
+  const [printing, setPrinting] = useState(false);
 
   const toggleItem = (id: string) => setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
 
@@ -277,15 +277,28 @@ export default function ServiceSupportModal({
   const selectedItems = SERVICE_ITEMS.filter((item) => checked[item.id]);
   const allChecked    = SERVICE_ITEMS.every((item) => checked[item.id]);
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (selectedItems.length === 0) return;
-    const baseUrl = window.location.origin;
-    const html = generatePrintHtml(title, ownerName, propertyAddress, selectedItems, isFI, baseUrl);
-    const win = window.open('', '_blank');
-    if (win) {
-      win.document.write(html);
-      win.document.close();
-      win.focus();
+    setPrinting(true);
+    try {
+      // 選択された画像をbase64で並列取得（同一オリジンなので確実に取得できる）
+      const entries = await Promise.all(
+        selectedItems.map(async (item) => {
+          const dataUrl = await fetchAsBase64(`/sale-schedule/illustrations/${item.id}.png`);
+          return [item.id, dataUrl] as [string, string];
+        }),
+      );
+      const imageMap: Record<string, string> = Object.fromEntries(entries);
+
+      const html = generatePrintHtml(title, ownerName, propertyAddress, selectedItems, isFI, imageMap);
+      const win = window.open('', '_blank');
+      if (win) {
+        win.document.write(html);
+        win.document.close();
+        win.focus();
+      }
+    } finally {
+      setPrinting(false);
     }
   };
 
@@ -326,7 +339,7 @@ export default function ServiceSupportModal({
           <Typography variant="body2" sx={{ fontWeight: 600 }}>すべて選択</Typography>
         </Box>
 
-        {/* 横1列リスト（サムネイル + ラベル） */}
+        {/* 横1列リスト */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
           {SERVICE_ITEMS.map((item) => (
             <Box
@@ -345,18 +358,15 @@ export default function ServiceSupportModal({
                 p: 0.5,
               }}
             >
-              {/* サムネイル */}
               <Box
                 component="img"
                 src={`${imgBase}/${item.id}.png`}
                 alt={item.label}
                 sx={{ width: 72, height: 48, objectFit: 'cover', objectPosition: 'top', borderRadius: 1, flexShrink: 0 }}
               />
-              {/* ラベル */}
               <Typography variant="body2" sx={{ flex: 1, fontWeight: checked[item.id] ? 700 : 400, color: checked[item.id] ? accentColor : 'text.secondary' }}>
                 {item.label}
               </Typography>
-              {/* チェックボックス */}
               <Checkbox
                 size="small"
                 checked={checked[item.id]}
@@ -376,12 +386,12 @@ export default function ServiceSupportModal({
         <Button
           variant="contained"
           size="small"
-          startIcon={<PrintIcon />}
+          startIcon={printing ? <CircularProgress size={14} color="inherit" /> : <PrintIcon />}
           onClick={handlePrint}
-          disabled={selectedItems.length === 0}
+          disabled={selectedItems.length === 0 || printing}
           sx={{ bgcolor: accentColor, '&:hover': { bgcolor: isFI ? '#142d55' : '#00564f' } }}
         >
-          印刷プレビュー（{selectedItems.length}件）
+          {printing ? '画像読み込み中...' : `印刷プレビュー（${selectedItems.length}件）`}
         </Button>
       </DialogActions>
     </Dialog>
