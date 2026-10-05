@@ -9135,6 +9135,13 @@ HP：https://ifoo-oita.com/
                       // 🚨 最重要：編集モードを即座に終了（同期的に実行）
                       setEditingValuation(false);
                       
+                      // デバウンスタイマーをキャンセル（完了ボタン側が計算を引き受けるため、
+                      // 1秒後に発火する自動計算タイマーが残っていると2重計算になる）
+                      if (calculationTimerRef.current) {
+                        clearTimeout(calculationTimerRef.current);
+                        calculationTimerRef.current = null;
+                      }
+                      
                       // 🚨 重要：バックグラウンドで査定額の計算を実行（非同期）
                       // この処理は編集モードの終了とは独立して実行される
                       (async () => {
@@ -9306,6 +9313,13 @@ HP：https://ifoo-oita.com/
                 {!property && !propInfo.hasData && !editedValuationAmount1 && (
                   <Alert severity="info">
                     物件情報が登録されていないため、査定を実行できません
+                  </Alert>
+                )}
+
+                {/* 査定計算エラーメッセージ */}
+                {aiValuationError && (
+                  <Alert severity="error" sx={{ mb: 2 }} onClose={() => setAiValuationError(null)}>
+                    {aiValuationError}
                   </Alert>
                 )}
 
@@ -10766,8 +10780,10 @@ HP：https://ifoo-oita.com/
                     startIcon={<span style={{ fontSize: '1.1em' }}>🧮</span>}
                     onClick={() => {
                       const base = seller?.id ? `/sellers/${seller.id}/temodori-calc` : '/sellers/0/temodori-calc';
-                      const url = seller?.sellerNumber
-                        ? `${base}?sellerNumber=${encodeURIComponent(seller.sellerNumber)}`
+                      // seller.sellerNumber が null の場合、URLの id（売主番号で直接遷移した場合 例: FI1357）をフォールバックとして使用
+                      const effectiveSellerNum = seller?.sellerNumber || (/^[A-Z]{2}\d+$/i.test(String(id || '')) ? id : null);
+                      const url = effectiveSellerNum
+                        ? `${base}?sellerNumber=${encodeURIComponent(effectiveSellerNum)}`
                         : base;
                       const newWin = window.open(url, '_blank');
                       if (newWin) newWin.blur();

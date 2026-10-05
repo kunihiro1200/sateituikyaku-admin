@@ -77,7 +77,11 @@ const TemodoriCalcPage = () => {
   // 売主番号がFI（またはF）で始まるかどうかを判定
   // URLパラメータのsellerIdはDB上の数値IDなのでFで始まらない場合がある
   // クエリパラメータ sellerNumber（例: FI731）を優先して判定する
-  const sellerNumber = searchParams.get('sellerNumber') ?? sellerId ?? '';
+  // sellerId 自体が売主番号形式（例: FI1357）の場合もフォールバックとして考慮する
+  const querySellerNumber = searchParams.get('sellerNumber') ?? '';
+  // UUIDはhex文字（0-9, a-f）のみで構成されるため "FI..." にはならない → 売主番号と安全に区別できる
+  const pathSellerNumber = (sellerId && /^[A-Z]{2}\d+$/i.test(sellerId)) ? sellerId : '';
+  const sellerNumber = querySellerNumber || pathSellerNumber || sellerId || '';
   const isFSeller = sellerNumber.toUpperCase().startsWith('F');
 
   // seller情報の読み込み
