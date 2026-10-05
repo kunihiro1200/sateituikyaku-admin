@@ -3699,9 +3699,8 @@ const CallModePage = () => {
     } finally {
       setSavingComments(false);
     }
-    const proceed = unreachableConfirmOnProceedRef.current;
+    // 通電OKを選択した場合はページ遷移せず、現在の通話モードページにとどまる
     unreachableConfirmOnProceedRef.current = null;
-    proceed?.();
   };
 
   // 不通確認ダイアログ：「不通のまま」を選択し、保留中の遷移を実行する
