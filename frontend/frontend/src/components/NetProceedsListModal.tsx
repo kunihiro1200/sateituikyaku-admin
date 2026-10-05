@@ -884,7 +884,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
       // known_with_empty: template4_empty
       //   仲介手数料(48)→印紙代(84)→空項目(105)→取得費(130)→譲渡所得税(142)→手残り(166)
       // known_mortgage_with_empty: template4_teitou を流用
-      //   仲介手数料(45)→抵当権抹消(77)→印紙代(99)→空項目(115)→取得費(130)→譲渡所得税(143)→手残り(165)
+      //   仲介手数料(45)→抵当権抹消(77)→印紙代(99)→空項目(115)→取得費(130)→譲渡所得税(140)→手残り(165)
       const brokerageLeft = (p.taxMode === 'none' || p.taxMode === 'none_mortgage') ? 50
         : p.taxMode === 'none_mortgage_empty' ? 48
         : (p.taxMode === 'none_empty') ? 43
@@ -927,7 +927,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         : p.taxMode === 'unknown_mortgage_empty' ? 138
         : p.taxMode === 'known_empty' ? 150
         : p.taxMode === 'known_with_empty' ? 138
-        : p.taxMode === 'known_mortgage_with_empty' ? 143
+        : p.taxMode === 'known_mortgage_with_empty' ? 140
         : 131;
       const transferTaxFontSize = (p.taxMode === 'unknown_mortgage' || p.taxMode === 'unknown_mortgage_empty') ? 11 : 12;
       const netProceedsLeft = (p.taxMode === 'known' || p.taxMode === 'known_mortgage') ? 163
