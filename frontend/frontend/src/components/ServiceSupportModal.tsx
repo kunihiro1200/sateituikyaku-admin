@@ -1,8 +1,16 @@
-import React, { useState } from 'react';
+/**
+ * サービス資料生成モーダル
+ *
+ * 印刷方式は SaleScheduleModal と同じパターン：
+ * 1. モーダルを開いた時点で全サービス画像を fetch → base64 data URL に変換
+ * 2. 印刷ボタン押下時に base64 を埋め込んだ HTML を生成
+ * 3. 非表示 iframe の srcdoc に設定し iframe.onload で print()
+ *    → srcdoc + iframe は document.write/window.open と異なりブラウザ制限を受けない
+ */
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Typography, Box, Divider, IconButton,
-  Checkbox,
+  Button, Typography, Box, Divider, IconButton, Checkbox,
 } from '@mui/material';
 import { Close as CloseIcon, Print as PrintIcon } from '@mui/icons-material';
 
@@ -23,6 +31,98 @@ const SERVICE_ITEMS: ServiceItem[] = [
   { id: 'commission', label: '最低価格を下回った場合 仲介手数料２％' },
   { id: 'bridge',     label: 'つなぎ融資' },
 ];
+
+// ─────────────────────────────────────────
+// 画像を base64 data URL に変換（SaleScheduleModal と同じ方式）
+// ─────────────────────────────────────────
+function loadImageAsBase64(url: string): Promise<string> {
+  return fetch(url)
+    .then((r) => r.blob())
+    .then(
+      (blob) =>
+        new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload  = () => resolve(reader.result as string);
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(blob);
+        }),
+    )
+    .catch(() => '');
+}
+
+// ─────────────────────────────────────────
+// A4 印刷 HTML 生成
+// base64 images を直接 src に埋め込む → srcdoc iframe 内で確実に表示
+// ─────────────────────────────────────────
+function buildPrintHtml(
+  title: string,
+  ownerName: string,
+  propertyAddress: string,
+  selectedItems: ServiceItem[],
+  isFI: boolean,
+  images: Record<string, string>,
+): string {
+  const accentColor = isFI ? '#1B3A6B' : '#00695C';
+  const lightBg     = isFI ? '#EBF0F9' : '#E8F5E9';
+
+  // カードエリア計算
+  // A4(297mm) - 余白(20mm) - ヘッダー(22mm) - 物件情報(13mm) - フッター(6mm) = 236mm
+  const n       = selectedItems.length;
+  const gapMm   = 2;
+  const labelMm = 7;
+  const cardMm  = Math.floor((236 - (n - 1) * gapMm) / Math.max(n, 1));
+  const imgMm   = Math.max(cardMm - labelMm, 8);
+
+  const cardsHtml = selectedItems.map((item) => {
+    const src = images[item.id] || '';
+    return `
+<div style="display:flex;flex-direction:column;border:1px solid #dde;border-left:4px solid ${accentColor};border-radius:3px;overflow:hidden;background:#fff;">
+  <div style="width:100%;height:${imgMm}mm;overflow:hidden;background:#f5f7fa;">
+    ${src ? `<img src="${src}" alt="${item.label}" style="width:100%;height:auto;display:block;" />` : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-size:9pt;">${item.label}</div>`}
+  </div>
+  <div style="font-size:8pt;font-weight:700;color:${accentColor};padding:1.5mm 3mm;background:${lightBg};white-space:nowrap;">${item.label}</div>
+</div>`;
+  }).join(`<div style="height:${gapMm}mm;"></div>`);
+
+  return `<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8">
+<style>
+@page{size:A4 portrait;margin:0;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:'Noto Sans JP','ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
+  background:#fff;
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact;
+}
+</style>
+</head><body>
+<div style="width:210mm;min-height:297mm;padding:10mm 12mm;display:flex;flex-direction:column;background:#fff;">
+
+  <!-- ヘッダー -->
+  <div style="background:${accentColor};border-radius:5px;padding:5mm 10mm;color:#fff;margin-bottom:4mm;position:relative;overflow:hidden;">
+    <div style="font-size:7pt;letter-spacing:0.15em;color:rgba(255,255,255,0.65);margin-bottom:1.5mm;">Seller Support Services</div>
+    <div style="font-size:17pt;font-weight:700;letter-spacing:0.04em;">${title}</div>
+  </div>
+
+  <!-- 物件情報 -->
+  <div style="background:${lightBg};border-radius:4px;padding:3mm 7mm;margin-bottom:4mm;display:flex;flex-direction:column;gap:1mm;">
+    ${ownerName ? `<div style="display:flex;gap:4mm;align-items:baseline;"><span style="font-size:7pt;color:${accentColor};font-weight:600;min-width:18mm;white-space:nowrap;">お客様氏名</span><span style="font-size:9pt;color:#222;font-weight:500;">${ownerName} 様</span></div>` : ''}
+    ${propertyAddress ? `<div style="display:flex;gap:4mm;align-items:baseline;"><span style="font-size:7pt;color:${accentColor};font-weight:600;min-width:18mm;white-space:nowrap;">物件所在地</span><span style="font-size:9pt;color:#222;font-weight:500;">${propertyAddress}</span></div>` : ''}
+  </div>
+
+  <!-- サービスカード（横1列） -->
+  <div style="display:flex;flex-direction:column;flex:1;">
+    ${cardsHtml}
+  </div>
+
+  <!-- フッター -->
+  <div style="margin-top:3mm;border-top:1px solid #ddd;padding-top:2mm;text-align:center;font-size:6.5pt;color:#aaa;">
+    ※ 内容・条件の詳細については担当スタッフまでお問い合わせください。
+  </div>
+</div>
+</body></html>`;
+}
 
 // ─────────────────────────────────────────
 // Props
@@ -53,6 +153,22 @@ export default function ServiceSupportModal({
   const [checked, setChecked] = useState<Record<string, boolean>>(
     Object.fromEntries(SERVICE_ITEMS.map((item) => [item.id, true])),
   );
+  // 全画像の base64 data URL（SaleScheduleModal と同じ方式でプリロード）
+  const [images, setImages] = useState<Record<string, string>>({});
+
+  // モーダルを開いたタイミングで全画像をプリロード
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const entries = await Promise.all(
+        SERVICE_ITEMS.map(async (item) => {
+          const data = await loadImageAsBase64(`/sale-schedule/illustrations/${item.id}.png`);
+          return [item.id, data] as [string, string];
+        }),
+      );
+      setImages(Object.fromEntries(entries));
+    })();
+  }, [open]);
 
   const toggleItem = (id: string) => setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
 
@@ -65,22 +181,30 @@ export default function ServiceSupportModal({
   const allChecked    = SERVICE_ITEMS.every((item) => checked[item.id]);
 
   /**
-   * 印刷プレビューを開く。
-   * データを sessionStorage に保存し、専用の印刷ページを新タブで開く。
-   * 画像は専用ページの React コンテキストで通常通り読み込まれるため確実に表示される。
+   * SaleScheduleModal と同じ印刷方式：
+   * - 非表示 iframe を作成して srcdoc に HTML を設定
+   * - iframe.onload で print() を呼ぶ
+   * - 3秒後に iframe を除去
    */
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     if (selectedItems.length === 0) return;
-    const storageKey = `service-print-${Date.now()}`;
-    // localStorage はタブ間で共有されるため、新タブでも読み取れる
-    localStorage.setItem(storageKey, JSON.stringify({
-      sellerNumber,
-      ownerName,
-      propertyAddress,
-      items: selectedItems.map((i) => i.id),
-    }));
-    window.open(`/service-support-print?key=${storageKey}`, '_blank');
-  };
+    const html = buildPrintHtml(title, ownerName, propertyAddress, selectedItems, isFI, images);
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;visibility:hidden;';
+    iframe.srcdoc = html;
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) {
+        console.error('印刷エラー:', e);
+      }
+      setTimeout(() => {
+        try { document.body.removeChild(iframe); } catch {}
+      }, 3000);
+    };
+    document.body.appendChild(iframe);
+  }, [selectedItems, title, ownerName, propertyAddress, isFI, images]);
 
   const imgBase = '/sale-schedule/illustrations';
 
@@ -119,23 +243,18 @@ export default function ServiceSupportModal({
           <Typography variant="body2" sx={{ fontWeight: 600 }}>すべて選択</Typography>
         </Box>
 
-        {/* 横1列リスト（サムネイル + ラベル + チェックボックス） */}
+        {/* 横1列リスト */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
           {SERVICE_ITEMS.map((item) => (
             <Box
               key={item.id}
               onClick={() => toggleItem(item.id)}
               sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1.5,
+                display: 'flex', alignItems: 'center', gap: 1.5,
                 border: `2px solid ${checked[item.id] ? accentColor : '#ddd'}`,
-                borderRadius: 1.5,
-                overflow: 'hidden',
-                cursor: 'pointer',
+                borderRadius: 1.5, overflow: 'hidden', cursor: 'pointer',
                 bgcolor: checked[item.id] ? lightBg : '#fff',
-                transition: 'border-color 0.15s',
-                p: 0.5,
+                transition: 'border-color 0.15s', p: 0.5,
               }}
             >
               <Box
@@ -144,10 +263,7 @@ export default function ServiceSupportModal({
                 alt={item.label}
                 sx={{ width: 72, height: 48, objectFit: 'cover', objectPosition: 'top', borderRadius: 1, flexShrink: 0 }}
               />
-              <Typography
-                variant="body2"
-                sx={{ flex: 1, fontWeight: checked[item.id] ? 700 : 400, color: checked[item.id] ? accentColor : 'text.secondary' }}
-              >
+              <Typography variant="body2" sx={{ flex: 1, fontWeight: checked[item.id] ? 700 : 400, color: checked[item.id] ? accentColor : 'text.secondary' }}>
                 {item.label}
               </Typography>
               <Checkbox
