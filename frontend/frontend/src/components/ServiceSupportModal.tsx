@@ -72,7 +72,8 @@ export default function ServiceSupportModal({
   const handlePrint = () => {
     if (selectedItems.length === 0) return;
     const storageKey = `service-print-${Date.now()}`;
-    sessionStorage.setItem(storageKey, JSON.stringify({
+    // localStorage はタブ間で共有されるため、新タブでも読み取れる
+    localStorage.setItem(storageKey, JSON.stringify({
       sellerNumber,
       ownerName,
       propertyAddress,

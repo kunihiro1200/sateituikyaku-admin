@@ -36,12 +36,14 @@ export default function ServiceSupportPrintPage() {
   const printStarted   = useRef(false);
 
   useEffect(() => {
-    const raw = sessionStorage.getItem(key);
+    const raw = localStorage.getItem(key);
     if (!raw) return;
     try {
       const parsed = JSON.parse(raw) as PrintData;
       totalRef.current = parsed.items.length;
       setData(parsed);
+      // 読み取ったら削除してストレージを汚染しない
+      localStorage.removeItem(key);
     } catch {
       // 無視
     }
