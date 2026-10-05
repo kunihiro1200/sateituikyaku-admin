@@ -231,6 +231,18 @@ export class BuyerSyncService {
           result.skipped++;
           continue;
         }
+        // 壊れた買主番号はスキップ（スプレッドシートの列ズレでハッシュ/日付文字列が買主番号に混入するケース）
+        // 正規の形式: 数値のみ(例 7187) / FK+数値 / K+数値 / AA+数値(枝番 -1 等を含む) / カンマ区切り数値(例 5,996)
+        // それ以外（12桁英数字ハッシュ、ハイフン混じりの短いハッシュ、JS Date文字列など）は弾く
+        {
+          const bn = String(data.buyer_number).trim();
+          const isValidBuyerNumber = /^(FK|K|AA)?\d[\d,]*(-\d+)?$/.test(bn);
+          if (!isValidBuyerNumber) {
+            console.warn(`[BuyerSyncService] Skipping malformed buyer_number (列ズレ疑い): "${data.buyer_number}" (row ${rowNumber})`);
+            result.skipped++;
+            continue;
+          }
+        }
 
         // 既存レコードを確認
         const { data: existing } = await this.supabase
