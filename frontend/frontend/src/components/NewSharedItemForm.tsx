@@ -624,7 +624,7 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
             />
             <Button
               variant="contained"
-              onClick={handleSave}
+              onClick={() => handleSave()}
               disabled={saving}
               sx={{ bgcolor: color.main, '&:hover': { bgcolor: color.dark }, whiteSpace: 'nowrap', flexShrink: 0 }}
               startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
@@ -714,7 +714,7 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
         </Button>
         <Button
           variant="contained"
-          onClick={handleSave}
+          onClick={() => handleSave()}
           disabled={saving}
           sx={{ bgcolor: color.main, '&:hover': { bgcolor: color.dark } }}
           startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}

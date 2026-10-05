@@ -818,16 +818,17 @@ export default function SharedItemDetailPage() {
             共有詳細
           </Typography>
         </Box>
-        {isTeamMode ? (
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={() => setDeleteDialogOpen(true)}
-            startIcon={<DeleteIcon />}
-          >
-            削除
-          </Button>
-        ) : (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {isTeamMode && (
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={() => setDeleteDialogOpen(true)}
+              startIcon={<DeleteIcon />}
+            >
+              削除
+            </Button>
+          )}
           <Button
             variant="contained"
             onClick={handleSave}
@@ -837,7 +838,7 @@ export default function SharedItemDetailPage() {
           >
             {saving ? '保存中...' : '保存'}
           </Button>
-        )}
+        </Box>
       </Box>
 
       {apiError && (
