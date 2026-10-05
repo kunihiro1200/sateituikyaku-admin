@@ -921,7 +921,7 @@ export default function SharedItemDetailPage() {
 
           {/* タイトル／問い */}
           <Grid item xs={12}>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant={isTeamMode ? 'body1' : 'caption'} fontWeight={isTeamMode ? 'bold' : undefined} color="text.secondary">
               {isTeamMode ? '問い' : 'タイトル'}
             </Typography>
             {isTeamMode ? (
@@ -932,7 +932,7 @@ export default function SharedItemDetailPage() {
                 value={teamAnswers.question}
                 onChange={(e) => handleTeamAnswerChange('question', e.target.value)}
                 placeholder="問いを入力"
-                sx={{ mt: 1, '& .MuiOutlinedInput-root': { bgcolor: `${color.light}15` } }}
+                sx={{ mt: 1, '& .MuiOutlinedInput-root': { bgcolor: `${color.light}15`, fontSize: '1.1rem' } }}
               />
             ) : (
               <TextField
