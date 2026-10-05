@@ -956,5 +956,92 @@ router.post('/mansion-sales-cases', authenticate, async (req: Request, res: Resp
   }
 });
 
+/**
+ * コメントテキストからAI（gpt-4o-mini）で希望売却価格・予想金額を抽出
+ * POST /api/summarize/extract-prices
+ * body: { commentText: string }
+ * response: { desiredPrice: string | null, expectedPrice: string | null }
+ */
+router.post('/extract-prices', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { commentText } = req.body;
+
+    if (!commentText || typeof commentText !== 'string' || commentText.trim().length === 0) {
+      return res.json({ desiredPrice: null, expectedPrice: null });
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.error('[extract-prices] OPENAI_API_KEY not set');
+      return res.status(500).json({ error: 'OpenAI API key not configured' });
+    }
+
+    // HTMLタグを除去してプレーンテキストに変換
+    const plainText = commentText.replace(/<[^>]+>/g, '').trim();
+    if (plainText.length === 0) {
+      return res.json({ desiredPrice: null, expectedPrice: null });
+    }
+
+    const systemPrompt = `あなたは不動産売主のコメントから価格情報を抽出するアシスタントです。
+以下のコメントテキストを読んで、2つの情報を抽出してください。
+
+1. desiredPrice（希望売却価格）: 売主が希望する売却価格。「希望価格」「希望売却価格」「希望売却金額」「売りたい価格」などの表現で記載された金額。
+2. expectedPrice（予想金額）: 売主が物件の価値について予想・期待している金額。「予想金額」「予想価格」「予想売却価格」「いくらくらい」などの表現で記載された金額。
+
+抽出ルール:
+- 金額は「○○万円」「○○万」などの形式でそのまま抽出する
+- 明確に記載されていない場合は null を返す
+- 査定額・査定結果・当社の提示価格ではなく、売主自身が言及した価格のみを対象とする
+
+必ず以下のJSON形式のみで返してください:
+{"desiredPrice": "2000万円" または null, "expectedPrice": "1500万円" または null}`;
+
+    const completion = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `以下のコメントから価格情報を抽出してください:\n\n${plainText}` },
+        ],
+        temperature: 0.1,
+        max_tokens: 100,
+        response_format: { type: 'json_object' },
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 15000,
+      }
+    );
+
+    const raw = completion.data?.choices?.[0]?.message?.content || '{}';
+    let desiredPrice: string | null = null;
+    let expectedPrice: string | null = null;
+
+    try {
+      const parsed = JSON.parse(raw);
+      desiredPrice = parsed.desiredPrice || null;
+      expectedPrice = parsed.expectedPrice || null;
+    } catch (e) {
+      console.error('[extract-prices] JSON parse error:', e, raw);
+    }
+
+    return res.json({ desiredPrice, expectedPrice });
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const errMsg = error?.response?.data?.error?.message || error.message;
+    console.error(`[extract-prices] Error (HTTP ${status}):`, errMsg);
+
+    if (status === 429) {
+      return res.status(429).json({ error: 'rate_limit', desiredPrice: null, expectedPrice: null });
+    }
+    return res.json({ desiredPrice: null, expectedPrice: null });
+  }
+});
+
 export default router;
+
 

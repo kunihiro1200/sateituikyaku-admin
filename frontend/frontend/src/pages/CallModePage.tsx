@@ -494,36 +494,6 @@ const formatValuationText = (text: string): string => {
 };
 
 
-/**
- * コメントテキストから「希望売却価格」「予想金額」などを抽出する。
- * 査定計算セクションで参考情報として表示するために使用。
- * 例: "希望売却価格：2000万円" → "2000万円"
- */
-export function extractPricesFromComments(comments: string | null | undefined): {
-  desiredPrice: string | null;
-  expectedPrice: string | null;
-} {
-  if (!comments) return { desiredPrice: null, expectedPrice: null };
-
-  // HTMLタグを除去してプレーンテキストに変換
-  const plainText = comments.replace(/<[^>]*>/g, '').replace(/&[a-z]+;/gi, ' ');
-
-  // 希望売却価格・希望価格・希望金額 の抽出
-  const desiredMatch = plainText.match(
-    /希望(?:売却)?(?:価格|金額)[：:は]?\s*([0-9０-９,，.．]+\s*万?円?(?:以[上下])?(?:程度|くらい|ぐらい)?)/
-  );
-
-  // 予想金額・予想価格・予想売却価格 の抽出
-  const expectedMatch = plainText.match(
-    /予想(?:売却)?(?:価格|金額)[：:は]?\s*([0-9０-９,，.．]+\s*万?円?(?:以[上下])?(?:程度|くらい|ぐらい)?)/
-  );
-
-  return {
-    desiredPrice: desiredMatch ? desiredMatch[1].trim() : null,
-    expectedPrice: expectedMatch ? expectedMatch[1].trim() : null,
-  };
-}
-
 // 電話番号間違いボタン: 対象テンプレート判定
 export function isTargetTemplateForWrongNumber(label: string): boolean {
   return label.includes('査定額案内メール') || label.includes('不通で電話時間確認');
@@ -1375,6 +1345,12 @@ const CallModePage = () => {
     return [template.label, ...(template.legacyLabels || [])]
       .some((label) => sentSmsTemplateKeys.has(`name:${normalizeEmailTemplateName(label)}`));
   }, [activitiesLoaded, sentSmsTemplateKeys]);
+
+  // コメントからAI抽出した参考価格（査定計算セクション表示用）
+  const [aiExtractedPrices, setAiExtractedPrices] = useState<{ desiredPrice: string | null; expectedPrice: string | null } | null>(null);
+  const [extractingPrices, setExtractingPrices] = useState(false);
+  // 最後に抽出したコメントのハッシュ（再抽出を防ぐ）
+  const lastExtractedCommentsRef = useRef<string | null>(null);
 
   // 査定計算用の状態
   const [editingValuation, setEditingValuation] = useState(false);
@@ -5852,6 +5828,37 @@ HP：https://ifoo-oita.com/
     valuationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  // seller.comments が変わったときにAIで希望価格・予想金額を抽出
+  useEffect(() => {
+    const comments = seller?.comments;
+    // コメントが空、または前回と同じなら何もしない
+    if (!comments || comments === lastExtractedCommentsRef.current) return;
+    // HTMLタグ除去後が空なら何もしない
+    const plainText = comments.replace(/<[^>]+>/g, '').trim();
+    if (!plainText) return;
+
+    lastExtractedCommentsRef.current = comments;
+    setExtractingPrices(true);
+
+    api.post('/api/summarize/extract-prices', { commentText: comments })
+      .then((res) => {
+        setAiExtractedPrices({
+          desiredPrice: res.data.desiredPrice || null,
+          expectedPrice: res.data.expectedPrice || null,
+        });
+      })
+      .catch((err) => {
+        console.warn('[extract-prices] API error:', err?.response?.status, err?.message);
+        // エラー時は非表示にする（クラッシュさせない）
+        setAiExtractedPrices(null);
+      })
+      .finally(() => {
+        setExtractingPrices(false);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seller?.comments]);
+
+
   // ステータスのラベルを取得
   const getStatusLabel = (status: string): string => {
     const statusLabels: Record<string, string> = {
@@ -9340,23 +9347,30 @@ HP：https://ifoo-oita.com/
                     </a>
                   </Box>
                 )}
-                {/* コメントから抽出した参考価格（希望売却価格・予想金額） */}
+                {/* コメントからAI抽出した参考価格（希望売却価格・予想金額） */}
                 {(() => {
-                  const extracted = extractPricesFromComments(seller?.comments);
-                  if (!extracted.desiredPrice && !extracted.expectedPrice) return null;
+                  if (extractingPrices) {
+                    return (
+                      <Box sx={{ mb: 2, p: 1.5, bgcolor: '#fff3e0', border: '1px solid #ffb74d', borderRadius: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <CircularProgress size={14} sx={{ color: '#ff9800' }} />
+                        <Typography variant="caption" color="text.secondary">コメントから価格情報を抽出中...</Typography>
+                      </Box>
+                    );
+                  }
+                  if (!aiExtractedPrices || (!aiExtractedPrices.desiredPrice && !aiExtractedPrices.expectedPrice)) return null;
                   return (
                     <Box sx={{ mb: 2, p: 1.5, bgcolor: '#fff3e0', border: '1px solid #ffb74d', borderRadius: 1 }}>
                       <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
                         💬 コメント記載の価格（参考）
                       </Typography>
-                      {extracted.desiredPrice && (
+                      {aiExtractedPrices.desiredPrice && (
                         <Typography variant="body2" sx={{ color: '#e65100' }}>
-                          希望売却価格: <strong>{extracted.desiredPrice}</strong>
+                          希望売却価格: <strong>{aiExtractedPrices.desiredPrice}</strong>
                         </Typography>
                       )}
-                      {extracted.expectedPrice && (
+                      {aiExtractedPrices.expectedPrice && (
                         <Typography variant="body2" sx={{ color: '#bf360c' }}>
-                          予想金額: <strong>{extracted.expectedPrice}</strong>
+                          予想金額: <strong>{aiExtractedPrices.expectedPrice}</strong>
                         </Typography>
                       )}
                     </Box>
