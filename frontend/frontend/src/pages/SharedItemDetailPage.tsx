@@ -999,7 +999,7 @@ export default function SharedItemDetailPage() {
                     return (
                       <Grid item xs={12} key={key}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                          <Typography variant="caption" color="text.secondary">{label}</Typography>
+                          <Typography variant="body1" fontWeight="bold" color={isOwnAnswer ? 'text.primary' : 'text.secondary'}>{label}</Typography>
                           {hasContent && (
                             <Chip 
                               size="small" 
@@ -1024,8 +1024,12 @@ export default function SharedItemDetailPage() {
                             sx={{ 
                               mt: 0.5, 
                               '& .MuiOutlinedInput-root': { 
-                                bgcolor: isOwnAnswer ? `${color.light}08` : 'white'
-                              } 
+                                bgcolor: isOwnAnswer ? `${color.light}08` : 'white',
+                                fontSize: '1.1rem',
+                              },
+                              '& .MuiInputBase-input.Mui-disabled': {
+                                WebkitTextFillColor: 'rgba(0,0,0,0.87)',
+                              },
                             }}
                           />
                         ) : isOwnAnswer ? (
@@ -1040,7 +1044,8 @@ export default function SharedItemDetailPage() {
                             sx={{ 
                               mt: 0.5, 
                               '& .MuiOutlinedInput-root': { 
-                                bgcolor: `${color.light}08`
+                                bgcolor: `${color.light}08`,
+                                fontSize: '1.1rem',
                               } 
                             }}
                           />
