@@ -116,6 +116,7 @@ import NetProceedsListModal from '../components/NetProceedsListModal';
 import SellerPortalAdminModal from '../components/SellerPortalAdminModal';
 import { SouhuModal } from '../components/SouhuModal';
 import AreaReportModal from '../components/AreaReportModal';
+import ServiceSupportModal from '../components/ServiceSupportModal';
 import CollapsibleSection from '../components/CollapsibleSection';
 
 import HouseMakerModal from '../components/HouseMakerModal';
@@ -1222,6 +1223,8 @@ const CallModePage = () => {
   const [driveImageCount, setDriveImageCount] = useState<number | null>(null);
   // エリア情勢レポートモーダル用の状態
   const [areaReportOpen, setAreaReportOpen] = useState(false);
+  // サービス資料生成モーダル用の状態
+  const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
 
   // 訪問予約編集用の状態
@@ -6641,6 +6644,9 @@ HP：https://ifoo-oita.com/
                         福岡追加資料
                       </MenuItem>
                     )}
+                    <MenuItem onClick={() => { setDocGenMenuAnchor(null); setServiceModalOpen(true); }}>
+                      サービス
+                    </MenuItem>
                   </Menu>
                   {/* 文字起ボタン（資料生成の下に配置） */}
                   <Button
@@ -12717,6 +12723,17 @@ HP：https://ifoo-oita.com/
           sellerId={seller.id}
           sellerNumber={seller.sellerNumber}
           propertyAddress={propInfo.address || seller.propertyAddress}
+        />
+      )}
+
+      {/* サービス資料生成モーダル */}
+      {seller && (
+        <ServiceSupportModal
+          open={serviceModalOpen}
+          onClose={() => setServiceModalOpen(false)}
+          sellerNumber={seller.sellerNumber || ''}
+          ownerName={seller.name || ''}
+          propertyAddress={propInfo.address || seller.propertyAddress || ''}
         />
       )}
 
