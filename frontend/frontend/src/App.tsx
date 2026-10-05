@@ -55,6 +55,7 @@ import SalesMeetingLossTrendPage from './pages/SalesMeetingLossTrendPage';
 import MoneyForwardExpensePage from './pages/MoneyForwardExpensePage';
 import BuyerNearbyPropertiesPage from './pages/BuyerNearbyPropertiesPage';
 import NearbyBuyersPage from './pages/NearbyBuyersPage';
+import ServiceSupportPrintPage from './pages/ServiceSupportPrintPage';
 import OtherCompanyDistributionPage from './pages/OtherCompanyDistributionPage';
 import BuyerNearbyMapPage from './pages/BuyerNearbyMapPage';
 import ReinsRegistrationPage from './pages/ReinsRegistrationPage';
@@ -531,6 +532,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route path="/service-support-print" element={<ServiceSupportPrintPage />} />
       <Route path="/sellers/:sellerId/area-report" element={<AreaReportPage />} />
       <Route
         path="/sellers/:id/attached-document2"
