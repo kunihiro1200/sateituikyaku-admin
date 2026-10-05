@@ -494,6 +494,36 @@ const formatValuationText = (text: string): string => {
 };
 
 
+/**
+ * コメントテキストから「希望売却価格」「予想金額」などを抽出する。
+ * 査定計算セクションで参考情報として表示するために使用。
+ * 例: "希望売却価格：2000万円" → "2000万円"
+ */
+export function extractPricesFromComments(comments: string | null | undefined): {
+  desiredPrice: string | null;
+  expectedPrice: string | null;
+} {
+  if (!comments) return { desiredPrice: null, expectedPrice: null };
+
+  // HTMLタグを除去してプレーンテキストに変換
+  const plainText = comments.replace(/<[^>]*>/g, '').replace(/&[a-z]+;/gi, ' ');
+
+  // 希望売却価格・希望価格・希望金額 の抽出
+  const desiredMatch = plainText.match(
+    /希望(?:売却)?(?:価格|金額)[：:は]?\s*([0-9０-９,，.．]+\s*万?円?(?:以[上下])?(?:程度|くらい|ぐらい)?)/
+  );
+
+  // 予想金額・予想価格・予想売却価格 の抽出
+  const expectedMatch = plainText.match(
+    /予想(?:売却)?(?:価格|金額)[：:は]?\s*([0-9０-９,，.．]+\s*万?円?(?:以[上下])?(?:程度|くらい|ぐらい)?)/
+  );
+
+  return {
+    desiredPrice: desiredMatch ? desiredMatch[1].trim() : null,
+    expectedPrice: expectedMatch ? expectedMatch[1].trim() : null,
+  };
+}
+
 // 電話番号間違いボタン: 対象テンプレート判定
 export function isTargetTemplateForWrongNumber(label: string): boolean {
   return label.includes('査定額案内メール') || label.includes('不通で電話時間確認');
@@ -9310,6 +9340,29 @@ HP：https://ifoo-oita.com/
                     </a>
                   </Box>
                 )}
+                {/* コメントから抽出した参考価格（希望売却価格・予想金額） */}
+                {(() => {
+                  const extracted = extractPricesFromComments(seller?.comments);
+                  if (!extracted.desiredPrice && !extracted.expectedPrice) return null;
+                  return (
+                    <Box sx={{ mb: 2, p: 1.5, bgcolor: '#fff3e0', border: '1px solid #ffb74d', borderRadius: 1 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                        💬 コメント記載の価格（参考）
+                      </Typography>
+                      {extracted.desiredPrice && (
+                        <Typography variant="body2" sx={{ color: '#e65100' }}>
+                          希望売却価格: <strong>{extracted.desiredPrice}</strong>
+                        </Typography>
+                      )}
+                      {extracted.expectedPrice && (
+                        <Typography variant="body2" sx={{ color: '#bf360c' }}>
+                          予想金額: <strong>{extracted.expectedPrice}</strong>
+                        </Typography>
+                      )}
+                    </Box>
+                  );
+                })()}
+
                 {!property && !propInfo.hasData && !editedValuationAmount1 && (
                   <Alert severity="info">
                     物件情報が登録されていないため、査定を実行できません
