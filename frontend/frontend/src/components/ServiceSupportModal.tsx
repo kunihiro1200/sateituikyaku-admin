@@ -8,7 +8,7 @@ import { Close as CloseIcon, Print as PrintIcon } from '@mui/icons-material';
 
 // ─────────────────────────────────────────
 // サービス項目定義
-// id がそのまま /sale-schedule/illustrations/{id}.png のファイル名
+// id = /sale-schedule/illustrations/{id}.png のファイル名
 // ─────────────────────────────────────────
 interface ServiceItem {
   id: string;
@@ -50,18 +50,24 @@ function generatePrintHtml(
   const accentColor = isFI ? '#1B3A6B' : '#00695C';
   const lightBg     = isFI ? '#EBF0F9' : '#E8F5E9';
 
-  // 列数 / 行あたり高さを件数に応じて調整
-  const cols   = selectedItems.length <= 2 ? 1
-               : selectedItems.length <= 4 ? 2
-               : selectedItems.length <= 6 ? 2
-               : 3; // 7件は3列
-  const colPct = cols === 1 ? '100%' : cols === 2 ? 'calc(50% - 3mm)' : 'calc(33.333% - 3mm)';
+  // 全体の縦スペース計算
+  // A4 = 297mm, 余白上下10mm, ヘッダー20mm, 物件情報12mm, フッター5mm
+  // カードエリア = 297 - 20 - 20 - 12 - 5 = 240mm
+  // n枚 × (画像 + ラベル) + (n-1) × gap で収める
+  const n = selectedItems.length;
+  // 1枚あたり高さ(mm) 画像+ラベル: gap=2mm込みで算出
+  const totalArea  = 235;
+  const gapTotal   = Math.max(0, n - 1) * 2;
+  const cardHeight = Math.floor((totalArea - gapTotal) / Math.max(n, 1));
+  const imgHeight  = Math.max(cardHeight - 7, 10); // ラベル7mm分引く
 
   const cardsHtml = selectedItems.map((item) => {
     const imgSrc = `${baseUrl}/sale-schedule/illustrations/${item.id}.png`;
     return `
       <div class="service-card">
-        <img class="card-img" src="${imgSrc}" alt="${item.label}" />
+        <div class="img-wrap">
+          <img src="${imgSrc}" alt="${item.label}" />
+        </div>
         <div class="card-label">${item.label}</div>
       </div>
     `;
@@ -71,12 +77,10 @@ function generatePrintHtml(
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <base href="${baseUrl}/">
   <title>${title}</title>
   <style>
-    @page {
-      size: A4 portrait;
-      margin: 0;
-    }
+    @page { size: A4 portrait; margin: 0; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Noto Sans JP','ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
@@ -96,28 +100,28 @@ function generatePrintHtml(
     .header {
       background: ${accentColor};
       border-radius: 5px;
-      padding: 7mm 10mm;
+      padding: 5mm 10mm;
       color: #fff;
-      margin-bottom: 5mm;
+      margin-bottom: 4mm;
       position: relative;
       overflow: hidden;
     }
     .header::before {
       content: '';
       position: absolute;
-      top: -15mm; right: -8mm;
-      width: 50mm; height: 50mm;
+      top: -12mm; right: -6mm;
+      width: 40mm; height: 40mm;
       border-radius: 50%;
-      background: rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.08);
     }
     .header-label {
-      font-size: 7.5pt;
+      font-size: 7pt;
       letter-spacing: 0.15em;
-      color: rgba(255,255,255,0.7);
-      margin-bottom: 2mm;
+      color: rgba(255,255,255,0.65);
+      margin-bottom: 1.5mm;
     }
     .header-title {
-      font-size: 20pt;
+      font-size: 17pt;
       font-weight: 700;
       letter-spacing: 0.04em;
     }
@@ -126,61 +130,67 @@ function generatePrintHtml(
     .property-box {
       background: ${lightBg};
       border-radius: 4px;
-      padding: 3.5mm 7mm;
-      margin-bottom: 5mm;
+      padding: 3mm 7mm;
+      margin-bottom: 4mm;
       display: flex;
       flex-direction: column;
-      gap: 1.5mm;
+      gap: 1mm;
     }
     .property-row { display: flex; align-items: baseline; gap: 4mm; }
     .property-key {
-      font-size: 7.5pt;
+      font-size: 7pt;
       color: ${accentColor};
       font-weight: 600;
       white-space: nowrap;
       min-width: 18mm;
     }
-    .property-val { font-size: 9.5pt; color: #222; font-weight: 500; }
+    .property-val { font-size: 9pt; color: #222; font-weight: 500; }
 
-    /* ── サービスカードグリッド ── */
-    .cards-grid {
+    /* ── カード（横1列） ── */
+    .cards-list {
       display: flex;
-      flex-wrap: wrap;
-      gap: 3mm;
+      flex-direction: column;
+      gap: 2mm;
       flex: 1;
     }
     .service-card {
-      width: ${colPct};
       display: flex;
       flex-direction: column;
-      border: 1px solid #ddd;
-      border-radius: 4px;
+      border: 1px solid #dde;
+      border-left: 4px solid ${accentColor};
+      border-radius: 3px;
       overflow: hidden;
       background: #fff;
     }
-    .card-img {
+    /* 画像コンテナ: 高さ固定 + 上部を表示 */
+    .img-wrap {
       width: 100%;
+      height: ${imgHeight}mm;
+      overflow: hidden;
+      background: #f5f7fa;
+    }
+    .img-wrap img {
+      width: 100%;
+      height: auto;
       display: block;
-      object-fit: cover;
     }
     .card-label {
-      font-size: 8.5pt;
+      font-size: 8pt;
       font-weight: 700;
       color: ${accentColor};
-      text-align: center;
-      padding: 2mm 2mm;
+      padding: 1.5mm 3mm;
       background: ${lightBg};
-      line-height: 1.4;
+      white-space: nowrap;
     }
 
     /* ── フッター ── */
     .footer {
-      margin-top: 4mm;
+      margin-top: 3mm;
       border-top: 1px solid #ddd;
-      padding-top: 3mm;
+      padding-top: 2mm;
       text-align: center;
-      font-size: 7pt;
-      color: #999;
+      font-size: 6.5pt;
+      color: #aaa;
     }
     @media print {
       html, body { width: 210mm; height: 297mm; }
@@ -199,16 +209,39 @@ function generatePrintHtml(
       ${propertyAddress ? `<div class="property-row"><span class="property-key">物件所在地</span><span class="property-val">${propertyAddress}</span></div>` : ''}
     </div>
 
-    <div class="cards-grid">
+    <div class="cards-list">
       ${cardsHtml}
     </div>
 
-    <div class="footer">
-      ※ 内容・条件の詳細については担当スタッフまでお問い合わせください。
-    </div>
+    <div class="footer">※ 内容・条件の詳細については担当スタッフまでお問い合わせください。</div>
   </div>
+
   <script>
-    window.addEventListener('load', function() { window.print(); });
+    // 画像がすべてロードされてから印刷ダイアログを開く
+    (function() {
+      function printWhenReady() {
+        var imgs = document.querySelectorAll('img');
+        var total = imgs.length;
+        if (total === 0) { window.print(); return; }
+        var done = 0;
+        function onDone() {
+          done++;
+          if (done >= total) { setTimeout(function() { window.print(); }, 150); }
+        }
+        imgs.forEach(function(img) {
+          if (img.complete && img.naturalWidth > 0) { onDone(); }
+          else {
+            img.addEventListener('load',  onDone);
+            img.addEventListener('error', onDone);
+          }
+        });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', printWhenReady);
+      } else {
+        printWhenReady();
+      }
+    })();
   </script>
 </body>
 </html>`;
@@ -224,8 +257,8 @@ export default function ServiceSupportModal({
   ownerName,
   propertyAddress,
 }: ServiceSupportModalProps) {
-  const isFI = sellerNumber.toUpperCase().startsWith('FI');
-  const title = isFI ? 'くじら不動産の売却サポート' : 'いふうの売却サポート';
+  const isFI        = sellerNumber.toUpperCase().startsWith('FI');
+  const title       = isFI ? 'くじら不動産の売却サポート' : 'いふうの売却サポート';
   const accentColor = isFI ? '#1B3A6B' : '#00695C';
   const lightBg     = isFI ? '#EBF0F9' : '#E8F5E9';
 
@@ -234,9 +267,7 @@ export default function ServiceSupportModal({
     Object.fromEntries(SERVICE_ITEMS.map((item) => [item.id, true])),
   );
 
-  const toggleItem = (id: string) => {
-    setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
+  const toggleItem = (id: string) => setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const toggleAll = () => {
     const allChecked = SERVICE_ITEMS.every((item) => checked[item.id]);
@@ -264,16 +295,12 @@ export default function ServiceSupportModal({
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
         <Box>
-          <Typography variant="caption" color="text.secondary">
-            資料生成 — サービス
-          </Typography>
+          <Typography variant="caption" color="text.secondary">資料生成 — サービス</Typography>
           <Typography variant="h6" sx={{ fontSize: '1rem', fontWeight: 700, color: accentColor, mt: 0.25 }}>
             {title}
           </Typography>
         </Box>
-        <IconButton size="small" onClick={onClose}>
-          <CloseIcon fontSize="small" />
-        </IconButton>
+        <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
       </DialogTitle>
 
       <Divider />
@@ -299,43 +326,44 @@ export default function ServiceSupportModal({
           <Typography variant="body2" sx={{ fontWeight: 600 }}>すべて選択</Typography>
         </Box>
 
-        {/* カードグリッドで各項目を表示 */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
+        {/* 横1列リスト（サムネイル + ラベル） */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
           {SERVICE_ITEMS.map((item) => (
             <Box
               key={item.id}
               onClick={() => toggleItem(item.id)}
               sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
                 border: `2px solid ${checked[item.id] ? accentColor : '#ddd'}`,
                 borderRadius: 1.5,
                 overflow: 'hidden',
                 cursor: 'pointer',
-                transition: 'border-color 0.15s, box-shadow 0.15s',
-                boxShadow: checked[item.id] ? `0 0 0 1px ${accentColor}22` : 'none',
-                position: 'relative',
                 bgcolor: checked[item.id] ? lightBg : '#fff',
+                transition: 'border-color 0.15s',
+                p: 0.5,
               }}
             >
-              {/* 画像 */}
+              {/* サムネイル */}
               <Box
                 component="img"
                 src={`${imgBase}/${item.id}.png`}
                 alt={item.label}
-                sx={{ width: '100%', display: 'block', objectFit: 'cover' }}
+                sx={{ width: 72, height: 48, objectFit: 'cover', objectPosition: 'top', borderRadius: 1, flexShrink: 0 }}
               />
-              {/* ラベル + チェックボックス */}
-              <Box sx={{ display: 'flex', alignItems: 'center', px: 0.75, py: 0.5, gap: 0.5 }}>
-                <Checkbox
-                  size="small"
-                  checked={checked[item.id]}
-                  onChange={() => toggleItem(item.id)}
-                  onClick={(e) => e.stopPropagation()}
-                  sx={{ p: 0.25, color: accentColor, '&.Mui-checked': { color: accentColor } }}
-                />
-                <Typography variant="caption" sx={{ fontSize: '0.65rem', lineHeight: 1.3, fontWeight: checked[item.id] ? 700 : 400 }}>
-                  {item.label}
-                </Typography>
-              </Box>
+              {/* ラベル */}
+              <Typography variant="body2" sx={{ flex: 1, fontWeight: checked[item.id] ? 700 : 400, color: checked[item.id] ? accentColor : 'text.secondary' }}>
+                {item.label}
+              </Typography>
+              {/* チェックボックス */}
+              <Checkbox
+                size="small"
+                checked={checked[item.id]}
+                onChange={() => toggleItem(item.id)}
+                onClick={(e) => e.stopPropagation()}
+                sx={{ p: 0.5, color: accentColor, '&.Mui-checked': { color: accentColor } }}
+              />
             </Box>
           ))}
         </Box>
@@ -344,19 +372,14 @@ export default function ServiceSupportModal({
       <Divider />
 
       <DialogActions sx={{ px: 2, py: 1.5, gap: 1 }}>
-        <Button onClick={onClose} size="small" color="inherit">
-          閉じる
-        </Button>
+        <Button onClick={onClose} size="small" color="inherit">閉じる</Button>
         <Button
           variant="contained"
           size="small"
           startIcon={<PrintIcon />}
           onClick={handlePrint}
           disabled={selectedItems.length === 0}
-          sx={{
-            bgcolor: accentColor,
-            '&:hover': { bgcolor: isFI ? '#142d55' : '#00564f' },
-          }}
+          sx={{ bgcolor: accentColor, '&:hover': { bgcolor: isFI ? '#142d55' : '#00564f' } }}
         >
           印刷プレビュー（{selectedItems.length}件）
         </Button>
