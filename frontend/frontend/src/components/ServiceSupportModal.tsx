@@ -32,66 +32,10 @@ const SERVICE_ITEMS: ServiceItem[] = [
 ];
 
 // ─────────────────────────────────────────
-// A4 印刷コンテンツ生成（HTML ボディ部分のみ）
-// ※ img src は /... の通常パス — メインページ DOM なので確実に読み込まれる
+// HTMLエスケープ
 // ─────────────────────────────────────────
 function esc(s: string): string {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-function buildPrintBody(
-  title: string,
-  ownerName: string,
-  propertyAddress: string,
-  items: ServiceItem[],
-  isFI: boolean,
-): string {
-  const accent = isFI ? '#1B3A6B' : '#00695C';
-  const light  = isFI ? '#EBF0F9' : '#E8F5E9';
-
-  const n     = items.length;
-  const gap   = 2;   // mm between cards
-  const lblH  = 7;   // label height mm
-  const avail = 236; // total card area mm
-  const card  = Math.floor((avail - (n - 1) * gap) / Math.max(n, 1));
-  const imgH  = Math.max(card - lblH, 8);
-
-  const cards = items.map(it => `
-<div style="display:flex;flex-direction:column;border:1px solid #dde;
-            border-left:4px solid ${accent};border-radius:3px;
-            overflow:hidden;margin-bottom:${gap}mm;">
-  <div style="width:100%;height:${imgH}mm;overflow:hidden;background:#f5f7fa;">
-    <img src="/sale-schedule/illustrations/${it.id}.png"
-         alt="${esc(it.label)}"
-         style="width:100%;height:auto;display:block;" />
-  </div>
-  <div style="font-size:8pt;font-weight:700;color:${accent};
-              padding:1.5mm 3mm;background:${light};">${esc(it.label)}</div>
-</div>`).join('');
-
-  return `
-<div style="font-family:'ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
-            width:210mm;padding:10mm 12mm;box-sizing:border-box;background:#fff;">
-  <!-- ヘッダー -->
-  <div style="background:${accent};border-radius:5px;padding:5mm 10mm;
-              color:#fff;margin-bottom:4mm;">
-    <div style="font-size:7pt;letter-spacing:.15em;color:rgba(255,255,255,.65);
-                margin-bottom:1.5mm;">Seller Support Services</div>
-    <div style="font-size:17pt;font-weight:700;">${esc(title)}</div>
-  </div>
-  <!-- 物件情報 -->
-  <div style="background:${light};border-radius:4px;padding:3mm 7mm;margin-bottom:4mm;">
-    ${ownerName ? `<div style="font-size:9pt;margin-bottom:1mm;"><span style="font-size:7pt;color:${accent};font-weight:600;min-width:18mm;display:inline-block;">お客様氏名</span>${esc(ownerName)} 様</div>` : ''}
-    ${propertyAddress ? `<div style="font-size:9pt;"><span style="font-size:7pt;color:${accent};font-weight:600;min-width:18mm;display:inline-block;">物件所在地</span>${esc(propertyAddress)}</div>` : ''}
-  </div>
-  <!-- サービスカード -->
-  ${cards}
-  <!-- フッター -->
-  <div style="border-top:1px solid #ddd;padding-top:2mm;
-              text-align:center;font-size:6.5pt;color:#aaa;">
-    ※ 内容・条件の詳細については担当スタッフまでお問い合わせください。
-  </div>
-</div>`;
 }
 
 // ─────────────────────────────────────────
@@ -140,58 +84,68 @@ export default function ServiceSupportModal({ open, onClose, sellerNumber, owner
   const handlePrint = useCallback(() => {
     if (selected.length === 0) return;
 
-    // ① 白い全画面オーバーレイとして表示（画面に見えているので画像が確実にロードされる）
-    const overlay = document.createElement('div');
-    overlay.id = 'svc-print';
-    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:white;z-index:99999;overflow:auto;';
-    overlay.innerHTML = buildPrintBody(title, ownerName, propertyAddress, selected, isFI);
-    document.body.appendChild(overlay);
+    const origin = window.location.origin;
+    const accent = isFI ? '#1B3A6B' : '#00695C';
+    const light  = isFI ? '#EBF0F9' : '#E8F5E9';
+    const n = selected.length;
+    const gap = 2, lblH = 7, avail = 236;
+    const card = Math.floor((avail - (n-1)*gap) / Math.max(n,1));
+    const imgH = Math.max(card - lblH, 8);
 
-    // ② 印刷用 CSS（印刷時はオーバーレイ以外を非表示）
-    const style = document.createElement('style');
-    style.id = 'svc-print-style';
-    style.textContent = `
-      @page { size: A4 portrait; margin: 0; }
-      @media print {
-        body > *:not(#svc-print) { display: none !important; }
-        #svc-print {
-          position: fixed !important;
-          top: 0 !important; left: 0 !important;
-          width: 210mm !important;
-          height: auto !important;
-          overflow: visible !important;
-        }
+    const cards = selected.map(it => `
+<div style="display:flex;flex-direction:column;border:1px solid #dde;border-left:4px solid ${accent};border-radius:3px;overflow:hidden;margin-bottom:${gap}mm;">
+  <div style="width:100%;height:${imgH}mm;overflow:hidden;background:#f5f7fa;">
+    <img src="${origin}/sale-schedule/illustrations/${it.id}.png"
+         alt="${esc(it.label)}" style="width:100%;height:auto;display:block;" />
+  </div>
+  <div style="font-size:8pt;font-weight:700;color:${accent};padding:1.5mm 3mm;background:${light};">${esc(it.label)}</div>
+</div>`).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8">
+<style>
+@page{size:A4 portrait;margin:0;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
+     -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+</style>
+</head><body>
+<div style="width:210mm;padding:10mm 12mm;box-sizing:border-box;">
+  <div style="background:${accent};border-radius:5px;padding:5mm 10mm;color:#fff;margin-bottom:4mm;">
+    <div style="font-size:7pt;letter-spacing:.15em;color:rgba(255,255,255,.65);margin-bottom:1.5mm;">Seller Support Services</div>
+    <div style="font-size:17pt;font-weight:700;">${esc(title)}</div>
+  </div>
+  <div style="background:${light};border-radius:4px;padding:3mm 7mm;margin-bottom:4mm;">
+    ${ownerName ? `<div style="font-size:9pt;margin-bottom:1mm;"><span style="font-size:7pt;color:${accent};font-weight:600;min-width:18mm;display:inline-block;">お客様氏名</span>${esc(ownerName)} 様</div>` : ''}
+    ${propertyAddress ? `<div style="font-size:9pt;"><span style="font-size:7pt;color:${accent};font-weight:600;min-width:18mm;display:inline-block;">物件所在地</span>${esc(propertyAddress)}</div>` : ''}
+  </div>
+  ${cards}
+  <div style="border-top:1px solid #ddd;padding-top:2mm;text-align:center;font-size:6.5pt;color:#aaa;margin-top:3mm;">
+    ※ 内容・条件の詳細については担当スタッフまでお問い合わせください。
+  </div>
+</div>
+</body></html>`;
+
+    // srcdoc iframe はアプリのグローバル print.css と完全に独立したドキュメント
+    // opacity:0.01 で実質不可視だが描画されるため画像が確実にロードされる
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = [
+      'position:fixed', 'top:0', 'left:0',
+      'width:210mm', 'height:297mm',
+      'border:none', 'opacity:0.01',
+      'z-index:-9999', 'pointer-events:none',
+    ].join(';');
+    iframe.srcdoc = html;
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) {
+        console.error('[ServiceSupportModal] print error:', e);
       }
-    `;
-    document.head.appendChild(style);
-
-    // ③ クリーンアップ
-    const cleanup = () => {
-      overlay.style.display = 'none';
-      setTimeout(() => {
-        try { document.body.removeChild(overlay); } catch {}
-        try { document.head.removeChild(style); } catch {}
-      }, 0);
+      setTimeout(() => { try { document.body.removeChild(iframe); } catch {} }, 3000);
     };
-    window.addEventListener('afterprint', cleanup, { once: true });
-    setTimeout(cleanup, 10000);
-
-    // ④ 全画像ロード後に print()（オーバーレイが見えているので即ロード）
-    const imgs = Array.from(overlay.querySelectorAll('img')) as HTMLImageElement[];
-    const total = imgs.length;
-    const doPrint = () => setTimeout(() => window.print(), 100);
-
-    if (total === 0) { doPrint(); return; }
-
-    let done = 0;
-    const onDone = () => { if (++done >= total) doPrint(); };
-    imgs.forEach(img => {
-      if (img.complete && img.naturalWidth > 0) { onDone(); }
-      else {
-        img.addEventListener('load',  onDone, { once: true });
-        img.addEventListener('error', onDone, { once: true });
-      }
-    });
+    document.body.appendChild(iframe);
   }, [selected, title, ownerName, propertyAddress, isFI]);
 
   // ─────────────────────────────────────────
