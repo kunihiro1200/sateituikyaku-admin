@@ -1,31 +1,57 @@
 /**
  * 共有ページ新規作成フォーム用ユーティリティ関数
  */
-import api from '../services/api';
+
+// バックエンドの base URL（api.ts と同じロジック）
+const API_BASE_URL =
+  import.meta.env.MODE === 'production'
+    ? 'https://sateituikyaku-admin-backend.vercel.app'
+    : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
 
 /**
  * バックエンドAPI経由でSupabase Storageにファイルをアップロードして公開URLを返す
  *
+ * ⚠️ axios（api インスタンス）ではなく fetch を使う理由：
+ *    axios.create に設定された "Content-Type: application/json" デフォルトヘッダーが
+ *    FormData の multipart/form-data を上書きしてしまい、multer が req.file を受け取れず
+ *    「ファイルが指定されていません（400）」になる。
+ *    fetch は FormData を渡すと boundary 付きの Content-Type をブラウザが自動設定するため確実。
+ *
  * ⚠️ 以前はフロントエンドから supabase.storage を直接呼び出していたが、
  *    ユーザーのSupabaseセッション（JWT）が期限切れになると Storage の RLS に弾かれ
  *    「保存に失敗しました」エラーが発生していた（2026年10月障害）。
- *
- * バックエンドの POST /api/shared-items/upload はサービスロールキーで動作するため
- * ユーザーのセッション状態に関係なくアップロードできる。
+ *    バックエンドの POST /api/shared-items/upload はサービスロールキーで動作するため
+ *    ユーザーのセッション状態に関係なくアップロードできる。
  */
 export async function uploadFileToStorage(file: File, type: 'pdf' | 'image'): Promise<string> {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('type', type);
 
-  // Content-Type は axios が FormData を検知して multipart/form-data + boundary を自動設定する
-  const response = await api.post('/api/shared-items/upload', formData);
+  // fetch を使用：Content-Type ヘッダーを指定しないことで
+  // ブラウザが multipart/form-data; boundary=... を自動設定する
+  const response = await fetch(`${API_BASE_URL}/api/shared-items/upload`, {
+    method: 'POST',
+    body: formData,
+  });
 
-  if (!response.data?.url) {
+  if (!response.ok) {
+    let errMsg = 'ファイルのアップロードに失敗しました';
+    try {
+      const errData = await response.json();
+      if (errData?.error) errMsg = errData.error;
+    } catch {
+      // JSON パース失敗は無視
+    }
+    throw new Error(errMsg);
+  }
+
+  const data = await response.json();
+  if (!data?.url) {
     throw new Error('アップロードURLの取得に失敗しました');
   }
 
-  return response.data.url;
+  return data.url;
 }
 
 /**
