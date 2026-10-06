@@ -10,6 +10,7 @@ import {
   Share as ShareIcon,
   Menu as MenuIcon,
   Email as EmailIcon,
+  ManageSearch as ManageSearchIcon,
 } from '@mui/icons-material';
 import { useAuthStore } from '../store/authStore';
 import { EmployeeRole } from '../types';
@@ -75,6 +76,11 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
 
   const handleKujiraSiteClick = () => {
     window.open('https://property-site-frontend-kappa.vercel.app/kujira/properties', '_blank', 'noopener,noreferrer');
+    setDrawerOpen(false);
+  };
+
+  const handleAtbbSearchClick = () => {
+    window.open('https://sateituikyaku-admin-frontend.vercel.app/shared-items/329', '_blank', 'noopener,noreferrer');
     setDrawerOpen(false);
   };
 
@@ -163,6 +169,17 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
                 <ListItemText primary="くじら_独自サイト" />
               </ListItemButton>
             </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton
+                onClick={handleAtbbSearchClick}
+                sx={{ minHeight: 44 }}
+              >
+                <ListItemIcon sx={{ minWidth: 36 }}>
+                  <ManageSearchIcon />
+                </ListItemIcon>
+                <ListItemText primary="ユーザー検索条件（ATBB）" />
+              </ListItemButton>
+            </ListItem>
           </List>
         </Drawer>
       </>
@@ -235,6 +252,15 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
         sx={{ minWidth: 150 }}
       >
         くじら_独自サイト
+      </Button>
+      <Button
+        variant="outlined"
+        color="secondary"
+        startIcon={<ManageSearchIcon />}
+        onClick={handleAtbbSearchClick}
+        sx={{ minWidth: 180 }}
+      >
+        ユーザー検索条件（ATBB）
       </Button>
     </Box>
   );
