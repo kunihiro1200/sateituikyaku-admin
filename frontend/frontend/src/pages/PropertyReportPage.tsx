@@ -822,32 +822,67 @@ export default function PropertyReportPage() {
             )}
           </Box>
         </Box>
-        {/* ヘッダー保存ボタン（変更があると光る） */}
-        <Button
-          variant="contained"
-          size="small"
-          startIcon={saving ? <CircularProgress size={14} /> : <SaveIcon />}
-          onClick={handleSave}
-          disabled={saving || !hasChanges}
-          sx={{
-            minWidth: 80,
-            backgroundColor: hasChanges ? SECTION_COLORS.property.main : 'grey.400',
-            transition: 'all 0.3s',
-            ...(hasChanges && {
-              animation: 'glow 1.5s ease-in-out infinite',
-              '@keyframes glow': {
-                '0%': { boxShadow: `0 0 0 0 ${SECTION_COLORS.property.main}99` },
-                '70%': { boxShadow: `0 0 0 8px ${SECTION_COLORS.property.main}00` },
-                '100%': { boxShadow: `0 0 0 0 ${SECTION_COLORS.property.main}00` },
+        {/* ヘッダー右側：PV推移ボタン + 保存ボタン */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {/* ATBBのPV推移ボタン */}
+          <Button
+            variant="outlined"
+            size="small"
+            href="https://sateituikyaku-admin-frontend.vercel.app/shared-items/330"
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{
+              borderColor: '#d32f2f',
+              color: '#d32f2f',
+              whiteSpace: 'nowrap',
+              '&:hover': { borderColor: '#b71c1c', backgroundColor: '#d32f2f08' },
+            }}
+          >
+            ATBBのPV推移
+          </Button>
+          {/* SUUMOのPV推移ボタン */}
+          <Button
+            variant="outlined"
+            size="small"
+            href="https://sateituikyaku-admin-frontend.vercel.app/shared-items/331"
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{
+              borderColor: '#2e7d32',
+              color: '#2e7d32',
+              whiteSpace: 'nowrap',
+              '&:hover': { borderColor: '#1b5e20', backgroundColor: '#2e7d3208' },
+            }}
+          >
+            SUUMOのPV推移
+          </Button>
+          {/* ヘッダー保存ボタン（変更があると光る） */}
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={saving ? <CircularProgress size={14} /> : <SaveIcon />}
+            onClick={handleSave}
+            disabled={saving || !hasChanges}
+            sx={{
+              minWidth: 80,
+              backgroundColor: hasChanges ? SECTION_COLORS.property.main : 'grey.400',
+              transition: 'all 0.3s',
+              ...(hasChanges && {
+                animation: 'glow 1.5s ease-in-out infinite',
+                '@keyframes glow': {
+                  '0%': { boxShadow: `0 0 0 0 ${SECTION_COLORS.property.main}99` },
+                  '70%': { boxShadow: `0 0 0 8px ${SECTION_COLORS.property.main}00` },
+                  '100%': { boxShadow: `0 0 0 0 ${SECTION_COLORS.property.main}00` },
+                },
+              }),
+              '&:hover': {
+                backgroundColor: hasChanges ? SECTION_COLORS.property.dark : 'grey.500',
               },
-            }),
-            '&:hover': {
-              backgroundColor: hasChanges ? SECTION_COLORS.property.dark : 'grey.500',
-            },
-          }}
-        >
-          {saving ? '保存中' : '保存'}
-        </Button>
+            }}
+          >
+            {saving ? '保存中' : '保存'}
+          </Button>
+        </Box>
       </Box>
 
       {/* 左右2カラムレイアウト */}
