@@ -89,17 +89,29 @@ export default function ServiceSupportModal({ open, onClose, sellerNumber, owner
     const accent = isFI ? '#1B3A6B' : '#00695C';
     const light  = isFI ? '#EBF0F9' : '#E8F5E9';
     const n = selected.length;
-    const gap = 2, lblH = 7, avail = 236;
-    const card = Math.floor((avail - (n-1)*gap) / Math.max(n,1));
-    const imgH = Math.max(card - lblH, 8);
 
+    // ── A4 縦スペース計算（4枚1ページに収める）──
+    // 297mm - 余白(16) - ヘッダー(14) - 物件情報(9) - フッター(4) - ギャップ合計 - ラベル合計
+    const padMm  = 8;   // 上下余白
+    const hdrMm  = 14;  // ヘッダー
+    const propMm = 9;   // 物件情報
+    const ftrMm  = 4;   // フッター
+    const gapMm  = 2;   // カード間ギャップ
+    const lblMm  = 7;   // ラベル高さ
+    const avail  = 297 - padMm*2 - hdrMm - propMm - ftrMm
+                   - (n-1)*gapMm - n*lblMm;
+    const imgH   = Math.max(Math.floor(avail / n), 10);
+
+    // object-fit:cover で画像を上端基準にトリミング（切れる部分を最小化）
     const cards = selected.map(it => `
-<div style="display:flex;flex-direction:column;border:1px solid #dde;border-left:4px solid ${accent};border-radius:3px;overflow:hidden;margin-bottom:${gap}mm;">
-  <div style="width:100%;height:${imgH}mm;overflow:hidden;background:#f5f7fa;">
-    <img src="${origin}/sale-schedule/illustrations/${it.id}.png"
-         alt="${esc(it.label)}" style="width:100%;height:auto;display:block;" />
-  </div>
-  <div style="font-size:8pt;font-weight:700;color:${accent};padding:1.5mm 3mm;background:${light};">${esc(it.label)}</div>
+<div style="display:flex;flex-direction:column;border:1px solid #dde;
+            border-left:4px solid ${accent};border-radius:3px;
+            overflow:hidden;margin-bottom:${gapMm}mm;">
+  <img src="${origin}/sale-schedule/illustrations/${it.id}.png"
+       alt="${esc(it.label)}"
+       style="width:100%;height:${imgH}mm;object-fit:cover;object-position:top center;display:block;" />
+  <div style="font-size:10pt;font-weight:700;color:${accent};
+              padding:1.5mm 4mm;background:${light};">${esc(it.label)}</div>
 </div>`).join('');
 
     const html = `<!DOCTYPE html>
@@ -111,17 +123,17 @@ body{font-family:'ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
      -webkit-print-color-adjust:exact;print-color-adjust:exact;}
 </style>
 </head><body>
-<div style="width:210mm;padding:10mm 12mm;box-sizing:border-box;">
-  <div style="background:${accent};border-radius:5px;padding:5mm 10mm;color:#fff;margin-bottom:4mm;">
-    <div style="font-size:7pt;letter-spacing:.15em;color:rgba(255,255,255,.65);margin-bottom:1.5mm;">Seller Support Services</div>
-    <div style="font-size:17pt;font-weight:700;">${esc(title)}</div>
+<div style="width:210mm;padding:${padMm}mm 12mm;box-sizing:border-box;">
+  <div style="background:${accent};border-radius:5px;padding:4mm 10mm;color:#fff;margin-bottom:3mm;">
+    <div style="font-size:8pt;letter-spacing:.15em;color:rgba(255,255,255,.65);margin-bottom:1mm;">Seller Support Services</div>
+    <div style="font-size:20pt;font-weight:700;">${esc(title)}</div>
   </div>
-  <div style="background:${light};border-radius:4px;padding:3mm 7mm;margin-bottom:4mm;">
-    ${ownerName ? `<div style="font-size:9pt;margin-bottom:1mm;"><span style="font-size:7pt;color:${accent};font-weight:600;min-width:18mm;display:inline-block;">お客様氏名</span>${esc(ownerName)} 様</div>` : ''}
-    ${propertyAddress ? `<div style="font-size:9pt;"><span style="font-size:7pt;color:${accent};font-weight:600;min-width:18mm;display:inline-block;">物件所在地</span>${esc(propertyAddress)}</div>` : ''}
+  <div style="background:${light};border-radius:4px;padding:2.5mm 7mm;margin-bottom:3mm;">
+    ${ownerName ? `<div style="display:flex;gap:4mm;align-items:baseline;margin-bottom:0.5mm;"><span style="font-size:8pt;color:${accent};font-weight:600;min-width:18mm;">お客様氏名</span><span style="font-size:11pt;">${esc(ownerName)} 様</span></div>` : ''}
+    ${propertyAddress ? `<div style="display:flex;gap:4mm;align-items:baseline;"><span style="font-size:8pt;color:${accent};font-weight:600;min-width:18mm;">物件所在地</span><span style="font-size:11pt;">${esc(propertyAddress)}</span></div>` : ''}
   </div>
   ${cards}
-  <div style="border-top:1px solid #ddd;padding-top:2mm;text-align:center;font-size:6.5pt;color:#aaa;margin-top:3mm;">
+  <div style="border-top:1px solid #ddd;padding-top:2mm;text-align:center;font-size:7pt;color:#aaa;margin-top:2mm;">
     ※ 内容・条件の詳細については担当スタッフまでお問い合わせください。
   </div>
 </div>
