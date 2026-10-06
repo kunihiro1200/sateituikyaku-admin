@@ -140,69 +140,56 @@ export default function ServiceSupportModal({ open, onClose, sellerNumber, owner
   const handlePrint = useCallback(() => {
     if (selected.length === 0) return;
 
-    // ① A4 コンテンツを DOM に注入
-    const container = document.createElement('div');
-    container.id = 'svc-print';
-    container.innerHTML = buildPrintBody(title, ownerName, propertyAddress, selected, isFI);
-    document.body.appendChild(container);
+    // ① 白い全画面オーバーレイとして表示（画面に見えているので画像が確実にロードされる）
+    const overlay = document.createElement('div');
+    overlay.id = 'svc-print';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:white;z-index:99999;overflow:auto;';
+    overlay.innerHTML = buildPrintBody(title, ownerName, propertyAddress, selected, isFI);
+    document.body.appendChild(overlay);
 
-    // ② 印刷用 CSS 注入
+    // ② 印刷用 CSS（印刷時はオーバーレイ以外を非表示）
     const style = document.createElement('style');
     style.id = 'svc-print-style';
     style.textContent = `
       @page { size: A4 portrait; margin: 0; }
-      /* display:none だと画像がロードされないため、画面外に配置して非表示にする */
-      #svc-print {
-        position: fixed;
-        left: -10000px;
-        top: 0;
-        width: 210mm;
-        height: 1px;
-        overflow: hidden;
-      }
       @media print {
-        body * { visibility: hidden !important; }
+        body > *:not(#svc-print) { display: none !important; }
         #svc-print {
-          left: 0 !important;
-          top: 0 !important;
+          position: fixed !important;
+          top: 0 !important; left: 0 !important;
+          width: 210mm !important;
           height: auto !important;
           overflow: visible !important;
-          visibility: visible !important;
         }
-        #svc-print * { visibility: visible !important; }
       }
     `;
     document.head.appendChild(style);
 
-    // ③ クリーンアップ関数
+    // ③ クリーンアップ
     const cleanup = () => {
-      try { document.body.removeChild(container); }  catch {}
-      try { document.head.removeChild(style); } catch {}
+      overlay.style.display = 'none';
+      setTimeout(() => {
+        try { document.body.removeChild(overlay); } catch {}
+        try { document.head.removeChild(style); } catch {}
+      }, 0);
     };
     window.addEventListener('afterprint', cleanup, { once: true });
-    setTimeout(cleanup, 10000); // afterprint が発火しない場合の安全弁
+    setTimeout(cleanup, 10000);
 
-    // ④ 画像ロード完了後に print()
-    const imgs = Array.from(container.querySelectorAll('img')) as HTMLImageElement[];
+    // ④ 全画像ロード後に print()（オーバーレイが見えているので即ロード）
+    const imgs = Array.from(overlay.querySelectorAll('img')) as HTMLImageElement[];
     const total = imgs.length;
+    const doPrint = () => setTimeout(() => window.print(), 100);
 
-    if (total === 0) {
-      window.print();
-      return;
-    }
+    if (total === 0) { doPrint(); return; }
 
     let done = 0;
-    const onDone = () => {
-      done++;
-      if (done >= total) window.print();
-    };
-
+    const onDone = () => { if (++done >= total) doPrint(); };
     imgs.forEach(img => {
-      if (img.complete && img.naturalWidth > 0) {
-        onDone();                          // キャッシュ済み → 即完了
-      } else {
+      if (img.complete && img.naturalWidth > 0) { onDone(); }
+      else {
         img.addEventListener('load',  onDone, { once: true });
-        img.addEventListener('error', onDone, { once: true }); // エラーでも進める
+        img.addEventListener('error', onDone, { once: true });
       }
     });
   }, [selected, title, ownerName, propertyAddress, isFI]);
