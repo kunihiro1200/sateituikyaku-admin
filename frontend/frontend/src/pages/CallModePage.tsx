@@ -5945,6 +5945,11 @@ HP：https://ifoo-oita.com/
   const handleSendChatNotification = async () => {
     if (!seller) return;
 
+    // ステータスセクションに変更がない場合は送信をスキップ（重複送信防止）
+    if (!statusChanged) {
+      return;
+    }
+
     try {
       setSendingChatNotification(true);
       setError(null);
@@ -11629,7 +11634,7 @@ HP：https://ifoo-oita.com/
                       fullWidth
                       variant="contained"
                       onClick={handleSendChatNotification}
-                      disabled={sendingChatNotification}
+                      disabled={!statusChanged || sendingChatNotification}
                       startIcon={sendingChatNotification ? <CircularProgress size={20} /> : null}
                       sx={{
                         backgroundColor: '#FF6D00',
@@ -11879,7 +11884,7 @@ HP：https://ifoo-oita.com/
                         variant={statusChanged ? 'contained' : 'contained'}
                         color={statusChanged ? undefined : 'success'}
                         onClick={handleSendChatNotification}
-                        disabled={sendingChatNotification}
+                        disabled={!statusChanged || sendingChatNotification}
                         startIcon={sendingChatNotification ? <CircularProgress size={20} /> : null}
                         sx={{
                           ...(statusChanged ? {
