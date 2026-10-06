@@ -1,36 +1,31 @@
 /**
  * 共有ページ新規作成フォーム用ユーティリティ関数
  */
-import { supabase } from '../config/supabase';
+import api from '../services/api';
 
 /**
- * Supabase Storageに直接ファイルをアップロードして公開URLを返す
- * バックエンド経由ではなくフロントエンドから直接アップロードすることで
- * Vercelの4.5MBボディサイズ制限を回避する
+ * バックエンドAPI経由でSupabase Storageにファイルをアップロードして公開URLを返す
+ *
+ * ⚠️ 以前はフロントエンドから supabase.storage を直接呼び出していたが、
+ *    ユーザーのSupabaseセッション（JWT）が期限切れになると Storage の RLS に弾かれ
+ *    「保存に失敗しました」エラーが発生していた（2026年10月障害）。
+ *
+ * バックエンドの POST /api/shared-items/upload はサービスロールキーで動作するため
+ * ユーザーのセッション状態に関係なくアップロードできる。
  */
 export async function uploadFileToStorage(file: File, type: 'pdf' | 'image'): Promise<string> {
-  const folder = type === 'pdf' ? 'pdfs' : 'images';
-  const timestamp = Date.now();
-  // 日本語などのマルチバイト文字はSupabase StorageでInvalid keyになるため、
-  // ファイル名をサニタイズして英数字とハイフン・ドットのみにする
-  const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : '';
-  const baseName = file.name.slice(0, file.name.length - ext.length);
-  const safeName = baseName.replace(/[^a-zA-Z0-9_-]/g, '_').replace(/^_+|_+$/g, '') || 'file';
-  const filePath = `${folder}/${timestamp}_${safeName}${ext}`;
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('type', type);
 
-  const { error } = await supabase.storage
-    .from('shared-items')
-    .upload(filePath, file, {
-      contentType: file.type,
-      upsert: false,
-    });
+  // Content-Type は axios が FormData を検知して multipart/form-data + boundary を自動設定する
+  const response = await api.post('/api/shared-items/upload', formData);
 
-  if (error) {
-    throw new Error(`ファイルのアップロードに失敗しました: ${error.message}`);
+  if (!response.data?.url) {
+    throw new Error('アップロードURLの取得に失敗しました');
   }
 
-  const { data } = supabase.storage.from('shared-items').getPublicUrl(filePath);
-  return data.publicUrl;
+  return response.data.url;
 }
 
 /**
