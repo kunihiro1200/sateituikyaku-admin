@@ -303,6 +303,7 @@ ${data.callPageUrl ? `\n🔗 ${data.callPageUrl}` : ''}
 物件所在地: ${data.propertyAddress}
 査定額: ${data.valuationAmount ? `¥${data.valuationAmount.toLocaleString()}` : '未設定'}
 担当者: ${data.assignee || '未設定'}
+サービス: 室内クリーニング、残置物撤去
 
 ${body}
 ${data.notes ? `\n備考: ${data.notes}` : ''}
@@ -322,6 +323,7 @@ ${data.callPageUrl ? `\n🔗 ${data.callPageUrl}` : ''}
 物件所在地: ${data.propertyAddress}
 他決要因: ${data.reason || '未記入'}
 担当者: ${data.assignee || '未設定'}
+サービス: 室内クリーニング、残置物撤去
 
 訪問査定後に他決となりました。
 ${data.notes ? `\n対策: ${data.notes}` : ''}
@@ -359,6 +361,7 @@ ${data.callPageUrl ? `\n🔗 ${data.callPageUrl}` : ''}
 売主名: ${data.sellerName}
 物件所在地: ${data.propertyAddress}
 他決要因: ${data.reason || '未記入'}
+サービス: 室内クリーニング、残置物撤去
 
 訪問前に他決となりました。
 ${data.notes ? `\n備考: ${data.notes}` : ''}

@@ -58,9 +58,9 @@ export default function ServiceSupportModal({ open, onClose, sellerNumber, owner
   const accent = isFI ? '#1B3A6B' : '#00695C';
   const light  = isFI ? '#EBF0F9' : '#E8F5E9';
 
-  // デフォルトは全未選択（通常3件程度を選ぶため）
+  // デフォルト：室内クリーニング・残置物撤去を選択済みに
   const [checked, setChecked] = useState<Record<string,boolean>>(
-    Object.fromEntries(SERVICE_ITEMS.map(i => [i.id, false])),
+    Object.fromEntries(SERVICE_ITEMS.map(i => [i.id, i.id === 'cleaning' || i.id === 'removal'])),
   );
 
   const toggle    = (id: string) => setChecked(p => ({ ...p, [id]: !p[id] }));
@@ -130,6 +130,9 @@ body{font-family:'ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
   <div style="background:${light};border-radius:4px;padding:2.5mm 7mm;margin-bottom:3mm;">
     ${ownerName ? `<div style="display:flex;gap:4mm;align-items:baseline;margin-bottom:0.5mm;"><span style="font-size:8pt;color:${accent};font-weight:600;min-width:18mm;">お客様氏名</span><span style="font-size:11pt;">${esc(ownerName)} 様</span></div>` : ''}
     ${propertyAddress ? `<div style="display:flex;gap:4mm;align-items:baseline;"><span style="font-size:8pt;color:${accent};font-weight:600;min-width:18mm;">物件所在地</span><span style="font-size:11pt;">${esc(propertyAddress)}</span></div>` : ''}
+    <div style="margin-top:2.5mm;padding-top:2mm;border-top:1px solid rgba(0,0,0,0.1);font-size:8pt;color:#555;font-style:italic;">
+      ※ こちらの無料サービスは弊社の専任媒介での特典となります
+    </div>
   </div>
   ${rowsHtml}
   <div style="border-top:1px solid #ddd;padding-top:2mm;text-align:center;font-size:7pt;color:#aaa;">
@@ -231,6 +234,11 @@ body{font-family:'ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
 
       <DialogActions sx={{ px:2, py:1.5, gap:1 }}>
         <Button onClick={onClose} size="small" color="inherit">閉じる</Button>
+        <Button variant="outlined" size="small" startIcon={<PrintIcon />}
+          onClick={handlePrint} disabled={selected.length === 0}
+          sx={{ borderColor:accent, color:accent }}>
+          保存
+        </Button>
         <Button variant="contained" size="small" startIcon={<PrintIcon />}
           onClick={handlePrint} disabled={selected.length === 0}
           sx={{ bgcolor:accent, '&:hover':{ bgcolor:isFI ? '#142d55' : '#00564f' } }}>
