@@ -151,13 +151,24 @@ export default function ServiceSupportModal({ open, onClose, sellerNumber, owner
     style.id = 'svc-print-style';
     style.textContent = `
       @page { size: A4 portrait; margin: 0; }
-      #svc-print { display: none; }
+      /* display:none だと画像がロードされないため、画面外に配置して非表示にする */
+      #svc-print {
+        position: fixed;
+        left: -10000px;
+        top: 0;
+        width: 210mm;
+        height: 1px;
+        overflow: hidden;
+      }
       @media print {
-        body { visibility: hidden !important; }
-        #svc-print { visibility: visible !important;
-                     display: block !important;
-                     position: fixed !important;
-                     top: 0 !important; left: 0 !important; }
+        body * { visibility: hidden !important; }
+        #svc-print {
+          left: 0 !important;
+          top: 0 !important;
+          height: auto !important;
+          overflow: visible !important;
+          visibility: visible !important;
+        }
         #svc-print * { visibility: visible !important; }
       }
     `;
