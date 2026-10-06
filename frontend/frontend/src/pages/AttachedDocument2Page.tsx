@@ -278,7 +278,7 @@ export default function AttachedDocument2Page() {
         .filter((v): v is number => !!v).map(fmt).join(' 〜 ') || '-';
   const visitSchedule = fmtDatetime((seller?.appointmentDate as string) || (seller?.visitDate as string));
 
-  // ── 印刷HTML生成（文字列連結方式でバックティック入れ子を回避） ──
+    // ── 印刷HTML生成（文字列連結方式でバックティック入れ子を回避） ──
   const generatePrintHtml = (): string => {
     const cb = (checked: boolean) => checked ? '☑' : '☐';
     const lt = (landArea ? landArea + '㎡' : '-') + (landVerified ? '　（当社調べ：' + landVerified + '㎡）' : '');
@@ -329,20 +329,20 @@ export default function AttachedDocument2Page() {
       + '*{box-sizing:border-box}'
       + 'html,body{height:100%;margin:0;padding:0}'
       + 'body{font-family:\'Hiragino Kaku Gothic Pro\',\'Yu Gothic\',\'MS Gothic\',sans-serif;font-size:9pt;color:#000}'
-      + '.page{display:flex;flex-direction:column;height:277mm}'
-      + 'h1{font-size:13pt;font-weight:bold;margin:0 0 1pt;border-bottom:2pt solid #000;padding-bottom:2pt;flex-shrink:0}'
-      + '.sub{font-size:8pt;color:#555;margin-bottom:4pt;flex-shrink:0}'
-      + '.row2{display:flex;gap:5pt;margin-bottom:5pt;flex-shrink:0}'
+      + '.page{display:block;page-break-after:always}'
+      + 'h1{font-size:13pt;font-weight:bold;margin:0 0 1pt;border-bottom:2pt solid #000;padding-bottom:2pt}'
+      + '.sub{font-size:8pt;color:#555;margin-bottom:4pt}'
+      + '.row2{display:flex;gap:5pt;margin-bottom:5pt}'
       + '.row2>div{flex:1;border:1pt solid #888;padding:4pt}'
       + '.stitle{font-weight:bold;font-size:8.5pt;border-bottom:1pt solid #ccc;padding-bottom:2pt;margin-bottom:3pt}'
       + '.iline{font-size:8pt;line-height:1.6}'
-      + '.grid2{display:grid;grid-template-columns:1fr 1fr;gap:5pt;margin-bottom:5pt;flex-shrink:0}'
+      + '.grid2{display:grid;grid-template-columns:1fr 1fr;gap:5pt;margin-bottom:5pt}'
       + '.box{border:1pt solid #888;padding:4pt}'
       + '.blbl{font-size:7pt;color:#555}'
       + '.bval{font-size:10pt;font-weight:bold}'
-      + '.cbox{border:1pt solid #888;padding:5pt;margin-bottom:5pt;font-size:7.5pt;white-space:pre-wrap;line-height:1.45;overflow:hidden;flex:1;min-height:0}'
+      + '.cbox{border:1pt solid #888;padding:5pt;margin-bottom:5pt;font-size:7.5pt;white-space:pre-wrap;line-height:1.45;overflow:hidden;height:110mm}'
       + '.clbl{font-size:7pt;color:#555;font-weight:bold;margin-bottom:2pt}'
-      + '.tblock{flex-shrink:0}'
+      + '.tblock{}'
       + '.it{width:100%;border-collapse:collapse;margin-bottom:4pt;border:1pt solid #888}'
       + '.it td{border:1pt solid #888;padding:2pt 4pt;font-size:8pt;vertical-align:middle}'
       + '.lbl{background:#f0f0f0;font-weight:bold;white-space:nowrap;width:52pt}'
