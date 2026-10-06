@@ -599,7 +599,27 @@ export default function AttachedDocument2Page() {
           <Button startIcon={<ArrowBack />} variant="outlined" size="small"
             onClick={() => { if (window.history.length > 1) { navigate(-1); } else { window.close(); } }}>戻る</Button>
           <Typography variant="h6" fontWeight="bold">添付資料２（試作中）</Typography>
-          <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
+          <Box sx={{ ml: 'auto', display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Button
+              variant="outlined"
+              size="small"
+              href="https://sateituikyaku-admin-frontend.vercel.app/shared-items/330"
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{ borderColor: '#d32f2f', color: '#d32f2f', whiteSpace: 'nowrap', '&:hover': { borderColor: '#b71c1c', backgroundColor: '#d32f2f08' } }}
+            >
+              ATBBのPV推移
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              href="https://sateituikyaku-admin-frontend.vercel.app/shared-items/331"
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{ borderColor: '#2e7d32', color: '#2e7d32', whiteSpace: 'nowrap', '&:hover': { borderColor: '#1b5e20', backgroundColor: '#2e7d3208' } }}
+            >
+              SUUMOのPV推移
+            </Button>
             <Button startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
               variant="outlined" onClick={handleSave} disabled={saving || !isDirty} size="small"
               color={isDirty ? 'primary' : 'inherit'}>
