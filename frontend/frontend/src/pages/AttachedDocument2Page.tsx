@@ -83,6 +83,14 @@ interface DocumentFields {
   site_check_memo4: string;
   hazard_map: string;
   mortgage_info: string;
+  // 【特典】チェックボックス
+  tokuten_cleaning: boolean;
+  tokuten_garden: boolean;
+  tokuten_wallpaper: boolean;
+  tokuten_removal: boolean;
+  tokuten_warranty: boolean;
+  tokuten_fee_discount: boolean;
+  tokuten_bridge_loan: boolean;
 }
 
 const EMPTY_FIELDS: DocumentFields = {
@@ -113,6 +121,13 @@ const EMPTY_FIELDS: DocumentFields = {
   site_check_memo4: '',
   hazard_map: '',
   mortgage_info: '',
+  tokuten_cleaning: false,
+  tokuten_garden: false,
+  tokuten_wallpaper: false,
+  tokuten_removal: false,
+  tokuten_warranty: false,
+  tokuten_fee_discount: false,
+  tokuten_bridge_loan: false,
 };
 
 const fmt = (amount?: number) =>
@@ -180,6 +195,13 @@ export default function AttachedDocument2Page() {
         site_check_memo4: d.site_check_memo4 || '',
         hazard_map: d.hazard_map || '',
         mortgage_info: d.mortgage_info || '',
+        tokuten_cleaning: !!d.tokuten_cleaning,
+        tokuten_garden: !!d.tokuten_garden,
+        tokuten_wallpaper: !!d.tokuten_wallpaper,
+        tokuten_removal: !!d.tokuten_removal,
+        tokuten_warranty: !!d.tokuten_warranty,
+        tokuten_fee_discount: !!d.tokuten_fee_discount,
+        tokuten_bridge_loan: !!d.tokuten_bridge_loan,
       });
       setIsDirty(false);
     } catch (err: any) {
@@ -351,6 +373,18 @@ export default function AttachedDocument2Page() {
       + '</div>'
       + '<div class="cbox"><div class="clbl">コメント内容</div>'
       + (seller?.comments ? stripHtml(seller.comments) : '（コメントなし）')
+      + '<div style="margin-top:6pt;border-top:1pt dashed #888;padding-top:4pt">'
+      + '<div style="font-weight:bold;font-size:8pt;margin-bottom:3pt">【特典】</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:2pt 12pt;font-size:8pt;line-height:1.8">'
+      + '<span>' + cb(fields.tokuten_cleaning) + ' 室内クリーニング</span>'
+      + '<span>' + cb(fields.tokuten_garden) + ' 庭の除草、草刈り</span>'
+      + '<span>' + cb(fields.tokuten_wallpaper) + ' クロスの張替え</span>'
+      + '<span>' + cb(fields.tokuten_removal) + ' 残置物撤去</span>'
+      + '<span>' + cb(fields.tokuten_warranty) + ' 設備の1年間無償保証</span>'
+      + '<span>' + cb(fields.tokuten_fee_discount) + ' 最低価格を下回った場合 仲介手数料２％</span>'
+      + '<span>' + cb(fields.tokuten_bridge_loan) + ' つなぎ融資</span>'
+      + '</div>'
+      + '</div>'
       + '</div>'
       + '<div class="tblock">'
       + '<table class="it"><tr>'
@@ -629,6 +663,25 @@ export default function AttachedDocument2Page() {
               <Typography sx={{ fontSize: '8pt', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
                 {seller?.comments ? stripHtml(seller.comments) : '（コメントなし）'}
               </Typography>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
+              <Typography sx={{ fontWeight: 'bold', fontSize: '8.5pt', mb: 0.8 }}>【特典】</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0 }}>
+                {([
+                  { key: 'tokuten_cleaning'     as const, label: '室内クリーニング' },
+                  { key: 'tokuten_garden'        as const, label: '庭の除草、草刈り' },
+                  { key: 'tokuten_wallpaper'     as const, label: 'クロスの張替え' },
+                  { key: 'tokuten_removal'       as const, label: '残置物撤去' },
+                  { key: 'tokuten_warranty'      as const, label: '設備の1年間無償保証' },
+                  { key: 'tokuten_fee_discount'  as const, label: '最低価格を下回った場合 仲介手数料２％' },
+                  { key: 'tokuten_bridge_loan'   as const, label: 'つなぎ融資' },
+                ]).map((c) => (
+                  <FormControlLabel key={c.key} sx={{ width: '50%', m: 0 }}
+                    control={<Checkbox size="small" checked={fields[c.key]} onChange={(e) => set(c.key, e.target.checked)} />}
+                    label={<Typography sx={{ fontSize: '9pt' }}>{c.label}</Typography>} />
+                ))}
+              </Box>
             </Paper>
 
             <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>

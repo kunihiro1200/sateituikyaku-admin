@@ -48,6 +48,14 @@ export interface AttachedDocument2Data {
   // ハザードマップ・抵当権
   hazard_map?: string | null;
   mortgage_info?: string | null;
+  // 【特典】チェックボックス
+  tokuten_cleaning?: boolean;
+  tokuten_garden?: boolean;
+  tokuten_wallpaper?: boolean;
+  tokuten_removal?: boolean;
+  tokuten_warranty?: boolean;
+  tokuten_fee_discount?: boolean;
+  tokuten_bridge_loan?: boolean;
 }
 
 const EMPTY_RESPONSE = (sellerId: string) => ({
@@ -79,6 +87,13 @@ const EMPTY_RESPONSE = (sellerId: string) => ({
   site_check_memo4: null,
   hazard_map: null,
   mortgage_info: null,
+  tokuten_cleaning: false,
+  tokuten_garden: false,
+  tokuten_wallpaper: false,
+  tokuten_removal: false,
+  tokuten_warranty: false,
+  tokuten_fee_discount: false,
+  tokuten_bridge_loan: false,
 });
 
 // 売主の添付資料２入力項目を取得
@@ -142,6 +157,13 @@ router.put('/sellers/:sellerId/attached-document2', async (req: Request, res: Re
       site_check_memo4: body.site_check_memo4 || null,
       hazard_map: body.hazard_map || null,
       mortgage_info: body.mortgage_info || null,
+      tokuten_cleaning: !!body.tokuten_cleaning,
+      tokuten_garden: !!body.tokuten_garden,
+      tokuten_wallpaper: !!body.tokuten_wallpaper,
+      tokuten_removal: !!body.tokuten_removal,
+      tokuten_warranty: !!body.tokuten_warranty,
+      tokuten_fee_discount: !!body.tokuten_fee_discount,
+      tokuten_bridge_loan: !!body.tokuten_bridge_loan,
       updated_at: new Date().toISOString(),
       updated_by: body.updated_by || null,
     };
