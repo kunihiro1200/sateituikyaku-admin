@@ -90,28 +90,27 @@ export default function ServiceSupportModal({ open, onClose, sellerNumber, owner
     const light  = isFI ? '#EBF0F9' : '#E8F5E9';
     const n = selected.length;
 
-    // ── A4 縦スペース計算（4枚1ページに収める）──
-    // 297mm - 余白(16) - ヘッダー(14) - 物件情報(9) - フッター(4) - ギャップ合計 - ラベル合計
-    const padMm  = 8;   // 上下余白
-    const hdrMm  = 14;  // ヘッダー
-    const propMm = 9;   // 物件情報
-    const ftrMm  = 4;   // フッター
-    const gapMm  = 2;   // カード間ギャップ
-    const lblMm  = 7;   // ラベル高さ
-    const avail  = 297 - padMm*2 - hdrMm - propMm - ftrMm
-                   - (n-1)*gapMm - n*lblMm;
-    const imgH   = Math.max(Math.floor(avail / n), 10);
+    // ── 2列グリッドレイアウト ──
+    // 列幅 91mm × 3:2画像 → 自然高さ 61mm（切り取りなし）
+    // 4枚 = 2行×2列 → 1ページに収まる
+    const colGap = 3;  // 列間
+    const rowGap = 3;  // 行間
+    const colW   = Math.floor((186 - colGap) / 2); // ≈91mm
 
-    // object-fit:cover で画像を上端基準にトリミング（切れる部分を最小化）
-    const cards = selected.map(it => `
-<div style="display:flex;flex-direction:column;border:1px solid #dde;
-            border-left:4px solid ${accent};border-radius:3px;
-            overflow:hidden;margin-bottom:${gapMm}mm;">
-  <img src="${origin}/sale-schedule/illustrations/${it.id}.png"
-       alt="${esc(it.label)}"
-       style="width:100%;height:${imgH}mm;object-fit:cover;object-position:top center;display:block;" />
-  <div style="font-size:10pt;font-weight:700;color:${accent};
-              padding:1.5mm 4mm;background:${light};">${esc(it.label)}</div>
+    // 2枚ずつ行に分ける
+    const rows: typeof selected[] = [];
+    for (let i = 0; i < n; i += 2) rows.push(selected.slice(i, i + 2));
+
+    const rowsHtml = rows.map(row => `
+<div style="display:flex;gap:${colGap}mm;margin-bottom:${rowGap}mm;">
+  ${row.map(it => `
+  <div style="flex:1;display:flex;flex-direction:column;border:1px solid #dde;border-left:4px solid ${accent};border-radius:3px;overflow:hidden;">
+    <img src="${origin}/sale-schedule/illustrations/${it.id}.png"
+         alt="${esc(it.label)}"
+         style="width:100%;height:auto;display:block;" />
+    <div style="font-size:10pt;font-weight:700;color:${accent};padding:1.5mm 3mm;background:${light};">${esc(it.label)}</div>
+  </div>`).join('')}
+  ${row.length < 2 ? `<div style="flex:1;"></div>` : ''}
 </div>`).join('');
 
     const html = `<!DOCTYPE html>
@@ -123,7 +122,7 @@ body{font-family:'ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
      -webkit-print-color-adjust:exact;print-color-adjust:exact;}
 </style>
 </head><body>
-<div style="width:210mm;padding:${padMm}mm 12mm;box-sizing:border-box;">
+<div style="width:210mm;padding:8mm 12mm;box-sizing:border-box;">
   <div style="background:${accent};border-radius:5px;padding:4mm 10mm;color:#fff;margin-bottom:3mm;">
     <div style="font-size:8pt;letter-spacing:.15em;color:rgba(255,255,255,.65);margin-bottom:1mm;">Seller Support Services</div>
     <div style="font-size:20pt;font-weight:700;">${esc(title)}</div>
@@ -132,8 +131,8 @@ body{font-family:'ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
     ${ownerName ? `<div style="display:flex;gap:4mm;align-items:baseline;margin-bottom:0.5mm;"><span style="font-size:8pt;color:${accent};font-weight:600;min-width:18mm;">お客様氏名</span><span style="font-size:11pt;">${esc(ownerName)} 様</span></div>` : ''}
     ${propertyAddress ? `<div style="display:flex;gap:4mm;align-items:baseline;"><span style="font-size:8pt;color:${accent};font-weight:600;min-width:18mm;">物件所在地</span><span style="font-size:11pt;">${esc(propertyAddress)}</span></div>` : ''}
   </div>
-  ${cards}
-  <div style="border-top:1px solid #ddd;padding-top:2mm;text-align:center;font-size:7pt;color:#aaa;margin-top:2mm;">
+  ${rowsHtml}
+  <div style="border-top:1px solid #ddd;padding-top:2mm;text-align:center;font-size:7pt;color:#aaa;">
     ※ 内容・条件の詳細については担当スタッフまでお問い合わせください。
   </div>
 </div>
