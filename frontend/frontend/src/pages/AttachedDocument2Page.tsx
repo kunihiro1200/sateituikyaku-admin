@@ -329,7 +329,7 @@ export default function AttachedDocument2Page() {
       + '*{box-sizing:border-box}'
       + 'html,body{height:100%;margin:0;padding:0}'
       + 'body{font-family:\'Hiragino Kaku Gothic Pro\',\'Yu Gothic\',\'MS Gothic\',sans-serif;font-size:9pt;color:#000}'
-      + '.page{display:block;page-break-after:always}'
+      + '.page{display:block}'
       + 'h1{font-size:13pt;font-weight:bold;margin:0 0 1pt;border-bottom:2pt solid #000;padding-bottom:2pt}'
       + '.sub{font-size:8pt;color:#555;margin-bottom:4pt}'
       + '.row2{display:flex;gap:5pt;margin-bottom:5pt}'
@@ -340,7 +340,7 @@ export default function AttachedDocument2Page() {
       + '.box{border:1pt solid #888;padding:4pt}'
       + '.blbl{font-size:7pt;color:#555}'
       + '.bval{font-size:10pt;font-weight:bold}'
-      + '.cbox{border:1pt solid #888;padding:5pt;margin-bottom:5pt;font-size:7.5pt;white-space:pre-wrap;line-height:1.45;overflow:hidden;height:110mm}'
+      + '.cbox{border:1pt solid #888;padding:5pt;margin-bottom:5pt;overflow:hidden;height:105mm;display:flex;flex-direction:column}'
       + '.clbl{font-size:7pt;color:#555;font-weight:bold;margin-bottom:2pt}'
       + '.tblock{}'
       + '.it{width:100%;border-collapse:collapse;margin-bottom:4pt;border:1pt solid #888}'
@@ -371,22 +371,23 @@ export default function AttachedDocument2Page() {
       + '<div class="box"><div class="blbl">査定額</div><div class="bval">' + valuationDisplay + '</div></div>'
       + '<div class="box"><div class="blbl">訪問予定日時</div><div class="bval">' + visitSchedule + '</div></div>'
       + '</div>'
-      + '<div class="cbox"><div class="clbl">コメント内容</div>'
+      + '<div class="cbox">'
+      + '<div class="clbl">コメント内容</div>'
+      + '<div style="flex:1;overflow:hidden;white-space:pre-wrap;font-size:7.5pt;line-height:1.45;min-height:0">'
       + (seller?.comments ? stripHtml(seller.comments) : '（コメントなし）')
       + '</div>'
+      + '<div style="flex-shrink:0;border-top:1pt dashed #aaa;padding-top:3pt;font-size:8pt;white-space:normal;line-height:1.7">'
+      + '<strong>【特典】</strong>　'
+      + cb(fields.tokuten_cleaning) + ' 室内クリーニング　'
+      + cb(fields.tokuten_garden) + ' 庭の除草、草刈り　'
+      + cb(fields.tokuten_wallpaper) + ' クロスの張替え　'
+      + cb(fields.tokuten_removal) + ' 残置物撤去　'
+      + cb(fields.tokuten_warranty) + ' 設備の1年間無償保証　'
+      + cb(fields.tokuten_fee_discount) + ' 最低価格を下回った場合 仲介手数料２％　'
+      + cb(fields.tokuten_bridge_loan) + ' つなぎ融資'
+      + '</div>'
+      + '</div>'
       + '<div class="tblock">'
-      + '<table class="it" style="margin-bottom:4pt"><tr>'
-      + '<td colspan="4" style="padding:3pt 5pt">'
-      + '<span style="font-weight:bold;font-size:8pt">【特典】　</span>'
-      + '<span style="font-size:8pt;margin-right:12pt">' + cb(fields.tokuten_cleaning) + ' 室内クリーニング</span>'
-      + '<span style="font-size:8pt;margin-right:12pt">' + cb(fields.tokuten_garden) + ' 庭の除草、草刈り</span>'
-      + '<span style="font-size:8pt;margin-right:12pt">' + cb(fields.tokuten_wallpaper) + ' クロスの張替え</span>'
-      + '<span style="font-size:8pt;margin-right:12pt">' + cb(fields.tokuten_removal) + ' 残置物撤去</span>'
-      + '<span style="font-size:8pt;margin-right:12pt">' + cb(fields.tokuten_warranty) + ' 設備の1年間無償保証</span>'
-      + '<span style="font-size:8pt;margin-right:12pt">' + cb(fields.tokuten_fee_discount) + ' 最低価格を下回った場合 仲介手数料２％</span>'
-      + '<span style="font-size:8pt">' + cb(fields.tokuten_bridge_loan) + ' つなぎ融資</span>'
-      + '</td>'
-      + '</tr></table>'
       + '<table class="it"><tr>'
       + '<td class="lbl">ハザードマップ</td><td class="val" style="color:' + (fields.hazard_map ? '#000' : '#bbb') + '">' + (fields.hazard_map || '水害、土砂災害') + '</td>'
       + '<td class="lbl">抵当権</td><td class="val" style="color:' + (fields.mortgage_info ? '#000' : '#bbb') + '">' + (fields.mortgage_info || '抵当権の種類と抵当権先') + '</td>'
@@ -599,27 +600,7 @@ export default function AttachedDocument2Page() {
           <Button startIcon={<ArrowBack />} variant="outlined" size="small"
             onClick={() => { if (window.history.length > 1) { navigate(-1); } else { window.close(); } }}>戻る</Button>
           <Typography variant="h6" fontWeight="bold">添付資料２（試作中）</Typography>
-          <Box sx={{ ml: 'auto', display: 'flex', gap: 1, alignItems: 'center' }}>
-            <Button
-              variant="outlined"
-              size="small"
-              href="https://sateituikyaku-admin-frontend.vercel.app/shared-items/330"
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ borderColor: '#d32f2f', color: '#d32f2f', whiteSpace: 'nowrap', '&:hover': { borderColor: '#b71c1c', backgroundColor: '#d32f2f08' } }}
-            >
-              ATBBのPV推移
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              href="https://sateituikyaku-admin-frontend.vercel.app/shared-items/331"
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ borderColor: '#2e7d32', color: '#2e7d32', whiteSpace: 'nowrap', '&:hover': { borderColor: '#1b5e20', backgroundColor: '#2e7d3208' } }}
-            >
-              SUUMOのPV推移
-            </Button>
+          <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
             <Button startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
               variant="outlined" onClick={handleSave} disabled={saving || !isDirty} size="small"
               color={isDirty ? 'primary' : 'inherit'}>
