@@ -58,8 +58,9 @@ export default function ServiceSupportModal({ open, onClose, sellerNumber, owner
   const accent = isFI ? '#1B3A6B' : '#00695C';
   const light  = isFI ? '#EBF0F9' : '#E8F5E9';
 
+  // デフォルトは全未選択（通常3件程度を選ぶため）
   const [checked, setChecked] = useState<Record<string,boolean>>(
-    Object.fromEntries(SERVICE_ITEMS.map(i => [i.id, true])),
+    Object.fromEntries(SERVICE_ITEMS.map(i => [i.id, false])),
   );
 
   const toggle    = (id: string) => setChecked(p => ({ ...p, [id]: !p[id] }));
@@ -168,6 +169,11 @@ body{font-family:'ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
       <DialogContent sx={{ pt:1.5, pb:1 }}>
         <Typography variant="caption" color="text.secondary" sx={{ display:'block', mb:1.5 }}>
           印刷に含めるサービスを選択してください
+          {selected.length > 0 && (
+            <Box component="span" sx={{ ml:1, color: selected.length <= 4 ? 'success.main' : 'warning.main', fontWeight:600 }}>
+              （{selected.length}件 ／ {selected.length <= 4 ? '1ページ' : '2ページ'}）
+            </Box>
+          )}
         </Typography>
 
         {/* 全選択 */}
