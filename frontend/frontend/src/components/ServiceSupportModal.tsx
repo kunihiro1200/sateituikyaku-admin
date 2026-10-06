@@ -29,8 +29,8 @@ const SERVICE_ITEMS: ServiceItem[] = [
 
 // ─────────────────────────────────────────
 // A4 HTML 生成
-// ※ 画像 src は /sale-schedule/illustrations/{id}.png
-//   srcdoc iframe は親と同一 origin のため相対パスが解決される
+// ※ srcdoc iframe 内では相対パス(/...)が解決できないため
+//   window.location.origin を付けた絶対URLを使う
 // ─────────────────────────────────────────
 function buildPrintHtml(
   title: string,
@@ -38,6 +38,7 @@ function buildPrintHtml(
   propertyAddress: string,
   items: ServiceItem[],
   isFI: boolean,
+  origin: string,   // window.location.origin
 ): string {
   const accent = isFI ? '#1B3A6B' : '#00695C';
   const light  = isFI ? '#EBF0F9' : '#E8F5E9';
@@ -52,7 +53,7 @@ function buildPrintHtml(
   const cards = items.map(it => `
 <div style="display:flex;flex-direction:column;border:1px solid #dde;border-left:4px solid ${accent};border-radius:3px;overflow:hidden;">
   <div style="width:100%;height:${imgH}mm;overflow:hidden;background:#f5f7fa;">
-    <img src="/sale-schedule/illustrations/${it.id}.png" alt="${it.label}"
+    <img src="${origin}/sale-schedule/illustrations/${it.id}.png" alt="${it.label}"
          style="width:100%;height:auto;display:block;" />
   </div>
   <div style="font-size:8pt;font-weight:700;color:${accent};padding:1.5mm 3mm;background:${light};">${it.label}</div>
@@ -61,6 +62,7 @@ function buildPrintHtml(
 
   return `<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8">
+<base href="${origin}/">
 <style>
 @page{size:A4 portrait;margin:0;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -122,7 +124,7 @@ export default function ServiceSupportModal({ open, onClose, sellerNumber, owner
   const handlePrint = useCallback(() => {
     if (selected.length === 0) return;
 
-    const html = buildPrintHtml(title, ownerName, propertyAddress, selected, isFI);
+    const html = buildPrintHtml(title, ownerName, propertyAddress, selected, isFI, window.location.origin);
 
     // 非表示 iframe に srcdoc で注入し、load 完了後に print()
     // srcdoc iframe は親と同一 origin になるため /sale-schedule/... の画像が読める
