@@ -340,7 +340,7 @@ export default function AttachedDocument2Page() {
       + '.box{border:1pt solid #888;padding:4pt}'
       + '.blbl{font-size:7pt;color:#555}'
       + '.bval{font-size:10pt;font-weight:bold}'
-      + '.cbox{border:1pt solid #888;padding:5pt;margin-bottom:5pt;font-size:7.5pt;white-space:pre-wrap;line-height:1.45;overflow:hidden;flex:1;min-height:0}'
+      + '.cbox{border:1pt solid #888;padding:5pt;margin-bottom:5pt;font-size:7.5pt;white-space:pre-wrap;line-height:1.45;overflow:hidden;flex:1 1 0;min-height:0;max-height:115mm}'
       + '.clbl{font-size:7pt;color:#555;font-weight:bold;margin-bottom:2pt}'
       + '.tblock{flex-shrink:0}'
       + '.it{width:100%;border-collapse:collapse;margin-bottom:4pt;border:1pt solid #888}'
