@@ -8025,16 +8025,28 @@ HP：https://ifoo-oita.com/
                                 謄本
                               </Button>
                               {seller?.sellerNumber?.toUpperCase().includes('FI') ? (
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  onClick={() => {
-                                    window.open('https://webmap.city.fukuoka.lg.jp/fukuoka/Agreement?IsPost=False&MapId=7&RequestPage=%2ffukuoka%2fPositionSelect%3fmid%3d7', '_blank');
-                                  }}
-                                  sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
-                                >
-                                  福岡MAP
-                                </Button>
+                                <>
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => {
+                                      window.open('https://webmap.city.fukuoka.lg.jp/fukuoka/Agreement?IsPost=False&MapId=7&RequestPage=%2ffukuoka%2fPositionSelect%3fmid%3d7', '_blank');
+                                    }}
+                                    sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                                  >
+                                    福岡MAP
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => {
+                                      window.open('https://b2b.f-takken.com/', '_blank');
+                                    }}
+                                    sx={{ minWidth: 'auto', px: 1, py: 0.5, fontSize: '0.75rem' }}
+                                  >
+                                    ふれんず
+                                  </Button>
+                                </>
                               ) : (
                                 <Button
                                   size="small"
