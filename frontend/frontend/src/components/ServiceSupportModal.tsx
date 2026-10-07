@@ -139,28 +139,16 @@ body{font-family:'ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
     ※ 内容・条件の詳細については担当スタッフまでお問い合わせください。
   </div>
 </div>
-</body></html>`;
+<script>window.onload=function(){window.print();}</script>
+</body></html>`;;
 
-    // srcdoc iframe はアプリのグローバル print.css と完全に独立したドキュメント
-    // opacity:0.01 で実質不可視だが描画されるため画像が確実にロードされる
-    const iframe = document.createElement('iframe');
-    iframe.style.cssText = [
-      'position:fixed', 'top:0', 'left:0',
-      'width:210mm', 'height:297mm',
-      'border:none', 'opacity:0.01',
-      'z-index:-9999', 'pointer-events:none',
-    ].join(';');
-    iframe.srcdoc = html;
-    iframe.onload = () => {
-      try {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-      } catch (e) {
-        console.error('[ServiceSupportModal] print error:', e);
-      }
-      setTimeout(() => { try { document.body.removeChild(iframe); } catch {} }, 3000);
-    };
-    document.body.appendChild(iframe);
+    // 新しいウィンドウで印刷（EvaluationPointsEditorと同じ方式）
+    // iframe.contentWindow.print() はChromeで他の印刷と干渉するため使わない
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+    }
   }, [selected, title, ownerName, propertyAddress, isFI]);
 
   // ─────────────────────────────────────────
