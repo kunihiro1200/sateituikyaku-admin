@@ -56,6 +56,7 @@ export interface AttachedDocument2Data {
   tokuten_warranty?: boolean;
   tokuten_fee_discount?: boolean;
   tokuten_bridge_loan?: boolean;
+  tokuten_key_exchange?: boolean;
 }
 
 const EMPTY_RESPONSE = (sellerId: string) => ({
@@ -94,6 +95,7 @@ const EMPTY_RESPONSE = (sellerId: string) => ({
   tokuten_warranty: false,
   tokuten_fee_discount: false,
   tokuten_bridge_loan: false,
+  tokuten_key_exchange: false,
 });
 
 // 売主の添付資料２入力項目を取得
@@ -164,6 +166,7 @@ router.put('/sellers/:sellerId/attached-document2', async (req: Request, res: Re
       tokuten_warranty: !!body.tokuten_warranty,
       tokuten_fee_discount: !!body.tokuten_fee_discount,
       tokuten_bridge_loan: !!body.tokuten_bridge_loan,
+      tokuten_key_exchange: !!body.tokuten_key_exchange,
       updated_at: new Date().toISOString(),
       updated_by: body.updated_by || null,
     };

@@ -25,13 +25,14 @@ import api from '../services/api';
 interface ServiceItem { id: string; label: string; tokutenKey: string; }
 
 const SERVICE_ITEMS: ServiceItem[] = [
-  { id: 'cleaning',   label: '室内クリーニング',                     tokutenKey: 'tokuten_cleaning'     },
-  { id: 'garden',     label: '庭の除草、草刈り',                     tokutenKey: 'tokuten_garden'       },
-  { id: 'wallpaper',  label: 'クロスの張替え',                       tokutenKey: 'tokuten_wallpaper'    },
-  { id: 'removal',    label: '残置物撤去',                           tokutenKey: 'tokuten_removal'      },
-  { id: 'warranty',   label: '設備の1年間無償保証',                  tokutenKey: 'tokuten_warranty'     },
-  { id: 'commission', label: '最低価格を下回った場合 仲介手数料２％', tokutenKey: 'tokuten_fee_discount' },
-  { id: 'bridge',     label: 'つなぎ融資',                           tokutenKey: 'tokuten_bridge_loan'  },
+  { id: 'cleaning',   label: '室内クリーニング',                     tokutenKey: 'tokuten_cleaning'      },
+  { id: 'garden',     label: '庭の除草、草刈り',                     tokutenKey: 'tokuten_garden'        },
+  { id: 'wallpaper',  label: 'クロスの張替え',                       tokutenKey: 'tokuten_wallpaper'     },
+  { id: 'removal',    label: '残置物撤去',                           tokutenKey: 'tokuten_removal'       },
+  { id: 'warranty',   label: '設備の1年間無償保証',                  tokutenKey: 'tokuten_warranty'      },
+  { id: 'commission', label: '最低価格を下回った場合 仲介手数料２％', tokutenKey: 'tokuten_fee_discount'  },
+  { id: 'bridge',     label: 'つなぎ融資',                           tokutenKey: 'tokuten_bridge_loan'   },
+  { id: 'key',        label: '鍵交換',                               tokutenKey: 'tokuten_key_exchange'  },
 ];
 
 // ─────────────────────────────────────────

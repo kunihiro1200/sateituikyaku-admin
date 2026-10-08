@@ -245,6 +245,7 @@ export class ChatNotificationService {
       { key: 'tokuten_warranty',     label: '設備の1年間無償保証' },
       { key: 'tokuten_fee_discount', label: '最低価格を下回った場合 仲介手数料２％' },
       { key: 'tokuten_bridge_loan',  label: 'つなぎ融資' },
+      { key: 'tokuten_key_exchange', label: '鍵交換' },
     ];
 
     try {
