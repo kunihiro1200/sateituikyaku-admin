@@ -23,6 +23,7 @@ const SERVICE_LABELS: Record<string, string> = {
   warranty:   '設備の1年間無償保証',
   commission: '最低価格を下回った場合 仲介手数料２％',
   bridge:     'つなぎ融資',
+  key:        '鍵交換',
 };
 
 export default function ServiceSupportPrintPage() {

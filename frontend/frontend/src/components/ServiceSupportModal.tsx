@@ -11,7 +11,7 @@
  *   seller_attached_document2 テーブルの tokuten_* カラムに保存・読み込みする。
  *   モーダルが開くたびに DB から最新値を取得し、チェック変更時に即座に保存する。
  */
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, Typography, Box, Divider, IconButton, Checkbox,
@@ -63,54 +63,49 @@ export default function ServiceSupportModal({ open, onClose, sellerId, sellerNum
   const accent = isFI ? '#1B3A6B' : '#00695C';
   const light  = isFI ? '#EBF0F9' : '#E8F5E9';
 
-  // チェック状態（DB から読み込んだ値で初期化）
+  // チェック状態
   const [checked, setChecked] = useState<Record<string,boolean>>(
     Object.fromEntries(SERVICE_ITEMS.map(i => [i.id, false])),
   );
+  // 初回ロード中は保存しない
+  const isLoadingRef = useRef(true);
 
   // ─────────────────────────────────────────
-  // モーダルが開くたびに DB から最新値を取得（非ブロッキング）
+  // モーダルが開くたびに DB から最新値を取得
   // ─────────────────────────────────────────
   useEffect(() => {
     if (!open || !sellerId) return;
-    // チェックをリセットしてから非同期でDBの値を取得
+    isLoadingRef.current = true;
     setChecked(Object.fromEntries(SERVICE_ITEMS.map(i => [i.id, false])));
     api.get(`/api/sellers/${sellerId}/attached-document2`)
       .then(res => {
         const d = res.data || {};
         setChecked(Object.fromEntries(SERVICE_ITEMS.map(i => [i.id, !!d[i.tokutenKey]])));
       })
-      .catch(() => { /* 取得失敗時はリセット済みの false のまま */ });
+      .catch(() => {})
+      .finally(() => { isLoadingRef.current = false; });
   }, [open, sellerId]);
 
   // ─────────────────────────────────────────
-  // チェック変更時にバックグラウンド保存（UIをブロックしない）
+  // checked が変わったら DB に保存（初回ロード時を除く）
   // ─────────────────────────────────────────
-  const saveToDb = useCallback((nextChecked: Record<string,boolean>) => {
-    if (!sellerId) return;
+  useEffect(() => {
+    if (!sellerId || isLoadingRef.current) return;
     const payload: Record<string, boolean> = {};
     for (const item of SERVICE_ITEMS) {
-      payload[item.tokutenKey] = !!nextChecked[item.id];
+      payload[item.tokutenKey] = !!checked[item.id];
     }
     api.put(`/api/sellers/${sellerId}/attached-document2`, payload).catch(() => {});
-  }, [sellerId]);
+  }, [checked, sellerId]);
 
-  const toggle = useCallback((id: string) => {
-    setChecked(prev => {
-      const next = { ...prev, [id]: !prev[id] };
-      saveToDb(next);
-      return next;
-    });
-  }, [saveToDb]);
+  const toggle = (id: string) => {
+    setChecked(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
-  const toggleAll = useCallback(() => {
-    setChecked(prev => {
-      const all = SERVICE_ITEMS.every(i => prev[i.id]);
-      const next = Object.fromEntries(SERVICE_ITEMS.map(i => [i.id, !all]));
-      saveToDb(next);
-      return next;
-    });
-  }, [saveToDb]);
+  const toggleAll = () => {
+    const all = SERVICE_ITEMS.every(i => checked[i.id]);
+    setChecked(Object.fromEntries(SERVICE_ITEMS.map(i => [i.id, !all])));
+  };
 
   const selected   = SERVICE_ITEMS.filter(i => checked[i.id]);
   const allChecked = SERVICE_ITEMS.every(i => checked[i.id]);
@@ -178,8 +173,9 @@ body{font-family:'ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
     if (printWindow) {
       printWindow.document.write(html);
       printWindow.document.close();
+      onClose(); // 印刷プレビューを開いたらモーダルを閉じる（親ウィンドウのブロックを防ぐ）
     }
-  }, [selected, title, ownerName, propertyAddress, isFI]);
+  }, [selected, title, ownerName, propertyAddress, isFI, onClose]);
 
   // ─────────────────────────────────────────
   // モーダル UI
