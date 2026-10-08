@@ -14,7 +14,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Typography, Box, Divider, IconButton, Checkbox, CircularProgress,
+  Button, Typography, Box, Divider, IconButton, Checkbox,
 } from '@mui/material';
 import { Close as CloseIcon, Print as PrintIcon } from '@mui/icons-material';
 import api from '../services/api';
@@ -67,52 +67,32 @@ export default function ServiceSupportModal({ open, onClose, sellerId, sellerNum
   const [checked, setChecked] = useState<Record<string,boolean>>(
     Object.fromEntries(SERVICE_ITEMS.map(i => [i.id, false])),
   );
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   // ─────────────────────────────────────────
-  // モーダルが開くたびに DB から最新値を取得
+  // モーダルが開くたびに DB から最新値を取得（非ブロッキング）
   // ─────────────────────────────────────────
   useEffect(() => {
     if (!open || !sellerId) return;
-
-    const fetchTokuten = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get(`/api/sellers/${sellerId}/attached-document2`);
+    // チェックをリセットしてから非同期でDBの値を取得
+    setChecked(Object.fromEntries(SERVICE_ITEMS.map(i => [i.id, false])));
+    api.get(`/api/sellers/${sellerId}/attached-document2`)
+      .then(res => {
         const d = res.data || {};
-        setChecked(
-          Object.fromEntries(
-            SERVICE_ITEMS.map(i => [i.id, !!d[i.tokutenKey]])
-          )
-        );
-      } catch {
-        // 取得失敗時はすべて false のまま（ハードコードのデフォルトは使わない）
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTokuten();
+        setChecked(Object.fromEntries(SERVICE_ITEMS.map(i => [i.id, !!d[i.tokutenKey]])));
+      })
+      .catch(() => { /* 取得失敗時はリセット済みの false のまま */ });
   }, [open, sellerId]);
 
   // ─────────────────────────────────────────
-  // チェック変更時に DB へ即時保存
+  // チェック変更時にバックグラウンド保存（UIをブロックしない）
   // ─────────────────────────────────────────
-  const saveToDb = useCallback(async (nextChecked: Record<string,boolean>) => {
+  const saveToDb = useCallback((nextChecked: Record<string,boolean>) => {
     if (!sellerId) return;
-    setSaving(true);
-    try {
-      const payload: Record<string, boolean> = {};
-      for (const item of SERVICE_ITEMS) {
-        payload[item.tokutenKey] = !!nextChecked[item.id];
-      }
-      await api.put(`/api/sellers/${sellerId}/attached-document2`, payload);
-    } catch {
-      // 保存失敗はサイレント（UIには反映済みなので次回開き直しで再取得される）
-    } finally {
-      setSaving(false);
+    const payload: Record<string, boolean> = {};
+    for (const item of SERVICE_ITEMS) {
+      payload[item.tokutenKey] = !!nextChecked[item.id];
     }
+    api.put(`/api/sellers/${sellerId}/attached-document2`, payload).catch(() => {});
   }, [sellerId]);
 
   const toggle = useCallback((id: string) => {
@@ -214,7 +194,6 @@ body{font-family:'ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
           </Typography>
         </Box>
         <Box sx={{ display:'flex', alignItems:'center', gap:1 }}>
-          {saving && <CircularProgress size={14} sx={{ color:accent }} />}
           <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
         </Box>
       </DialogTitle>
@@ -222,12 +201,7 @@ body{font-family:'ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
       <Divider />
 
       <DialogContent sx={{ pt:1.5, pb:1 }}>
-        {loading ? (
-          <Box sx={{ display:'flex', justifyContent:'center', py:3 }}>
-            <CircularProgress size={24} />
-          </Box>
-        ) : (
-          <>
+        <>
             <Typography variant="caption" color="text.secondary" sx={{ display:'block', mb:1.5 }}>
               印刷に含めるサービスを選択してください（選択状態は自動保存されます）
               {selected.length > 0 && (
@@ -276,7 +250,6 @@ body{font-family:'ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
               ))}
             </Box>
           </>
-        )}
       </DialogContent>
 
       <Divider />
@@ -284,7 +257,7 @@ body{font-family:'ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
       <DialogActions sx={{ px:2, py:1.5, gap:1 }}>
         <Button onClick={onClose} size="small" color="inherit">閉じる</Button>
         <Button variant="contained" size="small" startIcon={<PrintIcon />}
-          onClick={handlePrint} disabled={selected.length === 0 || loading}
+          onClick={handlePrint} disabled={selected.length === 0}
           sx={{ bgcolor:accent, '&:hover':{ bgcolor:isFI ? '#142d55' : '#00564f' } }}>
           印刷プレビュー（{selected.length}件）
         </Button>
