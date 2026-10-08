@@ -1130,6 +1130,7 @@ const CallModePage = () => {
   const [sellerEmailTemplatesLoading, setSellerEmailTemplatesLoading] = useState(false);
 
   // 確認ダイアログ用の状態
+  const [confirmDialogSendError, setConfirmDialogSendError] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     type: 'email' | 'sms' | null;
@@ -5348,6 +5349,7 @@ HP：https://ifoo-oita.com/
   const handleConfirmSend = async () => {
     const { type, template } = confirmDialog;
     if (!type || !template) return;
+    setConfirmDialogSendError(null); // 再送信時にエラーをクリア
 
     // 送信前にeditableEmailBodyの値をキャプチャ（ダイアログを閉じる前に取得）
     const capturedEmailBody = editableEmailBody;
@@ -5620,13 +5622,12 @@ HP：https://ifoo-oita.com/
       console.error('📧 [handleConfirmSend] Error:', err);
       console.error('📧 [handleConfirmSend] Error response:', err.response?.data);
       console.error('📧 [handleConfirmSend] Error status:', err.response?.status);
-      setError(err.response?.data?.error?.message || `${type === 'email' ? 'メール' : 'SMS'}送信に失敗しました`);
+      // ページレベルエラーではなくダイアログ内にエラーを表示（本文・添付を保持するため）
+      setConfirmDialogSendError(err.response?.data?.error?.message || `${type === 'email' ? 'メール' : 'SMS'}送信に失敗しました`);
     } finally {
       setSendingTemplate(false);
-      // 成功・失敗どちらの場合もダイアログを閉じる
-      setConfirmDialog({ open: false, type: null, template: null });
-      // 送信後に選択画像をリセット（次回送信時に前回の添付が残らないようにする）
-      setSelectedImages([]);
+      // 失敗時はダイアログを閉じない（本文・添付ファイルを保持するため）
+      // 成功時は try ブロック内で既に setConfirmDialog({ open: false }) を呼んでいる
       setWrongNumberButtonDisabled(false);
     }
   };
@@ -5640,6 +5641,7 @@ HP：https://ifoo-oita.com/
 
   const handleCancelSend = () => {
     setConfirmDialog({ open: false, type: null, template: null });
+    setConfirmDialogSendError(null);
     // 編集フィールドをクリア
     setEditableEmailRecipient('');
     setEditableEmailSubject('');
@@ -12445,7 +12447,11 @@ HP：https://ifoo-oita.com/
               <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', color: 'success.main' }}>
                 {confirmDialog.template.label}
               </Typography>
-              
+              {confirmDialogSendError && (
+                <Alert severity="error" onClose={() => setConfirmDialogSendError(null)} sx={{ mb: 2 }}>
+                  {confirmDialogSendError}
+                </Alert>
+              )}
               {confirmDialog.type === 'email' && (
                 <>
                   {isTargetTemplateForWrongNumber(confirmDialog?.template?.label ?? '') && (
