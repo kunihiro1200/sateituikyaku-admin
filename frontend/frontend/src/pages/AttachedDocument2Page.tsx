@@ -91,6 +91,7 @@ interface DocumentFields {
   tokuten_warranty: boolean;
   tokuten_fee_discount: boolean;
   tokuten_bridge_loan: boolean;
+  tokuten_key_exchange: boolean;
 }
 
 const EMPTY_FIELDS: DocumentFields = {
@@ -128,6 +129,7 @@ const EMPTY_FIELDS: DocumentFields = {
   tokuten_warranty: false,
   tokuten_fee_discount: false,
   tokuten_bridge_loan: false,
+  tokuten_key_exchange: false,
 };
 
 const fmt = (amount?: number) =>
@@ -202,6 +204,7 @@ export default function AttachedDocument2Page() {
         tokuten_warranty: !!d.tokuten_warranty,
         tokuten_fee_discount: !!d.tokuten_fee_discount,
         tokuten_bridge_loan: !!d.tokuten_bridge_loan,
+        tokuten_key_exchange: !!d.tokuten_key_exchange,
       });
       setIsDirty(false);
     } catch (err: any) {
@@ -385,6 +388,7 @@ export default function AttachedDocument2Page() {
       + cb(fields.tokuten_warranty) + ' 設備の1年間無償保証　'
       + cb(fields.tokuten_fee_discount) + ' 最低価格を下回った場合 仲介手数料２％　'
       + cb(fields.tokuten_bridge_loan) + ' つなぎ融資'
+      + cb(fields.tokuten_key_exchange) + ' 鍵交換'
       + '</div>'
       + '</div>'
       + '<div class="tblock">'
@@ -677,6 +681,7 @@ export default function AttachedDocument2Page() {
                   { key: 'tokuten_warranty'      as const, label: '設備の1年間無償保証' },
                   { key: 'tokuten_fee_discount'  as const, label: '最低価格を下回った場合 仲介手数料２％' },
                   { key: 'tokuten_bridge_loan'   as const, label: 'つなぎ融資' },
+                  { key: 'tokuten_key_exchange'  as const, label: '鍵交換' },
                 ]).map((c) => (
                   <FormControlLabel key={c.key} sx={{ width: '50%', m: 0 }}
                     control={<Checkbox size="small" checked={fields[c.key]} onChange={(e) => set(c.key, e.target.checked)} />}
