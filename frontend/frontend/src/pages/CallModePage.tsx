@@ -5374,15 +5374,19 @@ HP：https://ifoo-oita.com/
           
           // ImageFile[] を添付ファイル形式に変換
           // source: 'drive'  → { id, name } でバックエンドがDriveから取得
-          // source: 'local'  → { id, name, base64Data, mimeType } でBase64データを直接送信
+          // source: 'local'  → localFile(File)があればFormDataでバイナリ送信、なければbase64
           // source: 'url'    → { id, name, url } でURLを送信
           const attachmentImages: any[] = [];
+          const localBinaryFiles: Array<{ file: File; name: string }> = [];
           if (Array.isArray(capturedSelectedImages) && capturedSelectedImages.length > 0) {
             for (const img of capturedSelectedImages) {
               if (img.source === 'drive') {
                 attachmentImages.push({ id: img.driveFileId || img.id, name: img.name });
+              } else if (img.source === 'local' && (img as any).localFile instanceof File) {
+                // バイナリで直送（base64変換しない → 413回避）
+                localBinaryFiles.push({ file: (img as any).localFile, name: img.name });
               } else if (img.source === 'local' && img.previewUrl) {
-                // previewUrl は "data:image/xxx;base64,..." 形式
+                // フォールバック: localFileがない場合はbase64
                 const base64Match = (img.previewUrl as string).match(/^data:([^;]+);base64,(.+)$/);
                 if (base64Match) {
                   attachmentImages.push({
@@ -5455,7 +5459,26 @@ HP：https://ifoo-oita.com/
             attachmentsCount: (requestPayload as any).attachments?.length ?? 0,
           });
 
-          const emailResponse = await api.post(`/api/sellers/${id}/send-template-email`, requestPayload);
+          let emailResponse;
+          if (localBinaryFiles.length > 0) {
+            // バイナリファイルがある場合はFormDataで送信（base64変換しないので413回避）
+            const formData = new FormData();
+            const { attachments: _unused, ...payloadWithoutAttachments } = requestPayload as any;
+            Object.entries(payloadWithoutAttachments).forEach(([key, value]) => {
+              formData.append(key, String(value ?? ''));
+            });
+            if (attachmentImages.length > 0) {
+              formData.append('metaAttachments', JSON.stringify(attachmentImages));
+            }
+            for (const { file, name } of localBinaryFiles) {
+              formData.append('files', file, name);
+            }
+            emailResponse = await api.post(`/api/sellers/${id}/send-template-email`, formData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+            });
+          } else {
+            emailResponse = await api.post(`/api/sellers/${id}/send-template-email`, requestPayload);
+          }
 
           // Gmail送信完了後すぐにUIを更新（ユーザーへのフィードバックを早める）
           setSnackbarMessage(hasImages ? `${template.label}を画像付きで送信しました` : `${template.label}を送信しました`);

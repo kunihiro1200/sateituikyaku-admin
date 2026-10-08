@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
+import multer from 'multer';
 import { EmailService } from '../services/EmailService.supabase';
 import { SellerService } from '../services/SellerService.supabase';
 import { ValuationEngine } from '../services/ValuationEngine.supabase';
@@ -12,6 +13,12 @@ const emailService = new EmailService();
 const sellerService = new SellerService();
 const valuationEngine = new ValuationEngine();
 const activityLogService = new ActivityLogService();
+
+// 添付ファイルをバイナリで受け取るためのmulter設定（25MB上限）
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 },
+});
 
 // 全てのルートに認証を適用
 router.use(authenticate);
@@ -192,6 +199,7 @@ router.post(
  */
 router.post(
   '/:sellerId/send-template-email',
+  upload.array('files'),
   [
     body('templateId').notEmpty().withMessage('Template ID is required'),
     body('to').optional().isEmail().withMessage('Invalid email address'),
@@ -228,9 +236,15 @@ router.post(
       }
 
       const { sellerId } = req.params;
-      const { templateId, to, content, htmlBody, from, attachments, replyTo } = req.body;
+      const { templateId, to, content, htmlBody, from, replyTo } = req.body;
       // subject が空の場合はテンプレート名をフォールバックとして使用
       const subject: string = (req.body.subject || req.body.templateName || '（件名なし）') as string;
+
+      // attachments: JSON配列 または FormDataの metaAttachments（JSON文字列）から取得
+      let attachments = req.body.attachments;
+      if (!attachments && req.body.metaAttachments) {
+        try { attachments = JSON.parse(req.body.metaAttachments); } catch { attachments = []; }
+      }
 
       // Fromアドレス: 常に tenant@ifoo-oita.com 固定（文字化け防止）
       const resolvedFrom = 'tenant@ifoo-oita.com';
@@ -271,13 +285,22 @@ router.post(
 
       let result;
 
+      // multer で受け取ったバイナリファイルを添付リストに追加
+      const multerFiles = (req.files as Express.Multer.File[]) || [];
+      const multerAttachments = multerFiles.map((file) => ({
+        filename: file.originalname,
+        mimeType: file.mimetype,
+        data: file.buffer,
+        cid: `upload-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      }));
+
       // 添付ファイルがある場合は各ソースに応じてデータを取得して添付付きで送信
-      if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+      if ((attachments && Array.isArray(attachments) && attachments.length > 0) || multerAttachments.length > 0) {
         const { GoogleDriveService } = await import('../services/GoogleDriveService');
         const driveService = new GoogleDriveService();
 
         const emailAttachmentsRaw = await Promise.all(
-          attachments.map(async (img: any) => {
+          (Array.isArray(attachments) ? attachments : []).map(async (img: any) => {
             // ローカルファイル（Base64データ）
             if (img.base64Data) {
               return {
@@ -326,8 +349,11 @@ router.post(
             };
           })
         );
-        // nullを除外
-        const emailAttachments = emailAttachmentsRaw.filter((a): a is NonNullable<typeof a> => a !== null);
+        // nullを除外し、multerのバイナリファイルと結合
+        const emailAttachments = [
+          ...multerAttachments,
+          ...emailAttachmentsRaw.filter((a): a is NonNullable<typeof a> => a !== null),
+        ];
 
         result = await emailService.sendEmailWithCcAndAttachments({
           to: recipientEmail,
