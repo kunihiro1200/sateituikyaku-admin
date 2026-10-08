@@ -2,33 +2,36 @@
  * サービス資料生成モーダル
  *
  * 印刷方式：
- *   メインページの DOM に印刷コンテナを直接追加 → window.print()
- *   （iframe / 新ウィンドウはいずれも画像読み込み制約があるため使わない）
- *
+ *   メインページの DOM に印刷コンテナを直接追加（通常の DOM → 画像キャッシュが利く）
  *   @media print で印刷コンテナ以外を非表示にする CSS を注入し、
  *   印刷完了後（afterprint）に DOM を元に戻す。
  *   モーダルで既にサムネイルが読み込まれているためキャッシュから即表示。
+ *
+ * 保存方式：
+ *   seller_attached_document2 テーブルの tokuten_* カラムに保存・読み込みする。
+ *   モーダルが開くたびに DB から最新値を取得し、チェック変更時に即座に保存する。
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Typography, Box, Divider, IconButton, Checkbox,
+  Button, Typography, Box, Divider, IconButton, Checkbox, CircularProgress,
 } from '@mui/material';
 import { Close as CloseIcon, Print as PrintIcon } from '@mui/icons-material';
+import api from '../services/api';
 
 // ─────────────────────────────────────────
 // サービス項目定義
 // ─────────────────────────────────────────
-interface ServiceItem { id: string; label: string; }
+interface ServiceItem { id: string; label: string; tokutenKey: string; }
 
 const SERVICE_ITEMS: ServiceItem[] = [
-  { id: 'cleaning',   label: '室内クリーニング' },
-  { id: 'garden',     label: '庭の除草、草刈り' },
-  { id: 'wallpaper',  label: 'クロスの張替え' },
-  { id: 'removal',    label: '残置物撤去' },
-  { id: 'warranty',   label: '設備の1年間無償保証' },
-  { id: 'commission', label: '最低価格を下回った場合 仲介手数料２％' },
-  { id: 'bridge',     label: 'つなぎ融資' },
+  { id: 'cleaning',   label: '室内クリーニング',                     tokutenKey: 'tokuten_cleaning'     },
+  { id: 'garden',     label: '庭の除草、草刈り',                     tokutenKey: 'tokuten_garden'       },
+  { id: 'wallpaper',  label: 'クロスの張替え',                       tokutenKey: 'tokuten_wallpaper'    },
+  { id: 'removal',    label: '残置物撤去',                           tokutenKey: 'tokuten_removal'      },
+  { id: 'warranty',   label: '設備の1年間無償保証',                  tokutenKey: 'tokuten_warranty'     },
+  { id: 'commission', label: '最低価格を下回った場合 仲介手数料２％', tokutenKey: 'tokuten_fee_discount' },
+  { id: 'bridge',     label: 'つなぎ融資',                           tokutenKey: 'tokuten_bridge_loan'  },
 ];
 
 // ─────────────────────────────────────────
@@ -44,6 +47,7 @@ function esc(s: string): string {
 interface Props {
   open: boolean;
   onClose: () => void;
+  sellerId: string;
   sellerNumber: string;
   ownerName: string;
   propertyAddress: string;
@@ -52,35 +56,86 @@ interface Props {
 // ─────────────────────────────────────────
 // メインコンポーネント
 // ─────────────────────────────────────────
-export default function ServiceSupportModal({ open, onClose, sellerNumber, ownerName, propertyAddress }: Props) {
+export default function ServiceSupportModal({ open, onClose, sellerId, sellerNumber, ownerName, propertyAddress }: Props) {
   const isFI   = sellerNumber.toUpperCase().startsWith('FI');
   const title  = isFI ? 'くじら不動産の売却サポート' : 'いふうの売却サポート';
   const accent = isFI ? '#1B3A6B' : '#00695C';
   const light  = isFI ? '#EBF0F9' : '#E8F5E9';
 
-  // デフォルト：室内クリーニング・残置物撤去を選択済みに
+  // チェック状態（DB から読み込んだ値で初期化）
   const [checked, setChecked] = useState<Record<string,boolean>>(
-    Object.fromEntries(SERVICE_ITEMS.map(i => [i.id, i.id === 'cleaning' || i.id === 'removal'])),
+    Object.fromEntries(SERVICE_ITEMS.map(i => [i.id, false])),
   );
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const toggle    = (id: string) => setChecked(p => ({ ...p, [id]: !p[id] }));
-  const toggleAll = () => {
-    const all = SERVICE_ITEMS.every(i => checked[i.id]);
-    setChecked(Object.fromEntries(SERVICE_ITEMS.map(i => [i.id, !all])));
-  };
+  // ─────────────────────────────────────────
+  // モーダルが開くたびに DB から最新値を取得
+  // ─────────────────────────────────────────
+  useEffect(() => {
+    if (!open || !sellerId) return;
+
+    const fetchTokuten = async () => {
+      setLoading(true);
+      try {
+        const res = await api.get(`/api/sellers/${sellerId}/attached-document2`);
+        const d = res.data || {};
+        setChecked(
+          Object.fromEntries(
+            SERVICE_ITEMS.map(i => [i.id, !!d[i.tokutenKey]])
+          )
+        );
+      } catch {
+        // 取得失敗時はすべて false のまま（ハードコードのデフォルトは使わない）
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTokuten();
+  }, [open, sellerId]);
+
+  // ─────────────────────────────────────────
+  // チェック変更時に DB へ即時保存
+  // ─────────────────────────────────────────
+  const saveToDb = useCallback(async (nextChecked: Record<string,boolean>) => {
+    if (!sellerId) return;
+    setSaving(true);
+    try {
+      const payload: Record<string, boolean> = {};
+      for (const item of SERVICE_ITEMS) {
+        payload[item.tokutenKey] = !!nextChecked[item.id];
+      }
+      await api.put(`/api/sellers/${sellerId}/attached-document2`, payload);
+    } catch {
+      // 保存失敗はサイレント（UIには反映済みなので次回開き直しで再取得される）
+    } finally {
+      setSaving(false);
+    }
+  }, [sellerId]);
+
+  const toggle = useCallback((id: string) => {
+    setChecked(prev => {
+      const next = { ...prev, [id]: !prev[id] };
+      saveToDb(next);
+      return next;
+    });
+  }, [saveToDb]);
+
+  const toggleAll = useCallback(() => {
+    setChecked(prev => {
+      const all = SERVICE_ITEMS.every(i => prev[i.id]);
+      const next = Object.fromEntries(SERVICE_ITEMS.map(i => [i.id, !all]));
+      saveToDb(next);
+      return next;
+    });
+  }, [saveToDb]);
 
   const selected   = SERVICE_ITEMS.filter(i => checked[i.id]);
   const allChecked = SERVICE_ITEMS.every(i => checked[i.id]);
 
   /**
    * 印刷処理
-   * ─────────────────────────────────────────────────────────────────
-   * 手順:
-   *   1. A4 コンテンツを body に直接追加（通常の DOM → 画像キャッシュが利く）
-   *   2. @media print CSS を注入（他要素を非表示、A4 コンテナのみ表示）
-   *   3. 画像がすべてロードされたら window.print()
-   *   4. afterprint / timeout で DOM をクリーンアップ
-   * ─────────────────────────────────────────────────────────────────
    */
   const handlePrint = useCallback(() => {
     if (selected.length === 0) return;
@@ -90,12 +145,8 @@ export default function ServiceSupportModal({ open, onClose, sellerNumber, owner
     const light  = isFI ? '#EBF0F9' : '#E8F5E9';
     const n = selected.length;
 
-    // ── 2列グリッドレイアウト ──
-    // 列幅 91mm × 3:2画像 → 自然高さ 61mm（切り取りなし）
-    // 4枚 = 2行×2列 → 1ページに収まる
-    const colGap = 3;  // 列間
-    const rowGap = 3;  // 行間
-    const colW   = Math.floor((186 - colGap) / 2); // ≈91mm
+    const colGap = 3;
+    const rowGap = 3;
 
     // 2枚ずつ行に分ける
     const rows: typeof selected[] = [];
@@ -140,10 +191,8 @@ body{font-family:'ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
   </div>
 </div>
 <script>window.onload=function(){window.print();}</script>
-</body></html>`;;
+</body></html>`;
 
-    // 新しいウィンドウで印刷（EvaluationPointsEditorと同じ方式）
-    // iframe.contentWindow.print() はChromeで他の印刷と干渉するため使わない
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(html);
@@ -163,72 +212,78 @@ body{font-family:'ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
             {title}
           </Typography>
         </Box>
-        <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
+        <Box sx={{ display:'flex', alignItems:'center', gap:1 }}>
+          {saving && <CircularProgress size={14} sx={{ color:accent }} />}
+          <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
+        </Box>
       </DialogTitle>
 
       <Divider />
 
       <DialogContent sx={{ pt:1.5, pb:1 }}>
-        <Typography variant="caption" color="text.secondary" sx={{ display:'block', mb:1.5 }}>
-          印刷に含めるサービスを選択してください
-          {selected.length > 0 && (
-            <Box component="span" sx={{ ml:1, color: selected.length <= 4 ? 'success.main' : 'warning.main', fontWeight:600 }}>
-              （{selected.length}件 ／ {selected.length <= 4 ? '1ページ' : '2ページ'}）
-            </Box>
-          )}
-        </Typography>
+        {loading ? (
+          <Box sx={{ display:'flex', justifyContent:'center', py:3 }}>
+            <CircularProgress size={24} />
+          </Box>
+        ) : (
+          <>
+            <Typography variant="caption" color="text.secondary" sx={{ display:'block', mb:1.5 }}>
+              印刷に含めるサービスを選択してください（選択状態は自動保存されます）
+              {selected.length > 0 && (
+                <Box component="span" sx={{ ml:1, color: selected.length <= 4 ? 'success.main' : 'warning.main', fontWeight:600 }}>
+                  （{selected.length}件 ／ {selected.length <= 4 ? '1ページ' : '2ページ'}）
+                </Box>
+              )}
+            </Typography>
 
-        {/* 全選択 */}
-        <Box sx={{ display:'flex', alignItems:'center', gap:1, mb:1, pb:1,
-                   borderBottom:'1px solid #eee', cursor:'pointer' }}
-             onClick={toggleAll}>
-          <Checkbox size="small" checked={allChecked}
-            indeterminate={!allChecked && SERVICE_ITEMS.some(i => checked[i.id])}
-            onChange={toggleAll} onClick={e => e.stopPropagation()}
-            sx={{ p:0.5, color:accent, '&.Mui-checked,&.MuiCheckbox-indeterminate':{ color:accent } }} />
-          <Typography variant="body2" sx={{ fontWeight:600 }}>すべて選択</Typography>
-        </Box>
-
-        {/* サービス一覧（横1列） */}
-        <Box sx={{ display:'flex', flexDirection:'column', gap:0.75 }}>
-          {SERVICE_ITEMS.map(item => (
-            <Box key={item.id} onClick={() => toggle(item.id)} sx={{
-              display:'flex', alignItems:'center', gap:1.5,
-              border:`2px solid ${checked[item.id] ? accent : '#ddd'}`,
-              borderRadius:1.5, overflow:'hidden', cursor:'pointer',
-              bgcolor:checked[item.id] ? light : '#fff',
-              transition:'border-color 0.15s', p:0.5,
-            }}>
-              {/* サムネイル（読み込みでキャッシュに乗る） */}
-              <Box component="img"
-                src={`/sale-schedule/illustrations/${item.id}.png`}
-                alt={item.label}
-                sx={{ width:72, height:48, objectFit:'cover', objectPosition:'top',
-                      borderRadius:1, flexShrink:0 }} />
-              <Typography variant="body2"
-                sx={{ flex:1, fontWeight:checked[item.id] ? 700 : 400,
-                      color:checked[item.id] ? accent : 'text.secondary' }}>
-                {item.label}
-              </Typography>
-              <Checkbox size="small" checked={checked[item.id]}
-                onChange={() => toggle(item.id)} onClick={e => e.stopPropagation()}
-                sx={{ p:0.5, color:accent, '&.Mui-checked':{ color:accent } }} />
+            {/* 全選択 */}
+            <Box sx={{ display:'flex', alignItems:'center', gap:1, mb:1, pb:1,
+                       borderBottom:'1px solid #eee', cursor:'pointer' }}
+                 onClick={toggleAll}>
+              <Checkbox size="small" checked={allChecked}
+                indeterminate={!allChecked && SERVICE_ITEMS.some(i => checked[i.id])}
+                onChange={toggleAll} onClick={e => e.stopPropagation()}
+                sx={{ p:0.5, color:accent, '&.Mui-checked,&.MuiCheckbox-indeterminate':{ color:accent } }} />
+              <Typography variant="body2" sx={{ fontWeight:600 }}>すべて選択</Typography>
             </Box>
-          ))}
-        </Box>
+
+            {/* サービス一覧（横1列） */}
+            <Box sx={{ display:'flex', flexDirection:'column', gap:0.75 }}>
+              {SERVICE_ITEMS.map(item => (
+                <Box key={item.id} onClick={() => toggle(item.id)} sx={{
+                  display:'flex', alignItems:'center', gap:1.5,
+                  border:`2px solid ${checked[item.id] ? accent : '#ddd'}`,
+                  borderRadius:1.5, overflow:'hidden', cursor:'pointer',
+                  bgcolor:checked[item.id] ? light : '#fff',
+                  transition:'border-color 0.15s', p:0.5,
+                }}>
+                  {/* サムネイル（読み込みでキャッシュに乗る） */}
+                  <Box component="img"
+                    src={`/sale-schedule/illustrations/${item.id}.png`}
+                    alt={item.label}
+                    sx={{ width:72, height:48, objectFit:'cover', objectPosition:'top',
+                          borderRadius:1, flexShrink:0 }} />
+                  <Typography variant="body2"
+                    sx={{ flex:1, fontWeight:checked[item.id] ? 700 : 400,
+                          color:checked[item.id] ? accent : 'text.secondary' }}>
+                    {item.label}
+                  </Typography>
+                  <Checkbox size="small" checked={checked[item.id]}
+                    onChange={() => toggle(item.id)} onClick={e => e.stopPropagation()}
+                    sx={{ p:0.5, color:accent, '&.Mui-checked':{ color:accent } }} />
+                </Box>
+              ))}
+            </Box>
+          </>
+        )}
       </DialogContent>
 
       <Divider />
 
       <DialogActions sx={{ px:2, py:1.5, gap:1 }}>
         <Button onClick={onClose} size="small" color="inherit">閉じる</Button>
-        <Button variant="outlined" size="small" startIcon={<PrintIcon />}
-          onClick={handlePrint} disabled={selected.length === 0}
-          sx={{ borderColor:accent, color:accent }}>
-          保存
-        </Button>
         <Button variant="contained" size="small" startIcon={<PrintIcon />}
-          onClick={handlePrint} disabled={selected.length === 0}
+          onClick={handlePrint} disabled={selected.length === 0 || loading}
           sx={{ bgcolor:accent, '&:hover':{ bgcolor:isFI ? '#142d55' : '#00564f' } }}>
           印刷プレビュー（{selected.length}件）
         </Button>

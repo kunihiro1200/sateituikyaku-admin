@@ -12747,6 +12747,7 @@ HP：https://ifoo-oita.com/
         <ServiceSupportModal
           open={serviceModalOpen}
           onClose={() => setServiceModalOpen(false)}
+          sellerId={seller.id}
           sellerNumber={seller.sellerNumber || ''}
           ownerName={seller.name || ''}
           propertyAddress={propInfo.address || seller.propertyAddress || ''}
