@@ -18,6 +18,7 @@ export interface ChatNotificationData {
   assignee?: string;
   callPageUrl?: string;
   fromOtherDecision?: boolean;
+  serviceItems?: string[]; // 売却サポートで選択済みのサービス名リスト
 }
 
 /**
@@ -87,8 +88,11 @@ export class ChatNotificationService {
         throw new Error('GOOGLE_CHAT_EXCLUSIVE_WEBHOOK_URL is not configured');
       }
 
-      const seller = await this.getSellerInfo(sellerId);
-      
+      const [seller, serviceItems] = await Promise.all([
+        this.getSellerInfo(sellerId),
+        this.getServiceItems(sellerId),
+      ]);
+
       const message = this.formatExclusiveContractMessage({
         ...data,
         assignee: data.assignee || seller.visit_assignee,
@@ -97,6 +101,7 @@ export class ChatNotificationService {
         propertyAddress: seller.property_address,
         valuationAmount: seller.valuation_amount_2,
         callPageUrl: seller.call_page_url,
+        serviceItems,
       });
 
       return await this.sendToGoogleChat(message, this.exclusiveWebhookUrl);
@@ -228,10 +233,39 @@ export class ChatNotificationService {
   }
 
   /**
+   * seller_attached_document2 から選択済みの売却サポートサービス名を取得する
+   * 何も選択されていない場合は空配列を返す（通知に「サービス」行を出さないため）
+   */
+  private async getServiceItems(sellerId: string): Promise<string[]> {
+    const TOKUTEN_LABELS: { key: string; label: string }[] = [
+      { key: 'tokuten_cleaning',     label: '室内クリーニング' },
+      { key: 'tokuten_garden',       label: '庭の除草、草刈り' },
+      { key: 'tokuten_wallpaper',    label: 'クロスの張替え' },
+      { key: 'tokuten_removal',      label: '残置物撤去' },
+      { key: 'tokuten_warranty',     label: '設備の1年間無償保証' },
+      { key: 'tokuten_fee_discount', label: '最低価格を下回った場合 仲介手数料２％' },
+      { key: 'tokuten_bridge_loan',  label: 'つなぎ融資' },
+    ];
+
+    try {
+      const { data } = await supabase
+        .from('seller_attached_document2')
+        .select(TOKUTEN_LABELS.map(t => t.key).join(', '))
+        .eq('seller_id', sellerId)
+        .maybeSingle();
+
+      if (!data) return [];
+
+      return TOKUTEN_LABELS
+        .filter(t => !!data[t.key])
+        .map(t => t.label);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * Get seller information from database
-   * 
-   * @param sellerId - Seller ID
-   * @returns Seller information
    */
   private async getSellerInfo(sellerId: string): Promise<any> {
     const { data, error } = await supabase
@@ -295,6 +329,9 @@ ${data.callPageUrl ? `\n🔗 ${data.callPageUrl}` : ''}
   private formatExclusiveContractMessage(data: ChatNotificationData): string {
     const title = data.fromOtherDecision ? '他決から専任媒介契約取得' : '専任媒介契約取得';
     const body = data.fromOtherDecision ? '他決から専任媒介契約を取得しました！' : '専任媒介契約を取得しました！';
+    const serviceLine = (data.serviceItems && data.serviceItems.length > 0)
+      ? `\nサービス: ${data.serviceItems.join('、')}`
+      : '';
     return `
 🎉 *${title}*
 
@@ -302,8 +339,7 @@ ${data.callPageUrl ? `\n🔗 ${data.callPageUrl}` : ''}
 売主名: ${data.sellerName}
 物件所在地: ${data.propertyAddress}
 査定額: ${data.valuationAmount ? `¥${data.valuationAmount.toLocaleString()}` : '未設定'}
-担当者: ${data.assignee || '未設定'}
-サービス: 室内クリーニング、残置物撤去
+担当者: ${data.assignee || '未設定'}${serviceLine}
 
 ${body}
 ${data.notes ? `\n備考: ${data.notes}` : ''}
@@ -323,7 +359,6 @@ ${data.callPageUrl ? `\n🔗 ${data.callPageUrl}` : ''}
 物件所在地: ${data.propertyAddress}
 他決要因: ${data.reason || '未記入'}
 担当者: ${data.assignee || '未設定'}
-サービス: 室内クリーニング、残置物撤去
 
 訪問査定後に他決となりました。
 ${data.notes ? `\n対策: ${data.notes}` : ''}
@@ -361,7 +396,6 @@ ${data.callPageUrl ? `\n🔗 ${data.callPageUrl}` : ''}
 売主名: ${data.sellerName}
 物件所在地: ${data.propertyAddress}
 他決要因: ${data.reason || '未記入'}
-サービス: 室内クリーニング、残置物撤去
 
 訪問前に他決となりました。
 ${data.notes ? `\n備考: ${data.notes}` : ''}
