@@ -187,3 +187,67 @@ router.put('/sellers/:sellerId/attached-document2', async (req: Request, res: Re
 });
 
 export default router;
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 特典チェックボックスのみを部分更新（他のフィールドを上書きしない）
+// PATCH /sellers/:sellerId/attached-document2/tokuten
+// ──────────────────────────────────────────────────────────────────────────────
+const TOKUTEN_KEYS = [
+  'tokuten_cleaning',
+  'tokuten_garden',
+  'tokuten_wallpaper',
+  'tokuten_removal',
+  'tokuten_warranty',
+  'tokuten_fee_discount',
+  'tokuten_bridge_loan',
+  'tokuten_key_exchange',
+] as const;
+
+router.patch('/sellers/:sellerId/attached-document2/tokuten', async (req: Request, res: Response) => {
+  try {
+    const { sellerId } = req.params;
+    const body = req.body as Record<string, unknown>;
+
+    // bodyに含まれるtokuten_*フィールドのみ更新
+    const patch: Record<string, boolean | string> = {
+      updated_at: new Date().toISOString(),
+    };
+    for (const key of TOKUTEN_KEYS) {
+      if (key in body) patch[key] = !!body[key];
+    }
+
+    // 行が存在するか確認
+    const { data: existing } = await supabase
+      .from('seller_attached_document2')
+      .select('seller_id')
+      .eq('seller_id', sellerId)
+      .maybeSingle();
+
+    if (existing) {
+      // 既存行 → 該当フィールドのみ UPDATE
+      const { error } = await supabase
+        .from('seller_attached_document2')
+        .update(patch)
+        .eq('seller_id', sellerId);
+      if (error) throw error;
+    } else {
+      // 行なし → デフォルト値付きで INSERT
+      const defaults: Record<string, boolean | string | null> = {
+        seller_id: sellerId,
+        updated_at: new Date().toISOString(),
+      };
+      for (const key of TOKUTEN_KEYS) {
+        defaults[key] = key in body ? !!body[key] : false;
+      }
+      const { error } = await supabase
+        .from('seller_attached_document2')
+        .insert(defaults);
+      if (error) throw error;
+    }
+
+    res.json({ ok: true });
+  } catch (error: any) {
+    console.error('Error patching tokuten:', error);
+    res.status(500).json({ error: error.message });
+  }
+});

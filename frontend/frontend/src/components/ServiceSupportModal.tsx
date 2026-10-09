@@ -88,6 +88,7 @@ export default function ServiceSupportModal({ open, onClose, sellerId, sellerNum
 
   // ─────────────────────────────────────────
   // checked が変わったら DB に保存（初回ロード時を除く）
+  // tokuten専用PATCHで他フィールドを上書きしない
   // ─────────────────────────────────────────
   useEffect(() => {
     if (!sellerId || isLoadingRef.current) return;
@@ -95,7 +96,8 @@ export default function ServiceSupportModal({ open, onClose, sellerId, sellerNum
     for (const item of SERVICE_ITEMS) {
       payload[item.tokutenKey] = !!checked[item.id];
     }
-    api.put(`/api/sellers/${sellerId}/attached-document2`, payload).catch(() => {});
+    api.patch(`/api/sellers/${sellerId}/attached-document2/tokuten`, payload)
+      .catch((err) => console.error('tokuten save error:', err));
   }, [checked, sellerId]);
 
   const toggle = (id: string) => {
