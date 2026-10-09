@@ -902,7 +902,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         : 77;
       // known_with_empty: 空項目=105mm / known_mortgage_with_empty: 空項目=120mm
       const emptyItemLeft = p.taxMode === 'none_mortgage_empty' ? 89
-        : p.taxMode === 'known_empty' ? 94
+        : p.taxMode === 'known_empty' ? 96
         : p.taxMode === 'unknown_mortgage_empty' ? 117
         : p.taxMode === 'known_with_empty' ? 105
         : p.taxMode === 'known_mortgage_with_empty' ? 115
@@ -925,7 +925,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
       const transferTaxLeft = p.taxMode === 'none' ? 135
         : p.taxMode === 'unknown_mortgage' ? 138
         : p.taxMode === 'unknown_mortgage_empty' ? 138
-        : p.taxMode === 'known_empty' ? 140
+        : p.taxMode === 'known_empty' ? 137
         : p.taxMode === 'known_with_empty' ? 138
         : p.taxMode === 'known_mortgage_with_empty' ? 140
         : 131;
