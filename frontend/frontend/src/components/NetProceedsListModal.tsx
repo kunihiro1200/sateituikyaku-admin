@@ -913,7 +913,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
         : p.taxMode === 'none_empty' ? 124
         : p.taxMode === 'known_mortgage' ? 107
         : p.taxMode === 'known' ? 95
-        : p.taxMode === 'known_empty' ? 124
+        : p.taxMode === 'known_empty' ? 74
         : p.taxMode === 'unknown_mortgage_empty' ? 97
         : p.taxMode === 'unknown_mortgage' ? 97
         : p.taxMode === 'known_with_empty' ? 84
@@ -925,7 +925,7 @@ function buildNetProceedsHtml(p: BuildHtmlParams): string {
       const transferTaxLeft = p.taxMode === 'none' ? 135
         : p.taxMode === 'unknown_mortgage' ? 138
         : p.taxMode === 'unknown_mortgage_empty' ? 138
-        : p.taxMode === 'known_empty' ? 150
+        : p.taxMode === 'known_empty' ? 100
         : p.taxMode === 'known_with_empty' ? 138
         : p.taxMode === 'known_mortgage_with_empty' ? 140
         : 131;
