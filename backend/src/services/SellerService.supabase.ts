@@ -912,9 +912,13 @@ export class SellerService extends BaseRepository {
         const decryptedSeller = await this.decryptSeller(sellerByNumber);
         invalidateSellerCache(found.id);
         invalidateListSellersCache();
-        await CacheHelper.del(CacheHelper.generateKey('seller', found.id));
-        await CacheHelper.delPattern('sellers:list:*');
-        await CacheHelper.del('sellers:sidebar-counts');
+        const cacheTimeout2 = (p: Promise<any>) =>
+          Promise.race([p, new Promise<void>(resolve => setTimeout(resolve, 2000))]);
+        await Promise.all([
+          cacheTimeout2(CacheHelper.del(CacheHelper.generateKey('seller', found.id))),
+          cacheTimeout2(CacheHelper.delPattern('sellers:list:*')),
+          cacheTimeout2(CacheHelper.del('sellers:sidebar-counts')),
+        ]);
         this.syncDirectToSpreadsheet(found.id);
         return decryptedSeller;
       }
@@ -932,30 +936,21 @@ export class SellerService extends BaseRepository {
       raw_phone_number_length: (seller as any).phone_number?.length || 0,
     });
 
-    // データベースから再度取得して確認
-    const { data: verifyData, error: verifyError } = await this.table('sellers')
-      .select('*')
-      .eq('id', sellerId)
-      .single();
-
-    if (!verifyError && verifyData) {
-      console.log('🔍 Verification - Data in DB:', {
-        id: verifyData.id,
-        phone_number_exists: !!verifyData.phone_number,
-        phone_number_length: verifyData.phone_number?.length || 0,
-        phone_number_preview: verifyData.phone_number ? `${verifyData.phone_number.substring(0, 20)}...` : 'null',
-      });
-    }
-
     const decryptedSeller = await this.decryptSeller(seller);
 
     // キャッシュを無効化（インメモリ + Redis）
     invalidateSellerCache(sellerId); // インメモリキャッシュを即座に無効化
     invalidateListSellersCache(); // リストキャッシュも無効化
-    await CacheHelper.del(CacheHelper.generateKey('seller', sellerId));
-    await CacheHelper.delPattern('sellers:list:*');
-    // サイドバーカウントキャッシュも無効化（売主データ変更により集計が変わる可能性があるため）
-    await CacheHelper.del('sellers:sidebar-counts');
+
+    // Redis キャッシュ無効化：3つを並列実行 + 2秒タイムアウト
+    // 直列 await だと Redis の遅延・コネクション不安定で1分以上ブロックされる原因になる
+    const cacheTimeout = (p: Promise<any>) =>
+      Promise.race([p, new Promise<void>(resolve => setTimeout(resolve, 2000))]);
+    await Promise.all([
+      cacheTimeout(CacheHelper.del(CacheHelper.generateKey('seller', sellerId))),
+      cacheTimeout(CacheHelper.delPattern('sellers:list:*')),
+      cacheTimeout(CacheHelper.del('sellers:sidebar-counts')),
+    ]);
 
     // サイドバーカウント更新（awaitして確実に完了させる）
     // Vercelサーバーレス環境ではレスポンス後に非同期処理が打ち切られるため、awaitが必須
@@ -2470,9 +2465,10 @@ export class SellerService extends BaseRepository {
     // 数字のみの場合も売主番号として検索
     if (lowerQuery.match(/^\d+$/)) {
       console.log('🚀 Fast path: Searching by seller_number (numeric) in database');
+      // 後方一致（%1372）にすることで、AA1372/FI1372はヒットし、AA13722はヒットしない
       let sellerQuery = this.table('sellers')
         .select('*')
-        .ilike('seller_number', `%${lowerQuery}%`)
+        .ilike('seller_number', `%${lowerQuery}`)
         .order('seller_number', { ascending: true })
         .limit(50);
       
@@ -2540,10 +2536,16 @@ export class SellerService extends BaseRepository {
 
     // ── 1. 平文カラムはDBレベルで部分一致検索（高速） ──────────────────
     // ⚠️ .or() に生の入力を埋め込むとPostgRESTの構文を壊すため、個別クエリで実行する
+    const isNumericQuery = /^\d+$/.test(lowerQuery);
     for (const column of ['property_address', 'seller_number'] as const) {
+      // 数字入力でseller_numberを検索する場合は後方一致（末尾の番号と一致させる）
+      // 例: "1372" → AA1372/FI1372 はヒット、AA13722 はヒットしない
+      const ilikePattern = (column === 'seller_number' && isNumericQuery)
+        ? `%${lowerQuery}`   // 後方一致
+        : `%${lowerQuery}%`; // 部分一致
       let plainQuery = this.table('sellers')
         .select('id')
-        .ilike(column, `%${lowerQuery}%`)
+        .ilike(column, ilikePattern)
         .limit(MAX_RESULTS);
       if (!includeDeleted) {
         plainQuery = plainQuery.is('deleted_at', null);
