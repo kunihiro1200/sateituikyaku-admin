@@ -171,13 +171,12 @@ body{font-family:'ヒラギノ角ゴ Pro W3','メイリオ',Meiryo,sans-serif;
 <script>window.onload=function(){window.print();}</script>
 </body></html>`;
 
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-      onClose(); // 印刷プレビューを開いたらモーダルを閉じる（親ウィンドウのブロックを防ぐ）
-    }
-  }, [selected, title, ownerName, propertyAddress, isFI, onClose]);
+    // Blob URLで開くことでポップアップではなく正規タブとして開く（親ウィンドウをブロックしない）
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000); // 1分後にクリーンアップ
+  }, [selected, title, ownerName, propertyAddress, isFI]);
 
   // ─────────────────────────────────────────
   // モーダル UI
