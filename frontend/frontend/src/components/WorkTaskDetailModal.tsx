@@ -1330,8 +1330,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     if (isLandType && cwRequestEmailSiteVal === 'Y' && getValue('land_handover_type_confirmed') !== 'Y') {
       setValidationWarningDialog({
         open: true,
-        title: '「解体更地渡しか現況渡しか確認したか」が確認済（Y）になっていません。確認済にしないとCWの方へサイト登録依頼メールは送信されません。',
-        emptyFields: ['解体更地渡しか現況渡しか確認したか'],
+        title: '「解体更地渡しか現況渡しか確認」が確認済（Y）になっていません。確認済にしないとCWの方へサイト登録依頼メールは送信されません。',
+        emptyFields: ['解体更地渡しか現況渡しか確認'],
         onConfirmAction: 'land_handover_type_confirmed',
       });
       return;
@@ -3408,7 +3408,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         {getValue('property_type') === '土' && (
           <Box ref={landHandoverTypeConfirmedRef}>
             <EditableYesNo
-              label={getValue('land_handover_type_confirmed') !== 'Y' ? '解体更地渡しか現況渡しか確認したか*（必須）' : '解体更地渡しか現況渡しか確認したか*'}
+              label={getValue('land_handover_type_confirmed') !== 'Y' ? '解体更地渡しか現況渡しか確認*（必須）' : '解体更地渡しか現況渡しか確認*'}
               field="land_handover_type_confirmed"
               labelColor={getValue('land_handover_type_confirmed') !== 'Y' ? 'error' : undefined}
             />
@@ -3686,7 +3686,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         )}
         <EditableButtonSelect label="写真の順番確認" field="photo_order_checked" options={['済', '未']} />
         {getValue('property_type') === '土' && (
-          <EditableButtonSelect label="解体更地渡しか現況渡しか確認したか" field="land_handover_type_confirmed_check" options={['済', '未']} />
+          <EditableButtonSelect label="解体更地渡しか現況渡しか確認" field="land_handover_type_confirmed_check" options={['済', '未']} />
         )}
         <EditableField label="メール配信v" field="email_distribution" />
         <EditableField label="サイト登録確認OKコメント" field="site_registration_ok_comment" type="text" />
