@@ -213,7 +213,7 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
     if (templateId === 'land_no_permission') {
       message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n${companyIntro}\n\n所在地：${address}\n上記の物件のお問い合わせ、ありがとうございます。\n現地確認につきましては、敷地外からはご自由に見ていただいて大丈夫です。\n所在地：${address}${hasFI ? '' : `\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri\n★非公開の物件はこちらから↓↓\n${PUBLIC_SITE_URL}\nお気軽にお問い合わせください。`}\n${hasFI ? 'ご不明な点等ございましたら、お気軽にお問い合わせください。' : ''}${preViewingSection}\n\nまた、他社物件もご紹介できますので、気になる物件がございましたらお気軽にご連絡ください。${signature}`;
     } else if (templateId === 'minpaku') {
-      message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n${companyIntro}\n\n所在地：${address}\n上記の物件のお問い合わせ、ありがとうございます。\n民泊につきましては、民泊新法（営業180日以内）であればどの用途地域でも民泊が可能です。保健所に届け出をする際に「近隣住民に説明したか」が必須の項目になりますので、反対が出た場合は難しい可能性もあります。\nご不明な点等ございましたら、東部保健所（0977-67-2511）へお問い合わせください。${preViewingSection}\n\nまた、ご内覧希望の場合は、こちらからご予約お願いいたします↓↓\n${viewingFormUrl}\n\n★お急ぎで内覧をご希望の方は、直接お電話にてお申込みも承っております！\nお気軽にお問い合わせください。\n\nまた、他社物件もご紹介できますので、気になる物件がございましたらお気軽にご連絡ください。${signature}`;
+      message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n${companyIntro}\n\n所在地：${address}\n上記の物件のお問い合わせ、ありがとうございます。\n民泊につきましては、民泊新法（営業180日以内）であればどの用途地域でも民泊が可能です。保健所に届け出をする際に「近隣住民に説明したか」が必須の項目になりますので、反対が出た場合は難しい可能性もあります。\nご不明な点等ございましたら、東部保健所（0977-67-2511）へお問い合わせください。${preViewingSection}\n\n★お急ぎで内覧をご希望の方は、直接お電話にてお申込みも承っております！\nお気軽にお問い合わせください。\n\nまた、他社物件もご紹介できますので、気になる物件がございましたらお気軽にご連絡ください。${signature}`;
     } else if (templateId === 'land_need_permission') {
       message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n${companyIntro}\n\n所在地：${address}\n上記の物件のお問い合わせ、ありがとうございます。\n現地確認につきましては、当社で売主様へ許可を取った後に、敷地外からはご自由に見ていただくことになります。\nそこで、現地に行かれる日程が決まりましたら下記より日程をご予約いただければと思います\n\n所在地：${address}\n\n${viewingFormUrl}${hasFI ? '' : `\n\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri\n★非公開の物件はこちらから↓↓\n${PUBLIC_SITE_URL}\nお気軽にお問い合わせください。`}\n${hasFI ? 'ご不明な点等ございましたら、お気軽にお問い合わせください。' : ''}${preViewingSection}\n\nまた、他社物件もご紹介できますので、気になる物件がございましたらお気軽にご連絡くださいませ。${signature}`;
     } else if (templateId === 'offer_no_viewing') {
@@ -227,7 +227,7 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
     } else if (templateId === 'pinrich') {
       message = `${name}様\n先日は、ご登録いただきましてありがとうございました！その後物件探しのご状況はいかがでしょうか？\nまだ物件をお探しであれば是非${noResponseCompany}にてお手伝い出来ればと存じますのでお気軽にお申し付け下さい。\n\n他に気になる物件がございましたら他社様の物件もご内覧可能です。${hasFI ? '' : `\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri\n★非公開の物件はこちらから↓↓\n${PUBLIC_SITE_URL}`}\n引き続き宜しくお願い致します。${preViewingSection}${signature}`;
     } else if (templateId === 'house_mansion') {
-      message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n${companyIntro}\n\n所在地：${address}\n上記の物件のお問い合わせ、ありがとうございます。\nご不明な点等ございましたら、お気軽にお問い合わせください。${preViewingSection}\n\nまた、ご内覧希望の場合は、こちらからご予約お願いいたします↓↓\n${viewingFormUrl}${hasFI ? '' : `\n\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri\n★非公開の物件はこちらから↓↓\n${PUBLIC_SITE_URL}\nお気軽にお問い合わせください。`}\n\nまた、他社物件もご紹介できますので、気になる物件がございましたらお気軽にご連絡ください。${signature}`;
+      message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n${companyIntro}\n\n所在地：${address}\n上記の物件のお問い合わせ、ありがとうございます。\nご不明な点等ございましたら、お気軽にお問い合わせください。${preViewingSection}${hasFI ? '' : `\n\n★大分市の新築建売専門サイト↓↓\nhttps://sateituikyaku-admin-frontend.vercel.app/tateuri\n★非公開の物件はこちらから↓↓\n${PUBLIC_SITE_URL}\nお気軽にお問い合わせください。`}\n\nまた、他社物件もご紹介できますので、気になる物件がございましたらお気軽にご連絡ください。${signature}`;
     } else if (templateId === 'ask_email') {
       const askEmailCompany = hasFI ? 'くじら不動産' : '不動産会社いふう';
       message = `${name}様お世話になっております。${askEmailCompany}です。\n先ほどは${address}についてお問い合わせいただき、誠にありがとうございました。\n今後、ご希望条件に合う新着物件やおすすめ物件がございましたら、メールにてご紹介・配信させていただければと思っております。\n差し支えなければ、こちらのショートメールへご確認いただけるメールアドレスをご返信いただけますと幸いです。\nどうぞよろしくお願いいたします。`;
@@ -280,6 +280,9 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
     } else if (templateId === 'pre_viewing_hearing') {
       // 内覧前ヒアリング（事前確認事項）
       message = `${name}様\n\nこのたびはお問い合わせいただき、誠にありがとうございます。\n${companyShort}でございます。\n\n内覧の日程が決まりましたので、ご案内をスムーズに進めるため、下記の項目について事前にお知らせいただけますと幸いです。そのままご記入のうえ、このメールにご返信ください。\n―――――――――――――――――――\n${PRE_VIEWING_QA_ITEMS}\n―――――――――――――――――――\n\nお手数をおかけいたしますが、ご確認のほどよろしくお願いします。\nそれでは当日お会いできるのを楽しみにしております。${signature}`;
+    } else if (templateId === 'viewing_reservation') {
+      // 内覧予約フォーム案内（単体）：予約URLは従来どおり買主番号を付与する（entry.267319544=<買主番号>）
+      message = `ご内覧希望の場合は、こちらからご予約お願いいたします↓↓\n\n${viewingFormUrl}`;
     }
 
     // 返信テンプレートに応じて次電日（next_call_date）を自動セットする
@@ -420,6 +423,8 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
         {renderSmsMenuItem('minpaku', '民泊問合せ')}
         {/* SMS専用（Gmailに該当テンプレートなし） */}
         {renderSmsMenuItem('ask_email', 'メールアドレス確認')}
+        {/* 内覧予約フォーム案内（単体）：予約URLは買主番号なしで文字数を抑える */}
+        {renderSmsMenuItem('viewing_reservation', '内覧予約フォーム案内')}
       </Menu>
     </>
   );
