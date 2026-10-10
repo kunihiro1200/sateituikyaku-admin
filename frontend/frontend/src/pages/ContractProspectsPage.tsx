@@ -34,7 +34,12 @@ import {
   useTheme,
   useMediaQuery,
   Divider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
@@ -238,6 +243,15 @@ function normalizeText(text: string): string {
   return text.normalize('NFKC').toLowerCase();
 }
 
+/** 担当コード → 表示名に解決（例: 'Y' → '山本'） */
+function resolveStaffName(salesAssignee: string | undefined | null): string {
+  if (!salesAssignee) return '不明';
+  for (const [name, patterns] of Object.entries(STAFF_PATTERNS)) {
+    if (patterns.some((p) => salesAssignee.includes(p))) return name;
+  }
+  return salesAssignee;
+}
+
 // ============================================================
 // コンポーネント
 // ============================================================
@@ -403,6 +417,49 @@ export default function ContractProspectsPage() {
   ]);
 
   // ============================================================
+  // 売上予測サマリー（担当者別・月別）
+  // ============================================================
+
+  /** 決済見込み月が設定されている物件（現在の担当者フィルタ適用） */
+  const forecastItems = useMemo(() => {
+    const base =
+      selectedStaff === '全員'
+        ? properties
+        : properties.filter((p) => matchesStaff(p.sales_assignee, selectedStaff));
+
+    return base
+      .filter((p) => p.prospect?.settlement_expected_month)
+      .sort((a, b) => {
+        // 月→担当者 の順でソート
+        const mA = a.prospect?.settlement_expected_month ?? '';
+        const mB = b.prospect?.settlement_expected_month ?? '';
+        if (mA !== mB) return mA.localeCompare(mB);
+        return resolveStaffName(a.sales_assignee).localeCompare(
+          resolveStaffName(b.sales_assignee)
+        );
+      });
+  }, [properties, selectedStaff]);
+
+  /** 担当者名 → 物件リスト のマップ */
+  const forecastByStaff = useMemo(() => {
+    const map = new Map<string, PropertyWithProspect[]>();
+    for (const p of forecastItems) {
+      const name = resolveStaffName(p.sales_assignee);
+      if (!map.has(name)) map.set(name, []);
+      map.get(name)!.push(p);
+    }
+    return map;
+  }, [forecastItems]);
+
+  /** 全体合計売上見込み */
+  const forecastGrandTotal = useMemo(() => {
+    return forecastItems.reduce((sum, p) => {
+      const sc = calcSellerCommission(p.price, p.commission_from_seller);
+      return sum + calcExpectedRevenue(sc);
+    }, 0);
+  }, [forecastItems]);
+
+  // ============================================================
   // 編集ハンドラ
   // ============================================================
 
@@ -564,7 +621,7 @@ export default function ContractProspectsPage() {
       <PageNavigation />
 
       {/* ─── 担当者切替ボタン ─── */}
-      <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mt: 2, mb: 1.5 }}>
+      <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mt: 2, mb: 1 }}>
         {STAFF_BUTTONS.map((staff) => (
           <Button
             key={staff}
@@ -591,6 +648,34 @@ export default function ContractProspectsPage() {
           >
             {staff}
           </Button>
+        ))}
+      </Box>
+
+      {/* ─── ランク凡例バー ─── */}
+      <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 2, alignItems: 'center' }}>
+        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+          ランク基準：
+        </Typography>
+        {RANK_OPTIONS.map((r) => (
+          <Tooltip key={r.value} title={r.desc} arrow placement="bottom">
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'help' }}>
+              <Chip
+                label={r.short}
+                size="small"
+                sx={{
+                  bgcolor: r.color,
+                  color: '#fff',
+                  fontWeight: 'bold',
+                  minWidth: 24,
+                  fontSize: '0.72rem',
+                  height: 20,
+                }}
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                {r.label.split('：')[1]}
+              </Typography>
+            </Box>
+          </Tooltip>
         ))}
       </Box>
 
@@ -635,8 +720,137 @@ export default function ContractProspectsPage() {
         ))}
       </Grid>
 
-      {/* ─── 検索・フィルタバー ─── */}
-      <Paper sx={{ p: 1.5, mb: 2 }} elevation={1}>
+      {/* ─── 売上予測サマリー ─── */}
+      <Accordion
+        defaultExpanded={false}
+        sx={{ mb: 2, border: '1px solid #e3f2fd', '&:before': { display: 'none' } }}
+        elevation={1}
+      >
+        <AccordionSummary
+          expandIcon={<ExpandMoreIcon />}
+          sx={{ bgcolor: '#e3f2fd', minHeight: 44, '&.Mui-expanded': { minHeight: 44 } }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <TrendingUpIcon sx={{ color: PROPERTY_COLOR, fontSize: '1.1rem' }} />
+            <Typography variant="subtitle2" fontWeight="bold" sx={{ color: PROPERTY_COLOR }}>
+              売上予測サマリー（決済見込み月入力済み物件）
+            </Typography>
+            {forecastItems.length > 0 && (
+              <Chip
+                label={`${forecastItems.length}件 / 合計 ${formatPrice(forecastGrandTotal)}`}
+                size="small"
+                sx={{ bgcolor: PROPERTY_COLOR, color: '#fff', fontWeight: 'bold', fontSize: '0.72rem' }}
+              />
+            )}
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails sx={{ p: 0 }}>
+          {forecastItems.length === 0 ? (
+            <Box sx={{ py: 3, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                決済見込み月が入力された物件がありません
+              </Typography>
+            </Box>
+          ) : (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                    {['担当者', '物件番号', '所在地', 'ランク', '決済見込み月', '想定売上（予定）', '実際'].map((h) => (
+                      <TableCell key={h} sx={{ fontWeight: 'bold', fontSize: '0.75rem', py: 0.75, px: 1.5 }}>
+                        {h}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {Array.from(forecastByStaff.entries()).map(([staffName, items]) => {
+                    const staffTotal = items.reduce((sum, p) => {
+                      const sc = calcSellerCommission(p.price, p.commission_from_seller);
+                      return sum + calcExpectedRevenue(sc);
+                    }, 0);
+                    return (
+                      <>
+                        {items.map((p, idx) => {
+                          const sc = calcSellerCommission(p.price, p.commission_from_seller);
+                          const rev = calcExpectedRevenue(sc);
+                          return (
+                            <TableRow
+                              key={p.property_number}
+                              sx={{ '&:hover': { bgcolor: '#fafafa' }, bgcolor: getRankBgColor(p.prospect?.prospect_rank) + '40' }}
+                            >
+                              {/* 担当者（グループ先頭行のみ表示） */}
+                              <TableCell
+                                sx={{ fontWeight: 600, fontSize: '0.8rem', px: 1.5, py: 0.75, borderBottom: idx === items.length - 1 ? '2px solid #e0e0e0' : undefined }}
+                              >
+                                {idx === 0 ? staffName : ''}
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.8rem', px: 1.5, py: 0.75, whiteSpace: 'nowrap' }}>
+                                {p.property_number}
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.75rem', px: 1.5, py: 0.75, maxWidth: 160 }}>
+                                <Typography variant="caption" sx={{ wordBreak: 'break-all' }}>
+                                  {p.display_address || p.address || '-'}
+                                </Typography>
+                              </TableCell>
+                              <TableCell sx={{ px: 1.5, py: 0.75 }}>
+                                {p.prospect?.prospect_rank ? (
+                                  <Chip
+                                    label={p.prospect.prospect_rank}
+                                    size="small"
+                                    sx={{ bgcolor: getRankColor(p.prospect.prospect_rank), color: '#fff', fontWeight: 'bold', minWidth: 24, fontSize: '0.75rem', height: 20 }}
+                                  />
+                                ) : <Typography variant="caption" color="text.disabled">-</Typography>}
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.8rem', px: 1.5, py: 0.75, whiteSpace: 'nowrap', fontWeight: 500 }}>
+                                {formatMonth(p.prospect?.settlement_expected_month)}
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.8rem', px: 1.5, py: 0.75, textAlign: 'right', fontWeight: 500, color: '#1565c0', whiteSpace: 'nowrap' }}>
+                                {formatPrice(rev)}
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.65rem' }}>
+                                  (売主側: {formatPrice(sc)})
+                                </Typography>
+                              </TableCell>
+                              <TableCell sx={{ fontSize: '0.75rem', px: 1.5, py: 0.75, color: 'text.disabled' }}>
+                                -
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                        {/* 担当者小計行 */}
+                        <TableRow sx={{ bgcolor: '#e8f5e9' }}>
+                          <TableCell colSpan={5} sx={{ fontWeight: 'bold', fontSize: '0.78rem', px: 1.5, py: 0.5, color: '#2e7d32' }}>
+                            {staffName} 小計（{items.length}件）
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', fontSize: '0.85rem', textAlign: 'right', px: 1.5, py: 0.5, color: '#2e7d32', whiteSpace: 'nowrap' }}>
+                            {formatPrice(staffTotal)}
+                          </TableCell>
+                          <TableCell sx={{ px: 1.5, py: 0.5, color: 'text.disabled', fontSize: '0.75rem' }}>-</TableCell>
+                        </TableRow>
+                      </>
+                    );
+                  })}
+                  {/* 合計行 */}
+                  <TableRow sx={{ bgcolor: '#e3f2fd' }}>
+                    <TableCell colSpan={5} sx={{ fontWeight: 'bold', fontSize: '0.85rem', px: 1.5, py: 0.75, color: PROPERTY_COLOR }}>
+                      合計（{forecastItems.length}件）
+                      <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary', fontSize: '0.7rem' }}>
+                        ※ 両手率{Math.round(BOTH_HAND_RATE * 100)}%で算出（初期設定）
+                      </Typography>
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', textAlign: 'right', px: 1.5, py: 0.75, color: PROPERTY_COLOR, whiteSpace: 'nowrap' }}>
+                      {formatPrice(forecastGrandTotal)}
+                    </TableCell>
+                    <TableCell sx={{ px: 1.5, py: 0.75, color: 'text.disabled', fontSize: '0.75rem' }}>未成約</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </AccordionDetails>
+      </Accordion>
+
+      {/* ─── 検索・フィルタバー ─── */}      <Paper sx={{ p: 1.5, mb: 2 }} elevation={1}>
         <Grid container spacing={1} alignItems="center">
           <Grid item xs={12} sm={4}>
             <TextField
@@ -881,17 +1095,20 @@ export default function ContractProspectsPage() {
                             </Select>
                           </FormControl>
                         ) : p.prospect?.prospect_rank ? (
-                          <Chip
-                            label={p.prospect.prospect_rank}
-                            size="small"
-                            sx={{
-                              bgcolor: getRankColor(p.prospect.prospect_rank),
-                              color: '#fff',
-                              fontWeight: 'bold',
-                              minWidth: 28,
-                              fontSize: '0.8rem',
-                            }}
-                          />
+                          <Tooltip title={RANK_OPTIONS.find((r) => r.value === p.prospect?.prospect_rank)?.desc ?? ''} arrow>
+                            <Chip
+                              label={p.prospect.prospect_rank}
+                              size="small"
+                              sx={{
+                                bgcolor: getRankColor(p.prospect.prospect_rank),
+                                color: '#fff',
+                                fontWeight: 'bold',
+                                minWidth: 28,
+                                fontSize: '0.8rem',
+                                cursor: 'help',
+                              }}
+                            />
+                          </Tooltip>
                         ) : (
                           <Typography variant="caption" color="text.disabled">
                             未入力
