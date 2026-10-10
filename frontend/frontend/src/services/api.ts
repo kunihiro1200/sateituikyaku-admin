@@ -41,7 +41,13 @@ export const forceLogoutRedirect = () => {
   localStorage.removeItem('session_token');
   localStorage.removeItem('refresh_token');
   localStorage.removeItem('auth-storage');
-  window.location.href = '/login';
+  // Supabase内部セッション（sb-*-auth-token）もクリアする。
+  // scope: 'local' はネットワーク通信なしでローカルストレージのみを消去する。
+  // これをしないと、ページリロード後にsupabase-jsが古いセッションを復元し、
+  // ログインページでOAuthフローが正常に開始できなくなる場合がある。
+  supabase.auth.signOut({ scope: 'local' }).finally(() => {
+    window.location.href = '/login';
+  });
 };
 
 const api = axios.create({
@@ -85,11 +91,43 @@ const refreshAccessToken = (): Promise<string> => {
       const { data: { session: currentSession } } = await supabase.auth.getSession();
 
       if (currentSession) {
-        localStorage.setItem('session_token', currentSession.access_token);
-        if (currentSession.refresh_token) {
-          localStorage.setItem('refresh_token', currentSession.refresh_token);
+        // ⚠️ getSession()はローカルストレージの値を返すため、期限切れのアクセストークンを
+        // 非null のまま返す場合がある（supabase-js の自動更新がまだ完了していない場合など）。
+        // JWTのexpフィールドを確認して、本当に有効なトークンかを判断する。
+        let isAccessTokenValid = false;
+        try {
+          const payload = JSON.parse(atob(currentSession.access_token.split('.')[1]));
+          // 10秒のマージンを設けて期限切れ間近のトークンも更新対象にする
+          isAccessTokenValid = payload.exp * 1000 > Date.now() + 10000;
+        } catch {
+          // JWTデコード失敗 → 無効扱いでリフレッシュへ
+          isAccessTokenValid = false;
         }
-        return currentSession.access_token;
+
+        if (isAccessTokenValid) {
+          localStorage.setItem('session_token', currentSession.access_token);
+          if (currentSession.refresh_token) {
+            localStorage.setItem('refresh_token', currentSession.refresh_token);
+          }
+          return currentSession.access_token;
+        }
+
+        // アクセストークンが期限切れ → currentSessionのrefresh_tokenで強制リフレッシュ
+        console.log('🔄 Access token expired (from getSession), forcing refresh...');
+        const refreshTokenToUse = currentSession.refresh_token || localStorage.getItem('refresh_token');
+        if (refreshTokenToUse) {
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
+            refresh_token: refreshTokenToUse,
+          });
+          if (!refreshError && refreshData.session) {
+            localStorage.setItem('session_token', refreshData.session.access_token);
+            if (refreshData.session.refresh_token) {
+              localStorage.setItem('refresh_token', refreshData.session.refresh_token);
+            }
+            return refreshData.session.access_token;
+          }
+          throw refreshError || new Error('Failed to refresh expired session');
+        }
       }
 
       const refreshToken = localStorage.getItem('refresh_token');

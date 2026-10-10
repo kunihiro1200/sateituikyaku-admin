@@ -27,6 +27,8 @@ export default function SessionExpiredDialog() {
 
   useEffect(() => {
     const unsubscribe = onSessionExpired.subscribe(() => {
+      // ログインページでは表示しない（ページ遷移不要のため）
+      if (window.location.pathname === '/login') return;
       setOpen(true);
     });
     return unsubscribe;
