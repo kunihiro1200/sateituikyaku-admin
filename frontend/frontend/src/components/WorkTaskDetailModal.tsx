@@ -5227,6 +5227,17 @@ ${pageUrl}`;
           })()}
           <EditableField label="台帳作成済み" field="ledger_created" type="date" />
           <EditableButtonSelect label="ATBB成約済み" field="atbb_contract_completed" options={['確認済み', '未']} />
+          {/* ATBB成約済みと同時に、物件所在地に応じたサイト別の成約済み確認を表示 */}
+          {/* すまいステップは大分県・福岡県の両方で表示 */}
+          <EditableButtonSelect label="すまいステップ成約済み" field="sumai_step_contract_completed" options={['確認済み', '未']} />
+          {(() => {
+            const addr = getValue('property_address') || '';
+            const isFukuoka = addr.includes('福岡');
+            // 福岡県 → SUUMO成約済み／それ以外（大分県）→ いふうHP成約済み
+            return isFukuoka
+              ? <EditableButtonSelect label="SUUMO成約済み" field="suumo_contract_completed" options={['確認済み', '未']} />
+              : <EditableButtonSelect label="いふうHP成約済み" field="ifuu_hp_contract_completed" options={['確認済み', '未']} />;
+          })()}
           {/* 入金確認（売）: 決済日>2025/10/20 かつ 決済完了チャット入力済みの場合は必須・ハイライト */}
           {(() => {
             const settlementDate = getValue('settlement_date');
