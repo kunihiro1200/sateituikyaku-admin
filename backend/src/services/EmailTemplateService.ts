@@ -9,18 +9,39 @@ const TEMPLATE_SHEET_NAME = 'テンプレート';
 let _templatesCache: { data: EmailTemplate[]; expiresAt: number } | null = null;
 const TEMPLATES_CACHE_TTL_MS = 5 * 60 * 1000; // 5分
 
-/** 売主Emailテンプレートの表示優先順位（999は残りのメール） */
+/**
+ * 売主Emailテンプレートの表示優先順位（999は残りのメール）。
+ * フロントエンド CallModePage.tsx の getSellerEmailTemplatePriority と並びを一致させること。
+ * SMSテンプレート（smsTemplates）の並びに合わせている。
+ * ⚠️「不通・査定後の状況確認メール」は「査定」を含むため「査定額案内メール」より前に判定する。
+ */
 function getSellerTemplateOrder(name: string): number {
+  const nfkc = name.normalize('NFKC');
   if (name.includes('不通で電話時間確認')) return 0;
   if (name.includes('キャンセル案内のみ')) return 1;
   if (name.includes('査定額案内メール') && !name.includes('手残り')) return 2;
-  if (name.includes('今が売却のチャンス')) return 3;
-  if (name.normalize('NFKC').trim().startsWith('(査定理由別)')) return 4;
-  if (name.includes('査定額案内メール') && name.includes('手残り')) return 5;
-  if (name.includes('WEB打合せどうですか') || name.includes('WEB打合せ')) return 6;
-  if (name.includes('税制優遇の期限')) return 7;
-  if (name.includes('今後の不動産価格について')) return 8;
-  if (name.includes('除外前') || name.includes('長期客')) return 9;
+  if (name.includes('不通') && name.includes('状況確認')) return 3;
+  if (name.includes('今が売却のチャンス')) return 4;
+  if (nfkc.trim().startsWith('(査定理由別)')) return 5;
+  if (name.includes('査定額案内メール') && name.includes('手残り')) return 6;
+  if (name.includes('WEB打合せどうですか') || name.includes('WEB打合せ')) return 7;
+  if (name.includes('税制優遇の期限')) return 8;
+  if (name.includes('今後の不動産価格について')) return 9;
+  if (name.includes('除外前') || name.includes('長期客')) return 10;
+  if (name.includes('リマインド')) return 11;
+  if (name.includes('訪問前日') || name.includes('訪問事前')) return 12;
+  if (name.includes('初回訪問査定後のお礼')) return 13;
+  if (name.includes('2回目訪問査定後のお礼') || name.includes('２回目訪問査定後のお礼')) return 14;
+  if (name.includes('相続登記')) return 15;
+  if (name.includes('他決になった理由') || name.includes('他決理由')) return 16;
+  if (name.includes('他決') && name.includes('3ヶ月')) return 17;
+  if (name.includes('他決') && name.includes('6ヶ月')) return 18;
+  if (name.includes('未訪問他決')) return 19;
+  if (name.includes('訪問後に連絡がとれない')) return 20;
+  if (name.includes('進捗①')) return 21;
+  if (name.includes('進捗②')) return 22;
+  if (name.includes('進捗③')) return 23;
+  if (name.trim() === '空') return 24;
   return 999;
 }
 

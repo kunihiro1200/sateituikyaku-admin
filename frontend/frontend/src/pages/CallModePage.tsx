@@ -149,20 +149,42 @@ interface SellerEmailTemplate {
 }
 
 /**
- * 通話モードで案内するEmailテンプレートの優先順位。
- * 999は「残りのメール」として優先メール一覧には表示しない。
+ * 通話モードで案内するEmailテンプレートの表示順。
+ * SMSテンプレート（smsTemplates）の並びに合わせている。
+ * 上から順に最初にマッチした規則の order を返す。該当なしは 999（末尾）。
+ * ⚠️ 「不通・査定後の状況確認メール」は「査定」を含むため、
+ *   「査定額案内メール」より前に判定して誤マッチを防ぐこと。
  */
 function getSellerEmailTemplatePriority(name: string): number {
+  const nfkc = name.normalize('NFKC');
+  // 不通で電話時間確認＆キャンセル案内（各サイト）/ 不通で電話時間確認（HOME4U）
   if (name.includes('不通で電話時間確認')) return 0;
   if (name.includes('キャンセル案内のみ')) return 1;
+  // 査定額案内メール（相続/相続以外。手残りは別順）
   if (name.includes('査定額案内メール') && !name.includes('手残り')) return 2;
-  if (name.includes('今が売却のチャンス')) return 3;
-  if (name.normalize('NFKC').trim().startsWith('(査定理由別)')) return 4;
-  if (name.includes('査定額案内メール') && name.includes('手残り')) return 5;
-  if (name.includes('WEB打合せどうですか') || name.includes('WEB打合せ')) return 6;
-  if (name.includes('税制優遇の期限')) return 7;
-  if (name.includes('今後の不動産価格について')) return 8;
-  if (name.includes('除外前') || name.includes('長期客')) return 9;
+  // 不通・査定後の状況確認メール（「査定額案内メール」の後、他より前）
+  if (name.includes('不通') && name.includes('状況確認')) return 3;
+  if (name.includes('今が売却のチャンス')) return 4;
+  if (nfkc.trim().startsWith('(査定理由別)')) return 5;
+  if (name.includes('査定額案内メール') && name.includes('手残り')) return 6;
+  if (name.includes('WEB打合せどうですか') || name.includes('WEB打合せ')) return 7;
+  if (name.includes('税制優遇の期限')) return 8;
+  if (name.includes('今後の不動産価格について')) return 9;
+  if (name.includes('除外前') || name.includes('長期客')) return 10;
+  if (name.includes('リマインド')) return 11;
+  if (name.includes('訪問前日') || name.includes('訪問事前')) return 12;
+  if (name.includes('初回訪問査定後のお礼')) return 13;
+  if (name.includes('2回目訪問査定後のお礼') || name.includes('２回目訪問査定後のお礼')) return 14;
+  if (name.includes('相続登記')) return 15;
+  if (name.includes('他決になった理由') || name.includes('他決理由')) return 16;
+  if (name.includes('他決') && name.includes('3ヶ月')) return 17;
+  if (name.includes('他決') && name.includes('6ヶ月')) return 18;
+  if (name.includes('未訪問他決')) return 19;
+  if (name.includes('訪問後に連絡がとれない')) return 20;
+  if (name.includes('進捗①')) return 21;
+  if (name.includes('進捗②')) return 22;
+  if (name.includes('進捗③')) return 23;
+  if (name.trim() === '空') return 24;
   return 999;
 }
 
@@ -1269,6 +1291,8 @@ const CallModePage = () => {
       { keyword: 'イエウール',     sites: ['ウ'] },
       { keyword: 'LIFULLとYahoo', sites: ['L', 'Y'] },
       { keyword: 'すまいステップ', sites: ['す'] },
+      // 「進捗③の返信（住まいステップ）」のように「住まいステップ」表記のテンプレもあるため両方を許可する
+      { keyword: '住まいステップ', sites: ['す'] },
       { keyword: 'HOME4U',         sites: ['H'] },
     ];
 
