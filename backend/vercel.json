@@ -27,24 +27,28 @@
       "schedule": "*/10 * * * *"
     },
     {
-      "path": "/api/cron/price-reduction-notification",
-      "schedule": "0 0 * * *"
-    },
-    {
       "path": "/api/cron/publication-notification",
       "schedule": "0 0 * * *"
     },
     {
-      "path": "/api/cron/work-task-deadline-notification",
+      "path": "/api/scheduled-notifications/send",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/price-reduction-notification",
+      "schedule": "1 0 * * *"
+    },
+    {
+      "path": "/api/cron/work-task-deadline-notification",
+      "schedule": "2 0 * * *"
     },
     {
       "path": "/api/cron/work-task-kinshu-notification",
-      "schedule": "0 0 * * *"
+      "schedule": "3 0 * * *"
     },
     {
       "path": "/api/cron/work-task-upcoming-deadline-notification",
-      "schedule": "0 0,7 * * *"
+      "schedule": "4 0,7 * * *"
     },
     {
       "path": "/api/cron/business-site-deadline-hourly-notification",
@@ -52,23 +56,15 @@
     },
     {
       "path": "/api/cron/reset-private-mail-delivery",
-      "schedule": "0 0 * * *"
+      "schedule": "5 0 * * *"
     },
     {
       "path": "/api/cron/sales-meeting-notification",
-      "schedule": "0 0 * * *"
+      "schedule": "6 0 * * *"
     },
     {
       "path": "/api/cron/sales-meeting-month-end-reminder",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/tateuri/cron/price-check",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/scheduled-notifications/send",
-      "schedule": "0 0 * * *"
+      "schedule": "7 0 * * *"
     },
     {
       "path": "/api/cron/check-property-prices",

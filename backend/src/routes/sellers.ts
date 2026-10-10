@@ -352,10 +352,16 @@ router.post('/backfill-call-log', async (req: Request, res: Response) => {
 /**
  * GET /api/sellers/sync-ieul-competitors
  * イエウールデータシートのK列（いふう記入欄）をスキャンして
- * sellers.ieul_competitor フラグを更新する（週次Cron用・認証不要）
+ * sellers.ieul_competitor フラグを更新する（週次Cron用・CRON_SECRET認証）
  * 確認済み（ieul_competitor_checked_at IS NOT NULL）の売主は上書きしない
  */
 router.get('/sync-ieul-competitors', async (_req: Request, res: Response) => {
+  // CRON_SECRET 認証チェック（キー未設定の場合も含めて拒否）
+  const authHeader = _req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   try {
     const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_IEUL_SPREADSHEET_ID
       || '1O_tlaKTH6nYFaRr2HcuHdjiugMTWXQaztRXvI_ENP_o';

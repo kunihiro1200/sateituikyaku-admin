@@ -17,11 +17,16 @@ jobs:
         run: |
           echo "sync-ieul-competitors 開始: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
-            "https://sateituikyaku-admin-backend.vercel.app/api/sellers/sync-ieul-competitors")
+          # --fail-with-body: HTTP 4xx/5xx 時に curl が非ゼロ終了し、レスポンスボディも保持
+          # -o でボディをファイルに分離し、-w でステータスコードのみ stdout に出力
+          HTTP_CODE=$(curl -s \
+            --fail-with-body \
+            -o /tmp/ieul_sync_resp.txt \
+            -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.SYNC_API_URL }}/api/sellers/sync-ieul-competitors") || true
 
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | head -n-1)
+          BODY=$(cat /tmp/ieul_sync_resp.txt 2>/dev/null || echo "(no response)")
 
           echo "ステータスコード: $HTTP_CODE"
           echo "レスポンス: $BODY"
