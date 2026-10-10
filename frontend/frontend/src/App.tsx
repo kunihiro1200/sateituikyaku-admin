@@ -21,6 +21,7 @@ import WorkTasksPage from './pages/WorkTasksPage';
 import PropertyListingsPage from './pages/PropertyListingsPage';
 import PropertyListingDetailPage from './pages/PropertyListingDetailPage';
 import ContractProspectsPage from './pages/ContractProspectsPage';
+import SalesDashboardPage from './pages/SalesDashboardPage';
 import PropertyReportPage from './pages/PropertyReportPage';
 import TsubotankaCalcPage from './pages/TsubotankaCalcPage';
 import NearbyCasesPage from './pages/NearbyCasesPage';
@@ -282,6 +283,14 @@ function App() {
         element={
           <ProtectedRoute>
             <ContractProspectsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/property-listings/sales-dashboard"
+        element={
+          <ProtectedRoute>
+            <SalesDashboardPage />
           </ProtectedRoute>
         }
       />

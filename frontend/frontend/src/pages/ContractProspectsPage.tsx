@@ -48,6 +48,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import { supabase } from '../config/supabase';
 import PageNavigation from '../components/PageNavigation';
 import { useAuthStore } from '../store/authStore';
@@ -609,7 +610,23 @@ export default function ContractProspectsPage() {
             <InfoOutlinedIcon fontSize="small" sx={{ color: PROPERTY_COLOR }} />
           </IconButton>
         </Tooltip>
-        <Box sx={{ ml: 'auto' }}>
+        <Box sx={{ ml: 'auto', display: 'flex', gap: 0.75, alignItems: 'center' }}>
+          <Tooltip title="売上目標管理ダッシュボードへ" arrow>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AssessmentIcon sx={{ fontSize: '0.9rem' }} />}
+              onClick={() => navigate('/property-listings/sales-dashboard')}
+              sx={{
+                borderColor: '#1565c0',
+                color: '#1565c0',
+                fontSize: '0.75rem',
+                '&:hover': { bgcolor: '#e3f2fd' },
+              }}
+            >
+              売上目標管理
+            </Button>
+          </Tooltip>
           <Tooltip title="データを再読み込み" arrow>
             <IconButton size="small" onClick={fetchData} disabled={loading}>
               <RefreshIcon fontSize="small" />
