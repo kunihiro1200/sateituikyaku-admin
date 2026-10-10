@@ -997,7 +997,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     open: boolean;
     title: string;
     emptyFields: string[];
-    onConfirmAction: 'site' | 'floor' | 'mandatory' | 'cadastral' | 'binding_completed' | 'sales_assignee' | 'publish_scheduled_date' | 'storage_url' | 'distribution_date_required' | 'cw_request_email_site' | 'direction_symbol' | null;
+    onConfirmAction: 'site' | 'floor' | 'mandatory' | 'cadastral' | 'binding_completed' | 'sales_assignee' | 'publish_scheduled_date' | 'storage_url' | 'distribution_date_required' | 'cw_request_email_site' | 'direction_symbol' | 'supervisor_approval_required' | 'land_handover_type_confirmed' | null;
   }>({ open: false, title: '', emptyFields: [], onConfirmAction: null });
 
   // 謄本読み取り関連のstate
@@ -1321,9 +1321,24 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       return;
     }
 
+    const cwRequestEmailSiteVal = getValue('cw_request_email_site');
+
+    // 【土地のみ】解体更地渡しか現況渡しか確認したか が「Y」でないと
+    // CWの方へサイト登録依頼メールは送信されない（バックエンド側でも同じガードをかけている）。
+    // CW依頼メール（サイト登録）を「Y」にして保存しようとしたときにブロックする。
+    const isLandType = getValue('property_type') === '土';
+    if (isLandType && cwRequestEmailSiteVal === 'Y' && getValue('land_handover_type_confirmed') !== 'Y') {
+      setValidationWarningDialog({
+        open: true,
+        title: '「解体更地渡しか現況渡しか確認したか」が確認済（Y）になっていません。確認済にしないとCWの方へサイト登録依頼メールは送信されません。',
+        emptyFields: ['解体更地渡しか現況渡しか確認したか'],
+        onConfirmAction: 'land_handover_type_confirmed',
+      });
+      return;
+    }
+
     // CWの方へ依頼メール（サイト登録）が未選択の場合は警告（保存は可能）
     // サイト登録タブ（tabIndex === 1）で保存したときだけ表示する
-    const cwRequestEmailSiteVal = getValue('cw_request_email_site');
     if (tabIndex === 1 && !cwRequestEmailSiteVal) {
       setValidationWarningDialog({
         open: true,
@@ -1579,6 +1594,20 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       return;
     }
 
+    // 【土地のみ】解体更地渡しか現況渡しか未確認（Y以外）は確認ボタンを押しても保存しない。
+    // 確認済（Y）にしないとCW依頼メールが送信されないため、まず確認を促す。
+    if (action === 'land_handover_type_confirmed') {
+      setTabIndex(1);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (landHandoverTypeConfirmedRef.current) {
+            landHandoverTypeConfirmedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      });
+      return;
+    }
+
     if (action === 'cadastral') {
       // 地積測量図警告をスキップして要件1チェックへ
       const getValueLocal = (field: string) => editedData[field] !== undefined ? editedData[field] : data?.[field];
@@ -1679,6 +1708,18 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         requestAnimationFrame(() => {
           if (storageUrlRef.current) {
             storageUrlRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      });
+    }
+
+    // 解体更地渡しか現況渡しか確認エラーの場合、サイト登録タブ（tabIndex=1）に切り替えて該当フィールドまでスクロール
+    if (action === 'land_handover_type_confirmed') {
+      setTabIndex(1);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (landHandoverTypeConfirmedRef.current) {
+            landHandoverTypeConfirmedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         });
       });
@@ -2176,6 +2217,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   // 格納先URLフィールドへのスクロール用 ref
   const storageUrlRef = useRef<HTMLDivElement>(null);
+
+  // 「解体更地渡しか現況渡しか確認したか」フィールドへのスクロール用 ref
+  const landHandoverTypeConfirmedRef = useRef<HTMLDivElement>(null);
 
   // 配信日フィールドへのスクロール用 ref
   const distributionDateRef = useRef<HTMLDivElement>(null);
@@ -3361,6 +3405,15 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         {getValue('property_type') === '土' && (
           <RedNote text={'地積測量図や字図を格納→「リンク知っている人全員」\nの共有URLをスプシの「内覧前伝達事項」に貼り付ける'} />
         )}
+        {getValue('property_type') === '土' && (
+          <Box ref={landHandoverTypeConfirmedRef}>
+            <EditableYesNo
+              label={getValue('land_handover_type_confirmed') !== 'Y' ? '解体更地渡しか現況渡しか確認したか*（必須）' : '解体更地渡しか現況渡しか確認したか*'}
+              field="land_handover_type_confirmed"
+              labelColor={getValue('land_handover_type_confirmed') !== 'Y' ? 'error' : undefined}
+            />
+          </Box>
+        )}
         <Box ref={storageUrlRef}>
           <EditableField label="格納先URL" field="storage_url" type="url" />
         </Box>
@@ -3632,6 +3685,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           />
         )}
         <EditableButtonSelect label="写真の順番確認" field="photo_order_checked" options={['済', '未']} />
+        {getValue('property_type') === '土' && (
+          <EditableButtonSelect label="解体更地渡しか現況渡しか確認したか" field="land_handover_type_confirmed_check" options={['済', '未']} />
+        )}
         <EditableField label="メール配信v" field="email_distribution" />
         <EditableField label="サイト登録確認OKコメント" field="site_registration_ok_comment" type="text" />
         <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
@@ -6829,7 +6885,7 @@ ${pageUrl}`;
         emptyFields={validationWarningDialog.emptyFields}
         onConfirm={handleValidationWarningConfirm}
         onCancel={handleValidationWarningCancel}
-        isMandatory={validationWarningDialog.onConfirmAction === 'mandatory' || validationWarningDialog.onConfirmAction === 'binding_completed' || validationWarningDialog.onConfirmAction === 'direction_symbol'}
+        isMandatory={validationWarningDialog.onConfirmAction === 'mandatory' || validationWarningDialog.onConfirmAction === 'binding_completed' || validationWarningDialog.onConfirmAction === 'direction_symbol' || validationWarningDialog.onConfirmAction === 'land_handover_type_confirmed'}
       />
       <MediationFormatWarningDialog
         open={mediationFormatWarningDialog.open}

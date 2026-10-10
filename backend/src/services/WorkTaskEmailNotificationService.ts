@@ -398,6 +398,22 @@ export class WorkTaskEmailNotificationService {
         continue;
       }
 
+      // 【土地のみのガード】CWの方へサイト登録依頼メール（cw_request_email_site）は、
+      // 「解体更地渡しか現況渡しか確認したか（land_handover_type_confirmed）」が 'Y'（確認済）に
+      // なっていないと送信しない。種別が「土」「土地」のときだけ適用する。
+      if (rule.triggerField === 'cw_request_email_site') {
+        const propertyType = String(afterData['property_type'] ?? '').trim();
+        const isLandType = ['土', '土地'].includes(propertyType);
+        const handoverConfirmed = String(afterData['land_handover_type_confirmed'] ?? '').trim();
+        if (isLandType && handoverConfirmed !== 'Y') {
+          console.log('[WorkTaskEmail] サイト登録依頼メールをスキップ（土地：解体更地/現況渡し未確認）:', {
+            propertyNumber,
+            land_handover_type_confirmed: handoverConfirmed || '(空)',
+          });
+          continue;
+        }
+      }
+
       try {
         // 宛先を動的に決定（cw_personフィールドに基づく）
         let toAddress = rule.to;
