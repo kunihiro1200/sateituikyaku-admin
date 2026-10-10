@@ -20,6 +20,7 @@ import EmployeeCalendarStatusPage from './pages/EmployeeCalendarStatusPage';
 import WorkTasksPage from './pages/WorkTasksPage';
 import PropertyListingsPage from './pages/PropertyListingsPage';
 import PropertyListingDetailPage from './pages/PropertyListingDetailPage';
+import ContractProspectsPage from './pages/ContractProspectsPage';
 import PropertyReportPage from './pages/PropertyReportPage';
 import TsubotankaCalcPage from './pages/TsubotankaCalcPage';
 import NearbyCasesPage from './pages/NearbyCasesPage';
@@ -273,6 +274,14 @@ function App() {
         element={
           <ProtectedRoute>
             <PropertyListingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/property-listings/contract-prospects"
+        element={
+          <ProtectedRoute>
+            <ContractProspectsPage />
           </ProtectedRoute>
         }
       />

@@ -702,15 +702,30 @@ export default function PropertyListingsPage() {
     <Container maxWidth="xl" sx={isMobile ? { overflowX: 'hidden', px: 1, py: 2 } : { py: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isMobile ? 1 : 2, flexDirection: { xs: 'row', sm: 'row' }, gap: 1 }}>
         <Typography variant={isMobile ? 'subtitle1' : 'h5'} fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>物件リスト</Typography>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<AddPhotoAlternateIcon />}
-          onClick={() => setTashaRegisterOpen(true)}
-          sx={{ borderColor: '#7b1fa2', color: '#7b1fa2', '&:hover': { borderColor: '#6a1b9a', bgcolor: '#f3e5f5' } }}
-        >
-          他社物件を画像登録
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => navigate('/property-listings/contract-prospects')}
+            sx={{
+              borderColor: SECTION_COLORS.property.main,
+              color: SECTION_COLORS.property.main,
+              fontWeight: 'bold',
+              '&:hover': { bgcolor: '#e3f2fd', borderColor: SECTION_COLORS.property.dark },
+            }}
+          >
+            成約見込み管理
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AddPhotoAlternateIcon />}
+            onClick={() => setTashaRegisterOpen(true)}
+            sx={{ borderColor: '#7b1fa2', color: '#7b1fa2', '&:hover': { borderColor: '#6a1b9a', bgcolor: '#f3e5f5' } }}
+          >
+            他社物件を画像登録
+          </Button>
+        </Box>
       </Box>
 
       <PageNavigation />
