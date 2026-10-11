@@ -714,7 +714,33 @@ export default function PropertyListingsPage() {
               '&:hover': { bgcolor: '#e3f2fd', borderColor: SECTION_COLORS.property.dark },
             }}
           >
-            成約見込み管理
+            🏠 成約見込み管理
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => navigate('/property-listings/sales-dashboard')}
+            sx={{
+              borderColor: '#1565c0',
+              color: '#1565c0',
+              fontWeight: 'bold',
+              '&:hover': { bgcolor: '#e3f2fd', borderColor: '#0d47a1' },
+            }}
+          >
+            📈 売上目標管理
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => navigate('/property-listings/staff-performance')}
+            sx={{
+              borderColor: '#e65100',
+              color: '#e65100',
+              fontWeight: 'bold',
+              '&:hover': { bgcolor: '#fff3e0', borderColor: '#bf360c' },
+            }}
+          >
+            📊 担当別グラフ
           </Button>
           <Button
             variant="outlined"
