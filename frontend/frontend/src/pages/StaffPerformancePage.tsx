@@ -474,16 +474,18 @@ export default function StaffPerformancePage() {
 
       {/* 担当者切替 */}
       <Box sx={{display:'flex',gap:1,flexWrap:'wrap',mt:2,mb:2.5}}>
-        {STAFF_BUTTONS.map(s=>(
-          <Button key={s} variant={selectedStaff===s?'contained':'outlined'} size="medium"
-            onClick={()=>setSelectedStaff(s)}
-            sx={{fontSize:'15px',fontWeight:'bold',minWidth:72,
-              ...(selectedStaff===s
-                ?{bgcolor:PROPERTY_COLOR,'&:hover':{bgcolor:SECTION_COLORS.property.dark}}
-                :{borderColor:PROPERTY_COLOR,color:PROPERTY_COLOR,'&:hover':{bgcolor:'#e3f2fd'}})}}>
-            {s}
-          </Button>
-        ))}
+        {STAFF_BUTTONS.map(s=>{
+          const isSelected = selectedStaff===s;
+          const selectedSx = {bgcolor:PROPERTY_COLOR,'&:hover':{bgcolor:SECTION_COLORS.property.dark}};
+          const unselectedSx = {borderColor:PROPERTY_COLOR,color:PROPERTY_COLOR,'&:hover':{bgcolor:'#e3f2fd'}};
+          return (
+            <Button key={s} variant={isSelected?'contained':'outlined'} size="medium"
+              onClick={()=>setSelectedStaff(s)}
+              sx={{fontSize:'15px',fontWeight:'bold',minWidth:72,...(isSelected?selectedSx:unselectedSx)}}>
+              {s}
+            </Button>
+          );
+        })}
       </Box>
 
       {loading ? (
