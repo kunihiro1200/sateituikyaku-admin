@@ -419,8 +419,24 @@ export default function SalesDashboardPage() {
         .upsert(row,{onConflict:'fiscal_year,store_name,staff_name'});
       if (error) throw error;
       setAnnualTargets(prev=>[...prev.filter(t=>t.staff_name!==sKey),row]);
+
+      // 月別目標が未設定の場合は12ヶ月に均等自動配分
+      const existing=monthlyTargets.filter(t=>t.staff_name===sKey&&t.fiscal_year===FISCAL_YEAR);
+      if (existing.length===0 && sKey!=='') {
+        const base=Math.floor(amount/12);
+        const remainder=amount-base*12;
+        const monthlyRows:MonthlyTarget[]=FY_MONTHS.map((month,i)=>({
+          fiscal_year:FISCAL_YEAR,month,store_name:'大分店',staff_name:sKey,
+          target_amount:i===11?base+remainder:base,
+        }));
+        const {error:me}=await supabase.from('monthly_sales_targets')
+          .upsert(monthlyRows,{onConflict:'fiscal_year,month,store_name,staff_name'});
+        if (!me) setMonthlyTargets(prev=>[...prev.filter(t=>t.staff_name!==sKey),...monthlyRows]);
+        setSnackbar({open:true,message:`年間目標を保存し、月別目標を12ヶ月均等配分しました（約${Math.round(man/12)}万円/月）`,severity:'success'});
+      } else {
+        setSnackbar({open:true,message:'年間目標を保存しました（月別目標は既存設定を維持）',severity:'success'});
+      }
       setEditingAnnual(null);
-      setSnackbar({open:true,message:'年間目標を保存しました',severity:'success'});
     } catch(err:any) {
       setSnackbar({open:true,message:err.message??'保存失敗',severity:'error'});
     } finally { setSaving(false); }
