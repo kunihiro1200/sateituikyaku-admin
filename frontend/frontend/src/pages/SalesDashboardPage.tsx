@@ -440,7 +440,8 @@ export default function SalesDashboardPage() {
     if (isEditing) return (
       <Box sx={{display:'flex',gap:0.5,alignItems:'center',minWidth:140}}>
         <TextField size="small" value={editMonthVal} onChange={e=>setEditMonthVal(e.target.value)}
-          type="number" label="万円" sx={{width:90}} inputProps={{min:0}} autoFocus
+          type="number" label="万円単位で入力" sx={{width:140}} inputProps={{min:0}} autoFocus
+          helperText="例: 500 → 500万円"
           onKeyDown={e=>{if(e.key==='Enter') handleSaveMonthTarget(month,sKey,editMonthVal);}}/>
         <IconButton size="small" color="primary" disabled={saving}
           onClick={()=>handleSaveMonthTarget(month,sKey,editMonthVal)}><SaveIcon sx={{fontSize:'1rem'}}/></IconButton>
@@ -597,7 +598,8 @@ export default function SalesDashboardPage() {
           {editingAnnual===staffKey ? (
             <Box sx={{display:'flex',gap:0.5,alignItems:'center',ml:1}}>
               <TextField size="small" value={editAnnualVal} onChange={e=>setEditAnnualVal(e.target.value)}
-                label="年間目標（万円）" type="number" sx={{width:150}} inputProps={{min:0}}/>
+                label="年間目標（万円単位で入力）" type="number" sx={{width:180}} inputProps={{min:0}}
+                helperText="例: 2000 → 2000万円"/>
               <Button size="small" variant="contained" disabled={saving}
                 onClick={()=>handleSaveAnnualTarget(staffKey,editAnnualVal)} startIcon={<SaveIcon/>}>保存</Button>
               <Button size="small" variant="outlined" color="inherit" disabled={saving}
@@ -833,7 +835,9 @@ export default function SalesDashboardPage() {
                       {editingAnnual===s.name?(
                         <Box sx={{display:'flex',gap:0.5,alignItems:'center'}}>
                           <TextField size="small" value={editAnnualVal} onChange={e=>setEditAnnualVal(e.target.value)}
-                            type="number" label="万円" sx={{width:90}} inputProps={{min:0}} autoFocus/>
+                            type="number" label="万円単位で入力" sx={{width:120}} inputProps={{min:0}} autoFocus
+                            helperText="例: 2000"
+                            onKeyDown={e=>e.stopPropagation()}/>
                           <IconButton size="small" color="primary" disabled={saving}
                             onClick={e=>{e.stopPropagation();handleSaveAnnualTarget(s.name,editAnnualVal);}}>
                             <SaveIcon sx={{fontSize:'1rem'}}/></IconButton>

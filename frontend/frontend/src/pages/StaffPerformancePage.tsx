@@ -538,7 +538,9 @@ export default function StaffPerformancePage() {
                   color:ytdData.gap>=0?'#2e7d32':'#c62828'},
                 {label:`前年同期（${ytdData.prevLabel}）`,
                   value:ytdData.prevActual>0?formatPrice(ytdData.prevActual):'実績なし',
-                  color:'#546e7a',note:ytdData.yoy!=null?`前年同期比 ${ytdData.yoy}%`:undefined},
+                  color:'#546e7a',note:ytdData.yoy!=null
+                    ?`前年比 ${ytdData.yoy}%（${ytdData.yoy>=100?`▲${formatPrice(ytdData.actual-ytdData.prevActual)}`:`▼${formatPrice(ytdData.prevActual-ytdData.actual)}`}）`
+                    :undefined},
               ].map(item=>(
                 <Grid item xs={6} sm={3} key={item.label}>
                   <Box sx={{p:1.5,bgcolor:'#f8f9fa',borderRadius:1.5,height:'100%'}}>
@@ -577,7 +579,7 @@ export default function StaffPerformancePage() {
             <Table>
               <TableHead>
                 <TableRow>
-                  {['担当者','年間目標\n（編集可）','累計目標','累計実績','累計達成率 + 進捗','前年同期比','差額'].map(h=>(
+                  {['担当者','年間目標（万円単位で編集）','累計目標','累計実績','累計達成率 + 進捗','前年同期比','差額'].map(h=>(
                     <TableCell key={h} sx={{...TH,whiteSpace:'pre-line'}}>{h}</TableCell>
                   ))}
                 </TableRow>
@@ -592,7 +594,8 @@ export default function StaffPerformancePage() {
                       {editingAnnual===s.name?(
                         <Box sx={{display:'flex',gap:0.5,alignItems:'center'}}>
                           <TextField size="small" value={editAnnualVal} onChange={e=>setEditAnnualVal(e.target.value)}
-                            type="number" label="万円" sx={{width:100}} autoFocus
+                            type="number" label="万円単位で入力" sx={{width:130}} autoFocus
+                            helperText="例: 2000 → 2000万円"
                             onKeyDown={e=>{if(e.key==='Enter')handleSaveAnnualTarget(s.name,editAnnualVal);}}/>
                           <IconButton size="small" color="primary" disabled={saving}
                             onClick={()=>handleSaveAnnualTarget(s.name,editAnnualVal)}><SaveIcon fontSize="small"/></IconButton>
@@ -635,8 +638,18 @@ export default function StaffPerformancePage() {
                     </TableCell>
                     <TableCell sx={TD}>
                       {s.yoy!==null?(
-                        <Chip label={`${s.yoy}%`} size="small"
-                          sx={{bgcolor:s.yoy>=100?'#e8f5e9':'#ffebee',color:s.yoy>=100?'#2e7d32':'#c62828',fontWeight:'bold',fontSize:'13px'}}/>
+                        <Box>
+                          <Chip label={`前年比 ${s.yoy}%`} size="small"
+                            sx={{bgcolor:s.yoy>=100?'#e8f5e9':'#ffebee',color:s.yoy>=100?'#2e7d32':'#c62828',fontWeight:'bold',fontSize:'13px',mb:0.5}}/>
+                          <Typography sx={{fontSize:'14px',color:'#546e7a'}}>
+                            前年同期: {formatPrice(s.prevYtd)}
+                          </Typography>
+                          <Typography sx={{fontSize:'13px',color:s.yoy>=100?'#2e7d32':'#c62828'}}>
+                            {s.ytdActual>=s.prevYtd
+                              ?`▲ ${formatPrice(s.ytdActual-s.prevYtd)}`
+                              :`▼ ${formatPrice(s.prevYtd-s.ytdActual)}`}
+                          </Typography>
+                        </Box>
                       ):(
                         <Typography sx={{fontSize:'13px',color:'#bbb'}}>前年実績なし</Typography>
                       )}
@@ -703,7 +716,8 @@ export default function StaffPerformancePage() {
                       {isEdit?(
                         <Box sx={{display:'flex',gap:0.5,alignItems:'center',minWidth:150}}>
                           <TextField size="small" value={editMonthVal} onChange={e=>setEditMonthVal(e.target.value)}
-                            type="number" label="万円" sx={{width:90}} autoFocus
+                            type="number" label="万円単位で入力" sx={{width:130}} autoFocus
+                            helperText="例: 500 → 500万円"
                             onKeyDown={e=>{if(e.key==='Enter')handleSaveMonthTarget(m.month,selectedStaff,editMonthVal);}}/>
                           <IconButton size="small" color="primary" disabled={saving}
                             onClick={()=>handleSaveMonthTarget(m.month,selectedStaff,editMonthVal)}><SaveIcon fontSize="small"/></IconButton>
