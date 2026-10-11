@@ -594,16 +594,15 @@ export default function ContractProspectsPage() {
           <ArrowBackIcon />
         </IconButton>
         <Typography
-          variant={isMobile ? 'subtitle1' : 'h5'}
           fontWeight="bold"
-          sx={{ color: PROPERTY_COLOR }}
+          sx={{ color: PROPERTY_COLOR, fontSize: '22px' }}
         >
           成約見込み管理
         </Typography>
         <Chip
           label="大分店・専任媒介"
           size="small"
-          sx={{ bgcolor: '#e3f2fd', color: '#1565c0', fontWeight: 500 }}
+          sx={{ bgcolor: '#e3f2fd', color: '#1565c0', fontWeight: 500, fontSize: '13px' }}
         />
         <Tooltip title="ランク基準を確認" arrow>
           <IconButton size="small" onClick={() => setRankGuideOpen(true)}>
@@ -620,7 +619,7 @@ export default function ContractProspectsPage() {
               sx={{
                 borderColor: '#1565c0',
                 color: '#1565c0',
-                fontSize: '0.75rem',
+                fontSize: '13px',
                 '&:hover': { bgcolor: '#e3f2fd' },
               }}
             >
@@ -638,18 +637,19 @@ export default function ContractProspectsPage() {
       <PageNavigation />
 
       {/* ─── 担当者切替ボタン ─── */}
-      <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mt: 2, mb: 1 }}>
+      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 2, mb: 1.5 }}>
         {STAFF_BUTTONS.map((staff) => (
           <Button
             key={staff}
             variant={selectedStaff === staff ? 'contained' : 'outlined'}
-            size="small"
+            size="medium"
             onClick={() => {
               setSelectedStaff(staff);
               setEditingId(null);
             }}
             sx={{
-              minWidth: 64,
+              minWidth: 72,
+              fontSize: '15px',
               fontWeight: selectedStaff === staff ? 'bold' : 'normal',
               ...(selectedStaff === staff
                 ? {
@@ -736,6 +736,45 @@ export default function ContractProspectsPage() {
           </Grid>
         ))}
       </Grid>
+
+      {/* ─── 重要指標バッジ（目立つ位置） ─── */}
+      <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 2, alignItems: 'center' }}>
+        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, px: 2.5, py: 1.25,
+          bgcolor: stats.unfilled > 0 ? '#ffebee' : '#e8f5e9',
+          border: `2px solid ${stats.unfilled > 0 ? '#c62828' : '#2e7d32'}`,
+          borderRadius: 2 }}>
+          <Typography sx={{ fontSize: '18px', fontWeight: 'bold',
+            color: stats.unfilled > 0 ? '#c62828' : '#2e7d32' }}>
+            {stats.unfilled > 0 ? '⚠️' : '✅'} 未入力&nbsp;
+          </Typography>
+          <Typography sx={{ fontSize: '32px', fontWeight: 900,
+            color: stats.unfilled > 0 ? '#c62828' : '#2e7d32', lineHeight: 1 }}>
+            {stats.unfilled}件
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, px: 2.5, py: 1.25,
+          bgcolor: stats.review > 0 ? '#fff3e0' : '#f5f5f5',
+          border: `2px solid ${stats.review > 0 ? '#e65100' : '#e0e0e0'}`,
+          borderRadius: 2 }}>
+          <Typography sx={{ fontSize: '18px', fontWeight: 'bold',
+            color: stats.review > 0 ? '#e65100' : '#9e9e9e' }}>
+            🔶 要見直し&nbsp;
+          </Typography>
+          <Typography sx={{ fontSize: '32px', fontWeight: 900,
+            color: stats.review > 0 ? '#e65100' : '#9e9e9e', lineHeight: 1 }}>
+            {stats.review}件
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, px: 2.5, py: 1.25,
+          bgcolor: '#e3f2fd', border: '2px solid #1565c0', borderRadius: 2 }}>
+          <Typography sx={{ fontSize: '18px', fontWeight: 'bold', color: '#1565c0' }}>
+            🔔 マネージャー未確認&nbsp;
+          </Typography>
+          <Typography sx={{ fontSize: '32px', fontWeight: 900, color: '#1565c0', lineHeight: 1 }}>
+            {stats.unconfirmed}件
+          </Typography>
+        </Box>
+      </Box>
 
       {/* ─── 売上予測サマリー ─── */}
       <Accordion
@@ -987,7 +1026,7 @@ export default function ContractProspectsPage() {
                     '所在地',
                     '担当',
                     '売出価格',
-                    '想定手数料（売主側）\n想定売上（両手率65%）',
+                    '想定手数料（売主側）\n売上見込（両手65%）',
                     'ランク',
                     '決済見込み月',
                     '判断理由',
@@ -1002,9 +1041,9 @@ export default function ContractProspectsPage() {
                         color: '#fff',
                         fontWeight: 'bold',
                         whiteSpace: 'pre-line',
-                        fontSize: '0.75rem',
-                        py: 1,
-                        px: 1,
+                        fontSize: '15px',
+                        py: 1.25,
+                        px: 1.25,
                       }}
                     >
                       {h}

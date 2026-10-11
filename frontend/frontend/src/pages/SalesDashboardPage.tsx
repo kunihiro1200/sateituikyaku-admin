@@ -432,8 +432,8 @@ export default function SalesDashboardPage() {
   const isAchieved = ytdData.rate !== null && ytdData.rate >= 100;
   const ytdBorderColor = ytdData.rate === null ? '#1565c0' : isAchieved ? '#2e7d32' : '#c62828';
 
-  const TC = {px:1,py:0.75,fontSize:'0.75rem',whiteSpace:'nowrap' as const};
-  const TH = {...TC,fontWeight:'bold',bgcolor:'#eeeeee'};
+  const TC = {px:1.25,py:1.25,fontSize:'15px',whiteSpace:'nowrap' as const};
+  const TH = {...TC,fontWeight:'bold',bgcolor:'#1565c0',color:'#fff',fontSize:'15px'};
 
   function EditableMonthCell({month, sKey, currentTarget}: {month:string;sKey:string;currentTarget:number}) {
     const isEditing = editingMonth?.month===month && editingMonth?.staffName===sKey;
@@ -474,7 +474,12 @@ export default function SalesDashboardPage() {
           <Chip label="FI除外＝大分店" size="small" variant="outlined"
             sx={{fontSize:'0.7rem',color:'text.secondary',cursor:'help'}}/>
         </Tooltip>
-        <Box sx={{ml:'auto'}}>
+        <Box sx={{ml:'auto',display:'flex',gap:1,alignItems:'center'}}>
+          <Button variant="contained" size="small"
+            onClick={()=>navigate('/property-listings/staff-performance')}
+            sx={{fontSize:'13px',bgcolor:'#e65100','&:hover':{bgcolor:'#bf360c'},fontWeight:'bold'}}>
+            📊 担当者別グラフ
+          </Button>
           <Tooltip title="再読み込み"><IconButton size="small" onClick={fetchData} disabled={loading}>
             <RefreshIcon fontSize="small"/></IconButton></Tooltip>
         </Box>
@@ -486,10 +491,11 @@ export default function SalesDashboardPage() {
       ) : (<>
 
       {/* 担当者切替 */}
-      <Box sx={{display:'flex',gap:0.75,flexWrap:'wrap',mt:2,mb:2}}>
+      <Box sx={{display:'flex',gap:1,flexWrap:'wrap',mt:2,mb:2.5}}>
         {STAFF_BUTTONS.map(staff=>(
-          <Button key={staff} variant={selectedStaff===staff?'contained':'outlined'} size="small"
+          <Button key={staff} variant={selectedStaff===staff?'contained':'outlined'} size="medium"
             onClick={()=>{setSelectedStaff(staff);setExpandedStaff(null);}}
+            sx={{fontSize:'15px',fontWeight:'bold',minWidth:72,
             sx={{minWidth:64,fontWeight:selectedStaff===staff?'bold':'normal',
               ...(selectedStaff===staff
                 ?{bgcolor:PROPERTY_COLOR,'&:hover':{bgcolor:SECTION_COLORS.property.dark}}
