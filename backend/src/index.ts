@@ -65,6 +65,7 @@ import salesMeetingLossStaffStatsRoutes from './routes/salesMeetingLossStaffStat
 import salesMeetingBrokerageStatsRoutes from './routes/salesMeetingBrokerageStats';
 import salesMeetingWorkTaskBrokerageStatsRoutes from './routes/salesMeetingWorkTaskBrokerageStats';
 import propertyListingRoutes from './routes/propertyListings';
+import salesContractsRoutes from './routes/salesContracts';
 import buyerRoutes from './routes/buyers';
 import buyerSidebarCountsRoutes from './routes/buyer-sidebar-counts';
 import viewingResultRoutes from './routes/viewingResults';
@@ -1105,6 +1106,7 @@ app.use('/cache', cacheRoutes);
 app.use('/api/drive', driveRoutes);
 app.use('/api/work-tasks', workTaskRoutes);
 app.use('/api/property-listings', propertyListingRoutes);
+app.use('/api/sales', salesContractsRoutes); // 売上契約管理（スプレッドシート）
 app.use('/api/buyers', athomeBuyerTransferRoutes); // アットホーム反響メール買主転記（認証不要・CRON_SECRET認証）
 app.use('/api/buyers', suumoBuyerTransferRoutes); // SUUMO(リクルートＪＤＳ)反響メール買主転記（認証不要・CRON_SECRET認証）
 app.use('/api/buyers', buyerRoutes);

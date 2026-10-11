@@ -50,6 +50,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import { supabase } from '../config/supabase';
+import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
 import { useAuthStore } from '../store/authStore';
 import { SECTION_COLORS } from '../theme/sectionColors';
@@ -136,6 +137,16 @@ interface ActiveListingWithProspect extends ActiveListing {
   prospect?: ProspectRecord;
 }
 
+/** スプレッドシートから取得する売買契約レコード */
+interface ContractRecord {
+  property_number: string;
+  settlement_month: string | null;  // YYYY-MM
+  settlement_date: string | null;   // YYYY-MM-DD
+  staff: string;
+  commission: number;               // 円（税込）
+  category: 'actual' | 'contracted';
+}
+
 interface SalesTarget {
   id?: string;
   fiscal_year: string;
@@ -148,12 +159,14 @@ interface SalesTarget {
 interface StaffSummary {
   staffName: string;
   actual: number;
+  contracted: number;     // 売買契約済み・決済前（スプレッドシート）
   forecast: number;
   projected: number;
   target: number;
   gap: number;
   progressPct: number;
   actualCount: number;
+  contractedCount: number;
   forecastCount: number;
   settledItems: SettledProperty[];
   forecastItems: ActiveListingWithProspect[];
@@ -162,8 +175,10 @@ interface StaffSummary {
 interface MonthSummary {
   month: string;
   actual: number;
+  contracted: number;     // 売買契約済み・決済前
   forecast: number;
   actualCount: number;
+  contractedCount: number;
   forecastCount: number;
 }
 
@@ -244,6 +259,8 @@ export default function SalesDashboardPage() {
   const [listings, setListings] = useState<ActiveListing[]>([]);
   const [prospects, setProspects] = useState<ProspectRecord[]>([]);
   const [targets, setTargets] = useState<SalesTarget[]>([]);
+  const [contracted, setContracted] = useState<ContractRecord[]>([]); // スプシ：売買契約済み
+  const [contractedError, setContractedError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // --- 目標編集 ---
@@ -316,6 +333,23 @@ export default function SalesDashboardPage() {
       setListings(listingsData ?? []);
       setProspects(prospectsData ?? []);
       setTargets(targetsData ?? []);
+
+      // 5. スプレッドシートから売買契約情報を取得
+      try {
+        const contractRes = await api.get<{ contracts: ContractRecord[]; sheetName: string }>(
+          '/api/sales/contracts'
+        );
+        // 'contracted' カテゴリのみ使用（actual は property_listings と重複するため）
+        const contractedOnly = (contractRes.data.contracts ?? []).filter(
+          (c) => c.category === 'contracted'
+        );
+        setContracted(contractedOnly);
+        setContractedError(null);
+      } catch (contractErr: any) {
+        console.warn('[SalesDashboard] スプレッドシート取得エラー:', contractErr?.message);
+        setContractedError('スプレッドシートの読み込みに失敗しました（共有設定を確認してください）');
+        setContracted([]);
+      }
     } catch (err) {
       console.error('データ取得エラー:', err);
       setSnackbar({ open: true, message: 'データの取得に失敗しました', severity: 'error' });
@@ -364,6 +398,12 @@ export default function SalesDashboardPage() {
       );
       const actual = mySettled.reduce((sum, p) => sum + getActualCommission(p), 0);
 
+      // 売買契約済み（スプシ）
+      const myContracted = contracted.filter((c) =>
+        patterns.some((pat) => (c.staff ?? '').includes(pat))
+      );
+      const contractedAmt = myContracted.reduce((sum, c) => sum + (c.commission ?? 0), 0);
+
       const myForecast = forecastItems.filter((p) =>
         patterns.some((pat) => (p.sales_assignee ?? '').includes(pat))
       );
@@ -373,47 +413,52 @@ export default function SalesDashboardPage() {
       }, 0);
 
       const target = getStaffTarget(staffName);
-      const projected = actual + forecast;
+      const projected = actual + contractedAmt + forecast;
       const gap = target > 0 ? target - projected : 0;
       const progressPct = target > 0 ? Math.min(999, Math.round((projected / target) * 100)) : 0;
 
       return {
         staffName,
         actual,
+        contracted: contractedAmt,
         forecast,
         projected,
         target,
         gap,
         progressPct,
         actualCount: mySettled.length,
+        contractedCount: myContracted.length,
         forecastCount: myForecast.length,
         settledItems: mySettled,
         forecastItems: myForecast,
       };
     });
-  }, [settled, forecastItems, getStaffTarget]);
+  }, [settled, contracted, forecastItems, getStaffTarget]);
 
   /** 店舗全体集計 */
   const storeSummary = useMemo(() => {
     const actual = settled.reduce((sum, p) => sum + getActualCommission(p), 0);
+    const contractedAmt = contracted.reduce((sum, c) => sum + (c.commission ?? 0), 0);
     const forecast = forecastItems.reduce((sum, p) => {
       const sc = calcSellerCommission(p.price, p.commission_from_seller);
       return sum + calcExpectedRevenue(sc);
     }, 0);
-    const projected = actual + forecast;
+    const projected = actual + contractedAmt + forecast;
     const gap = storeTarget - projected;
     const progressPct = Math.min(100, Math.round((projected / storeTarget) * 100));
     return {
       actual,
+      contracted: contractedAmt,
       forecast,
       projected,
       target: storeTarget,
       gap,
       progressPct,
       actualCount: settled.length,
+      contractedCount: contracted.length,
       forecastCount: forecastItems.length,
     };
-  }, [settled, forecastItems, storeTarget]);
+  }, [settled, contracted, forecastItems, storeTarget]);
 
   /** 月別集計 */
   const monthSummaries = useMemo((): MonthSummary[] => {
@@ -421,21 +466,24 @@ export default function SalesDashboardPage() {
       const monthSettled = settled.filter(
         (p) => p.settlement_date && getSettlementMonth(p.settlement_date) === month
       );
+      const monthContracted = contracted.filter((c) => c.settlement_month === month);
       const monthForecast = forecastItems.filter(
         (p) => p.prospect?.settlement_expected_month === month
       );
       return {
         month,
         actual: monthSettled.reduce((sum, p) => sum + getActualCommission(p), 0),
+        contracted: monthContracted.reduce((sum, c) => sum + (c.commission ?? 0), 0),
         forecast: monthForecast.reduce((sum, p) => {
           const sc = calcSellerCommission(p.price, p.commission_from_seller);
           return sum + calcExpectedRevenue(sc);
         }, 0),
         actualCount: monthSettled.length,
+        contractedCount: monthContracted.length,
         forecastCount: monthForecast.length,
       };
     });
-  }, [settled, forecastItems]);
+  }, [settled, contracted, forecastItems]);
 
   // ============================================================
   // 目標の保存
@@ -607,7 +655,13 @@ export default function SalesDashboardPage() {
                   color: '#2e7d32',
                 },
                 {
-                  label: '成約見込み（FY内）',
+                  label: '売買契約済み（決済前）',
+                  value: storeSummary.contracted,
+                  sub: `${storeSummary.contractedCount}件・スプシ参照`,
+                  color: '#6a1b9a',
+                },
+                {
+                  label: '成約見込み（今期内）',
                   value: storeSummary.forecast,
                   sub: `${storeSummary.forecastCount}件・両手率${Math.round(BOTH_HAND_RATE * 100)}%`,
                   color: '#1565c0',
@@ -615,8 +669,8 @@ export default function SalesDashboardPage() {
                 {
                   label: '年度末着地予測',
                   value: storeSummary.projected,
-                  sub: '実績＋見込み（二重計上なし）',
-                  color: '#6a1b9a',
+                  sub: '実績＋契約済み＋見込み（二重計上なし）',
+                  color: '#00838f',
                 },
                 {
                   label: '年度目標',
@@ -731,7 +785,8 @@ export default function SalesDashboardPage() {
                       {[
                         '担当者',
                         '決済済み実績',
-                        '成約見込み（FY内）',
+                        '売買契約済み（決済前）',
+                        '成約見込み（今期内）',
                         '年度末着地予測',
                         '個人目標',
                         '差額',
@@ -766,6 +821,22 @@ export default function SalesDashboardPage() {
                           {s.actualCount > 0 && (
                             <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
                               {s.actualCount}件
+                            </Typography>
+                          )}
+                        </TableCell>
+
+                        {/* 売買契約済み（決済前） */}
+                        <TableCell sx={{ px: 1.5, py: 1 }}>
+                          <Typography
+                            variant="body2"
+                            fontWeight={s.contracted > 0 ? 600 : 'normal'}
+                            sx={{ color: s.contracted > 0 ? '#6a1b9a' : 'text.disabled', whiteSpace: 'nowrap' }}
+                          >
+                            {s.contracted > 0 ? formatPrice(s.contracted) : '-'}
+                          </Typography>
+                          {s.contractedCount > 0 && (
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                              {s.contractedCount}件
                             </Typography>
                           )}
                         </TableCell>
@@ -905,13 +976,19 @@ export default function SalesDashboardPage() {
                           {storeSummary.actualCount}件
                         </Typography>
                       </TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', px: 1.5, py: 1, color: '#6a1b9a', whiteSpace: 'nowrap' }}>
+                        {formatPrice(storeSummary.contracted)}
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.65rem' }}>
+                          {storeSummary.contractedCount}件
+                        </Typography>
+                      </TableCell>
                       <TableCell sx={{ fontWeight: 'bold', px: 1.5, py: 1, color: '#1565c0', whiteSpace: 'nowrap' }}>
                         {formatPrice(storeSummary.forecast)}
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.65rem' }}>
                           {storeSummary.forecastCount}件
                         </Typography>
                       </TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', px: 1.5, py: 1, color: '#6a1b9a', whiteSpace: 'nowrap' }}>
+                      <TableCell sx={{ fontWeight: 'bold', px: 1.5, py: 1, color: '#00838f', whiteSpace: 'nowrap' }}>
                         {formatPrice(storeSummary.projected)}
                       </TableCell>
                       <TableCell sx={{ fontWeight: 'bold', px: 1.5, py: 1, whiteSpace: 'nowrap' }}>
@@ -980,7 +1057,7 @@ export default function SalesDashboardPage() {
                 <Table size="small">
                   <TableHead>
                     <TableRow sx={{ bgcolor: '#eeeeee' }}>
-                      {['月', '決済済み実績', '成約見込み（予定）', '月計'].map((h) => (
+                      {['月', '決済済み実績', '売買契約済み（決済前）', '成約見込み（今期）', '月計'].map((h) => (
                         <TableCell
                           key={h}
                           sx={{ fontWeight: 'bold', fontSize: '0.75rem', py: 1, px: 1.5 }}
@@ -992,7 +1069,7 @@ export default function SalesDashboardPage() {
                   </TableHead>
                   <TableBody>
                     {monthSummaries.map((m) => {
-                      const monthTotal = m.actual + m.forecast;
+                      const monthTotal = m.actual + m.contracted + m.forecast;
                       const isNextYear = m.month.startsWith('2027');
                       return (
                         <TableRow
@@ -1027,6 +1104,23 @@ export default function SalesDashboardPage() {
                             {m.actualCount > 0 && (
                               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.65rem' }}>
                                 {m.actualCount}件
+                              </Typography>
+                            )}
+                          </TableCell>
+                          {/* 売買契約済み（決済前） */}
+                          <TableCell
+                            sx={{
+                              px: 1.5,
+                              py: 0.75,
+                              color: m.contracted > 0 ? '#6a1b9a' : 'text.disabled',
+                              fontWeight: m.contracted > 0 ? 600 : 'normal',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {m.contracted > 0 ? formatPrice(m.contracted) : '-'}
+                            {m.contractedCount > 0 && (
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.65rem' }}>
+                                {m.contractedCount}件
                               </Typography>
                             )}
                           </TableCell>
@@ -1069,13 +1163,19 @@ export default function SalesDashboardPage() {
                           {storeSummary.actualCount}件
                         </Typography>
                       </TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', px: 1.5, py: 1, color: '#6a1b9a', whiteSpace: 'nowrap' }}>
+                        {formatPrice(storeSummary.contracted)}
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.65rem' }}>
+                          {storeSummary.contractedCount}件
+                        </Typography>
+                      </TableCell>
                       <TableCell sx={{ fontWeight: 'bold', px: 1.5, py: 1, color: '#1565c0', whiteSpace: 'nowrap' }}>
                         {formatPrice(storeSummary.forecast)}
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.65rem' }}>
                           {storeSummary.forecastCount}件
                         </Typography>
                       </TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', px: 1.5, py: 1, color: '#6a1b9a', whiteSpace: 'nowrap' }}>
+                      <TableCell sx={{ fontWeight: 'bold', px: 1.5, py: 1, color: '#00838f', whiteSpace: 'nowrap' }}>
                         {formatPrice(storeSummary.projected)}
                       </TableCell>
                     </TableRow>
@@ -1094,14 +1194,22 @@ export default function SalesDashboardPage() {
                 }}
               >
                 <Typography variant="caption" color="text.secondary">
-                  🟢 実績：決済日がFY内の決済済み物件（FI番号除外）
+                  🟢 実績：決済日が今期内の決済済み物件（FI番号除外）
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  🔵 見込み：専任・公開中で決済見込み月がFY内の物件（FI番号除外・両手率65%）
+                  🟣 契約済み：スプレッドシートより取得（売買契約済み・決済待ち）
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  🔵 見込み：専任・公開中で決済見込み月が今期内の物件（FI番号除外・両手率65%）
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   ⚠️ 2027年10月以降の見込みは集計対象外
                 </Typography>
+                {contractedError && (
+                  <Typography variant="caption" color="error">
+                    ⚠️ {contractedError}
+                  </Typography>
+                )}
               </Box>
             </AccordionDetails>
           </Accordion>
