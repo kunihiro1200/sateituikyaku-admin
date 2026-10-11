@@ -714,7 +714,7 @@ export default function PropertyListingsPage() {
               '&:hover': { bgcolor: '#e3f2fd', borderColor: SECTION_COLORS.property.dark },
             }}
           >
-            🏠 成約見込み管理
+            🏠&nbsp;成約見込み管理
           </Button>
           <Button
             variant="outlined"
