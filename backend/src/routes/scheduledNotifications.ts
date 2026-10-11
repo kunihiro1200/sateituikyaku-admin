@@ -246,7 +246,7 @@ function getAllNotifications(): Notification[] {
       type: 'yearly_dates',
       dates: [{ month: 8, day: 1 }, { month: 12, day: 1 }],
       subject: '【重要・訪問予約スケジュールの日程確認】',
-      body: 'お疲れ様です。\n売主リストの訪問予約カレンダーの休日の調整お願いいたします。\n\n８月　お盆休み\n\n１２月　正月休み\n\nよろしくお願いいたします。',
+      body: 'お疲れ様です。\n\n売主リストの訪問予約カレンダーの休日の調整お願いいたします。\n\n８月　お盆休み\n１２月　正月休み\nよろしくお願いいたします。\n\nグーグルカレンダーの訪問予約スケジュールより作業',
     },
     {
       type: 'yearly_dates',
