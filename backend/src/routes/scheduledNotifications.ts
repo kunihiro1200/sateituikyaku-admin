@@ -275,7 +275,7 @@ function getAllNotifications(): Notification[] {
     },
 
     {
-      type: 'yearly_date', month: 12, day: 25,
+      type: 'yearly_date', month: 12, day: 20,
       subject: '【管理】年末年始休み前の作業のリマインド',
       body: 'お疲れ様です。\n年末年始休みに入る前の作業のリマインドです\n\n①アットホーム上に休暇のお知らせを出す\n②アットホームの問い合わせがあった際の自動応答メッセージを年末仕様に変更（SUUMOなし）\n③HPのブログに年末挨拶投稿\n④年末清掃後にアットホームからもらう年末年始の休暇お知らせポスター貼る\n⑤しめ縄をいふうの自動ドアとビルに飾る（STビル用は消耗品費として翌月IIAに請求）\n⑥査定サイトクローズ　https://docs.google.com/spreadsheets/d/10b0mO7HzvoVf-f8JB5gTYpFF9eBYKN7sUClAeIrmku8/edit?gid=1691526210#gid=1691526210\n⑦営業終了後固定電話を留守設定にする',
     },
