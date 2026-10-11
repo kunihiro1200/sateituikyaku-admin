@@ -1535,16 +1535,25 @@ router.post('/:id/conflict', async (req: Request, res: Response) => {
     } else if (resolution === 'spreadsheet_wins') {
       // スプレッドシートの値を維持（DBを更新しない）
       // last_synced_atを更新して競合状態を解消
+      // 修正: 'id' 列は存在しない。取得済みの buyer.buyer_number（主キー）で特定する。
       const { createClient } = require('@supabase/supabase-js');
       const supabase = createClient(
         process.env.SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_KEY!
       );
-      
-      await supabase
+
+      const { error: updateError } = await supabase
         .from('buyers')
         .update({ last_synced_at: new Date().toISOString() })
-        .eq('id', id);
+        .eq('buyer_number', buyer.buyer_number);
+
+      if (updateError) {
+        console.error(`[conflict] Failed to update last_synced_at for buyer ${buyer.buyer_number}:`, updateError.message);
+        return res.status(500).json({
+          error: 'Failed to update last_synced_at',
+          details: updateError.message,
+        });
+      }
 
       return res.json({
         success: true,
