@@ -5853,7 +5853,10 @@ router.post('/manual-sync-step1', async (_req: Request, res: Response) => {
  */
 router.post('/manual-sync-step2', async (_req: Request, res: Response) => {
   const BACKEND_URL = process.env.BACKEND_URL || 'https://sateituikyaku-admin-backend.vercel.app';
-  const CRON_SECRET = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
+  const CRON_SECRET = process.env.CRON_SECRET;
+  if (!CRON_SECRET) {
+    return res.status(500).json({ success: false, error: 'CRON_SECRET が設定されていません' });
+  }
 
   try {
     console.log('[seller manual-sync-step2] スプシ→DB転記開始');
@@ -5900,7 +5903,10 @@ router.post('/manual-sync-step2', async (_req: Request, res: Response) => {
 router.post('/manual-sync', async (_req: Request, res: Response) => {
   const STEP1_URL = 'https://script.google.com/macros/s/AKfycbyBbOeDPwwrlLX8w8xbyumP8eRjKFkYkzFjiKP0zzdeNY5M3njdEOICcH9sWpj6hQ/exec';
   const BACKEND_URL = process.env.BACKEND_URL || 'https://sateituikyaku-admin-backend.vercel.app';
-  const CRON_SECRET = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
+  const CRON_SECRET = process.env.CRON_SECRET;
+  if (!CRON_SECRET) {
+    return res.status(500).json({ success: false, error: 'CRON_SECRET が設定されていません' });
+  }
 
   try {
     console.log('[seller manual-sync] ステップ1開始: メール転記GAS（メール→売主リストスプシ）');
@@ -5950,8 +5956,8 @@ router.post('/manual-sync', async (_req: Request, res: Response) => {
  */
 router.post('/send-alert', async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
-  const cronSecret = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
-  if (authHeader !== `Bearer ${cronSecret}`) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
 

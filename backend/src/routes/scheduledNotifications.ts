@@ -279,12 +279,12 @@ function getAllNotifications(): Notification[] {
 async function handleSend(req: Request, res: Response) {
   // CRON_SECRET認証（Vercel Cronの場合はヘッダーなしで来るので両方対応）
   const authHeader = req.headers.authorization;
-  const cronSecret = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
+  const cronSecret = process.env.CRON_SECRET;
   const vercelCronSecret = req.headers['x-vercel-cron-auth-bypass-secret'];
 
   // Vercel内部cronか、CRON_SECRET認証のいずれかで認証
   const isVercelCron = !!vercelCronSecret;
-  const isCronSecretAuth = authHeader === `Bearer ${cronSecret}`;
+  const isCronSecretAuth = !!cronSecret && authHeader === `Bearer ${cronSecret}`;
 
   if (!isVercelCron && !isCronSecretAuth) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
@@ -381,11 +381,11 @@ router.get('/list', async (_req: Request, res: Response) => {
  */
 router.get('/preview', async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
-  const cronSecret = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
+  const cronSecret = process.env.CRON_SECRET;
   const vercelCronSecret = req.headers['x-vercel-cron-auth-bypass-secret'];
 
   const isVercelCron = !!vercelCronSecret;
-  const isCronSecretAuth = authHeader === `Bearer ${cronSecret}`;
+  const isCronSecretAuth = !!cronSecret && authHeader === `Bearer ${cronSecret}`;
 
   if (!isVercelCron && !isCronSecretAuth) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
@@ -418,9 +418,9 @@ router.get('/preview', async (req: Request, res: Response) => {
  */
 router.post('/test-send', async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
-  const cronSecret = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
+  const cronSecret = process.env.CRON_SECRET;
 
-  if (authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
 

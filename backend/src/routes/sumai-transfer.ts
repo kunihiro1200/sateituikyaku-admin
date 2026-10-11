@@ -46,8 +46,8 @@ function convertTsuboToHeibei(tsubo: string): string {
  */
 router.post('/sumai-transfer', async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
-  const cronSecret = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
-  if (authHeader !== `Bearer ${cronSecret}`) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
 
