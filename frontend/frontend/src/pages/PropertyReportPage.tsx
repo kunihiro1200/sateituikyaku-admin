@@ -30,6 +30,7 @@ import {
   TableRow,
   useTheme,
   useMediaQuery,
+  Chip,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -48,6 +49,7 @@ import {
   MenuItem,
 } from '@mui/material';
 import api from '../services/api';
+import { supabase } from '../config/supabase';
 import ImageSelectorModal from '../components/ImageSelectorModal';
 import CompactBuyerListForProperty from '../components/CompactBuyerListForProperty';
 import { SECTION_COLORS } from '../theme/sectionColors';
@@ -167,6 +169,26 @@ export default function PropertyReportPage() {
   const [imageError, setImageError] = useState<string | null>(null);
   const [buyers, setBuyers] = useState<any[]>([]);
   const [buyersLoading, setBuyersLoading] = useState(false);
+
+  // ── 成約見込み（property_contract_prospects） ──
+  const [prospect, setProspect] = useState<{
+    id?: string;
+    prospect_rank: string;
+    settlement_expected_month: string;
+    assessment_reason: string;
+    required_actions: string;
+    manager_check_status: string;
+    manager_comment: string;
+  }>({
+    prospect_rank: '',
+    settlement_expected_month: '',
+    assessment_reason: '',
+    required_actions: '',
+    manager_check_status: '未確認',
+    manager_comment: '',
+  });
+  const [prospectSaving, setProspectSaving] = useState(false);
+  const [prospectDirty, setProspectDirty] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -199,6 +221,7 @@ export default function PropertyReportPage() {
       fetchTemplates();
       fetchReportHistory();
       fetchBuyers();
+      fetchProspect();
     }
   }, [propertyNumber]);
 
@@ -305,9 +328,72 @@ export default function PropertyReportPage() {
     }
   };
 
-  const prefetchMergedTemplates = async () => {
+  // ── 成約見込みフェッチ ──
+  const fetchProspect = async () => {
     if (!propertyNumber) return;
-    setPrefetching(true);
+    try {
+      const { data } = await supabase
+        .from('property_contract_prospects')
+        .select('*')
+        .eq('property_number', propertyNumber)
+        .maybeSingle();
+      if (data) {
+        setProspect({
+          id: data.id,
+          prospect_rank: data.prospect_rank ?? '',
+          settlement_expected_month: data.settlement_expected_month ?? '',
+          assessment_reason: data.assessment_reason ?? '',
+          required_actions: data.required_actions ?? '',
+          manager_check_status: data.manager_check_status ?? '未確認',
+          manager_comment: data.manager_comment ?? '',
+        });
+      }
+    } catch { /* 無視 */ }
+  };
+
+  // ── 成約見込み保存 ──
+  const handleSaveProspect = async () => {
+    if (!propertyNumber) return;
+    setProspectSaving(true);
+    try {
+      const now = new Date().toISOString();
+      const row = {
+        property_number: propertyNumber,
+        prospect_rank: prospect.prospect_rank || null,
+        settlement_expected_month: prospect.settlement_expected_month || null,
+        assessment_reason: prospect.assessment_reason || null,
+        required_actions: prospect.required_actions || null,
+        manager_check_status: prospect.manager_check_status,
+        manager_comment: prospect.manager_comment || null,
+        updated_at: now,
+      };
+      const { error } = await supabase
+        .from('property_contract_prospects')
+        .upsert(row, { onConflict: 'property_number' });
+      if (error) throw error;
+      setProspectDirty(false);
+      setSnackbar({ open: true, message: '成約見込みを保存しました', severity: 'success' });
+    } catch {
+      setSnackbar({ open: true, message: '成約見込みの保存に失敗しました', severity: 'error' });
+    } finally {
+      setProspectSaving(false);
+    }
+  };
+
+  const updateProspect = (field: string, value: string) => {
+    setProspect(prev => {
+      const updated = { ...prev, [field]: value };
+      // 担当者入力項目変更時は確認状況を未確認に戻す
+      if (['prospect_rank','settlement_expected_month','assessment_reason','required_actions'].includes(field)
+        && prev.manager_check_status === '確認済み') {
+        updated.manager_check_status = '未確認';
+      }
+      return updated;
+    });
+    setProspectDirty(true);
+  };
+
+  const prefetchMergedTemplates = async () => {
     try {
       const tmplResponse = await api.get('/api/email-templates/property');
       const tmplList: EmailTemplate[] = tmplResponse.data || [];
@@ -1064,6 +1150,103 @@ export default function PropertyReportPage() {
 
         {/* 右カラム：送信履歴 + 前回メール内容 */}
         <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+
+          {/* ── 成約見込み（property_contract_prospects と連動） ── */}
+          <Paper sx={{ p: 2.5, border: '2px solid #1565c0', borderRadius: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+              <Typography variant="h6" fontWeight="bold" sx={{ color: '#1565c0' }}>
+                🏠 成約見込み
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                {prospectDirty && (
+                  <Chip label="未保存" size="small" sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold' }} />
+                )}
+                <Chip
+                  label={prospect.manager_check_status || '未確認'}
+                  size="small"
+                  color={prospect.manager_check_status === '確認済み' ? 'success' : prospect.manager_check_status === '要見直し' ? 'error' : 'default'}
+                />
+                <Button variant="contained" size="small" onClick={handleSaveProspect}
+                  disabled={prospectSaving || !prospectDirty}
+                  sx={{ bgcolor: '#1565c0', '&:hover': { bgcolor: '#0d47a1' }, fontSize: '13px' }}>
+                  {prospectSaving ? '保存中...' : '💾 保存'}
+                </Button>
+              </Box>
+            </Box>
+
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5, mb: 1.5 }}>
+              {/* ランク */}
+              <Box>
+                <Typography sx={{ fontSize: '13px', color: '#666', mb: 0.5 }}>成約見込みランク</Typography>
+                <FormControl size="small" fullWidth>
+                  <Select
+                    value={prospect.prospect_rank}
+                    onChange={e => updateProspect('prospect_rank', e.target.value)}
+                    displayEmpty
+                  >
+                    <MenuItem value=""><em>未選択</em></MenuItem>
+                    {[
+                      { v: 'A', label: 'A：成約見込みが高い', color: '#1565c0' },
+                      { v: 'B', label: 'B：成約見込みがある', color: '#2e7d32' },
+                      { v: 'C', label: 'C：改善により期待', color: '#e65100' },
+                      { v: 'D', label: 'D：現状では難しい', color: '#c62828' },
+                    ].map(r => (
+                      <MenuItem key={r.v} value={r.v} sx={{ color: r.color, fontWeight: 'bold' }}>
+                        {r.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+              {/* 決済見込み月 */}
+              <Box>
+                <Typography sx={{ fontSize: '13px', color: '#666', mb: 0.5 }}>決済見込み月</Typography>
+                <TextField
+                  type="month"
+                  size="small"
+                  fullWidth
+                  value={prospect.settlement_expected_month}
+                  onChange={e => updateProspect('settlement_expected_month', e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Box>
+            </Box>
+
+            {/* 判断理由 */}
+            <Box sx={{ mb: 1.5 }}>
+              <Typography sx={{ fontSize: '13px', color: '#666', mb: 0.5 }}>成約見込みの判断理由</Typography>
+              <TextField
+                multiline rows={2} size="small" fullWidth
+                placeholder="判断理由を入力"
+                value={prospect.assessment_reason}
+                onChange={e => updateProspect('assessment_reason', e.target.value)}
+              />
+            </Box>
+
+            {/* 必要な対策 */}
+            <Box sx={{ mb: prospect.manager_check_status === '要見直し' ? 1.5 : 0 }}>
+              <Typography sx={{ fontSize: '13px', color: '#666', mb: 0.5 }}>成約に向けた必要な対策</Typography>
+              <TextField
+                multiline rows={2} size="small" fullWidth
+                placeholder="必要な対策を入力"
+                value={prospect.required_actions}
+                onChange={e => updateProspect('required_actions', e.target.value)}
+              />
+            </Box>
+
+            {/* マネージャーコメント（要見直し時のみ表示） */}
+            {prospect.manager_check_status === '要見直し' && prospect.manager_comment && (
+              <Box sx={{ p: 1.5, bgcolor: '#fff5f5', border: '1px solid #ffcdd2', borderRadius: 1 }}>
+                <Typography sx={{ fontSize: '13px', color: '#c62828', fontWeight: 'bold', mb: 0.5 }}>
+                  💬 山本マネージャーコメント
+                </Typography>
+                <Typography sx={{ fontSize: '14px', color: '#c62828' }}>
+                  {prospect.manager_comment}
+                </Typography>
+              </Box>
+            )}
+          </Paper>
+
           {/* 送信履歴（5行固定表示） */}
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: SECTION_COLORS.property.main }}>
