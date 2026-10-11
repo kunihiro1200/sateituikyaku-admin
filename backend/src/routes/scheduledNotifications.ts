@@ -70,6 +70,18 @@ function shouldSendToday(notification: Notification, today: Date): boolean {
       return false;
     }
 
+    case 'monthly_first_friday': {
+      for (let d = 1; d <= 7; d++) {
+        if (new Date(year, month - 1, d).getDay() === 5) {
+          return day === d;
+        }
+      }
+      return false;
+    }
+
+    case 'weekly_monday':
+      return dow === 1;
+
     case 'weekly_friday':
       return dow === 5;
 
@@ -204,6 +216,18 @@ function getAllNotifications(): Notification[] {
       subject: '【重要】SUUMO確認',
       body: 'お疲れ様です。\n\n①掲載枠確認（残5件になったら枠数を増加申請）\n増枠はリクルートの船越様に連絡（rio_funakoshi@r.recruit.co.jp）\n→返信メールのＵＲＬから申込み\n　ＩＤ：K16337100100\n　ＰＷ：ifoo1200\n→やり方は返信メールにあります。\n・枠数選択不可、25枠単位での変更のみ\n・毎週火曜〆、翌水曜日反映\n\n②公開期日\n日曜更新（やり方はhttps://docs.google.com/document/d/1qXQ9dYuIXS5HgqWDt-0S7fAsFzVTxxv3xtn3zFCFXEo/edit?tab=t.fixsoaz1qtnq参照）→8日間公開延長',
     },
+    {
+      type: 'weekly_monday',
+      subject: '【管理】備品確認と発注',
+      body: 'お疲れ様です。\n毎週月曜に備品の確認と発注をお願いいたします。\nhttps://docs.google.com/spreadsheets/d/1OgJ3ov3euzLf3_jaDJm9XvVwG0XgvOj8/edit?gid=690411769#gid=690411769',
+    },
+
+    // ===== 毎月（第一金曜日） =====
+    {
+      type: 'monthly_first_friday',
+      subject: '【管理】Eラベル更新',
+      body: 'お疲れ様です。\nEラベルの更新をお願いいたします。件数はタスクへ記入をお願いいたします。\nhttps://docs.google.com/document/d/1rK_WRx2ojum4gp-1rxUwnbVl1UFjFlyBP_uB01PYGUM/edit?tab=t.0',
+    },
 
     // ===== 毎年（複数回） =====
     {
@@ -230,6 +254,12 @@ function getAllNotifications(): Notification[] {
       subject: '【管理】室外機管理について',
       body: 'お疲れ様です。\n\n6月1日　エアコン冷却開始\n　11F屋上の緑のバルブを開けて蛇口全て閉める\n\n10月1日　エアコン冷却終了\n　11F屋上の緑のバルブを閉めて蛇口全てより水抜きする（凍結防止）',
     },
+    {
+      type: 'yearly_dates',
+      dates: [{ month: 7, day: 1 }, { month: 11, day: 1 }],
+      subject: '【管理】お中元・お歳暮',
+      body: 'お疲れ様です。\n7月はお中元　11月はお歳暮の発注お願いいたします。\nhttps://docs.google.com/spreadsheets/d/1_oIEqte9we-qzRXqcfl2ETdZdJnIMFtX/edit?gid=833413728#gid=833413728',
+    },
 
     // ===== 毎年（1回） =====
     {
@@ -243,20 +273,21 @@ function getAllNotifications(): Notification[] {
       body: 'お疲れ様です。\n毎年の１月の作業のリマインドです。\nhttps://docs.google.com/spreadsheets/d/1CPuQ-bF_Um5dSDO4hCbv4XNHVYr7jYVqoJqdBQ0DKuM/edit?gid=1789234243#gid=1789234243',
     },
     {
-      type: 'yearly_date', month: 7, day: 1,
-      subject: '【重要・一般媒介整理】',
+      type: 'yearly_dates',
+      dates: [{ month: 9, day: 1 }, { month: 3, day: 1 }],
+      subject: '【重要】一般媒介整理',
       body: 'お疲れ様です。\n一般媒介の整理作業お願いします。\n\n①一般媒介の方全てに連絡（いつまでに連絡していつまでに非公開にするか上長へ報告ください）\n条件：過去３ヶ月以上売り主と連絡取っていない物件：\n（値下げ履歴、問合せ、備忘録等に過去３ヶ月以上何も履歴がないもの）\n\n②「備考」欄に不通であればイニシャル/日付/不通　と入力\nと同時にメール送信（テンプレの一般媒介（公開非公開）を選択して送信）\n→APPSHEETの「一般媒介（非公開予定）」とステータスが上がってきます\n\n③１週間後に「一般媒介（非公開予定）」のステータス案件にお手紙郵送します。\n\n④郵送後２週間以内に、宛先不明で返ってくるOR音沙汰なしであれば、全て、非公開、物件ファイルの処理を行う\n\n⑤完了後、上長まで報告お願いします。',
     },
 
     {
       type: 'yearly_date', month: 12, day: 25,
       subject: '【管理】年末年始休み前の作業のリマインド',
-      body: 'お疲れ様です。\n年末年始休みに入る前の作業のリマインドです\n\n①アットホーム上に休暇のお知らせを出す\n②アットホームの問い合わせがあった際の自動応答メッセージを年末仕様に変更（SUUMOなし）\n③HPのブログに年末挨拶投稿\n④年末清掃後にアットホームからもらう年末年始の休暇お知らせポスター貼る\n⑤しめ縄をいふうの自動ドアとビルに飾る（STビル用は消耗品費として翌月IIAに請求）\n⑥査定サイトクローズ\n⑦営業終了後固定電話を留守設定にする',
+      body: 'お疲れ様です。\n年末年始休みに入る前の作業のリマインドです\n\n①アットホーム上に休暇のお知らせを出す\n②アットホームの問い合わせがあった際の自動応答メッセージを年末仕様に変更（SUUMOなし）\n③HPのブログに年末挨拶投稿\n④年末清掃後にアットホームからもらう年末年始の休暇お知らせポスター貼る\n⑤しめ縄をいふうの自動ドアとビルに飾る（STビル用は消耗品費として翌月IIAに請求）\n⑥査定サイトクローズ　https://docs.google.com/spreadsheets/d/10b0mO7HzvoVf-f8JB5gTYpFF9eBYKN7sUClAeIrmku8/edit?gid=1691526210#gid=1691526210\n⑦営業終了後固定電話を留守設定にする',
     },
     {
       type: 'yearly_date', month: 8, day: 5,
       subject: '【管理】お盆休み前の作業のリマインド',
-      body: 'お疲れ様です。\nお盆休みに入る前の作業のリマインドです。\n\n①入口にお盆休み休暇のお知らせを貼る（at-homeからもらえる）\n②各査定サイト反響を停める\n③at-home上に休暇のお知らせを出す+お知らせメッセージも変更\n④営業終了後固定電話を留守設定にする',
+      body: 'お疲れ様です。\nお盆休みに入る前の作業のリマインドです。\n\n①入口にお盆休み休暇のお知らせを貼る（at-homeからもらえる）\n②各査定サイト反響を停める　https://docs.google.com/spreadsheets/d/10b0mO7HzvoVf-f8JB5gTYpFF9eBYKN7sUClAeIrmku8/edit?gid=1691526210#gid=1691526210\n③at-home上に休暇のお知らせを出す+お知らせメッセージも変更\n④営業終了後固定電話を留守設定にする',
     },
 
     // ===== 1回きり（リースバック退去通知） =====
@@ -359,6 +390,8 @@ router.get('/list', async (_req: Request, res: Response) => {
       case 'monthly_last_sunday': scheduleLabel = '毎月最終日曜日'; break;
       case 'monthly_first_sunday': scheduleLabel = '毎月第一日曜日'; break;
       case 'monthly_first_saturday': scheduleLabel = '毎月第一土曜日'; break;
+      case 'monthly_first_friday': scheduleLabel = '毎月第一金曜日'; break;
+      case 'weekly_monday': scheduleLabel = '毎週月曜日'; break;
       case 'weekly_friday': scheduleLabel = '毎週金曜日'; break;
       case 'weekly_saturday': scheduleLabel = '毎週土曜日'; break;
       case 'weekly_sunday': scheduleLabel = '毎週日曜日'; break;
