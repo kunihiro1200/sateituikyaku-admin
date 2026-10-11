@@ -1151,99 +1151,64 @@ export default function PropertyReportPage() {
         {/* 右カラム：送信履歴 + 前回メール内容 */}
         <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
 
-          {/* ── 成約見込み（property_contract_prospects と連動） ── */}
-          <Paper sx={{ p: 2.5, border: '2px solid #1565c0', borderRadius: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
-              <Typography variant="h6" fontWeight="bold" sx={{ color: '#1565c0' }}>
+          {/* ── 成約見込み（読み取り専用・コンパクト表示） ── */}
+          <Paper sx={{ p: 1.5, border: '2px solid #1565c0', borderRadius: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+              <Typography sx={{ fontSize: '13px', fontWeight: 'bold', color: '#1565c0' }}>
                 🏠 成約見込み
               </Typography>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                {prospectDirty && (
-                  <Chip label="未保存" size="small" sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold' }} />
+              {prospect.prospect_rank ? (
+                <Chip label={`ランク ${prospect.prospect_rank}`} size="small" sx={{
+                  bgcolor: { A: '#1565c0', B: '#2e7d32', C: '#e65100', D: '#c62828' }[prospect.prospect_rank] ?? '#757575',
+                  color: '#fff', fontWeight: 'bold', fontSize: '13px',
+                }} />
+              ) : (
+                <Chip label="ランク未入力" size="small" sx={{ bgcolor: '#f5f5f5', color: '#9e9e9e', fontSize: '12px' }} />
+              )}
+              {prospect.settlement_expected_month && (
+                <Chip label={(() => {
+                  const [y, m] = prospect.settlement_expected_month.split('-');
+                  return `${y}年${parseInt(m)}月決済`;
+                })()} size="small" variant="outlined" sx={{ fontSize: '12px', borderColor: '#1565c0', color: '#1565c0' }} />
+              )}
+              <Chip
+                label={prospect.manager_check_status || '未確認'}
+                size="small"
+                color={prospect.manager_check_status === '確認済み' ? 'success' : prospect.manager_check_status === '要見直し' ? 'error' : 'default'}
+                sx={{ fontSize: '12px', ml: 'auto' }}
+              />
+            </Box>
+            {(prospect.assessment_reason || prospect.required_actions) && (
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                {prospect.assessment_reason && (
+                  <Box sx={{ flex: 1, minWidth: 120 }}>
+                    <Typography sx={{ fontSize: '11px', color: '#666' }}>判断理由</Typography>
+                    <Typography sx={{ fontSize: '13px', lineHeight: 1.4 }}>
+                      {prospect.assessment_reason}
+                    </Typography>
+                  </Box>
                 )}
-                <Chip
-                  label={prospect.manager_check_status || '未確認'}
-                  size="small"
-                  color={prospect.manager_check_status === '確認済み' ? 'success' : prospect.manager_check_status === '要見直し' ? 'error' : 'default'}
-                />
-                <Button variant="contained" size="small" onClick={handleSaveProspect}
-                  disabled={prospectSaving || !prospectDirty}
-                  sx={{ bgcolor: '#1565c0', '&:hover': { bgcolor: '#0d47a1' }, fontSize: '13px' }}>
-                  {prospectSaving ? '保存中...' : '💾 保存'}
-                </Button>
+                {prospect.required_actions && (
+                  <Box sx={{ flex: 1, minWidth: 120 }}>
+                    <Typography sx={{ fontSize: '11px', color: '#666' }}>必要な対策</Typography>
+                    <Typography sx={{ fontSize: '13px', lineHeight: 1.4 }}>
+                      {prospect.required_actions}
+                    </Typography>
+                  </Box>
+                )}
               </Box>
-            </Box>
-
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5, mb: 1.5 }}>
-              {/* ランク */}
-              <Box>
-                <Typography sx={{ fontSize: '13px', color: '#666', mb: 0.5 }}>成約見込みランク</Typography>
-                <FormControl size="small" fullWidth>
-                  <Select
-                    value={prospect.prospect_rank}
-                    onChange={e => updateProspect('prospect_rank', e.target.value)}
-                    displayEmpty
-                  >
-                    <MenuItem value=""><em>未選択</em></MenuItem>
-                    {[
-                      { v: 'A', label: 'A：成約見込みが高い', color: '#1565c0' },
-                      { v: 'B', label: 'B：成約見込みがある', color: '#2e7d32' },
-                      { v: 'C', label: 'C：改善により期待', color: '#e65100' },
-                      { v: 'D', label: 'D：現状では難しい', color: '#c62828' },
-                    ].map(r => (
-                      <MenuItem key={r.v} value={r.v} sx={{ color: r.color, fontWeight: 'bold' }}>
-                        {r.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Box>
-              {/* 決済見込み月 */}
-              <Box>
-                <Typography sx={{ fontSize: '13px', color: '#666', mb: 0.5 }}>決済見込み月</Typography>
-                <TextField
-                  type="month"
-                  size="small"
-                  fullWidth
-                  value={prospect.settlement_expected_month}
-                  onChange={e => updateProspect('settlement_expected_month', e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Box>
-            </Box>
-
-            {/* 判断理由 */}
-            <Box sx={{ mb: 1.5 }}>
-              <Typography sx={{ fontSize: '13px', color: '#666', mb: 0.5 }}>成約見込みの判断理由</Typography>
-              <TextField
-                multiline rows={2} size="small" fullWidth
-                placeholder="判断理由を入力"
-                value={prospect.assessment_reason}
-                onChange={e => updateProspect('assessment_reason', e.target.value)}
-              />
-            </Box>
-
-            {/* 必要な対策 */}
-            <Box sx={{ mb: prospect.manager_check_status === '要見直し' ? 1.5 : 0 }}>
-              <Typography sx={{ fontSize: '13px', color: '#666', mb: 0.5 }}>成約に向けた必要な対策</Typography>
-              <TextField
-                multiline rows={2} size="small" fullWidth
-                placeholder="必要な対策を入力"
-                value={prospect.required_actions}
-                onChange={e => updateProspect('required_actions', e.target.value)}
-              />
-            </Box>
-
-            {/* マネージャーコメント（要見直し時のみ表示） */}
+            )}
             {prospect.manager_check_status === '要見直し' && prospect.manager_comment && (
-              <Box sx={{ p: 1.5, bgcolor: '#fff5f5', border: '1px solid #ffcdd2', borderRadius: 1 }}>
-                <Typography sx={{ fontSize: '13px', color: '#c62828', fontWeight: 'bold', mb: 0.5 }}>
-                  💬 山本マネージャーコメント
-                </Typography>
-                <Typography sx={{ fontSize: '14px', color: '#c62828' }}>
-                  {prospect.manager_comment}
+              <Box sx={{ mt: 1, p: 1, bgcolor: '#fff5f5', border: '1px solid #ffcdd2', borderRadius: 1 }}>
+                <Typography sx={{ fontSize: '12px', color: '#c62828', fontWeight: 'bold' }}>
+                  💬 {prospect.manager_comment}
                 </Typography>
               </Box>
+            )}
+            {!prospect.prospect_rank && !prospect.assessment_reason && !prospect.required_actions && (
+              <Typography sx={{ fontSize: '12px', color: '#bbb' }}>
+                成約見込み未入力 — 成約見込み管理ページから入力してください
+              </Typography>
             )}
           </Paper>
 
