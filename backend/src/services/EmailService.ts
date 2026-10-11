@@ -6,6 +6,8 @@ export interface SendEmailOptions {
   to: string[];
   subject: string;
   body: string;
+  /** HTML本文（指定された場合はtext/htmlで送信。bodyはフォールバックとして使われない） */
+  htmlBody?: string;
 }
 
 /**
@@ -25,7 +27,7 @@ export class EmailService extends BaseRepository {
    * @param options 送信オプション（宛先、件名、本文）
    */
   async sendEmail(options: SendEmailOptions): Promise<void> {
-    const { to, subject, body } = options;
+    const { to, subject, body, htmlBody } = options;
 
     if (!to || to.length === 0) {
       console.warn('[EmailService] No recipients specified, skipping email send');
@@ -45,15 +47,17 @@ export class EmailService extends BaseRepository {
 
       // RFC 2822形式のメールを作成
       const toHeader = validRecipients.join(', ');
+      const contentType = htmlBody ? 'text/html' : 'text/plain';
+      const content = htmlBody ?? body;
       const rawMessage = [
         'From: tenant@ifoo-oita.com',
         `To: ${toHeader}`,
         `Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`,
         'MIME-Version: 1.0',
-        'Content-Type: text/plain; charset=UTF-8',
+        `Content-Type: ${contentType}; charset=UTF-8`,
         'Content-Transfer-Encoding: base64',
         '',
-        Buffer.from(body).toString('base64'),
+        Buffer.from(content).toString('base64'),
       ].join('\r\n');
 
       const encodedMessage = Buffer.from(rawMessage)

@@ -16,6 +16,8 @@ interface Notification {
   type: string;
   subject: string;
   body: string;
+  /** HTML本文（赤文字などの装飾が必要な場合に指定。あればHTMLで送信される） */
+  htmlBody?: string;
   day?: number;
   month?: number;
   year?: number;
@@ -190,7 +192,12 @@ function getAllNotifications(): Notification[] {
     {
       type: 'weekly_sunday',
       subject: '【管理】公開延長',
-      body: 'お疲れ様です。\nat-homeとSUUMOの公開延長をお願いいたします。\nhttps://docs.google.com/document/d/1qXQ9dYuIXS5HgqWDt-0S7fAsFzVTxxv3xtn3zFCFXEo/edit?tab=t.fixsoaz1qtnq',
+      body: 'お疲れ様です。\n\n※福岡も忘れないように\nat-homeとSUUMOの公開延長をお願いいたします。\nhttps://docs.google.com/document/d/1qXQ9dYuIXS5HgqWDt-0S7fAsFzVTxxv3xtn3zFCFXEo/edit?tab=t.fixsoaz1qtnq',
+      htmlBody:
+        'お疲れ様です。<br><br>' +
+        '<span style="color:#ff0000; font-weight:bold;">※福岡も忘れないように</span><br>' +
+        'at-homeとSUUMOの公開延長をお願いいたします。<br>' +
+        '<a href="https://docs.google.com/document/d/1qXQ9dYuIXS5HgqWDt-0S7fAsFzVTxxv3xtn3zFCFXEo/edit?tab=t.fixsoaz1qtnq">https://docs.google.com/document/d/1qXQ9dYuIXS5HgqWDt-0S7fAsFzVTxxv3xtn3zFCFXEo/edit?tab=t.fixsoaz1qtnq</a>',
     },
     {
       type: 'weekly_saturday',
@@ -308,6 +315,7 @@ async function handleSend(req: Request, res: Response) {
             to: RECIPIENTS,
             subject: n.subject,
             body: n.body,
+            htmlBody: n.htmlBody,
           });
           sent.push(n.subject);
           console.log(`[scheduled-notifications] ✅ 送信完了: ${n.subject}`);
