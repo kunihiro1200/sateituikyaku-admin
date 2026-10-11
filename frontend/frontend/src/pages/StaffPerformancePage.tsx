@@ -580,6 +580,26 @@ export default function StaffPerformancePage() {
       </Paper>
 
       {selectedStaff==='全員' ? (<>
+        {/* 全員：大分店全体 月別実績 vs 目標 vs 前期 */}
+        <Paper sx={{p:2.5,mb:3}} elevation={1}>
+          <Typography sx={{fontSize:'18px',fontWeight:'bold',color:PROPERTY_COLOR,mb:2}}>
+            📊 大分店全体 — 月別実績 vs 目標 vs 前期
+          </Typography>
+          <Box sx={{height:320}}>
+            <Bar data={barChartData} options={{...barChartOptions,maintainAspectRatio:false} as any}/>
+          </Box>
+        </Paper>
+
+        {/* 全員：大分店全体 累計推移 */}
+        <Paper sx={{p:2.5,mb:3}} elevation={1}>
+          <Typography sx={{fontSize:'18px',fontWeight:'bold',color:PROPERTY_COLOR,mb:2}}>
+            📈 大分店全体 — 累計推移（今期 vs 前期 vs 目標）
+          </Typography>
+          <Box sx={{height:300}}>
+            <Line data={lineChartData} options={{...lineChartOptions,maintainAspectRatio:false} as any}/>
+          </Box>
+        </Paper>
+
         {/* 全員：担当者比較棒グラフ */}
         <Paper sx={{p:2.5,mb:3}} elevation={1}>
           <Typography sx={{fontSize:'18px',fontWeight:'bold',color:'#1565c0',mb:2}}>
