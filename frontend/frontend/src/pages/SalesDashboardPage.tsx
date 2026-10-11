@@ -496,7 +496,6 @@ export default function SalesDashboardPage() {
           <Button key={staff} variant={selectedStaff===staff?'contained':'outlined'} size="medium"
             onClick={()=>{setSelectedStaff(staff);setExpandedStaff(null);}}
             sx={{fontSize:'15px',fontWeight:'bold',minWidth:72,
-            sx={{minWidth:64,fontWeight:selectedStaff===staff?'bold':'normal',
               ...(selectedStaff===staff
                 ?{bgcolor:PROPERTY_COLOR,'&:hover':{bgcolor:SECTION_COLORS.property.dark}}
                 :{borderColor:PROPERTY_COLOR,color:PROPERTY_COLOR,'&:hover':{bgcolor:'#e3f2fd'}})}}>
