@@ -245,11 +245,28 @@ export class BuyerSyncService {
         }
 
         // 既存レコードを確認
-        const { data: existing } = await this.supabase
+        // 修正: 'id' 列は存在しない（buyers_pkey は buyer_number 列）。'buyer_number' を使用する。
+        // error も取得し、DBエラー時はスキップして誤った INSERT を防ぐ。
+        const { data: existing, error: existingError } = await this.supabase
           .from('buyers')
-          .select('id')
+          .select('buyer_number')
           .eq('buyer_number', data.buyer_number)
           .single();
+
+        // PGRST116 = "JSON object requested, multiple (or no) rows returned"
+        // → レコードが存在しない（新規）なので正常。それ以外はDBエラー。
+        if (existingError && existingError.code !== 'PGRST116') {
+          console.error(`[BuyerSyncService] Error checking existing buyer ${data.buyer_number}: ${existingError.message} (code: ${existingError.code})`);
+          result.failed++;
+          result.errors.push({
+            row: rowNumber,
+            buyerNumber: data.buyer_number,
+            message: `既存確認エラー: ${existingError.message}`,
+            timestamp: new Date().toISOString(),
+            errorType: SyncErrorType.DATABASE_ERROR,
+          });
+          continue;
+        }
 
         // 既存レコードはスキップ（新規のみ同期）
         // スプシで値が変更されてもDBには反映しない。DBでの作業を保護するため。

@@ -184,11 +184,26 @@ export class EnhancedBuyerSyncService {
         }
 
         // 既存レコードを確認
-        const { data: existing } = await this.supabase
+        // 修正: 'id' 列は存在しない。'buyer_number' を使用する。
+        // error も取得し、DBエラー時は upsert をスキップして誤った処理を防ぐ。
+        const { data: existing, error: existingError } = await this.supabase
           .from('buyers')
-          .select('id')
+          .select('buyer_number')
           .eq('buyer_number', data.buyer_number)
           .single();
+
+        // PGRST116 = レコードなし（新規）は正常。それ以外はDBエラー。
+        if (existingError && existingError.code !== 'PGRST116') {
+          console.error(`[EnhancedBuyerSyncService] Error checking existing buyer ${data.buyer_number}: ${existingError.message} (code: ${existingError.code})`);
+          result.failed++;
+          result.errors.push({
+            row: rowNumber,
+            buyerNumber: data.buyer_number,
+            message: `既存確認エラー: ${existingError.message}`,
+            timestamp: new Date().toISOString(),
+          });
+          continue;
+        }
 
         // Upsert
         const { error } = await this.supabase
