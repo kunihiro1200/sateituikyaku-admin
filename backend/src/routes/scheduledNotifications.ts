@@ -263,11 +263,6 @@ function getAllNotifications(): Notification[] {
 
     // ===== 毎年（1回） =====
     {
-      type: 'yearly_first_monday_of_month', month: 9,
-      subject: '【事務】毎年の9月の作業のリマインドをお願いします。',
-      body: 'お疲れ様です。\n毎年の9月の作業のリマインドです。\nhttps://docs.google.com/spreadsheets/d/1CPuQ-bF_Um5dSDO4hCbv4XNHVYr7jYVqoJqdBQ0DKuM/edit?gid=1928448449#gid=1928448449',
-    },
-    {
       type: 'yearly_date', month: 1, day: 6,
       subject: '【事務】毎年の１月の作業のリマインド',
       body: 'お疲れ様です。\n毎年の１月の作業のリマインドです。\nhttps://docs.google.com/spreadsheets/d/1CPuQ-bF_Um5dSDO4hCbv4XNHVYr7jYVqoJqdBQ0DKuM/edit?gid=1789234243#gid=1789234243',
