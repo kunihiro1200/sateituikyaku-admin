@@ -1098,6 +1098,12 @@ export default function ContractProspectsPage() {
                         bgcolor: rowBg,
                         '&:hover': { bgcolor: isEditing ? '#fffde7' : '#f5f5f5' },
                         verticalAlign: 'top',
+                        cursor: isEditing ? 'default' : 'pointer',
+                      }}
+                      onClick={() => {
+                        if (!isEditing) {
+                          navigate(`/property-listings/${p.property_number}`);
+                        }
                       }}
                     >
                       {/* ① 物件番号 */}
@@ -1404,7 +1410,7 @@ export default function ContractProspectsPage() {
                       </TableCell>
 
                       {/* 操作ボタン */}
-                      <TableCell sx={{ whiteSpace: 'nowrap', px: 1 }}>
+                      <TableCell sx={{ whiteSpace: 'nowrap', px: 1 }} onClick={e => e.stopPropagation()}>
                         {isEditing ? (
                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                             <Button
