@@ -1177,6 +1177,14 @@ export default function PropertyReportPage() {
                 color={prospect.manager_check_status === '確認済み' ? 'success' : prospect.manager_check_status === '要見直し' ? 'error' : 'default'}
                 sx={{ fontSize: '12px', ml: 'auto' }}
               />
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => navigate(`/property-listings/contract-prospects?edit=${propertyNumber}`)}
+                sx={{ fontSize: '12px', borderColor: '#1565c0', color: '#1565c0', ml: 0.5, py: 0.25 }}
+              >
+                ✏️ 編集
+              </Button>
             </Box>
             {(prospect.assessment_reason || prospect.required_actions) && (
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>

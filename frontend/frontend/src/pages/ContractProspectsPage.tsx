@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -259,6 +260,7 @@ function resolveStaffName(salesAssignee: string | undefined | null): string {
 
 export default function ContractProspectsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { employee } = useAuthStore();
@@ -348,6 +350,28 @@ export default function ContractProspectsPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // URLパラメータ ?edit=物件番号 があれば、該当行を編集モードで開きスクロール
+  useEffect(() => {
+    const editTarget = searchParams.get('edit');
+    if (!editTarget || loading) return;
+    // 該当物件を編集モードにセット
+    const target = properties.find(p => p.property_number === editTarget);
+    if (target && editingId !== editTarget) {
+      handleEdit(target);
+      // 少し遅延してからスクロール（レンダリング後）
+      setTimeout(() => {
+        const el = document.getElementById(`prospect-row-${editTarget}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.style.outline = '3px solid #1565c0';
+          el.style.outlineOffset = '-2px';
+          setTimeout(() => { el.style.outline = ''; }, 2000);
+        }
+      }, 300);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, loading, properties]);
 
   // ============================================================
   // 集計（現在の担当者フィルタ適用）
@@ -1069,6 +1093,7 @@ export default function ContractProspectsPage() {
                   return (
                     <TableRow
                       key={p.property_number}
+                      id={`prospect-row-${p.property_number}`}
                       sx={{
                         bgcolor: rowBg,
                         '&:hover': { bgcolor: isEditing ? '#fffde7' : '#f5f5f5' },
