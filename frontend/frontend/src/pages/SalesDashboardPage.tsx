@@ -16,6 +16,13 @@ import {
   CircularProgress, Snackbar, Alert,
   useTheme, useMediaQuery,
 } from '@mui/material';
+import {
+  Chart as ChartJS,
+  CategoryScale, LinearScale, BarElement, LineElement,
+  PointElement, Title, Tooltip as ChartTooltip, Legend, Filler,
+} from 'chart.js';
+import { Bar, Line } from 'react-chartjs-2';
+ChartJS.register(CategoryScale,LinearScale,BarElement,LineElement,PointElement,Title,ChartTooltip,Legend,Filler);
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import EditIcon from '@mui/icons-material/Edit';
@@ -107,7 +114,7 @@ interface MonthlyTarget {
 }
 interface MonthRow {
   month: string; target: number; hasTarget: boolean;
-  actual: number; contracted: number; forecast: number; prevActual: number;
+  actual: number; contracted: number; forecast: number; prevActual: number; prevCumActual: number;
   isFuture: boolean; isCurrentMonth: boolean;
   actualCount: number; contractedCount: number; forecastCount: number;
   cumTarget: number; cumActual: number;
@@ -273,7 +280,7 @@ export default function SalesDashboardPage() {
 
   // ── 月別データ（12ヶ月） ──
   const monthRows = useMemo(():MonthRow[]=>{
-    let cumTarget=0, cumActual=0;
+    let cumTarget=0, cumActual=0, prevCum=0;
     return FY_MONTHS.map(month=>{
       const isFuture=month>CURRENT_MONTH;
       const isCurrentMonth=month===CURRENT_MONTH;
@@ -292,14 +299,87 @@ export default function SalesDashboardPage() {
       },0);
       const prevActual=myPrev.reduce((s,p)=>s+getActualCommission(p),0);
       if (!isFuture){ cumTarget+=target; cumActual+=actual; }
+      prevCum+=prevActual;
       const monthRate=hasTarget&&!isFuture?Math.round(actual/target*100):null;
       const cumRate=cumTarget>0?Math.round(cumActual/cumTarget*100):null;
       const yoy=prevActual>0?Math.round(actual/prevActual*100):null;
-      return {month,target,hasTarget,actual,contracted,forecast,prevActual,
+      return {month,target,hasTarget,actual,contracted,forecast,prevActual,prevCumActual:prevCum,
         isFuture,isCurrentMonth,actualCount:mySettled.length,contractedCount:myContracted.length,
         forecastCount:myForecast.length,cumTarget,cumActual,monthRate,cumRate,yoy};
     });
   },[filteredSettled,filteredContracted,filteredForecast,filteredPrevYear,monthlyTargets,staffKey]);
+
+  // ── グラフデータ ──
+  const MONTH_LABELS = FY_MONTHS.map(m=>{const[,mo]=m.split('-');return`${parseInt(mo)}月`;});
+  const STAFF_COLORS_MAP: Record<string,string> = {
+    山本:'#e53935',角井:'#1e88e5',林田:'#43a047',麻生:'#fb8c00',裏:'#8e24aa',国広:'#00acc1',
+  };
+
+  const barChartData = useMemo(()=>({
+    labels: MONTH_LABELS,
+    datasets:[
+      {label:'今期実績（決済済み）',
+        data:monthRows.map(m=>parseFloat((m.actual/10_000).toFixed(1))),
+        backgroundColor:monthRows.map(m=>m.isCurrentMonth?'#1b5e20':m.isFuture?'#e0e0e0':'#43a047'),
+        borderColor:'#2e7d32',borderWidth:1,borderRadius:4},
+      {label:'今期目標',
+        data:monthRows.map(m=>parseFloat((m.target/10_000).toFixed(1))),
+        type:'line' as const,borderColor:'#1565c0',backgroundColor:'transparent',
+        borderWidth:2,borderDash:[6,3],pointRadius:5,pointBackgroundColor:'#1565c0',tension:0.2},
+      {label:'前期実績',
+        data:monthRows.map(m=>parseFloat((m.prevActual/10_000).toFixed(1))),
+        backgroundColor:'rgba(158,158,158,0.6)',borderColor:'#757575',borderWidth:1,borderRadius:4},
+    ],
+  }),[monthRows]);
+
+  const lineChartData = useMemo(()=>({
+    labels: MONTH_LABELS,
+    datasets:[
+      {label:'今期 累計実績',
+        data:monthRows.map(m=>parseFloat((m.cumActual/10_000).toFixed(1))),
+        borderColor:'#2e7d32',backgroundColor:'rgba(46,125,50,0.1)',fill:true,tension:0.3,pointRadius:5,borderWidth:2.5},
+      {label:'今期 累計目標',
+        data:monthRows.map(m=>parseFloat((m.cumTarget/10_000).toFixed(1))),
+        borderColor:'#1565c0',backgroundColor:'transparent',borderDash:[6,3],tension:0.2,pointRadius:5,borderWidth:2},
+      {label:'前期 累計実績',
+        data:monthRows.map(m=>parseFloat((m.prevCumActual/10_000).toFixed(1))),
+        borderColor:'#9e9e9e',backgroundColor:'transparent',tension:0.3,pointRadius:4,borderWidth:1.5},
+    ],
+  }),[monthRows]);
+
+  const allStaffBarData = useMemo(()=>({
+    labels: MONTH_LABELS,
+    datasets: STAFF_LIST.map(name=>({
+      label: name,
+      data: FY_MONTHS.map(month=>{
+        const pats=STAFF_PATTERNS[name]??[];
+        return parseFloat((
+          settled.filter(p=>pats.some(pat=>(p.sales_assignee??'').includes(pat))&&
+            p.settlement_date&&getSettlementMonth(p.settlement_date)===month)
+            .reduce((s,p)=>s+getActualCommission(p),0)/10_000
+        ).toFixed(1));
+      }),
+      backgroundColor:(STAFF_COLORS_MAP[name]||'#9e9e9e')+'cc',
+      borderColor:STAFF_COLORS_MAP[name]||'#9e9e9e',
+      borderWidth:1,borderRadius:3,
+    })),
+  }),[settled]);
+
+  const chartBarOptions = useMemo(()=>({
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top' as const,labels:{font:{size:13},padding:12}},
+      tooltip:{callbacks:{label:(ctx:any)=>`${ctx.dataset.label}: ${ctx.parsed.y}万円`}}},
+    scales:{x:{ticks:{font:{size:12}},grid:{display:false}},
+      y:{beginAtZero:true,ticks:{callback:(v:any)=>`${v}万`,font:{size:12}}}},
+  }),[]);
+
+  const chartLineOptions = useMemo(()=>({
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top' as const,labels:{font:{size:13},padding:12}},
+      tooltip:{callbacks:{label:(ctx:any)=>`${ctx.dataset.label}: ${ctx.parsed.y}万円`}}},
+    scales:{x:{ticks:{font:{size:12}},grid:{color:'rgba(0,0,0,0.05)'}},
+      y:{beginAtZero:true,ticks:{callback:(v:any)=>`${v}万`,font:{size:12}}}},
+  }),[]);
 
   // ── YTD累計 ──
   const ytdData = useMemo(()=>{
@@ -492,11 +572,6 @@ export default function SalesDashboardPage() {
             sx={{fontSize:'0.7rem',color:'text.secondary',cursor:'help'}}/>
         </Tooltip>
         <Box sx={{ml:'auto',display:'flex',gap:1,alignItems:'center'}}>
-          <Button variant="contained" size="small"
-            onClick={()=>navigate('/property-listings/staff-performance')}
-            sx={{fontSize:'13px',bgcolor:'#e65100','&:hover':{bgcolor:'#bf360c'},fontWeight:'bold'}}>
-            📊 担当者別グラフ
-          </Button>
           <Tooltip title="再読み込み"><IconButton size="small" onClick={fetchData} disabled={loading}>
             <RefreshIcon fontSize="small"/></IconButton></Tooltip>
         </Box>
@@ -603,6 +678,57 @@ export default function SalesDashboardPage() {
           ))}
         </Grid>
       </Paper>
+
+      {/* ──────────────────────────────────────────── */}
+      {/* グラフ（全員=大分店全体、個人=担当者別）      */}
+      {/* ──────────────────────────────────────────── */}
+      {selectedStaff==='全員' ? (<>
+        <Paper sx={{p:2.5,mb:2}} elevation={1}>
+          <Typography sx={{fontSize:'17px',fontWeight:'bold',color:PROPERTY_COLOR,mb:1.5}}>
+            📊 大分店全体 — 月別実績 vs 目標 vs 前期
+          </Typography>
+          <Box sx={{height:280}}>
+            <Bar data={barChartData} options={chartBarOptions as any}/>
+          </Box>
+        </Paper>
+        <Paper sx={{p:2.5,mb:2}} elevation={1}>
+          <Typography sx={{fontSize:'17px',fontWeight:'bold',color:PROPERTY_COLOR,mb:1.5}}>
+            📈 大分店全体 — 累計推移（今期 vs 前期 vs 目標）
+          </Typography>
+          <Box sx={{height:260}}>
+            <Line data={lineChartData} options={chartLineOptions as any}/>
+          </Box>
+        </Paper>
+        <Paper sx={{p:2.5,mb:2}} elevation={1}>
+          <Typography sx={{fontSize:'17px',fontWeight:'bold',color:'#37474f',mb:1.5}}>
+            👥 担当者別 月別実績比較（今期）
+          </Typography>
+          <Box sx={{height:280}}>
+            <Bar data={allStaffBarData} options={{
+              ...chartBarOptions,
+              plugins:{...chartBarOptions.plugins,
+                title:{display:false}},
+            } as any}/>
+          </Box>
+        </Paper>
+      </>) : (<>
+        <Paper sx={{p:2.5,mb:2}} elevation={1}>
+          <Typography sx={{fontSize:'17px',fontWeight:'bold',color:PROPERTY_COLOR,mb:1.5}}>
+            📊 {selectedStaff} — 月別実績 vs 目標 vs 前期
+          </Typography>
+          <Box sx={{height:280}}>
+            <Bar data={barChartData} options={chartBarOptions as any}/>
+          </Box>
+        </Paper>
+        <Paper sx={{p:2.5,mb:2}} elevation={1}>
+          <Typography sx={{fontSize:'17px',fontWeight:'bold',color:PROPERTY_COLOR,mb:1.5}}>
+            📈 {selectedStaff} — 累計推移（今期 vs 前期 vs 目標）
+          </Typography>
+          <Box sx={{height:260}}>
+            <Line data={lineChartData} options={chartLineOptions as any}/>
+          </Box>
+        </Paper>
+      </>)}
 
       {/* ──────────────────────────────────────────── */}
       {/* ② 年間見通しパネル                           */}

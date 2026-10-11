@@ -732,19 +732,6 @@ export default function PropertyListingsPage() {
           <Button
             variant="outlined"
             size="small"
-            onClick={() => navigate('/property-listings/staff-performance')}
-            sx={{
-              borderColor: '#e65100',
-              color: '#e65100',
-              fontWeight: 'bold',
-              '&:hover': { bgcolor: '#fff3e0', borderColor: '#bf360c' },
-            }}
-          >
-            📊 担当別グラフ
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
             startIcon={<AddPhotoAlternateIcon />}
             onClick={() => setTashaRegisterOpen(true)}
             sx={{ borderColor: '#7b1fa2', color: '#7b1fa2', '&:hover': { borderColor: '#6a1b9a', bgcolor: '#f3e5f5' } }}
