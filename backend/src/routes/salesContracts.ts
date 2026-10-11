@@ -67,12 +67,28 @@ function parseSettlementMonth(raw: string): string | null {
 
 /**
  * C列の決済確定日をパース
- * 対応フォーマット: YYYY/MM/DD, YYYY-MM-DD, M月D日 等
+ * - Google Sheets シリアル値（例: 46150）に対応
+ * - "2026/10/20", "2026-10-20" 等の文字列形式にも対応
  */
 function parseDate(raw: string): Date | null {
   if (!raw || raw.trim() === '') return null;
-  const cleaned = raw.trim().replace(/\//g, '-').replace(/年/g, '-').replace(/月/g, '-').replace(/日/g, '');
-  // "10-15" のような年なし形式は無視
+  const str = raw.trim();
+
+  // Google Sheets シリアル値の検出（現代の日付は概ね 40000〜60000 の整数）
+  const serial = parseInt(str, 10);
+  if (!isNaN(serial) && serial > 40000 && serial < 60000 && str === String(serial)) {
+    // Google Sheets の epoch: 1899年12月30日
+    const epoch = Date.UTC(1899, 11, 30);
+    return new Date(epoch + serial * 24 * 60 * 60 * 1000);
+  }
+
+  // 文字列形式 (2026/10/20, 2026-10-20, 2026年10月20日 等)
+  const cleaned = str
+    .replace(/\//g, '-')
+    .replace(/年/g, '-')
+    .replace(/月/g, '-')
+    .replace(/日/g, '')
+    .trim();
   if (!/\d{4}/.test(cleaned)) return null;
   const d = new Date(cleaned);
   return isNaN(d.getTime()) ? null : d;
@@ -80,7 +96,8 @@ function parseDate(raw: string): Date | null {
 
 /**
  * 仲介手数料をパース（万円→円 変換を含む）
- * 1000未満の値は万円単位とみなして×10000する
+ * - UNFORMATTED_VALUE で取得した数値（例: 2178000）もそのまま扱う
+ * - 1000 未満の値は万円単位とみなして×10000する
  */
 function parseCommission(raw: string): number {
   if (!raw || raw.trim() === '') return 0;
@@ -92,10 +109,11 @@ function parseCommission(raw: string): number {
     return isNaN(n) ? 0 : Math.round(n * 10_000);
   }
 
+  // カンマ区切り等を除去して数値化
   const n = parseFloat(str.replace(/[^0-9.]/g, ''));
   if (isNaN(n)) return 0;
 
-  // 1000 未満 → 万円単位と判断
+  // 1000 未満は万円単位と判断
   return n < 1000 ? Math.round(n * 10_000) : Math.round(n);
 }
 
