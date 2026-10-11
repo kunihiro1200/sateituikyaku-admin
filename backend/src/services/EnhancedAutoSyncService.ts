@@ -153,10 +153,12 @@ export class EnhancedAutoSyncService {
   // inquiry_date カラムは存在しないため、このメソッドは不要
 
   /**
-   * DBから全売主番号を取得（ページネーション対応）
+   * DBから全売主番号を取得（論理削除済みを含む、ページネーション対応）
    * Supabaseのデフォルト制限（1000件）を回避するため、ページングで全件取得
-   * ⚠️ 論理削除済み（deleted_at が非NULL）のレコードは除外する
-   *    → スプシに存在する売主が論理削除状態で残っている場合に再同期されるようにするため
+   *
+   * ⚠️ 設計方針: 論理削除済みの売主番号もDBに「存在する」として扱う。
+   *    - detectMissingSellers() で「不足」として誤認識されるのを防ぐ
+   *    - 論理削除済みの自動復元を防ぐ（復元は明示的な操作のみで行う）
    */
   private async getAllDbSellerNumbers(): Promise<Set<string>> {
     const allSellerNumbers = new Set<string>();
@@ -168,7 +170,7 @@ export class EnhancedAutoSyncService {
       const { data, error } = await this.supabase
         .from('sellers')
         .select('seller_number')
-        .is('deleted_at', null) // 論理削除済みを除外（スプシに存在する場合は再同期させる）
+        // deleted_at フィルタなし: 論理削除済みも「DBに存在する番号」として扱う
         .range(offset, offset + pageSize - 1);
 
       if (error) {
@@ -1727,7 +1729,9 @@ export class EnhancedAutoSyncService {
 
     const encryptedData: any = {
       seller_number: sellerNumber,
-      deleted_at: null, // 論理削除されていた場合は復元する
+      // deleted_at は設定しない:
+      //   - 新規挿入時: DB の DEFAULT (NULL) が適用される
+      //   - 既存更新時: 現在の値をそのまま保持する（論理削除済みを自動復元しない）
       name: mappedData.name ? encrypt(mappedData.name) : null,
       address: mappedData.address ? encrypt(mappedData.address) : null,
       phone_number: mappedData.phone_number ? encrypt(mappedData.phone_number) : null,
@@ -2022,6 +2026,38 @@ export class EnhancedAutoSyncService {
             // 復号失敗はスキップ
           }
         }
+      }
+    }
+
+    // ============================================================
+    // upsert 前チェック: 論理削除済みの売主は登録・復元しない
+    // - seller_number が DB に存在し、かつ deleted_at が非NULL の場合はスキップ
+    // - DB検索エラーが発生した場合も、安全のため登録処理へ進まない
+    // - 復元が必要な場合は明示的な操作で行うこと
+    // ============================================================
+    {
+      const { data: existingInDb, error: existingError } = await this.supabase
+        .from('sellers')
+        .select('seller_number, deleted_at')
+        .eq('seller_number', sellerNumber)
+        .maybeSingle();
+
+      if (existingError) {
+        // DB検索エラー: 安全のため登録処理へ進まない
+        console.error(
+          `❌ [syncSingleSeller] ${sellerNumber}: ` +
+          `既存確認クエリエラー (code: ${existingError.code}) — 登録をスキップ`
+        );
+        throw new Error(`既存確認クエリ失敗: ${existingError.message}`);
+      }
+
+      if (existingInDb && existingInDb.deleted_at !== null) {
+        // 論理削除済みの売主: 自動復元しない
+        console.log(
+          `⏭️ [syncSingleSeller] ${sellerNumber}: ` +
+          `論理削除済みのためスキップ（自動復元なし）`
+        );
+        return; // upsert を実行しない → idx_sellers_unique_phone_datetime 違反も発生しない
       }
     }
 
