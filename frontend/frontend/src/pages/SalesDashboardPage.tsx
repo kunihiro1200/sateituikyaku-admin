@@ -938,13 +938,61 @@ export default function SalesDashboardPage() {
       {/* ──────────────────────────────────────────── */}
       <Accordion defaultExpanded elevation={1} sx={{mb:2,'&:before':{display:'none'}}}>
         <AccordionSummary expandIcon={<ExpandMoreIcon/>} sx={{bgcolor:'#f5f5f5',minHeight:44}}>
-          <Box sx={{display:'flex',alignItems:'center',gap:1,flexWrap:'wrap'}}>
+          <Box sx={{display:'flex',alignItems:'center',gap:1,flexWrap:'wrap',width:'100%'}}>
             <Typography variant="subtitle2" fontWeight="bold">月別売上集計</Typography>
             <Typography variant="caption" color="text.secondary">
               {selectedStaff==='全員'?`${STORE_NAME}全体`:selectedStaff} — 月別目標は各行の✏️から設定
             </Typography>
           </Box>
         </AccordionSummary>
+        {/* ── 目標根拠メモ（常時表示・テーブル上部） ── */}
+        <Box sx={{px:2,pt:1.5,pb:0.5,bgcolor:'#fffde7',borderBottom:'1px solid #f5f5f5'}}
+          onClick={e=>e.stopPropagation()}>
+          <TextField
+            multiline
+            minRows={1}
+            maxRows={4}
+            fullWidth
+            size="small"
+            placeholder="📝 月別目標の根拠・方針メモ（例：前期比1.2倍を目標。10〜12月は繁忙期のため高め設定…）"
+            value={annualTargets.find(t=>t.staff_name===staffKey)?.notes??''}
+            onChange={async(e)=>{
+              const newNotes=e.target.value;
+              // ローカル即時更新
+              setAnnualTargets(prev=>prev.map(t=>
+                t.staff_name===staffKey?{...t,notes:newNotes}:t
+              ));
+            }}
+            onBlur={async(e)=>{
+              // フォーカスが外れたらDB保存
+              const newNotes=e.target.value;
+              const existing=annualTargets.find(t=>t.staff_name===staffKey);
+              if (existing) {
+                await supabase.from('sales_targets')
+                  .update({notes:newNotes})
+                  .eq('fiscal_year',FISCAL_YEAR)
+                  .eq('store_name',STORE_NAME)
+                  .eq('staff_name',staffKey);
+              } else {
+                await supabase.from('sales_targets')
+                  .upsert({fiscal_year:FISCAL_YEAR,store_name:STORE_NAME,
+                    staff_name:staffKey,target_amount:0,notes:newNotes},
+                    {onConflict:'fiscal_year,store_name,staff_name'});
+                setAnnualTargets(prev=>[...prev,{fiscal_year:FISCAL_YEAR,store_name:STORE_NAME,
+                  staff_name:staffKey,target_amount:0,notes:newNotes}]);
+              }
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root':{
+                bgcolor:'#fffff0',
+                fontSize:'14px',
+                '& fieldset':{borderColor:'#f9a825'},
+                '&:hover fieldset':{borderColor:'#f57f17'},
+                '&.Mui-focused fieldset':{borderColor:'#f57f17'},
+              }
+            }}
+          />
+        </Box>
         <AccordionDetails sx={{p:0}}>
           <TableContainer>
             <Table size="small">
