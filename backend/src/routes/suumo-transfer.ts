@@ -391,8 +391,57 @@ router.post('/suumo-transfer', async (req: Request, res: Response) => {
       console.warn(`[suumo-transfer] スプシ同期初期化エラー（DB登録は成功）: ${syncErr.message}`);
     });
 
+    // ③ SUUMO反響除外申請フォーマットへJDS連番を自動追記（ベストエフォート）
+    //    失敗してもDB登録・売主リスト反映は止めない
+    if (managementNumber) {
+      import('../services/SuumoExclusionRequestService').then(({ appendSuumoExclusionRequest }) => {
+        appendSuumoExclusionRequest(managementNumber)
+          .then((r) => {
+            if (r.skipped) {
+              console.log(`[suumo-transfer] 除外申請追記スキップ: ${r.message}`);
+            } else if (r.success) {
+              console.log(`[suumo-transfer] 除外申請追記成功: ${r.message}`);
+            } else {
+              console.warn(`[suumo-transfer] 除外申請追記失敗（DB登録は成功）: ${r.error || r.message}`);
+            }
+          })
+          .catch((e: any) => {
+            console.warn(`[suumo-transfer] 除外申請追記エラー（DB登録は成功）: ${e.message}`);
+          });
+      }).catch((e: any) => {
+        console.warn(`[suumo-transfer] 除外申請サービス初期化エラー（DB登録は成功）: ${e.message}`);
+      });
+    }
+
   } catch (error: any) {
     console.error('[suumo-transfer] エラー:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/sellers/suumo-exclusion-append-test
+ * 【一時的なテスト用】除外申請フォーマットへの追記だけを単独実行する。
+ * 新しい売主は作らず、指定JDS連番を除外申請スプシに追記する動作確認用。
+ * 確認後に削除する。CRON_SECRET認証。
+ * body: { jdsSerial: "0145987222" }
+ */
+router.post('/suumo-exclusion-append-test', async (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+  const { jdsSerial } = req.body;
+  if (!jdsSerial) {
+    return res.status(400).json({ success: false, error: 'jdsSerial is required' });
+  }
+  try {
+    const { appendSuumoExclusionRequest } = await import('../services/SuumoExclusionRequestService');
+    const result = await appendSuumoExclusionRequest(String(jdsSerial));
+    return res.json(result);
+  } catch (error: any) {
+    console.error('[suumo-exclusion-append-test] エラー:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 });
