@@ -96,9 +96,6 @@ interface ActiveListing {
   display_address?: string|null;
   seller_name?: string|null;
 }
-  address?: string|null;
-  display_address?: string|null;
-}
 interface ProspectRecord {
   property_number: string;
   prospect_rank?: string|null;
