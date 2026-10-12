@@ -741,7 +741,7 @@ export default function PropertyListingsPage() {
               '&:hover': { bgcolor: '#bf360c' },
             }}
           >
-            🏠 成約見込み_福岡
+            🏠&thinsp;成約見込み_福岡
           </Button>
           <Button
             variant="contained"
