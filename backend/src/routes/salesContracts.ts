@@ -27,6 +27,8 @@ export interface ContractRecord {
   settlement_date: string | null;   // YYYY-MM-DD
   staff: string;
   commission: number;               // 円（税込）
+  property_name: string;            // E列：物件名
+  contract_type: string;            // M列：契約形態
   category: 'actual' | 'contracted';
 }
 
@@ -173,11 +175,11 @@ router.get('/contracts', authenticate, async (req: Request, res: Response) => {
       });
     }
 
-    // ─── A〜I列を一括取得 ─────────────────────────────────
+    // ─── A〜M列を一括取得（E列:物件名、M列:契約形態を追加） ──
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!A:I`,
-      valueRenderOption: 'UNFORMATTED_VALUE', // 数値はそのまま取得
+      range: `${sheetName}!A:M`,
+      valueRenderOption: 'UNFORMATTED_VALUE',
     });
 
     const rows: any[][] = response.data.values ?? [];
@@ -200,7 +202,9 @@ router.get('/contracts', authenticate, async (req: Request, res: Response) => {
       const settlementMonthRaw = String(row[1] ?? '').trim();   // B列
       const settlementDateRaw = String(row[2] ?? '').trim();    // C列
       const staff = String(row[3] ?? '').trim();                // D列
+      const propertyName = String(row[4] ?? '').trim();         // E列：物件名
       const commissionRaw = String(row[8] ?? '').trim();        // I列
+      const contractType = String(row[12] ?? '').trim();        // M列：契約形態
 
       // 物件番号なし → スキップ
       if (!propertyNumber) continue;
@@ -240,6 +244,8 @@ router.get('/contracts', authenticate, async (req: Request, res: Response) => {
           : null,
         staff,
         commission,
+        property_name: propertyName,
+        contract_type: contractType,
         category,
       });
     }

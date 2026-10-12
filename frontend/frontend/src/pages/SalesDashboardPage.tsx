@@ -106,7 +106,10 @@ interface ProspectRecord {
 interface ActiveListingWithProspect extends ActiveListing { prospect?: ProspectRecord; }
 interface ContractRecord {
   property_number: string; settlement_month: string|null; settlement_date: string|null;
-  staff: string; commission: number; category: 'actual'|'contracted';
+  staff: string; commission: number;
+  property_name?: string;  // E列：物件名
+  contract_type?: string;  // M列：契約形態
+  category: 'actual'|'contracted';
 }
 interface AnnualTarget {
   id?: string; fiscal_year: string; store_name: string; staff_name: string; target_amount: number;
@@ -220,6 +223,15 @@ export default function SalesDashboardPage() {
 
   const openForecastModal = (staffName: string, items: ActiveListingWithProspect[]) => {
     setForecastModal({ open: true, staffName, items });
+  };
+
+  // ── 売買契約済み詳細モーダル ──
+  const [contractedModal, setContractedModal] = useState<{
+    open: boolean; title: string; items: ContractRecord[];
+  }>({ open: false, title: '', items: [] });
+
+  const openContractedModal = (title: string, items: ContractRecord[]) => {
+    setContractedModal({ open: true, title, items });
   };
 
   // ── データ取得 ──
@@ -916,9 +928,19 @@ export default function SalesDashboardPage() {
                           sx={{...rateChipSx(m.yoy),bgcolor:m.yoy>=100?'#e8f5e9':'#ffebee'}}/>
                       ):<Typography variant="caption" color="text.disabled">-</Typography>}
                     </TableCell>
-                    <TableCell sx={{...TC,color:m.contracted>0?'#6a1b9a':'text.disabled'}}>
+                    <TableCell
+                      sx={{...TC,color:m.contracted>0?'#6a1b9a':'text.disabled',
+                        cursor:m.contracted>0?'pointer':'default',
+                        textDecoration:m.contracted>0?'underline dotted':'none',
+                        '&:hover':m.contracted>0?{opacity:0.75}:{}}}
+                      onClick={()=>{
+                        if(m.contracted>0){
+                          const items=contracted.filter(c=>c.settlement_month===m.month);
+                          openContractedModal(`${formatMonth(m.month)}の売買契約済み物件`,items);
+                        }
+                      }}>
                       {m.contracted>0?`${formatPrice(m.contracted)}`+
-                        (m.contractedCount>0?` (${m.contractedCount}件)`:''): '-'}
+                        (m.contractedCount>0?` (${m.contractedCount}件 👆)`:''): '-'}
                     </TableCell>
                     <TableCell sx={{...TC,color:m.forecast>0?'#1565c0':'text.disabled'}}>
                       {m.forecast>0?`${formatPrice(m.forecast)}`+
@@ -1275,6 +1297,67 @@ export default function SalesDashboardPage() {
       </Accordion>
       )}
       </>)}
+
+      {/* ── 売買契約済み詳細モーダル ── */}
+      <Dialog open={contractedModal.open} onClose={()=>setContractedModal(m=>({...m,open:false}))} maxWidth="md" fullWidth>
+        <DialogTitle sx={{fontWeight:'bold',color:'#6a1b9a',pb:1}}>
+          🏠 {contractedModal.title}
+        </DialogTitle>
+        <DialogContent dividers sx={{p:0}}>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{bgcolor:'#6a1b9a'}}>
+                  {['物件番号','担当名','物件名','契約形態','決済見込み月','金額'].map(h=>(
+                    <TableCell key={h} sx={{color:'#fff',fontWeight:'bold',fontSize:'14px',py:1.25,px:1.5}}>
+                      {h}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {contractedModal.items.length===0 ? (
+                  <TableRow><TableCell colSpan={6} align="center" sx={{py:3,color:'#aaa'}}>
+                    該当物件なし
+                  </TableCell></TableRow>
+                ) : contractedModal.items.map(c=>(
+                  <TableRow key={`${c.property_number}-${c.settlement_month}`}
+                    sx={{'&:hover':{bgcolor:'#f3e5f5'},cursor:'pointer'}}
+                    onClick={()=>{navigate(`/property-listings/${c.property_number}`);setContractedModal(m=>({...m,open:false}));}}>
+                    <TableCell sx={{fontWeight:600,fontSize:'15px',px:1.5,py:1.25}}>{c.property_number}</TableCell>
+                    <TableCell sx={{fontSize:'14px',px:1.5,py:1.25}}>{c.staff||'-'}</TableCell>
+                    <TableCell sx={{fontSize:'14px',px:1.5,py:1.25,maxWidth:200}}>
+                      <Typography variant="body2" sx={{fontSize:'14px',wordBreak:'break-all'}}>
+                        {c.property_name||'-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell sx={{fontSize:'14px',px:1.5,py:1.25}}>
+                      {c.contract_type?(
+                        <Chip label={c.contract_type} size="small"
+                          sx={{bgcolor:'#ede7f6',color:'#6a1b9a',fontWeight:'bold',fontSize:'13px'}}/>
+                      ):'-'}
+                    </TableCell>
+                    <TableCell sx={{fontSize:'14px',px:1.5,py:1.25,whiteSpace:'nowrap',fontWeight:500}}>
+                      {c.settlement_month?formatMonth(c.settlement_month):'-'}
+                      {c.settlement_date&&<Typography variant="caption" color="text.secondary"
+                        sx={{display:'block',fontSize:'12px'}}>({c.settlement_date}確定)</Typography>}
+                    </TableCell>
+                    <TableCell sx={{fontSize:'14px',px:1.5,py:1.25,textAlign:'right',fontWeight:'bold',color:'#6a1b9a',whiteSpace:'nowrap'}}>
+                      {formatPrice(c.commission)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions sx={{px:2,py:1}}>
+          <Typography variant="caption" color="text.secondary" sx={{flex:1}}>
+            ※ 行クリックで物件詳細ページへ
+          </Typography>
+          <Button onClick={()=>setContractedModal(m=>({...m,open:false}))}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ── 成約見込み詳細モーダル ── */}
       <Dialog open={forecastModal.open} onClose={()=>setForecastModal(m=>({...m,open:false}))} maxWidth="md" fullWidth>
