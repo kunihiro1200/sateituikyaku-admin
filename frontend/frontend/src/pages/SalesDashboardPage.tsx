@@ -706,6 +706,21 @@ export default function SalesDashboardPage() {
             sx={{fontSize:'0.7rem',color:'text.secondary',cursor:'help'}}/>
         </Tooltip>
         <Box sx={{ml:'auto',display:'flex',gap:1,alignItems:'center'}}>
+          {/* 売買売上表リンクボタン */}
+          <Tooltip title="売買売上表（福岡）をGoogleスプレッドシートで開く">
+            <Button variant="contained" size="small"
+              onClick={()=>window.open('https://docs.google.com/spreadsheets/d/1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M/edit?gid=1585036738','_blank','noopener')}
+              sx={{bgcolor:'#f57c00',fontSize:'12px',fontWeight:'bold','&:hover':{bgcolor:'#e65100'}}}>
+              📊 売買売上表（福岡）
+            </Button>
+          </Tooltip>
+          <Tooltip title="売買売上表（大分）をGoogleスプレッドシートで開く">
+            <Button variant="contained" size="small"
+              onClick={()=>window.open('https://docs.google.com/spreadsheets/d/1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M/edit?gid=534678762','_blank','noopener')}
+              sx={{bgcolor:'#1565c0',fontSize:'12px',fontWeight:'bold','&:hover':{bgcolor:'#0d47a1'}}}>
+              📊 売買売上表（大分）
+            </Button>
+          </Tooltip>
           <Tooltip title="再読み込み"><IconButton size="small" onClick={fetchData} disabled={loading}>
             <RefreshIcon fontSize="small"/></IconButton></Tooltip>
         </Box>
