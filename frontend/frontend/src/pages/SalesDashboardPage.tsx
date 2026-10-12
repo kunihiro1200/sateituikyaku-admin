@@ -409,7 +409,7 @@ export default function SalesDashboardPage() {
 
   const allStaffBarData = useMemo(()=>({
     labels: MONTH_LABELS,
-    datasets: STAFF_LIST.map(name=>({
+    datasets: displayStaffList.map(name=>({
       label: name,
       data: FY_MONTHS.map(month=>{
         const pats=STAFF_PATTERNS[name]??[];
@@ -475,8 +475,11 @@ export default function SalesDashboardPage() {
       actualCount:filteredSettled.length,contractedCount:filteredContracted.length,forecastCount:filteredForecast.length};
   },[filteredSettled,filteredContracted,filteredForecast,annualTargets,staffKey]);
 
+  // 福岡版は裏・国広のみ表示
+  const displayStaffList = isFukuoka ? ['裏', '国広'] : STAFF_LIST;
+
   // ── 担当者別集計（全員表示用） ──
-  const staffSummaries = useMemo(()=>STAFF_LIST.map(name=>{
+  const staffSummaries = useMemo(()=>displayStaffList.map(name=>{
     const pats=STAFF_PATTERNS[name]??[];
     const myS=settled.filter(p=>pats.some(pat=>(p.sales_assignee??'').includes(pat)));
     const myPrev=prevYearSettled.filter(p=>pats.some(pat=>(p.sales_assignee??'').includes(pat)));
@@ -503,7 +506,7 @@ export default function SalesDashboardPage() {
     return {name,actual,ytdActual,ytdTarget,ytdRate,prevYtdActual,yoy,
       contracted:contractedAmt,forecast:forecastAmt,projected,annualTarget,projRate,
       actualCount:myS.length,contractedCount:myCon.length,forecastCount:myFor.length};
-  }),[settled,prevYearSettled,contracted,forecastItems,monthlyTargets,annualTargets]);
+  }),[settled,prevYearSettled,contracted,forecastItems,monthlyTargets,annualTargets,isFukuoka]);
 
   // ── 担当者月別（展開時） ──
   const staffMonthRows = useMemo(()=>{
