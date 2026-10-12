@@ -408,6 +408,15 @@ export default function SalesDashboardPage() {
     ],
   }),[monthRows]);
 
+  // ── 全12ヶ月の累計目標（グラフ用・未来月も含む） ──
+  const fullYearCumTarget = useMemo(()=>{
+    let cum=0;
+    return FY_MONTHS.map(month=>{
+      cum += getMonthTarget(month, staffKey);
+      return parseFloat((cum/10_000).toFixed(1));
+    });
+  },[monthlyTargets, staffKey]);
+
   const lineChartData = useMemo(()=>({
     labels: MONTH_LABELS,
     datasets:[
@@ -415,7 +424,7 @@ export default function SalesDashboardPage() {
         data:monthRows.map(m=>parseFloat((m.cumActual/10_000).toFixed(1))),
         borderColor:'#2e7d32',backgroundColor:'rgba(46,125,50,0.1)',fill:true,tension:0.3,pointRadius:5,borderWidth:2.5},
       {label:'今期 累計目標',
-        data:monthRows.map(m=>parseFloat((m.cumTarget/10_000).toFixed(1))),
+        data:fullYearCumTarget,
         borderColor:'#1565c0',backgroundColor:'transparent',borderDash:[6,3],tension:0.2,pointRadius:5,borderWidth:2},
       {label:'前期 累計実績',
         data:monthRows.map(m=>parseFloat((m.prevCumActual/10_000).toFixed(1))),
