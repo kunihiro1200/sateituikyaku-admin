@@ -5069,8 +5069,10 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
     });
 
     // 住所の取得（propertiesテーブル優先、なければsellersテーブル）
-    const address = (seller as any).property?.address || seller.propertyAddress || '';
-    console.log('[address-reading] 取得した住所:', address);
+    const rawAddress = (seller as any).property?.address || seller.propertyAddress || '';
+    // 郵便番号（〒xxx-xxxx）と前後の空白を除去してからGPTに渡す
+    const address = rawAddress.replace(/〒[0-9０-９]{3}[-－][0-9０-９]{4}\s*/g, '').trim();
+    console.log('[address-reading] 取得した住所（郵便番号除去後）:', address);
     if (!address || address.trim() === '' || address.trim() === '未入力') {
       console.log('[address-reading] 物件住所が設定されていません');
       return res.status(400).json({ error: '物件住所が設定されていません' });
