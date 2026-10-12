@@ -116,7 +116,7 @@ interface AnnualTarget {
 }
 interface MonthlyTarget {
   id?: string; fiscal_year: string; month: string; store_name: string;
-  staff_name: string; target_amount: number;
+  staff_name: string; target_amount: number; notes?: string;
 }
 interface MonthRow {
   month: string; target: number; hasTarget: boolean;
@@ -208,6 +208,7 @@ export default function SalesDashboardPage() {
   // ── 編集状態 ──
   const [editingMonth, setEditingMonth] = useState<{month:string;staffName:string}|null>(null);
   const [editMonthVal, setEditMonthVal] = useState('');
+  const [editMonthNotes, setEditMonthNotes] = useState(''); // 月別目標のメモ（根拠）
   const [editingAnnual, setEditingAnnual] = useState<string|null>(null);
   const [editAnnualVal, setEditAnnualVal] = useState('');
   const [saving, setSaving] = useState(false);
@@ -541,9 +542,10 @@ export default function SalesDashboardPage() {
       const amount=Math.round(man*10_000);
 
       if (applyAll) {
-        // 全12ヶ月に一括保存
+        // 全12ヶ月に一括保存（notesも全月に適用）
         const rows:MonthlyTarget[]=FY_MONTHS.map(m=>({
-          fiscal_year:FISCAL_YEAR, month:m, store_name:STORE_NAME, staff_name:sKey, target_amount:amount,
+          fiscal_year:FISCAL_YEAR, month:m, store_name:STORE_NAME, staff_name:sKey,
+          target_amount:amount, notes:editMonthNotes||undefined,
         }));
         const {error}=await supabase.from('monthly_sales_targets')
           .upsert(rows,{onConflict:'fiscal_year,month,store_name,staff_name'});
@@ -552,7 +554,8 @@ export default function SalesDashboardPage() {
           ...rows]);
         setSnackbar({open:true,message:`全12ヶ月に${man}万円を一括設定しました`,severity:'success'});
       } else {
-        const row:MonthlyTarget={fiscal_year:FISCAL_YEAR,month,store_name:STORE_NAME,staff_name:sKey,target_amount:amount};
+        const row:MonthlyTarget={fiscal_year:FISCAL_YEAR,month,store_name:STORE_NAME,staff_name:sKey,
+          target_amount:amount, notes:editMonthNotes||undefined};
         const {error}=await supabase.from('monthly_sales_targets')
           .upsert(row,{onConflict:'fiscal_year,month,store_name,staff_name'});
         if (error) throw error;
@@ -562,6 +565,7 @@ export default function SalesDashboardPage() {
 
       setEditingMonth(null);
       setApplyAll(false);
+      setEditMonthNotes('');
     } catch(err:any) {
       setSnackbar({open:true,message:err.message??'保存失敗',severity:'error'});
     } finally { setSaving(false); }
@@ -614,18 +618,31 @@ export default function SalesDashboardPage() {
   /** 月別目標の編集セル（インライン） */
   const renderMonthTargetCell = (month: string, sKey: string, currentTarget: number) => {
     const isEditing = editingMonth?.month===month && editingMonth?.staffName===sKey;
+    const currentNotes = monthlyTargets.find(t=>t.month===month&&t.staff_name===sKey)?.notes ?? '';
     if (isEditing) return (
-      <Box sx={{display:'flex',flexDirection:'column',gap:0.5,minWidth:160}}>
+      <Box sx={{display:'flex',flexDirection:'column',gap:0.5,minWidth:200}}>
         <Box sx={{display:'flex',gap:0.5,alignItems:'center'}}>
           <TextField size="small" value={editMonthVal} onChange={e=>setEditMonthVal(e.target.value)}
-            type="number" label="万円単位で入力" sx={{width:140}} inputProps={{min:0}} autoFocus
+            type="number" label="万円単位で入力" sx={{width:130}} inputProps={{min:0}} autoFocus
             helperText="例: 500 → 500万円"
             onKeyDown={e=>{if(e.key==='Enter') handleSaveMonthTarget(month,sKey,editMonthVal,applyAll);}}/>
           <IconButton size="small" color="primary" disabled={saving}
             onClick={()=>handleSaveMonthTarget(month,sKey,editMonthVal,applyAll)}><SaveIcon sx={{fontSize:'1rem'}}/></IconButton>
           <IconButton size="small" disabled={saving}
-            onClick={()=>{setEditingMonth(null);setApplyAll(false);}}><CancelIcon sx={{fontSize:'1rem'}}/></IconButton>
+            onClick={()=>{setEditingMonth(null);setApplyAll(false);setEditMonthNotes('');}}><CancelIcon sx={{fontSize:'1rem'}}/></IconButton>
         </Box>
+        {/* 根拠メモ */}
+        <TextField
+          multiline
+          rows={2}
+          size="small"
+          fullWidth
+          placeholder="目標の根拠・メモ（任意）例：前期実績を参考に○○のため"
+          value={editMonthNotes}
+          onChange={e=>setEditMonthNotes(e.target.value)}
+          sx={{'& .MuiInputBase-root':{fontSize:'0.8rem'}}}
+        />
+        {/* 全月一括設定 */}
         <Box sx={{display:'flex',alignItems:'center',gap:0.5,cursor:'pointer'}}
           onClick={()=>setApplyAll(prev=>!prev)}>
           <Box sx={{width:16,height:16,border:`2px solid ${applyAll?'#1565c0':'#bbb'}`,
@@ -640,16 +657,35 @@ export default function SalesDashboardPage() {
       </Box>
     );
     return (
-      <Box sx={{display:'flex',alignItems:'center',gap:0.25}}>
-        <Typography variant="body2" sx={{fontSize:'0.8rem',minWidth:60}}>
-          {currentTarget>0?formatPrice(currentTarget):<span style={{color:'#bbb'}}>未設定</span>}
-        </Typography>
-        <Tooltip title="目標を設定（万円単位）">
-          <IconButton size="small"
-            onClick={()=>{setEditingMonth({month,staffName:sKey});setEditMonthVal(currentTarget>0?(currentTarget/10_000).toString():'');setApplyAll(false);}}>
-            <EditIcon sx={{fontSize:'0.8rem',color:PROPERTY_COLOR}}/>
-          </IconButton>
-        </Tooltip>
+      <Box sx={{display:'flex',alignItems:'flex-start',gap:0.25}}>
+        <Box>
+          <Box sx={{display:'flex',alignItems:'center',gap:0.25}}>
+            <Typography variant="body2" sx={{fontSize:'0.8rem',minWidth:60}}>
+              {currentTarget>0?formatPrice(currentTarget):<span style={{color:'#bbb'}}>未設定</span>}
+            </Typography>
+            <Tooltip title="目標を設定（万円単位）">
+              <IconButton size="small"
+                onClick={()=>{
+                  setEditingMonth({month,staffName:sKey});
+                  setEditMonthVal(currentTarget>0?(currentTarget/10_000).toString():'');
+                  setEditMonthNotes(currentNotes);
+                  setApplyAll(false);
+                }}>
+                <EditIcon sx={{fontSize:'0.8rem',color:PROPERTY_COLOR}}/>
+              </IconButton>
+            </Tooltip>
+          </Box>
+          {/* メモは常に目立って表示 */}
+          {currentNotes && (
+            <Box sx={{mt:0.5,p:0.75,bgcolor:'#fff3e0',border:'1px solid #ffb74d',
+              borderRadius:1,maxWidth:200}}>
+              <Typography sx={{fontSize:'0.78rem',color:'#e65100',lineHeight:1.4,
+                whiteSpace:'pre-wrap',wordBreak:'break-all'}}>
+                📝 {currentNotes}
+              </Typography>
+            </Box>
+          )}
+        </Box>
       </Box>
     );
   };
