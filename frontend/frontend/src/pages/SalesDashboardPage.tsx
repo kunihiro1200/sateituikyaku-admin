@@ -274,7 +274,15 @@ export default function SalesDashboardPage() {
           setContracted([]);
         }
       } else {
-        setContracted([]);
+        // 福岡版：専用シートから取得
+        try {
+          const cr = await api.get<{contracts:ContractRecord[]}>('/api/sales/contracts?store=fukuoka');
+          setContracted((cr.data.contracts??[]).filter(c=>c.category==='contracted'));
+          setContractedError(null);
+        } catch {
+          setContractedError('スプレッドシート取得エラー（福岡シート）');
+          setContracted([]);
+        }
       }
     } catch(err) {
       setSnackbar({open:true,message:'データ取得失敗',severity:'error'});

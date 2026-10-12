@@ -2,27 +2,20 @@
  * 売上契約管理API
  * Google スプレッドシートから売買契約情報を取得する
  *
- * 読み取るスプレッドシート: 1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M (シートgid: 534678762)
+ * スプレッドシートID: 1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M
+ * 大分シート gid: 534678762
+ * 福岡シート gid: 1585036738 (シート名: 売買売上表 （福岡）)
  *
- * 列構成:
- *   A列: 物件番号
- *   B列: 決済予定月 (例: "10" = その年の10月)
- *   C列: 決済確定日 (実際の決済日 / 空なら未決済)
- *   D列: 担当
- *   I列: 仲介手数料
- *
- * カテゴリ判定:
- *   - C列 ≤ 今日  → 'actual'     (決済済み実績)
- *   - C列 > 今日  → 'contracted' (決済日確定済み・未決済)
- *   - C列 なし + B列あり → 'contracted' (売買契約済み・決済予定)
- *   - FI番号 → スキップ（福岡店）
+ * 列構成（両シート共通）:
+ *   A列: 物件番号  B列: 決済予定月  C列: 決済確定日  D列: 担当  I列: 仲介手数料
  */
 
 import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware/auth';
 
 const SPREADSHEET_ID = '1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M';
-const SHEET_GID = 534678762;
+const SHEET_GID_OITA    = 534678762;    // 大分シート
+const SHEET_GID_FUKUOKA = 1585036738;  // 福岡シート
 
 // ============================================================
 // 型
@@ -133,6 +126,10 @@ const router = Router();
  */
 router.get('/contracts', authenticate, async (req: Request, res: Response) => {
   try {
+    // ?store=fukuoka で福岡シートを使用
+    const isFukuoka = req.query.store === 'fukuoka';
+    const sheetGid = isFukuoka ? SHEET_GID_FUKUOKA : SHEET_GID_OITA;
+
     const { google } = await import('googleapis');
 
     // ─── Google 認証 ───────────────────────────────────────
@@ -166,13 +163,13 @@ router.get('/contracts', authenticate, async (req: Request, res: Response) => {
     // ─── シート名をメタデータから取得 ─────────────────────
     const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
     const sheetMeta = meta.data.sheets?.find(
-      (s) => s.properties?.sheetId === SHEET_GID
+      (s) => s.properties?.sheetId === sheetGid
     );
     const sheetName = sheetMeta?.properties?.title;
 
     if (!sheetName) {
       return res.status(404).json({
-        error: `シートID ${SHEET_GID} が見つかりません。スプレッドシートが正しく共有されているか確認してください。`,
+        error: `シートID ${sheetGid} が見つかりません。スプレッドシートが正しく共有されているか確認してください。`,
       });
     }
 
@@ -208,8 +205,10 @@ router.get('/contracts', authenticate, async (req: Request, res: Response) => {
       // 物件番号なし → スキップ
       if (!propertyNumber) continue;
 
-      // FI番号 → 福岡店のためスキップ
-      if (propertyNumber.toUpperCase().includes('FI')) continue;
+      // 店舗フィルタ：大分=FI除外、福岡=FI含む
+      const isFI = propertyNumber.toUpperCase().includes('FI');
+      if (isFukuoka && !isFI) continue;  // 福岡シートなのにFIなし → スキップ
+      if (!isFukuoka && isFI) continue;  // 大分シートなのにFI → スキップ
 
       const commission = parseCommission(commissionRaw);
       const settlementDate = parseDate(settlementDateRaw);
