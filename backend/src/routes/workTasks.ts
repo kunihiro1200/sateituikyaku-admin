@@ -397,6 +397,9 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
     //     2テーブルを並列（Promise.all）で取得して待ち時間を短縮する。
 
     // activity_logs: action='email' かつ created_at >= sinceIso。
+    // ⚠️ metadata をまるごと取得すると email 本文（body/body_preview）まで含み、
+    //    24,000件超では転送量が数十MBになり Vercel の30秒上限を超える。
+    //    集計に必要な JSON サブフィールド（templateName / subject）だけを射影して取得する。
     const fetchEmailLogs = async (): Promise<any[]> => {
       const out: any[] = [];
       const PAGE = 1000;
@@ -405,7 +408,7 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
       while (true) {
         const { data: page, error: pageErr } = await supabase
           .from('activity_logs')
-          .select('metadata, created_at, target_id, employee:employees(initials, name)')
+          .select('created_at, tpl:metadata->>templateName, subj:metadata->>subject, employee:employees(initials, name)')
           .eq('action', 'email')
           .gte('created_at', sinceIso)
           .range(offset, offset + PAGE - 1);
@@ -455,8 +458,9 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
     const priceReductionProperties: Record<string, Record<string, Set<string>>> = {};
 
     for (const log of emailLogs || []) {
-      const meta = (log as any).metadata || {};
-      const templateName = String(meta.templateName || '');
+      // 射影済みサブフィールド（tpl=metadata->>templateName, subj=metadata->>subject）
+      const templateName = String((log as any).tpl || '');
+      const subject = String((log as any).subj || '');
       const emp = (log as any).employee;
       const rawInitial = emp?.initials || emp?.name || '';
       if (!rawInitial) continue;
@@ -466,14 +470,14 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
       if (!month) continue;
       if (isPriceReduction(templateName)) {
         // 件名から物件を識別。件名が空のログは物件単位で数えられないためスキップ
-        const propertyKey = propertyKeyFromSubject(meta.subject);
+        const propertyKey = propertyKeyFromSubject(subject);
         if (propertyKey) {
           if (!priceReductionProperties[month]) priceReductionProperties[month] = {};
           if (!priceReductionProperties[month][initial]) priceReductionProperties[month][initial] = new Set<string>();
           priceReductionProperties[month][initial].add(propertyKey);
         }
       }
-      if (isReins(templateName || meta.subject)) addCount(month, 'reinsEmail', initial);
+      if (isReins(templateName || subject)) addCount(month, 'reinsEmail', initial);
     }
 
     // ユニーク物件数を priceReductionEmail の件数として monthly に反映
