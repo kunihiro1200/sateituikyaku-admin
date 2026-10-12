@@ -234,6 +234,15 @@ export default function SalesDashboardPage() {
     setContractedModal({ open: true, title, items });
   };
 
+  // ── 前年同月決済物件モーダル ──
+  const [prevYearModal, setPrevYearModal] = useState<{
+    open: boolean; title: string; items: SettledProperty[];
+  }>({ open: false, title: '', items: [] });
+
+  const openPrevYearModal = (title: string, items: SettledProperty[]) => {
+    setPrevYearModal({ open: true, title, items });
+  };
+
   // ── データ取得 ──
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -919,8 +928,21 @@ export default function SalesDashboardPage() {
                         <Chip label={`${m.cumRate}%`} size="small" sx={rateChipSx(m.cumRate)}/>
                       ):<Typography variant="caption" color="text.disabled">-</Typography>}
                     </TableCell>
-                    <TableCell sx={{...TC,color:'text.secondary'}}>
-                      {m.prevActual>0?formatPrice(m.prevActual):'-'}
+                    <TableCell
+                      sx={{...TC,color:'text.secondary',
+                        cursor:m.prevActual>0?'pointer':'default',
+                        textDecoration:m.prevActual>0?'underline dotted':'none',
+                        '&:hover':m.prevActual>0?{opacity:0.75}:{}}}
+                      onClick={()=>{
+                        if(m.prevActual>0){
+                          const prevM=shiftMonthByYear(m.month,-1);
+                          const items=filteredPrevYear.filter(p=>
+                            p.settlement_date&&getSettlementMonth(p.settlement_date)===prevM
+                          );
+                          openPrevYearModal(`前年${formatMonth(prevM)}の決済済み物件`,items);
+                        }
+                      }}>
+                      {m.prevActual>0?`${formatPrice(m.prevActual)} 👆`:'-'}
                     </TableCell>
                     <TableCell sx={TC}>
                       {m.yoy!=null?(
@@ -942,9 +964,19 @@ export default function SalesDashboardPage() {
                       {m.contracted>0?`${formatPrice(m.contracted)}`+
                         (m.contractedCount>0?` (${m.contractedCount}件 👆)`:''): '-'}
                     </TableCell>
-                    <TableCell sx={{...TC,color:m.forecast>0?'#1565c0':'text.disabled'}}>
+                    <TableCell
+                      sx={{...TC,color:m.forecast>0?'#1565c0':'text.disabled',
+                        cursor:m.forecast>0?'pointer':'default',
+                        textDecoration:m.forecast>0?'underline dotted':'none',
+                        '&:hover':m.forecast>0?{opacity:0.75}:{}}}
+                      onClick={()=>{
+                        if(m.forecast>0){
+                          const items=filteredForecast.filter(p=>p.prospect?.settlement_expected_month===m.month);
+                          openForecastModal(`${formatMonth(m.month)}の成約見込み物件`,items);
+                        }
+                      }}>
                       {m.forecast>0?`${formatPrice(m.forecast)}`+
-                        (m.forecastCount>0?` (${m.forecastCount}件)`:''):'-'}
+                        (m.forecastCount>0?` (${m.forecastCount}件 👆)`:''):'-'}
                     </TableCell>
                   </TableRow>
                   );
@@ -1297,6 +1329,59 @@ export default function SalesDashboardPage() {
       </Accordion>
       )}
       </>)}
+
+      {/* ── 前年同月決済物件モーダル ── */}
+      <Dialog open={prevYearModal.open} onClose={()=>setPrevYearModal(m=>({...m,open:false}))} maxWidth="md" fullWidth>
+        <DialogTitle sx={{fontWeight:'bold',color:'#546e7a',pb:1}}>
+          📅 {prevYearModal.title}
+        </DialogTitle>
+        <DialogContent dividers sx={{p:0}}>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{bgcolor:'#546e7a'}}>
+                  {['物件番号','担当者','所在地','決済日','売上金額（税込）'].map(h=>(
+                    <TableCell key={h} sx={{color:'#fff',fontWeight:'bold',fontSize:'14px',py:1.25,px:1.5}}>
+                      {h}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {prevYearModal.items.length===0 ? (
+                  <TableRow><TableCell colSpan={5} align="center" sx={{py:3,color:'#aaa'}}>
+                    該当物件なし
+                  </TableCell></TableRow>
+                ) : prevYearModal.items.map(p=>(
+                  <TableRow key={p.property_number}
+                    sx={{'&:hover':{bgcolor:'#eceff1'},cursor:'pointer'}}
+                    onClick={()=>{navigate(`/property-listings/${p.property_number}`);setPrevYearModal(m=>({...m,open:false}));}}>
+                    <TableCell sx={{fontWeight:600,fontSize:'15px',px:1.5,py:1.25}}>{p.property_number}</TableCell>
+                    <TableCell sx={{fontSize:'14px',px:1.5,py:1.25}}>{p.sales_assignee||'-'}</TableCell>
+                    <TableCell sx={{fontSize:'13px',px:1.5,py:1.25,maxWidth:200}}>
+                      <Typography variant="body2" sx={{fontSize:'13px',wordBreak:'break-all'}}>
+                        {(p as any).display_address||(p as any).address||'-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell sx={{fontSize:'14px',px:1.5,py:1.25,whiteSpace:'nowrap'}}>
+                      {p.settlement_date?new Date(p.settlement_date).toLocaleDateString('ja-JP',{year:'numeric',month:'numeric',day:'numeric'}):'-'}
+                    </TableCell>
+                    <TableCell sx={{fontSize:'14px',px:1.5,py:1.25,textAlign:'right',fontWeight:'bold',color:'#546e7a',whiteSpace:'nowrap'}}>
+                      {formatPrice(getActualCommission(p))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions sx={{px:2,py:1}}>
+          <Typography variant="caption" color="text.secondary" sx={{flex:1}}>
+            ※ 行クリックで物件詳細ページへ
+          </Typography>
+          <Button onClick={()=>setPrevYearModal(m=>({...m,open:false}))}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ── 売買契約済み詳細モーダル ── */}
       <Dialog open={contractedModal.open} onClose={()=>setContractedModal(m=>({...m,open:false}))} maxWidth="md" fullWidth>
