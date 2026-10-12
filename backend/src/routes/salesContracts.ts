@@ -145,14 +145,22 @@ const router = Router();
 /**
  * GET /api/sales/contracts
  * スプレッドシートから売買契約情報を取得して返す
+ * ?store=fukuoka で福岡シートを使用
+ * ?include_prev=true で前期（前FY）の決済済み物件も含める
  */
 router.get('/contracts', authenticate, async (req: Request, res: Response) => {
   try {
-    // ?store=fukuoka で福岡シートを使用
     const isFukuoka = req.query.store === 'fukuoka';
+    const includePrev = req.query.include_prev === 'true';
     const sheetGid = isFukuoka ? SHEET_GID_FUKUOKA : SHEET_GID_OITA;
 
-    const { google } = await import('googleapis');
+    // FY範囲（include_prev=true の場合は前期も含める）
+    const FY_START = '2026-10';
+    const FY_END = '2027-09';
+    const PREV_FY_START = '2025-10';
+    const PREV_FY_END = '2026-09';
+    const rangeStart = includePrev ? PREV_FY_START : FY_START;
+    const rangeEnd = FY_END;
 
     // ─── Google 認証 ───────────────────────────────────────
     let auth: any;
@@ -251,8 +259,8 @@ router.get('/contracts', authenticate, async (req: Request, res: Response) => {
         category = 'contracted';
       }
 
-      // FY（2026-10〜2027-09）外はスキップ
-      if (!settlementMonth || settlementMonth < FY_START || settlementMonth > FY_END) {
+      // FY範囲フィルタ（include_prev=true なら前期も含める）
+      if (!settlementMonth || settlementMonth < rangeStart || settlementMonth > rangeEnd) {
         continue;
       }
 

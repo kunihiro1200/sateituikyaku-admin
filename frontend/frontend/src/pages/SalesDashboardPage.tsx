@@ -287,21 +287,62 @@ export default function SalesDashboardPage() {
       // スプレッドシートの売買契約済み（大分店のみ・福岡は別途）
       if (!isFukuoka) {
         try {
-          const cr = await api.get<{contracts:ContractRecord[]}>('/api/sales/contracts');
-          setContracted((cr.data.contracts??[]).filter(c=>c.category==='contracted'));
+          const cr = await api.get<{contracts:ContractRecord[]}>('/api/sales/contracts?include_prev=true');
+          const all = cr.data.contracts ?? [];
+          setContracted(all.filter(c=>c.category==='contracted'));
+          // 前期の決済済み（スプシ）を property_listings の前期実績に補完
+          const prevActualFromSheet = all.filter(c=>
+            c.category==='actual' &&
+            c.settlement_date &&
+            c.settlement_date >= PREV_FY_START_DATE &&
+            c.settlement_date <= PREV_FY_END_DATE
+          );
+          // property_listingsにない物件番号のみ追加
+          const dbPrevNumbers = new Set((pR.data??[]).map((p:any)=>p.property_number));
+          const supplementPrev = prevActualFromSheet
+            .filter(c=>!dbPrevNumbers.has(c.property_number))
+            .map(c=>({
+              property_number:c.property_number,
+              sales_assignee:c.staff,
+              settlement_date:c.settlement_date,
+              total_commission:c.commission,
+              commission_from_seller:null, commission_from_buyer:null, price:null,
+            }));
+          setPrevYearSettled([...(pR.data??[]), ...supplementPrev]);
           setContractedError(null);
         } catch {
           setContractedError('スプレッドシート取得エラー');
+          setPrevYearSettled(pR.data??[]);
           setContracted([]);
         }
       } else {
         // 福岡版：専用シートから取得
         try {
-          const cr = await api.get<{contracts:ContractRecord[]}>('/api/sales/contracts?store=fukuoka');
-          setContracted((cr.data.contracts??[]).filter(c=>c.category==='contracted'));
+          const cr = await api.get<{contracts:ContractRecord[]}>('/api/sales/contracts?store=fukuoka&include_prev=true');
+          const all = cr.data.contracts ?? [];
+          setContracted(all.filter(c=>c.category==='contracted'));
+          // 前期の決済済みを補完
+          const prevActualFromSheet = all.filter(c=>
+            c.category==='actual' &&
+            c.settlement_date &&
+            c.settlement_date >= PREV_FY_START_DATE &&
+            c.settlement_date <= PREV_FY_END_DATE
+          );
+          const dbPrevNumbers = new Set((pR.data??[]).map((p:any)=>p.property_number));
+          const supplementPrev = prevActualFromSheet
+            .filter(c=>!dbPrevNumbers.has(c.property_number))
+            .map(c=>({
+              property_number:c.property_number,
+              sales_assignee:c.staff,
+              settlement_date:c.settlement_date,
+              total_commission:c.commission,
+              commission_from_seller:null, commission_from_buyer:null, price:null,
+            }));
+          setPrevYearSettled([...(pR.data??[]), ...supplementPrev]);
           setContractedError(null);
         } catch {
           setContractedError('スプレッドシート取得エラー（福岡シート）');
+          setPrevYearSettled(pR.data??[]);
           setContracted([]);
         }
       }
