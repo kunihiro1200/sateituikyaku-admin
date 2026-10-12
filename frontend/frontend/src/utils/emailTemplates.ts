@@ -529,7 +529,7 @@ HP：https://ifoo-oita.com/
     id: 'home4u_call_cancel',
     label: '不通で電話時間確認＆キャンセル案内（HOME4U）',
     subject: '【HOME4U】査定依頼の件',
-    sites: ['H'], // HOME4U専用
+    sites: ['H', 'S'], // HOME4U専用（SUUMO=Sも同じ扱い）
     order: 9,
     content: `<<名前(漢字のみ）>>様
 
@@ -554,7 +554,7 @@ HP：https://ifoo-oita.com/
     id: 'home4u_cancel_only',
     label: 'キャンセル案内のみ（HOME4U）',
     subject: '【HOME4U】査定依頼の件',
-    sites: ['H'], // HOME4U専用
+    sites: ['H', 'S'], // HOME4U専用（SUUMO=Sも同じ扱い）
     order: 10,
     content: `<<名前(漢字のみ）>>様
 

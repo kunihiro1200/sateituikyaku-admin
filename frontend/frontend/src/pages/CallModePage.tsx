@@ -1293,7 +1293,8 @@ const CallModePage = () => {
       { keyword: 'すまいステップ', sites: ['す'] },
       // 「進捗③の返信（住まいステップ）」のように「住まいステップ」表記のテンプレもあるため両方を許可する
       { keyword: '住まいステップ', sites: ['す'] },
-      { keyword: 'HOME4U',         sites: ['H'] },
+      // SUUMO（S）はHOME4U（H）と同じテンプレを使う
+      { keyword: 'HOME4U',         sites: ['H', 'S'] },
     ];
 
     // サイト別フィルタリング
@@ -1928,6 +1929,9 @@ const CallModePage = () => {
         return 'https://partner.ieul.jp/';
       case 'H':
         return 'https://www.home4u.jp/member/sell/company/menu';
+      case 'S':
+        // SUUMO（リクルートＪＤＳ）：メール申告ベースの除外申請フォーマット（専用スプシ）
+        return 'https://docs.google.com/spreadsheets/d/1JHIpTlqaUcF0xpuoPn3213__eFVKKIHV/edit?gid=1008626043#gid=1008626043';
       case 'す':
         return 'https://sumai-step.com/partner/charge_reject_forms/new';
       case 'L':
@@ -1951,6 +1955,9 @@ const CallModePage = () => {
         return '反響から1週間後に申請処理する\n１．査定に必要な不動産情報及び電話番号に虚偽の記載がある場合\n２．イエウールの査定依頼よりも前に他社で専属専任媒介契約を結んでいる場合（要証拠）\n３．市街化調整区域で建物の建築が不可\n４．二等親以内の親族と法的な代理人を除く第３者からの依頼\n５．電話、メールとも、依頼日より１週間以上連絡がつかない場合\n６．他社査定サイトと情報が重複し、かつイエウールが劣後だった場合（要証拠）\n７．過去３ヶ月以内にイエウールを含む各経路から入手した査定情報と内容が重複している場合（要証拠）';
       case 'H':
         return '【売買不可な物件】市街化調整区域、再建築不可、農地法上の第1種農地、差押物件、土砂災害警戒区域\n【物件の特定不可】所在地不明や場所が特定できない\n【連絡先登録情報の不備】電話やメアドが違う（虚偽）\n【なりすまし】利用者に電話したが他人とつながる\n【過去のHOME4Uの反響】過去６ヶ月以内に、同一人物による同一物件の反響が重複している\n【他社で専任】他社が過去２ヶ月以内に専属、専任契約をしている\n【企業、団体からの売却ニーズではなく価格調査の依頼】\n＊注意！！　　下記は課金対象（除外できません！！）\n①連絡がとれない反響メール、電話で連絡するも繋がらない\n②売却意思のない反響ユーザーからのキャンセル依頼';
+      case 'S':
+        // SUUMO（リクルートＪＤＳ）：メール申告ベースで下記ケースを弊社判断で除外
+        return '【反響除外対象】メール申告ベースで下記ケースを除外対応\n①同一カスタマーから同一法人に対して、反響取得月からその前月までの期間に重複して入った反響（同一反響）\n　※同一反響者が住所の異なる物件の査定依頼を複数行った際は、物件ごとに課金対象\n②いたずら、打ち間違いと思われる反響（いたずら反響）\n＊申請期限：反響取得月の翌月8日まで（期日以降の申請は受付不可）\n＊大型連休中・年末年始等は別途スケジュール連絡あり';
       case 'Y':
         return '査定依頼日より6日後まで除外申請期間（9/1に反響あった場合9/7まで除外期間）\n*電話が繋がらない場合は番号２を選択してください\n（1）査定対象の不動産に関する情報が正確でなかったこと、またはその内容の不備に起因して査定が行えない場合\n（2）査定依頼をしたユーザー情報の連絡先が正確でなかったこと、またはその内容の不備に起因して査定が行えない場合\n（3）査定対象の不動産についてすでに専属専任媒介契約が締結されている場合\n（4）不動産の所有者以外の者からの査定依頼の場合（代理権を有する代理人や二親等以内の親族からの査定依頼は除く）\n（5）不動産会社、弁護士事務所、探偵業者その他の企業、事業者等による調査目的の場合\n（6）査定依頼の日を含め3日以内にクライアントに対し査定依頼のキャンセルがあった場合\n（7）査定依頼の日から起算して過去3ヶ月以内に同一人物による同一不動産に対する査定依頼がなされている場合\n（8）差押または処分禁止の仮処分の対象である等法令上不動産の処分が禁止されている場合、または、法令上建物の建築が制限されている不動産の場合\n（9）その他、クライアントからの申請を受けて、当社が正当と判断した場合';
       case 'L':
@@ -10499,8 +10506,8 @@ HP：https://ifoo-oita.com/
                       {/* 全サイト共通: 反響詳細日時 */}
                       {fieldBox('反響詳細日時', formattedDatetime, false)}
 
-                      {/* 全サイト共通: 名前v */}
-                      {site === 'H'
+                      {/* 全サイト共通: 名前v（H=HOME4U/S=SUUMOは名字のみ） */}
+                      {(site === 'H' || site === 'S')
                         ? fieldBox('名前v（名字のみ貼り付け）', lastName)
                         : fieldBox('名前v', seller.name || '－')}
 
@@ -10521,8 +10528,8 @@ HP：https://ifoo-oita.com/
                         </Grid>
                       )}
 
-                      {/* H: コピー案内テキスト */}
-                      {site === 'H' && (
+                      {/* H/S: コピー案内テキスト（HOME4U/SUUMO） */}
+                      {(site === 'H' || site === 'S') && (
                         <Grid item xs={12}>
                           <Typography variant="caption" color="text.secondary">
                             ↑名前は名字のみ下記除外申請サイト内に貼り付けてください
@@ -10792,7 +10799,7 @@ HP：https://ifoo-oita.com/
                   >
                     ⚠️ {exclusionAction}
                   </Typography>
-                  {seller?.site === 'H' && (
+                  {(seller?.site === 'H' || seller?.site === 'S') && (
                     <Chip
                       label="（なりすまし）として除外してください"
                       color="warning"
@@ -12208,8 +12215,9 @@ HP：https://ifoo-oita.com/
                             if (newValuationMethod !== editedValuationMethod) {
                               handleValuationMethodChange('不要');
                             }
-                            // サイト=H かつ inquiryDate が存在する場合：反響日+5日を次電日に設定
-                            if (seller?.site === 'H' && seller?.inquiryDate) {
+                            // サイト=H（HOME4U）/S（SUUMO）かつ inquiryDate が存在する場合：反響日+5日を次電日に設定
+                            // SUUMOはHOME4Uと同じ扱い
+                            if ((seller?.site === 'H' || seller?.site === 'S') && seller?.inquiryDate) {
                               const nextDate = calcInquiryDatePlusDays(seller.inquiryDate, 5);
                               if (nextDate) {
                                 setEditedNextCallDate(nextDate);
@@ -12217,7 +12225,7 @@ HP：https://ifoo-oita.com/
                                 setEditedNextCallDate(exclusionDate);
                               }
                             } else if (exclusionDate) {
-                              // H以外：既存動作（除外日そのものを次電日に設定）
+                              // H/S以外：既存動作（除外日そのものを次電日に設定）
                               setEditedNextCallDate(exclusionDate);
                             }
                           }
