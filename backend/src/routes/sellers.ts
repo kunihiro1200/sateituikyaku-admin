@@ -5128,6 +5128,7 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
       '木上': 'きのえ',
       '鶴見': 'つるみ',
       '横尾': 'よこお',
+      '浦田': 'うらた',
       // 福岡県
       '早良': 'さわら',
       '百道': 'ももち',
