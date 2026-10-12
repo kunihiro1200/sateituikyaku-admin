@@ -33,9 +33,9 @@ export class ValuationCalculatorService extends BaseRepository {
         sellerFixedAssetTaxRoadPrice: seller.fixedAssetTaxRoadPrice
       });
 
-      // 築年数の計算（2025年基準）
+      // 築年数の計算（実行時の暦年を使用）
       // 築年未入力の場合はデフォルト33年（木造の耐用年数・残存価値10%）
-      const currentYear = 2025;
+      const currentYear = new Date().getFullYear();
       const buildingAge = buildYear > 0 ? currentYear - buildYear : 33;
 
       // 建築単価の取得
@@ -111,7 +111,7 @@ export class ValuationCalculatorService extends BaseRepository {
     const landArea = property.landAreaVerified || property.landArea || 0;
     const fixedAssetTaxRoadPrice = seller.fixedAssetTaxRoadPrice || 0;
 
-    const currentYear = 2025;
+    const currentYear = new Date().getFullYear();
     const buildingAge = buildYear > 0 ? currentYear - buildYear : 33;
 
     const constructionUnitPrice = await this.getConstructionUnitPrice(buildYear, structure);
@@ -164,7 +164,17 @@ export class ValuationCalculatorService extends BaseRepository {
       return this.getDefaultConstructionPrice(structure);
     }
 
-    // データベースから建築価格を取得（DBが正とする）
+    // 🚀 パフォーマンス優先：ハードコードテーブルを最初に確認（1965〜2025年をカバー）
+    // Vercel + Supabase のコールドスタートによる遅延を防ぐため、
+    // ハードコードデータが存在する年はDBクエリを行わない。
+    const hardcodedPrice = this.getHardcodedConstructionPrice(buildYear, structure);
+    if (hardcodedPrice) {
+      console.log('✅ Got price from hardcoded table (no DB query needed):', hardcodedPrice);
+      return hardcodedPrice;
+    }
+
+    // ハードコードにない年（2026年以降等）のみDBを試みる
+    console.log('🔄 Year not in hardcoded table, querying DB:', buildYear);
     const { data, error } = await this.table('construction_prices')
       .select('*')
       .eq('year', buildYear)
@@ -173,14 +183,7 @@ export class ValuationCalculatorService extends BaseRepository {
     console.log('📊 Database query result:', { data, error: error?.message });
 
     if (error || !data) {
-      console.log('⚠️ No data found for year, using hardcoded fallback');
-      // DBにデータがない場合はハードコードテーブルにフォールバック
-      const hardcodedPrice = this.getHardcodedConstructionPrice(buildYear, structure);
-      if (hardcodedPrice) {
-        console.log('✅ Got price from hardcoded fallback:', hardcodedPrice);
-        return hardcodedPrice;
-      }
-      console.log('⚠️ No hardcoded data, using default');
+      console.log('⚠️ No data found in DB either, using default');
       return this.getDefaultConstructionPrice(structure);
     }
 
@@ -194,7 +197,11 @@ export class ValuationCalculatorService extends BaseRepository {
    * データベースが利用できない場合のフォールバック
    */
   private getHardcodedConstructionPrice(year: number, structure: string): number | null {
-    // スプレッドシート「建築価格」シートのデータ（1965〜2025年）
+    // 出典: 国税庁「建物の標準的な建築価額表」（国交省建築着工統計から算出・千円/㎡ → 円/㎡に変換）
+    // ・1965〜1982年: NTA公表値と一致
+    // ・1983〜2011年: 旧スプレッドシートデータ（NTA公表値と乖離あり、要調査）
+    // ・2012〜2025年: NTA公表値と一致（2023年RC/SRC・2024-2025未更新を修正済み）
+    // ・軽量鉄骨: NTAに独立列なし → 鉄骨と同値で設定（減価率は異なる: 鉄骨0.015 / 軽量鉄骨0.025）
     // 列: 木造, 軽量鉄骨, 鉄筋コンクリート, 鉄骨鉄筋コンクリート, 鉄骨
     const priceData: { [key: number]: { wood: number; lightSteel: number; steel: number; rc: number; src: number } } = {
       1965: { wood: 16800,  lightSteel: 17900,  steel: 17900,  rc: 30300,  src: 45000  },
@@ -252,12 +259,12 @@ export class ValuationCalculatorService extends BaseRepository {
       2017: { wood: 166700, lightSteel: 214600, steel: 214600, rc: 265500, src: 350400 },
       2018: { wood: 168500, lightSteel: 214100, steel: 214100, rc: 263100, src: 304200 },
       2019: { wood: 170100, lightSteel: 228800, steel: 228800, rc: 285600, src: 363300 },
-      2020: { wood: 172000, lightSteel: 230200, steel: 230200, rc: 277000, src: 279200 },
-      2021: { wood: 172200, lightSteel: 227300, steel: 227300, rc: 288300, src: 338400 },
+      2020: { wood: 172000, lightSteel: 230200, steel: 230200, rc: 276900, src: 279200 }, // NTA: RC=276.9千円（+100円転記誤差修正）
+      2021: { wood: 172200, lightSteel: 227300, steel: 227300, rc: 288200, src: 338400 }, // NTA: RC=288.2千円（+100円転記誤差修正）
       2022: { wood: 176200, lightSteel: 241500, steel: 241500, rc: 277500, src: 434400 },
-      2023: { wood: 204100, lightSteel: 366700, steel: 281100, rc: 366700, src: 314300 },
-      2024: { wood: 204100, lightSteel: 366700, steel: 281100, rc: 366700, src: 314300 },
-      2025: { wood: 204100, lightSteel: 366700, steel: 281100, rc: 366700, src: 314300 },
+      2023: { wood: 204100, lightSteel: 281100, steel: 281100, rc: 314300, src: 366700 }, // 修正: RC/SRC入替・軽量鉄骨SRC値混入を修正（NTA令和5年準拠）
+      2024: { wood: 220600, lightSteel: 308500, steel: 308500, rc: 369100, src: 568600 }, // NTA令和6年公表値（新規追加）
+      2025: { wood: 232500, lightSteel: 371300, steel: 371300, rc: 409700, src: 479700 }, // NTA令和7年公表値（新規追加）
     };
 
     const yearData = priceData[year];
@@ -309,7 +316,8 @@ export class ValuationCalculatorService extends BaseRepository {
 
   /**
    * デフォルトの建築価格を取得
-   * 2024年の最新価格を使用
+   * ハードコードテーブルにない年（2026年以降等）のフォールバック。
+   * DB参照にも失敗した場合のみ使用。2025年（最新NTA公表値）を採用。
    */
   private getDefaultConstructionPrice(structure: string): number {
     switch (structure) {
@@ -317,17 +325,17 @@ export class ValuationCalculatorService extends BaseRepository {
       case '不明':
       case '未確認':
       case '':
-        return 204100;
+        return 232500; // 2025年 木造 NTA公表値
       case '軽量鉄骨':
-        return 366700;
+        return 371300; // 2025年 鉄骨NTA公表値に準拠（NTAに軽量鉄骨独立列なし）
       case '鉄骨':
-        return 281100;
+        return 371300; // 2025年 鉄骨 NTA公表値
       case '鉄筋コンクリート':
-        return 366700;
+        return 409700; // 2025年 RC NTA公表値
       case '鉄骨鉄筋コンクリート':
-        return 314300;
+        return 479700; // 2025年 SRC NTA公表値
       default:
-        return 204100;
+        return 232500;
     }
   }
 

@@ -30,8 +30,8 @@ export class ValuationCalculatorService extends BaseRepository {
         sellerFixedAssetTaxRoadPrice: seller.fixedAssetTaxRoadPrice
       });
 
-      // 築年数の計算（2025年基準）
-      const currentYear = 2025;
+      // 築年数の計算（実行時の暦年を使用）
+      const currentYear = new Date().getFullYear();
       const buildingAge = buildYear > 0 ? currentYear - buildYear : 0;
 
       // 建築単価の取得
@@ -137,9 +137,9 @@ export class ValuationCalculatorService extends BaseRepository {
   private getHardcodedConstructionPrice(year: number, structure: string): number | null {
     const priceData: { [key: number]: { wood: number; lightSteel: number; steel: number; rc: number; src: number } } = {
       2022: { wood: 176200, lightSteel: 241500, steel: 241500, rc: 277500, src: 434400 },
-      2023: { wood: 204100, lightSteel: 366700, steel: 281100, rc: 366700, src: 314300 },
-      2024: { wood: 204100, lightSteel: 366700, steel: 281100, rc: 366700, src: 314300 },
-      2025: { wood: 204100, lightSteel: 366700, steel: 281100, rc: 366700, src: 314300 },
+      2023: { wood: 204100, lightSteel: 281100, steel: 281100, rc: 314300, src: 366700 }, // 修正: RC/SRC入替・軽量鉄骨SRC値混入を修正
+      2024: { wood: 220600, lightSteel: 308500, steel: 308500, rc: 369100, src: 568600 }, // NTA令和6年公表値
+      2025: { wood: 232500, lightSteel: 371300, steel: 371300, rc: 409700, src: 479700 }, // NTA令和7年公表値
     };
 
     const yearData = priceData[year];
@@ -199,17 +199,17 @@ export class ValuationCalculatorService extends BaseRepository {
       case '不明':
       case '未確認':
       case '':
-        return 204100;
+        return 232500; // 2025年 木造 NTA公表値
       case '軽量鉄骨':
-        return 366700;
+        return 371300; // 2025年 鉄骨NTA公表値に準拠
       case '鉄骨':
-        return 281100;
+        return 371300; // 2025年 鉄骨 NTA公表値
       case '鉄筋コンクリート':
-        return 366700;
+        return 409700; // 2025年 RC NTA公表値
       case '鉄骨鉄筋コンクリート':
-        return 314300;
+        return 479700; // 2025年 SRC NTA公表値
       default:
-        return 204100;
+        return 232500;
     }
   }
 
