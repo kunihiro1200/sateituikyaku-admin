@@ -247,6 +247,18 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
       return `${y}-${m}`;
     };
 
+    // ---- 集計対象期間（直近13ヶ月）----
+    // 全期間を全件取得すると Vercel の関数実行時間（約30秒）を超えて 500 で落ちるため、
+    // 直近1年程度（13ヶ月。当月＋過去12ヶ月）だけを対象にする。
+    // activity_logs / property_chat_history は DB 側で日時フィルタして取得件数を抑える。
+    // work_tasks は複数の実施日カラムがあり単純に DB 側で絞れないため、集計後に月キーで制限する。
+    const nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    // JST基準で「13ヶ月前の月初」を作り、それを UTC ISO に戻してフィルタ値にする
+    const sinceJst = new Date(Date.UTC(nowJst.getUTCFullYear(), nowJst.getUTCMonth() - 12, 1, 0, 0, 0));
+    const sinceIso = new Date(sinceJst.getTime() - 9 * 60 * 60 * 1000).toISOString();
+    // 月キーの下限（'YYYY-MM'）。これより古い月は集計結果から除外する。
+    const sinceMonthKey = `${sinceJst.getUTCFullYear()}-${String(sinceJst.getUTCMonth() + 1).padStart(2, '0')}`;
+
     // ---- 業務依頼（work_tasks）を取得 ----
     // 月別集計の基準日は「各作業の実施日カラム」（媒介締め日・サイト登録納期など）を使う。
     // 実データ調査で充足率96〜100%と確認済み。created_at は登録月であり作業月とずれるため使わない。
@@ -380,10 +392,13 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
         .replace(/\s+/g, '')
         .trim();
 
-    // (A) activity_logs（action='email'）— 1000件上限を回避するため全件ページング取得
-    //     月別集計の基準日は created_at（送信日時）。
-    const emailLogs: any[] = [];
-    {
+    // (A) activity_logs（action='email'）と (C) property_chat_history を直近13ヶ月に絞って取得する。
+    //     全期間を全件取得すると Vercel の 30秒上限を超えて落ちるため、created_at / sent_at で期間フィルタし、
+    //     2テーブルを並列（Promise.all）で取得して待ち時間を短縮する。
+
+    // activity_logs: action='email' かつ created_at >= sinceIso。
+    const fetchEmailLogs = async (): Promise<any[]> => {
+      const out: any[] = [];
       const PAGE = 1000;
       let offset = 0;
       // eslint-disable-next-line no-constant-condition
@@ -392,17 +407,46 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
           .from('activity_logs')
           .select('metadata, created_at, target_id, employee:employees(initials, name)')
           .eq('action', 'email')
+          .gte('created_at', sinceIso)
           .range(offset, offset + PAGE - 1);
         if (pageErr) {
           console.error('[OfficeMeetingStats] activity_logs 取得エラー:', pageErr);
           break;
         }
         if (!page || page.length === 0) break;
-        emailLogs.push(...page);
+        out.push(...page);
         if (page.length < PAGE) break;
         offset += PAGE;
       }
-    }
+      return out;
+    };
+
+    // property_chat_history: seller系 かつ sent_at >= sinceIso。
+    const fetchChatRows = async (): Promise<any[]> => {
+      const out: any[] = [];
+      const PAGE = 1000;
+      let offset = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data: page, error: pageErr } = await supabase
+          .from('property_chat_history')
+          .select('subject, message, sender_name, sent_at')
+          .in('chat_type', ['seller_email', 'seller_sms', 'seller_gmail'])
+          .gte('sent_at', sinceIso)
+          .range(offset, offset + PAGE - 1);
+        if (pageErr) {
+          console.error('[OfficeMeetingStats] property_chat_history 取得エラー:', pageErr);
+          break;
+        }
+        if (!page || page.length === 0) break;
+        out.push(...page);
+        if (page.length < PAGE) break;
+        offset += PAGE;
+      }
+      return out;
+    };
+
+    const [emailLogs, chatRows] = await Promise.all([fetchEmailLogs(), fetchChatRows()]);
 
     // 値下げ対応は「送信回数」ではなく「対応した物件数（ユニーク）」で数える。
     // 値下げメールは買主全員への一斉配信のため、1物件の値下げで同じ件名のログが
@@ -445,29 +489,7 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
 
     // (C) レインズ対応は property_chat_history（売主へのGMAIL/メール送信履歴）にある。
     //     「サイト公開＆レインズ登録証明書のご案内」等。activity_logs には無いためこちらで集計。
-    //     月別集計の基準日は sent_at（送信日時・NOT NULL）。
-    const chatRows: any[] = [];
-    {
-      const PAGE = 1000;
-      let offset = 0;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data: page, error: pageErr } = await supabase
-          .from('property_chat_history')
-          .select('subject, message, sender_name, sent_at')
-          .in('chat_type', ['seller_email', 'seller_sms', 'seller_gmail'])
-          .range(offset, offset + PAGE - 1);
-        if (pageErr) {
-          console.error('[OfficeMeetingStats] property_chat_history 取得エラー:', pageErr);
-          break;
-        }
-        if (!page || page.length === 0) break;
-        chatRows.push(...page);
-        if (page.length < PAGE) break;
-        offset += PAGE;
-      }
-    }
-
+    //     月別集計の基準日は sent_at（送信日時・NOT NULL）。chatRows は上の Promise.all で取得済み。
     for (const row of chatRows) {
       const haystack = `${row.subject || ''} ${row.message || ''}`;
       if (!isReins(haystack)) continue; // レインズのみ（値下げは activity_logs で計上済み）
@@ -497,8 +519,11 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
     ];
 
     // ---- 月ごとに rows / totals を構築 ----
-    // 月キーを降順（新しい月が先頭）に並べる
-    const monthKeys = Object.keys(monthly).sort((a, b) => b.localeCompare(a));
+    // 直近13ヶ月（sinceMonthKey 以降）だけに制限し、月キーを降順（新しい月が先頭）に並べる。
+    // work_tasks は DB 側で期間を絞っていないため、ここで古い月を落とす。
+    const monthKeys = Object.keys(monthly)
+      .filter((mk) => mk >= sinceMonthKey)
+      .sort((a, b) => b.localeCompare(a));
 
     const months = monthKeys.map((month) => {
       const metricBuckets = monthly[month];
