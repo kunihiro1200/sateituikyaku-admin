@@ -75,6 +75,7 @@ import sellerRecoveryRoutes from './routes/sellerRecovery';
 import inquiryResponseRoutes from './routes/inquiryResponse';
 import emailTemplateRoutes from './routes/emailTemplates';
 import gmailRoutes from './routes/gmail';
+import suumoExclusionMailRoutes from './routes/suumo-exclusion-mail';
 import inquiryHistoryRoutes from './routes/inquiryHistories';
 import auditLogRoutes from './routes/auditLogs';
 import publicPropertiesRoutes from './routes/publicProperties';
@@ -1120,6 +1121,7 @@ app.use('/api/sellers', sellerRecoveryRoutes);
 app.use('/api/inquiry-response', inquiryResponseRoutes);
 app.use('/api/email-templates', emailTemplateRoutes);
 app.use('/api/gmail', authenticate, gmailRoutes);
+app.use('/api/suumo-exclusion', authenticate, suumoExclusionMailRoutes);
 app.use('/api/test-email', testEmailRoutes);
 app.use('/api/shared-items', sharedItemsRoutes); // 共有アイテムAPI（認証不要）
 app.use('/api/sales-meeting-agenda', salesMeetingAgendaRoutes); // 営業会議 議題API（認証不要）

@@ -1089,6 +1089,28 @@ const CallModePage = () => {
   const [exclusionAction, setExclusionAction] = useState<string>('');
   const [editedNextCallDate, setEditedNextCallDate] = useState<string>('');
 
+  // SUUMO除外申請メール送信（サイト=Sのみ）
+  const [sendingExclusionMail, setSendingExclusionMail] = useState(false);
+  const [exclusionMailConfirmOpen, setExclusionMailConfirmOpen] = useState(false);
+
+  const handleSendSuumoExclusionMail = useCallback(async () => {
+    setSendingExclusionMail(true);
+    try {
+      const res = await api.post('/api/suumo-exclusion/send-mail');
+      if (res.data?.success) {
+        setSnackbarMessage(`除外申請メールを ${res.data.to || 'JDSサポート'} へ送信しました`);
+      } else {
+        setSnackbarMessage(`除外申請メール送信に失敗しました: ${res.data?.error || '不明なエラー'}`);
+      }
+    } catch (e: any) {
+      setSnackbarMessage(`除外申請メール送信エラー: ${e?.response?.data?.error || e.message}`);
+    } finally {
+      setSendingExclusionMail(false);
+      setSnackbarOpen(true);
+      setExclusionMailConfirmOpen(false);
+    }
+  }, []);
+
   // 除外ステータス表示判定ロジック
   const isExcluded = editedStatus?.includes('除外') ?? false;
   // ステータスが変わった場合（遷移系「→」含む）は赤字で表示し、除外バナーは非表示
@@ -10582,6 +10604,52 @@ HP：https://ifoo-oita.com/
                   >
                     {getExclusionCriteria()}
                   </Typography>
+
+                  {/* SUUMO（サイト=S）のみ：JDSへ除外申請メールを送るボタン */}
+                  {(seller?.site || editedSite) === 'S' && (
+                    <Box sx={{ mt: 2 }}>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        size="small"
+                        startIcon={<Email />}
+                        disabled={sendingExclusionMail}
+                        onClick={() => setExclusionMailConfirmOpen(true)}
+                      >
+                        {sendingExclusionMail ? '送信中...' : 'JDSへ除外申請メールを送る'}
+                      </Button>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                        除外申請フォーマット(.xlsx)を添付して jds_support@r.recruit.co.jp へ送信します
+                      </Typography>
+
+                      <Dialog open={exclusionMailConfirmOpen} onClose={() => setExclusionMailConfirmOpen(false)}>
+                        <DialogTitle>除外申請メールを送信しますか？</DialogTitle>
+                        <DialogContent>
+                          <Typography variant="body2">
+                            SUUMO反響除外申請フォーマット(.xlsx)を添付して、<br />
+                            <strong>jds_support@r.recruit.co.jp</strong> 宛に<br />
+                            tenant@ifoo-oita.com から送信します。
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                            ※ 添付される内容は、スプレッドシート「申請フォーマット」の現在の状態です。送信前に内容をご確認ください。
+                          </Typography>
+                        </DialogContent>
+                        <DialogActions>
+                          <Button onClick={() => setExclusionMailConfirmOpen(false)} disabled={sendingExclusionMail}>
+                            キャンセル
+                          </Button>
+                          <Button
+                            variant="contained"
+                            color="error"
+                            onClick={handleSendSuumoExclusionMail}
+                            disabled={sendingExclusionMail}
+                          >
+                            {sendingExclusionMail ? '送信中...' : '送信する'}
+                          </Button>
+                        </DialogActions>
+                      </Dialog>
+                    </Box>
+                  )}
                 </Grid>
               </Grid>
             </Paper>
