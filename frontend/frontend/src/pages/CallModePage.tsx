@@ -1930,8 +1930,8 @@ const CallModePage = () => {
       case 'H':
         return 'https://www.home4u.jp/member/sell/company/menu';
       case 'S':
-        // SUUMO（リクルートＪＤＳ）：メール申告ベースの除外申請フォーマット（専用スプシ）
-        return 'https://docs.google.com/spreadsheets/d/1JHIpTlqaUcF0xpuoPn3213__eFVKKIHV/edit?gid=1008626043#gid=1008626043';
+        // SUUMO（リクルートＪＤＳ）：メール申告ベースの除外申請フォーマット（専用スプシ・Googleスプレッドシート版）
+        return 'https://docs.google.com/spreadsheets/d/1C-IZLHBdOSA9SDJEOdI0xXL4sT5Cc_ZYcBVRKeWYodI/edit?gid=1008626043#gid=1008626043';
       case 'す':
         return 'https://sumai-step.com/partner/charge_reject_forms/new';
       case 'L':

@@ -19,7 +19,10 @@
 
 import { GoogleSheetsClient } from './GoogleSheetsClient';
 
-export const SUUMO_EXCLUSION_SPREADSHEET_ID = '1JHIpTlqaUcF0xpuoPn3213__eFVKKIHV';
+// 【SUUMO売却】反響除外申請フォーマット（Googleスプレッドシート形式に変換したネイティブファイル）
+// ※ 元のExcel版(1JHIpTlqaUcF0xpuoPn3213__eFVKKIHV)はAPIで書き込めないため、
+//    Googleスプレッドシート形式に変換したこのIDを使う。
+export const SUUMO_EXCLUSION_SPREADSHEET_ID = '1C-IZLHBdOSA9SDJEOdI0xXL4sT5Cc_ZYcBVRKeWYodI';
 export const SUUMO_EXCLUSION_SHEET_NAME = '申請フォーマット';
 
 const APPLICATION_TYPE = 'いたずら反響';
