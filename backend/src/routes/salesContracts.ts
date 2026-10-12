@@ -38,7 +38,8 @@ export interface ContractRecord {
 
 /**
  * B列の決済予定月（数字 or 文字列）→ YYYY-MM 形式に変換
- * ルール: 10,11,12 → 2026年 / 1〜9 → 2027年（2026-2027年度）
+ * 今日の日付を基準に、すでに過ぎた月は今年、まだ来ていない月は来年として判定
+ * 例: 今日=2026/10 → 9(9月)はすでに過ぎた→2026-09、2(2月)はまだ→2027-02
  */
 function parseSettlementMonth(raw: string): string | null {
   if (!raw || raw.trim() === '') return null;
@@ -48,7 +49,7 @@ function parseSettlementMonth(raw: string): string | null {
   if (fullMatch) {
     const y = parseInt(fullMatch[1]);
     const m = parseInt(fullMatch[2]);
-    if (y >= 2026 && y <= 2027 && m >= 1 && m <= 12) {
+    if (y >= 2025 && y <= 2030 && m >= 1 && m <= 12) {
       return `${y}-${String(m).padStart(2, '0')}`;
     }
   }
@@ -56,8 +57,27 @@ function parseSettlementMonth(raw: string): string | null {
   // 月のみの場合（例: "10", "3月"）
   const monthOnly = parseInt(raw.replace(/[^0-9]/g, ''), 10);
   if (isNaN(monthOnly) || monthOnly < 1 || monthOnly > 12) return null;
-  const year = monthOnly >= 10 ? 2026 : 2027;
-  return `${year}-${String(monthOnly).padStart(2, '0')}`;
+
+  // 今日の年月を取得
+  const today = new Date();
+  const curYear = today.getFullYear();  // 例: 2026
+  const curMonth = today.getMonth() + 1; // 例: 10
+
+  // すでに過ぎた月 → 今年
+  if (monthOnly < curMonth) {
+    return `${curYear}-${String(monthOnly).padStart(2, '0')}`;
+    // 例: 9 < 10(今月) → "2026-09" → FYフィルタで除外される
+  }
+
+  // 今月以降
+  if (monthOnly >= 10) {
+    return `${curYear}-${String(monthOnly).padStart(2, '0')}`;
+    // 例: 10,11,12 → "2026-10","2026-11","2026-12"（FY内）
+  } else {
+    // 1〜9月で今月以降 → 来年
+    return `${curYear + 1}-${String(monthOnly).padStart(2, '0')}`;
+    // 例: 2,3 → "2027-02","2027-03"（FY内）
+  }
 }
 
 /**
