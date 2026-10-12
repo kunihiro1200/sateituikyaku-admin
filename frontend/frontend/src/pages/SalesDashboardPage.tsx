@@ -611,7 +611,7 @@ export default function SalesDashboardPage() {
   const TC = {px:1.25,py:1.25,fontSize:'15px',whiteSpace:'nowrap' as const};
   const TH = {...TC,fontWeight:'bold',bgcolor:'#1565c0',color:'#fff',fontSize:'15px'};
 
-  function EditableMonthCell({month, sKey, currentTarget}: {month:string;sKey:string;currentTarget:number}) {
+  const EditableMonthCell = ({month, sKey, currentTarget}: {month:string;sKey:string;currentTarget:number}) => {
     const isEditing = editingMonth?.month===month && editingMonth?.staffName===sKey;
 
     if (isEditing) return (
