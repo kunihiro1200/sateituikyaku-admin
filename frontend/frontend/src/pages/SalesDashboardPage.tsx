@@ -4,7 +4,6 @@
  * 店舗判定: 物件番号FI除外＝大分店（担当者所属で判定しない）
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Container, Box, Typography, Paper,
@@ -212,6 +211,7 @@ export default function SalesDashboardPage() {
   const [editingAnnual, setEditingAnnual] = useState<string|null>(null);
   const [editAnnualVal, setEditAnnualVal] = useState('');
   const [saving, setSaving] = useState(false);
+  const [applyAll, setApplyAll] = useState(false); // 月別目標一括設定フラグ
 
   const [snackbar, setSnackbar] = useState<{open:boolean;message:string;severity:'success'|'error'}>(
     {open:false,message:'',severity:'success'}
@@ -561,6 +561,7 @@ export default function SalesDashboardPage() {
       }
 
       setEditingMonth(null);
+      setApplyAll(false);
     } catch(err:any) {
       setSnackbar({open:true,message:err.message??'保存失敗',severity:'error'});
     } finally { setSaving(false); }
@@ -612,9 +613,6 @@ export default function SalesDashboardPage() {
 
   function EditableMonthCell({month, sKey, currentTarget}: {month:string;sKey:string;currentTarget:number}) {
     const isEditing = editingMonth?.month===month && editingMonth?.staffName===sKey;
-    // 他の月が全て未設定かどうか（一括設定の初期値として利用）
-    const otherMonthsEmpty = FY_MONTHS.filter(m=>m!==month).every(m=>getMonthTarget(m,sKey)===0);
-    const [applyAll, setApplyAll] = React.useState(false);
 
     if (isEditing) return (
       <Box sx={{display:'flex',flexDirection:'column',gap:0.5,minWidth:160}}>
@@ -625,7 +623,7 @@ export default function SalesDashboardPage() {
             onKeyDown={e=>{if(e.key==='Enter') handleSaveMonthTarget(month,sKey,editMonthVal,applyAll);}}/>
           <IconButton size="small" color="primary" disabled={saving}
             onClick={()=>handleSaveMonthTarget(month,sKey,editMonthVal,applyAll)}><SaveIcon sx={{fontSize:'1rem'}}/></IconButton>
-          <IconButton size="small" disabled={saving} onClick={()=>setEditingMonth(null)}><CancelIcon sx={{fontSize:'1rem'}}/></IconButton>
+          <IconButton size="small" disabled={saving} onClick={()=>{setEditingMonth(null);setApplyAll(false);}}><CancelIcon sx={{fontSize:'1rem'}}/></IconButton>
         </Box>
         {/* 全月一括設定チェックボックス */}
         <Box sx={{display:'flex',alignItems:'center',gap:0.5,cursor:'pointer'}}
