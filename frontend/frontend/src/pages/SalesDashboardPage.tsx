@@ -56,6 +56,8 @@ const FY_MONTHS = [
 ];
 const PREV_FY_START_DATE = '2025-10-01';
 const PREV_FY_END_DATE   = '2026-09-30';
+const PREV_FY_START_MONTH = '2025-10';
+const PREV_FY_END_MONTH   = '2026-09';
 const DEFAULT_STORE_TARGET = 120_000_000;
 const BOTH_HAND_RATE = 0.65;
 const PROPERTY_COLOR = SECTION_COLORS.property.main;
@@ -278,12 +280,12 @@ export default function SalesDashboardPage() {
         const cr = await api.get<{contracts:ContractRecord[]}>(`/api/sales/contracts?${storeParam}include_prev=true`);
         const all = cr.data.contracts ?? [];
 
-        // 今期実績（C列 決済確定日 が今期内）
+        // 今期実績（C列 決済確定日 が今期内 OR B列が今期内の過去月で手数料あり）
         const fyActual = all.filter(c=>
           c.category==='actual' &&
-          c.settlement_date &&
-          c.settlement_date >= FY_START_DATE &&
-          c.settlement_date <= FY_END_DATE
+          c.settlement_month &&
+          c.settlement_month >= FY_START_MONTH &&
+          c.settlement_month <= FY_END_MONTH
         );
         setSettled(fyActual.map(c=>({
           property_number:c.property_number,
@@ -293,12 +295,12 @@ export default function SalesDashboardPage() {
           commission_from_seller:null, commission_from_buyer:null, price:null,
         })));
 
-        // 前期実績（C列 決済確定日 が前期内）
+        // 前期実績（C列 決済確定日 が前期内 OR B列が前期内の過去月で手数料あり）
         const prevActual = all.filter(c=>
           c.category==='actual' &&
-          c.settlement_date &&
-          c.settlement_date >= PREV_FY_START_DATE &&
-          c.settlement_date <= PREV_FY_END_DATE
+          c.settlement_month &&
+          c.settlement_month >= PREV_FY_START_MONTH &&
+          c.settlement_month <= PREV_FY_END_MONTH
         );
         setPrevYearSettled(prevActual.map(c=>({
           property_number:c.property_number,

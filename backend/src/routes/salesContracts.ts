@@ -256,7 +256,19 @@ router.get('/contracts', authenticate, async (req: Request, res: Response) => {
         // C列なし → B列の予定月を使用
         settlementMonth = parseSettlementMonth(settlementMonthRaw);
         if (!settlementMonth) continue; // 月も不明ならスキップ
-        category = 'contracted';
+        
+        // 過去の月 かつ I列に手数料がある → 実績として扱う
+        const todayYYYYMM = getYYYYMM(today);
+        if (settlementMonth < todayYYYYMM && commission > 0) {
+          // B列の月が過去 + 手数料入力済み = 決済完了とみなす
+          category = 'actual';
+          // settlement_dateはB列月の末日として推定
+          const [sy, sm] = settlementMonth.split('-');
+          const lastDay = new Date(parseInt(sy), parseInt(sm), 0);
+          // settlement_dateはnullのまま（月のみ確定）
+        } else {
+          category = 'contracted';
+        }
       }
 
       // FY範囲フィルタ（include_prev=true なら前期も含める）
