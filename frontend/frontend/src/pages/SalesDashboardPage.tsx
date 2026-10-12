@@ -253,19 +253,7 @@ export default function SalesDashboardPage() {
           ? q.ilike('property_number', '%FI%')
           : q.not('property_number', 'ilike', '%FI%');
 
-      const [sR,pR,lR,prR,atR,mtR] = await Promise.all([
-        applyStoreFilter(
-          supabase.from('property_listings')
-            .select('property_number,sales_assignee,settlement_date,total_commission,commission_from_seller,commission_from_buyer,price')
-            .not('settlement_date','is',null)
-            .gte('settlement_date',FY_START_DATE).lte('settlement_date',FY_END_DATE)
-        ).order('settlement_date',{ascending:true}),
-        applyStoreFilter(
-          supabase.from('property_listings')
-            .select('property_number,sales_assignee,settlement_date,total_commission,commission_from_seller,commission_from_buyer,price')
-            .not('settlement_date','is',null)
-            .gte('settlement_date',PREV_FY_START_DATE).lte('settlement_date',PREV_FY_END_DATE)
-        ),
+      const [lR,prR,atR,mtR] = await Promise.all([
         applyStoreFilter(
           supabase.from('property_listings')
             .select('property_number,sales_assignee,price,commission_from_seller,address,display_address,seller_name')
@@ -278,72 +266,56 @@ export default function SalesDashboardPage() {
         supabase.from('sales_targets').select('*').eq('fiscal_year',FISCAL_YEAR).eq('store_name',STORE_NAME),
         supabase.from('monthly_sales_targets').select('*').eq('fiscal_year',FISCAL_YEAR).eq('store_name',STORE_NAME),
       ]);
-      setSettled(sR.data??[]);
-      setPrevYearSettled(pR.data??[]);
       setListings(lR.data??[]);
       setProspects(prR.data??[]);
       setAnnualTargets(atR.data??[]);
       setMonthlyTargets(mtR.data??[]);
-      // スプレッドシートの売買契約済み（大分店のみ・福岡は別途）
-      if (!isFukuoka) {
-        try {
-          const cr = await api.get<{contracts:ContractRecord[]}>('/api/sales/contracts?include_prev=true');
-          const all = cr.data.contracts ?? [];
-          setContracted(all.filter(c=>c.category==='contracted'));
-          // スプシの前期actuals = C列（決済確定日）が前期範囲内のもの
-          // これをそのまま前期実績として使う（DB混在なし・スプシが唯一の実績ソース）
-          const prevActualFromSheet = all.filter(c=>
-            c.category==='actual' &&
-            c.settlement_date &&
-            c.settlement_date >= PREV_FY_START_DATE &&
-            c.settlement_date <= PREV_FY_END_DATE
-          );
-          const sheetNumbers = new Set(prevActualFromSheet.map(c=>c.property_number));
-          // スプシにない物件のみDBから補完（スプシが主、DBは補完）
-          const dbOnly = (pR.data??[]).filter((p:any)=>!sheetNumbers.has(p.property_number));
-          const sheetSettled = prevActualFromSheet.map(c=>({
-            property_number:c.property_number,
-            sales_assignee:c.staff,
-            settlement_date:c.settlement_date,
-            total_commission:c.commission,   // I列の仲介手数料計
-            commission_from_seller:null, commission_from_buyer:null, price:null,
-          }));
-          setPrevYearSettled([...sheetSettled, ...dbOnly]);
-          setContractedError(null);
-        } catch {
-          setContractedError('スプレッドシート取得エラー');
-          setPrevYearSettled(pR.data??[]);
-          setContracted([]);
-        }
-      } else {
-        // 福岡版：専用シートから取得
-        try {
-          const cr = await api.get<{contracts:ContractRecord[]}>('/api/sales/contracts?store=fukuoka&include_prev=true');
-          const all = cr.data.contracts ?? [];
-          setContracted(all.filter(c=>c.category==='contracted'));
-          // 福岡版も同様：スプシC列（決済確定日）が前期内のもの = 実績
-          const prevActualFk = all.filter(c=>
-            c.category==='actual' &&
-            c.settlement_date &&
-            c.settlement_date >= PREV_FY_START_DATE &&
-            c.settlement_date <= PREV_FY_END_DATE
-          );
-          const sheetFkNums = new Set(prevActualFk.map(c=>c.property_number));
-          const dbOnlyFk = (pR.data??[]).filter((p:any)=>!sheetFkNums.has(p.property_number));
-          const sheetSettledFk = prevActualFk.map(c=>({
-            property_number:c.property_number,
-            sales_assignee:c.staff,
-            settlement_date:c.settlement_date,
-            total_commission:c.commission,
-            commission_from_seller:null, commission_from_buyer:null, price:null,
-          }));
-          setPrevYearSettled([...sheetSettledFk, ...dbOnlyFk]);
-          setContractedError(null);
-        } catch {
-          setContractedError('スプレッドシート取得エラー（福岡シート）');
-          setPrevYearSettled(pR.data??[]);
-          setContracted([]);
-        }
+
+      // ── 売買売上表スプシを唯一の実績ソースとして使用 ──
+      // property_listings の settlement_date/commission は NULL が多いため使用しない
+      const storeParam = isFukuoka ? 'store=fukuoka&' : '';
+      try {
+        const cr = await api.get<{contracts:ContractRecord[]}>(`/api/sales/contracts?${storeParam}include_prev=true`);
+        const all = cr.data.contracts ?? [];
+
+        // 今期実績（C列 決済確定日 が今期内）
+        const fyActual = all.filter(c=>
+          c.category==='actual' &&
+          c.settlement_date &&
+          c.settlement_date >= FY_START_DATE &&
+          c.settlement_date <= FY_END_DATE
+        );
+        setSettled(fyActual.map(c=>({
+          property_number:c.property_number,
+          sales_assignee:c.staff,
+          settlement_date:c.settlement_date,
+          total_commission:c.commission,
+          commission_from_seller:null, commission_from_buyer:null, price:null,
+        })));
+
+        // 前期実績（C列 決済確定日 が前期内）
+        const prevActual = all.filter(c=>
+          c.category==='actual' &&
+          c.settlement_date &&
+          c.settlement_date >= PREV_FY_START_DATE &&
+          c.settlement_date <= PREV_FY_END_DATE
+        );
+        setPrevYearSettled(prevActual.map(c=>({
+          property_number:c.property_number,
+          sales_assignee:c.staff,
+          settlement_date:c.settlement_date,
+          total_commission:c.commission,
+          commission_from_seller:null, commission_from_buyer:null, price:null,
+        })));
+
+        // 売買契約済み（決済前）
+        setContracted(all.filter(c=>c.category==='contracted'));
+        setContractedError(null);
+      } catch {
+        setContractedError('スプレッドシート取得エラー');
+        setSettled([]);
+        setPrevYearSettled([]);
+        setContracted([]);
       }
     } catch(err) {
       setSnackbar({open:true,message:'データ取得失敗',severity:'error'});
