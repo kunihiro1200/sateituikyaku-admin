@@ -156,14 +156,14 @@ router.get('/contracts', authenticate, async (req: Request, res: Response) => {
     const sheetGid = isFukuoka ? SHEET_GID_FUKUOKA : SHEET_GID_OITA;
 
     // FY範囲（include_prev=true の場合は前期も含める）
-    const FY_START = '2026-10';
-    const FY_END = '2027-09';
-    const PREV_FY_START = '2025-10';
-    const PREV_FY_END = '2026-09';
-    const rangeStart = includePrev ? PREV_FY_START : FY_START;
-    const rangeEnd = FY_END;
+    const LOCAL_FY_START = '2026-10';
+    const LOCAL_FY_END = '2027-09';
+    const LOCAL_PREV_FY_START = '2025-10';
+    const rangeStart = includePrev ? LOCAL_PREV_FY_START : LOCAL_FY_START;
+    const rangeEnd = LOCAL_FY_END;
 
     // ─── Google 認証 ───────────────────────────────────────
+    const { google } = await import('googleapis');
     let auth: any;
 
     if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
