@@ -11,6 +11,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+import { google } from 'googleapis';
 import { authenticate } from '../middleware/auth';
 
 const SPREADSHEET_ID = '1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M';
@@ -217,9 +218,6 @@ router.get('/contracts', authenticate, async (req: Request, res: Response) => {
 
     const today = new Date();
     today.setHours(23, 59, 59, 999);
-
-    const FY_START = '2026-10';
-    const FY_END = '2027-09';
 
     const contracts: ContractRecord[] = [];
 
