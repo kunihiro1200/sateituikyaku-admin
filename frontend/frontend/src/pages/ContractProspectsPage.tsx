@@ -1181,6 +1181,11 @@ export default function ContractProspectsPage() {
                                 setEditForm((f) => ({ ...f, prospect_rank: e.target.value }))
                               }
                               displayEmpty
+                              renderValue={(val) => val ? (
+                                <Typography sx={{ color: getRankColor(val as string), fontWeight: 'bold', fontSize: '0.9rem' }}>
+                                  {val as string}
+                                </Typography>
+                              ) : <em style={{ color: '#aaa', fontSize: '0.85rem' }}>未選択</em>}
                             >
                               <MenuItem value="">
                                 <em>未選択</em>
@@ -1191,7 +1196,14 @@ export default function ContractProspectsPage() {
                                   value={r.value}
                                   sx={{ color: r.color, fontWeight: 'bold' }}
                                 >
-                                  {r.short}
+                                  <Box>
+                                    <Typography sx={{ color: r.color, fontWeight: 'bold', fontSize: '0.9rem' }}>
+                                      {r.short}：{r.label.split('：')[1]}
+                                    </Typography>
+                                    <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mt: 0.25 }}>
+                                      {r.desc}
+                                    </Typography>
+                                  </Box>
                                 </MenuItem>
                               ))}
                             </Select>
