@@ -1,6 +1,12 @@
 import { BaseRepository } from '../repositories/BaseRepository';
 import { PropertyInfo, Seller } from '../types';
 
+// ─── モジュールレベルキャッシュ（Vercel Lambda インスタンス内で共有）─────────
+// construction_unit_prices テーブルの全承認済み行を保持。
+// コールドスタート時のみ DB にアクセスし、以降はキャッシュから返す。
+let constructionPriceCache: Map<string, number> | null = null;
+let constructionPriceCacheTimestamp: number | null = null;
+
 /**
  * 査定額計算サービス
  * 複雑な査定額計算ロジックを実装
@@ -151,6 +157,11 @@ export class ValuationCalculatorService extends BaseRepository {
 
   /**
    * 建築単価を取得
+   *
+   * 優先順位:
+   *   1. DB（construction_unit_prices テーブル）- モジュールレベルキャッシュ経由
+   *   2. ハードコードテーブル（DB障害時の緊急フォールバック）
+   *   3. デフォルト値（2025年 NTA公表値）
    */
   private async getConstructionUnitPrice(
     buildYear: number,
@@ -158,43 +169,87 @@ export class ValuationCalculatorService extends BaseRepository {
   ): Promise<number> {
     console.log('🔍 Getting construction unit price for:', { buildYear, structure });
     
-    // 築年が0または空白の場合のデフォルト値（2024年の価格）
+    // 築年不明の場合はデフォルト（2025年 NTA公表値）を返す
     if (!buildYear || buildYear === 0) {
-      console.log('⚠️ Build year is 0 or empty, using default');
+      console.log('⚠️ Build year is 0 or empty, using default (2025 NTA)');
       return this.getDefaultConstructionPrice(structure);
     }
 
-    // 🚀 パフォーマンス優先：ハードコードテーブルを最初に確認（1965〜2025年をカバー）
-    // Vercel + Supabase のコールドスタートによる遅延を防ぐため、
-    // ハードコードデータが存在する年はDBクエリを行わない。
+    // ① DB キャッシュから取得（construction_unit_prices テーブル）
+    const dbPrice = await this.getPriceFromDB(buildYear, structure);
+    if (dbPrice !== null) {
+      console.log('✅ Got price from DB (construction_unit_prices):', dbPrice);
+      return dbPrice;
+    }
+
+    // ② DB 取得失敗時のフォールバック: ハードコードテーブル
+    console.warn(`⚠️ DB miss for ${buildYear}/${structure} — falling back to hardcoded table`);
     const hardcodedPrice = this.getHardcodedConstructionPrice(buildYear, structure);
     if (hardcodedPrice) {
-      console.log('✅ Got price from hardcoded table (no DB query needed):', hardcodedPrice);
+      console.log('✅ Got price from hardcoded fallback:', hardcodedPrice);
       return hardcodedPrice;
     }
 
-    // ハードコードにない年（2026年以降等）のみDBを試みる
-    console.log('🔄 Year not in hardcoded table, querying DB:', buildYear);
-    const { data, error } = await this.table('construction_prices')
-      .select('*')
-      .eq('year', buildYear)
-      .single();
-
-    console.log('📊 Database query result:', { data, error: error?.message });
-
-    if (error || !data) {
-      console.log('⚠️ No data found in DB either, using default');
-      return this.getDefaultConstructionPrice(structure);
-    }
-
-    const price = this.getPriceByStructure(data, structure);
-    console.log('✅ Got price from database:', price);
-    return price;
+    // ③ 最終フォールバック: デフォルト値
+    console.warn(`⚠️ No price found for ${buildYear}/${structure}, using default`);
+    return this.getDefaultConstructionPrice(structure);
   }
 
   /**
-   * ハードコードされた建築価格データから取得
-   * データベースが利用できない場合のフォールバック
+   * DB（construction_unit_prices）からモジュールレベルキャッシュ経由で単価を取得
+   *
+   * キャッシュ設計（Vercel サーバーレス対応）:
+   *   - モジュールレベル変数に全承認済み行をキャッシュ
+   *   - 同一 Lambda インスタンス内では再利用（コールドスタート時のみ DB アクセス）
+   *   - TTL: 6時間（古くなったら再取得）
+   *   - DB 障害時は既存キャッシュを継続使用
+   */
+  private async getPriceFromDB(year: number, structure: string): Promise<number | null> {
+    // キャッシュ有効期間: 6時間
+    const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+    const now = Date.now();
+    const needsRefresh =
+      !constructionPriceCache ||
+      constructionPriceCacheTimestamp === null ||
+      (now - constructionPriceCacheTimestamp) > CACHE_TTL_MS;
+
+    if (needsRefresh) {
+      console.log('🔄 Refreshing construction_unit_prices cache from DB...');
+      try {
+        const { data, error } = await this.table('construction_unit_prices')
+          .select('year, structure, price_per_sqm')
+          .eq('is_approved', true);
+
+        if (!error && data && data.length > 0) {
+          const newCache = new Map<string, number>();
+          for (const row of data) {
+            newCache.set(`${row.year}:${row.structure}`, row.price_per_sqm);
+          }
+          constructionPriceCache = newCache;
+          constructionPriceCacheTimestamp = now;
+          console.log(`✅ Cache loaded: ${newCache.size}行`);
+        } else {
+          console.warn('⚠️ DB returned no rows, keeping existing cache:', error?.message);
+        }
+      } catch (e) {
+        console.error('❌ Failed to load construction price cache from DB:', e);
+        // DB 障害時は既存キャッシュを継続使用（constructionPriceCache は変更しない）
+      }
+    }
+
+    return constructionPriceCache?.get(`${year}:${structure}`) ?? null;
+  }
+
+  /**
+   * ハードコードされた建築価格データから取得（緊急フォールバック用）
+   *
+   * ⚠️ このメソッドは DB（construction_unit_prices）アクセス失敗時の
+   *    緊急フォールバックとしてのみ使用する。
+   *    通常は getPriceFromDB() → construction_unit_prices テーブルを参照する。
+   *
+   * 値は第3段階（Supabase移行）時点の暫定値。
+   * 第5段階（単価見直し）後は DB 側の値が更新され、
+   * このハードコードは古い値になる可能性がある。
    */
   private getHardcodedConstructionPrice(year: number, structure: string): number | null {
     // 出典: 国税庁「建物の標準的な建築価額表」（国交省建築着工統計から算出・千円/㎡ → 円/㎡に変換）
