@@ -4,6 +4,7 @@
  * 店舗判定: 物件番号FI除外＝大分店（担当者所属で判定しない）
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Container, Box, Typography, Paper,
@@ -531,20 +532,35 @@ export default function SalesDashboardPage() {
   },[expandedStaff,settled,prevYearSettled,monthlyTargets]);
 
   // ── 目標保存 ──
-  const handleSaveMonthTarget = async (month:string, sKey:string, val:string) => {
+  const handleSaveMonthTarget = async (month:string, sKey:string, val:string, applyAll=false) => {
     if (!employee) return;
     setSaving(true);
     try {
       const man=parseFloat(val);
       if (isNaN(man)||man<0) throw new Error('正の数値を入力してください');
       const amount=Math.round(man*10_000);
-      const row:MonthlyTarget={fiscal_year:FISCAL_YEAR,month,store_name:STORE_NAME,staff_name:sKey,target_amount:amount};
-      const {error}=await supabase.from('monthly_sales_targets')
-        .upsert(row,{onConflict:'fiscal_year,month,store_name,staff_name'});
-      if (error) throw error;
-      setMonthlyTargets(prev=>[...prev.filter(t=>!(t.month===month&&t.staff_name===sKey)),row]);
+
+      if (applyAll) {
+        // 全12ヶ月に一括保存
+        const rows:MonthlyTarget[]=FY_MONTHS.map(m=>({
+          fiscal_year:FISCAL_YEAR, month:m, store_name:STORE_NAME, staff_name:sKey, target_amount:amount,
+        }));
+        const {error}=await supabase.from('monthly_sales_targets')
+          .upsert(rows,{onConflict:'fiscal_year,month,store_name,staff_name'});
+        if (error) throw error;
+        setMonthlyTargets(prev=>[...prev.filter(t=>t.staff_name!==sKey||t.store_name!==STORE_NAME),
+          ...rows]);
+        setSnackbar({open:true,message:`全12ヶ月に${man}万円を一括設定しました`,severity:'success'});
+      } else {
+        const row:MonthlyTarget={fiscal_year:FISCAL_YEAR,month,store_name:STORE_NAME,staff_name:sKey,target_amount:amount};
+        const {error}=await supabase.from('monthly_sales_targets')
+          .upsert(row,{onConflict:'fiscal_year,month,store_name,staff_name'});
+        if (error) throw error;
+        setMonthlyTargets(prev=>[...prev.filter(t=>!(t.month===month&&t.staff_name===sKey)),row]);
+        setSnackbar({open:true,message:'月別目標を保存しました',severity:'success'});
+      }
+
       setEditingMonth(null);
-      setSnackbar({open:true,message:'月別目標を保存しました',severity:'success'});
     } catch(err:any) {
       setSnackbar({open:true,message:err.message??'保存失敗',severity:'error'});
     } finally { setSaving(false); }
@@ -596,15 +612,33 @@ export default function SalesDashboardPage() {
 
   function EditableMonthCell({month, sKey, currentTarget}: {month:string;sKey:string;currentTarget:number}) {
     const isEditing = editingMonth?.month===month && editingMonth?.staffName===sKey;
+    // 他の月が全て未設定かどうか（一括設定の初期値として利用）
+    const otherMonthsEmpty = FY_MONTHS.filter(m=>m!==month).every(m=>getMonthTarget(m,sKey)===0);
+    const [applyAll, setApplyAll] = React.useState(false);
+
     if (isEditing) return (
-      <Box sx={{display:'flex',gap:0.5,alignItems:'center',minWidth:140}}>
-        <TextField size="small" value={editMonthVal} onChange={e=>setEditMonthVal(e.target.value)}
-          type="number" label="万円単位で入力" sx={{width:140}} inputProps={{min:0}} autoFocus
-          helperText="例: 500 → 500万円"
-          onKeyDown={e=>{if(e.key==='Enter') handleSaveMonthTarget(month,sKey,editMonthVal);}}/>
-        <IconButton size="small" color="primary" disabled={saving}
-          onClick={()=>handleSaveMonthTarget(month,sKey,editMonthVal)}><SaveIcon sx={{fontSize:'1rem'}}/></IconButton>
-        <IconButton size="small" disabled={saving} onClick={()=>setEditingMonth(null)}><CancelIcon sx={{fontSize:'1rem'}}/></IconButton>
+      <Box sx={{display:'flex',flexDirection:'column',gap:0.5,minWidth:160}}>
+        <Box sx={{display:'flex',gap:0.5,alignItems:'center'}}>
+          <TextField size="small" value={editMonthVal} onChange={e=>setEditMonthVal(e.target.value)}
+            type="number" label="万円単位で入力" sx={{width:140}} inputProps={{min:0}} autoFocus
+            helperText="例: 500 → 500万円"
+            onKeyDown={e=>{if(e.key==='Enter') handleSaveMonthTarget(month,sKey,editMonthVal,applyAll);}}/>
+          <IconButton size="small" color="primary" disabled={saving}
+            onClick={()=>handleSaveMonthTarget(month,sKey,editMonthVal,applyAll)}><SaveIcon sx={{fontSize:'1rem'}}/></IconButton>
+          <IconButton size="small" disabled={saving} onClick={()=>setEditingMonth(null)}><CancelIcon sx={{fontSize:'1rem'}}/></IconButton>
+        </Box>
+        {/* 全月一括設定チェックボックス */}
+        <Box sx={{display:'flex',alignItems:'center',gap:0.5,cursor:'pointer'}}
+          onClick={()=>setApplyAll(!applyAll)}>
+          <Box sx={{width:16,height:16,border:`2px solid ${applyAll?'#1565c0':'#bbb'}`,
+            bgcolor:applyAll?'#1565c0':'transparent',borderRadius:0.5,
+            display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            {applyAll&&<Typography sx={{color:'#fff',fontSize:'11px',lineHeight:1}}>✓</Typography>}
+          </Box>
+          <Typography sx={{fontSize:'11px',color:'#666',userSelect:'none'}}>
+            全12ヶ月に同じ金額を一括設定
+          </Typography>
+        </Box>
       </Box>
     );
     return (
