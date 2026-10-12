@@ -248,8 +248,10 @@ router.get('/contracts', authenticate, async (req: Request, res: Response) => {
 
       if (settlementDate) {
         settlementMonth = getYYYYMM(settlementDate);
-        // C列に日付あり → 過去なら実績、未来なら契約済み決済前
-        category = settlementDate <= today ? 'actual' : 'contracted';
+        // 同月内の決済確定 → 日付が未来でも今月実績として計上
+        const todayYYYYMM = getYYYYMM(today);
+        const isCurrentMonth = settlementMonth === todayYYYYMM;
+        category = (settlementDate <= today || isCurrentMonth) ? 'actual' : 'contracted';
       } else {
         // C列なし → B列の予定月を使用
         settlementMonth = parseSettlementMonth(settlementMonthRaw);
