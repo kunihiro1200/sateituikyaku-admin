@@ -1387,6 +1387,17 @@ const CallModePage = () => {
   const [editedValuationAmount1, setEditedValuationAmount1] = useState<string>('');
   const [editedValuationAmount2, setEditedValuationAmount2] = useState<string>('');
   const [editedValuationAmount3, setEditedValuationAmount3] = useState<string>('');
+  // バックエンドの査定計算内訳（築年別単価テーブルの実際の計算値）
+  const [valuationBreakdown, setValuationBreakdown] = useState<{
+    constructionUnitPriceUsed: number;
+    buildingAgeUsed: number;
+    structureUsed: string;
+    buildingAreaUsed: number;
+    buildingPrice: number;
+    landAreaUsed: number;
+    fixedAssetTaxRoadPriceUsed: number;
+    landPrice: number;
+  } | null>(null);
   const [autoCalculating, setAutoCalculating] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const calculationTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -4308,6 +4319,9 @@ const CallModePage = () => {
           throw new Error('物件情報（土地面積・建物面積）が不足しているため査定額を計算できません。手入力で査定額を設定してください。');
         }
         setEditedValuationAmount1(amount1.toString());
+        if (response1.data.breakdown) {
+          setValuationBreakdown(response1.data.breakdown);
+        }
       } catch (err: any) {
         console.error('Failed to calculate valuation amount 1:', err);
         throw new Error(err.message || '査定額1の計算に失敗しました');
@@ -9287,6 +9301,9 @@ HP：https://ifoo-oita.com/
                                 throw new Error('物件情報（土地面積・建物面積）が不足しているため査定額を計算できません。手入力で査定額を設定してください。');
                               }
                               setEditedValuationAmount1(amount1.toString());
+                              if (response1.data.breakdown) {
+                                setValuationBreakdown(response1.data.breakdown);
+                              }
                             } catch (err: any) {
                               console.error('Failed to calculate valuation amount 1:', err);
                               throw new Error(err.message || '査定額1の計算に失敗しました');
@@ -10237,28 +10254,29 @@ HP：https://ifoo-oita.com/
                       {editedValuationAmount1 &&
                         property &&
                         (() => {
-                          const landArea = property.landArea || 0;
+                          // バックエンドの内訳データを優先し、なければフォールバック計算
+                          const landArea = valuationBreakdown?.landAreaUsed ?? (property.landArea || 0);
                           const roadPrice = parseFloat(editedFixedAssetTaxRoadPrice) || 0;
-                          const landPrice = (landArea * roadPrice) / 0.6;
+                          const landPrice = valuationBreakdown?.landPrice ?? ((landArea * roadPrice) / 0.6);
 
-                          // 建物面積: 当社調べ優先
-                          const buildingArea = property.buildingAreaVerified || property.buildingArea || 0;
+                          // 建物面積: バックエンドと同じ優先順位（当社調べ優先）
+                          const buildingArea = valuationBreakdown?.buildingAreaUsed ?? (property.buildingAreaVerified || property.buildingArea || 0);
                           const buildYear = property.buildYear || 0;
-                          // 築年=0または空欄の場合はデフォルト35年
-                          const buildingAge = buildYear > 0 ? 2025 - buildYear : 35;
-                          const structure = property.structure || '';
+                          // 築年数: バックエンドの計算値を使用（デフォルトは33年=バックエンドと同じ）
+                          const buildingAge = valuationBreakdown?.buildingAgeUsed ?? (buildYear > 0 ? 2025 - buildYear : 33);
+                          const structure = valuationBreakdown?.structureUsed ?? (property.structure || '');
 
-                          // 構造に応じた建築単価（デフォルト値）
-                          const unitPrice = (() => {
+                          // 建築単価: バックエンドの年別テーブル値を使用（例: 2025年木造=204,100円/㎡）
+                          const unitPrice = valuationBreakdown?.constructionUnitPriceUsed ?? (() => {
                             if (structure === '鉄骨') return 237300;
                             if (structure === '軽量鉄骨') return 128400;
-                            return 123100; // 木造・空欄・不明・未確認
+                            return 123100; // フォールバック（計算前または未対応年の場合）
                           })();
 
                           const basePrice = unitPrice * buildingArea;
 
-                          // 築年数の上限チェック付き建物価格計算
-                          const buildingPrice = (() => {
+                          // 建物価格: バックエンドの計算値を使用（フォールバックはフロントの計算）
+                          const buildingPrice = valuationBreakdown?.buildingPrice ?? (() => {
                             if (structure === '鉄骨' || structure === '軽量鉄骨') {
                               // 鉄骨・軽量鉄骨: 40年以上で残価10%
                               if (buildingAge >= 40) return basePrice * 0.1;

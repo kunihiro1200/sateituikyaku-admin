@@ -160,14 +160,15 @@ router.post('/:sellerId/calculate-valuation-amount1', async (req: Request, res: 
       console.log('seller.property is null, using seller direct fields:', propertyInfo);
     }
 
-    // 査定額1を計算
+    // 査定額1を計算（内訳データも同時に取得し、フロントの「計算根拠」表示に使用）
     console.log('Calculating valuation amount 1 for seller:', seller.id);
     console.log('Property data:', propertyInfo);
     const { valuationCalculatorService } = await import('../services/ValuationCalculatorService');
-    const valuationAmount1 = await valuationCalculatorService.calculateValuationAmount1(
+    const breakdownResult = await valuationCalculatorService.calculateValuationBreakdown(
       seller,
       propertyInfo
     );
+    const valuationAmount1 = breakdownResult.valuationAmount1;
     console.log('Calculated valuation amount 1:', valuationAmount1);
 
     // 売却サポートページ「査定額の計算根拠」用に、内訳（路線価・面積・建物価格・加算額）を保存する。
@@ -191,6 +192,16 @@ router.post('/:sellerId/calculate-valuation-amount1', async (req: Request, res: 
 
     res.json({
       valuationAmount1,
+      breakdown: {
+        constructionUnitPriceUsed: breakdownResult.constructionUnitPriceUsed,
+        buildingAgeUsed: breakdownResult.buildingAgeUsed,
+        structureUsed: breakdownResult.structureUsed,
+        buildingAreaUsed: breakdownResult.buildingAreaUsed,
+        buildingPrice: breakdownResult.buildingPrice,
+        landAreaUsed: breakdownResult.landAreaUsed,
+        fixedAssetTaxRoadPriceUsed: breakdownResult.fixedAssetTaxRoadPriceUsed,
+        landPrice: breakdownResult.landPrice,
+      },
       calculatedAt: new Date(),
     });
   } catch (error) {
