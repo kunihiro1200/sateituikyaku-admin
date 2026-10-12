@@ -4,7 +4,7 @@
  * 店舗判定: 物件番号FI除外＝大分店（担当者所属で判定しない）
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Container, Box, Typography, Paper,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
@@ -180,6 +180,11 @@ function rateChipSx(rate: number|null) {
 // ============================================================
 export default function SalesDashboardPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isFukuoka = searchParams.get('store') === 'fukuoka';
+  const STORE_NAME  = isFukuoka ? '福岡店' : '大分店';
+  const STORE_LABEL = isFukuoka ? '福岡店（FI番号）' : '大分店（FI除外）';
+  const STORE_COLOR = isFukuoka ? '#e65100' : PROPERTY_COLOR; // 大分=青、福岡=オレンジ
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { employee } = useAuthStore();
@@ -224,24 +229,39 @@ export default function SalesDashboardPage() {
     setLoading(true);
     try {
       const [sR,pR,lR,prR,atR,mtR] = await Promise.all([
-        supabase.from('property_listings')
-          .select('property_number,sales_assignee,settlement_date,total_commission,commission_from_seller,commission_from_buyer,price')
-          .not('property_number','ilike','%FI%').not('settlement_date','is',null)
-          .gte('settlement_date',FY_START_DATE).lte('settlement_date',FY_END_DATE)
-          .order('settlement_date',{ascending:true}),
-        supabase.from('property_listings')
-          .select('property_number,sales_assignee,settlement_date,total_commission,commission_from_seller,commission_from_buyer,price')
-          .not('property_number','ilike','%FI%').not('settlement_date','is',null)
-          .gte('settlement_date',PREV_FY_START_DATE).lte('settlement_date',PREV_FY_END_DATE),
-        supabase.from('property_listings')
-          .select('property_number,sales_assignee,price,commission_from_seller,address,display_address,seller_name')
-          .eq('atbb_status','専任・公開中').not('property_number','ilike','%FI%'),
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // 店舗フィルタ（大分=FI除外、福岡=FI含む）を構築する共通ヘルパー
+      const applyStoreFilter = (q: any) =>
+        isFukuoka
+          ? q.ilike('property_number', '%FI%')
+          : q.not('property_number', 'ilike', '%FI%');
+
+      const [sR,pR,lR,prR,atR,mtR] = await Promise.all([
+        applyStoreFilter(
+          supabase.from('property_listings')
+            .select('property_number,sales_assignee,settlement_date,total_commission,commission_from_seller,commission_from_buyer,price')
+            .not('settlement_date','is',null)
+            .gte('settlement_date',FY_START_DATE).lte('settlement_date',FY_END_DATE)
+        ).order('settlement_date',{ascending:true}),
+        applyStoreFilter(
+          supabase.from('property_listings')
+            .select('property_number,sales_assignee,settlement_date,total_commission,commission_from_seller,commission_from_buyer,price')
+            .not('settlement_date','is',null)
+            .gte('settlement_date',PREV_FY_START_DATE).lte('settlement_date',PREV_FY_END_DATE)
+        ),
+        applyStoreFilter(
+          supabase.from('property_listings')
+            .select('property_number,sales_assignee,price,commission_from_seller,address,display_address,seller_name')
+            .eq('atbb_status','専任・公開中')
+        ),
         supabase.from('property_contract_prospects')
           .select('property_number,prospect_rank,settlement_expected_month,manager_check_status')
           .not('settlement_expected_month','is',null)
           .gte('settlement_expected_month',FY_START_MONTH).lte('settlement_expected_month',FY_END_MONTH),
-        supabase.from('sales_targets').select('*').eq('fiscal_year',FISCAL_YEAR).eq('store_name','大分店'),
-        supabase.from('monthly_sales_targets').select('*').eq('fiscal_year',FISCAL_YEAR).eq('store_name','大分店'),
+        supabase.from('sales_targets').select('*').eq('fiscal_year',FISCAL_YEAR).eq('store_name',STORE_NAME),
+        supabase.from('monthly_sales_targets').select('*').eq('fiscal_year',FISCAL_YEAR).eq('store_name',STORE_NAME),
       ]);
       setSettled(sR.data??[]);
       setPrevYearSettled(pR.data??[]);
@@ -249,18 +269,23 @@ export default function SalesDashboardPage() {
       setProspects(prR.data??[]);
       setAnnualTargets(atR.data??[]);
       setMonthlyTargets(mtR.data??[]);
-      try {
-        const cr = await api.get<{contracts:ContractRecord[]}>('/api/sales/contracts');
-        setContracted((cr.data.contracts??[]).filter(c=>c.category==='contracted'));
-        setContractedError(null);
-      } catch {
-        setContractedError('スプレッドシート取得エラー');
+      // スプレッドシートの売買契約済み（大分店のみ・福岡は別途）
+      if (!isFukuoka) {
+        try {
+          const cr = await api.get<{contracts:ContractRecord[]}>('/api/sales/contracts');
+          setContracted((cr.data.contracts??[]).filter(c=>c.category==='contracted'));
+          setContractedError(null);
+        } catch {
+          setContractedError('スプレッドシート取得エラー');
+          setContracted([]);
+        }
+      } else {
         setContracted([]);
       }
     } catch(err) {
       setSnackbar({open:true,message:'データ取得失敗',severity:'error'});
     } finally { setLoading(false); }
-  },[]);
+  },[isFukuoka, STORE_NAME]);
 
   useEffect(()=>{fetchData();},[fetchData]);
 
@@ -489,7 +514,7 @@ export default function SalesDashboardPage() {
       const man=parseFloat(val);
       if (isNaN(man)||man<0) throw new Error('正の数値を入力してください');
       const amount=Math.round(man*10_000);
-      const row:MonthlyTarget={fiscal_year:FISCAL_YEAR,month,store_name:'大分店',staff_name:sKey,target_amount:amount};
+      const row:MonthlyTarget={fiscal_year:FISCAL_YEAR,month,store_name:STORE_NAME,staff_name:sKey,target_amount:amount};
       const {error}=await supabase.from('monthly_sales_targets')
         .upsert(row,{onConflict:'fiscal_year,month,store_name,staff_name'});
       if (error) throw error;
@@ -508,7 +533,7 @@ export default function SalesDashboardPage() {
       const man=parseFloat(val);
       if (isNaN(man)||man<0) throw new Error('正の数値を入力してください');
       const amount=Math.round(man*10_000);
-      const row:AnnualTarget={fiscal_year:FISCAL_YEAR,store_name:'大分店',staff_name:sKey,target_amount:amount};
+      const row:AnnualTarget={fiscal_year:FISCAL_YEAR,store_name:STORE_NAME,staff_name:sKey,target_amount:amount};
       const {error}=await supabase.from('sales_targets')
         .upsert(row,{onConflict:'fiscal_year,store_name,staff_name'});
       if (error) throw error;
@@ -575,14 +600,14 @@ export default function SalesDashboardPage() {
       {/* ヘッダー */}
       <Box sx={{display:'flex',alignItems:'center',mb:2,gap:1,flexWrap:'wrap'}}>
         <IconButton onClick={()=>navigate('/property-listings')} size="small"><ArrowBackIcon/></IconButton>
-        <AssessmentIcon sx={{color:PROPERTY_COLOR}}/>
-        <Typography variant={isMobile?'subtitle1':'h5'} fontWeight="bold" sx={{color:PROPERTY_COLOR}}>
-          売上目標管理
+        <AssessmentIcon sx={{color:STORE_COLOR}}/>
+        <Typography variant={isMobile?'subtitle1':'h5'} fontWeight="bold" sx={{color:STORE_COLOR}}>
+          売上目標管理{isFukuoka?' — 福岡店':''}
         </Typography>
-        <Chip label={`大分店 ${FISCAL_YEAR.replace('-','〜')}年度`} size="small"
-          sx={{bgcolor:'#e3f2fd',color:'#1565c0',fontWeight:500}}/>
-        <Tooltip title="店舗判定：物件番号FI除外＝大分店（担当者所属では判定しない）">
-          <Chip label="FI除外＝大分店" size="small" variant="outlined"
+        <Chip label={`${STORE_LABEL} ${FISCAL_YEAR.replace('-','〜')}年度`} size="small"
+          sx={{bgcolor:isFukuoka?'#fff3e0':'#e3f2fd',color:STORE_COLOR,fontWeight:500}}/>
+        <Tooltip title={isFukuoka?'店舗判定：物件番号FI含む＝福岡店':'店舗判定：物件番号FI除外＝大分店（担当者所属では判定しない）'}>
+          <Chip label={isFukuoka?'FI含む＝福岡店':'FI除外＝大分店'} size="small" variant="outlined"
             sx={{fontSize:'0.7rem',color:'text.secondary',cursor:'help'}}/>
         </Tooltip>
         <Box sx={{ml:'auto',display:'flex',gap:1,alignItems:'center'}}>

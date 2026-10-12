@@ -729,6 +729,33 @@ export default function PropertyListingsPage() {
           >
             📈 売上目標管理
           </Button>
+          {/* 福岡 — 塗りつぶし（Contained）でオレンジ、視覚的に大分と区別 */}
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => navigate('/property-listings/contract-prospects?store=fukuoka')}
+            sx={{
+              bgcolor: '#e65100',
+              color: '#fff',
+              fontWeight: 'bold',
+              '&:hover': { bgcolor: '#bf360c' },
+            }}
+          >
+            🏠 成約見込み_福岡
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => navigate('/property-listings/sales-dashboard?store=fukuoka')}
+            sx={{
+              bgcolor: '#f57c00',
+              color: '#fff',
+              fontWeight: 'bold',
+              '&:hover': { bgcolor: '#e65100' },
+            }}
+          >
+            📈 売上目標_福岡
+          </Button>
           <Button
             variant="outlined"
             size="small"

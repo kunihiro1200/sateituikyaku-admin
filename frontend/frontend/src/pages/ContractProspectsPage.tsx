@@ -261,6 +261,9 @@ function resolveStaffName(salesAssignee: string | undefined | null): string {
 export default function ContractProspectsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const isFukuoka = searchParams.get('store') === 'fukuoka';
+  const STORE_LABEL = isFukuoka ? '福岡店（FI番号）' : '大分店・専任媒介';
+  const STORE_COLOR = isFukuoka ? '#e65100' : PROPERTY_COLOR;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { employee } = useAuthStore();
@@ -307,15 +310,20 @@ export default function ContractProspectsPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. 物件リスト（専任・公開中 & FI番号除外）
-      const { data: listings, error: listErr } = await supabase
+      // 1. 物件リスト（専任・公開中、大分=FI除外 / 福岡=FI含む）
+      const listQuery = supabase
         .from('property_listings')
         .select(
           'id, property_number, address, display_address, sales_assignee, price, commission_from_seller, atbb_status'
         )
         .eq('atbb_status', '専任・公開中')
-        .not('property_number', 'ilike', '%FI%')
         .order('property_number', { ascending: true });
+
+      const { data: listings, error: listErr } = await (
+        isFukuoka
+          ? listQuery.ilike('property_number', '%FI%')
+          : listQuery.not('property_number', 'ilike', '%FI%')
+      );
 
       if (listErr) throw listErr;
 
@@ -332,7 +340,8 @@ export default function ContractProspectsPage() {
       );
 
       const merged: PropertyWithProspect[] = (listings ?? [])
-        .filter((l) => ALL_STAFF_PATTERNS.some((p) => (l.sales_assignee ?? '').includes(p)))
+        // 大分: 6名の担当者に絞る / 福岡: 全件表示
+        .filter((l) => isFukuoka || ALL_STAFF_PATTERNS.some((p) => (l.sales_assignee ?? '').includes(p)))
         .map((l) => ({
           ...l,
           prospect: prospectMap.get(l.property_number),
@@ -345,7 +354,7 @@ export default function ContractProspectsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isFukuoka]);
 
   useEffect(() => {
     fetchData();
@@ -619,14 +628,14 @@ export default function ContractProspectsPage() {
         </IconButton>
         <Typography
           fontWeight="bold"
-          sx={{ color: PROPERTY_COLOR, fontSize: '22px' }}
+          sx={{ color: STORE_COLOR, fontSize: '22px' }}
         >
-          成約見込み管理
+          成約見込み管理{isFukuoka ? ' — 福岡店' : ''}
         </Typography>
         <Chip
-          label="大分店・専任媒介"
+          label={STORE_LABEL}
           size="small"
-          sx={{ bgcolor: '#e3f2fd', color: '#1565c0', fontWeight: 500, fontSize: '13px' }}
+          sx={{ bgcolor: isFukuoka ? '#fff3e0' : '#e3f2fd', color: STORE_COLOR, fontWeight: 500, fontSize: '13px' }}
         />
         <Tooltip title="ランク基準を確認" arrow>
           <IconButton size="small" onClick={() => setRankGuideOpen(true)}>
