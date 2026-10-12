@@ -506,15 +506,14 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
       addCount(month, 'reinsEmail', initial);
     }
 
-    // 集計対象外のイニシャルを除外
-    // - TENANT / 空 / '-' はプレースホルダ
-    // - IF / T / G / 生 / H / M は共有ページから除外（要望により固定除外）
-    //   ※ I / K / U は表示・集計対象（除外しない）
-    const EXCLUDED = new Set<string>([
-      'TENANT', '', '-',
-      'IF', 'T', 'G', '生', 'H', 'M',
-      ...userExcluded,
-    ]);
+    // 集計対象のイニシャルを「R・久・和」の3名だけに限定する（許可リスト方式）。
+    //   R = 木村侑里音 / 久 = 久米マリ子 / 和 = 和田樹奈
+    // これ以外のスタッフ・プレースホルダ（TENANT / 空 / '-' 等）はすべて除外する。
+    // excludeInitials クエリで指定されたイニシャルは、許可リストに入っていても追加で除外する。
+    const INCLUDED = new Set<string>(['R', '久', '和']);
+    const userExcludedSet = new Set<string>(userExcluded);
+    const isAllowed = (init: string): boolean =>
+      INCLUDED.has(init) && !userExcludedSet.has(init.toUpperCase());
 
     const metrics = [
       ...taskMetrics.map((m) => ({ key: m.key, label: m.label })),
@@ -540,7 +539,7 @@ router.get('/office-meeting-stats', async (req: Request, res: Response) => {
       }
 
       const rows = Array.from(allInitials)
-        .filter((init) => !EXCLUDED.has(init))
+        .filter((init) => isAllowed(init))
         .map((initial) => {
           const counts: Record<string, number> = {};
           let total = 0;
