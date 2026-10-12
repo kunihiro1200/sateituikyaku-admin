@@ -1191,6 +1191,100 @@ app.post('/api/cron/check-property-prices', async (req, res) => {
   }
 });
 
+// ─── Drive同期 cron ハンドラ ─────────────────────────────────────────────────
+
+/**
+ * GET /api/cron/renew-drive-watch
+ * Drive watch チャンネルの有効期限が切れる前に更新する。
+ * schedule: 6日ごと（vercel.json）
+ * 初回登録もこのエンドポイントが担う（チャンネルが存在しない場合は新規作成する）。
+ */
+app.get('/api/cron/renew-drive-watch', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    console.log('[Cron DriveWatch] watchチャンネル更新開始');
+    const { DriveWatchService } = await import('./services/DriveWatchService');
+    const svc = new DriveWatchService();
+    await svc.renewExpiringChannels();
+    console.log('[Cron DriveWatch] 完了');
+    return res.status(200).json({ success: true });
+  } catch (err: any) {
+    console.error('[Cron DriveWatch] エラー:', err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/cron/drive-reconcile
+ * 通知漏れ補完：last_synced_at が古い物件を再同期する。
+ * schedule: 1時間ごと（vercel.json）
+ */
+app.get('/api/cron/drive-reconcile', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    console.log('[Cron DriveReconcile] 照合開始');
+    const { PropertySheetSyncService } = await import('./services/PropertySheetSyncService');
+    const svc = new PropertySheetSyncService();
+    const result = await svc.reconcile(2);
+    console.log('[Cron DriveReconcile] 完了:', result);
+    return res.status(200).json({ success: true, ...result });
+  } catch (err: any) {
+    console.error('[Cron DriveReconcile] エラー:', err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/cron/drive-retry
+ * 失敗した同期処理をリトライする。
+ * schedule: 15分ごと（vercel.json）
+ */
+app.get('/api/cron/drive-retry', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    console.log('[Cron DriveRetry] リトライ開始');
+    const { PropertySheetSyncService } = await import('./services/PropertySheetSyncService');
+    const svc = new PropertySheetSyncService();
+    const result = await svc.retryFailed();
+    console.log('[Cron DriveRetry] 完了:', result);
+    return res.status(200).json({ success: true, ...result });
+  } catch (err: any) {
+    console.error('[Cron DriveRetry] エラー:', err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/drive-sync/register-watch
+ * Drive watchチャンネルを手動で登録するエンドポイント。
+ * デプロイ後に一度だけ叩いて watch を有効化する。
+ * （その後は /api/cron/renew-drive-watch が自動更新する）
+ */
+app.post('/api/drive-sync/register-watch', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const { DriveWatchService } = await import('./services/DriveWatchService');
+    const svc = new DriveWatchService();
+    await svc.registerAllChannels();
+    return res.status(200).json({ success: true, message: 'Drive watch channels registered' });
+  } catch (err: any) {
+    console.error('[DriveSync] register-watch error:', err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);
