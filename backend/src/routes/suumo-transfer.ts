@@ -300,7 +300,8 @@ router.post('/suumo-transfer', async (req: Request, res: Response) => {
       email_hash: email ? crypto.createHash('sha256').update(email).digest('hex') : null,
       property_address: propertyAddress,
       property_type: displayPropertyType,
-      inquiry_site: 'ス',
+      // サイトコードは 'S'（SUUMO）。すまいステップの 'す' と紛らわしいため英字Sを使う。
+      inquiry_site: 'S',
       inquiry_date: inquiryDateISO,
       inquiry_year: inquiryYear,
       inquiry_detailed_datetime: inquiryDateTimeISO,
