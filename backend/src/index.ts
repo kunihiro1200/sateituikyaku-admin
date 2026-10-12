@@ -106,6 +106,7 @@ import floorPlanCompareRoutes from './routes/floorPlanCompare';
 import youtoChiikiRoutes from './routes/youtoChiiki';
 import sitemapRoutes from './routes/sitemap';
 import documentDraftsRoutes from './routes/documentDrafts';
+import constructionPricesRoutes from './routes/constructionPrices';
 import { activityLogger } from './middleware/activityLogger';
 import { authenticate } from './middleware/auth';
 
@@ -1091,6 +1092,7 @@ app.use('/api/sellers', sellerRoutes);
 app.use('/api/sellers', sellersManagementRoutes);
 app.use('/properties', propertyRoutes);
 app.use('/api/sellers', valuationRoutes);
+app.use('/api/construction-prices', constructionPricesRoutes); // 建築単価管理（e-Stat連携・第4段階）
 app.use('/api/sellers', emailRoutes);
 app.use('/api/emails', emailRoutes);
 app.use('/api/sellers', followUpRoutes);

@@ -1,0 +1,73 @@
+name: 建築単価 e-Stat 年次自動更新
+
+# ─── トリガー ────────────────────────────────────────────────────────────────
+on:
+  # 毎年10月1日 09:00 JST（= 00:00 UTC）に自動実行
+  # 理由: 国交省の建築着工統計は通常7〜8月に前年度分を公表するため、
+  #        10月には最新データが利用可能になっている。
+  schedule:
+    - cron: '0 0 1 10 *'
+
+  # 手動実行（管理者が任意のタイミングでトリガー可能）
+  workflow_dispatch:
+    inputs:
+      year:
+        description: '取得年度（省略時: e-Stat で利用可能な最新3年分）'
+        required: false
+        default: ''
+
+# ─── ジョブ ──────────────────────────────────────────────────────────────────
+jobs:
+  update-construction-prices:
+    name: 建築単価 e-Stat 取得・候補登録
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 建築単価を e-Stat から取得して更新候補を登録
+        run: |
+          YEAR="${{ github.event.inputs.year }}"
+          
+          if [ -n "$YEAR" ]; then
+            # 指定年度のみ取得
+            echo "指定年度 ${YEAR} を取得します"
+            RESPONSE=$(curl -s -w "\n%{http_code}" \
+              -X POST \
+              -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+              -H "Content-Type: application/json" \
+              "${{ secrets.BACKEND_URL }}/api/construction-prices/fetch/$YEAR")
+          else
+            # 最新3年分を一括取得
+            echo "最新3年分を一括取得します"
+            RESPONSE=$(curl -s -w "\n%{http_code}" \
+              -X POST \
+              -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+              -H "Content-Type: application/json" \
+              "${{ secrets.BACKEND_URL }}/api/construction-prices/fetch-all-estat")
+          fi
+          
+          # レスポンス確認
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+          
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ 取得失敗 (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+          
+          echo "✅ 取得完了"
+          echo "⚠️  管理者が /api/construction-prices/candidates を確認し、"
+          echo "   各候補を /api/construction-prices/approve/:year/:structure で承認してください"
+
+      - name: 結果サマリー
+        if: always()
+        run: |
+          echo "=== 建築単価更新ジョブ完了 ==="
+          echo "次のステップ: 管理者が更新候補を確認・承認してください"
+          echo "  GET  /api/construction-prices/candidates   # 承認待ち一覧"
+          echo "  POST /api/construction-prices/approve/:year/:structure  # 承認"
+          echo ""
+          echo "注意: 承認するまで price_per_sqm（査定計算値）は変更されません"
