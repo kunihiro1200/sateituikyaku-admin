@@ -69,7 +69,8 @@ const YTD_MONTHS = FY_MONTHS.filter(m => m <= CURRENT_MONTH);
 const PREV_YTD_MONTHS = YTD_MONTHS.map(m => { const [y,mo]=m.split('-'); return `${+y-1}-${mo}`; });
 
 const STAFF_LIST = ['山本','角井','林田','麻生','裏','国広'];
-const STAFF_BUTTONS = ['全員','山本','角井','林田','麻生','裏','国広'];
+const STAFF_BUTTONS = ['全員','山本','角井','林田','麻生','裏','国広'] as const;
+const STAFF_BUTTONS_FUKUOKA = ['全員','裏','国広'] as const;
 const STAFF_PATTERNS: Record<string,string[]> = {
   山本:['山本','山','Y'], 角井:['角井','I'], 林田:['林','林田'],
   麻生:['麻生','麻'], 裏:['裏','U'], 国広:['K','国広'],
@@ -538,7 +539,7 @@ export default function SalesDashboardPage() {
         const base=Math.floor(amount/12);
         const remainder=amount-base*12;
         const monthlyRows:MonthlyTarget[]=FY_MONTHS.map((month,i)=>({
-          fiscal_year:FISCAL_YEAR,month,store_name:'大分店',staff_name:sKey,
+          fiscal_year:FISCAL_YEAR,month,store_name:STORE_NAME,staff_name:sKey,
           target_amount:i===11?base+remainder:base,
         }));
         const {error:me}=await supabase.from('monthly_sales_targets')
@@ -616,7 +617,7 @@ export default function SalesDashboardPage() {
 
       {/* 担当者切替 */}
       <Box sx={{display:'flex',gap:1,flexWrap:'wrap',mt:2,mb:2.5}}>
-        {STAFF_BUTTONS.map(staff=>(
+        {(isFukuoka ? STAFF_BUTTONS_FUKUOKA : STAFF_BUTTONS).map(staff=>(
           <Button key={staff} variant={selectedStaff===staff?'contained':'outlined'} size="medium"
             onClick={()=>{setSelectedStaff(staff);setExpandedStaff(null);}}
             sx={{fontSize:'15px',fontWeight:'bold',minWidth:72,
@@ -638,7 +639,7 @@ export default function SalesDashboardPage() {
               今月までの累計達成率
             </Typography>
             <Typography variant="h6" fontWeight="bold" sx={{color:PROPERTY_COLOR}}>
-              {selectedStaff==='全員'?'大分店全体':selectedStaff} — {ytdData.label}
+              {selectedStaff==='全員'?`${STORE_NAME}全体`:selectedStaff} — {ytdData.label}
             </Typography>
             {ytdData.missingCount>0 && (
               <Chip label={`注意：${ytdData.missingCount}ヶ月分の月別目標が未設定`} size="small"
@@ -716,16 +717,16 @@ export default function SalesDashboardPage() {
       {/* ──────────────────────────────────────────── */}
       {selectedStaff==='全員' ? (<>
         <Paper sx={{p:2.5,mb:2}} elevation={1}>
-          <Typography sx={{fontSize:'17px',fontWeight:'bold',color:PROPERTY_COLOR,mb:1.5}}>
-            📊 大分店全体 — 月別実績 vs 目標 vs 前期
+          <Typography sx={{fontSize:'17px',fontWeight:'bold',color:STORE_COLOR,mb:1.5}}>
+            📊 {STORE_NAME}全体 — 月別実績 vs 目標 vs 前期
           </Typography>
           <Box sx={{height:280}}>
             <Bar data={barChartData} options={chartBarOptions as any}/>
           </Box>
         </Paper>
         <Paper sx={{p:2.5,mb:2}} elevation={1}>
-          <Typography sx={{fontSize:'17px',fontWeight:'bold',color:PROPERTY_COLOR,mb:1.5}}>
-            📈 大分店全体 — 累計推移（今期 vs 前期 vs 目標）
+          <Typography sx={{fontSize:'17px',fontWeight:'bold',color:STORE_COLOR,mb:1.5}}>
+            📈 {STORE_NAME}全体 — 累計推移（今期 vs 前期 vs 目標）
           </Typography>
           <Box sx={{height:260}}>
             <Line data={lineChartData} options={chartLineOptions as any}/>
@@ -839,7 +840,7 @@ export default function SalesDashboardPage() {
           <Box sx={{display:'flex',alignItems:'center',gap:1,flexWrap:'wrap'}}>
             <Typography variant="subtitle2" fontWeight="bold">月別売上集計</Typography>
             <Typography variant="caption" color="text.secondary">
-              {selectedStaff==='全員'?'大分店全体':selectedStaff} — 月別目標は各行の✏️から設定
+              {selectedStaff==='全員'?`${STORE_NAME}全体`:selectedStaff} — 月別目標は各行の✏️から設定
             </Typography>
           </Box>
         </AccordionSummary>
@@ -1145,7 +1146,7 @@ export default function SalesDashboardPage() {
                 ))}
                 {/* 大分店合計行 */}
                 <TableRow sx={{bgcolor:'#e3f2fd'}}>
-                  <TableCell sx={{...TC,fontWeight:'bold'}}>合計（大分店）</TableCell>
+                  <TableCell sx={{...TC,fontWeight:'bold'}}>合計（{STORE_NAME}）</TableCell>
                   <TableCell sx={{...TC,fontWeight:'bold',color:'#2e7d32'}}>{formatPrice(ytdData.actual)}</TableCell>
                   <TableCell sx={{...TC,fontWeight:'bold'}}>{ytdData.target>0?formatPrice(ytdData.target):'未設定'}</TableCell>
                   <TableCell sx={TC}>
