@@ -611,9 +611,9 @@ export default function SalesDashboardPage() {
   const TC = {px:1.25,py:1.25,fontSize:'15px',whiteSpace:'nowrap' as const};
   const TH = {...TC,fontWeight:'bold',bgcolor:'#1565c0',color:'#fff',fontSize:'15px'};
 
-  const EditableMonthCell = ({month, sKey, currentTarget}: {month:string;sKey:string;currentTarget:number}) => {
+  /** 月別目標の編集セル（インライン） */
+  const renderMonthTargetCell = (month: string, sKey: string, currentTarget: number) => {
     const isEditing = editingMonth?.month===month && editingMonth?.staffName===sKey;
-
     if (isEditing) return (
       <Box sx={{display:'flex',flexDirection:'column',gap:0.5,minWidth:160}}>
         <Box sx={{display:'flex',gap:0.5,alignItems:'center'}}>
@@ -623,11 +623,11 @@ export default function SalesDashboardPage() {
             onKeyDown={e=>{if(e.key==='Enter') handleSaveMonthTarget(month,sKey,editMonthVal,applyAll);}}/>
           <IconButton size="small" color="primary" disabled={saving}
             onClick={()=>handleSaveMonthTarget(month,sKey,editMonthVal,applyAll)}><SaveIcon sx={{fontSize:'1rem'}}/></IconButton>
-          <IconButton size="small" disabled={saving} onClick={()=>{setEditingMonth(null);setApplyAll(false);}}><CancelIcon sx={{fontSize:'1rem'}}/></IconButton>
+          <IconButton size="small" disabled={saving}
+            onClick={()=>{setEditingMonth(null);setApplyAll(false);}}><CancelIcon sx={{fontSize:'1rem'}}/></IconButton>
         </Box>
-        {/* 全月一括設定チェックボックス */}
         <Box sx={{display:'flex',alignItems:'center',gap:0.5,cursor:'pointer'}}
-          onClick={()=>setApplyAll(!applyAll)}>
+          onClick={()=>setApplyAll(prev=>!prev)}>
           <Box sx={{width:16,height:16,border:`2px solid ${applyAll?'#1565c0':'#bbb'}`,
             bgcolor:applyAll?'#1565c0':'transparent',borderRadius:0.5,
             display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
@@ -644,12 +644,15 @@ export default function SalesDashboardPage() {
         <Typography variant="body2" sx={{fontSize:'0.8rem',minWidth:60}}>
           {currentTarget>0?formatPrice(currentTarget):<span style={{color:'#bbb'}}>未設定</span>}
         </Typography>
-        <Tooltip title="目標を設定（万円単位）"><IconButton size="small"
-          onClick={()=>{setEditingMonth({month,staffName:sKey});setEditMonthVal(currentTarget>0?(currentTarget/10_000).toString():'');}}>
-          <EditIcon sx={{fontSize:'0.8rem',color:PROPERTY_COLOR}}/></IconButton></Tooltip>
+        <Tooltip title="目標を設定（万円単位）">
+          <IconButton size="small"
+            onClick={()=>{setEditingMonth({month,staffName:sKey});setEditMonthVal(currentTarget>0?(currentTarget/10_000).toString():'');setApplyAll(false);}}>
+            <EditIcon sx={{fontSize:'0.8rem',color:PROPERTY_COLOR}}/>
+          </IconButton>
+        </Tooltip>
       </Box>
     );
-  }
+  };
 
   return (
     <Container maxWidth="xl" sx={isMobile?{px:1,py:2}:{py:3}}>
@@ -936,7 +939,7 @@ export default function SalesDashboardPage() {
                         sx={{ml:0.5,height:16,fontSize:'0.6rem',bgcolor:'#fff3e0',color:'#e65100'}}/>}
                     </TableCell>
                     <TableCell sx={TC}>
-                      <EditableMonthCell month={m.month} sKey={staffKey} currentTarget={m.target}/>
+                      {renderMonthTargetCell(m.month, staffKey, m.target)}
                     </TableCell>
                     <TableCell sx={{...TC,color:m.actual>0?'#2e7d32':'text.disabled',
                       fontWeight:m.actual>0?600:'normal'}}>
@@ -1187,7 +1190,7 @@ export default function SalesDashboardPage() {
                                     {formatMonth(mr.month)}
                                   </TableCell>
                                   <TableCell sx={TC}>
-                                    <EditableMonthCell month={mr.month} sKey={s.name} currentTarget={mr.target}/>
+                                    {renderMonthTargetCell(mr.month, s.name, mr.target)}
                                   </TableCell>
                                   <TableCell sx={{...TC,color:mr.actual>0?'#2e7d32':'text.disabled',fontWeight:mr.actual>0?600:'normal'}}>
                                     {mr.actual>0?formatPrice(mr.actual):'-'}
