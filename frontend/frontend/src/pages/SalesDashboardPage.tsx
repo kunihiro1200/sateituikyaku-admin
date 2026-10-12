@@ -238,10 +238,8 @@ export default function SalesDashboardPage() {
   const [prevYearModal, setPrevYearModal] = useState<{
     open: boolean; title: string; items: SettledProperty[];
   }>({ open: false, title: '', items: [] });
-
-  const openPrevYearModal = (title: string, items: SettledProperty[]) => {
+  const openPrevYearModal = (title: string, items: SettledProperty[]) =>
     setPrevYearModal({ open: true, title, items });
-  };
 
   // ── データ取得 ──
   const fetchData = useCallback(async () => {
