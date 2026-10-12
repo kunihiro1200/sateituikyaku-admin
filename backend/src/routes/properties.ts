@@ -59,7 +59,7 @@ router.post(
         return res.status(400).json({
           error: {
             code: 'VALIDATION_ERROR',
-            message: 'Invalid seller situation. Must be one of: 居, 空, 賃, 古有, 更, 他',
+            message: 'Invalid seller situation. Must be one of: 居, 空, 賃, 古有, 更, 他, 居住中, 空き家, 賃貸中',
             retryable: false,
           },
         });
@@ -259,7 +259,7 @@ router.put(
         return res.status(400).json({
           error: {
             code: 'VALIDATION_ERROR',
-            message: 'Invalid seller situation. Must be one of: 居, 空, 賃, 古有, 更, 他',
+            message: 'Invalid seller situation. Must be one of: 居, 空, 賃, 古有, 更, 他, 居住中, 空き家, 賃貸中',
             retryable: false,
           },
         });
