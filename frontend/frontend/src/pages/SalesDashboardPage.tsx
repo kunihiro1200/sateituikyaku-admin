@@ -290,24 +290,25 @@ export default function SalesDashboardPage() {
           const cr = await api.get<{contracts:ContractRecord[]}>('/api/sales/contracts?include_prev=true');
           const all = cr.data.contracts ?? [];
           setContracted(all.filter(c=>c.category==='contracted'));
-          // スプシの前期actuals を取得（補完データ）
+          // スプシの前期actuals = C列（決済確定日）が前期範囲内のもの
+          // これをそのまま前期実績として使う（DB混在なし・スプシが唯一の実績ソース）
           const prevActualFromSheet = all.filter(c=>
             c.category==='actual' &&
             c.settlement_date &&
             c.settlement_date >= PREV_FY_START_DATE &&
             c.settlement_date <= PREV_FY_END_DATE
           );
-          const sheetPrevNumbers = new Set(prevActualFromSheet.map(c=>c.property_number));
-          // DBにある物件のうち、スプシに同一物件があればスプシ優先（より正確）
-          const dbFiltered = (pR.data??[]).filter((p:any)=>!sheetPrevNumbers.has(p.property_number));
-          const supplementPrev = prevActualFromSheet.map(c=>({
+          const sheetNumbers = new Set(prevActualFromSheet.map(c=>c.property_number));
+          // スプシにない物件のみDBから補完（スプシが主、DBは補完）
+          const dbOnly = (pR.data??[]).filter((p:any)=>!sheetNumbers.has(p.property_number));
+          const sheetSettled = prevActualFromSheet.map(c=>({
             property_number:c.property_number,
             sales_assignee:c.staff,
             settlement_date:c.settlement_date,
-            total_commission:c.commission,
+            total_commission:c.commission,   // I列の仲介手数料計
             commission_from_seller:null, commission_from_buyer:null, price:null,
           }));
-          setPrevYearSettled([...dbFiltered, ...supplementPrev]);
+          setPrevYearSettled([...sheetSettled, ...dbOnly]);
           setContractedError(null);
         } catch {
           setContractedError('スプレッドシート取得エラー');
@@ -320,22 +321,23 @@ export default function SalesDashboardPage() {
           const cr = await api.get<{contracts:ContractRecord[]}>('/api/sales/contracts?store=fukuoka&include_prev=true');
           const all = cr.data.contracts ?? [];
           setContracted(all.filter(c=>c.category==='contracted'));
-          const prevActualFromSheetFk = all.filter(c=>
+          // 福岡版も同様：スプシC列（決済確定日）が前期内のもの = 実績
+          const prevActualFk = all.filter(c=>
             c.category==='actual' &&
             c.settlement_date &&
             c.settlement_date >= PREV_FY_START_DATE &&
             c.settlement_date <= PREV_FY_END_DATE
           );
-          const sheetFkNumbers = new Set(prevActualFromSheetFk.map(c=>c.property_number));
-          const dbFilteredFk = (pR.data??[]).filter((p:any)=>!sheetFkNumbers.has(p.property_number));
-          const supplementPrevFk = prevActualFromSheetFk.map(c=>({
+          const sheetFkNums = new Set(prevActualFk.map(c=>c.property_number));
+          const dbOnlyFk = (pR.data??[]).filter((p:any)=>!sheetFkNums.has(p.property_number));
+          const sheetSettledFk = prevActualFk.map(c=>({
             property_number:c.property_number,
             sales_assignee:c.staff,
             settlement_date:c.settlement_date,
             total_commission:c.commission,
             commission_from_seller:null, commission_from_buyer:null, price:null,
           }));
-          setPrevYearSettled([...dbFilteredFk, ...supplementPrevFk]);
+          setPrevYearSettled([...sheetSettledFk, ...dbOnlyFk]);
           setContractedError(null);
         } catch {
           setContractedError('スプレッドシート取得エラー（福岡シート）');
