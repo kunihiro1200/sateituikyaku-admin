@@ -56,9 +56,9 @@ router.post('/sumai-transfer', async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, error: 'mailBody is required' });
   }
 
-  // すまいステップの本文条件（GASと同じ: 1年以内の反響のみ閲覧できますという文言が必須）
-  if (!mailBody.includes('1年以内の反響のみ閲覧できます')) {
-    return res.json({ success: true, skipped: true, message: '「1年以内の反響のみ閲覧できます」が含まれないためスキップ' });
+  // すまいステップの本文条件：「メモ」フィールドが含まれていることを確認
+  if (!mailBody.includes('メモ')) {
+    return res.json({ success: true, skipped: true, message: '「メモ」が含まれないためスキップ' });
   }
 
   try {
