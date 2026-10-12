@@ -15,6 +15,7 @@ import {
   Tooltip, Divider,
   CircularProgress, Snackbar, Alert,
   useTheme, useMediaQuery,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import {
   Chart as ChartJS,
@@ -91,6 +92,10 @@ interface ActiveListing {
   sales_assignee?: string|null;
   price?: number|null;
   commission_from_seller?: number|null;
+  address?: string|null;
+  display_address?: string|null;
+  seller_name?: string|null;
+}
   address?: string|null;
   display_address?: string|null;
 }
@@ -205,6 +210,15 @@ export default function SalesDashboardPage() {
     {open:false,message:'',severity:'success'}
   );
 
+  // ── 成約見込み詳細モーダル ──
+  const [forecastModal, setForecastModal] = useState<{
+    open: boolean; staffName: string; items: ActiveListingWithProspect[];
+  }>({ open: false, staffName: '', items: [] });
+
+  const openForecastModal = (staffName: string, items: ActiveListingWithProspect[]) => {
+    setForecastModal({ open: true, staffName, items });
+  };
+
   // ── データ取得 ──
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -220,7 +234,7 @@ export default function SalesDashboardPage() {
           .not('property_number','ilike','%FI%').not('settlement_date','is',null)
           .gte('settlement_date',PREV_FY_START_DATE).lte('settlement_date',PREV_FY_END_DATE),
         supabase.from('property_listings')
-          .select('property_number,sales_assignee,price,commission_from_seller,address,display_address')
+          .select('property_number,sales_assignee,price,commission_from_seller,address,display_address,seller_name')
           .eq('atbb_status','専任・公開中').not('property_number','ilike','%FI%'),
         supabase.from('property_contract_prospects')
           .select('property_number,prospect_rank,settlement_expected_month,manager_check_status')
@@ -933,7 +947,7 @@ export default function SalesDashboardPage() {
               <TableHead>
                 <TableRow>
                   {['担当者','累計実績','累計目標','累計達成率','前年同期比',
-                    '年間実績','年間目標（編集）','年度末予測','予測達成率'].map(h=>(
+                    '年間実績','年間目標（編集）','年度末予測','成約見込み（今期）👆','予測達成率'].map(h=>(
                     <TableCell key={h} sx={TH}>{h}</TableCell>
                   ))}
                 </TableRow>
@@ -1002,6 +1016,30 @@ export default function SalesDashboardPage() {
                     </TableCell>
                     <TableCell sx={{...TC,color:'#00838f',fontWeight:s.projected>0?600:'normal'}}>
                       {s.projected>0?formatPrice(s.projected):'-'}
+                    </TableCell>
+                    {/* 成約見込み（クリックでモーダル） */}
+                    <TableCell sx={TC}>
+                      <Typography
+                        sx={{
+                          fontSize:'15px',
+                          color:s.forecast>0?'#1565c0':'text.disabled',
+                          fontWeight:s.forecast>0?600:'normal',
+                          cursor:s.forecast>0?'pointer':'default',
+                          textDecoration:s.forecast>0?'underline dotted':'none',
+                          whiteSpace:'nowrap',
+                          '&:hover': s.forecast>0?{opacity:0.75}:{},
+                        }}
+                        onClick={()=>s.forecast>0&&openForecastModal(s.name,s.forecastItems)}
+                      >
+                        {s.forecast>0?formatPrice(s.forecast):'-'}
+                      </Typography>
+                      {s.forecastCount>0&&(
+                        <Typography variant="caption" color="text.secondary"
+                          sx={{display:'block',fontSize:'0.65rem',cursor:'pointer'}}
+                          onClick={()=>s.forecast>0&&openForecastModal(s.name,s.forecastItems)}>
+                          {s.forecastCount}件 👆
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell sx={TC}>
                       {s.projRate!==null?(
@@ -1210,6 +1248,76 @@ export default function SalesDashboardPage() {
       </Accordion>
       )}
       </>)}
+
+      {/* ── 成約見込み詳細モーダル ── */}
+      <Dialog open={forecastModal.open} onClose={()=>setForecastModal(m=>({...m,open:false}))} maxWidth="md" fullWidth>
+        <DialogTitle sx={{fontWeight:'bold',color:'#1565c0',pb:1}}>
+          📋 {forecastModal.staffName} — 成約見込み物件一覧（今期）
+          <Typography variant="caption" color="text.secondary" sx={{display:'block',mt:0.25}}>
+            今期（〜2027年9月）の成約見込み物件。クリックで物件詳細ページへ。
+          </Typography>
+        </DialogTitle>
+        <DialogContent dividers sx={{p:0}}>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{bgcolor:'#1565c0'}}>
+                  {['物件番号','物件住所','売主氏名','価格','ランク','決済見込み月','想定売上'].map(h=>(
+                    <TableCell key={h} sx={{color:'#fff',fontWeight:'bold',fontSize:'14px',py:1.25,px:1.5}}>{h}</TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {forecastModal.items.length === 0 ? (
+                  <TableRow><TableCell colSpan={7} align="center" sx={{py:3,color:'#aaa'}}>
+                    対象物件なし（今期の決済見込み月が未入力の可能性があります）
+                  </TableCell></TableRow>
+                ) : (
+                  forecastModal.items
+                    .sort((a,b)=>(a.prospect?.settlement_expected_month??'').localeCompare(b.prospect?.settlement_expected_month??''))
+                    .map(p=>{
+                      const sc=calcSellerCommission(p.price,p.commission_from_seller);
+                      const rev=calcExpectedRevenue(sc);
+                      const rank=p.prospect?.prospect_rank;
+                      const RANK_COLORS_MAP: Record<string,string>={A:'#1565c0',B:'#2e7d32',C:'#e65100',D:'#c62828'};
+                      return (
+                        <TableRow key={p.property_number}
+                          sx={{'&:hover':{bgcolor:'#e3f2fd'},cursor:'pointer'}}
+                          onClick={()=>{navigate(`/property-listings/${p.property_number}`);setForecastModal(m=>({...m,open:false}));}}>
+                          <TableCell sx={{fontWeight:600,fontSize:'15px',px:1.5,py:1.25}}>{p.property_number}</TableCell>
+                          <TableCell sx={{fontSize:'14px',px:1.5,py:1.25,maxWidth:180}}>
+                            <Typography variant="body2" sx={{wordBreak:'break-all',lineHeight:1.3,fontSize:'14px'}}>
+                              {p.display_address||p.address||'-'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell sx={{fontSize:'14px',px:1.5,py:1.25}}>{(p as any).seller_name||'-'}</TableCell>
+                          <TableCell sx={{fontSize:'14px',px:1.5,py:1.25,whiteSpace:'nowrap',textAlign:'right'}}>
+                            {p.price?formatPrice(p.price):'-'}
+                          </TableCell>
+                          <TableCell sx={{px:1.5,py:1.25}}>
+                            {rank?<Chip label={rank} size="small" sx={{bgcolor:RANK_COLORS_MAP[rank]??'#757575',color:'#fff',fontWeight:'bold',minWidth:28,fontSize:'13px'}}/>:'-'}
+                          </TableCell>
+                          <TableCell sx={{fontSize:'14px',px:1.5,py:1.25,whiteSpace:'nowrap',fontWeight:500}}>
+                            {p.prospect?.settlement_expected_month?formatMonth(p.prospect.settlement_expected_month):'-'}
+                          </TableCell>
+                          <TableCell sx={{fontSize:'14px',px:1.5,py:1.25,textAlign:'right',fontWeight:'bold',color:'#1565c0',whiteSpace:'nowrap'}}>
+                            {formatPrice(rev)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions sx={{px:2,py:1}}>
+          <Typography variant="caption" color="text.secondary" sx={{flex:1}}>
+            ⚠️ 2027年10月以降の決済見込み月・未入力の物件は今期集計に含まれません
+          </Typography>
+          <Button onClick={()=>setForecastModal(m=>({...m,open:false}))}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar open={snackbar.open} autoHideDuration={3000}
         onClose={()=>setSnackbar(s=>({...s,open:false}))}
