@@ -419,31 +419,4 @@ router.post('/suumo-transfer', async (req: Request, res: Response) => {
   }
 });
 
-/**
- * POST /api/sellers/suumo-exclusion-append-test
- * 【一時的なテスト用】除外申請フォーマットへの追記だけを単独実行する。
- * 新しい売主は作らず、指定JDS連番を除外申請スプシに追記する動作確認用。
- * 確認後に削除する。CRON_SECRET認証。
- * body: { jdsSerial: "0145987222" }
- */
-router.post('/suumo-exclusion-append-test', async (req: Request, res: Response) => {
-  const authHeader = req.headers.authorization;
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return res.status(401).json({ success: false, error: 'Unauthorized' });
-  }
-  const { jdsSerial } = req.body;
-  if (!jdsSerial) {
-    return res.status(400).json({ success: false, error: 'jdsSerial is required' });
-  }
-  try {
-    const { appendSuumoExclusionRequest } = await import('../services/SuumoExclusionRequestService');
-    const result = await appendSuumoExclusionRequest(String(jdsSerial));
-    return res.json(result);
-  } catch (error: any) {
-    console.error('[suumo-exclusion-append-test] エラー:', error);
-    return res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 export default router;
