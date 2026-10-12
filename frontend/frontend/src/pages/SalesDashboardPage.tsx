@@ -408,6 +408,9 @@ export default function SalesDashboardPage() {
     ],
   }),[monthRows]);
 
+  // 福岡版は裏・国広のみ表示（allStaffBarDataより前に定義）
+  const displayStaffList = isFukuoka ? ['裏', '国広'] : STAFF_LIST;
+
   const allStaffBarData = useMemo(()=>({
     labels: MONTH_LABELS,
     datasets: displayStaffList.map(name=>({
@@ -475,9 +478,6 @@ export default function SalesDashboardPage() {
     return {actual,contracted:contractedAmt,forecast,projected,annualTarget,projRate,
       actualCount:filteredSettled.length,contractedCount:filteredContracted.length,forecastCount:filteredForecast.length};
   },[filteredSettled,filteredContracted,filteredForecast,annualTargets,staffKey]);
-
-  // 福岡版は裏・国広のみ表示
-  const displayStaffList = isFukuoka ? ['裏', '国広'] : STAFF_LIST;
 
   // ── 担当者別集計（全員表示用） ──
   const staffSummaries = useMemo(()=>displayStaffList.map(name=>{
