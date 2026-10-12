@@ -225,10 +225,6 @@ export default function SalesDashboardPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [sR,pR,lR,prR,atR,mtR] = await Promise.all([
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
       // 店舗フィルタ（大分=FI除外、福岡=FI含む）を構築する共通ヘルパー
       const applyStoreFilter = (q: any) =>
         isFukuoka
