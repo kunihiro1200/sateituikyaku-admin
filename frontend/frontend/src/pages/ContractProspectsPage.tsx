@@ -113,6 +113,8 @@ interface EditForm {
 
 /** 担当者切替ボタン（全員 + 個人6名） */
 const STAFF_BUTTONS = ['全員', '山本', '角井', '林田', '麻生', '裏', '国広'] as const;
+/** 福岡版ボタン（裏・国広のみ） */
+const STAFF_BUTTONS_FUKUOKA = ['全員', '裏', '国広'] as const;
 type StaffName = (typeof STAFF_BUTTONS)[number];
 
 /** 担当者 → 担当者コードのマッピング */
@@ -648,12 +650,16 @@ export default function ContractProspectsPage() {
               variant="outlined"
               size="small"
               startIcon={<AssessmentIcon sx={{ fontSize: '0.9rem' }} />}
-              onClick={() => navigate('/property-listings/sales-dashboard')}
+              onClick={() => navigate(
+                isFukuoka
+                  ? '/property-listings/sales-dashboard?store=fukuoka'
+                  : '/property-listings/sales-dashboard'
+              )}
               sx={{
-                borderColor: '#1565c0',
-                color: '#1565c0',
+                borderColor: isFukuoka ? '#e65100' : '#1565c0',
+                color: isFukuoka ? '#e65100' : '#1565c0',
                 fontSize: '13px',
-                '&:hover': { bgcolor: '#e3f2fd' },
+                '&:hover': { bgcolor: isFukuoka ? '#fff3e0' : '#e3f2fd' },
               }}
             >
               売上目標管理
@@ -671,7 +677,7 @@ export default function ContractProspectsPage() {
 
       {/* ─── 担当者切替ボタン ─── */}
       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 2, mb: 1.5 }}>
-        {STAFF_BUTTONS.map((staff) => (
+        {(isFukuoka ? STAFF_BUTTONS_FUKUOKA : STAFF_BUTTONS).map((staff) => (
           <Button
             key={staff}
             variant={selectedStaff === staff ? 'contained' : 'outlined'}
@@ -1062,7 +1068,7 @@ export default function ContractProspectsPage() {
                     '想定手数料（売主側）\n売上見込（両手65%）',
                     'ランク',
                     '決済見込み月',
-                    '判断理由',
+                    ...(!isFukuoka ? ['判断理由'] : []),
                     '必要な対策',
                     '確認状況',
                     '最終更新',
@@ -1238,7 +1244,8 @@ export default function ContractProspectsPage() {
                         )}
                       </TableCell>
 
-                      {/* ⑧ 判断理由 */}
+                      {/* ⑧ 判断理由（大分のみ・福岡は非表示） */}
+                      {!isFukuoka && (
                       <TableCell sx={{ maxWidth: isEditing ? 220 : 160, px: 1 }}>
                         {isEditing ? (
                           <TextField
@@ -1273,6 +1280,7 @@ export default function ContractProspectsPage() {
                           </Typography>
                         )}
                       </TableCell>
+                      )}
 
                       {/* ⑨ 必要な対策 */}
                       <TableCell sx={{ maxWidth: isEditing ? 220 : 160, px: 1 }}>
