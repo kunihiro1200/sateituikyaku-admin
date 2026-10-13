@@ -233,7 +233,7 @@ export const HazardInfoPanel: React.FC<HazardInfoPanelProps> = ({ sellerNumber }
   const isBusy = loading || fetching;
 
   return (
-    <Box>
+    <Box sx={{ bgcolor: '#f0f4f8', borderRadius: 1, p: 1, border: '1px solid #dce3ea' }}>
       {/* ヘッダー行 */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.3, gap: 0.5 }}>
         <Typography
