@@ -75,18 +75,15 @@ function extractBuildingNameFromAddress(address: string): string | null {
 
 // ──────────────────────────────────────────────
 // Jina AI Search でマンション建物情報を検索
-// 無料: 200 リクエスト/日（API キー不要）
-// JINA_API_KEY 環境変数があれば高レート制限が適用される
 // ──────────────────────────────────────────────
 
 async function searchBuildingInfo(
   propertyAddress: string,
   jinaApiKey?: string
 ): Promise<string> {
-  // マンション名を住所から抽出して検索精度を上げる
   const buildingName = extractBuildingNameFromAddress(propertyAddress);
   const searchTarget = buildingName || propertyAddress;
-  console.log(`[apartmentInfo] search target: "${searchTarget}" (from "${propertyAddress}")`);
+  console.log(`[apartmentInfo] search target: "${searchTarget}" (addr: "${propertyAddress}")`);
 
   const jinaHeaders: Record<string, string> = {
     Accept: 'text/plain',
@@ -94,109 +91,136 @@ async function searchBuildingInfo(
   };
   if (jinaApiKey) jinaHeaders['Authorization'] = `Bearer ${jinaApiKey}`;
 
-  // r.jina.ai で指定URLのページをテキスト化するヘルパー
   const fetchPage = async (url: string): Promise<string> => {
     const res = await axios.get(`https://r.jina.ai/${url}`, {
       headers: jinaHeaders,
-      timeout: 20000,
+      timeout: 25000,
     });
     return typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
   };
 
-  // ────────────────────────────────────────────
-  // 戦略1: SUUMO 物件ライブラリで直接検索
-  //   https://suumo.jp/library/?q={マンション名}
-  // ────────────────────────────────────────────
-  try {
-    const suumoSearchUrl = `https://suumo.jp/library/?q=${encodeURIComponent(searchTarget)}`;
-    console.log(`[apartmentInfo] Strategy1: SUUMO library ${suumoSearchUrl}`);
-    const suumoSearchText = await fetchPage(suumoSearchUrl);
-
-    if (suumoSearchText && suumoSearchText.length > 300) {
-      // 検索結果から建物詳細ページURLを抽出（suumo.jp/library/tf_.../sc_.../to_.../）
-      const detailMatch = suumoSearchText.match(
-        /https?:\/\/suumo\.jp\/library\/[a-z0-9_]+\/[a-z0-9_]+\/[a-z0-9_]+\//
-      );
-      if (detailMatch) {
-        const detailUrl = detailMatch[0];
-        console.log(`[apartmentInfo] SUUMO detail: ${detailUrl}`);
-        const detailText = await fetchPage(detailUrl);
-        if (detailText && detailText.length > 400) {
-          return `DATA_SOURCE_URL: ${detailUrl}\n\n## SUUMO物件ライブラリ\n${detailText.substring(0, 6000)}`;
-        }
-      }
-      // 詳細URLが取れなくても検索結果テキストを返す
-      if (suumoSearchText.length > 600) {
-        return `DATA_SOURCE_URL: ${suumoSearchUrl}\n\n## SUUMO物件ライブラリ検索結果\n${suumoSearchText.substring(0, 5000)}`;
-      }
-    }
-  } catch (err: any) {
-    console.warn('[apartmentInfo] Strategy1 SUUMO failed:', err?.message);
-  }
-
-  // ────────────────────────────────────────────
-  // 戦略2: AtHome 建物ライブラリで直接検索
-  //   https://www.athome.co.jp/bldg-library/?q={マンション名}
-  // ────────────────────────────────────────────
-  try {
-    const athomeSearchUrl = `https://www.athome.co.jp/bldg-library/?q=${encodeURIComponent(searchTarget)}`;
-    console.log(`[apartmentInfo] Strategy2: AtHome bldg-library`);
-    const athomeSearchText = await fetchPage(athomeSearchUrl);
-
-    if (athomeSearchText && athomeSearchText.length > 300) {
-      // 建物詳細ページURL抽出（athome.co.jp/bldg-library/{pref}/{city}/{id}/）
-      const detailMatch = athomeSearchText.match(
-        /https?:\/\/www\.athome\.co\.jp\/bldg-library\/[a-z0-9_-]+\/[a-z0-9_-]+\/\d+\//
-      );
-      if (detailMatch) {
-        const detailUrl = detailMatch[0];
-        console.log(`[apartmentInfo] AtHome detail: ${detailUrl}`);
-        const detailText = await fetchPage(detailUrl);
-        if (detailText && detailText.length > 400) {
-          return `DATA_SOURCE_URL: ${detailUrl}\n\n## AtHome建物ライブラリ\n${detailText.substring(0, 6000)}`;
-        }
-      }
-      if (athomeSearchText.length > 600) {
-        return `DATA_SOURCE_URL: ${athomeSearchUrl}\n\n## AtHome建物ライブラリ検索結果\n${athomeSearchText.substring(0, 5000)}`;
-      }
-    }
-  } catch (err: any) {
-    console.warn('[apartmentInfo] Strategy2 AtHome failed:', err?.message);
-  }
-
-  // ────────────────────────────────────────────
-  // 戦略3: Jina Search（汎用Web検索）でフォールバック
-  //   検索結果からSUUMO/AtHome/マンションノートの建物URLを探す
-  // ────────────────────────────────────────────
+  // ──────────────────────────────────────
+  // 戦略1: Jina Search（スニペット + URL抽出）
+  //   スニペットにすでに 総戸数・築年月・構造等が含まれることが多い
+  // ──────────────────────────────────────
   try {
     const query = buildingName
-      ? `"${buildingName}" マンション 管理会社 総戸数 築年月 施工会社 管理形態`
-      : `${propertyAddress} マンション 管理会社 総戸数 築年月`;
+      ? `"${buildingName}" マンション 建物情報 管理会社 総戸数 築年月`
+      : `${propertyAddress} マンション 建物情報 管理会社 総戸数`;
 
-    const searchUrl = `https://s.jina.ai/${encodeURIComponent(query)}`;
-    console.log(`[apartmentInfo] Strategy3: Jina Search`);
-    const searchRes = await axios.get(searchUrl, { headers: jinaHeaders, timeout: 30000 });
-    const searchText = typeof searchRes.data === 'string' ? searchRes.data : JSON.stringify(searchRes.data);
+    console.log(`[apartmentInfo] Strategy1: s.jina.ai query="${query}"`);
+    const searchRes = await axios.get(
+      `https://s.jina.ai/${encodeURIComponent(query)}`,
+      { headers: jinaHeaders, timeout: 30000 }
+    );
+    const searchText = typeof searchRes.data === 'string'
+      ? searchRes.data
+      : JSON.stringify(searchRes.data);
 
-    if (searchText && searchText.length > 200) {
-      // 建物詳細URLを抽出（SUUMO library / AtHome bldg-library / マンションノート mansion）
-      const urlMatch = searchText.match(
-        /https?:\/\/(?:suumo\.jp\/library\/[a-z0-9_/]+|www\.athome\.co\.jp\/bldg-library\/[^\s)"\]]+|www\.mansion-note\.com\/mansion\/[^\s)"\]]+)/
-      );
-      if (urlMatch) {
-        const detailUrl = urlMatch[0].replace(/\)$/, '');
-        console.log(`[apartmentInfo] Jina Search found URL: ${detailUrl}`);
+    if (searchText && searchText.length > 300) {
+      console.log(`[apartmentInfo] Jina Search: ${searchText.length} chars`);
+
+      // SUUMO library / AtHome bldg-library / マンションノート mansion の詳細URLを全件抽出
+      const detailPattern = /https?:\/\/(?:suumo\.jp\/library\/[^\s)"\]\n<]+|www\.athome\.co\.jp\/bldg-library\/[^\s)"\]\n<]+|www\.mansion-note\.com\/mansion\/[^\s)"\]\n<]+)/g;
+      const rawUrls = searchText.match(detailPattern) ?? [];
+      const detailUrls = rawUrls
+        .map(u => u.replace(/[\)\]"'>,]+$/, ''))
+        .filter(u => !u.includes('?q=') && !u.includes('/search') && !u.includes('/list'));
+
+      console.log(`[apartmentInfo] Found detail URLs: ${JSON.stringify(detailUrls)}`);
+
+      // 最初に取得できた詳細ページを使う
+      for (const url of detailUrls) {
         try {
-          const detailText = await fetchPage(detailUrl);
+          const detailText = await fetchPage(url);
           if (detailText && detailText.length > 400) {
-            return `DATA_SOURCE_URL: ${detailUrl}\n\n## 建物詳細ページ\n${detailText.substring(0, 5000)}\n\n## 検索結果\n${searchText.substring(0, 2000)}`;
+            console.log(`[apartmentInfo] Got detail page: ${url} (${detailText.length} chars)`);
+            return `DATA_SOURCE_URL: ${url}\n\n## 建物詳細ページ\n${detailText.substring(0, 6000)}\n\n## 検索スニペット\n${searchText.substring(0, 1500)}`;
           }
-        } catch { /* 詳細ページ取得失敗は無視してsearch結果だけ使う */ }
+        } catch (e) {
+          console.warn(`[apartmentInfo] detail fetch failed ${url}:`, (e as any)?.message);
+        }
       }
-      return searchText.substring(0, 6000);
+
+      // 詳細ページが取れなくてもスニペットをClaudeに渡す（スニペットだけで抽出できる場合が多い）
+      console.log('[apartmentInfo] No detail page, using search snippets only');
+      return `DATA_SOURCE_URL: (Jina Web検索スニペット)\n\n${searchText.substring(0, 6000)}`;
     }
   } catch (err: any) {
-    console.warn('[apartmentInfo] Strategy3 Jina Search failed:', err?.message);
+    console.warn('[apartmentInfo] Strategy1 Jina Search error:', err?.message);
+  }
+
+  // ──────────────────────────────────────
+  // 戦略2: DuckDuckGo HTML（JS不要・サーバーサイドレンダリング）
+  // ──────────────────────────────────────
+  try {
+    const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(`"${searchTarget}" マンション 建物情報 管理会社 総戸数`)}`;
+    console.log(`[apartmentInfo] Strategy2: DuckDuckGo HTML`);
+    const ddgText = await fetchPage(ddgUrl);
+
+    if (ddgText && ddgText.length > 300) {
+      const detailPattern = /https?:\/\/(?:suumo\.jp\/library\/[^\s)"\]\n<]+|www\.athome\.co\.jp\/bldg-library\/[^\s)"\]\n<]+)/g;
+      const detailUrls = (ddgText.match(detailPattern) ?? []).map(u => u.replace(/[\)\]"'>,]+$/, ''));
+
+      for (const url of detailUrls) {
+        try {
+          const detailText = await fetchPage(url);
+          if (detailText && detailText.length > 400) {
+            return `DATA_SOURCE_URL: ${url}\n\n## 建物詳細ページ\n${detailText.substring(0, 6000)}`;
+          }
+        } catch { /* continue */ }
+      }
+
+      return `DATA_SOURCE_URL: ${ddgUrl}\n\n## DuckDuckGo検索結果\n${ddgText.substring(0, 5000)}`;
+    }
+  } catch (err: any) {
+    console.warn('[apartmentInfo] Strategy2 DuckDuckGo error:', err?.message);
+  }
+
+  // ──────────────────────────────────────
+  // 戦略3: SUUMO ライブラリ直接検索
+  // ──────────────────────────────────────
+  try {
+    const suumoUrl = `https://suumo.jp/library/?q=${encodeURIComponent(searchTarget)}`;
+    console.log(`[apartmentInfo] Strategy3: SUUMO library direct`);
+    const suumoText = await fetchPage(suumoUrl);
+
+    if (suumoText && suumoText.length > 300) {
+      const detailMatch = suumoText.match(/https?:\/\/suumo\.jp\/library\/tf_[^\s)"\]\n<]+/);
+      if (detailMatch) {
+        const url = detailMatch[0].replace(/[\)\]"'>,]+$/, '');
+        const detailText = await fetchPage(url);
+        if (detailText && detailText.length > 400) {
+          return `DATA_SOURCE_URL: ${url}\n\n## SUUMO物件ライブラリ\n${detailText.substring(0, 6000)}`;
+        }
+      }
+      return `DATA_SOURCE_URL: ${suumoUrl}\n\n## SUUMO検索\n${suumoText.substring(0, 5000)}`;
+    }
+  } catch (err: any) {
+    console.warn('[apartmentInfo] Strategy3 SUUMO error:', err?.message);
+  }
+
+  // ──────────────────────────────────────
+  // 戦略4: AtHome 建物ライブラリ直接検索
+  // ──────────────────────────────────────
+  try {
+    const athomeUrl = `https://www.athome.co.jp/bldg-library/?q=${encodeURIComponent(searchTarget)}`;
+    console.log(`[apartmentInfo] Strategy4: AtHome bldg-library direct`);
+    const athomeText = await fetchPage(athomeUrl);
+
+    if (athomeText && athomeText.length > 300) {
+      const detailMatch = athomeText.match(/https?:\/\/www\.athome\.co\.jp\/bldg-library\/[^\s)"\]\n<]+\/\d+\//);
+      if (detailMatch) {
+        const url = detailMatch[0].replace(/[\)\]"'>,]+$/, '');
+        const detailText = await fetchPage(url);
+        if (detailText && detailText.length > 400) {
+          return `DATA_SOURCE_URL: ${url}\n\n## AtHome建物ライブラリ\n${detailText.substring(0, 6000)}`;
+        }
+      }
+      return `DATA_SOURCE_URL: ${athomeUrl}\n\n## AtHome検索\n${athomeText.substring(0, 5000)}`;
+    }
+  } catch (err: any) {
+    console.warn('[apartmentInfo] Strategy4 AtHome error:', err?.message);
   }
 
   return '';
@@ -421,7 +445,7 @@ router.post('/seller/:sellerNumber/fetch', async (req: Request, res: Response) =
       .eq('seller_number', sellerNumber)
       .single();
 
-    return res.json({ data: saved, fetchError });
+    return res.json({ data: saved, fetchError, debug: webContent.substring(0, 300) });
   } catch (err: any) {
     console.error('[apartmentInfo/fetch] error:', err?.message);
     return res.status(500).json({
