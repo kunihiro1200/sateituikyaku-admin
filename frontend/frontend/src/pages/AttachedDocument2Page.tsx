@@ -534,7 +534,7 @@ export default function AttachedDocument2Page() {
 
     // ── 3枚目 ──
     const B = (s: string) => '<td style="border:1pt solid #000;padding:3pt 5pt;' + s + '">';
-    const isFukuoka = !!(seller?.sellerNumber?.startsWith('FI'));
+    // isFukuoka はコンポーネントスコープで定義済み（generatePrintHtml はクロージャとしてアクセス）
 
     // 取得書類一覧（大分版 / 福岡版）
     const items: [string, string][] = isFukuoka ? [
