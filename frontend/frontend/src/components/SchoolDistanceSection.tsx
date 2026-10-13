@@ -42,11 +42,11 @@ import api from '../services/api';
 interface SchoolInfo {
   name: string;
   distanceMeters: number | null;
-  walkMinutes: number | null;
+  walkMinutes: string | null;    // "17" または "17〜22"（範囲表示）
   lat: number | null;
   lng: number | null;
   districtConfirmed: boolean;
-  isEstimated?: boolean; // true=直線距離推定値、false=Directions API実測値
+  isEstimated?: boolean;
 }
 
 interface SchoolDistanceSectionProps {
@@ -266,9 +266,9 @@ interface SchoolCardProps {
   label: string;
   icon: string;
   info: SchoolInfo;
-  isJuniorHigh?: boolean; // 中学校の場合は「要確認」バッジを表示
+  isJuniorHigh?: boolean;
   onNameChange: (v: string) => void;
-  onWalkMinutesChange: (v: string) => void;
+  onWalkMinutesChange: (v: string) => void;   // "17" または "17〜22" など文字列で受け取る
   onSetEntrance: () => void;
   hasCustomEntrance: boolean;
 }
@@ -353,12 +353,12 @@ const SchoolCard: React.FC<SchoolCardProps> = ({
           <TextField
             size="small"
             label="徒歩時間（分）"
-            value={info.walkMinutes !== null ? String(info.walkMinutes) : ''}
+            value={info.walkMinutes ?? ''}
             onChange={(e) => onWalkMinutesChange(e.target.value)}
-            inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', style: { fontSize: '13px' } }}
+            inputProps={{ style: { fontSize: '13px' } }}
             InputLabelProps={{ sx: { fontSize: '11px' } }}
             sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
-            helperText="広告表示用（80m/分・切上）"
+            helperText={info.walkMinutes?.includes('〜') ? '標準〜Google実測（分）' : '広告表示用（80m/分・切上）'}
             FormHelperTextProps={{ sx: { fontSize: '9px', mt: 0.3 } }}
           />
         </Box>
@@ -394,6 +394,17 @@ const EMPTY_SCHOOL: SchoolInfo = {
   lat: null, lng: null, districtConfirmed: false,
 };
 
+/** 道路距離(m) と Google所要時間(分) から表示用文字列を生成 */
+function computeWalkDisplay(meters: number, googleMinutes?: number | null): string {
+  const standard = Math.ceil(meters / 80);           // 80m/分・切り上げ（不動産公正競争規約）
+  if (googleMinutes && googleMinutes !== standard) {
+    const lo = Math.min(standard, googleMinutes);
+    const hi = Math.max(standard, googleMinutes);
+    return `${lo}〜${hi}`;                            // 例: "17〜22"
+  }
+  return String(standard);
+}
+
 const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
   sellerNumber, sellerId, propertyAddress,
 }) => {
@@ -421,7 +432,7 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
         setElementarySchool({
           name: d.elementary_school_name || '',
           distanceMeters: d.elementary_school_distance ?? null,
-          walkMinutes: d.elementary_school_walk ? parseInt(d.elementary_school_walk, 10) : null,
+          walkMinutes: d.elementary_school_walk || null,   // "17" または "17〜22" をそのまま
           lat: d.elementary_school_entrance_lat ?? null,
           lng: d.elementary_school_entrance_lng ?? null,
           districtConfirmed: false,
@@ -429,7 +440,7 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
         setJuniorHighSchool({
           name: d.junior_high_school_name || '',
           distanceMeters: d.junior_high_school_distance ?? null,
-          walkMinutes: d.junior_high_school_walk ? parseInt(d.junior_high_school_walk, 10) : null,
+          walkMinutes: d.junior_high_school_walk || null,  // "19" または "19〜25" をそのまま
           lat: d.junior_high_school_entrance_lat ?? null,
           lng: d.junior_high_school_entrance_lng ?? null,
           districtConfirmed: false,
@@ -459,7 +470,7 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
   // Maps JavaScript APIキー（VITE_GOOGLE_MAPS_API_KEY）はDirectionsService対応済み
   const calcWalkingDistance = useCallback(
     (propertyLat: number, propertyLng: number, schoolLat: number, schoolLng: number)
-      : Promise<{ meters: number; isEstimated: false } | null> => {
+      : Promise<{ meters: number; durationMinutes: number; isEstimated: false } | null> => {
       return new Promise((resolve) => {
         if (!isLoaded || typeof google === 'undefined') {
           resolve(null);
@@ -474,7 +485,12 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
           },
           (result, status) => {
             if (status === google.maps.DirectionsStatus.OK && result?.routes?.[0]?.legs?.[0]) {
-              resolve({ meters: result.routes[0].legs[0].distance.value, isEstimated: false });
+              const leg = result.routes[0].legs[0];
+              resolve({
+                meters: leg.distance.value,
+                durationMinutes: Math.ceil(leg.duration.value / 60), // Google実測時間（分）
+                isEstimated: false,
+              });
             } else {
               console.warn('[SchoolDistanceSection] DirectionsService:', status);
               resolve(null);
@@ -533,7 +549,7 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
         setElementarySchool({
           name: data.elementarySchool.name,
           distanceMeters: meters,
-          walkMinutes: meters !== null ? Math.ceil(meters / 80) : null,
+          walkMinutes: meters !== null ? computeWalkDisplay(meters, elemRoute?.durationMinutes) : null,
           lat: data.elementarySchool.lat,
           lng: data.elementarySchool.lng,
           districtConfirmed: data.elementarySchool.districtConfirmed,
@@ -546,7 +562,7 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
         setJuniorHighSchool({
           name: data.juniorHighSchool.name,
           distanceMeters: meters,
-          walkMinutes: meters !== null ? Math.ceil(meters / 80) : null,
+          walkMinutes: meters !== null ? computeWalkDisplay(meters, jhRoute?.durationMinutes) : null,
           lat: data.juniorHighSchool.lat,
           lng: data.juniorHighSchool.lng,
           districtConfirmed: data.juniorHighSchool.districtConfirmed,
@@ -568,12 +584,12 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
     try {
       await api.patch(`/api/sellers/${sellerId}/attached-document2/school`, {
         elementary_school_name: elementarySchool.name || null,
-        elementary_school_walk: elementarySchool.walkMinutes !== null ? String(elementarySchool.walkMinutes) : null,
+        elementary_school_walk: elementarySchool.walkMinutes || null,   // "17" または "17〜22"
         elementary_school_distance: elementarySchool.distanceMeters,
         elementary_school_entrance_lat: customElemEntrance?.lat ?? elementarySchool.lat,
         elementary_school_entrance_lng: customElemEntrance?.lng ?? elementarySchool.lng,
         junior_high_school_name: juniorHighSchool.name || null,
-        junior_high_school_walk: juniorHighSchool.walkMinutes !== null ? String(juniorHighSchool.walkMinutes) : null,
+        junior_high_school_walk: juniorHighSchool.walkMinutes || null,  // "19" または "19〜25"
         junior_high_school_distance: juniorHighSchool.distanceMeters,
         junior_high_school_entrance_lat: customJhEntrance?.lat ?? juniorHighSchool.lat,
         junior_high_school_entrance_lng: customJhEntrance?.lng ?? juniorHighSchool.lng,
@@ -650,13 +666,9 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
               isJuniorHigh={false}
               hasCustomEntrance={!!customElemEntrance}
               onNameChange={(v) => setElementarySchool((p) => ({ ...p, name: v }))}
-              onWalkMinutesChange={(v) => {
-                const n = parseInt(v, 10);
-                setElementarySchool((p) => ({
-                  ...p,
-                  walkMinutes: v === '' ? null : isNaN(n) ? p.walkMinutes : n,
-                }));
-              }}
+              onWalkMinutesChange={(v) =>
+                setElementarySchool((p) => ({ ...p, walkMinutes: v === '' ? null : v }))
+              }
               onSetEntrance={() => setEntranceModalOpen('elementary')}
             />
           </Grid>
@@ -668,13 +680,9 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
               isJuniorHigh
               hasCustomEntrance={!!customJhEntrance}
               onNameChange={(v) => setJuniorHighSchool((p) => ({ ...p, name: v }))}
-              onWalkMinutesChange={(v) => {
-                const n = parseInt(v, 10);
-                setJuniorHighSchool((p) => ({
-                  ...p,
-                  walkMinutes: v === '' ? null : isNaN(n) ? p.walkMinutes : n,
-                }));
-              }}
+              onWalkMinutesChange={(v) =>
+                setJuniorHighSchool((p) => ({ ...p, walkMinutes: v === '' ? null : v }))
+              }
               onSetEntrance={() => setEntranceModalOpen('juniorHigh')}
             />
           </Grid>
