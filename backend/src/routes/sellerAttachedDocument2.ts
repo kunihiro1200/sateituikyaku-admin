@@ -66,6 +66,14 @@ export interface AttachedDocument2Data {
   solar_panel?: string | null;
   incident_info?: string | null;
   minpaku?: string | null;
+  // 学校距離・正門座標（Google Maps Directions API取得）
+  elementary_school_distance?: number | null;
+  elementary_school_entrance_lat?: number | null;
+  elementary_school_entrance_lng?: number | null;
+  junior_high_school_distance?: number | null;
+  junior_high_school_entrance_lat?: number | null;
+  junior_high_school_entrance_lng?: number | null;
+  school_info_fetched_at?: string | null;
   // 【特典】チェックボックス
   tokuten_cleaning?: boolean;
   tokuten_garden?: boolean;
@@ -298,6 +306,77 @@ router.patch('/sellers/:sellerId/attached-document2/tokuten', async (req: Reques
     res.json({ ok: true });
   } catch (error: any) {
     console.error('Error patching tokuten:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 学校情報のみを部分更新（他のフィールドを上書きしない）
+// PATCH /sellers/:sellerId/attached-document2/school
+// ──────────────────────────────────────────────────────────────────────────────
+router.patch('/sellers/:sellerId/attached-document2/school', async (req: Request, res: Response) => {
+  try {
+    const { sellerId } = req.params;
+    const body = req.body as {
+      elementary_school_name?: string | null;
+      elementary_school_walk?: string | null;
+      elementary_school_distance?: number | null;
+      elementary_school_entrance_lat?: number | null;
+      elementary_school_entrance_lng?: number | null;
+      junior_high_school_name?: string | null;
+      junior_high_school_walk?: string | null;
+      junior_high_school_distance?: number | null;
+      junior_high_school_entrance_lat?: number | null;
+      junior_high_school_entrance_lng?: number | null;
+      school_info_fetched_at?: string | null;
+    };
+
+    const patch: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    // undefined でないフィールドのみ更新（null は明示的な削除として扱う）
+    const schoolFields = [
+      'elementary_school_name',
+      'elementary_school_walk',
+      'elementary_school_distance',
+      'elementary_school_entrance_lat',
+      'elementary_school_entrance_lng',
+      'junior_high_school_name',
+      'junior_high_school_walk',
+      'junior_high_school_distance',
+      'junior_high_school_entrance_lat',
+      'junior_high_school_entrance_lng',
+      'school_info_fetched_at',
+    ] as const;
+
+    for (const key of schoolFields) {
+      if (key in body) patch[key] = body[key] ?? null;
+    }
+
+    // 行が存在するか確認
+    const { data: existing } = await supabase
+      .from('seller_attached_document2')
+      .select('seller_id')
+      .eq('seller_id', sellerId)
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await supabase
+        .from('seller_attached_document2')
+        .update(patch)
+        .eq('seller_id', sellerId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from('seller_attached_document2')
+        .insert({ seller_id: sellerId, ...patch });
+      if (error) throw error;
+    }
+
+    res.json({ ok: true });
+  } catch (error: any) {
+    console.error('Error patching school info:', error);
     res.status(500).json({ error: error.message });
   }
 });
