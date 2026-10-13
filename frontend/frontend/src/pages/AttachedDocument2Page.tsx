@@ -381,6 +381,7 @@ export default function AttachedDocument2Page() {
         + cb(fields.same_building_sold_case_checked) + ' 同マンションの成約事例　'
         + cb(fields.nearby_mansion_sold_case_checked) + ' 周辺のマンションの成約事例'
         + '</td></tr></table>'
+        + '<div style="text-align:center;padding:3pt;margin-bottom:3pt;font-size:7.5pt;font-weight:bold;letter-spacing:1pt">＝＝＝＝＝ここから訪問時記入＝＝＝＝＝</div>'
         + '<table class="it" style="margin-bottom:3pt"><tr>'
         + '<td class="lbl" style="width:54pt">管理費</td><td class="val">' + (fields.management_fee || '') + '</td>'
         + '<td class="lbl" style="width:54pt">修繕積立金</td><td class="val">' + (fields.repair_reserve_fund || '') + '</td>'
@@ -389,6 +390,7 @@ export default function AttachedDocument2Page() {
         + cb(fields.current_nearby_listing_checked) + ' 現在の近隣募集中　'
         + cb(fields.past_sold_case_checked) + ' 過去成約事例'
         + '</td></tr></table>'
+        + '<div style="text-align:center;padding:3pt;margin-bottom:3pt;font-size:7.5pt;font-weight:bold;letter-spacing:1pt">＝＝＝＝＝ここから訪問時記入＝＝＝＝＝</div>'
         + '<table class="it" style="margin-bottom:3pt"><tr>'
         + '<td class="lbl" style="width:60pt">境界標（杭）</td><td class="val">' + (fields.boundary_stake || '') + '</td>'
         + '<td class="lbl" style="width:44pt">道路幅</td><td class="val">' + (fields.road_width || '') + '</td>'
@@ -490,7 +492,6 @@ export default function AttachedDocument2Page() {
       + '<td class="lbl">最寄りバス停</td><td class="val">' + (fields.nearest_bus_stop_name || '') + '</td><td class="val narrow">' + (fields.nearest_bus_stop_walk || '') + '</td>'
       + '</tr></table>'
       + mansionSection
-      + '<div style="text-align:center;border:1pt solid #bbb;background:#f0f4f8;padding:3pt;margin-bottom:3pt;font-size:7.5pt;font-weight:bold;letter-spacing:1pt">＝＝＝＝＝ここから訪問時記入＝＝＝＝＝</div>'
       + '<table class="it" style="margin-bottom:3pt"><tr>'
       + '<td class="lbl" style="width:48pt">売却理由</td><td class="val">' + (fields.sale_reason || '') + '</td>'
       + '<td class="lbl" style="width:36pt">境界</td><td class="val" style="font-size:7pt;color:' + (fields.boundary_info ? '#000' : '#aaa') + '">' + (fields.boundary_info || '□杭　印あり　□杭　印なし　□越境物（　　）') + '</td>'
@@ -827,6 +828,11 @@ export default function AttachedDocument2Page() {
                     ))}
                   </Box>
                 </Paper>
+                <Box sx={{ textAlign: 'center', py: 0.8, mb: 1 }}>
+                  <Typography sx={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#666', letterSpacing: 1 }}>
+                    ＝＝＝＝＝ここから訪問時記入＝＝＝＝＝
+                  </Typography>
+                </Box>
                 <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
                   <Grid container spacing={2}>
                     {([{ key: 'management_fee' as const, label: '管理費' }, { key: 'repair_reserve_fund' as const, label: '修繕積立金' }]).map((f) => (
@@ -851,6 +857,11 @@ export default function AttachedDocument2Page() {
                     ))}
                   </Box>
                 </Paper>
+                <Box sx={{ textAlign: 'center', py: 0.8, mb: 1 }}>
+                  <Typography sx={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#666', letterSpacing: 1 }}>
+                    ＝＝＝＝＝ここから訪問時記入＝＝＝＝＝
+                  </Typography>
+                </Box>
                 <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
                   <Grid container spacing={2}>
                     {([{ key: 'boundary_stake' as const, label: '境界標（杭）' }, { key: 'road_width' as const, label: '道路幅' }, { key: 'road_contact' as const, label: '接道' }]).map((f) => (
@@ -863,13 +874,6 @@ export default function AttachedDocument2Page() {
                 </Paper>
               </>
             )}
-
-            {/* ＝＝＝＝＝ここから訪問時記入＝＝＝＝＝ */}
-            <Box sx={{ textAlign: 'center', py: 0.6, mb: 1, bgcolor: '#f0f4f8', border: '1px dashed #999', borderRadius: 1 }}>
-              <Typography sx={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#555', letterSpacing: 1 }}>
-                ＝＝＝＝＝ここから訪問時記入＝＝＝＝＝
-              </Typography>
-            </Box>
 
             {/* ─── 新規フィールド（固定資産税の上） ─── */}
             <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
