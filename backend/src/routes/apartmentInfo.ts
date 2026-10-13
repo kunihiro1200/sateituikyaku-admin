@@ -227,8 +227,69 @@ async function searchBuildingInfo(
 }
 
 // ──────────────────────────────────────────────
-// Claude API で Web テキストを構造化データに変換
+// 管理会社専用フォールバック検索
+// メイン抽出で management_company が null のとき呼ばれる
 // ──────────────────────────────────────────────
+
+async function fetchManagementCompanyFallback(
+  buildingName: string,
+  jinaApiKey: string | undefined,
+  anthropicApiKey: string
+): Promise<string | null> {
+  if (!buildingName) return null;
+
+  const jinaHeaders: Record<string, string> = {
+    Accept: 'text/plain',
+    'X-Return-Format': 'markdown',
+  };
+  if (jinaApiKey) jinaHeaders['Authorization'] = `Bearer ${jinaApiKey}`;
+
+  const query = `"${buildingName}" 管理会社`;
+  console.log(`[apartmentInfo] mgmt fallback search: "${query}"`);
+
+  let searchText = '';
+  try {
+    const res = await axios.get(
+      `https://s.jina.ai/${encodeURIComponent(query)}`,
+      { headers: jinaHeaders, timeout: 25000 }
+    );
+    searchText = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+  } catch (e: any) {
+    console.warn('[apartmentInfo] mgmt fallback Jina error:', e?.message);
+    return null;
+  }
+
+  if (!searchText || searchText.length < 100) return null;
+
+  // Claude に管理会社だけ聞く（軽量プロンプト）
+  const client = new Anthropic({ apiKey: anthropicApiKey });
+  try {
+    const res = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 128,
+      messages: [{
+        role: 'user',
+        content: `以下はWeb検索結果です。「${buildingName}」の管理会社名だけをJSON形式で答えてください。
+不明な場合は {"management_company": null} と返してください。
+
+${searchText.substring(0, 3000)}
+
+出力: {"management_company": "会社名 または null"}`,
+      }],
+    });
+    const text = res.content[0].type === 'text' ? res.content[0].text.trim() : '';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      const mgmt = parsed.management_company ?? null;
+      console.log(`[apartmentInfo] mgmt fallback result: "${mgmt}"`);
+      return mgmt;
+    }
+  } catch (e: any) {
+    console.warn('[apartmentInfo] mgmt fallback Claude error:', e?.message);
+  }
+  return null;
+}
 
 async function extractBuildingInfo(
   webContent: string,
@@ -406,6 +467,19 @@ router.post('/seller/:sellerNumber/fetch', async (req: Request, res: Response) =
       // 3. Claude で構造化抽出
       try {
         buildingInfo = await extractBuildingInfo(webContent, propertyAddress, anthropicKey);
+
+        // 管理会社が取れなかった場合、専用フォールバック検索を実行
+        if (!buildingInfo.management_company) {
+          const buildingName = extractBuildingNameFromAddress(propertyAddress);
+          if (buildingName) {
+            const jinaKey = process.env.JINA_API_KEY;
+            const mgmt = await fetchManagementCompanyFallback(buildingName, jinaKey, anthropicKey);
+            if (mgmt) {
+              console.log(`[apartmentInfo] management_company補完: "${mgmt}"`);
+              buildingInfo.management_company = mgmt;
+            }
+          }
+        }
       } catch (claudeErr: any) {
         fetchError = claudeErr?.message || 'Claude による解析に失敗しました';
         buildingInfo = {
