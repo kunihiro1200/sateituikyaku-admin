@@ -353,13 +353,17 @@ function calcWalkMinutes(distanceMeters: number): number {
 }
 
 // ---- Directions API で徒歩ルート距離を取得 ----
+// 戻り値: { meters: number, isEstimated: boolean }
+//   - isEstimated=false: Directions API による実測値
+//   - isEstimated=true : Directions API 不可時のハーバーサイン直線 × 1.3 推定値
 async function fetchWalkingDistance(
   originLat: number,
   originLng: number,
   destLat: number,
   destLng: number,
   apiKey: string
-): Promise<number | null> {
+): Promise<{ meters: number; isEstimated: boolean }> {
+  // ---- Directions API を試みる ----
   try {
     const response = await axios.get(
       'https://maps.googleapis.com/maps/api/directions/json',
@@ -375,14 +379,19 @@ async function fetchWalkingDistance(
       }
     );
     if (response.data.status === 'OK' && response.data.routes?.[0]?.legs?.[0]) {
-      return response.data.routes[0].legs[0].distance.value; // メートル単位
+      return { meters: response.data.routes[0].legs[0].distance.value, isEstimated: false };
     }
-    console.warn('[nearbyMap] Directions API status:', response.data.status);
-    return null;
+    console.warn('[nearbyMap] Directions API status:', response.data.status,
+      '→ ハーバーサイン推定値にフォールバック');
   } catch (err: any) {
-    console.error('[nearbyMap] Directions API error:', err.message);
-    return null;
+    console.warn('[nearbyMap] Directions API error:', err.message,
+      '→ ハーバーサイン推定値にフォールバック');
   }
+
+  // ---- フォールバック: 直線距離 × 1.3（一般的な迂回係数） ----
+  const straightMeters = calcDistance(originLat, originLng, destLat, destLng);
+  const estimatedMeters = Math.round(straightMeters * 1.3);
+  return { meters: estimatedMeters, isEstimated: true };
 }
 
 /**
@@ -580,7 +589,7 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     }
 
     // ---- Directions API で徒歩ルート距離を並列計算 ----
-    const [elemDistMeters, jhDistMeters] = await Promise.all([
+    const [elemResult, jhResult] = await Promise.all([
       elementarySchoolResult
         ? fetchWalkingDistance(latNum, lngNum, elementarySchoolResult.lat, elementarySchoolResult.lng, apiKey)
         : Promise.resolve(null),
@@ -594,8 +603,9 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
       elementarySchool: elementarySchoolResult
         ? {
             name: elementarySchoolResult.name,
-            distanceMeters: elemDistMeters,
-            walkMinutes: elemDistMeters !== null ? calcWalkMinutes(elemDistMeters) : null,
+            distanceMeters: elemResult?.meters ?? null,
+            walkMinutes: elemResult ? calcWalkMinutes(elemResult.meters) : null,
+            isEstimated: elemResult?.isEstimated ?? false,
             lat: elementarySchoolResult.lat,
             lng: elementarySchoolResult.lng,
             districtConfirmed: elementarySchoolResult.districtConfirmed,
@@ -604,8 +614,9 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
       juniorHighSchool: juniorHighSchoolResult
         ? {
             name: juniorHighSchoolResult.name,
-            distanceMeters: jhDistMeters,
-            walkMinutes: jhDistMeters !== null ? calcWalkMinutes(jhDistMeters) : null,
+            distanceMeters: jhResult?.meters ?? null,
+            walkMinutes: jhResult ? calcWalkMinutes(jhResult.meters) : null,
+            isEstimated: jhResult?.isEstimated ?? false,
             lat: juniorHighSchoolResult.lat,
             lng: juniorHighSchoolResult.lng,
             districtConfirmed: false, // 中学校区GeoJSONなし → 常にfalse（要確認）

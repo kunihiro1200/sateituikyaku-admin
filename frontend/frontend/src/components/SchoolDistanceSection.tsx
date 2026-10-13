@@ -46,6 +46,7 @@ interface SchoolInfo {
   lat: number | null;
   lng: number | null;
   districtConfirmed: boolean;
+  isEstimated?: boolean; // true=直線距離推定値、false=Directions API実測値
 }
 
 interface SchoolDistanceSectionProps {
@@ -335,13 +336,18 @@ const SchoolCard: React.FC<SchoolCardProps> = ({
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', mb: 1 }}>
         <Box sx={{ flex: 1 }}>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.3 }}>
-            道路距離
+            道路距離{info.isEstimated ? '（推定）' : ''}
           </Typography>
-          <Typography variant="body2" fontWeight="bold" sx={{ color: '#333' }}>
+          <Typography variant="body2" fontWeight="bold" sx={{ color: info.isEstimated ? '#e65100' : '#333' }}>
             {info.distanceMeters !== null
-              ? `約${info.distanceMeters.toLocaleString()}m`
+              ? `約${info.distanceMeters.toLocaleString()}m${info.isEstimated ? ' ※' : ''}`
               : '—'}
           </Typography>
+          {info.isEstimated && info.distanceMeters !== null && (
+            <Typography variant="caption" sx={{ color: '#e65100', fontSize: '9px' }}>
+              ※直線距離×1.3の推定値
+            </Typography>
+          )}
         </Box>
         <Box sx={{ flex: 1 }}>
           <TextField
@@ -486,6 +492,7 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
           lat: data.elementarySchool.lat,
           lng: data.elementarySchool.lng,
           districtConfirmed: data.elementarySchool.districtConfirmed,
+          isEstimated: data.elementarySchool.isEstimated ?? false,
         });
         // カスタム正門が未設定なら取得結果座標を使う
         if (!customElemEntrance) {
@@ -500,6 +507,7 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
           lat: data.juniorHighSchool.lat,
           lng: data.juniorHighSchool.lng,
           districtConfirmed: data.juniorHighSchool.districtConfirmed,
+          isEstimated: data.juniorHighSchool.isEstimated ?? false,
         });
       }
     } catch (err: any) {
