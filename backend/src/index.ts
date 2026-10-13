@@ -102,6 +102,7 @@ import testEmailRoutes from './routes/testEmail';
 import aiPropertyEnhanceRoutes from './routes/aiPropertyEnhance';
 import aiImagePropertyRegisterRoutes from './routes/aiImagePropertyRegister';
 import hazardAnalyzeRoutes from './routes/hazardAnalyze';
+import hazardInfoRoutes from './routes/hazardInfo';
 import floorPlanCompareRoutes from './routes/floorPlanCompare';
 import youtoChiikiRoutes from './routes/youtoChiiki';
 import sitemapRoutes from './routes/sitemap';
@@ -1148,6 +1149,7 @@ app.use('/api', evaluationPointsRoutes); // 評価ポイントAPI（売主ごと
 app.use('/api', sellerAttachedDocument2Routes); // 訪問準備「添付資料２」API（売主ごと）
 app.use('/api/scraped-urls', scrapedUrlsRoutes); // スクレイピングURL重複チェック（認証不要 - /api catchallより前に登録）
 app.use('/api/hazard', hazardAnalyzeRoutes); // ハザードマップAI解析（認証不要 - /api catchallより前に登録）
+app.use('/api/hazard-info', hazardInfoRoutes); // ハザード情報自動取得（Reinfolib API・認証不要）
 // ─── Drive同期エンドポイント（/api キャッチオールより必ず前に登録） ─────────────────
 
 /**

@@ -107,6 +107,7 @@ import { getSenderAddress, saveSenderAddress, validateSenderAddress } from '../u
 import { useCallModeQuickButtonState } from '../hooks/useCallModeQuickButtonState';
 import { pageDataCache, sellerDetailCacheKey, CACHE_KEYS } from '../store/pageDataCache';
 import PropertyMapSection from '../components/PropertyMapSection';
+import SchoolDistanceSection from '../components/SchoolDistanceSection';
 import NearbyBuyersList from '../components/NearbyBuyersList';
 import MatchedBuyersList from '../components/MatchedBuyersList';
 import MatchingIntentPanel from '../components/MatchingIntentPanel';
@@ -129,6 +130,7 @@ import DecisionFieldsBlockDialog from '../components/DecisionFieldsBlockDialog';
 import NextCallDateReminderDialog from '../components/NextCallDateReminderDialog';
 import { calcKadoiVisitRatio, VisitStatsResponse } from '../utils/visitRatioCalculator';
 import { KadoiVisitRatioWarningDialog } from '../components/KadoiVisitRatioWarningDialog';
+import HazardInfoPanel from '../components/HazardInfoPanel';
 
 
 /**
@@ -8197,74 +8199,84 @@ HP：https://ifoo-oita.com/
                         </Box>
                       </Grid>
                     )}
-                    {/* 土地面積 + 土地（当社調べ）：当社調べはマンションでは不要なため非表示。
-                        右側にひっそりと目立たない形で編集できるようにする */}
-                    {(displayLandArea || !isApartmentType) && (
-                      <Grid item xs={12}>
-                        <Box sx={{ display: 'flex', gap: 2 }}>
-                          <Box sx={{ flex: 1 }}>
-                            {displayLandArea && (
-                              <>
-                                <Typography variant="caption" color="text.secondary">土地面積 (m²)</Typography>
-                                <Typography variant="body2" sx={{ color: areaWarning.landRed ? 'error.main' : 'inherit' }}>{displayLandArea}{displayLandAreaTsubo}</Typography>
-                              </>
-                            )}
-                          </Box>
-                          {!isApartmentType && (
-                            <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-                              <Box sx={{ minWidth: 140, maxWidth: 200 }}>
-                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'right' }}>
-                                  土地（当社調べ）(m²)
+                    {/* 面積 + ハザード情報 統合セクション
+                        左: 土地面積・建物面積（当社調べを各面積の右に並列配置）
+                        右: ハザード情報パネル（国土交通省 不動産情報ライブラリより自動取得） */}
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                        {/* 左: 面積フィールド */}
+                        <Box sx={{ flex: 1 }}>
+                          {/* 土地面積 + 土地（当社調べ）：マンションでは非表示 */}
+                          {(displayLandArea || !isApartmentType) && (
+                            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-end', mb: 0.75, flexWrap: 'wrap' }}>
+                              <Box>
+                                {displayLandArea && (
+                                  <>
+                                    <Typography variant="caption" color="text.secondary">土地面積 (m²)</Typography>
+                                    <Typography variant="body2" sx={{ color: areaWarning.landRed ? 'error.main' : 'inherit' }}>
+                                      {displayLandArea}{displayLandAreaTsubo}
+                                    </Typography>
+                                  </>
+                                )}
+                              </Box>
+                              {!isApartmentType && (
+                                <Box sx={{ minWidth: 110 }}>
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                    土地（当社調べ）
+                                  </Typography>
+                                  <InlineEditableField
+                                    value={rawLandAreaVerified ?? ''}
+                                    fieldName="landAreaVerified"
+                                    fieldType="number"
+                                    placeholder="未入力"
+                                    showEditIndicator={false}
+                                    helperText={displayLandAreaVerifiedTsubo || undefined}
+                                    onSave={(v) => handleInlinePropertyFieldSave('landAreaVerified', v)}
+                                    enableConflictDetection={false}
+                                  />
+                                </Box>
+                              )}
+                            </Box>
+                          )}
+                          {/* 建物面積 + 建物（当社調べ）：土地では非表示 */}
+                          {!isLandType && (
+                            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                              <Box>
+                                {displayBuildingArea && (
+                                  <>
+                                    <Typography variant="caption" color="text.secondary">建物面積 (m²)</Typography>
+                                    <Typography variant="body2" sx={{ color: areaWarning.buildingRed ? 'error.main' : 'inherit' }}>
+                                      {displayBuildingArea}{displayBuildingAreaTsubo}
+                                    </Typography>
+                                  </>
+                                )}
+                              </Box>
+                              <Box sx={{ minWidth: 110 }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                  建物（当社調べ）
                                 </Typography>
                                 <InlineEditableField
-                                  value={rawLandAreaVerified ?? ''}
-                                  fieldName="landAreaVerified"
+                                  value={rawBuildingAreaVerified ?? ''}
+                                  fieldName="buildingAreaVerified"
                                   fieldType="number"
                                   placeholder="未入力"
                                   showEditIndicator={false}
-                                  helperText={displayLandAreaVerifiedTsubo || undefined}
-                                  onSave={(v) => handleInlinePropertyFieldSave('landAreaVerified', v)}
+                                  helperText={displayBuildingAreaVerifiedTsubo || undefined}
+                                  onSave={(v) => handleInlinePropertyFieldSave('buildingAreaVerified', v)}
                                   enableConflictDetection={false}
                                 />
                               </Box>
                             </Box>
                           )}
                         </Box>
-                      </Grid>
-                    )}
-                    {/* 建物面積 + 建物（当社調べ）：当社調べは土地では不要なため非表示。
-                        右側にひっそりと目立たない形で編集できるようにする */}
-                    {!isLandType && (
-                      <Grid item xs={12}>
-                        <Box sx={{ display: 'flex', gap: 2 }}>
-                          <Box sx={{ flex: 1 }}>
-                            {displayBuildingArea && (
-                              <>
-                                <Typography variant="caption" color="text.secondary">建物面積 (m²)</Typography>
-                                <Typography variant="body2" sx={{ color: areaWarning.buildingRed ? 'error.main' : 'inherit' }}>{displayBuildingArea}{displayBuildingAreaTsubo}</Typography>
-                              </>
-                            )}
-                          </Box>
-                          <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-                            <Box sx={{ minWidth: 140, maxWidth: 200 }}>
-                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'right' }}>
-                                建物（当社調べ）(m²)
-                              </Typography>
-                              <InlineEditableField
-                                value={rawBuildingAreaVerified ?? ''}
-                                fieldName="buildingAreaVerified"
-                                fieldType="number"
-                                placeholder="未入力"
-                                showEditIndicator={false}
-                                helperText={displayBuildingAreaVerifiedTsubo || undefined}
-                                onSave={(v) => handleInlinePropertyFieldSave('buildingAreaVerified', v)}
-                                enableConflictDetection={false}
-                              />
-                            </Box>
-                          </Box>
+                        {/* 右: ハザード情報パネル */}
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          {seller?.sellerNumber && (
+                            <HazardInfoPanel sellerNumber={seller.sellerNumber} />
+                          )}
                         </Box>
-                      </Grid>
-                    )}
+                      </Box>
+                    </Grid>
                     {!isLandType && displayBuildYear && (
                       <Grid item xs={6}>
                         <Typography variant="caption" color="text.secondary">築年</Typography>
@@ -8360,6 +8372,15 @@ HP：https://ifoo-oita.com/
               }
               return null;
             })()}
+
+            {/* 学校区・徒歩距離（売主番号とIDが設定されている場合のみ表示） */}
+            {seller?.sellerNumber && seller?.id && (
+              <SchoolDistanceSection
+                sellerNumber={seller.sellerNumber}
+                sellerId={seller.id}
+                propertyAddress={property?.address || seller?.propertyAddress}
+              />
+            )}
 
             {/* 売主情報 */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
