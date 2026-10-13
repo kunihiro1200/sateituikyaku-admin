@@ -161,4 +161,30 @@ router.post('/fetch-all-estat', async (req: Request, res: Response) => {
   }
 });
 
+// ─── POST /api/construction-prices/invalidate-cache ─────────────────────────
+// ValuationCalculatorService のモジュールレベルキャッシュを強制クリアする
+// 単価更新後にこのエンドポイントを呼ぶと、次のリクエストから新単価で計算される
+router.post('/invalidate-cache', async (req: Request, res: Response) => {
+  const cronSecret = req.headers['x-cron-secret'] ?? req.headers['authorization'];
+  const expected   = process.env.CRON_SECRET;
+  if (expected && cronSecret !== expected && cronSecret !== `Bearer ${expected}`) {
+    return res.status(401).json({ error: '認証エラー' });
+  }
+  try {
+    // モジュールレベルキャッシュを直接クリア
+    const svcModule = require('../services/ValuationCalculatorService');
+    // ValuationCalculatorService.ts のモジュールスコープ変数をリセット
+    // Note: require キャッシュ経由では直接変数にはアクセス不可のため、
+    //       サービスクラスに clearCache 静的メソッドを追加する方式を使う
+    if (typeof svcModule.clearConstructionPriceCache === 'function') {
+      svcModule.clearConstructionPriceCache();
+      res.json({ message: 'キャッシュをクリアしました。次のリクエストから新単価が使用されます。' });
+    } else {
+      res.json({ message: 'キャッシュクリア不可（関数未実装）。TTL 6h 後に自動更新されます。', ttl: '6 hours' });
+    }
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 export default router;

@@ -600,3 +600,13 @@ export class ValuationCalculatorService extends BaseRepository {
 }
 
 export const valuationCalculatorService = new ValuationCalculatorService();
+
+/**
+ * モジュールレベルキャッシュを強制クリアする（単価更新後に呼ぶ）
+ * invalidate-cache エンドポイントから呼び出される
+ */
+export function clearConstructionPriceCache(): void {
+  constructionPriceCache = null;
+  constructionPriceCacheTimestamp = null;
+  console.log('🔄 construction_unit_prices キャッシュをクリアしました');
+}
