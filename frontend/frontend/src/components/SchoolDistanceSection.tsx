@@ -646,9 +646,12 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
           <Box component="span" sx={{ fontWeight: 'bold' }}>小学校区</Box>
           は学区GeoJSONデータで自動判定します。
           <Box component="span" sx={{ fontWeight: 'bold', color: '#e65100' }}>中学校区</Box>
-          はGeoJSONデータ未整備のため最近接校を表示します（
-          <Box component="span" fontWeight="bold">要自治体確認</Box>
-          ）。徒歩時間は道路距離80mにつき1分・端数切り上げの不動産広告表示基準です。
+          は国土交通省「
+          <Box component="span" sx={{ fontWeight: 'bold' }}>不動産情報ライブラリ XKT005</Box>
+          」で自動判定します（令和5年度データ）。
+          学区不明の場合は「
+          <Box component="span" fontWeight="bold">学区未確認</Box>
+          」と表示されます。徒歩時間は道路距離80mにつき1分・端数切り上げの不動産広告表示基準です。
         </Alert>
 
         {/* エラー表示 */}

@@ -666,57 +666,74 @@ function latLngToTileXY(lat: number, lng: number, z: number): { x: number; y: nu
 
 /**
  * XKT005 API で中学校区を判定する
- * - 成功: { name: 学校名, polygon: [[lng,lat],...] }
- * - 見つからない: null
- * - API エラー: null（例外はキャッチして null を返す）
+/**
+ * XKT005 API で中学校区を判定する
+ * z=11→12→13 の順に試し、タイル境界問題を回避する
+ * - 成功: { name: 学校名, adminCode: 行政区域コード }
+ * - 見つからない / APIエラー: null
  */
 async function fetchJuniorHighSchoolDistrict(
   lat: number,
   lng: number,
   reinfilibKey: string
 ): Promise<{ name: string; adminCode: string } | null> {
-  const ZOOM = 14;
-  const { x, y } = latLngToTileXY(lat, lng, ZOOM);
-  const url = `https://www.reinfolib.mlit.go.jp/ex-api/external/XKT005?response_format=geojson&z=${ZOOM}&x=${x}&y=${y}`;
+  // z=11（市区レベル）から試す → タイル境界で区域が分断されにくい
+  const ZOOM_LEVELS = [11, 12, 13, 14];
 
-  try {
-    const response = await axios.get(url, {
-      headers: { 'Ocp-Apim-Subscription-Key': reinfilibKey },
-      timeout: 15000,
-    });
+  for (const ZOOM of ZOOM_LEVELS) {
+    const { x, y } = latLngToTileXY(lat, lng, ZOOM);
+    const url = `https://www.reinfolib.mlit.go.jp/ex-api/external/XKT005?response_format=geojson&z=${ZOOM}&x=${x}&y=${y}`;
 
-    const features: any[] = response.data?.features ?? [];
-    if (features.length === 0) return null;
+    try {
+      const response = await axios.get(url, {
+        headers: { 'Ocp-Apim-Subscription-Key': reinfilibKey },
+        timeout: 15000,
+      });
 
-    // Point-in-Polygon で物件座標が含まれる校区を検索
-    for (const feature of features) {
-      const geomType = feature.geometry?.type;
-      let matched = false;
+      const features: any[] = response.data?.features ?? [];
+      console.log(`[nearbyMap] XKT005 z=${ZOOM} x=${x} y=${y}: ${features.length}件`);
 
-      if (geomType === 'Polygon') {
-        const rings = feature.geometry.coordinates;
-        if (rings?.length > 0 && pointInPolygon(lat, lng, rings[0])) matched = true;
-      } else if (geomType === 'MultiPolygon') {
-        for (const rings of feature.geometry.coordinates) {
-          if (rings?.length > 0 && pointInPolygon(lat, lng, rings[0])) {
-            matched = true;
-            break;
+      if (features.length === 0) continue; // 次のズームへ
+
+      // Point-in-Polygon で物件座標が含まれる校区を検索
+      for (const feature of features) {
+        const geomType = feature.geometry?.type;
+        let matched = false;
+
+        if (geomType === 'Polygon') {
+          const rings = feature.geometry.coordinates;
+          if (rings?.length > 0 && pointInPolygon(lat, lng, rings[0])) matched = true;
+        } else if (geomType === 'MultiPolygon') {
+          for (const rings of feature.geometry.coordinates) {
+            if (rings?.length > 0 && pointInPolygon(lat, lng, rings[0])) {
+              matched = true;
+              break;
+            }
+          }
+        }
+
+        if (matched) {
+          const name = feature.properties?.A32_004_ja || feature.properties?.A32_002 || null;
+          const adminCode = feature.properties?.A32_001 || '';
+          if (name) {
+            console.log(`[nearbyMap] XKT005 判定成功（z=${ZOOM}）: ${name}`);
+            return { name, adminCode };
           }
         }
       }
 
-      if (matched) {
-        const name = feature.properties?.A32_004_ja || feature.properties?.A32_002 || null;
-        const adminCode = feature.properties?.A32_001 || '';
-        if (name) return { name, adminCode };
+      console.warn(`[nearbyMap] XKT005 z=${ZOOM}: ${features.length}件あるがヒットせず`);
+      // ヒットしなくてもより細かいズームで再試行
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        console.error('[nearbyMap] XKT005 401: APIキーが無効');
+        return null; // キーが無効なら他のズームを試しても無意味
       }
+      console.error(`[nearbyMap] XKT005 z=${ZOOM} エラー:`, err.message);
     }
-
-    return null; // タイル内に区域データはあるが座標がヒットしない
-  } catch (err: any) {
-    console.error('[nearbyMap] XKT005 API error:', err.message);
-    return null;
   }
+
+  return null; // 全ズームレベルでヒットなし
 }
 
 /**
