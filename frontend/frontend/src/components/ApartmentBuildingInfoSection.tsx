@@ -319,7 +319,46 @@ export const ApartmentBuildingInfoSection: React.FC<ApartmentBuildingInfoSection
             </Alert>
           )}
 
-          {hasAnyData ? (
+          {!hasAnyData ? (
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.72rem' }}>
+                建物情報を抽出できませんでした。
+              </Typography>
+              {data.data_source && (
+                <Box sx={{ mt: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                    参照先:{' '}
+                    <a
+                      href={data.data_source.startsWith('http') ? data.data_source : undefined}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: '#1565c0', fontSize: '0.65rem', wordBreak: 'break-all' }}
+                    >
+                      {data.data_source.length > 60
+                        ? `${data.data_source.substring(0, 60)}...`
+                        : data.data_source}
+                    </a>
+                  </Typography>
+                </Box>
+              )}
+              <Box sx={{ mt: 0.75 }}>
+                <Typography
+                  component="span"
+                  variant="caption"
+                  sx={{
+                    fontSize: '0.7rem',
+                    color: 'primary.main',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    '&:hover': { color: 'primary.dark' },
+                  }}
+                  onClick={handleFetch}
+                >
+                  再取得する
+                </Typography>
+              </Box>
+            </Box>
+          ) : (
             <Grid container spacing={0.75}>
               {data.building_name && (
                 <Grid item xs={12}>
@@ -385,12 +424,7 @@ export const ApartmentBuildingInfoSection: React.FC<ApartmentBuildingInfoSection
                 </Grid>
               )}
             </Grid>
-          ) : (
-            <Typography variant="caption" color="text.secondary">
-              情報が取得できませんでした。再取得を試してください。
-            </Typography>
           )}
-
           {/* 取得日時・出典 */}
           <Box
             sx={{

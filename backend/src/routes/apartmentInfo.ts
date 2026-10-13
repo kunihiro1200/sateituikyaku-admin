@@ -37,6 +37,43 @@ interface ApartmentBuildingInfo {
 }
 
 // ──────────────────────────────────────────────
+// 日本語物件住所からマンション名を抽出する
+// 例: "福岡市博多区博多駅前2-1-1 ダイアパレス博多101" → "ダイアパレス博多"
+// ──────────────────────────────────────────────
+
+function extractBuildingNameFromAddress(address: string): string | null {
+  if (!address) return null;
+
+  // ① 号室・部屋番号を末尾から除去（例: 101号室, 1001, 20F）
+  let cleaned = address
+    .replace(/\s*\d{2,4}(号室?|F|階)?$/u, '')
+    .trim();
+
+  // ② 番地パターンの後ろにある文字列をマンション名と判断
+  // パターン: 数字-数字(-数字)? の後に続くカタカナ・漢字・英字の文字列
+  const patterns = [
+    // 例: "1-2-3 マンション名" or "1-2-3マンション名"
+    /\d+[-−ー]\d+(?:[-−ー]\d+)?\s*([^\d\s].{2,}?)$/u,
+    // 例: "1番2号 マンション名"
+    /\d+番\d+号\s*([^\d\s].{2,}?)$/u,
+    // 例: "1丁目2-3 マンション名"
+    /\d+丁目\d+[-−]?\d*\s*([^\d\s].{2,}?)$/u,
+  ];
+
+  for (const pattern of patterns) {
+    const m = cleaned.match(pattern);
+    if (m && m[1]) {
+      const name = m[1].trim();
+      // 3文字以上かつ数字だけでなければマンション名として採用
+      if (name.length >= 3 && /[^\d]/.test(name)) {
+        return name;
+      }
+    }
+  }
+  return null;
+}
+
+// ──────────────────────────────────────────────
 // Jina AI Search でマンション建物情報を検索
 // 無料: 200 リクエスト/日（API キー不要）
 // JINA_API_KEY 環境変数があれば高レート制限が適用される
@@ -46,8 +83,14 @@ async function searchBuildingInfo(
   propertyAddress: string,
   jinaApiKey?: string
 ): Promise<string> {
-  // 検索クエリ: 物件住所 + マンション建物情報のキーワード
-  const query = `${propertyAddress} マンション 管理会社 総戸数 築年月 施工会社 分譲会社 管理形態`;
+  // マンション名を住所から抽出して検索精度を上げる
+  const buildingName = extractBuildingNameFromAddress(propertyAddress);
+  console.log(`[apartmentInfo] extracted building name: "${buildingName}" from "${propertyAddress}"`);
+
+  // 検索クエリ: マンション名があれば優先して使用（より精度が高い）
+  const query = buildingName
+    ? `"${buildingName}" マンション 管理会社 総戸数 築年月 施工会社 分譲会社 管理形態`
+    : `${propertyAddress} マンション 管理会社 総戸数 築年月 施工会社 分譲会社 管理形態`;
 
   // ① まず Jina Search で Web 検索結果を取得
   try {
@@ -156,22 +199,26 @@ ${webContent}
 - 物件住所に最も合致するマンションの情報のみを抽出する
 - 確実に確認できた情報のみ記載し、不確かな情報は null にする
 - AIで推測・補完しない（外部データに記載がない項目は null）
+- 数字は必ず数値型で返す（文字列にしない）
+- 築年月が「1998年3月」形式の場合は「1998-03」に変換する
+- 階数が「地上15階建」の場合は total_floors_above: 15 として返す
+- 取得元URLはデータを参照したページのURL（https://... の形式）
 
-## 出力形式（JSONのみ返してください）
+## 出力形式（JSONのみ返してください。コードブロック不要）
 {
   "building_name": "マンション名（例: ライオンズマンション大分）",
-  "management_company": "管理会社名",
+  "management_company": "管理会社名（例: 大和ライフネクスト）",
   "built_year_month": "築年月（YYYY-MM形式、例: 1998-03）",
-  "total_floors_above": 地上階数（整数、例: 15）,
-  "total_floors_below": 地下階数（整数、通常0）,
-  "total_units": 総戸数（整数、例: 120）,
-  "structure": "建物構造（例: RC造・鉄筋コンクリート造）",
+  "total_floors_above": 地上階数（整数のみ、例: 15）,
+  "total_floors_below": 地下階数（整数のみ、例: 1、なければ0）,
+  "total_units": 総戸数（整数のみ、例: 120）,
+  "structure": "建物構造（例: RC造・鉄筋コンクリート造、SRC造等）",
   "developer_company": "分譲会社名",
   "construction_company": "施工会社名",
-  "management_type": "管理形態（例: 全部委託・一部委託・自主管理）",
+  "management_type": "管理形態（例: 全部委託、一部委託、自主管理）",
   "has_elevator": "あり または なし（不明な場合は null）",
-  "large_repair_history": "大規模修繕履歴のテキスト（なければ null）",
-  "data_source": "情報を取得したページのURLまたはサイト名"
+  "large_repair_history": "大規模修繕の実施年等（例: 2012年実施、なければ null）",
+  "data_source": "情報取得ページのURL（https://...）"
 }`;
 
   const response = await client.messages.create({
