@@ -12,8 +12,9 @@ import {
   Grid,
   Checkbox,
   FormControlLabel,
+  Tooltip,
 } from '@mui/material';
-import { ArrowBack, Print as PrintIcon, Save as SaveIcon } from '@mui/icons-material';
+import { ArrowBack, Print as PrintIcon, Save as SaveIcon, AutoFixHigh as AutoFixHighIcon } from '@mui/icons-material';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 
@@ -208,6 +209,29 @@ const RowPair = ({
   </Box>
 );
 
+// ────────────────────────────────────────────
+// ハザード情報からテキストを生成するヘルパー
+// ────────────────────────────────────────────
+function buildHazardText(h: any): string {
+  const parts: string[] = [];
+  if (h.flood === 'inside') {
+    parts.push(h.flood_depth_label ? `洪水（${h.flood_depth_label}）` : '洪水区域内');
+  }
+  if (h.storm_surge === 'inside') {
+    parts.push(h.storm_surge_depth ? `高潮（${h.storm_surge_depth}）` : '高潮区域内');
+  }
+  if (h.tsunami === 'inside') {
+    parts.push(h.tsunami_depth ? `津波（${h.tsunami_depth}）` : '津波区域内');
+  }
+  if (h.landslide_yellow === 'inside') {
+    parts.push(h.landslide_yellow_type ? `土砂警戒区域（${h.landslide_yellow_type}）` : '土砂災害警戒区域');
+  }
+  if (h.landslide_red === 'inside') {
+    parts.push(h.landslide_red_type ? `土砂特別警戒区域（${h.landslide_red_type}）` : '土砂災害特別警戒区域');
+  }
+  return parts.join('、');
+}
+
 export default function AttachedDocument2Page() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -220,6 +244,7 @@ export default function AttachedDocument2Page() {
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [hazardSuggestion, setHazardSuggestion] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!id) return;
@@ -230,8 +255,23 @@ export default function AttachedDocument2Page() {
         api.get<SellerData>(`/api/sellers/${id}`),
         api.get(`/api/sellers/${id}/attached-document2`),
       ]);
-      setSeller(sellerRes.data);
+      const sellerData = sellerRes.data;
+      setSeller(sellerData);
       const d = docRes.data || {};
+
+      // ハザード情報を取得して自動入力テキストを生成（売主番号が必要）
+      let autoHazardText = '';
+      if (sellerData.sellerNumber) {
+        try {
+          const hazardRes = await api.get(`/api/hazard-info/seller/${sellerData.sellerNumber}`);
+          const h = hazardRes.data?.data;
+          if (h && h.fetched_at) {
+            const suggestion = buildHazardText(h);
+            setHazardSuggestion(suggestion || null);
+            autoHazardText = suggestion;
+          }
+        } catch { /* ハザード取得失敗はサイレント（添付資料2の読み込みには影響しない）*/ }
+      }
       setFields({
         elementary_school_name: d.elementary_school_name || '',
         elementary_school_walk: d.elementary_school_walk || '',
@@ -258,7 +298,7 @@ export default function AttachedDocument2Page() {
         site_check_memo2: d.site_check_memo2 || '',
         site_check_memo3: d.site_check_memo3 || '',
         site_check_memo4: d.site_check_memo4 || '',
-        hazard_map: d.hazard_map || '',
+        hazard_map: d.hazard_map || autoHazardText,
         mortgage_info: d.mortgage_info || '',
         road_type: d.road_type || '',
         sale_reason: d.sale_reason || '',
@@ -785,7 +825,23 @@ export default function AttachedDocument2Page() {
               <Grid container spacing={1.5}>
                 {/* ハザードマップ */}
                 <Grid item xs={6}>
-                  <Typography sx={{ fontWeight: 'bold', fontSize: '8pt', mb: 0.4 }}>{hazardLabel}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.4 }}>
+                    <Typography sx={{ fontWeight: 'bold', fontSize: '8pt' }}>{hazardLabel}</Typography>
+                    {hazardSuggestion && (
+                      <Tooltip title={`ハザード情報から入力: ${hazardSuggestion}`} placement="top">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="info"
+                          startIcon={<AutoFixHighIcon sx={{ fontSize: '0.75rem !important' }} />}
+                          onClick={() => set('hazard_map', hazardSuggestion)}
+                          sx={{ fontSize: '0.6rem', py: 0.1, px: 0.8, minWidth: 0, height: 20, lineHeight: 1 }}
+                        >
+                          自動入力
+                        </Button>
+                      </Tooltip>
+                    )}
+                  </Box>
                   <TextField fullWidth size="small" value={fields.hazard_map}
                     onChange={(e) => set('hazard_map', e.target.value)}
                     placeholder="水害、土砂災害"
