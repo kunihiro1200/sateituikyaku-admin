@@ -159,8 +159,17 @@ async function searchBuildingInfo(
     const ddgText = await fetchPage(ddgUrl);
 
     if (ddgText && ddgText.length > 300) {
+      // ① 直接URLパターンで抽出
       const detailPattern = /https?:\/\/(?:suumo\.jp\/library\/[^\s)"\]\n<]+|www\.athome\.co\.jp\/bldg-library\/[^\s)"\]\n<]+|library\.smtrc\.jp\/mansion\/[^\s)"\]\n<]+)/g;
-      const detailUrls = (ddgText.match(detailPattern) ?? []).map(u => u.replace(/[\)\]"'>,]+$/, ''));
+      let detailUrls = (ddgText.match(detailPattern) ?? []).map(u => u.replace(/[\)\]"'>,]+$/, ''));
+
+      // ② DuckDuckGo は uddg= にURLをエンコードして埋め込む場合があるのでデコードも試みる
+      const uddgMatches = [...ddgText.matchAll(/uddg=(https?[^&\s"'<\)]+)/g)];
+      const uddgUrls = uddgMatches
+        .map(m => { try { return decodeURIComponent(m[1]); } catch { return ''; } })
+        .filter(u => /(?:suumo\.jp\/library|athome\.co\.jp\/bldg-library|library\.smtrc\.jp\/mansion)/.test(u));
+      detailUrls = [...new Set([...detailUrls, ...uddgUrls])];
+      console.log(`[apartmentInfo] DuckDuckGo found URLs: ${JSON.stringify(detailUrls)}`);
 
       for (const url of detailUrls) {
         try {
@@ -249,14 +258,25 @@ async function fetchManagementCompanyFallback(
 
   let searchText = '';
   try {
-    const res = await axios.get(
-      `https://s.jina.ai/${encodeURIComponent(query)}`,
-      { headers: jinaHeaders, timeout: 25000 }
-    );
+    // DuckDuckGo HTML（s.jina.ai より安定）で管理会社を検索
+    const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(`"${buildingName}" 管理会社`)}`;
+    const res = await axios.get(`https://r.jina.ai/${ddgUrl}`, {
+      headers: jinaHeaders,
+      timeout: 25000,
+    });
     searchText = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
   } catch (e: any) {
-    console.warn('[apartmentInfo] mgmt fallback Jina error:', e?.message);
-    return null;
+    // DuckDuckGo が失敗したら s.jina.ai にフォールバック
+    try {
+      const res = await axios.get(
+        `https://s.jina.ai/${encodeURIComponent(`"${buildingName}" 管理会社`)}`,
+        { headers: jinaHeaders, timeout: 25000 }
+      );
+      searchText = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+    } catch (e2: any) {
+      console.warn('[apartmentInfo] mgmt fallback search error:', e2?.message);
+      return null;
+    }
   }
 
   if (!searchText || searchText.length < 100) return null;
