@@ -14,6 +14,7 @@ import {
   FormControlLabel,
   Tooltip,
 } from '@mui/material';
+import InputAdornment from '@mui/material/InputAdornment';
 import { ArrowBack, Print as PrintIcon, Save as SaveIcon, AutoFixHigh as AutoFixHighIcon } from '@mui/icons-material';
 import api from '../services/api';
 import { useGoogleMaps } from '../contexts/GoogleMapsContext';
@@ -113,6 +114,9 @@ interface DocumentFields {
   tokuten_fee_discount: boolean;
   tokuten_bridge_loan: boolean;
   tokuten_key_exchange: boolean;
+  // 学校確認チェックボックス
+  elementary_school_confirmed: boolean;
+  junior_high_school_confirmed: boolean;
 }
 
 const EMPTY_FIELDS: DocumentFields = {
@@ -168,6 +172,8 @@ const EMPTY_FIELDS: DocumentFields = {
   tokuten_fee_discount: false,
   tokuten_bridge_loan: false,
   tokuten_key_exchange: false,
+  elementary_school_confirmed: false,
+  junior_high_school_confirmed: false,
 };
 
 const fmt = (amount?: number) =>
@@ -181,6 +187,63 @@ const fmtDatetime = (raw?: string): string => {
   const d = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (d) return `${d[1]}/${d[2]}/${d[3]}`;
   return s;
+};
+
+// ── 学校行：「徒歩X分」形式 + 確認チェックボックス ──
+const SchoolRowWithConfirm = ({
+  label,
+  nameKey,
+  walkKey,
+  confirmedKey,
+  fields,
+  onSet,
+  onConfirmChange,
+}: {
+  label: string;
+  nameKey: keyof DocumentFields;
+  walkKey: keyof DocumentFields;
+  confirmedKey: keyof DocumentFields;
+  fields: DocumentFields;
+  onSet: (key: keyof DocumentFields, value: string | boolean) => void;
+  onConfirmChange: (key: keyof DocumentFields, value: boolean) => void;
+}) => {
+  const walkValue = (fields[walkKey] as string) || '';
+  const isConfirmed = fields[confirmedKey] as boolean;
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, py: 0.8, borderBottom: '1px solid #ccc' }}>
+      <Typography sx={{ width: 70, flexShrink: 0, fontWeight: 'bold', fontSize: '9.5pt' }}>{label}</Typography>
+      <TextField size="small" variant="outlined" placeholder="学校名"
+        value={fields[nameKey] as string}
+        onChange={(e) => onSet(nameKey, e.target.value)}
+        sx={{ flex: 2, '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
+      <TextField size="small" variant="outlined"
+        value={walkValue}
+        placeholder="17〜22"
+        onChange={(e) => onSet(walkKey, e.target.value)}
+        InputProps={{
+          startAdornment: <InputAdornment position="start" sx={{ mr: 0 }}>
+            <Typography sx={{ fontSize: '8.5pt', color: '#555', whiteSpace: 'nowrap' }}>徒歩</Typography>
+          </InputAdornment>,
+          endAdornment: <InputAdornment position="end">
+            <Typography sx={{ fontSize: '8.5pt', color: '#555' }}>分</Typography>
+          </InputAdornment>,
+        }}
+        sx={{ width: 100, '& .MuiOutlinedInput-root': { fontSize: '9pt', pl: 0.3 } }} />
+      <FormControlLabel
+        control={
+          <Checkbox size="small" checked={isConfirmed}
+            onChange={(e) => onConfirmChange(confirmedKey, e.target.checked)}
+            sx={{ p: 0.3 }} color="success" />
+        }
+        label={
+          <Typography sx={{ fontSize: '8pt', color: isConfirmed ? '#2e7d32' : '#999', whiteSpace: 'nowrap' }}>
+            {isConfirmed ? '✓確認済' : '確認'}
+          </Typography>
+        }
+        sx={{ ml: 0, mr: 0 }}
+      />
+    </Box>
+  );
 };
 
 // ── 画面入力：横2列ヘルパー（名称 + 徒歩分） ──
@@ -331,6 +394,8 @@ export default function AttachedDocument2Page() {
         tokuten_fee_discount: !!d.tokuten_fee_discount,
         tokuten_bridge_loan: !!d.tokuten_bridge_loan,
         tokuten_key_exchange: !!d.tokuten_key_exchange,
+        elementary_school_confirmed: !!d.elementary_school_confirmed,
+        junior_high_school_confirmed: !!d.junior_high_school_confirmed,
       });
       setIsDirty(false);
     } catch (err: any) {
@@ -424,8 +489,18 @@ export default function AttachedDocument2Page() {
     }
   };
 
-  const handleSave = async (): Promise<boolean> => {
-    if (!id) return false;
+  // ---- 学校確認チェックボックスの即時保存 ----
+  const handleConfirmChange = async (key: keyof DocumentFields, value: boolean) => {
+    set(key, value); // フォーム状態を更新
+    if (!id) return;
+    try {
+      await api.patch(`/api/sellers/${id}/attached-document2/school`, { [key]: value });
+    } catch (err) {
+      console.error('[AttachedDocument2] 確認状態の保存失敗:', err);
+    }
+  };
+
+  const handleSave = async (): Promise<boolean> => {    if (!id) return false;
     try {
       setSaving(true);
       setError(null);
@@ -985,8 +1060,14 @@ export default function AttachedDocument2Page() {
                 </Alert>
               )}
               <Grid container spacing={1} sx={{ mb: 0.5 }}>
-                <Grid item xs={6}><RowPair label="小学校" nameKey="elementary_school_name" walkKey="elementary_school_walk" fields={fields} onSet={set} /></Grid>
-                <Grid item xs={6}><RowPair label="中学校" nameKey="junior_high_school_name" walkKey="junior_high_school_walk" fields={fields} onSet={set} /></Grid>
+                <Grid item xs={6}>
+                  <SchoolRowWithConfirm label="小学校" nameKey="elementary_school_name" walkKey="elementary_school_walk"
+                    confirmedKey="elementary_school_confirmed" fields={fields} onSet={set} onConfirmChange={handleConfirmChange} />
+                </Grid>
+                <Grid item xs={6}>
+                  <SchoolRowWithConfirm label="中学校" nameKey="junior_high_school_name" walkKey="junior_high_school_walk"
+                    confirmedKey="junior_high_school_confirmed" fields={fields} onSet={set} onConfirmChange={handleConfirmChange} />
+                </Grid>
               </Grid>
               <Grid container spacing={1}>
                 <Grid item xs={6}><RowPair label="最寄り駅" nameKey="nearest_station_name" walkKey="nearest_station_walk" fields={fields} onSet={set} /></Grid>

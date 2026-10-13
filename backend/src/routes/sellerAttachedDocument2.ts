@@ -75,6 +75,9 @@ export interface AttachedDocument2Data {
   junior_high_school_entrance_lat?: number | null;
   junior_high_school_entrance_lng?: number | null;
   school_info_fetched_at?: string | null;
+  // 学校確認チェックボックス
+  elementary_school_confirmed?: boolean;
+  junior_high_school_confirmed?: boolean;
   // 【特典】チェックボックス
   tokuten_cleaning?: boolean;
   tokuten_garden?: boolean;
@@ -228,6 +231,8 @@ router.put('/sellers/:sellerId/attached-document2', async (req: Request, res: Re
       tokuten_fee_discount: !!body.tokuten_fee_discount,
       tokuten_bridge_loan: !!body.tokuten_bridge_loan,
       tokuten_key_exchange: !!body.tokuten_key_exchange,
+      elementary_school_confirmed: !!body.elementary_school_confirmed,
+      junior_high_school_confirmed: !!body.junior_high_school_confirmed,
       updated_at: new Date().toISOString(),
       updated_by: body.updated_by || null,
     };
@@ -345,11 +350,13 @@ router.patch('/sellers/:sellerId/attached-document2/school', async (req: Request
       'elementary_school_distance',
       'elementary_school_entrance_lat',
       'elementary_school_entrance_lng',
+      'elementary_school_confirmed',
       'junior_high_school_name',
       'junior_high_school_walk',
       'junior_high_school_distance',
       'junior_high_school_entrance_lat',
       'junior_high_school_entrance_lng',
+      'junior_high_school_confirmed',
       'school_info_fetched_at',
     ] as const;
 
