@@ -83,6 +83,17 @@ interface DocumentFields {
   site_check_memo4: string;
   hazard_map: string;
   mortgage_info: string;
+  // 新規フィールド（道路の種類・売却理由・境界・ガス・排水・建築会社・管理会社）
+  road_type: string;
+  sale_reason: string;
+  boundary_info: string;
+  gas_propane: boolean;
+  gas_city_gas: boolean;
+  drainage_public: boolean;
+  drainage_septic: boolean;
+  drainage_cesspool: boolean;
+  construction_company: string;
+  management_company: string;
   // 【特典】チェックボックス
   tokuten_cleaning: boolean;
   tokuten_garden: boolean;
@@ -122,6 +133,16 @@ const EMPTY_FIELDS: DocumentFields = {
   site_check_memo4: '',
   hazard_map: '',
   mortgage_info: '',
+  road_type: '',
+  sale_reason: '',
+  boundary_info: '',
+  gas_propane: false,
+  gas_city_gas: false,
+  drainage_public: false,
+  drainage_septic: false,
+  drainage_cesspool: false,
+  construction_company: '',
+  management_company: '',
   tokuten_cleaning: false,
   tokuten_garden: false,
   tokuten_wallpaper: false,
@@ -226,6 +247,16 @@ export default function AttachedDocument2Page() {
         site_check_memo4: d.site_check_memo4 || '',
         hazard_map: d.hazard_map || '',
         mortgage_info: d.mortgage_info || '',
+        road_type: d.road_type || '',
+        sale_reason: d.sale_reason || '',
+        boundary_info: d.boundary_info || '',
+        gas_propane: !!d.gas_propane,
+        gas_city_gas: !!d.gas_city_gas,
+        drainage_public: !!d.drainage_public,
+        drainage_septic: !!d.drainage_septic,
+        drainage_cesspool: !!d.drainage_cesspool,
+        construction_company: d.construction_company || '',
+        management_company: d.management_company || '',
         tokuten_cleaning: !!d.tokuten_cleaning,
         tokuten_garden: !!d.tokuten_garden,
         tokuten_wallpaper: !!d.tokuten_wallpaper,
@@ -306,6 +337,10 @@ export default function AttachedDocument2Page() {
   const floorPlan       = seller?.property?.floorPlan || seller?.floorPlan || '-';
   const currentStatus   = seller?.property?.sellerSituation || seller?.property?.currentStatus || seller?.currentStatus || '-';
   const isMansion       = propertyType === 'apartment' || propertyType === 'マ' || propertyType === 'マンション';
+  const isFukuoka = !!(seller?.sellerNumber?.startsWith('FI'));
+  const hazardLabel = isFukuoka
+    ? 'ハザードマップ（埋蔵文化、航空法等　福岡MAPより全確認）'
+    : 'ハザードマップ（埋蔵文化等　大分MAPより全確認）';
 
   const valuationDisplay = seller?.valuationText
     ? seller.valuationText
@@ -321,24 +356,24 @@ export default function AttachedDocument2Page() {
 
     // 種別分岐HTML（マンション/非マンション）
     const mansionSection = isMansion
-      ? '<table class="info-table" style="margin-bottom:4pt"><tr><td class="lbl" colspan="2">近隣募集・成約事例</td></tr>'
-        + '<tr><td colspan="2" style="padding:4pt 6pt;font-size:9pt;">'
+      ? '<table class="it" style="margin-bottom:3pt"><tr><td class="lbl" colspan="2">近隣募集・成約事例</td></tr>'
+        + '<tr><td colspan="2" style="padding:3pt;font-size:7.5pt;">'
         + cb(fields.currently_listed_same_building_checked) + ' 現在募集中（同マンション）　'
         + cb(fields.same_building_sold_case_checked) + ' 同マンションの成約事例　'
         + cb(fields.nearby_mansion_sold_case_checked) + ' 周辺のマンションの成約事例'
         + '</td></tr></table>'
-        + '<table class="info-table" style="margin-bottom:4pt"><tr>'
-        + '<td class="lbl" style="width:60pt">管理費</td><td class="val">' + (fields.management_fee || '') + '</td>'
-        + '<td class="lbl" style="width:60pt">修繕積立金</td><td class="val">' + (fields.repair_reserve_fund || '') + '</td>'
+        + '<table class="it" style="margin-bottom:3pt"><tr>'
+        + '<td class="lbl" style="width:54pt">管理費</td><td class="val">' + (fields.management_fee || '') + '</td>'
+        + '<td class="lbl" style="width:54pt">修繕積立金</td><td class="val">' + (fields.repair_reserve_fund || '') + '</td>'
         + '</tr></table>'
-      : '<table class="info-table" style="margin-bottom:4pt"><tr><td colspan="4" style="padding:4pt 6pt;font-size:9pt;">'
+      : '<table class="it" style="margin-bottom:3pt"><tr><td colspan="4" style="padding:3pt;font-size:7.5pt;">'
         + cb(fields.current_nearby_listing_checked) + ' 現在の近隣募集中　'
         + cb(fields.past_sold_case_checked) + ' 過去成約事例'
         + '</td></tr></table>'
-        + '<table class="info-table" style="margin-bottom:4pt"><tr>'
+        + '<table class="it" style="margin-bottom:3pt"><tr>'
         + '<td class="lbl" style="width:60pt">境界標（杭）</td><td class="val">' + (fields.boundary_stake || '') + '</td>'
-        + '<td class="lbl" style="width:50pt">道路幅</td><td class="val">' + (fields.road_width || '') + '</td>'
-        + '<td class="lbl" style="width:40pt">接道</td><td class="val">' + (fields.road_contact || '') + '</td>'
+        + '<td class="lbl" style="width:44pt">道路幅</td><td class="val">' + (fields.road_width || '') + '</td>'
+        + '<td class="lbl" style="width:36pt">接道</td><td class="val">' + (fields.road_contact || '') + '</td>'
         + '</tr></table>';
 
     const mansionConfirmRows = isMansion
@@ -367,19 +402,19 @@ export default function AttachedDocument2Page() {
       + '.page{display:block}'
       + 'h1{font-size:13pt;font-weight:bold;margin:0 0 1pt;border-bottom:2pt solid #000;padding-bottom:2pt}'
       + '.sub{font-size:8pt;color:#555;margin-bottom:4pt}'
-      + '.row2{display:flex;gap:5pt;margin-bottom:5pt}'
-      + '.row2>div{flex:1;border:1pt solid #888;padding:4pt}'
+      + '.row2{display:flex;gap:4pt;margin-bottom:3pt}'
+      + '.row2>div{flex:1;border:1pt solid #888;padding:3pt}'
       + '.stitle{font-weight:bold;font-size:8.5pt;border-bottom:1pt solid #ccc;padding-bottom:2pt;margin-bottom:3pt}'
       + '.iline{font-size:8pt;line-height:1.6}'
-      + '.grid2{display:grid;grid-template-columns:1fr 1fr;gap:5pt;margin-bottom:5pt}'
+      + '.grid2{display:grid;grid-template-columns:1fr 1fr;gap:3pt;margin-bottom:3pt}'
       + '.box{border:1pt solid #888;padding:4pt}'
       + '.blbl{font-size:7pt;color:#555}'
       + '.bval{font-size:10pt;font-weight:bold}'
-      + '.cbox{border:1pt solid #888;padding:5pt;margin-bottom:5pt;overflow:hidden;height:105mm;display:flex;flex-direction:column}'
+      + '.cbox{border:1pt solid #888;padding:4pt;margin-bottom:4pt;overflow:hidden;height:68mm;display:flex;flex-direction:column}'
       + '.clbl{font-size:7pt;color:#555;font-weight:bold;margin-bottom:2pt}'
       + '.tblock{}'
-      + '.it{width:100%;border-collapse:collapse;margin-bottom:4pt;border:1pt solid #888}'
-      + '.it td{border:1pt solid #888;padding:2pt 4pt;font-size:8pt;vertical-align:middle}'
+      + '.it{width:100%;border-collapse:collapse;margin-bottom:3pt;border:1pt solid #888}'
+      + '.it td{border:1pt solid #888;padding:2pt 3pt;font-size:7.5pt;vertical-align:middle}'
       + '.lbl{background:#f0f0f0;font-weight:bold;white-space:nowrap;width:52pt}'
       + '.val{min-height:12pt}'
       + '.narrow{width:48pt}'
@@ -425,8 +460,8 @@ export default function AttachedDocument2Page() {
       + '</div>'
       + '<div class="tblock">'
       + '<table class="it"><tr>'
-      + '<td class="lbl">ハザードマップ</td><td class="val" style="color:' + (fields.hazard_map ? '#000' : '#bbb') + '">' + (fields.hazard_map || '水害、土砂災害') + '</td>'
-      + '<td class="lbl">抵当権</td><td class="val" style="color:' + (fields.mortgage_info ? '#000' : '#bbb') + '">' + (fields.mortgage_info || '抵当権の種類と抵当権先') + '</td>'
+      + '<td class="lbl" style="font-size:6.5pt;white-space:normal;line-height:1.3">' + (isFukuoka ? 'ハザードマップ（埋蔵文化、航空法等　福岡MAPより全確認）' : 'ハザードマップ（埋蔵文化等　大分MAPより全確認）') + '</td><td class="val">' + (fields.hazard_map || '') + '</td>'
+      + '<td class="lbl">道路の種類</td><td class="val">' + (fields.road_type || '') + '</td>'
       + '</tr></table>'
       + '<table class="it"><tr>'
       + '<td class="lbl">小学校</td><td class="val">' + (fields.elementary_school_name || '') + '</td><td class="val narrow">' + (fields.elementary_school_walk || '') + '</td>'
@@ -436,6 +471,20 @@ export default function AttachedDocument2Page() {
       + '<td class="lbl">最寄りバス停</td><td class="val">' + (fields.nearest_bus_stop_name || '') + '</td><td class="val narrow">' + (fields.nearest_bus_stop_walk || '') + '</td>'
       + '</tr></table>'
       + mansionSection
+      + '<table class="it" style="margin-bottom:3pt"><tr>'
+      + '<td class="lbl" style="width:48pt">売却理由</td><td class="val">' + (fields.sale_reason || '') + '</td>'
+      + '<td class="lbl" style="width:36pt">境界</td><td class="val" style="font-size:7pt;color:' + (fields.boundary_info ? '#000' : '#aaa') + '">' + (fields.boundary_info || '□杭　印あり　□杭　印なし　□越境物（　　）') + '</td>'
+      + '</tr></table>'
+      + '<table class="it" style="margin-bottom:3pt"><tr>'
+      + '<td class="lbl" style="width:30pt">ガス</td>'
+      + '<td style="border:1pt solid #888;padding:2pt 3pt;font-size:7.5pt">' + cb(fields.gas_propane) + ' プロパン　' + cb(fields.gas_city_gas) + ' 都市ガス</td>'
+      + '<td class="lbl" style="width:30pt">排水</td>'
+      + '<td style="border:1pt solid #888;padding:2pt 3pt;font-size:7.5pt">' + cb(fields.drainage_public) + ' 公共下水　' + cb(fields.drainage_septic) + ' 浄化槽　' + cb(fields.drainage_cesspool) + ' 汲み取り</td>'
+      + '</tr></table>'
+      + '<table class="it" style="margin-bottom:3pt"><tr>'
+      + '<td class="lbl" style="width:48pt">建築会社</td><td class="val"' + (isMansion ? '' : ' colspan="3"') + '>' + (fields.construction_company || '') + '</td>'
+      + (isMansion ? '<td class="lbl" style="width:48pt">管理会社</td><td class="val">' + (fields.management_company || '') + '</td>' : '')
+      + '</tr></table>'
       + '<table class="it"><tr>'
       + '<td class="lbl" style="width:52pt">固定資産税</td>'
       + '<td class="val">' + (fields.property_tax || '<span style="color:#bbb;font-size:7.5pt">' + (isMansion ? 'マンションは５年以内に軽減税率あり' : '戸建ては３年以内に軽減税率あり') + '</span>') + '</td>'
@@ -703,19 +752,18 @@ export default function AttachedDocument2Page() {
               <Grid container spacing={1.5}>
                 {/* ハザードマップ */}
                 <Grid item xs={6}>
-                  <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', mb: 0.4 }}>ハザードマップ</Typography>
+                  <Typography sx={{ fontWeight: 'bold', fontSize: '8pt', mb: 0.4 }}>{hazardLabel}</Typography>
                   <TextField fullWidth size="small" value={fields.hazard_map}
                     onChange={(e) => set('hazard_map', e.target.value)}
                     placeholder="水害、土砂災害"
                     sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' }, '& input::placeholder': { color: '#bbb', opacity: 1 } }} />
                 </Grid>
-                {/* 抵当権 */}
+                {/* 道路の種類 */}
                 <Grid item xs={6}>
-                  <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', mb: 0.4 }}>抵当権</Typography>
-                  <TextField fullWidth size="small" value={fields.mortgage_info}
-                    onChange={(e) => set('mortgage_info', e.target.value)}
-                    placeholder="抵当権の種類と抵当権先"
-                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' }, '& input::placeholder': { color: '#bbb', opacity: 1 } }} />
+                  <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', mb: 0.4 }}>道路の種類</Typography>
+                  <TextField fullWidth size="small" value={fields.road_type}
+                    onChange={(e) => set('road_type', e.target.value)}
+                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
                 </Grid>
               </Grid>
             </Paper>
@@ -783,6 +831,51 @@ export default function AttachedDocument2Page() {
                 </Paper>
               </>
             )}
+
+            {/* ─── 新規フィールド（固定資産税の上） ─── */}
+            <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
+              {/* 売却理由 */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.6, borderBottom: '1px solid #eee' }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, width: 76 }}>売却理由</Typography>
+                <TextField fullWidth size="small" value={fields.sale_reason}
+                  onChange={(e) => set('sale_reason', e.target.value)}
+                  sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
+              </Box>
+              {/* 境界 */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.6, borderBottom: '1px solid #eee' }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, width: 76 }}>境界</Typography>
+                <TextField fullWidth size="small" value={fields.boundary_info}
+                  onChange={(e) => set('boundary_info', e.target.value)}
+                  placeholder="□杭　印あり　□杭　印なし　□越境物（　　）"
+                  sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' }, '& input::placeholder': { color: '#bbb', opacity: 1, fontSize: '8pt' } }} />
+              </Box>
+              {/* ガス・排水 */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.6, flexWrap: 'wrap', borderBottom: '1px solid #eee' }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0 }}>ガス</Typography>
+                <FormControlLabel sx={{ m: 0 }} control={<Checkbox size="small" checked={fields.gas_propane} onChange={(e) => set('gas_propane', e.target.checked)} />} label={<Typography sx={{ fontSize: '9pt' }}>プロパン</Typography>} />
+                <FormControlLabel sx={{ m: 0 }} control={<Checkbox size="small" checked={fields.gas_city_gas} onChange={(e) => set('gas_city_gas', e.target.checked)} />} label={<Typography sx={{ fontSize: '9pt' }}>都市ガス</Typography>} />
+                <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, ml: 2 }}>排水</Typography>
+                <FormControlLabel sx={{ m: 0 }} control={<Checkbox size="small" checked={fields.drainage_public} onChange={(e) => set('drainage_public', e.target.checked)} />} label={<Typography sx={{ fontSize: '9pt' }}>公共下水</Typography>} />
+                <FormControlLabel sx={{ m: 0 }} control={<Checkbox size="small" checked={fields.drainage_septic} onChange={(e) => set('drainage_septic', e.target.checked)} />} label={<Typography sx={{ fontSize: '9pt' }}>浄化槽</Typography>} />
+                <FormControlLabel sx={{ m: 0 }} control={<Checkbox size="small" checked={fields.drainage_cesspool} onChange={(e) => set('drainage_cesspool', e.target.checked)} />} label={<Typography sx={{ fontSize: '9pt' }}>汲み取り</Typography>} />
+              </Box>
+              {/* 建築会社 */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.6, borderBottom: isMansion ? '1px solid #eee' : 'none' }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, width: 76 }}>建築会社</Typography>
+                <TextField fullWidth size="small" value={fields.construction_company}
+                  onChange={(e) => set('construction_company', e.target.value)}
+                  sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
+              </Box>
+              {/* 管理会社（マンションのみ） */}
+              {isMansion && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.6 }}>
+                  <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, width: 76 }}>管理会社</Typography>
+                  <TextField fullWidth size="small" value={fields.management_company}
+                    onChange={(e) => set('management_company', e.target.value)}
+                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
+                </Box>
+              )}
+            </Paper>
 
             <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
               <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>

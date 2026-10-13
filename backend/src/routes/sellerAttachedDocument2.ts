@@ -45,9 +45,20 @@ export interface AttachedDocument2Data {
   site_check_memo2?: string | null;
   site_check_memo3?: string | null;
   site_check_memo4?: string | null;
-  // ハザードマップ・抵当権
+  // ハザードマップ・道路の種類（旧:抵当権）
   hazard_map?: string | null;
   mortgage_info?: string | null;
+  // 新規フィールド
+  road_type?: string | null;
+  sale_reason?: string | null;
+  boundary_info?: string | null;
+  gas_propane?: boolean;
+  gas_city_gas?: boolean;
+  drainage_public?: boolean;
+  drainage_septic?: boolean;
+  drainage_cesspool?: boolean;
+  construction_company?: string | null;
+  management_company?: string | null;
   // 【特典】チェックボックス
   tokuten_cleaning?: boolean;
   tokuten_garden?: boolean;
@@ -88,6 +99,16 @@ const EMPTY_RESPONSE = (sellerId: string) => ({
   site_check_memo4: null,
   hazard_map: null,
   mortgage_info: null,
+  road_type: null,
+  sale_reason: null,
+  boundary_info: null,
+  gas_propane: false,
+  gas_city_gas: false,
+  drainage_public: false,
+  drainage_septic: false,
+  drainage_cesspool: false,
+  construction_company: null,
+  management_company: null,
   tokuten_cleaning: false,
   tokuten_garden: false,
   tokuten_wallpaper: false,
@@ -159,6 +180,16 @@ router.put('/sellers/:sellerId/attached-document2', async (req: Request, res: Re
       site_check_memo4: body.site_check_memo4 || null,
       hazard_map: body.hazard_map || null,
       mortgage_info: body.mortgage_info || null,
+      road_type: body.road_type || null,
+      sale_reason: body.sale_reason || null,
+      boundary_info: body.boundary_info || null,
+      gas_propane: !!body.gas_propane,
+      gas_city_gas: !!body.gas_city_gas,
+      drainage_public: !!body.drainage_public,
+      drainage_septic: !!body.drainage_septic,
+      drainage_cesspool: !!body.drainage_cesspool,
+      construction_company: body.construction_company || null,
+      management_company: body.management_company || null,
       tokuten_cleaning: !!body.tokuten_cleaning,
       tokuten_garden: !!body.tokuten_garden,
       tokuten_wallpaper: !!body.tokuten_wallpaper,
