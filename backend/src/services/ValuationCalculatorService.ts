@@ -537,13 +537,26 @@ export class ValuationCalculatorService extends BaseRepository {
   /**
    * 査定額3を計算
    * 査定額1に基づいて加算額を計算
+   *
+   * FIセクション（seller_number が "FI" を含む）の場合は差を拡大：
+   *   - 査定額１ ≤ 1000万円 → 査定額２との差 400万円
+   *   - 査定額１ > 1000万円 → 査定額２との差 500万円
+   * 通常は査定額２との差 200万円（従来通り）
    */
   async calculateValuationAmount3(
     seller: Seller,
     valuationAmount1: number
   ): Promise<number> {
     try {
-      // 査定額1を万円単位に変換
+      // FI売主の場合：査定額２ベースで差分を加算
+      if (seller.sellerNumber?.includes('FI')) {
+        const valuationAmount2 = await this.calculateValuationAmount2(seller, valuationAmount1);
+        const amount1InManYen = valuationAmount1 / 10000;
+        const fiDiff = amount1InManYen <= 1000 ? 400 : 500;
+        return valuationAmount2 + fiDiff * 10000;
+      }
+
+      // 通常売主：従来の計算（査定額２との差は一律200万円）
       const amount1InManYen = valuationAmount1 / 10000;
 
       // 段階的な加算額を決定
