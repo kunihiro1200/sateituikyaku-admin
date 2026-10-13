@@ -117,6 +117,9 @@ interface DocumentFields {
   // 学校確認チェックボックス
   elementary_school_confirmed: boolean;
   junior_high_school_confirmed: boolean;
+  // 交通アクセス確認チェックボックス
+  nearest_station_confirmed: boolean;
+  nearest_bus_stop_confirmed: boolean;
 }
 
 const EMPTY_FIELDS: DocumentFields = {
@@ -174,6 +177,8 @@ const EMPTY_FIELDS: DocumentFields = {
   tokuten_key_exchange: false,
   elementary_school_confirmed: false,
   junior_high_school_confirmed: false,
+  nearest_station_confirmed: false,
+  nearest_bus_stop_confirmed: false,
 };
 
 const fmt = (amount?: number) =>
@@ -246,11 +251,68 @@ const SchoolRowWithConfirm = ({
   );
 };
 
+// ── 交通アクセス行：「名称 + 徒歩○分」形式 + 確認チェックボックス ──
+// （SchoolRowWithConfirm と同じ構造。トップレベル定義でフォーカス外れを防ぐ）
+const TransitRowWithConfirm = ({
+  label,
+  nameKey,
+  walkKey,
+  confirmedKey,
+  fields,
+  onSet,
+  onConfirmChange,
+}: {
+  label: string;
+  nameKey: keyof DocumentFields;
+  walkKey: keyof DocumentFields;
+  confirmedKey: keyof DocumentFields;
+  fields: DocumentFields;
+  onSet: (key: keyof DocumentFields, value: string | boolean) => void;
+  onConfirmChange: (key: keyof DocumentFields, value: boolean) => void;
+}) => {
+  const walkValue = (fields[walkKey] as string) || '';
+  const isConfirmed = fields[confirmedKey] as boolean;
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, py: 0.8, borderBottom: '1px solid #ccc' }}>
+      <Typography sx={{ width: 70, flexShrink: 0, fontWeight: 'bold', fontSize: '9.5pt' }}>{label}</Typography>
+      <TextField size="small" variant="outlined" placeholder="駅名・バス停名"
+        value={fields[nameKey] as string}
+        onChange={(e) => onSet(nameKey, e.target.value)}
+        sx={{ flex: 2, '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
+      <TextField size="small" variant="outlined"
+        value={walkValue}
+        placeholder="8"
+        onChange={(e) => onSet(walkKey, e.target.value)}
+        InputProps={{
+          startAdornment: <InputAdornment position="start" sx={{ mr: 0 }}>
+            <Typography sx={{ fontSize: '8.5pt', color: '#555', whiteSpace: 'nowrap' }}>徒歩</Typography>
+          </InputAdornment>,
+          endAdornment: <InputAdornment position="end">
+            <Typography sx={{ fontSize: '8.5pt', color: '#555' }}>分</Typography>
+          </InputAdornment>,
+        }}
+        sx={{ width: 100, '& .MuiOutlinedInput-root': { fontSize: '9pt', pl: 0.3 } }} />
+      <FormControlLabel
+        control={
+          <Checkbox size="small" checked={isConfirmed}
+            onChange={(e) => onConfirmChange(confirmedKey, e.target.checked)}
+            sx={{ p: 0.3 }} color="success" />
+        }
+        label={
+          <Typography sx={{ fontSize: '8pt', color: isConfirmed ? '#2e7d32' : '#999', whiteSpace: 'nowrap' }}>
+            {isConfirmed ? '✓確認済' : '確認'}
+          </Typography>
+        }
+        sx={{ ml: 0, mr: 0 }}
+      />
+    </Box>
+  );
+};
+
 // ── 画面入力：横2列ヘルパー（名称 + 徒歩分） ──
 // ※ コンポーネントをトップレベルに定義することで、
 //    再レンダー時に新しい型として扱われてフォーカスが外れるバグを防ぐ
-const RowPair = ({
-  label,
+const RowPair = ({  label,
   nameKey,
   walkKey,
   fields,
@@ -396,6 +458,8 @@ export default function AttachedDocument2Page() {
         tokuten_key_exchange: !!d.tokuten_key_exchange,
         elementary_school_confirmed: !!d.elementary_school_confirmed,
         junior_high_school_confirmed: !!d.junior_high_school_confirmed,
+        nearest_station_confirmed: !!d.nearest_station_confirmed,
+        nearest_bus_stop_confirmed: !!d.nearest_bus_stop_confirmed,
       });
       setIsDirty(false);
     } catch (err: any) {
@@ -497,6 +561,64 @@ export default function AttachedDocument2Page() {
       await api.patch(`/api/sellers/${id}/attached-document2/school`, { [key]: value });
     } catch (err) {
       console.error('[AttachedDocument2] 確認状態の保存失敗:', err);
+    }
+  };
+
+  // ---- 交通アクセス自動入力（seller_transit_access の rank=1 を取得）----
+  const [transitFetching, setTransitFetching] = useState(false);
+  const [transitFetchError, setTransitFetchError] = useState<string | null>(null);
+
+  const handleTransitAutoFetch = async () => {
+    if (!seller?.sellerNumber) return;
+    setTransitFetching(true);
+    setTransitFetchError(null);
+    try {
+      const res = await api.get(`/api/transit-access/seller/${seller.sellerNumber}`);
+      const records: Array<{
+        transport_type: 'station' | 'bus_stop';
+        rank: number;
+        name: string | null;
+        line_name: string | null;
+        walk_minutes: number | null;
+        is_manually_corrected: boolean;
+        manual_name: string | null;
+        manual_line_name: string | null;
+        manual_walk_minutes: number | null;
+      }> = res.data.data ?? [];
+
+      const station  = records.find(r => r.transport_type === 'station'  && r.rank === 1);
+      const busStop  = records.find(r => r.transport_type === 'bus_stop' && r.rank === 1);
+
+      const getDisplayName    = (r: typeof station) => (r?.is_manually_corrected && r.manual_name) ? r.manual_name! : (r?.name ?? '');
+      const getDisplayWalk    = (r: typeof station) => (r?.is_manually_corrected && r.manual_walk_minutes != null) ? String(r.manual_walk_minutes) : (r?.walk_minutes != null ? String(r.walk_minutes) : '');
+
+      if (station) {
+        set('nearest_station_name', getDisplayName(station));
+        set('nearest_station_walk', getDisplayWalk(station));
+      }
+      if (busStop) {
+        set('nearest_bus_stop_name', getDisplayName(busStop));
+        set('nearest_bus_stop_walk', getDisplayWalk(busStop));
+      }
+
+      if (!station && !busStop) {
+        setTransitFetchError('交通アクセス情報が未取得です。通話モードページで取得してください。');
+      }
+    } catch (err: any) {
+      setTransitFetchError(err.response?.data?.error || '交通アクセス情報の取得に失敗しました');
+    } finally {
+      setTransitFetching(false);
+    }
+  };
+
+  // ---- 交通アクセス確認チェックボックスの即時保存 ----
+  const handleTransitConfirmChange = async (key: keyof DocumentFields, value: boolean) => {
+    set(key, value);
+    if (!id) return;
+    try {
+      await api.patch(`/api/sellers/${id}/attached-document2/transit`, { [key]: value });
+    } catch (err) {
+      console.error('[AttachedDocument2] 交通確認状態の保存失敗:', err);
     }
   };
 
@@ -1069,9 +1191,34 @@ export default function AttachedDocument2Page() {
                     confirmedKey="junior_high_school_confirmed" fields={fields} onSet={set} onConfirmChange={handleConfirmChange} />
                 </Grid>
               </Grid>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.3 }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '8.5pt', color: '#555' }}>最寄り駅・バス停</Typography>
+                <Tooltip title="交通アクセスパネルで取得済みの最寄り駅・バス停（1位）を自動入力します（編集可能）">
+                  <Button
+                    size="small" variant="outlined" color="primary"
+                    onClick={handleTransitAutoFetch}
+                    disabled={transitFetching}
+                    startIcon={transitFetching ? <CircularProgress size={11} color="inherit" /> : <AutoFixHighIcon />}
+                    sx={{ ml: 'auto', fontSize: '9px', py: 0.2, px: 0.8, minWidth: 0 }}
+                  >
+                    {transitFetching ? '取得中...' : '交通を自動入力'}
+                  </Button>
+                </Tooltip>
+              </Box>
+              {transitFetchError && (
+                <Alert severity="error" sx={{ mb: 0.5, py: 0, fontSize: '8pt' }} onClose={() => setTransitFetchError(null)}>
+                  {transitFetchError}
+                </Alert>
+              )}
               <Grid container spacing={1}>
-                <Grid item xs={6}><RowPair label="最寄り駅" nameKey="nearest_station_name" walkKey="nearest_station_walk" fields={fields} onSet={set} /></Grid>
-                <Grid item xs={6}><RowPair label="最寄りバス停" nameKey="nearest_bus_stop_name" walkKey="nearest_bus_stop_walk" fields={fields} onSet={set} /></Grid>
+                <Grid item xs={6}>
+                  <TransitRowWithConfirm label="最寄り駅" nameKey="nearest_station_name" walkKey="nearest_station_walk"
+                    confirmedKey="nearest_station_confirmed" fields={fields} onSet={set} onConfirmChange={handleTransitConfirmChange} />
+                </Grid>
+                <Grid item xs={6}>
+                  <TransitRowWithConfirm label="最寄りバス停" nameKey="nearest_bus_stop_name" walkKey="nearest_bus_stop_walk"
+                    confirmedKey="nearest_bus_stop_confirmed" fields={fields} onSet={set} onConfirmChange={handleTransitConfirmChange} />
+                </Grid>
               </Grid>
             </Paper>
 

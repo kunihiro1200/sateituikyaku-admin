@@ -78,6 +78,9 @@ export interface AttachedDocument2Data {
   // 学校確認チェックボックス
   elementary_school_confirmed?: boolean;
   junior_high_school_confirmed?: boolean;
+  // 交通アクセス確認チェックボックス
+  nearest_station_confirmed?: boolean;
+  nearest_bus_stop_confirmed?: boolean;
   // 【特典】チェックボックス
   tokuten_cleaning?: boolean;
   tokuten_garden?: boolean;
@@ -233,6 +236,8 @@ router.put('/sellers/:sellerId/attached-document2', async (req: Request, res: Re
       tokuten_key_exchange: !!body.tokuten_key_exchange,
       elementary_school_confirmed: !!body.elementary_school_confirmed,
       junior_high_school_confirmed: !!body.junior_high_school_confirmed,
+      nearest_station_confirmed: !!body.nearest_station_confirmed,
+      nearest_bus_stop_confirmed: !!body.nearest_bus_stop_confirmed,
       updated_at: new Date().toISOString(),
       updated_by: body.updated_by || null,
     };
@@ -387,6 +392,66 @@ router.patch('/sellers/:sellerId/attached-document2/school', async (req: Request
     res.json({ ok: true });
   } catch (error: any) {
     console.error('Error patching school info:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 交通アクセス情報のみを部分更新（他のフィールドを上書きしない）
+// PATCH /sellers/:sellerId/attached-document2/transit
+// ──────────────────────────────────────────────────────────────────────────────
+router.patch('/sellers/:sellerId/attached-document2/transit', async (req: Request, res: Response) => {
+  try {
+    const { sellerId } = req.params;
+    const body = req.body as {
+      nearest_station_name?: string | null;
+      nearest_station_walk?: string | null;
+      nearest_station_confirmed?: boolean;
+      nearest_bus_stop_name?: string | null;
+      nearest_bus_stop_walk?: string | null;
+      nearest_bus_stop_confirmed?: boolean;
+    };
+
+    const patch: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    const transitFields = [
+      'nearest_station_name',
+      'nearest_station_walk',
+      'nearest_station_confirmed',
+      'nearest_bus_stop_name',
+      'nearest_bus_stop_walk',
+      'nearest_bus_stop_confirmed',
+    ] as const;
+
+    for (const key of transitFields) {
+      if (key in body) patch[key] = body[key] ?? null;
+    }
+
+    // 行が存在するか確認
+    const { data: existing } = await supabase
+      .from('seller_attached_document2')
+      .select('seller_id')
+      .eq('seller_id', sellerId)
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await supabase
+        .from('seller_attached_document2')
+        .update(patch)
+        .eq('seller_id', sellerId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from('seller_attached_document2')
+        .insert({ seller_id: sellerId, ...patch });
+      if (error) throw error;
+    }
+
+    res.json({ ok: true });
+  } catch (error: any) {
+    console.error('Error patching transit info:', error);
     res.status(500).json({ error: error.message });
   }
 });
