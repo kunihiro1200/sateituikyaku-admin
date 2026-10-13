@@ -47,6 +47,7 @@ export interface AttachedDocument2Data {
   site_check_memo4?: string | null;
   // ハザードマップ・道路の種類（旧:抵当権）
   hazard_map?: string | null;
+  hazard_map_confirmed?: boolean;
   mortgage_info?: string | null;
   // 新規フィールド
   road_type?: string | null;
@@ -113,6 +114,7 @@ const EMPTY_RESPONSE = (sellerId: string) => ({
   site_check_memo3: null,
   site_check_memo4: null,
   hazard_map: null,
+  hazard_map_confirmed: false,
   mortgage_info: null,
   road_type: null,
   sale_reason: null,
@@ -200,6 +202,7 @@ router.put('/sellers/:sellerId/attached-document2', async (req: Request, res: Re
       site_check_memo3: body.site_check_memo3 || null,
       site_check_memo4: body.site_check_memo4 || null,
       hazard_map: body.hazard_map || null,
+      hazard_map_confirmed: !!body.hazard_map_confirmed,
       mortgage_info: body.mortgage_info || null,
       road_type: body.road_type || null,
       sale_reason: body.sale_reason || null,

@@ -907,7 +907,7 @@ export default function AttachedDocument2Page() {
             <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
               <Grid container spacing={1.5}>
                 {/* ハザードマップ */}
-                <Grid item xs={5}>
+                <Grid item xs={7}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.4 }}>
                     <Typography sx={{ fontWeight: 'bold', fontSize: '8pt' }}>{hazardLabel}</Typography>
                     {hazardSuggestion && (
@@ -953,7 +953,7 @@ export default function AttachedDocument2Page() {
                   />
                 </Grid>
                 {/* 道路の種類 */}
-                <Grid item xs={5}>
+                <Grid item xs={3}>
                   <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', mb: 0.4 }}>道路の種類</Typography>
                   <TextField fullWidth size="small" value={fields.road_type}
                     onChange={(e) => set('road_type', e.target.value)}
