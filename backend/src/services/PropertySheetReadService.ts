@@ -285,7 +285,7 @@ export class PropertySheetReadService {
     const koteiSheet = sheetTitles.find(t => t.includes('固定')) || null;
 
     // ─── Step 2: 全必要セルを1回の batchGet で取得 ──────────────────────────
-    // FORMATTED_STRING: GAS の getValue() と同様に表示値を取得
+    // FORMATTED_VALUE: セルの表示値を取得（GAS の getValue() に相当）
     const ranges: string[] = [
       // 媒介依頼シート（16項目）
       '媒介依頼!A2',   // [0]  物件番号
@@ -345,7 +345,7 @@ export class PropertySheetReadService {
     const batchRes = await sheets.spreadsheets.values.batchGet({
       spreadsheetId,
       ranges,
-      valueRenderOption: 'FORMATTED_STRING',
+      valueRenderOption: 'FORMATTED_VALUE',
     });
 
     // ─── セル値をインデックスで取得するヘルパー ────────────────────────────
