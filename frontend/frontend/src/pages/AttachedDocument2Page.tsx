@@ -83,6 +83,7 @@ interface DocumentFields {
   site_check_memo3: string;
   site_check_memo4: string;
   hazard_map: string;
+  hazard_map_confirmed: boolean;  // 自治体の最新ハザードマップ確認済み
   mortgage_info: string;
   // 新規フィールド（道路の種類・売却理由・境界・ガス・排水・建築会社・管理会社）
   road_type: string;
@@ -140,6 +141,7 @@ const EMPTY_FIELDS: DocumentFields = {
   site_check_memo3: '',
   site_check_memo4: '',
   hazard_map: '',
+  hazard_map_confirmed: false,
   mortgage_info: '',
   road_type: '',
   sale_reason: '',
@@ -224,10 +226,10 @@ function buildHazardText(h: any): string {
     parts.push(h.tsunami_depth ? `津波（${h.tsunami_depth}）` : '津波区域内');
   }
   if (h.landslide_yellow === 'inside') {
-    parts.push(h.landslide_yellow_type ? `土砂警戒区域（${h.landslide_yellow_type}）` : '土砂災害警戒区域');
+    parts.push(h.landslide_yellow_type ? `土砂警戒区域（黄）（${h.landslide_yellow_type}）` : '土砂災害警戒区域（黄）');
   }
   if (h.landslide_red === 'inside') {
-    parts.push(h.landslide_red_type ? `土砂特別警戒区域（${h.landslide_red_type}）` : '土砂災害特別警戒区域');
+    parts.push(h.landslide_red_type ? `土砂特別警戒区域（赤）（${h.landslide_red_type}）` : '土砂災害特別警戒区域（赤）');
   }
   return parts.join('、');
 }
@@ -299,6 +301,7 @@ export default function AttachedDocument2Page() {
         site_check_memo3: d.site_check_memo3 || '',
         site_check_memo4: d.site_check_memo4 || '',
         hazard_map: d.hazard_map || autoHazardText,
+        hazard_map_confirmed: !!d.hazard_map_confirmed,
         mortgage_info: d.mortgage_info || '',
         road_type: d.road_type || '',
         sale_reason: d.sale_reason || '',
@@ -824,7 +827,7 @@ export default function AttachedDocument2Page() {
             <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
               <Grid container spacing={1.5}>
                 {/* ハザードマップ */}
-                <Grid item xs={6}>
+                <Grid item xs={5}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.4 }}>
                     <Typography sx={{ fontWeight: 'bold', fontSize: '8pt' }}>{hazardLabel}</Typography>
                     {hazardSuggestion && (
@@ -847,8 +850,30 @@ export default function AttachedDocument2Page() {
                     placeholder="水害、土砂災害"
                     sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' }, '& input::placeholder': { color: '#bbb', opacity: 1 } }} />
                 </Grid>
+                {/* ハザード確認チェックボックス */}
+                <Grid item xs={2} sx={{ display: 'flex', flexDirection: 'column' }}>
+                  <Typography sx={{ fontWeight: 'bold', fontSize: '8pt', mb: 0.4 }}>ハザード確認</Typography>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={fields.hazard_map_confirmed}
+                        onChange={(e) => set('hazard_map_confirmed', e.target.checked)}
+                        sx={{ p: 0.5, color: fields.hazard_map_confirmed ? 'success.main' : undefined,
+                              '&.Mui-checked': { color: 'success.main' } }}
+                      />
+                    }
+                    label={
+                      <Typography sx={{ fontSize: '7.5pt', lineHeight: 1.3,
+                        color: fields.hazard_map_confirmed ? 'success.dark' : 'text.secondary' }}>
+                        自治体MAP<br />確認済み
+                      </Typography>
+                    }
+                    sx={{ m: 0, alignItems: 'flex-start' }}
+                  />
+                </Grid>
                 {/* 道路の種類 */}
-                <Grid item xs={6}>
+                <Grid item xs={5}>
                   <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', mb: 0.4 }}>道路の種類</Typography>
                   <TextField fullWidth size="small" value={fields.road_type}
                     onChange={(e) => set('road_type', e.target.value)}
