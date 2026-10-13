@@ -8271,13 +8271,10 @@ HP：https://ifoo-oita.com/
                             </Box>
                           )}
                         </Box>
-                        {/* 右: ハザード情報・交通アクセスパネル */}
+                        {/* 右: ハザード情報パネル */}
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                           {seller?.sellerNumber && (
                             <HazardInfoPanel sellerNumber={seller.sellerNumber} />
-                          )}
-                          {seller?.sellerNumber && (
-                            <TransitAccessPanel sellerNumber={seller.sellerNumber} />
                           )}
                         </Box>
                       </Box>
@@ -8369,6 +8366,11 @@ HP：https://ifoo-oita.com/
                 );
               })()}
             </Paper>
+
+            {/* 交通アクセス自動取得（物件情報の直下、独立セクション） */}
+            {seller?.sellerNumber && (
+              <TransitAccessPanel sellerNumber={seller.sellerNumber} />
+            )}
 
             {/* 地図表示（売主番号が設定されている場合のみ表示） */}
             {(() => {
