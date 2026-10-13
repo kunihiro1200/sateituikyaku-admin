@@ -1221,6 +1221,50 @@ app.get('/api/cron/drive-poll', async (req, res) => {
 });
 
 /**
+ * POST /api/drive-sync/manual-sync  ← テスト・緊急同期用
+ * 指定したスプレッドシートIDを直接同期する。
+ * ポーリングを待たずに即座に同期したい場合や、動作確認に使う。
+ */
+app.post('/api/drive-sync/manual-sync', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const { fileId, spreadsheetUrl } = req.body;
+    if (!fileId) return res.status(400).json({ error: 'fileId is required' });
+
+    const { PropertySheetSyncService } = await import('./services/PropertySheetSyncService');
+    const svc = new PropertySheetSyncService();
+    const logId = await svc.createLog(fileId);
+    const result = await svc.syncFile(fileId, spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${fileId}`, logId);
+    return res.status(200).json(result);
+  } catch (err: any) {
+    console.error('[DriveSync] manual-sync error:', err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/drive-sync/debug-poll  ← ポーリング診断用
+ * 最近N分以内に更新されたファイル一覧を返す（実際の同期は行わない）。
+ */
+app.get('/api/drive-sync/debug-poll', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const minutes = parseInt(String(req.query.minutes || '60'));
+    const { pollRecentChanges } = await import('./services/DriveWatchService');
+    const files = await pollRecentChanges(minutes);
+    return res.status(200).json({ minutes, count: files.length, files });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
  * POST /api/drive-sync/register-watch
  * Drive watchチャンネルを手動で登録するエンドポイント。
  * デプロイ後に一度だけ叩いて watch を有効化する。
