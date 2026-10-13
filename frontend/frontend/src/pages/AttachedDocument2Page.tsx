@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import { ArrowBack, Print as PrintIcon, Save as SaveIcon, AutoFixHigh as AutoFixHighIcon } from '@mui/icons-material';
 import api from '../services/api';
+import { useGoogleMaps } from '../contexts/GoogleMapsContext';
 import { useAuthStore } from '../store/authStore';
 
 interface SellerData {
@@ -238,6 +239,7 @@ export default function AttachedDocument2Page() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { employee } = useAuthStore();
+  const { isLoaded: isMapsLoaded } = useGoogleMaps();
 
   const [seller, setSeller] = useState<SellerData | null>(null);
   const [fields, setFields] = useState<DocumentFields>(EMPTY_FIELDS);
@@ -247,6 +249,8 @@ export default function AttachedDocument2Page() {
   const [isDirty, setIsDirty] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [hazardSuggestion, setHazardSuggestion] = useState<string | null>(null);
+  const [schoolFetching, setSchoolFetching] = useState(false);
+  const [schoolFetchError, setSchoolFetchError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!id) return;
@@ -342,6 +346,82 @@ export default function AttachedDocument2Page() {
     setFields((prev) => ({ ...prev, [key]: value }));
     setIsDirty(true);
     setSaveSuccess(false);
+  };
+
+  // ---- 学校情報の自動入力 ----
+  const handleSchoolAutoFetch = async () => {
+    if (!seller?.sellerNumber) return;
+    setSchoolFetching(true);
+    setSchoolFetchError(null);
+    try {
+      // 1. 物件座標を取得
+      const coordRes = await api.get(`/api/sellers/by-number/${seller.sellerNumber}`);
+      const lat: number = coordRes.data.latitude;
+      const lng: number = coordRes.data.longitude;
+      if (!lat || !lng) {
+        setSchoolFetchError('物件の座標が未設定です。通話モードの地図で位置を設定してください。');
+        return;
+      }
+
+      // 2. バックエンドで学校名・座標を取得
+      const res = await api.get('/api/nearby-map/school-walk', { params: { lat, lng } });
+      const data = res.data;
+
+      // 3. フロントエンドDirectionsServiceで実際の道路距離を計算
+      const calcDirections = (schoolLat: number, schoolLng: number): Promise<{ meters: number; durationMinutes: number } | null> =>
+        new Promise((resolve) => {
+          if (!isMapsLoaded || typeof google === 'undefined') { resolve(null); return; }
+          new google.maps.DirectionsService().route(
+            {
+              origin: new google.maps.LatLng(lat, lng),
+              destination: new google.maps.LatLng(schoolLat, schoolLng),
+              travelMode: google.maps.TravelMode.WALKING,
+            },
+            (result, status) => {
+              if (status === google.maps.DirectionsStatus.OK && result?.routes?.[0]?.legs?.[0]) {
+                const leg = result.routes[0].legs[0];
+                resolve({ meters: leg.distance.value, durationMinutes: Math.ceil(leg.duration.value / 60) });
+              } else {
+                resolve(null);
+              }
+            }
+          );
+        });
+
+      // 徒歩時間文字列生成（例: "17〜22" または "17"）
+      const computeWalk = (meters: number, googleMin?: number | null): string => {
+        const std = Math.ceil(meters / 80);
+        if (googleMin && googleMin !== std) {
+          return `${Math.min(std, googleMin)}〜${Math.max(std, googleMin)}`;
+        }
+        return String(std);
+      };
+
+      const [elemRoute, jhRoute] = await Promise.all([
+        data.elementarySchool
+          ? calcDirections(data.elementarySchool.lat, data.elementarySchool.lng)
+          : Promise.resolve(null),
+        data.juniorHighSchool
+          ? calcDirections(data.juniorHighSchool.lat, data.juniorHighSchool.lng)
+          : Promise.resolve(null),
+      ]);
+
+      // 4. フォームに反映（編集可能な状態で）
+      if (data.elementarySchool?.name) {
+        set('elementary_school_name', data.elementarySchool.name);
+        const meters = elemRoute?.meters ?? data.elementarySchool.distanceMeters;
+        if (meters) set('elementary_school_walk', computeWalk(meters, elemRoute?.durationMinutes));
+      }
+      if (data.juniorHighSchool?.name) {
+        set('junior_high_school_name', data.juniorHighSchool.name);
+        const meters = jhRoute?.meters ?? data.juniorHighSchool.distanceMeters;
+        if (meters) set('junior_high_school_walk', computeWalk(meters, jhRoute?.durationMinutes));
+      }
+    } catch (err: any) {
+      setSchoolFetchError(err.response?.data?.error || '学校情報の取得に失敗しました');
+    } finally {
+      setSchoolFetching(false);
+    }
   };
 
   const handleSave = async (): Promise<boolean> => {
@@ -883,6 +963,27 @@ export default function AttachedDocument2Page() {
             </Paper>
 
             <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '9pt' }}>交通・周辺環境</Typography>
+                <Tooltip title="物件座標から小学校・中学校を自動検索して入力します（編集可能）">
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="primary"
+                    onClick={handleSchoolAutoFetch}
+                    disabled={schoolFetching}
+                    startIcon={schoolFetching ? <CircularProgress size={11} color="inherit" /> : <AutoFixHighIcon />}
+                    sx={{ ml: 'auto', fontSize: '9px', py: 0.2, px: 0.8, minWidth: 0 }}
+                  >
+                    {schoolFetching ? '取得中...' : '学校を自動入力'}
+                  </Button>
+                </Tooltip>
+              </Box>
+              {schoolFetchError && (
+                <Alert severity="error" sx={{ mb: 0.5, py: 0, fontSize: '8pt' }} onClose={() => setSchoolFetchError(null)}>
+                  {schoolFetchError}
+                </Alert>
+              )}
               <Grid container spacing={1} sx={{ mb: 0.5 }}>
                 <Grid item xs={6}><RowPair label="小学校" nameKey="elementary_school_name" walkKey="elementary_school_walk" fields={fields} onSet={set} /></Grid>
                 <Grid item xs={6}><RowPair label="中学校" nameKey="junior_high_school_name" walkKey="junior_high_school_walk" fields={fields} onSet={set} /></Grid>
