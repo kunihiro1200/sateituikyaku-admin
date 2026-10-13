@@ -1225,7 +1225,7 @@ app.get('/api/cron/drive-poll', async (req, res) => {
  * 指定したスプレッドシートIDを直接同期する。
  * ポーリングを待たずに即座に同期したい場合や、動作確認に使う。
  */
-app.post('/api/drive-sync/manual-sync', async (req, res) => {
+app.post('/api/drive-sync/manual-sync', async (req: express.Request, res: express.Response) => {
   try {
     const authHeader = req.headers.authorization;
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -1240,8 +1240,9 @@ app.post('/api/drive-sync/manual-sync', async (req, res) => {
     const result = await svc.syncFile(fileId, spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${fileId}`, logId);
     return res.status(200).json(result);
   } catch (err: any) {
-    console.error('[DriveSync] manual-sync error:', err.message);
-    return res.status(500).json({ success: false, error: err.message });
+    console.error('[DriveSync] manual-sync error:', err.message, err.stack);
+    // エラー内容を返す（デバッグ用）
+    return res.status(200).json({ success: false, error: err.message, stack: err.stack?.substring(0, 500) });
   }
 });
 
