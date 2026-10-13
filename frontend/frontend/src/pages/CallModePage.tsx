@@ -4708,9 +4708,19 @@ const CallModePage = () => {
   const handleMailingAddressConfirm = async () => {
     try {
       setMailingAddressConfirmed(true);
+
+      // 郵送ステータスが未設定（「未」でも「済」でもない）の場合は「未」を自動セット。
+      // これによりサイドバー「査定（郵送）」カテゴリー（mailing_status = '未'）に反映される。
+      const shouldSetMailingStatus = mailingStatus !== '未' && mailingStatus !== '済';
+
       await api.put(`/api/sellers/${id}`, {
         alternativeMailingAddress: mailingAddress,
+        ...(shouldSetMailingStatus ? { mailingStatus: '未' } : {}),
       });
+
+      if (shouldSetMailingStatus) {
+        setMailingStatus('未');
+      }
     } catch (err: any) {
       setError(err.response?.data?.error?.message || '郵送先住所の保存に失敗しました');
     }
