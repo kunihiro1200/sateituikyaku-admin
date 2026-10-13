@@ -145,6 +145,35 @@ const fmtDatetime = (raw?: string): string => {
   return s;
 };
 
+// ── 画面入力：横2列ヘルパー（名称 + 徒歩分） ──
+// ※ コンポーネントをトップレベルに定義することで、
+//    再レンダー時に新しい型として扱われてフォーカスが外れるバグを防ぐ
+const RowPair = ({
+  label,
+  nameKey,
+  walkKey,
+  fields,
+  onSet,
+}: {
+  label: string;
+  nameKey: keyof DocumentFields;
+  walkKey: keyof DocumentFields;
+  fields: DocumentFields;
+  onSet: (key: keyof DocumentFields, value: string | boolean) => void;
+}) => (
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.8, borderBottom: '1px solid #ccc' }}>
+    <Typography sx={{ width: 90, flexShrink: 0, fontWeight: 'bold', fontSize: '9.5pt' }}>{label}</Typography>
+    <TextField size="small" variant="outlined" placeholder="学校名・駅名等"
+      value={fields[nameKey] as string} onChange={(e) => onSet(nameKey, e.target.value)}
+      sx={{ flex: 2, '& .MuiOutlinedInput-root': { fontSize: '9.5pt' }, '& input::placeholder': { color: '#bbb', opacity: 1 } }}
+      inputProps={{ style: { color: fields[nameKey] ? '#000' : '#bbb' } }} />
+    <TextField size="small" variant="outlined" placeholder="徒歩○分"
+      value={fields[walkKey] as string} onChange={(e) => onSet(walkKey, e.target.value)}
+      sx={{ flex: 1, '& .MuiOutlinedInput-root': { fontSize: '9.5pt' }, '& input::placeholder': { color: '#bbb', opacity: 1 } }}
+      inputProps={{ style: { color: fields[walkKey] ? '#000' : '#bbb' } }} />
+  </Box>
+);
+
 export default function AttachedDocument2Page() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -569,29 +598,6 @@ export default function AttachedDocument2Page() {
     if (w) { w.document.write(html); w.document.close(); }
   };
 
-  // ── 画面入力：横2列ヘルパー（名称 + 徒歩分） ──
-  const RowPair = ({
-    label,
-    nameKey,
-    walkKey,
-  }: {
-    label: string;
-    nameKey: keyof DocumentFields;
-    walkKey: keyof DocumentFields;
-  }) => (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.8, borderBottom: '1px solid #ccc' }}>
-      <Typography sx={{ width: 90, flexShrink: 0, fontWeight: 'bold', fontSize: '9.5pt' }}>{label}</Typography>
-      <TextField size="small" variant="outlined" placeholder="学校名・駅名等"
-        value={fields[nameKey] as string} onChange={(e) => set(nameKey, e.target.value)}
-        sx={{ flex: 2, '& .MuiOutlinedInput-root': { fontSize: '9.5pt' }, '& input::placeholder': { color: '#bbb', opacity: 1 } }}
-        inputProps={{ style: { color: fields[nameKey] ? '#000' : '#bbb' } }} />
-      <TextField size="small" variant="outlined" placeholder="徒歩○分"
-        value={fields[walkKey] as string} onChange={(e) => set(walkKey, e.target.value)}
-        sx={{ flex: 1, '& .MuiOutlinedInput-root': { fontSize: '9.5pt' }, '& input::placeholder': { color: '#bbb', opacity: 1 } }}
-        inputProps={{ style: { color: fields[walkKey] ? '#000' : '#bbb' } }} />
-    </Box>
-  );
-
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>;
   }
@@ -713,12 +719,12 @@ export default function AttachedDocument2Page() {
 
             <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
               <Grid container spacing={1} sx={{ mb: 0.5 }}>
-                <Grid item xs={6}><RowPair label="小学校" nameKey="elementary_school_name" walkKey="elementary_school_walk" /></Grid>
-                <Grid item xs={6}><RowPair label="中学校" nameKey="junior_high_school_name" walkKey="junior_high_school_walk" /></Grid>
+                <Grid item xs={6}><RowPair label="小学校" nameKey="elementary_school_name" walkKey="elementary_school_walk" fields={fields} onSet={set} /></Grid>
+                <Grid item xs={6}><RowPair label="中学校" nameKey="junior_high_school_name" walkKey="junior_high_school_walk" fields={fields} onSet={set} /></Grid>
               </Grid>
               <Grid container spacing={1}>
-                <Grid item xs={6}><RowPair label="最寄り駅" nameKey="nearest_station_name" walkKey="nearest_station_walk" /></Grid>
-                <Grid item xs={6}><RowPair label="最寄りバス停" nameKey="nearest_bus_stop_name" walkKey="nearest_bus_stop_walk" /></Grid>
+                <Grid item xs={6}><RowPair label="最寄り駅" nameKey="nearest_station_name" walkKey="nearest_station_walk" fields={fields} onSet={set} /></Grid>
+                <Grid item xs={6}><RowPair label="最寄りバス停" nameKey="nearest_bus_stop_name" walkKey="nearest_bus_stop_walk" fields={fields} onSet={set} /></Grid>
               </Grid>
             </Paper>
 
