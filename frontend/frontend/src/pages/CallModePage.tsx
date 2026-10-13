@@ -475,6 +475,7 @@ const STATUS_OPTIONS = [
   { label: '一般→他決', value: '一般→他決' },
   { label: '他社買取', value: '他社買取' },
   { label: '自社買取', value: '自社買取' },
+  { label: '自社売主', value: '自社売主' },
   { label: '訪問後（担当付）追客不要', value: '訪問後（担当付）追客不要' },
 ];
 
@@ -11147,8 +11148,8 @@ HP：https://ifoo-oita.com/
                 🏠 この物件と買主をマッチング{(seller as any)?.matchUpdatedAt ? '（解除）' : ''}
               </Button>
 
-              {/* ユーザーよりキャンセル依頼済みボタン（サイト＝ウの場合のみ表示） */}
-              {seller.site === 'ウ' && (
+              {/* ユーザーよりキャンセル依頼済みボタン（サイト＝ウ・すの場合のみ表示） */}
+              {(seller.site === 'ウ' || seller.site === 'す') && (
                 <Button
                   variant={(seller as any)?.userCancelRequested ? 'contained' : 'outlined'}
                   size="small"
@@ -11732,6 +11733,7 @@ HP：https://ifoo-oita.com/
                       <MenuItem value="一般→他決">一般→他決</MenuItem>
                       <MenuItem value="他社買取">他社買取</MenuItem>
                       <MenuItem value="自社買取">自社買取</MenuItem>
+                      <MenuItem value="自社売主">自社売主</MenuItem>
                       <MenuItem value="訪問後（担当付）追客不要">訪問後（担当付）追客不要</MenuItem>
                     </Select>
                   </FormControl>
