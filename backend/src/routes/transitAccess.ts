@@ -198,6 +198,12 @@ async function searchStations(
 /**
  * バス停を検索する（半径自動拡大付き）。
  * 1,000m → 2,000m → 3,000m の順に拡大し、1 件でも見つかった時点で返す。
+ *
+ * 検索戦略:
+ *   bus_station タイプは大規模バスターミナルを優先してしまうため使用しない。
+ *   代わりに transit_station + keyword='バス停' で個別バス停を検索し、
+ *   名前に「バス停」を含む結果を優先し、バスターミナルを後回しにする。
+ *   それでも見つからない場合のみ bus_station タイプにフォールバックする。
  */
 async function searchBusStops(
   lat: number,
@@ -206,17 +212,36 @@ async function searchBusStops(
   apiKey: string
 ): Promise<PlaceCandidate[]> {
   for (const radius of BUS_STOP_SEARCH_RADII) {
-    const raw = await callOldPlacesNearbysearch(lat, lng, radius, 'bus_station', undefined, apiKey);
+    // ── フェーズ1: transit_station + keyword='バス停'（個別バス停を優先）──
+    const raw = await callOldPlacesNearbysearch(lat, lng, radius, 'transit_station', 'バス停', apiKey);
 
     if (raw.length > 0) {
-      return raw.slice(0, maxCandidates * 3).map((p: any) => ({
+      // 名前に「バス停」を含むものを優先し、「ターミナル」は後回し
+      const withBusStop = raw.filter((p: any) => /バス停/.test(p.name ?? ''));
+      const others = raw.filter((p: any) => !/バス停/.test(p.name ?? ''));
+      const sorted = [...withBusStop, ...others];
+
+      return sorted.slice(0, maxCandidates * 3).map((p: any) => ({
         name: p.name as string,
         place_id: p.place_id as string,
         place_lat: p.geometry.location.lat as number,
         place_lng: p.geometry.location.lng as number,
       }));
     }
-    // 0 件なら次の半径で再試行
+
+    // ── フェーズ2: フォールバック（bus_station タイプで再検索）────────────
+    // transit_station で 0 件の場合のみ実行。ターミナルが返る可能性があるが
+    // 近くにバス停がない場合の最終手段として使用する。
+    const fallback = await callOldPlacesNearbysearch(lat, lng, radius, 'bus_station', undefined, apiKey);
+    if (fallback.length > 0) {
+      return fallback.slice(0, maxCandidates * 3).map((p: any) => ({
+        name: p.name as string,
+        place_id: p.place_id as string,
+        place_lat: p.geometry.location.lat as number,
+        place_lng: p.geometry.location.lng as number,
+      }));
+    }
+    // 両方 0 件なら次の半径で再試行
   }
   return [];
 }
