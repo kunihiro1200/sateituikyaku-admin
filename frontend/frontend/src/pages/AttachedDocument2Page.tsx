@@ -265,7 +265,10 @@ export default function AttachedDocument2Page() {
       setTimeout(() => setSaveSuccess(false), 3000);
       return true;
     } catch (err: any) {
-      setError('保存に失敗しました');
+      // エラー詳細をコンソールに出力してデバッグ用情報を残す
+      console.error('[AttachedDocument2] 保存エラー:', err?.response?.status, err?.response?.data || err?.message);
+      const detail = err?.response?.data?.error || err?.message || '';
+      setError(`保存に失敗しました${detail ? `（${detail}）` : ''}`);
       return false;
     } finally {
       setSaving(false);
