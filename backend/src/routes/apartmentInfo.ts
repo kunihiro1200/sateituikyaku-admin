@@ -85,95 +85,118 @@ async function searchBuildingInfo(
 ): Promise<string> {
   // マンション名を住所から抽出して検索精度を上げる
   const buildingName = extractBuildingNameFromAddress(propertyAddress);
-  console.log(`[apartmentInfo] extracted building name: "${buildingName}" from "${propertyAddress}"`);
+  const searchTarget = buildingName || propertyAddress;
+  console.log(`[apartmentInfo] search target: "${searchTarget}" (from "${propertyAddress}")`);
 
-  // 検索クエリ: マンション名があれば優先して使用（より精度が高い）
-  const query = buildingName
-    ? `"${buildingName}" マンション 管理会社 総戸数 築年月 施工会社 分譲会社 管理形態`
-    : `${propertyAddress} マンション 管理会社 総戸数 築年月 施工会社 分譲会社 管理形態`;
+  const jinaHeaders: Record<string, string> = {
+    Accept: 'text/plain',
+    'X-Return-Format': 'markdown',
+  };
+  if (jinaApiKey) jinaHeaders['Authorization'] = `Bearer ${jinaApiKey}`;
 
-  // ① まず Jina Search で Web 検索結果を取得
-  try {
-    const headers: Record<string, string> = {
-      Accept: 'text/plain',
-      'X-Return-Format': 'markdown',
-    };
-    if (jinaApiKey) {
-      headers['Authorization'] = `Bearer ${jinaApiKey}`;
-    }
-
-    const searchUrl = `https://s.jina.ai/${encodeURIComponent(query)}`;
-    console.log(`[apartmentInfo] Jina Search: ${searchUrl.substring(0, 120)}`);
-
-    const searchRes = await axios.get(searchUrl, {
-      headers,
-      timeout: 30000,
+  // r.jina.ai で指定URLのページをテキスト化するヘルパー
+  const fetchPage = async (url: string): Promise<string> => {
+    const res = await axios.get(`https://r.jina.ai/${url}`, {
+      headers: jinaHeaders,
+      timeout: 20000,
     });
+    return typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+  };
 
-    const searchText: string =
-      typeof searchRes.data === 'string'
-        ? searchRes.data
-        : JSON.stringify(searchRes.data);
+  // ────────────────────────────────────────────
+  // 戦略1: SUUMO 物件ライブラリで直接検索
+  //   https://suumo.jp/library/?q={マンション名}
+  // ────────────────────────────────────────────
+  try {
+    const suumoSearchUrl = `https://suumo.jp/library/?q=${encodeURIComponent(searchTarget)}`;
+    console.log(`[apartmentInfo] Strategy1: SUUMO library ${suumoSearchUrl}`);
+    const suumoSearchText = await fetchPage(suumoSearchUrl);
 
-    if (searchText && searchText.length > 200) {
-      console.log(`[apartmentInfo] Jina Search returned ${searchText.length} chars`);
-
-      // ② 検索結果に SUUMO やマンションノートの URL があれば詳細ページも取得
-      const urlMatch = searchText.match(
-        /https?:\/\/(suumo\.jp\/ms\/mansion|www\.mansion-note\.com\/mansion|www\.athome\.co\.jp\/)[^\s)"\]]+/
+    if (suumoSearchText && suumoSearchText.length > 300) {
+      // 検索結果から建物詳細ページURLを抽出（suumo.jp/library/tf_.../sc_.../to_.../）
+      const detailMatch = suumoSearchText.match(
+        /https?:\/\/suumo\.jp\/library\/[a-z0-9_]+\/[a-z0-9_]+\/[a-z0-9_]+\//
       );
-      if (urlMatch) {
-        const detailUrl = urlMatch[0];
-        console.log(`[apartmentInfo] Jina Reader fetching detail: ${detailUrl}`);
-        try {
-          const detailHeaders: Record<string, string> = {
-            Accept: 'text/plain',
-            'X-Return-Format': 'markdown',
-          };
-          if (jinaApiKey) detailHeaders['Authorization'] = `Bearer ${jinaApiKey}`;
-
-          const detailRes = await axios.get(
-            `https://r.jina.ai/${detailUrl}`,
-            { headers: detailHeaders, timeout: 20000 }
-          );
-          const detailText =
-            typeof detailRes.data === 'string'
-              ? detailRes.data
-              : JSON.stringify(detailRes.data);
-
-          if (detailText && detailText.length > 500) {
-            // 検索結果 + 詳細ページを結合（Claude に渡す）
-            return `## Web検索結果\n${searchText.substring(0, 3000)}\n\n## マンション詳細ページ（${detailUrl}）\n${detailText.substring(0, 5000)}`;
-          }
-        } catch {
-          console.warn('[apartmentInfo] detail page fetch failed, using search results only');
+      if (detailMatch) {
+        const detailUrl = detailMatch[0];
+        console.log(`[apartmentInfo] SUUMO detail: ${detailUrl}`);
+        const detailText = await fetchPage(detailUrl);
+        if (detailText && detailText.length > 400) {
+          return `DATA_SOURCE_URL: ${detailUrl}\n\n## SUUMO物件ライブラリ\n${detailText.substring(0, 6000)}`;
         }
       }
+      // 詳細URLが取れなくても検索結果テキストを返す
+      if (suumoSearchText.length > 600) {
+        return `DATA_SOURCE_URL: ${suumoSearchUrl}\n\n## SUUMO物件ライブラリ検索結果\n${suumoSearchText.substring(0, 5000)}`;
+      }
+    }
+  } catch (err: any) {
+    console.warn('[apartmentInfo] Strategy1 SUUMO failed:', err?.message);
+  }
 
+  // ────────────────────────────────────────────
+  // 戦略2: AtHome 建物ライブラリで直接検索
+  //   https://www.athome.co.jp/bldg-library/?q={マンション名}
+  // ────────────────────────────────────────────
+  try {
+    const athomeSearchUrl = `https://www.athome.co.jp/bldg-library/?q=${encodeURIComponent(searchTarget)}`;
+    console.log(`[apartmentInfo] Strategy2: AtHome bldg-library`);
+    const athomeSearchText = await fetchPage(athomeSearchUrl);
+
+    if (athomeSearchText && athomeSearchText.length > 300) {
+      // 建物詳細ページURL抽出（athome.co.jp/bldg-library/{pref}/{city}/{id}/）
+      const detailMatch = athomeSearchText.match(
+        /https?:\/\/www\.athome\.co\.jp\/bldg-library\/[a-z0-9_-]+\/[a-z0-9_-]+\/\d+\//
+      );
+      if (detailMatch) {
+        const detailUrl = detailMatch[0];
+        console.log(`[apartmentInfo] AtHome detail: ${detailUrl}`);
+        const detailText = await fetchPage(detailUrl);
+        if (detailText && detailText.length > 400) {
+          return `DATA_SOURCE_URL: ${detailUrl}\n\n## AtHome建物ライブラリ\n${detailText.substring(0, 6000)}`;
+        }
+      }
+      if (athomeSearchText.length > 600) {
+        return `DATA_SOURCE_URL: ${athomeSearchUrl}\n\n## AtHome建物ライブラリ検索結果\n${athomeSearchText.substring(0, 5000)}`;
+      }
+    }
+  } catch (err: any) {
+    console.warn('[apartmentInfo] Strategy2 AtHome failed:', err?.message);
+  }
+
+  // ────────────────────────────────────────────
+  // 戦略3: Jina Search（汎用Web検索）でフォールバック
+  //   検索結果からSUUMO/AtHome/マンションノートの建物URLを探す
+  // ────────────────────────────────────────────
+  try {
+    const query = buildingName
+      ? `"${buildingName}" マンション 管理会社 総戸数 築年月 施工会社 管理形態`
+      : `${propertyAddress} マンション 管理会社 総戸数 築年月`;
+
+    const searchUrl = `https://s.jina.ai/${encodeURIComponent(query)}`;
+    console.log(`[apartmentInfo] Strategy3: Jina Search`);
+    const searchRes = await axios.get(searchUrl, { headers: jinaHeaders, timeout: 30000 });
+    const searchText = typeof searchRes.data === 'string' ? searchRes.data : JSON.stringify(searchRes.data);
+
+    if (searchText && searchText.length > 200) {
+      // 建物詳細URLを抽出（SUUMO library / AtHome bldg-library / マンションノート mansion）
+      const urlMatch = searchText.match(
+        /https?:\/\/(?:suumo\.jp\/library\/[a-z0-9_/]+|www\.athome\.co\.jp\/bldg-library\/[^\s)"\]]+|www\.mansion-note\.com\/mansion\/[^\s)"\]]+)/
+      );
+      if (urlMatch) {
+        const detailUrl = urlMatch[0].replace(/\)$/, '');
+        console.log(`[apartmentInfo] Jina Search found URL: ${detailUrl}`);
+        try {
+          const detailText = await fetchPage(detailUrl);
+          if (detailText && detailText.length > 400) {
+            return `DATA_SOURCE_URL: ${detailUrl}\n\n## 建物詳細ページ\n${detailText.substring(0, 5000)}\n\n## 検索結果\n${searchText.substring(0, 2000)}`;
+          }
+        } catch { /* 詳細ページ取得失敗は無視してsearch結果だけ使う */ }
+      }
       return searchText.substring(0, 6000);
     }
   } catch (err: any) {
-    console.warn('[apartmentInfo] Jina Search error:', err?.message);
-  }
-
-  // ③ Jina Search が失敗した場合: r.jina.ai でマンションノート検索ページを直接取得
-  try {
-    const fallbackSearchUrl = `https://www.mansion-note.com/search/?q=${encodeURIComponent(propertyAddress)}`;
-    const jinaReadUrl = `https://r.jina.ai/${fallbackSearchUrl}`;
-    console.log(`[apartmentInfo] Fallback: r.jina.ai mansion-note search`);
-
-    const headers: Record<string, string> = { Accept: 'text/plain' };
-    if (jinaApiKey) headers['Authorization'] = `Bearer ${jinaApiKey}`;
-
-    const res = await axios.get(jinaReadUrl, { headers, timeout: 20000 });
-    const text =
-      typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
-
-    if (text && text.length > 200) {
-      return text.substring(0, 6000);
-    }
-  } catch (err: any) {
-    console.warn('[apartmentInfo] Fallback fetch error:', err?.message);
+    console.warn('[apartmentInfo] Strategy3 Jina Search failed:', err?.message);
   }
 
   return '';
@@ -190,35 +213,35 @@ async function extractBuildingInfo(
 ): Promise<ApartmentBuildingInfo & { data_source: string | null }> {
   const client = new Anthropic({ apiKey });
 
-  const prompt = `以下はWeb検索結果です。物件住所「${propertyAddress}」のマンション建物情報を抽出してください。
+  const prompt = `以下はマンション建物情報のページテキストです。物件住所「${propertyAddress}」のマンション建物情報を抽出してください。
 
-## Web検索・ページ取得結果
+## ページテキスト
 ${webContent}
 
 ## 抽出ルール
 - 物件住所に最も合致するマンションの情報のみを抽出する
 - 確実に確認できた情報のみ記載し、不確かな情報は null にする
-- AIで推測・補完しない（外部データに記載がない項目は null）
+- AIで推測・補完しない（ページに記載がない項目は null）
 - 数字は必ず数値型で返す（文字列にしない）
-- 築年月が「1998年3月」形式の場合は「1998-03」に変換する
-- 階数が「地上15階建」の場合は total_floors_above: 15 として返す
-- 取得元URLはデータを参照したページのURL（https://... の形式）
+- 築年月が「2010年8月」形式の場合は「2010-08」に変換する
+- 階数が「10階建」の場合は total_floors_above: 10 として返す
+- data_source は、テキスト冒頭に "DATA_SOURCE_URL: https://..." がある場合は必ずそのURLを使用する
 
 ## 出力形式（JSONのみ返してください。コードブロック不要）
 {
-  "building_name": "マンション名（例: ライオンズマンション大分）",
+  "building_name": "マンション名",
   "management_company": "管理会社名（例: 大和ライフネクスト）",
-  "built_year_month": "築年月（YYYY-MM形式、例: 1998-03）",
-  "total_floors_above": 地上階数（整数のみ、例: 15）,
-  "total_floors_below": 地下階数（整数のみ、例: 1、なければ0）,
-  "total_units": 総戸数（整数のみ、例: 120）,
-  "structure": "建物構造（例: RC造・鉄筋コンクリート造、SRC造等）",
-  "developer_company": "分譲会社名",
+  "built_year_month": "築年月（YYYY-MM形式、例: 2010-08）",
+  "total_floors_above": 地上階数（整数のみ、例: 10）,
+  "total_floors_below": 地下階数（整数のみ、なければ 0）,
+  "total_units": 総戸数（整数のみ、例: 45）,
+  "structure": "建物構造（例: RC造、SRC造）",
+  "developer_company": "分譲会社名（施主・デベロッパー）",
   "construction_company": "施工会社名",
   "management_type": "管理形態（例: 全部委託、一部委託、自主管理）",
   "has_elevator": "あり または なし（不明な場合は null）",
-  "large_repair_history": "大規模修繕の実施年等（例: 2012年実施、なければ null）",
-  "data_source": "情報取得ページのURL（https://...）"
+  "large_repair_history": "大規模修繕の実施年等（なければ null）",
+  "data_source": "DATA_SOURCE_URL のURL（なければ参照したページのURL）"
 }`;
 
   const response = await client.messages.create({
