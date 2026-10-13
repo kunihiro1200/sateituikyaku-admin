@@ -397,6 +397,7 @@ const EMPTY_SCHOOL: SchoolInfo = {
 const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
   sellerNumber, sellerId, propertyAddress,
 }) => {
+  const { isLoaded } = useGoogleMaps(); // DirectionsService 用
   const [elementarySchool, setElementarySchool] = useState<SchoolInfo>(EMPTY_SCHOOL);
   const [juniorHighSchool, setJuniorHighSchool] = useState<SchoolInfo>(EMPTY_SCHOOL);
   const [customElemEntrance, setCustomElemEntrance] = useState<{ lat: number; lng: number } | null>(null);
@@ -454,24 +455,55 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // ---- フロントエンドDirectionsServiceで実際の道路距離を計算 ----
+  // Maps JavaScript APIキー（VITE_GOOGLE_MAPS_API_KEY）はDirectionsService対応済み
+  const calcWalkingDistance = useCallback(
+    (propertyLat: number, propertyLng: number, schoolLat: number, schoolLng: number)
+      : Promise<{ meters: number; isEstimated: false } | null> => {
+      return new Promise((resolve) => {
+        if (!isLoaded || typeof google === 'undefined') {
+          resolve(null);
+          return;
+        }
+        const service = new google.maps.DirectionsService();
+        service.route(
+          {
+            origin: new google.maps.LatLng(propertyLat, propertyLng),
+            destination: new google.maps.LatLng(schoolLat, schoolLng),
+            travelMode: google.maps.TravelMode.WALKING,
+          },
+          (result, status) => {
+            if (status === google.maps.DirectionsStatus.OK && result?.routes?.[0]?.legs?.[0]) {
+              resolve({ meters: result.routes[0].legs[0].distance.value, isEstimated: false });
+            } else {
+              console.warn('[SchoolDistanceSection] DirectionsService:', status);
+              resolve(null);
+            }
+          }
+        );
+      });
+    },
+    [isLoaded]
+  );
+
   // 自動取得
   const handleAutoFetch = async () => {
     setFetching(true);
     setFetchError(null);
     setSaveSuccess(false);
     try {
-      // 物件の座標を取得
+      // 1. 物件の座標を取得
       const coordRes = await api.get(`/api/sellers/by-number/${sellerNumber}`);
-      const lat = coordRes.data.latitude;
-      const lng = coordRes.data.longitude;
+      const propertyLat: number = coordRes.data.latitude;
+      const propertyLng: number = coordRes.data.longitude;
 
-      if (!lat || !lng) {
+      if (!propertyLat || !propertyLng) {
         setFetchError('物件の座標が未設定です。地図（PropertyMap）で物件の位置を設定してください。');
         return;
       }
 
-      // school-walk APIで徒歩距離を計算
-      const params: Record<string, string | number> = { lat, lng };
+      // 2. バックエンドで学校名・座標を取得（Directions APIは使わず座標のみ）
+      const params: Record<string, string | number> = { lat: propertyLat, lng: propertyLng };
       if (customElemEntrance) {
         params.elementaryLat = customElemEntrance.lat;
         params.elementaryLng = customElemEntrance.lng;
@@ -484,30 +516,41 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
       const res = await api.get('/api/nearby-map/school-walk', { params });
       const data = res.data;
 
+      // 3. フロントエンドDirectionsServiceで実際の道路距離を並列計算
+      const [elemRoute, jhRoute] = await Promise.all([
+        data.elementarySchool
+          ? calcWalkingDistance(propertyLat, propertyLng, data.elementarySchool.lat, data.elementarySchool.lng)
+          : Promise.resolve(null),
+        data.juniorHighSchool
+          ? calcWalkingDistance(propertyLat, propertyLng, data.juniorHighSchool.lat, data.juniorHighSchool.lng)
+          : Promise.resolve(null),
+      ]);
+
+      // 4. 実測値 or バックエンドフォールバックで state を更新
       if (data.elementarySchool) {
+        const meters = elemRoute?.meters ?? data.elementarySchool.distanceMeters;
+        const isEstimated = elemRoute ? false : (data.elementarySchool.isEstimated ?? true);
         setElementarySchool({
           name: data.elementarySchool.name,
-          distanceMeters: data.elementarySchool.distanceMeters,
-          walkMinutes: data.elementarySchool.walkMinutes,
+          distanceMeters: meters,
+          walkMinutes: meters !== null ? Math.ceil(meters / 80) : null,
           lat: data.elementarySchool.lat,
           lng: data.elementarySchool.lng,
           districtConfirmed: data.elementarySchool.districtConfirmed,
-          isEstimated: data.elementarySchool.isEstimated ?? false,
+          isEstimated,
         });
-        // カスタム正門が未設定なら取得結果座標を使う
-        if (!customElemEntrance) {
-          setCustomElemEntrance(null); // Places APIの座標はカスタム設定としては扱わない
-        }
       }
       if (data.juniorHighSchool) {
+        const meters = jhRoute?.meters ?? data.juniorHighSchool.distanceMeters;
+        const isEstimated = jhRoute ? false : (data.juniorHighSchool.isEstimated ?? true);
         setJuniorHighSchool({
           name: data.juniorHighSchool.name,
-          distanceMeters: data.juniorHighSchool.distanceMeters,
-          walkMinutes: data.juniorHighSchool.walkMinutes,
+          distanceMeters: meters,
+          walkMinutes: meters !== null ? Math.ceil(meters / 80) : null,
           lat: data.juniorHighSchool.lat,
           lng: data.juniorHighSchool.lng,
           districtConfirmed: data.juniorHighSchool.districtConfirmed,
-          isEstimated: data.juniorHighSchool.isEstimated ?? false,
+          isEstimated,
         });
       }
     } catch (err: any) {
