@@ -103,6 +103,8 @@ import aiPropertyEnhanceRoutes from './routes/aiPropertyEnhance';
 import aiImagePropertyRegisterRoutes from './routes/aiImagePropertyRegister';
 import hazardAnalyzeRoutes from './routes/hazardAnalyze';
 import hazardInfoRoutes from './routes/hazardInfo';
+import transitAccessRoutes from './routes/transitAccess';
+import apartmentInfoRoutes from './routes/apartmentInfo';
 import floorPlanCompareRoutes from './routes/floorPlanCompare';
 import youtoChiikiRoutes from './routes/youtoChiiki';
 import sitemapRoutes from './routes/sitemap';
@@ -1150,6 +1152,8 @@ app.use('/api', sellerAttachedDocument2Routes); // 訪問準備「添付資料�
 app.use('/api/scraped-urls', scrapedUrlsRoutes); // スクレイピングURL重複チェック（認証不要 - /api catchallより前に登録）
 app.use('/api/hazard', hazardAnalyzeRoutes); // ハザードマップAI解析（認証不要 - /api catchallより前に登録）
 app.use('/api/hazard-info', hazardInfoRoutes); // ハザード情報自動取得（Reinfolib API・認証不要）
+app.use('/api/transit-access', transitAccessRoutes); // 交通アクセス自動取得（Google Maps Places API・認証不要）
+app.use('/api/apartment-info', apartmentInfoRoutes); // マンション外部建物情報（Jina + Claude・認証不要）
 // ─── Drive同期エンドポイント（/api キャッチオールより必ず前に登録） ─────────────────
 
 /**

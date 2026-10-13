@@ -108,6 +108,7 @@ import { useCallModeQuickButtonState } from '../hooks/useCallModeQuickButtonStat
 import { pageDataCache, sellerDetailCacheKey, CACHE_KEYS } from '../store/pageDataCache';
 import PropertyMapSection from '../components/PropertyMapSection';
 import SchoolDistanceSection from '../components/SchoolDistanceSection';
+import ApartmentBuildingInfoSection from '../components/ApartmentBuildingInfoSection';
 import NearbyBuyersList from '../components/NearbyBuyersList';
 import MatchedBuyersList from '../components/MatchedBuyersList';
 import MatchingIntentPanel from '../components/MatchingIntentPanel';
@@ -131,6 +132,7 @@ import NextCallDateReminderDialog from '../components/NextCallDateReminderDialog
 import { calcKadoiVisitRatio, VisitStatsResponse } from '../utils/visitRatioCalculator';
 import { KadoiVisitRatioWarningDialog } from '../components/KadoiVisitRatioWarningDialog';
 import HazardInfoPanel from '../components/HazardInfoPanel';
+import TransitAccessPanel from '../components/TransitAccessPanel';
 
 
 /**
@@ -8269,10 +8271,13 @@ HP：https://ifoo-oita.com/
                             </Box>
                           )}
                         </Box>
-                        {/* 右: ハザード情報パネル */}
+                        {/* 右: ハザード情報・交通アクセスパネル */}
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                           {seller?.sellerNumber && (
                             <HazardInfoPanel sellerNumber={seller.sellerNumber} />
+                          )}
+                          {seller?.sellerNumber && (
+                            <TransitAccessPanel sellerNumber={seller.sellerNumber} />
                           )}
                         </Box>
                       </Box>
@@ -8379,6 +8384,13 @@ HP：https://ifoo-oita.com/
                 sellerNumber={seller.sellerNumber}
                 sellerId={seller.id}
                 propertyAddress={property?.address || seller?.propertyAddress}
+              />
+            )}
+
+            {/* マンション外部建物情報（マンション種別のみ表示） */}
+            {isApartmentType && seller?.sellerNumber && (
+              <ApartmentBuildingInfoSection
+                sellerNumber={seller.sellerNumber}
               />
             )}
 
