@@ -1221,28 +1221,27 @@ app.get('/api/cron/drive-poll', async (req, res) => {
 });
 
 /**
- * POST /api/drive-sync/manual-sync  ← テスト・緊急同期用
- * 指定したスプレッドシートIDを直接同期する。
- * ポーリングを待たずに即座に同期したい場合や、動作確認に使う。
+ * GET /api/drive-sync/manual-sync  ← テスト・緊急同期用（GETに変更）
+ * ?fileId=... でスプレッドシートを直接同期する。
  */
-app.post('/api/drive-sync/manual-sync', async (req: express.Request, res: express.Response) => {
+app.get('/api/drive-sync/manual-sync', async (req: express.Request, res: express.Response) => {
   try {
     const authHeader = req.headers.authorization;
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    const { fileId, spreadsheetUrl } = req.body;
-    if (!fileId) return res.status(400).json({ error: 'fileId is required' });
+    const fileId = req.query.fileId as string;
+    if (!fileId) return res.status(400).json({ error: 'fileId query param is required' });
+    const spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${fileId}`;
 
     const { PropertySheetSyncService } = await import('./services/PropertySheetSyncService');
     const svc = new PropertySheetSyncService();
     const logId = await svc.createLog(fileId);
-    const result = await svc.syncFile(fileId, spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${fileId}`, logId);
+    const result = await svc.syncFile(fileId, spreadsheetUrl, logId);
     return res.status(200).json(result);
   } catch (err: any) {
     console.error('[DriveSync] manual-sync error:', err.message, err.stack);
-    // エラー内容を返す（デバッグ用）
-    return res.status(200).json({ success: false, error: err.message, stack: err.stack?.substring(0, 500) });
+    return res.status(200).json({ success: false, error: err.message, stack: err.stack?.substring(0, 800) });
   }
 });
 
