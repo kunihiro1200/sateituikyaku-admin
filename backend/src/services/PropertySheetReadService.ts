@@ -153,21 +153,37 @@ function toIsoDate(d: Date | null): string | null {
 
 /**
  * 汎用日付変換（GAS の convertToDate に対応）。
- * 各種フォーマット（YYYY/MM/DD, YYYY-MM-DD, 数値シリアル）を受け付ける。
+ * UNFORMATTED_VALUE で取得した値を ISO 日付文字列に変換する。
+ *
+ * - 数値: Google Sheets のシリアル数値（1899-12-30 を 0 とした通算日数）として変換
+ * - 文字列: YYYY/MM/DD, YYYY-MM-DD 等を解析
+ * - Date: そのまま変換
  */
 function convertToDate(value: any): string | null {
   if (!value && value !== 0) return null;
   if (value instanceof Date) return toIsoDate(value);
+
+  // 数値: Google Sheets の日付シリアル（1899-12-30 を 0 とした通算日数）
+  if (typeof value === 'number') {
+    if (value <= 0) return null;
+    // Google Sheets epoch (1899-12-30) → JavaScript epoch (1970-01-01) の差: 25569 日
+    const ms = (value - 25569) * 86400 * 1000;
+    const d = new Date(ms);
+    return toIsoDate(isNaN(d.getTime()) ? null : d);
+  }
+
   const s = String(value).trim();
   if (!s) return null;
-  // Google Sheets の FORMATTED_STRING は "2025/3/31" のような形式
+
+  // YYYY/MM/DD 形式
   const ymdSlash = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
   if (ymdSlash) {
     return `${ymdSlash[1]}-${ymdSlash[2].padStart(2, '0')}-${ymdSlash[3].padStart(2, '0')}`;
   }
-  // YYYY-MM-DD
+  // YYYY-MM-DD 形式
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  // その他: Date でパース
+
+  // その他: Date でパース（フォールバック）
   const parsed = new Date(s);
   return toIsoDate(isNaN(parsed.getTime()) ? null : parsed);
 }
@@ -345,7 +361,7 @@ export class PropertySheetReadService {
     const batchRes = await sheets.spreadsheets.values.batchGet({
       spreadsheetId,
       ranges,
-      valueRenderOption: 'FORMATTED_VALUE',
+      valueRenderOption: 'UNFORMATTED_VALUE',
     });
 
     // ─── セル値をインデックスで取得するヘルパー ────────────────────────────
