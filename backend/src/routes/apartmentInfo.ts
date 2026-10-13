@@ -175,7 +175,8 @@ async function searchBuildingInfo(
         try {
           const detailText = await fetchPage(url);
           if (detailText && detailText.length > 400) {
-            return `DATA_SOURCE_URL: ${url}\n\n## 建物詳細ページ\n${detailText.substring(0, 6000)}`;
+            // 詳細ページ + 検索スニペットを両方渡す（どちらかに欠けてる情報を補完）
+            return `DATA_SOURCE_URL: ${url}\n\n## 建物詳細ページ（${url}）\n${detailText.substring(0, 4000)}\n\n## 検索スニペット（補足）\n${ddgText.substring(0, 2000)}`;
           }
         } catch { /* continue */ }
       }
