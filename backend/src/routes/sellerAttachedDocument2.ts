@@ -59,6 +59,13 @@ export interface AttachedDocument2Data {
   drainage_cesspool?: boolean;
   construction_company?: string | null;
   management_company?: string | null;
+  // 訪問時記入フィールド
+  exterior_reform?: string | null;
+  interior_reform?: string | null;
+  defects?: string | null;
+  solar_panel?: string | null;
+  incident_info?: string | null;
+  minpaku?: string | null;
   // 【特典】チェックボックス
   tokuten_cleaning?: boolean;
   tokuten_garden?: boolean;
@@ -109,6 +116,12 @@ const EMPTY_RESPONSE = (sellerId: string) => ({
   drainage_cesspool: false,
   construction_company: null,
   management_company: null,
+  exterior_reform: null,
+  interior_reform: null,
+  defects: null,
+  solar_panel: null,
+  incident_info: null,
+  minpaku: null,
   tokuten_cleaning: false,
   tokuten_garden: false,
   tokuten_wallpaper: false,
@@ -190,6 +203,12 @@ router.put('/sellers/:sellerId/attached-document2', async (req: Request, res: Re
       drainage_cesspool: !!body.drainage_cesspool,
       construction_company: body.construction_company || null,
       management_company: body.management_company || null,
+      exterior_reform: body.exterior_reform || null,
+      interior_reform: body.interior_reform || null,
+      defects: body.defects || null,
+      solar_panel: body.solar_panel || null,
+      incident_info: body.incident_info || null,
+      minpaku: body.minpaku || null,
       tokuten_cleaning: !!body.tokuten_cleaning,
       tokuten_garden: !!body.tokuten_garden,
       tokuten_wallpaper: !!body.tokuten_wallpaper,

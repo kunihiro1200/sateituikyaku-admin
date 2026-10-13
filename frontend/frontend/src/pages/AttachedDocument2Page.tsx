@@ -94,6 +94,13 @@ interface DocumentFields {
   drainage_cesspool: boolean;
   construction_company: string;
   management_company: string;
+  // 訪問時記入フィールド
+  exterior_reform: string;
+  interior_reform: string;
+  defects: string;
+  solar_panel: string;
+  incident_info: string;
+  minpaku: string;
   // 【特典】チェックボックス
   tokuten_cleaning: boolean;
   tokuten_garden: boolean;
@@ -143,6 +150,12 @@ const EMPTY_FIELDS: DocumentFields = {
   drainage_cesspool: false,
   construction_company: '',
   management_company: '',
+  exterior_reform: '',
+  interior_reform: '',
+  defects: '',
+  solar_panel: '',
+  incident_info: '',
+  minpaku: '',
   tokuten_cleaning: false,
   tokuten_garden: false,
   tokuten_wallpaper: false,
@@ -257,6 +270,12 @@ export default function AttachedDocument2Page() {
         drainage_cesspool: !!d.drainage_cesspool,
         construction_company: d.construction_company || '',
         management_company: d.management_company || '',
+        exterior_reform: d.exterior_reform || '',
+        interior_reform: d.interior_reform || '',
+        defects: d.defects || '',
+        solar_panel: d.solar_panel || '',
+        incident_info: d.incident_info || '',
+        minpaku: d.minpaku || '',
         tokuten_cleaning: !!d.tokuten_cleaning,
         tokuten_garden: !!d.tokuten_garden,
         tokuten_wallpaper: !!d.tokuten_wallpaper,
@@ -410,7 +429,7 @@ export default function AttachedDocument2Page() {
       + '.box{border:1pt solid #888;padding:4pt}'
       + '.blbl{font-size:7pt;color:#555}'
       + '.bval{font-size:10pt;font-weight:bold}'
-      + '.cbox{border:1pt solid #888;padding:4pt;margin-bottom:4pt;overflow:hidden;height:68mm;display:flex;flex-direction:column}'
+      + '.cbox{border:1pt solid #888;padding:4pt;margin-bottom:4pt;overflow:hidden;height:60mm;display:flex;flex-direction:column}'
       + '.clbl{font-size:7pt;color:#555;font-weight:bold;margin-bottom:2pt}'
       + '.tblock{}'
       + '.it{width:100%;border-collapse:collapse;margin-bottom:3pt;border:1pt solid #888}'
@@ -471,6 +490,7 @@ export default function AttachedDocument2Page() {
       + '<td class="lbl">最寄りバス停</td><td class="val">' + (fields.nearest_bus_stop_name || '') + '</td><td class="val narrow">' + (fields.nearest_bus_stop_walk || '') + '</td>'
       + '</tr></table>'
       + mansionSection
+      + '<div style="text-align:center;border:1pt solid #bbb;background:#f0f4f8;padding:3pt;margin-bottom:3pt;font-size:7.5pt;font-weight:bold;letter-spacing:1pt">＝＝＝＝＝ここから訪問時記入＝＝＝＝＝</div>'
       + '<table class="it" style="margin-bottom:3pt"><tr>'
       + '<td class="lbl" style="width:48pt">売却理由</td><td class="val">' + (fields.sale_reason || '') + '</td>'
       + '<td class="lbl" style="width:36pt">境界</td><td class="val" style="font-size:7pt;color:' + (fields.boundary_info ? '#000' : '#aaa') + '">' + (fields.boundary_info || '□杭　印あり　□杭　印なし　□越境物（　　）') + '</td>'
@@ -481,16 +501,28 @@ export default function AttachedDocument2Page() {
       + '<td class="lbl" style="width:30pt">排水</td>'
       + '<td style="border:1pt solid #888;padding:2pt 3pt;font-size:7.5pt">' + cb(fields.drainage_public) + ' 公共下水　' + cb(fields.drainage_septic) + ' 浄化槽　' + cb(fields.drainage_cesspool) + ' 汲み取り</td>'
       + '</tr></table>'
-      + '<table class="it" style="margin-bottom:3pt"><tr>'
-      + '<td class="lbl" style="width:48pt">建築会社</td><td class="val"' + (isMansion ? '' : ' colspan="3"') + '>' + (fields.construction_company || '') + '</td>'
-      + (isMansion ? '<td class="lbl" style="width:48pt">管理会社</td><td class="val">' + (fields.management_company || '') + '</td>' : '')
-      + '</tr></table>'
+      + (isMansion ? '<table class="it" style="margin-bottom:3pt"><tr><td class="lbl" style="width:48pt">管理会社</td><td class="val" colspan="3">' + (fields.management_company || '') + '</td></tr></table>' : '')
       + '<table class="it"><tr>'
       + '<td class="lbl" style="width:52pt">固定資産税</td>'
       + '<td class="val">' + (fields.property_tax || '<span style="color:#bbb;font-size:7.5pt">' + (isMansion ? 'マンションは５年以内に軽減税率あり' : '戸建ては３年以内に軽減税率あり') + '</span>') + '</td>'
       + '<td class="lbl" style="width:44pt">駐車場</td>'
       + '<td class="val">' + (fields.parking || '<span style="color:#bbb;font-size:7.5pt">' + (isMansion ? '機械式の場合　高さ、奥行き、幅を確認' : '堀車庫の場合は高さ、幅、奥行き M') + '</span>') + '</td>'
       + (isMansion ? '<td class="lbl" style="width:36pt">ペット</td><td class="val">' + (fields.pet || '') + '</td>' : '')
+      + '</tr></table>'
+      + '<table class="it" style="margin-bottom:3pt"><tr>'
+      + '<td class="lbl" style="width:70pt">建築会社</td><td class="val">' + (fields.construction_company || '') + '</td>'
+      + '<td class="lbl" style="width:70pt">外観リフォーム</td><td class="val">' + (fields.exterior_reform || '') + '</td>'
+      + '</tr></table>'
+      + '<table class="it" style="margin-bottom:3pt"><tr>'
+      + '<td class="lbl" style="width:70pt">内装リフォーム</td><td class="val">' + (fields.interior_reform || '') + '</td>'
+      + '<td class="lbl" style="width:70pt;white-space:normal;line-height:1.3">雨漏れ、シロアリ等の不具合</td><td class="val">' + (fields.defects || '') + '</td>'
+      + '</tr></table>'
+      + '<table class="it" style="margin-bottom:3pt"><tr>'
+      + '<td class="lbl" style="width:40pt">太陽光</td><td class="val" style="color:' + (fields.solar_panel ? '#000' : '#aaa') + '">' + (fields.solar_panel || '　Kw　買取保証期間　年　月') + '</td>'
+      + '</tr></table>'
+      + '<table class="it" style="margin-bottom:0"><tr>'
+      + '<td class="lbl" style="width:70pt">事件、事故</td><td class="val">' + (fields.incident_info || '') + '</td>'
+      + '<td class="lbl" style="width:40pt">民泊</td><td class="val">' + (fields.minpaku || '') + '</td>'
       + '</tr></table>'
       + '</div>'
       + '</div>';
@@ -832,6 +864,13 @@ export default function AttachedDocument2Page() {
               </>
             )}
 
+            {/* ＝＝＝＝＝ここから訪問時記入＝＝＝＝＝ */}
+            <Box sx={{ textAlign: 'center', py: 0.6, mb: 1, bgcolor: '#f0f4f8', border: '1px dashed #999', borderRadius: 1 }}>
+              <Typography sx={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#555', letterSpacing: 1 }}>
+                ＝＝＝＝＝ここから訪問時記入＝＝＝＝＝
+              </Typography>
+            </Box>
+
             {/* ─── 新規フィールド（固定資産税の上） ─── */}
             <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
               {/* 売却理由 */}
@@ -859,13 +898,7 @@ export default function AttachedDocument2Page() {
                 <FormControlLabel sx={{ m: 0 }} control={<Checkbox size="small" checked={fields.drainage_septic} onChange={(e) => set('drainage_septic', e.target.checked)} />} label={<Typography sx={{ fontSize: '9pt' }}>浄化槽</Typography>} />
                 <FormControlLabel sx={{ m: 0 }} control={<Checkbox size="small" checked={fields.drainage_cesspool} onChange={(e) => set('drainage_cesspool', e.target.checked)} />} label={<Typography sx={{ fontSize: '9pt' }}>汲み取り</Typography>} />
               </Box>
-              {/* 建築会社 */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.6, borderBottom: isMansion ? '1px solid #eee' : 'none' }}>
-                <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, width: 76 }}>建築会社</Typography>
-                <TextField fullWidth size="small" value={fields.construction_company}
-                  onChange={(e) => set('construction_company', e.target.value)}
-                  sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
-              </Box>
+              {/* 建築会社 → 固定資産税の下セクションに移動 */}
               {/* 管理会社（マンションのみ） */}
               {isMansion && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.6 }}>
@@ -898,6 +931,33 @@ export default function AttachedDocument2Page() {
                       sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
                   </Box>
                 )}
+              </Box>
+            </Paper>
+
+            {/* ─── 訪問時記入フィールド（固定資産税の下） ─── */}
+            <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
+              {[
+                { key: 'construction_company' as const, label: '建築会社' },
+                { key: 'exterior_reform'       as const, label: '外観リフォーム' },
+                { key: 'interior_reform'       as const, label: '内装リフォーム' },
+                { key: 'defects'               as const, label: '雨漏れ、シロアリ等の不具合' },
+                { key: 'incident_info'         as const, label: '事件、事故' },
+                { key: 'minpaku'               as const, label: '民泊' },
+              ].map((f, idx, arr) => (
+                <Box key={f.key} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.6, borderBottom: idx < arr.length - 1 || fields.solar_panel !== undefined ? '1px solid #eee' : 'none' }}>
+                  <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, width: 140 }}>{f.label}</Typography>
+                  <TextField fullWidth size="small" value={fields[f.key]}
+                    onChange={(e) => set(f.key, e.target.value)}
+                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
+                </Box>
+              ))}
+              {/* 太陽光 */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.6 }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, width: 140 }}>太陽光</Typography>
+                <TextField fullWidth size="small" value={fields.solar_panel}
+                  onChange={(e) => set('solar_panel', e.target.value)}
+                  placeholder="　Kw　買取保証期間　年　月"
+                  sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' }, '& input::placeholder': { color: '#bbb', opacity: 1 } }} />
               </Box>
             </Paper>
 
