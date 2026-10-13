@@ -120,8 +120,8 @@ async function searchBuildingInfo(
     if (searchText && searchText.length > 300) {
       console.log(`[apartmentInfo] Jina Search: ${searchText.length} chars`);
 
-      // SUUMO library / AtHome bldg-library / マンションノート mansion の詳細URLを全件抽出
-      const detailPattern = /https?:\/\/(?:suumo\.jp\/library\/[^\s)"\]\n<]+|www\.athome\.co\.jp\/bldg-library\/[^\s)"\]\n<]+|www\.mansion-note\.com\/mansion\/[^\s)"\]\n<]+)/g;
+      // SUUMO library / AtHome bldg-library / マンションノート / 三井住友ライブラリ の詳細URLを全件抽出
+      const detailPattern = /https?:\/\/(?:suumo\.jp\/library\/[^\s)"\]\n<]+|www\.athome\.co\.jp\/bldg-library\/[^\s)"\]\n<]+|www\.mansion-note\.com\/mansion\/[^\s)"\]\n<]+|library\.smtrc\.jp\/mansion\/[^\s)"\]\n<]+)/g;
       const rawUrls = searchText.match(detailPattern) ?? [];
       const detailUrls = rawUrls
         .map(u => u.replace(/[\)\]"'>,]+$/, ''))
@@ -159,7 +159,7 @@ async function searchBuildingInfo(
     const ddgText = await fetchPage(ddgUrl);
 
     if (ddgText && ddgText.length > 300) {
-      const detailPattern = /https?:\/\/(?:suumo\.jp\/library\/[^\s)"\]\n<]+|www\.athome\.co\.jp\/bldg-library\/[^\s)"\]\n<]+)/g;
+      const detailPattern = /https?:\/\/(?:suumo\.jp\/library\/[^\s)"\]\n<]+|www\.athome\.co\.jp\/bldg-library\/[^\s)"\]\n<]+|library\.smtrc\.jp\/mansion\/[^\s)"\]\n<]+)/g;
       const detailUrls = (ddgText.match(detailPattern) ?? []).map(u => u.replace(/[\)\]"'>,]+$/, ''));
 
       for (const url of detailUrls) {
@@ -237,35 +237,35 @@ async function extractBuildingInfo(
 ): Promise<ApartmentBuildingInfo & { data_source: string | null }> {
   const client = new Anthropic({ apiKey });
 
-  const prompt = `以下はマンション建物情報のページテキストです。物件住所「${propertyAddress}」のマンション建物情報を抽出してください。
+  const prompt = `以下はマンション建物情報のページテキストまたはWeb検索スニペットです。物件住所「${propertyAddress}」のマンション建物情報を抽出してください。
 
-## ページテキスト
+## ページテキスト・スニペット
 ${webContent}
 
 ## 抽出ルール
-- 物件住所に最も合致するマンションの情報のみを抽出する
-- 確実に確認できた情報のみ記載し、不確かな情報は null にする
-- AIで推測・補完しない（ページに記載がない項目は null）
-- 数字は必ず数値型で返す（文字列にしない）
-- 築年月が「2010年8月」形式の場合は「2010-08」に変換する
-- 階数が「10階建」の場合は total_floors_above: 10 として返す
-- data_source は、テキスト冒頭に "DATA_SOURCE_URL: https://..." がある場合は必ずそのURLを使用する
+- 物件住所に最も合致するマンションの情報のみ抽出する
+- 確実に確認できた情報のみ記載し、推測・補完はしない
+- 数字は必ず数値型で返す
+- 築年月は「2010年8月」「2010年8月中旬」→「2010-08」に変換する
+- 「10階建」「地上10階」→ total_floors_above: 10
+- スニペット形式（「管理会社. タッケン管理サービス.」「施工会社: 吉原建設」等）からも必ず抽出する
+- data_source はテキスト冒頭の "DATA_SOURCE_URL: https://..." のURLを使用する
 
-## 出力形式（JSONのみ返してください。コードブロック不要）
+## 出力形式（JSONのみ・コードブロック不要）
 {
   "building_name": "マンション名",
-  "management_company": "管理会社名（例: 大和ライフネクスト）",
-  "built_year_month": "築年月（YYYY-MM形式、例: 2010-08）",
-  "total_floors_above": 地上階数（整数のみ、例: 10）,
-  "total_floors_below": 地下階数（整数のみ、なければ 0）,
-  "total_units": 総戸数（整数のみ、例: 45）,
-  "structure": "建物構造（例: RC造、SRC造）",
+  "management_company": "管理会社名",
+  "built_year_month": "YYYY-MM（例: 2010-08）",
+  "total_floors_above": 地上階数（整数）,
+  "total_floors_below": 地下階数（整数、なければ 0）,
+  "total_units": 総戸数（整数）,
+  "structure": "建物構造（例: RC造）",
   "developer_company": "分譲会社名（施主・デベロッパー）",
   "construction_company": "施工会社名",
-  "management_type": "管理形態（例: 全部委託、一部委託、自主管理）",
-  "has_elevator": "あり または なし（不明な場合は null）",
-  "large_repair_history": "大規模修繕の実施年等（なければ null）",
-  "data_source": "DATA_SOURCE_URL のURL（なければ参照したページのURL）"
+  "management_type": "管理形態（例: 全部委託）",
+  "has_elevator": "あり または なし（不明は null）",
+  "large_repair_history": "大規模修繕情報（なければ null）",
+  "data_source": "DATA_SOURCE_URL のURL"
 }`;
 
   const response = await client.messages.create({
