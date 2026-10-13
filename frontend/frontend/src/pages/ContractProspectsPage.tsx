@@ -1068,7 +1068,6 @@ export default function ContractProspectsPage() {
                     '想定手数料（売主側）\n売上見込（両手65%）',
                     'ランク',
                     '決済見込み月',
-                    ...(!isFukuoka ? ['判断理由'] : []),
                     '必要な対策',
                     '確認状況',
                     '最終更新',
@@ -1256,8 +1255,8 @@ export default function ContractProspectsPage() {
                         )}
                       </TableCell>
 
-                      {/* ⑧ 判断理由（大分のみ・福岡は非表示） */}
-                      {!isFukuoka && (
+                      {/* ⑧ 判断理由（非表示） */}
+                      {false && (
                       <TableCell sx={{ maxWidth: isEditing ? 220 : 160, px: 1 }}>
                         {isEditing ? (
                           <TextField
