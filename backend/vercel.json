@@ -79,6 +79,10 @@
       "schedule": "0 2 */6 * *"
     },
     {
+      "path": "/api/cron/drive-poll",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/cron/drive-reconcile",
       "schedule": "0 * * * *"
     },

@@ -1151,6 +1151,76 @@ app.use('/api/hazard', hazardAnalyzeRoutes); // ハザードマップAI解析（
 // ─── Drive同期エンドポイント（/api キャッチオールより必ず前に登録） ─────────────────
 
 /**
+ * GET /api/cron/drive-poll  ← メインの変更検知
+ * 1分ごとに Drive をポーリングして最近更新されたスプレッドシートを同期する。
+ * Push通知(changes.watch)が届かないケースの代替・メイン方式。
+ * schedule: 毎分（vercel.json）
+ */
+app.get('/api/cron/drive-poll', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    if (process.env.DRIVE_SYNC_ENABLED === 'false') {
+      return res.status(200).json({ success: true, skipped: true });
+    }
+
+    const { pollRecentChanges } = await import('./services/DriveWatchService');
+    const { PropertySheetSyncService } = await import('./services/PropertySheetSyncService');
+    const { createClient } = await import('@supabase/supabase-js');
+
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const syncService = new PropertySheetSyncService();
+
+    const files = await pollRecentChanges(2); // 2分以内に更新されたファイル
+    if (files.length === 0) {
+      return res.status(200).json({ success: true, files: 0 });
+    }
+
+    console.log(`[Cron DrivePoll] ${files.length}件の更新を検出`);
+    let synced = 0;
+
+    for (const file of files) {
+      // テスト物件フィルター
+      const testOnly = process.env.DRIVE_SYNC_TEST_ONLY;
+      if (testOnly) {
+        const { data: reg } = await supabase
+          .from('property_spreadsheet_registry')
+          .select('property_number')
+          .eq('file_id', file.fileId)
+          .maybeSingle();
+        if (reg?.property_number && reg.property_number !== testOnly) continue;
+      }
+
+      // デバウンス: 1分以内に同じファイルを処理済みならスキップ
+      const debounce = new Date(Date.now() - 60 * 1000).toISOString();
+      const { data: recent } = await supabase
+        .from('drive_sync_log')
+        .select('id')
+        .eq('file_id', file.fileId)
+        .eq('status', 'success')
+        .gte('synced_at', debounce)
+        .limit(1);
+      if (recent && recent.length > 0) {
+        console.log(`[Cron DrivePoll] Skip(debounce): ${file.fileId}`);
+        continue;
+      }
+
+      const logId = await syncService.createLog(file.fileId);
+      const result = await syncService.syncFile(file.fileId, file.spreadsheetUrl, logId);
+      if (result.success) synced++;
+    }
+
+    console.log(`[Cron DrivePoll] 完了: ${synced}/${files.length}件同期`);
+    return res.status(200).json({ success: true, files: files.length, synced });
+  } catch (err: any) {
+    console.error('[Cron DrivePoll] エラー:', err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
  * POST /api/drive-sync/register-watch
  * Drive watchチャンネルを手動で登録するエンドポイント。
  * デプロイ後に一度だけ叩いて watch を有効化する。

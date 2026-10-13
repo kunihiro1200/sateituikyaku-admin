@@ -388,3 +388,71 @@ export class DriveWatchService {
     return !!data;
   }
 }
+
+// ─── ポーリング方式（Push通知の代替・メイン同期方式） ────────────────────────────
+
+/**
+ * ポーリングで最近変更されたスプレッドシートを返す。
+ *
+ * Push通知ではなくこちらをメインの変更検知として使う。
+ * サービスアカウントでは他ユーザー所有のフォルダに対して
+ * changes.watch の Push 通知が届かないケースがあるため。
+ *
+ * @param windowMinutes  この分以内に更新されたファイルを取得（デフォルト2分）
+ */
+export async function pollRecentChanges(windowMinutes = 2): Promise<ChangedFile[]> {
+  const drive = await new DriveWatchService()['initDrive']();
+
+  const cutoff = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString();
+  const results: ChangedFile[] = [];
+
+  // ─── 通常フォルダ ──────────────────────────────────────────────────────────
+  try {
+    const res = await drive.files.list({
+      q: `'${GYOMU_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.spreadsheet' and modifiedTime > '${cutoff}' and trashed=false`,
+      fields: 'files(id,name,webViewLink)',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+      pageSize: 50,
+    });
+    for (const f of res.data.files || []) {
+      if (f.id === MASTER_SHEET_ID) continue;
+      results.push({
+        fileId: f.id!,
+        fileName: f.name || '',
+        driveId: null,
+        spreadsheetUrl: f.webViewLink || `https://docs.google.com/spreadsheets/d/${f.id}`,
+      });
+    }
+    console.log(`[DrivePoll] myDrive: ${res.data.files?.length ?? 0} files since ${cutoff}`);
+  } catch (e: any) {
+    console.error('[DrivePoll] myDrive list error:', e.message);
+  }
+
+  // ─── 共有ドライブ ───────────────────────────────────────────────────────────
+  try {
+    const res = await drive.files.list({
+      q: `mimeType='application/vnd.google-apps.spreadsheet' and modifiedTime > '${cutoff}' and trashed=false`,
+      driveId: SHARED_DRIVE_ID,
+      corpora: 'drive',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+      fields: 'files(id,name,webViewLink)',
+      pageSize: 50,
+    } as any);
+    for (const f of (res.data as any).files || []) {
+      if (f.id === MASTER_SHEET_ID) continue;
+      results.push({
+        fileId: f.id!,
+        fileName: f.name || '',
+        driveId: SHARED_DRIVE_ID,
+        spreadsheetUrl: f.webViewLink || `https://docs.google.com/spreadsheets/d/${f.id}`,
+      });
+    }
+    console.log(`[DrivePoll] sharedDrive: ${(res.data as any).files?.length ?? 0} files since ${cutoff}`);
+  } catch (e: any) {
+    console.error('[DrivePoll] sharedDrive list error:', e.message);
+  }
+
+  return results;
+}
