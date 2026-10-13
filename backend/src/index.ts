@@ -1148,52 +1148,29 @@ app.use('/api', evaluationPointsRoutes); // 評価ポイントAPI（売主ごと
 app.use('/api', sellerAttachedDocument2Routes); // 訪問準備「添付資料２」API（売主ごと）
 app.use('/api/scraped-urls', scrapedUrlsRoutes); // スクレイピングURL重複チェック（認証不要 - /api catchallより前に登録）
 app.use('/api/hazard', hazardAnalyzeRoutes); // ハザードマップAI解析（認証不要 - /api catchallより前に登録）
-app.use('/api', inquiryHistoryRoutes);
-app.use('/api/audit-logs', auditLogRoutes);
-app.use('/api/property-listing-sync', propertyListingSyncRoutes);
-app.use('/api/staff-sync', staffSyncRoutes); // スタッフ同期API
-app.use('/api/nearby-map', nearbyMapRoutes); // 近隣MAPapi
-app.use('/api/youto-chiiki', youtoChiikiRoutes); // 用途地域取得API（不動産情報ライブラリ）
-app.use('/api/distribution-history', distributionHistoryRoutes); // 他社物件配信履歴
-app.use('/api/property-preview', propertyPreviewRoutes); // 物件プレビュー（認証不要・公開）
-app.use('/api/ai', aiPropertyEnhanceRoutes); // AI物件情報解析（認証不要）
-app.use('/api/ai', aiImagePropertyRegisterRoutes); // AI画像→他社物件登録
-app.use('/api/document-drafts', documentDraftsRoutes); // 資料生成ドラフト保存・取得
-// floor-plan-compareは上部（sellerRoutesより前）に登録済み
+// ─── Drive同期エンドポイント（/api キャッチオールより必ず前に登録） ─────────────────
 
-// Cron Job: 買主の建売専門HP価格変動チェック（毎日実行）
-app.post('/api/cron/check-property-prices', async (req, res) => {
+/**
+ * POST /api/drive-sync/register-watch
+ * Drive watchチャンネルを手動で登録するエンドポイント。
+ * デプロイ後に一度だけ叩いて watch を有効化する。
+ * （その後は /api/cron/renew-drive-watch が自動更新する）
+ */
+app.post('/api/drive-sync/register-watch', async (req, res) => {
   try {
-    console.log('[Cron BuyerPriceMonitor] 買主建売専門HP価格チェック開始');
-
     const authHeader = req.headers.authorization;
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      console.error('[Cron BuyerPriceMonitor] 認証失敗');
       return res.status(401).json({ error: 'Unauthorized' });
     }
-
-    const { PropertyPriceMonitorService } = await import('./services/PropertyPriceMonitorService');
-    const monitorService = new PropertyPriceMonitorService();
-
-    const changes = await monitorService.checkAllPriceChanges();
-
-    if (changes.length > 0) {
-      await monitorService.sendPriceChangeNotification(changes);
-    }
-
-    console.log(`[Cron BuyerPriceMonitor] 完了: ${changes.length}件の変更`);
-    return res.status(200).json({
-      success: true,
-      changesCount: changes.length,
-      message: `価格変動チェック完了: ${changes.length}件の変更`,
-    });
+    const { DriveWatchService } = await import('./services/DriveWatchService');
+    const svc = new DriveWatchService();
+    await svc.registerAllChannels();
+    return res.status(200).json({ success: true, message: 'Drive watch channels registered' });
   } catch (err: any) {
-    console.error('[Cron BuyerPriceMonitor] エラー:', err.message);
+    console.error('[DriveSync] register-watch error:', err.message);
     return res.status(500).json({ success: false, error: err.message });
   }
 });
-
-// ─── Drive同期 cron ハンドラ ─────────────────────────────────────────────────
 
 /**
  * GET /api/cron/renew-drive-watch
@@ -1265,24 +1242,47 @@ app.get('/api/cron/drive-retry', async (req, res) => {
   }
 });
 
-/**
- * POST /api/drive-sync/register-watch
- * Drive watchチャンネルを手動で登録するエンドポイント。
- * デプロイ後に一度だけ叩いて watch を有効化する。
- * （その後は /api/cron/renew-drive-watch が自動更新する）
- */
-app.post('/api/drive-sync/register-watch', async (req, res) => {
+app.use('/api', inquiryHistoryRoutes);
+app.use('/api/audit-logs', auditLogRoutes);
+app.use('/api/property-listing-sync', propertyListingSyncRoutes);
+app.use('/api/staff-sync', staffSyncRoutes); // スタッフ同期API
+app.use('/api/nearby-map', nearbyMapRoutes); // 近隣MAPapi
+app.use('/api/youto-chiiki', youtoChiikiRoutes); // 用途地域取得API（不動産情報ライブラリ）
+app.use('/api/distribution-history', distributionHistoryRoutes); // 他社物件配信履歴
+app.use('/api/property-preview', propertyPreviewRoutes); // 物件プレビュー（認証不要・公開）
+app.use('/api/ai', aiPropertyEnhanceRoutes); // AI物件情報解析（認証不要）
+app.use('/api/ai', aiImagePropertyRegisterRoutes); // AI画像→他社物件登録
+app.use('/api/document-drafts', documentDraftsRoutes); // 資料生成ドラフト保存・取得
+// floor-plan-compareは上部（sellerRoutesより前）に登録済み
+
+// Cron Job: 買主の建売専門HP価格変動チェック（毎日実行）
+app.post('/api/cron/check-property-prices', async (req, res) => {
   try {
+    console.log('[Cron BuyerPriceMonitor] 買主建売専門HP価格チェック開始');
+
     const authHeader = req.headers.authorization;
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      console.error('[Cron BuyerPriceMonitor] 認証失敗');
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    const { DriveWatchService } = await import('./services/DriveWatchService');
-    const svc = new DriveWatchService();
-    await svc.registerAllChannels();
-    return res.status(200).json({ success: true, message: 'Drive watch channels registered' });
+
+    const { PropertyPriceMonitorService } = await import('./services/PropertyPriceMonitorService');
+    const monitorService = new PropertyPriceMonitorService();
+
+    const changes = await monitorService.checkAllPriceChanges();
+
+    if (changes.length > 0) {
+      await monitorService.sendPriceChangeNotification(changes);
+    }
+
+    console.log(`[Cron BuyerPriceMonitor] 完了: ${changes.length}件の変更`);
+    return res.status(200).json({
+      success: true,
+      changesCount: changes.length,
+      message: `価格変動チェック完了: ${changes.length}件の変更`,
+    });
   } catch (err: any) {
-    console.error('[DriveSync] register-watch error:', err.message);
+    console.error('[Cron BuyerPriceMonitor] エラー:', err.message);
     return res.status(500).json({ success: false, error: err.message });
   }
 });
