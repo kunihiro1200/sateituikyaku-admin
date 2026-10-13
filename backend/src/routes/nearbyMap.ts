@@ -354,8 +354,8 @@ function calcWalkMinutes(distanceMeters: number): number {
 
 // ---- Directions API で徒歩ルート距離を取得 ----
 // 戻り値: { meters: number, isEstimated: boolean }
-//   - isEstimated=false: Directions API による実測値
-//   - isEstimated=true : Directions API 不可時のハーバーサイン直線 × 1.3 推定値
+//   - isEstimated=false: Routes API / Directions API による実測値
+//   - isEstimated=true : API 不可時のハーバーサイン直線 × 1.3 推定値
 async function fetchWalkingDistance(
   originLat: number,
   originLng: number,
@@ -363,7 +363,35 @@ async function fetchWalkingDistance(
   destLng: number,
   apiKey: string
 ): Promise<{ meters: number; isEstimated: boolean }> {
-  // ---- Directions API を試みる ----
+  // ---- 試み1: Routes API（新版・推奨）----
+  try {
+    const routesRes = await axios.post(
+      'https://routes.googleapis.com/directions/v2:computeRoutes',
+      {
+        origin: { location: { latLng: { latitude: originLat, longitude: originLng } } },
+        destination: { location: { latLng: { latitude: destLat, longitude: destLng } } },
+        travelMode: 'WALK',
+        computeAlternativeRoutes: false,
+      },
+      {
+        headers: {
+          'X-Goog-Api-Key': apiKey,
+          'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration',
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000,
+      }
+    );
+    const meters = routesRes.data?.routes?.[0]?.distanceMeters;
+    if (meters) {
+      return { meters, isEstimated: false };
+    }
+  } catch (routesErr: any) {
+    const code = routesErr.response?.data?.error?.code || routesErr.response?.status;
+    console.warn('[nearbyMap] Routes API failed:', code, routesErr.response?.data?.error?.message || routesErr.message);
+  }
+
+  // ---- 試み2: Directions API（旧版） ----
   try {
     const response = await axios.get(
       'https://maps.googleapis.com/maps/api/directions/json',
@@ -381,16 +409,13 @@ async function fetchWalkingDistance(
     if (response.data.status === 'OK' && response.data.routes?.[0]?.legs?.[0]) {
       return { meters: response.data.routes[0].legs[0].distance.value, isEstimated: false };
     }
-    console.warn('[nearbyMap] Directions API status:', response.data.status,
-      '→ ハーバーサイン推定値にフォールバック');
+    console.warn('[nearbyMap] Directions API status:', response.data.status);
   } catch (err: any) {
-    console.warn('[nearbyMap] Directions API error:', err.message,
-      '→ ハーバーサイン推定値にフォールバック');
+    console.warn('[nearbyMap] Directions API error:', err.message);
   }
 
-  // ---- フォールバック: 直線距離 × 1.3（一般的な迂回係数） ----
-  const straightMeters = calcDistance(originLat, originLng, destLat, destLng);
-  const estimatedMeters = Math.round(straightMeters * 1.3);
+  // ---- フォールバック: 直線距離 × 1.3 ----
+  const estimatedMeters = Math.round(calcDistance(originLat, originLng, destLat, destLng) * 1.3);
   return { meters: estimatedMeters, isEstimated: true };
 }
 
@@ -416,6 +441,68 @@ async function fetchWalkingDistance(
  * コスト: Google Maps Directions API $0.005/request × 最大2件/呼び出し
  * キャッシュ: 結果はseller_attached_document2に保存（最大30日のキャッシュとして利用規約上許容）
  */
+/**
+ * XKT005 デバッグ用エンドポイント（認証不要でテスト可能）
+ * GET /api/nearby-map/debug-xkt005?lat=X&lng=Y
+ */
+router.get('/debug-xkt005', authenticate, async (req: Request, res: Response) => {
+  const { lat, lng } = req.query;
+  if (!lat || !lng) return res.status(400).json({ error: '緯度・経度が必要です' });
+
+  const latNum = parseFloat(lat as string);
+  const lngNum = parseFloat(lng as string);
+  const reinfilibKey = process.env.REINFOLIB_API_KEY;
+
+  if (!reinfilibKey) {
+    return res.json({ status: 'NO_KEY', message: 'REINFOLIB_API_KEY が未設定です' });
+  }
+
+  const results: any[] = [];
+
+  for (const zoom of [11, 12, 13, 14]) {
+    const { x, y } = latLngToTileXY(latNum, lngNum, zoom);
+    const url = `https://www.reinfolib.mlit.go.jp/ex-api/external/XKT005?response_format=geojson&z=${zoom}&x=${x}&y=${y}`;
+
+    try {
+      const resp = await axios.get(url, {
+        headers: { 'Ocp-Apim-Subscription-Key': reinfilibKey },
+        timeout: 15000,
+      });
+      const features: any[] = resp.data?.features ?? [];
+      let matched: any = null;
+
+      for (const f of features) {
+        const geomType = f.geometry?.type;
+        let hit = false;
+        if (geomType === 'Polygon') {
+          if (f.geometry.coordinates?.[0] && pointInPolygon(latNum, lngNum, f.geometry.coordinates[0])) hit = true;
+        } else if (geomType === 'MultiPolygon') {
+          for (const rings of f.geometry.coordinates) {
+            if (rings?.[0] && pointInPolygon(latNum, lngNum, rings[0])) { hit = true; break; }
+          }
+        }
+        if (hit) { matched = f.properties; break; }
+      }
+
+      results.push({
+        zoom, x, y, httpStatus: 200,
+        featureCount: features.length,
+        matched: !!matched,
+        schoolName: matched?.A32_004_ja || null,
+        adminCode: matched?.A32_001 || null,
+        sampleProps: features[0]?.properties ?? null,
+      });
+    } catch (err: any) {
+      results.push({
+        zoom, x, y, httpStatus: err.response?.status ?? 'ERROR',
+        error: err.message, featureCount: 0, matched: false,
+      });
+    }
+  }
+
+  return res.json({ keySet: true, keyPrefix: reinfilibKey.substring(0, 4) + '...', lat: latNum, lng: lngNum, results });
+});
+
 router.get('/school-walk', authenticate, async (req: Request, res: Response) => {
   try {
     const { lat, lng, elementaryLat, elementaryLng, juniorHighLat, juniorHighLng } = req.query;

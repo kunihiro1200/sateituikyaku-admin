@@ -364,7 +364,6 @@ export default function AttachedDocument2Page() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { employee } = useAuthStore();
-  const { isLoaded: isMapsLoaded } = useGoogleMaps();
 
   const [seller, setSeller] = useState<SellerData | null>(null);
   const [fields, setFields] = useState<DocumentFields>(EMPTY_FIELDS);
@@ -494,62 +493,26 @@ export default function AttachedDocument2Page() {
         return;
       }
 
-      // 2. バックエンドで学校名・座標を取得
+      // 2. バックエンドで学校名・座標・道路距離を一括取得（Routes API / Directions API はバックエンドで処理）
       const res = await api.get('/api/nearby-map/school-walk', { params: { lat, lng } });
       const data = res.data;
 
-      // 3. フロントエンドDirectionsServiceで実際の道路距離を計算
-      const calcDirections = (schoolLat: number, schoolLng: number): Promise<{ meters: number; durationMinutes: number } | null> =>
-        new Promise((resolve) => {
-          if (!isMapsLoaded || typeof google === 'undefined') { resolve(null); return; }
-          new google.maps.DirectionsService().route(
-            {
-              origin: new google.maps.LatLng(lat, lng),
-              destination: new google.maps.LatLng(schoolLat, schoolLng),
-              travelMode: google.maps.TravelMode.WALKING,
-            },
-            (result, status) => {
-              if (status === google.maps.DirectionsStatus.OK && result?.routes?.[0]?.legs?.[0]) {
-                const leg = result.routes[0].legs[0];
-                resolve({ meters: leg.distance.value, durationMinutes: Math.ceil(leg.duration.value / 60) });
-              } else {
-                resolve(null);
-              }
-            }
-          );
-        });
+      // 徒歩時間文字列生成
+      const computeWalk = (meters: number): string => String(Math.ceil(meters / 80));
 
-      // 徒歩時間文字列生成（例: "17〜22" または "17"）
-      const computeWalk = (meters: number, googleMin?: number | null): string => {
-        const std = Math.ceil(meters / 80);
-        if (googleMin && googleMin !== std) {
-          return `${Math.min(std, googleMin)}〜${Math.max(std, googleMin)}`;
-        }
-        return String(std);
-      };
-
-      const [elemRoute, jhRoute] = await Promise.all([
-        data.elementarySchool
-          ? calcDirections(data.elementarySchool.lat, data.elementarySchool.lng)
-          : Promise.resolve(null),
-        data.juniorHighSchool
-          ? calcDirections(data.juniorHighSchool.lat, data.juniorHighSchool.lng)
-          : Promise.resolve(null),
-      ]);
-
-      // 4. フォームに反映（編集可能な状態で）
+      // 3. フォームに反映（編集可能な状態で）
       if (data.elementarySchool?.name) {
         set('elementary_school_name', data.elementarySchool.name);
-        const meters = elemRoute?.meters ?? data.elementarySchool.distanceMeters;
-        if (meters) set('elementary_school_walk', computeWalk(meters, elemRoute?.durationMinutes));
+        const meters = data.elementarySchool.distanceMeters;
+        if (meters) set('elementary_school_walk', computeWalk(meters));
       }
       if (data.juniorHighSchool?.name) {
         set('junior_high_school_name', data.juniorHighSchool.name);
-        const meters = jhRoute?.meters ?? data.juniorHighSchool.distanceMeters;
-        if (meters) set('junior_high_school_walk', computeWalk(meters, jhRoute?.durationMinutes));
+        const meters = data.juniorHighSchool.distanceMeters;
+        if (meters) set('junior_high_school_walk', computeWalk(meters));
       } else if (data.juniorHighSchool?.notAvailableReason === 'REINFOLIB_API_KEY_NOT_SET') {
         setSchoolFetchError(
-          '⚠️ 中学校区はREINFOLIB_API_KEY未設定のため取得できませんでした（小学校は取得済み）。Vercel環境変数にREINFOLIB_API_KEYを設定するとXKT005で正確な指定校が取得できます。'
+          '⚠️ 中学校区はREINFOLIB_API_KEY未設定のため取得できませんでした（小学校は取得済み）。'
         );
       }
     } catch (err: any) {

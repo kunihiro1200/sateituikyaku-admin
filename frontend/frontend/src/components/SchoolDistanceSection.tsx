@@ -408,7 +408,7 @@ function computeWalkDisplay(meters: number, googleMinutes?: number | null): stri
 const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
   sellerNumber, sellerId, propertyAddress,
 }) => {
-  const { isLoaded } = useGoogleMaps(); // DirectionsService 用
+  const { isLoaded } = useGoogleMaps(); // EntranceMapModal 用のみ
   const [elementarySchool, setElementarySchool] = useState<SchoolInfo>(EMPTY_SCHOOL);
   const [juniorHighSchool, setJuniorHighSchool] = useState<SchoolInfo>(EMPTY_SCHOOL);
   const [customElemEntrance, setCustomElemEntrance] = useState<{ lat: number; lng: number } | null>(null);
@@ -466,43 +466,7 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // ---- フロントエンドDirectionsServiceで実際の道路距離を計算 ----
-  // Maps JavaScript APIキー（VITE_GOOGLE_MAPS_API_KEY）はDirectionsService対応済み
-  const calcWalkingDistance = useCallback(
-    (propertyLat: number, propertyLng: number, schoolLat: number, schoolLng: number)
-      : Promise<{ meters: number; durationMinutes: number; isEstimated: false } | null> => {
-      return new Promise((resolve) => {
-        if (!isLoaded || typeof google === 'undefined') {
-          resolve(null);
-          return;
-        }
-        const service = new google.maps.DirectionsService();
-        service.route(
-          {
-            origin: new google.maps.LatLng(propertyLat, propertyLng),
-            destination: new google.maps.LatLng(schoolLat, schoolLng),
-            travelMode: google.maps.TravelMode.WALKING,
-          },
-          (result, status) => {
-            if (status === google.maps.DirectionsStatus.OK && result?.routes?.[0]?.legs?.[0]) {
-              const leg = result.routes[0].legs[0];
-              resolve({
-                meters: leg.distance.value,
-                durationMinutes: Math.ceil(leg.duration.value / 60), // Google実測時間（分）
-                isEstimated: false,
-              });
-            } else {
-              console.warn('[SchoolDistanceSection] DirectionsService:', status);
-              resolve(null);
-            }
-          }
-        );
-      });
-    },
-    [isLoaded]
-  );
-
-  // 自動取得
+  // 自動取得（距離計算はバックエンドの Routes API / Directions API に統一）
   const handleAutoFetch = async () => {
     setFetching(true);
     setFetchError(null);
@@ -518,7 +482,7 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
         return;
       }
 
-      // 2. バックエンドで学校名・座標を取得（Directions APIは使わず座標のみ）
+      // 2. バックエンドで学校名・座標・道路距離を一括取得
       const params: Record<string, string | number> = { lat: propertyLat, lng: propertyLng };
       if (customElemEntrance) {
         params.elementaryLat = customElemEntrance.lat;
@@ -532,48 +496,35 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
       const res = await api.get('/api/nearby-map/school-walk', { params });
       const data = res.data;
 
-      // 3. フロントエンドDirectionsServiceで実際の道路距離を並列計算
-      const [elemRoute, jhRoute] = await Promise.all([
-        data.elementarySchool
-          ? calcWalkingDistance(propertyLat, propertyLng, data.elementarySchool.lat, data.elementarySchool.lng)
-          : Promise.resolve(null),
-        data.juniorHighSchool
-          ? calcWalkingDistance(propertyLat, propertyLng, data.juniorHighSchool.lat, data.juniorHighSchool.lng)
-          : Promise.resolve(null),
-      ]);
-
-      // 4. 実測値 or バックエンドフォールバックで state を更新
+      // 3. バックエンドの結果をそのまま state に反映
       if (data.elementarySchool) {
-        const meters = elemRoute?.meters ?? data.elementarySchool.distanceMeters;
-        const isEstimated = elemRoute ? false : (data.elementarySchool.isEstimated ?? true);
+        const meters = data.elementarySchool.distanceMeters;
         setElementarySchool({
           name: data.elementarySchool.name,
           distanceMeters: meters,
-          walkMinutes: meters !== null ? computeWalkDisplay(meters, elemRoute?.durationMinutes) : null,
+          walkMinutes: meters !== null ? computeWalkDisplay(meters, null) : null,
           lat: data.elementarySchool.lat,
           lng: data.elementarySchool.lng,
           districtConfirmed: data.elementarySchool.districtConfirmed,
-          isEstimated,
+          isEstimated: data.elementarySchool.isEstimated ?? true,
         });
       }
       if (data.juniorHighSchool) {
-        const meters = jhRoute?.meters ?? data.juniorHighSchool.distanceMeters;
-        const isEstimated = jhRoute ? false : (data.juniorHighSchool.isEstimated ?? true);
+        const meters = data.juniorHighSchool.distanceMeters;
         setJuniorHighSchool({
-          name: data.juniorHighSchool.name ?? '',  // null = 学区未確認 → 空文字
+          name: data.juniorHighSchool.name ?? '',
           distanceMeters: meters,
-          walkMinutes: meters !== null ? computeWalkDisplay(meters, jhRoute?.durationMinutes) : null,
+          walkMinutes: meters !== null ? computeWalkDisplay(meters, null) : null,
           lat: data.juniorHighSchool.lat,
           lng: data.juniorHighSchool.lng,
           districtConfirmed: data.juniorHighSchool.districtConfirmed,
-          isEstimated,
+          isEstimated: data.juniorHighSchool.isEstimated ?? true,
         });
       }
 
-      // 中学校区が未確認の場合は理由をフィードバック
       if (data.juniorHighSchool?.notAvailableReason === 'REINFOLIB_API_KEY_NOT_SET') {
         setFetchError(
-          '⚠️ 中学校区：REINFOLIB_API_KEY が未設定のため学区未確認です。Vercel 環境変数に REINFOLIB_API_KEY を設定するとXKT005（国土数値情報）で正確な指定校を判定できます。'
+          '⚠️ 中学校区：REINFOLIB_API_KEY が未設定のため学区未確認です。Vercel 環境変数に REINFOLIB_API_KEY を設定するとXKT005で正確な指定校を判定できます。'
         );
       }
     } catch (err: any) {
