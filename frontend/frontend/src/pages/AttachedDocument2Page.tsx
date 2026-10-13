@@ -545,6 +545,10 @@ export default function AttachedDocument2Page() {
         set('junior_high_school_name', data.juniorHighSchool.name);
         const meters = jhRoute?.meters ?? data.juniorHighSchool.distanceMeters;
         if (meters) set('junior_high_school_walk', computeWalk(meters, jhRoute?.durationMinutes));
+      } else if (data.juniorHighSchool?.notAvailableReason === 'REINFOLIB_API_KEY_NOT_SET') {
+        setSchoolFetchError(
+          '⚠️ 中学校区はREINFOLIB_API_KEY未設定のため取得できませんでした（小学校は取得済み）。Vercel環境変数にREINFOLIB_API_KEYを設定するとXKT005で正確な指定校が取得できます。'
+        );
       }
     } catch (err: any) {
       setSchoolFetchError(err.response?.data?.error || '学校情報の取得に失敗しました');

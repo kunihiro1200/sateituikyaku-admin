@@ -560,7 +560,7 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
         const meters = jhRoute?.meters ?? data.juniorHighSchool.distanceMeters;
         const isEstimated = jhRoute ? false : (data.juniorHighSchool.isEstimated ?? true);
         setJuniorHighSchool({
-          name: data.juniorHighSchool.name,
+          name: data.juniorHighSchool.name ?? '',  // null = 学区未確認 → 空文字
           distanceMeters: meters,
           walkMinutes: meters !== null ? computeWalkDisplay(meters, jhRoute?.durationMinutes) : null,
           lat: data.juniorHighSchool.lat,
@@ -568,6 +568,13 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
           districtConfirmed: data.juniorHighSchool.districtConfirmed,
           isEstimated,
         });
+      }
+
+      // 中学校区が未確認の場合は理由をフィードバック
+      if (data.juniorHighSchool?.notAvailableReason === 'REINFOLIB_API_KEY_NOT_SET') {
+        setFetchError(
+          '⚠️ 中学校区：REINFOLIB_API_KEY が未設定のため学区未確認です。Vercel 環境変数に REINFOLIB_API_KEY を設定するとXKT005（国土数値情報）で正確な指定校を判定できます。'
+        );
       }
     } catch (err: any) {
       setFetchError(err.response?.data?.error || '学校情報の取得に失敗しました');
@@ -674,7 +681,13 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
           </Grid>
           <Grid item xs={12} sm={6}>
             <SchoolCard
-              label="中学校（最近接・要確認）"
+              label={
+                juniorHighSchool.districtConfirmed
+                  ? '中学校'
+                  : juniorHighSchool.name
+                    ? '中学校（最近接・要確認）'
+                    : '中学校（学区未確認）'
+              }
               icon="🏫"
               info={juniorHighSchool}
               isJuniorHigh
