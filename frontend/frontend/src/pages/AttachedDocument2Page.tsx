@@ -376,6 +376,8 @@ export default function AttachedDocument2Page() {
   const [hazardSuggestion, setHazardSuggestion] = useState<string | null>(null);
   const [schoolFetching, setSchoolFetching] = useState(false);
   const [schoolFetchError, setSchoolFetchError] = useState<string | null>(null);
+  const [transitFetching, setTransitFetching] = useState(false);
+  const [transitFetchError, setTransitFetchError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!id) return;
@@ -569,8 +571,6 @@ export default function AttachedDocument2Page() {
   };
 
   // ---- 交通アクセス自動入力（seller_transit_access の rank=1 を取得）----
-  const [transitFetching, setTransitFetching] = useState(false);
-  const [transitFetchError, setTransitFetchError] = useState<string | null>(null);
 
   const handleTransitAutoFetch = async () => {
     if (!seller?.sellerNumber) return;
