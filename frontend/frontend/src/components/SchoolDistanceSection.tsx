@@ -59,8 +59,6 @@ interface SchoolDistanceSectionProps {
   compact?: boolean;
 }
 
-interface SchoolInfo {
-
 // ---- 自治体公式学区ページURL ----
 // 住所から市区町村を判定してリンクを返す
 const DISTRICT_PAGE_MAP: Record<string, { label: string; url: string }> = {
