@@ -612,8 +612,6 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     const inFukuokaArea = lngNum >= 130.0 && lngNum <= 130.5 && latNum >= 33.4 && latNum <= 33.9;
     const propertyAddressParam = (req.query.propertyAddress as string | undefined) || '';
 
-    const propertyAddressParam = (req.query.propertyAddress as string | undefined) || '';
-
     let elementarySchoolNameFromDistrict: string | null = null;
     let elementaryDistrictSource = 'xkt004';
     let elementaryDistrictDate = '20240401';
