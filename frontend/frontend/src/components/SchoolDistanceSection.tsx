@@ -60,6 +60,20 @@ interface SchoolDistanceSectionProps {
 // ---- 自治体公式学区ページURL ----
 // 住所から市区町村を判定してリンクを返す
 const DISTRICT_PAGE_MAP: Record<string, { label: string; url: string }> = {
+  // 福岡県
+  '福岡市': {
+    label: '福岡市 通学区域照合',
+    url: 'https://www.city.fukuoka.lg.jp/kyoiku-iinkai/tsuugaku/ed/area/tsugaku.html',
+  },
+  '北九州市': {
+    label: '北九州市 学校区',
+    url: 'https://www.city.kitakyushu.lg.jp/kyouiku/file_0200.html',
+  },
+  '久留米市': {
+    label: '久留米市 学校区',
+    url: 'https://www.city.kurume.fukuoka.jp/1500soshiki/7030kyoiku/3030gakko/',
+  },
+  // 大分県
   '大分市': {
     label: '大分市 学校区',
     url: 'https://www.city.oita.oita.jp/o201/machi/gakko/gakkiku/index.html',
@@ -119,12 +133,12 @@ function getDistrictPageLink(address?: string): { label: string; url: string } |
   for (const [city, info] of Object.entries(DISTRICT_PAGE_MAP)) {
     if (address.includes(city)) return info;
   }
-  // マッチしない場合はGoogle検索リンク
-  const cityMatch = address.match(/^[^\s　]+[市町村]/);
+  // マッチしない場合は市区町村名でGoogle検索リンク
+  const cityMatch = address.match(/[^\s　]+[市町村]/);
   if (cityMatch) {
     return {
       label: `${cityMatch[0]} 学校区を検索`,
-      url: `https://www.google.com/search?q=${encodeURIComponent(cityMatch[0] + ' 小学校区 中学校区 学区')}`,
+      url: `https://www.google.com/search?q=${encodeURIComponent(cityMatch[0] + ' 小学校区 中学校区 学区 通学区域')}`,
     };
   }
   return null;
@@ -732,17 +746,24 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
                 href={districtLink.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '12px', ml: 'auto' }}
+                sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '12px', ml: 'auto',
+                      fontWeight: 'bold', color: '#1565c0' }}
               >
                 <OpenInNewIcon sx={{ fontSize: 14 }} />
-                自治体公式サイトで学区確認
+                自治体公式サイトで学区を確認・照合
               </Link>
             </Tooltip>
           )}
         </Box>
 
+        {/* 境界付近の注記 */}
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, fontSize: '10px', lineHeight: 1.4 }}>
+          ※ 川・道路が学区境界の場合、座標精度により隣接校区が表示されることがあります。
+          必ず上記リンクで正確な通学区域を確認してください。
+        </Typography>
+
         {/* APIクレジット（Google Maps Platform利用規約） */}
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, fontSize: '10px' }}>
           ※ 徒歩ルート距離はGoogle Maps Directions APIを使用して取得します（1回あたり最大2リクエスト）。
         </Typography>
       </Paper>
