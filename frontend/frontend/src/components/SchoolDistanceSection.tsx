@@ -510,6 +510,11 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
       const sellerPropertyAddress: string = coordRes.data.propertyAddress || '';
       const addressToUse = propertyAddress || sellerPropertyAddress;
 
+      // 一時デバッグ: 使用住所を表示
+      console.log('[SchoolSection] prop住所:', propertyAddress);
+      console.log('[SchoolSection] API住所:', sellerPropertyAddress);
+      console.log('[SchoolSection] 使用住所:', addressToUse);
+
       if (!propertyLat || !propertyLng) {
         setFetchError('物件の座標が未設定です。地図（PropertyMap）で物件の位置を設定してください。');
         return;
@@ -530,6 +535,12 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
 
       const res = await api.get('/api/nearby-map/school-walk', { params });
       const data = res.data;
+
+      // 一時デバッグ: APIレスポンスを表示
+      console.log('[SchoolSection] school-walk response:', JSON.stringify({
+        elemName: data.elementarySchool?.name,
+        jhName: data.juniorHighSchool?.name,
+      }));
 
       // 3. バックエンドの結果をそのまま state に反映
       if (data.elementarySchool) {
