@@ -5510,12 +5510,16 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
 
         const atbbStatus = String(listing.atbb_status || '');
 
-        // 買付が入っている物件は除外（offer_statusに値がある場合）
-        const offerStatus = String(listing.offer_status || '').trim();
-        if (offerStatus !== '') continue;
+        // 成約済み（settlement_dateあり）の物件はoffer_statusに関わらず含める
+        const isSettled = !!listing.settlement_date;
 
-        // 買主のlatest_statusに「買（」を含む物件は除外
-        if (purchasePropertyNumbers.has(listing.property_number)) continue;
+        // 買付が入っている物件は除外（offer_statusに値がある場合）
+        // ただし成約済みの場合は除外しない（売買実績として参照したいため）
+        const offerStatus = String(listing.offer_status || '').trim();
+        if (offerStatus !== '' && !isSettled) continue;
+
+        // 買主のlatest_statusに「買（」を含む物件は除外（成約済みは除く）
+        if (!isSettled && purchasePropertyNumbers.has(listing.property_number)) continue;
 
         let statusLabel = '';
         if (atbbStatus.includes('非公開')) statusLabel = '成約済み';
