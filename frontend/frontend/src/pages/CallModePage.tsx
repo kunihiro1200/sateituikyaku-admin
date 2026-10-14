@@ -109,6 +109,7 @@ import { pageDataCache, sellerDetailCacheKey, CACHE_KEYS } from '../store/pageDa
 import PropertyMapSection from '../components/PropertyMapSection';
 import SchoolDistanceSection from '../components/SchoolDistanceSection';
 import ApartmentBuildingInfoSection from '../components/ApartmentBuildingInfoSection';
+import ApartmentListingsSection from '../components/ApartmentListingsSection';
 import NearbyBuyersList from '../components/NearbyBuyersList';
 import MatchedBuyersList from '../components/MatchedBuyersList';
 import MatchingIntentPanel from '../components/MatchingIntentPanel';
@@ -8392,6 +8393,13 @@ HP：https://ifoo-oita.com/
             {/* マンション外部建物情報（マンション種別のみ表示） */}
             {isApartmentType && seller?.sellerNumber && (
               <ApartmentBuildingInfoSection
+                sellerNumber={seller.sellerNumber}
+              />
+            )}
+
+            {/* マンション同一棟の売り出し（マンション種別のみ表示） */}
+            {isApartmentType && seller?.sellerNumber && (
+              <ApartmentListingsSection
                 sellerNumber={seller.sellerNumber}
               />
             )}
