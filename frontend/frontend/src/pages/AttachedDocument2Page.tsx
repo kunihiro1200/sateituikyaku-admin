@@ -536,7 +536,10 @@ export default function AttachedDocument2Page() {
   // ---- 交通アクセス自動入力（seller_transit_access の rank=1 を取得）----
 
   const handleTransitAutoFetch = async () => {
-    if (!seller?.sellerNumber) return;
+    if (!seller?.sellerNumber) {
+      setTransitFetchError('売主番号が取得できませんでした。ページを再読み込みしてください。');
+      return;
+    }
     setTransitFetching(true);
     setTransitFetchError(null);
     try {
@@ -553,11 +556,17 @@ export default function AttachedDocument2Page() {
         manual_walk_minutes: number | null;
       }> = res.data.data ?? [];
 
+      console.log('[TransitAutoFetch] sellerNumber:', seller.sellerNumber, 'records:', records.length);
+
       const station  = records.find(r => r.transport_type === 'station'  && r.rank === 1);
       const busStop  = records.find(r => r.transport_type === 'bus_stop' && r.rank === 1);
 
-      const getDisplayName    = (r: typeof station) => (r?.is_manually_corrected && r.manual_name) ? r.manual_name! : (r?.name ?? '');
-      const getDisplayWalk    = (r: typeof station) => (r?.is_manually_corrected && r.manual_walk_minutes != null) ? String(r.manual_walk_minutes) : (r?.walk_minutes != null ? String(r.walk_minutes) : '');
+      const getDisplayName = (r: typeof station) =>
+        (r?.is_manually_corrected && r.manual_name) ? r.manual_name! : (r?.name ?? '');
+      const getDisplayWalk = (r: typeof station) =>
+        (r?.is_manually_corrected && r.manual_walk_minutes != null)
+          ? String(r.manual_walk_minutes)
+          : (r?.walk_minutes != null ? String(r.walk_minutes) : '');
 
       if (station) {
         set('nearest_station_name', getDisplayName(station));
@@ -569,7 +578,7 @@ export default function AttachedDocument2Page() {
       }
 
       if (!station && !busStop) {
-        setTransitFetchError('交通アクセス情報が未取得です。通話モードページで取得してください。');
+        setTransitFetchError(`交通アクセス情報が見つかりませんでした（売主番号: ${seller.sellerNumber}）。通話モードページで取得してください。`);
       }
     } catch (err: any) {
       setTransitFetchError(err.response?.data?.error || '交通アクセス情報の取得に失敗しました');
