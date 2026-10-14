@@ -837,6 +837,7 @@ export default function AttachedDocument2Page() {
         + cb(fields.same_building_sold_case_checked) + ' 同マンションの成約事例　'
         + cb(fields.nearby_mansion_sold_case_checked) + ' 周辺のマンションの成約事例'
         + '</td></tr></table>'
+        + (fields.mansion_building_name ? '<table class="it" style="margin-bottom:3pt"><tr><td class="lbl" style="width:80pt">マンション建物情報</td><td class="val">' + fields.mansion_building_name + '</td></tr></table>' : '')
         + '<div style="text-align:center;padding:3pt;margin-bottom:3pt;font-size:7.5pt;font-weight:bold;letter-spacing:1pt">＝＝＝＝＝ここから訪問時記入＝＝＝＝＝</div>'
         + '<table class="it" style="margin-bottom:3pt"><tr>'
         + '<td class="lbl" style="width:54pt">管理費</td><td class="val">' + (fields.management_fee || '') + '</td>'
@@ -938,7 +939,7 @@ export default function AttachedDocument2Page() {
       + '<div class="tblock">'
       + '<table class="it"><tr>'
       + '<td class="lbl" style="font-size:6.5pt;white-space:normal;line-height:1.3">' + (isFukuoka ? 'ハザードマップ（埋蔵文化、航空法等　福岡MAPより全確認）' : 'ハザードマップ（埋蔵文化等　大分MAPより全確認）') + '</td><td class="val">' + (fields.hazard_map || '') + '</td>'
-      + '<td class="lbl">道路の種類</td><td class="val">' + (fields.road_type || '') + '</td>'
+      + '<td class="lbl" style="width:52pt">道路の種類</td><td class="val" style="width:100pt">' + (fields.road_type || '') + '</td>'
       + '</tr></table>'
       + '<table class="it"><tr>'
       + '<td class="lbl">小学校</td><td class="val">' + (fields.elementary_school_name || '') + '</td><td class="val narrow">' + (fields.elementary_school_walk || '') + '</td>'
@@ -959,7 +960,7 @@ export default function AttachedDocument2Page() {
       + '</tr></table>'
       + mansionSection
       + '<table class="it" style="margin-bottom:3pt"><tr>'
-      + '<td class="lbl" style="width:48pt">売却理由</td><td class="val">' + (fields.sale_reason || '') + '</td>'
+      + '<td class="lbl" style="width:44pt">売却理由</td><td class="val" style="width:50%">' + (fields.sale_reason || '') + '</td>'
       + '<td class="lbl" style="width:36pt">境界</td><td class="val" style="font-size:7pt;color:' + (fields.boundary_info ? '#000' : '#aaa') + '">' + (fields.boundary_info || '□杭　印あり　□杭　印なし　□越境物（　　）') + '</td>'
       + '</tr></table>'
       + '<table class="it" style="margin-bottom:3pt"><tr>'
@@ -970,11 +971,11 @@ export default function AttachedDocument2Page() {
       + '</tr></table>'
       + (isMansion ? '<table class="it" style="margin-bottom:3pt"><tr><td class="lbl" style="width:48pt">管理会社</td><td class="val" colspan="3">' + (fields.management_company || '') + '</td></tr></table>' : '')
       + '<table class="it"><tr>'
-      + '<td class="lbl" style="width:52pt">固定資産税</td>'
-      + '<td class="val">' + (fields.property_tax || '<span style="color:#bbb;font-size:7.5pt">' + (isMansion ? 'マンションは５年以内に軽減税率あり' : '戸建ては３年以内に軽減税率あり') + '</span>') + '</td>'
-      + '<td class="lbl" style="width:44pt">駐車場</td>'
-      + '<td class="val">' + (fields.parking || '<span style="color:#bbb;font-size:7.5pt">' + (isMansion ? '機械式の場合　高さ、奥行き、幅を確認' : '堀車庫の場合は高さ、幅、奥行き M') + '</span>') + '</td>'
-      + (isMansion ? '<td class="lbl" style="width:36pt">ペット</td><td class="val">' + (fields.pet || '') + '</td>' : '')
+      + '<td class="lbl" style="width:44pt">固定資産税</td>'
+      + '<td class="val" style="width:27%">' + (fields.property_tax || '<span style="color:#bbb;font-size:7.5pt">' + (isMansion ? 'マンションは５年以内に軽減税率あり' : '戸建ては３年以内に軽減税率あり') + '</span>') + '</td>'
+      + '<td class="lbl" style="width:36pt">駐車場</td>'
+      + '<td class="val" style="width:27%">' + (fields.parking || '<span style="color:#bbb;font-size:7.5pt">' + (isMansion ? '機械式の場合　高さ、奥行き、幅を確認' : '堀車庫の場合は高さ、幅、奥行き M') + '</span>') + '</td>'
+      + (isMansion ? '<td class="lbl" style="width:32pt">ペット</td><td class="val">' + (fields.pet || '') + '</td>' : '')
       + '</tr></table>'
       + '<table class="it" style="margin-bottom:3pt"><tr>'
       + '<td class="lbl" style="width:70pt">建築会社</td><td class="val">' + (fields.construction_company || '') + '</td>'
