@@ -504,22 +504,33 @@ export default function AttachedDocument2Page() {
             const apartRes = await api.get(`/api/apartment-info/seller/${sellerNum}`);
             const ai = apartRes.data.data;
             if (ai) {
-              setFields((prev) => ({
-                ...prev,
-                mansion_building_name:    prev.mansion_building_name    || ai.building_name    || '',
-                mansion_built_year_month: prev.mansion_built_year_month || ai.built_year_month || '',
-                mansion_floors_above:     prev.mansion_floors_above     || (ai.total_floors_above  != null ? String(ai.total_floors_above)  : ''),
-                mansion_floors_below:     prev.mansion_floors_below     || (ai.total_floors_below  != null ? String(ai.total_floors_below)  : ''),
-                mansion_total_units:      prev.mansion_total_units      || (ai.total_units          != null ? String(ai.total_units)          : ''),
-                mansion_structure:        prev.mansion_structure        || ai.structure            || '',
-                mansion_developer:        prev.mansion_developer        || ai.developer_company    || '',
-                mansion_management_type:  prev.mansion_management_type  || ai.management_type      || '',
-                mansion_has_elevator:     prev.mansion_has_elevator     || ai.has_elevator         || '',
-                // 管理会社は既存フィールドへ補完
-                management_company:       prev.management_company       || ai.management_company   || '',
-                // 施工会社も補完
-                construction_company:     prev.construction_company     || ai.construction_company || '',
-              }));
+              setFields((prev) => {
+                // 取得済み情報を「・」区切りでまとめたテキストを生成
+                const buildMansionInfoText = (): string => {
+                  const parts: string[] = [];
+                  if (ai.built_year_month) {
+                    // YYYY-MM → YYYY年M月
+                    const m = ai.built_year_month.match(/^(\d{4})-(\d{2})$/);
+                    parts.push(m ? `${m[1]}年${parseInt(m[2], 10)}月` : ai.built_year_month);
+                  }
+                  if (ai.total_floors_above != null) parts.push(`地上${ai.total_floors_above}階`);
+                  if (ai.total_units        != null) parts.push(`${ai.total_units}戸`);
+                  if (ai.structure)                  parts.push(ai.structure);
+                  if (ai.management_type)            parts.push(ai.management_type);
+                  if (ai.has_elevator)               parts.push(`EV:${ai.has_elevator}`);
+                  if (ai.construction_company)       parts.push(`施工:${ai.construction_company}`);
+                  return parts.join('・');
+                };
+
+                return {
+                  ...prev,
+                  // 保存済みが空の場合のみ自動補完（手動入力を上書きしない）
+                  mansion_building_name:    prev.mansion_building_name    || buildMansionInfoText(),
+                  // 管理会社・施工会社は既存フィールドへも補完
+                  management_company:       prev.management_company       || ai.management_company   || '',
+                  construction_company:     prev.construction_company     || ai.construction_company || '',
+                };
+              });
             }
           }
         } catch { /* 自動補完失敗はサイレント */ }
@@ -1281,33 +1292,14 @@ export default function AttachedDocument2Page() {
                 {/* ── マンション建物情報（外部建物情報から自動補完・編集可能） ── */}
                 <Paper variant="outlined" sx={{ p: 1, mb: 1, bgcolor: '#fffde7' }}>
                   <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', mb: 0.5 }}>マンション建物情報</Typography>
-                  {/* 全項目を1行横並びのコンパクトレイアウト */}
-                  <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                    {([
-                      { key: 'mansion_built_year_month' as const, label: '築年月',       width: 80 },
-                      { key: 'mansion_floors_above'     as const, label: '地上階数',     width: 56 },
-                      { key: 'mansion_total_units'      as const, label: '総戸数',       width: 56 },
-                      { key: 'mansion_structure'        as const, label: '建物構造',     width: 80 },
-                      { key: 'mansion_management_type'  as const, label: '管理形態',     width: 80 },
-                      { key: 'mansion_has_elevator'     as const, label: 'EV',           width: 48 },
-                      { key: 'mansion_developer'        as const, label: '分譲会社',     width: 100 },
-                      { key: 'construction_company'     as const, label: '施工会社',     width: 100 },
-                    ]).map((f) => (
-                      <Box key={f.key} sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-                        <Typography sx={{ fontSize: '7.5pt', color: '#666', lineHeight: 1.2 }}>{f.label}</Typography>
-                        <TextField
-                          size="small"
-                          value={fields[f.key] as string}
-                          onChange={(e) => set(f.key, e.target.value)}
-                          sx={{
-                            width: f.width,
-                            '& .MuiOutlinedInput-root': { fontSize: '9pt' },
-                            '& .MuiInputBase-input': { py: '3px', px: '6px' },
-                          }}
-                        />
-                      </Box>
-                    ))}
-                  </Box>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    value={fields.mansion_building_name}
+                    onChange={(e) => set('mansion_building_name', e.target.value)}
+                    placeholder="例: 2010年8月・地上10階・45戸・RC造・全部委託・EV:あり・施工:吉原建設"
+                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' }, bgcolor: '#fff' }}
+                  />
                 </Paper>
 
                 <Box sx={{ textAlign: 'center', py: 0.8, mb: 1 }}>
