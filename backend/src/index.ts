@@ -206,6 +206,9 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// 中学校区GeoJSONデータ生成（トークン認証・認証不要・他ルートより必ず前に登録）
+app.use('/api', buildMiddleSchoolDistrictsRoutes);
+
 // Cron Job: 問い合わせをスプレッドシートに同期（一定ごとに実行）
 // ⚠️ 注意: 他のルートより前に設定（より具体的なルートを優先）
 app.get('/api/cron/sync-inquiries', async (req, res) => {
@@ -1155,6 +1158,7 @@ app.use('/api/hazard', hazardAnalyzeRoutes); // ハザードマップAI解析（
 app.use('/api/hazard-info', hazardInfoRoutes); // ハザード情報自動取得（Reinfolib API・認証不要）
 app.use('/api/transit-access', transitAccessRoutes); // 交通アクセス自動取得（Google Maps Places API・認証不要）
 app.use('/api/apartment-info', apartmentInfoRoutes); // マンション外部建物情報（Jina + Claude・認証不要）
+app.use('/api', buildMiddleSchoolDistrictsRoutes); // 中学校区GeoJSONデータ生成（トークン認証・認証不要セクション）
 app.use('/api', buildMiddleSchoolDistrictsRoutes); // 中学校区GeoJSONデータ生成（トークン認証・認証不要セクション）
 // ─── Drive同期エンドポイント（/api キャッチオールより必ず前に登録） ─────────────────
 
