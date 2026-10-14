@@ -5,6 +5,8 @@ import { lookupFukuokaSchool } from '../services/FukuokaSchoolAddressService';
 
 // 福岡市住所対応表を静的インポート（require のパス解決失敗を回避）
 import fukuokaAddressMapJson from '../data/fukuoka-school-address-map.json';
+// 大分市・別府市住所対応表を静的インポート
+import oitaBeppuAddressMapJson from '../data/oita-beppu-school-address-map.json';
 
 let _fukuokaAddressMap: any = fukuokaAddressMapJson;
 function loadFukuokaAddressMapInRoute() {
@@ -14,6 +16,75 @@ function loadFukuokaAddressMapInRoute() {
   }
   console.log(`[nearbyMap] 福岡市住所対応表: ${_fukuokaAddressMap.records.length}件（静的インポート）`);
   return _fukuokaAddressMap;
+}
+
+// 大分市・別府市住所対応表
+let _oitaBeppuAddressMap: any = oitaBeppuAddressMapJson;
+function loadOitaBeppuAddressMapInRoute() {
+  return _oitaBeppuAddressMap || { records: [] };
+}
+
+/**
+ * 大分市・別府市の住所から学区を照合する
+ * @param address 物件住所（例: "大分市顕徳町1丁目5番", "別府市青山町3番"）
+ * @returns { elementary, juniorHigh } | null
+ */
+function lookupOitaBeppuSchool(address: string): {
+  elementary: string;
+  juniorHigh: string;
+  city: string;
+  town: string;
+  confidence: 'confirmed' | 'uncertain';
+} | null {
+  const map = loadOitaBeppuAddressMapInRoute();
+  const records = map.records as any[];
+  if (!records?.length) return null;
+
+  // 市名を判定
+  let city: string | null = null;
+  if (address.includes('大分市')) city = '大分市';
+  else if (address.includes('別府市')) city = '別府市';
+  if (!city) return null;
+
+  // 市名以降の文字列から町名を抽出
+  const afterCity = address.split(city)[1] || '';
+  if (!afterCity) return null;
+
+  // 全角数字を半角に変換
+  const toHalf = (s: string) => s.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  const afterCityNorm = toHalf(afterCity);
+
+  // 町名抽出: 数字・ハイフン・スペースの前まで + 丁目番号も含む
+  // 例: "顕徳町1丁目5番" → "顕徳町1丁目" まで取得
+  const townWithChomeMatch = afterCityNorm.match(/^([^\d\-\s　]*(?:\d+丁目)?)/);
+  const townWithChome = townWithChomeMatch ? townWithChomeMatch[1].replace(/[の\s　]+$/, '').trim() : '';
+
+  // まず完全一致（町名+丁目）
+  const cityRecords = records.filter((r: any) => r.city === city);
+
+  // 候補: 完全一致 → 前方一致
+  const candidates = [
+    ...cityRecords.filter((r: any) => r.town === townWithChome),
+    ...cityRecords.filter((r: any) => townWithChome && r.town !== townWithChome && r.town.startsWith(
+      townWithChome.replace(/\d+丁目$/, '').trim()  // 丁目なし前方一致
+    )),
+  ];
+
+  if (!candidates.length) return null;
+
+  // 「の一部」「番を除く」等の例外がある場合は uncertain
+  const best = candidates[0];
+  const confidence: 'confirmed' | 'uncertain' = best.town.includes('の一部') || best.town.includes('を除く') || best.town.includes('以外')
+    ? 'uncertain'
+    : 'confirmed';
+
+  return {
+    elementary: best.elementary,
+    juniorHigh: best.juniorHigh,
+    city: best.city,
+    town: best.town,
+    confidence,
+  };
 }
 
 const router = Router();
@@ -549,8 +620,7 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     let elementaryConfidence: 'confirmed' | 'uncertain' = 'confirmed';
 
     // ① 福岡市住所対応表（property_address がある場合のみ）
-    if (inFukuokaArea && propertyAddressParam) {
-      try {
+    if (inFukuokaArea && propertyAddressParam) {      try {
         const map = loadFukuokaAddressMapInRoute();
         const records = map.records as any[];
         if (records?.length > 0) {
@@ -586,7 +656,25 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
       }
     }
 
-    // ② 福岡市公式GeoJSONで判定（住所対応表でヒットしなかった場合）
+    // ② 大分市・別府市住所対応表（property_address がある場合）
+    if (!elementarySchoolNameFromDistrict && propertyAddressParam &&
+        (propertyAddressParam.includes('大分市') || propertyAddressParam.includes('別府市'))) {
+      try {
+        const result = lookupOitaBeppuSchool(propertyAddressParam);
+        if (result) {
+          elementarySchoolNameFromDistrict = result.elementary;
+          elementaryDistrictSource = 'oita_official';
+          elementaryDistrictDate = result.city === '大分市' ? '20250401' : '20260401';
+          elementaryConfidence = result.confidence;
+          (req as any)._jhFromAddressTable = result.juniorHigh;
+          console.log(`[nearbyMap] 大分/別府住所対応表ヒット: ${result.elementary} / ${result.juniorHigh} (${result.city} ${result.town})`);
+        }
+      } catch (e: any) {
+        console.warn('[nearbyMap] 大分/別府住所対応表照合エラー:', e.message);
+      }
+    }
+
+    // ③ 福岡市公式GeoJSONで判定（住所対応表でヒットしなかった場合）
     if (!elementarySchoolNameFromDistrict && inFukuokaArea) {
       const fukuokaElemData = loadFukuokaElementarySchoolDistricts();
       if (fukuokaElemData.features?.length > 0) {
@@ -611,7 +699,7 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
       }
     }
 
-    // ③ 国土数値情報 GeoJSON（福岡市外またはフォールバック）
+    // ④ 国土数値情報 GeoJSON（その他またはフォールバック）
     if (!elementarySchoolNameFromDistrict) {
       const districtData = loadSchoolDistricts();
       if (districtData.features?.length > 0) {
@@ -761,10 +849,9 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     const customJhLat = juniorHighLat ? parseFloat(juniorHighLat as string) : null;
     const customJhLng = juniorHighLng ? parseFloat(juniorHighLng as string) : null;
 
-    // 住所対応表で中学校も取得
-    if (inFukuokaArea && propertyAddressParam) {
+    // 住所対応表で中学校も取得（Fukuoka OR 大分市/別府市）
+    if (propertyAddressParam) {
       try {
-        // 小学校取得時に req に一時保存した中学校名を使用
         const jhFromTable: string | undefined = (req as any)._jhFromAddressTable;
         if (jhFromTable) {
           let jhLat = customJhLat;

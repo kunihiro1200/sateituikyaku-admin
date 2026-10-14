@@ -1,0 +1,9306 @@
+{
+  "version": "2025-2026",
+  "sources": {
+    "大分市": "https://www.city.oita.oita.jp/o190/kosodate/shochugakko/documents/tugakukuikiopen.csv (令和7年4月現在)",
+    "別府市": "https://www.city.beppu.oita.jp/doc/gakusyuu/gakkou/05tetsuduki/tuugaku2.xlsx (令和8年度版)"
+  },
+  "recordCount": 1328,
+  "records": [
+    {
+      "city": "大分市",
+      "town": "上野丘1丁目",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "上野丘2丁目",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "上野丘2丁目（15番1～3、6、10、13号を除く）",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "上野丘西",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "上野丘東",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "上野町",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "上野南",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大手町1丁目",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "金池町1丁目",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "金池町2丁目",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "金池町3丁目",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "金池町4丁目",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "金池町5丁目",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "金池南1丁目",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "金池南2丁目",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "要町の一部（東大道を除く）",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "顕徳町1丁目",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "顕徳町2丁目",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "顕徳町3丁目1･2･4･5番",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "桜ケ丘",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "府内町1丁目",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "元町",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "六坊北町",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "六坊南町",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "六坊町",
+      "elementary": "金池小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大手町2丁目",
+      "elementary": "長浜小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大手町3丁目",
+      "elementary": "長浜小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "顕徳町3丁目3番",
+      "elementary": "長浜小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "長浜町1丁目",
+      "elementary": "長浜小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "長浜町2丁目",
+      "elementary": "長浜小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "長浜町3丁目",
+      "elementary": "長浜小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "錦町1丁目",
+      "elementary": "長浜小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "錦町2丁目",
+      "elementary": "長浜小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "錦町3丁目",
+      "elementary": "長浜小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "舞鶴町1丁目",
+      "elementary": "長浜小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "舞鶴町2丁目",
+      "elementary": "長浜小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "舞鶴町3丁目",
+      "elementary": "長浜小学校",
+      "juniorHigh": "上野ヶ丘中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大道町1丁目",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大道町2丁目",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大道町3丁目",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大道町4丁目",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大道町5丁目",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大道町6丁目",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "要町の一部（東大道）",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新町1番～14番",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "末広町2丁目",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "太平町",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "田室町",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "西大道1丁目",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "西大道2丁目",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "西大道3丁目",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "西大道4丁目",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東大道1丁目",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東大道2丁目",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東大道3丁目",
+      "elementary": "大道小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "王子北町",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "王子新町",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "王子中町",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "王子西町",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "王子町",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "王子港町",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "王子南町",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "王子山の手町1番～38番",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新春日町2丁目6番",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新町15番～19番",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "勢家町1丁目",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "勢家町2丁目",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "勢家町3丁目",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "勢家町4丁目",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中春日町",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "西春日町",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東春日町",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "南春日町",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "南王子町2丁目",
+      "elementary": "春日町小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "王子山の手町39番",
+      "elementary": "西の台小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "上春日町",
+      "elementary": "西の台小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "季の坂3丁目10番",
+      "elementary": "西の台小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "椎迫",
+      "elementary": "西の台小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "志手",
+      "elementary": "西の台小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新春日町1丁目",
+      "elementary": "西の台小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新春日町2丁目1番～5番",
+      "elementary": "西の台小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新春日町19組",
+      "elementary": "西の台小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "にじが丘1丁目の一部（ほたるの社団地）",
+      "elementary": "西の台小学校",
+      "juniorHigh": "王子中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大久保",
+      "elementary": "八幡小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "金谷迫",
+      "elementary": "八幡小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "上白木",
+      "elementary": "八幡小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "上八幡",
+      "elementary": "八幡小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "机張原",
+      "elementary": "八幡小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "下八幡",
+      "elementary": "八幡小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東八幡1丁目",
+      "elementary": "八幡小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東八幡2丁目",
+      "elementary": "八幡小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東八幡3丁目",
+      "elementary": "八幡小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東八幡4丁目",
+      "elementary": "八幡小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東八幡5丁目",
+      "elementary": "八幡小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東八幡6丁目",
+      "elementary": "八幡小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東八幡7丁目",
+      "elementary": "八幡小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東八幡8丁目",
+      "elementary": "八幡小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東八幡9丁目",
+      "elementary": "八幡小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "御幸町",
+      "elementary": "八幡小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "下白木",
+      "elementary": "神崎小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "田ノ浦",
+      "elementary": "神崎小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "鳴川",
+      "elementary": "神崎小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "生石1丁目",
+      "elementary": "春日町小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "生石2丁目",
+      "elementary": "春日町小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "生石3丁目",
+      "elementary": "春日町小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "生石4丁目",
+      "elementary": "春日町小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "生石5丁目",
+      "elementary": "春日町小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "生石港町1丁目",
+      "elementary": "春日町小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "生石港町2丁目",
+      "elementary": "春日町小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "浜の市1丁目",
+      "elementary": "春日町小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "浜の市2丁目",
+      "elementary": "春日町小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "南生石西",
+      "elementary": "春日町小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "南生石東",
+      "elementary": "春日町小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "青山1丁目",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "青山2丁目",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "青葉台1丁目",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "青葉台2丁目",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "青葉台3丁目",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "青葉台4丁目",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "季の坂1丁目",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "季の坂2丁目",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "季の坂3丁目1番～9番",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高尾台1丁目",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高尾台2丁目",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高崎1丁目",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高崎2丁目",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高崎3丁目",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高崎4丁目",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高崎山荘通り",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "にじが丘1丁目の一部（ほたるの社団地除く）",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "にじが丘2丁目",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "にじが丘3丁目",
+      "elementary": "西の台小学校",
+      "juniorHigh": "大分西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明磧町1丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明磧町2丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "旭町",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "尼ケ瀬1丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "尼ケ瀬2丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "尼ケ瀬3丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "田中町1丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "田中町2丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "田中町3丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "畑中1丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "畑中2丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "畑中3丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "畑中4丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "畑中5丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "二又町1丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "二又町2丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "二又町3丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "豊饒1丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "豊饒2丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "豊饒3丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三ケ田町1丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三ケ田町2丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三ケ田町3丁目",
+      "elementary": "南大分小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "上田町1丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "上田町2丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "上田町3丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "上野丘2丁目15番1～3、6、10、13号",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "花園1丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "花園2丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "花園3丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "羽屋",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "羽屋1丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "羽屋2丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "羽屋3丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "羽屋4丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "羽屋新町1丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "羽屋新町2丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "羽屋新町3丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "広瀬町1丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "広瀬町2丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "古国府1丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "古国府2丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "古国府3丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "古国府4丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "古国府5丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "古国府6丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "南太平寺",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "南太平寺1丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "南太平寺2丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "南太平寺3丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "南太平寺4丁目",
+      "elementary": "豊府小学校",
+      "juniorHigh": "南大分中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "庄の原",
+      "elementary": "城南小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "城南北1丁目",
+      "elementary": "城南小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "城南北2丁目",
+      "elementary": "城南小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "城南東1丁目",
+      "elementary": "城南小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "城南東2丁目",
+      "elementary": "城南小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "城南西1丁目",
+      "elementary": "城南小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "城南西2丁目",
+      "elementary": "城南小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "城南南1丁目",
+      "elementary": "城南小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "城南南2丁目",
+      "elementary": "城南小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "竹の上",
+      "elementary": "城南小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "はなの森",
+      "elementary": "城南小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "永興1丁目",
+      "elementary": "城南小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "永興2丁目",
+      "elementary": "城南小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "永興3丁目",
+      "elementary": "城南小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "荏隈町1丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "荏隈町2丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "荏隈町3丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "荏隈町4丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "荏隈町5丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "荏隈町6丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "荏隈町7丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大石町1丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大石町2丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大石町3丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大石町4丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大石町5丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大石町6丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大石町7丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大石町8丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "賀来北1丁目1番～18番",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "賀来新川1丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "賀来新川2丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中の瀬町",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "深河内1丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "深河内2丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "深河内3丁目",
+      "elementary": "荏隈小学校",
+      "juniorHigh": "城南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "片島",
+      "elementary": "滝尾小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "かたしま台1丁目",
+      "elementary": "滝尾小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "かたしま台2丁目",
+      "elementary": "滝尾小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "かたしま台3丁目",
+      "elementary": "滝尾小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "長谷町",
+      "elementary": "滝尾小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "羽田",
+      "elementary": "滝尾小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "藤の台",
+      "elementary": "滝尾小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "米良",
+      "elementary": "滝尾小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ゆめが丘",
+      "elementary": "滝尾小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "加納",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "北下郡の一部",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "希望が丘1丁目",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "希望が丘2丁目",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "下郡北1丁目",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "下郡北2丁目",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "下郡北3丁目",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "下郡中央1丁目",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "下郡中央2丁目",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "下郡中央3丁目",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "下郡東1丁目",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "下郡東2丁目",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "下郡南1丁目",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "下郡南2丁目",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "下郡南3丁目",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "下郡南4丁目",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "下郡南5丁目",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "下郡山の手",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "南下郡",
+      "elementary": "下郡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "津守",
+      "elementary": "森岡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "富岡",
+      "elementary": "森岡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "曲1組～8組",
+      "elementary": "森岡小学校",
+      "juniorHigh": "滝尾中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "城東町",
+      "elementary": "東大分小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高城西町1番～27番・32番",
+      "elementary": "東大分小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "萩原1丁目",
+      "elementary": "東大分小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "萩原2丁目",
+      "elementary": "東大分小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "萩原3丁目",
+      "elementary": "東大分小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "萩原4丁目",
+      "elementary": "東大分小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "萩原緑町",
+      "elementary": "東大分小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "牧",
+      "elementary": "東大分小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "牧1丁目",
+      "elementary": "東大分小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "牧2丁目",
+      "elementary": "東大分小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "牧3丁目",
+      "elementary": "東大分小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "牧上町",
+      "elementary": "東大分小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "牧緑町",
+      "elementary": "東大分小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "岩田町1丁目",
+      "elementary": "津留小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "岩田町2丁目",
+      "elementary": "津留小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "岩田町3丁目",
+      "elementary": "津留小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "岩田町4丁目",
+      "elementary": "津留小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "裏川団地",
+      "elementary": "津留小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "北下郡の一部",
+      "elementary": "津留小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "古ケ鶴1丁目",
+      "elementary": "津留小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "古ケ鶴2丁目",
+      "elementary": "津留小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中津留1丁目",
+      "elementary": "津留小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "花津留1丁目",
+      "elementary": "津留小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "花津留2丁目",
+      "elementary": "津留小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東津留1丁目",
+      "elementary": "津留小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東津留2丁目",
+      "elementary": "津留小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "南津留",
+      "elementary": "津留小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "青葉町",
+      "elementary": "舞鶴小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "今津留1丁目",
+      "elementary": "舞鶴小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "今津留2丁目",
+      "elementary": "舞鶴小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "今津留3丁目",
+      "elementary": "舞鶴小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大州浜1丁目",
+      "elementary": "舞鶴小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大州浜2丁目",
+      "elementary": "舞鶴小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大津町1丁目",
+      "elementary": "舞鶴小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大津町2丁目",
+      "elementary": "舞鶴小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大津町3丁目",
+      "elementary": "舞鶴小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中津留2丁目",
+      "elementary": "舞鶴小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "西新地1丁目",
+      "elementary": "舞鶴小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "西新地2丁目",
+      "elementary": "舞鶴小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "西浜",
+      "elementary": "舞鶴小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東浜1丁目",
+      "elementary": "舞鶴小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東浜2丁目",
+      "elementary": "舞鶴小学校",
+      "juniorHigh": "城東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新貝",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新栄町",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高城新町1番～5番",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高城本町",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高松1丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高松2丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高松東1丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高松東2丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高松東3丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "花高松1丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "花高松2丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "花高松3丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "原川1丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "原川2丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "原川3丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "原新町",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "日岡1丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "日岡2丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "日岡3丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "日吉町",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "松原町1丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "松原町2丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "松原町3丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "向原沖1丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "向原沖2丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "向原沖3丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "向原西1丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "向原西2丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "向原東1丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "向原東2丁目",
+      "elementary": "日岡小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "岡",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "岡新町",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "乙津港町1丁目1～4･6･8･9番",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "千歳",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "千歳団地",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高城新町6番～14番",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高城西町28番～31番",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高城南町",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "寺崎町1丁目",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "寺崎町2丁目",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "仲西町",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "仲西町1丁目",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "仲西町2丁目",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三川上1丁目",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三川上2丁目",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三川上3丁目",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三川上4丁目",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三川下1丁目",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三川下2丁目",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三川下3丁目",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三川新町1丁目",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三川新町2丁目",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "桃園団地",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "山津",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "山津町1丁目",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "山津町2丁目",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字小池原（池の平）の一部（高城南町）",
+      "elementary": "桃園小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字小池原（小池原2）",
+      "elementary": "明治北小学校",
+      "juniorHigh": "原川中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野高尾3丁目",
+      "elementary": "明野西小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野高尾4丁目",
+      "elementary": "明野西小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野西1丁目",
+      "elementary": "明野西小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野西2丁目",
+      "elementary": "明野西小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野南1丁目",
+      "elementary": "明野西小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野南2丁目",
+      "elementary": "明野西小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野南3丁目の一部（明野南町）",
+      "elementary": "明野西小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下郡〔赤坂タウン〕",
+      "elementary": "明野西小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野高尾1丁目",
+      "elementary": "明野東小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野高尾2丁目",
+      "elementary": "明野東小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野東1丁目",
+      "elementary": "明野東小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野東2丁目",
+      "elementary": "明野東小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野東3丁目",
+      "elementary": "明野東小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野東4丁目",
+      "elementary": "明野東小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野東5丁目",
+      "elementary": "明野東小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野南3丁目の一部（明野日の出）",
+      "elementary": "明野東小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野北1丁目",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野北2丁目",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野北3丁目",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野北4丁目",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野北5丁目",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "明野天然町",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "コモンライフ高城",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "サンランド高城",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高城台",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高城団地",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "則小池",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東原",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東原1丁目",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東原2丁目",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東原3丁目",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "法勝台1丁目",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字猪野（池の平）",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字小池原（池の平）の一部（高城南町を除く）",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字千歳（池の平）",
+      "elementary": "明野北小学校",
+      "juniorHigh": "明野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三佐1丁目",
+      "elementary": "三佐小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三佐2丁目",
+      "elementary": "三佐小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三佐3丁目",
+      "elementary": "三佐小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三佐4丁目",
+      "elementary": "三佐小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三佐5丁目",
+      "elementary": "三佐小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "三佐6丁目",
+      "elementary": "三佐小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字家島",
+      "elementary": "三佐小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字海原",
+      "elementary": "三佐小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中ノ洲",
+      "elementary": "三佐小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字三佐（三佐2区）",
+      "elementary": "三佐小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字三佐（三佐3区）",
+      "elementary": "三佐小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字三佐（三佐4区）",
+      "elementary": "三佐小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "乙津町",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "乙津港町1丁目5番・7番",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "乙津港町2丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "小中島1丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "小中島2丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "小中島3丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "北鶴崎1丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "北鶴崎2丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "徳島1丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "徳島2丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "徳島3丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中鶴崎1丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中鶴崎2丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "西鶴崎1丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "西鶴崎2丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "西鶴崎3丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東鶴崎1丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東鶴崎2丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東鶴崎3丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "南鶴崎1丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "南鶴崎2丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "南鶴崎3丁目",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字乙津（乙津）",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字小中島（小中島）",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字小中島（徳島）",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字鶴崎（国宗）",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字鶴崎（下鶴崎一）",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字鶴崎（下鶴崎二）",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字鶴崎（寺司）",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字鶴崎（徳島）",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字皆春（乙津）",
+      "elementary": "鶴崎小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "森町西1丁目",
+      "elementary": "別保小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "森町西2丁目",
+      "elementary": "別保小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "森町西3丁目",
+      "elementary": "別保小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "森町西4丁目",
+      "elementary": "別保小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "森町西5丁目",
+      "elementary": "別保小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "鶴崎コスモス団地<大字森町>",
+      "elementary": "別保小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字乙津（皆春）",
+      "elementary": "別保小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字葛木（森町）",
+      "elementary": "別保小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字葛木（森町団地）",
+      "elementary": "別保小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字皆春（皆春）",
+      "elementary": "別保小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字皆春（皆春西）",
+      "elementary": "別保小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字森（森町）",
+      "elementary": "別保小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字森町（花の木）",
+      "elementary": "別保小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字森町（皆春）",
+      "elementary": "別保小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字森町（森町）",
+      "elementary": "別保小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字森町（森町団地）",
+      "elementary": "別保小学校",
+      "juniorHigh": "鶴崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "久保山団地",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新明治1丁目",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新明治2丁目",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新明治3丁目",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新明治4丁目",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新明治5丁目",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新明治6丁目",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "横尾東町1丁目",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "横尾東町2丁目",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "横尾東町3丁目",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "横尾東町4丁目",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "パークヒルズ久保山",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字猪野（猪野中）の一部",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字猪野（猪野南）",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字葛木（葛木）の一部",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字森（猪野南）",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字横尾（猪野南）",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字横尾（岡原）",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字横尾（久保山町）",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字横尾（下組）",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字横尾（中筋）",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字横尾（二目川）",
+      "elementary": "明治小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "公園通り1丁目",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "公園通り2丁目",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "公園通り3丁目",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "公園通り4丁目",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "公園通り5丁目",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "公園通り西1丁目",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "公園通り西2丁目",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "京が丘南1丁目",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "京が丘南2丁目",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "京が丘南3丁目",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "京が丘南4丁目",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "京が丘南5丁目",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "京が丘南6丁目",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字大津留",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字毛井（大津留）",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字毛井（尾崎）",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字毛井（毛井）",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字毛井（真萱）",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字松岡（池の上）",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字松岡（大津留）",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字松岡（尾崎）",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字松岡（上松岡）",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字松岡（菰田）",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字松岡（下松岡）",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字松岡（成松）",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字松岡（舟本）",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字松岡（真萱）",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字松岡（門前）",
+      "elementary": "松岡小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "法勝台2丁目",
+      "elementary": "明治北小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "法勝台3丁目",
+      "elementary": "明治北小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字猪野（猪野2区）",
+      "elementary": "明治北小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字猪野（猪野中）の一部",
+      "elementary": "明治北小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字猪野（猪野下）",
+      "elementary": "明治北小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字猪野（葛木）",
+      "elementary": "明治北小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字猪野（浜田）",
+      "elementary": "明治北小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字猪野（ひまわり団地）",
+      "elementary": "明治北小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字葛木（猪野中）",
+      "elementary": "明治北小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字葛木（葛木）の一部",
+      "elementary": "明治北小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字小池原（小池原）",
+      "elementary": "明治北小学校",
+      "juniorHigh": "大東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下徳丸（亀甲）",
+      "elementary": "高田小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下徳丸（下徳丸）",
+      "elementary": "高田小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下徳丸（関門）",
+      "elementary": "高田小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下徳丸（常行）",
+      "elementary": "高田小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下徳丸（南）",
+      "elementary": "高田小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字関園（関門）",
+      "elementary": "高田小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字関園（常行）",
+      "elementary": "高田小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字関園（堂園）",
+      "elementary": "高田小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字常行",
+      "elementary": "高田小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字鶴瀬",
+      "elementary": "高田小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字丸亀（上徳丸）",
+      "elementary": "高田小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字丸亀（亀甲）",
+      "elementary": "高田小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字丸亀（下徳丸）",
+      "elementary": "高田小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字南",
+      "elementary": "高田小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "つるさき陽光台",
+      "elementary": "川添小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "宮河内ハイランド",
+      "elementary": "川添小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "リバーサイド若葉台",
+      "elementary": "川添小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字迫（迫）",
+      "elementary": "川添小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字種具（迫）",
+      "elementary": "川添小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字種具（種具）",
+      "elementary": "川添小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字広内",
+      "elementary": "川添小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字宮河内（金谷）",
+      "elementary": "川添小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字宮河内（杵河内）",
+      "elementary": "川添小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字宮河内（迫阿蘇入）",
+      "elementary": "川添小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字宮河内（新田）",
+      "elementary": "川添小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字宮河内（浄土寺）",
+      "elementary": "川添小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字宮河内（宮谷）",
+      "elementary": "川添小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "鶴崎コスモス団地<大字森>",
+      "elementary": "別保小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字葛木（葛木団地）",
+      "elementary": "別保小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字葛木（森）",
+      "elementary": "別保小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字森（葛木団地）",
+      "elementary": "別保小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字森（森）",
+      "elementary": "別保小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字森（森住宅団地）",
+      "elementary": "別保小学校",
+      "juniorHigh": "東陽中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "けやき台1丁目",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "けやき台2丁目",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "けやき台3丁目",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "けやき台4丁目",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "美園団地",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上戸次（利光）",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上戸次（戸次本町）",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上戸次（嶺）",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上戸次（門前）",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下戸次（大内）",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下戸次（尾津留）",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下戸次（楠木生）",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下戸次（備後）",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下戸次（戸次本町）",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中戸次（川床）",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中戸次（佐柳）",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中戸次（備後）",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中戸次（戸次本町）",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中戸次（門前）",
+      "elementary": "戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上戸次（上り尾）",
+      "elementary": "上戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上戸次（大塔）",
+      "elementary": "上戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上戸次（影の木）",
+      "elementary": "上戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上戸次（川原）",
+      "elementary": "上戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字端登（伊与床）",
+      "elementary": "上戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字端登（花香）",
+      "elementary": "上戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字端登（舟戸）",
+      "elementary": "上戸次小学校",
+      "juniorHigh": "戸次中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "梅が丘1丁目",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "梅が丘2丁目",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "梅が丘3丁目",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ロングヒル中央",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字奥（奥）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字奥（下志津留）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字奥（杉原）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字奥（萩尾）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字志津留（上志津留）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字志津留（下志津留）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字杉原（奥）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字杉原（杉原）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字月形（月形）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字月形（宮尾）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字辻（下志津留）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字辻（杉原）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字辻（月形）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字辻（辻）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字辻（宮尾）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字辻（吉野原）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字萩尾（奥）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字萩尾（杉原）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字萩尾（萩尾）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字福良",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字宮尾（月形）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字宮尾（福良）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字宮尾（宮尾）",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字吉野原",
+      "elementary": "吉野小学校",
+      "juniorHigh": "吉野中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字安藤（黒岩）",
+      "elementary": "竹中小学校",
+      "juniorHigh": "竹中中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字河原内（樫原）",
+      "elementary": "竹中小学校",
+      "juniorHigh": "竹中中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字河原内（黒仁田）",
+      "elementary": "竹中小学校",
+      "juniorHigh": "竹中中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字河原内（高城）",
+      "elementary": "竹中小学校",
+      "juniorHigh": "竹中中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字河原内（中野）",
+      "elementary": "竹中小学校",
+      "juniorHigh": "竹中中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字河原内（中無礼）",
+      "elementary": "竹中小学校",
+      "juniorHigh": "竹中中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字河原内（弓立）",
+      "elementary": "竹中小学校",
+      "juniorHigh": "竹中中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字竹中（上竹中）",
+      "elementary": "竹中小学校",
+      "juniorHigh": "竹中中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字竹中（上冬田）",
+      "elementary": "竹中小学校",
+      "juniorHigh": "竹中中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字竹中（下竹中）",
+      "elementary": "竹中小学校",
+      "juniorHigh": "竹中中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字竹中（中竹中）",
+      "elementary": "竹中小学校",
+      "juniorHigh": "竹中中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字竹中（冬田）",
+      "elementary": "竹中小学校",
+      "juniorHigh": "竹中中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字端登（岩上）",
+      "elementary": "竹中小学校",
+      "juniorHigh": "竹中中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字端登（河原）",
+      "elementary": "竹中小学校",
+      "juniorHigh": "竹中中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字端登（佐渡川）",
+      "elementary": "竹中小学校",
+      "juniorHigh": "竹中中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高江北1丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高江北2丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高江中央1丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高江中央2丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高江中央3丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高江西1丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高江西2丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高江南1丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高江南2丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高江南3丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "判田台北1丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "判田台北2丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "判田台北3丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "判田台北4丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "判田台東1丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "判田台東2丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "判田台南1丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "判田台南2丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "判田台南3丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "判田台南4丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ひばりケ丘1丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ひばりケ丘2丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ひばりケ丘3丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ひばりケ丘4丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ひばりケ丘5丁目",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上判田（赤仁田）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上判田（小岳）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上判田（実原）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上判田（住床）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上判田（地吉）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上判田（判田団地）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上判田（米良）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上判田（百木）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下判田（居村）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下判田（片野）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下判田（辰口）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下判田（大興寺）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下判田（つつじケ丘）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下判田（戸無瀬）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下判田（豊田）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下判田（中ノ原）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下判田（西新川）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下判田（判田団地）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下判田（東新川）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下判田（光永）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下判田（宮ノ原）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中判田（板山）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中判田（昆布刈）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中判田（庄屋村）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中判田（高江）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中判田（立小野）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中判田（つつじケ丘）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中判田（戸無瀬）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中判田（中ノ原）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中判田（西新川）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中判田（光永）",
+      "elementary": "判田小学校",
+      "juniorHigh": "判田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "雄城台",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "雄城台住宅地",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "雄城台団地",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "雄城台中央1丁目",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "雄城台中央2丁目",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "木上台1丁目",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "木上台2丁目",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "萌葱台1丁目",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "萌葱台2丁目",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字市（市）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字市（下芹）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木上（内稙田）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木上（大柳）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木上（上芹）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木上（木上）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木上（木上新町）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木上（木上団地）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木上（田島）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字口戸（露）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字口戸（口戸）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字口戸（田島）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字口戸（平野）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字高瀬（露）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字玉沢（粟野）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字玉沢（雄城）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字玉沢（桑本）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字玉沢（野添）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字廻栖野（胡麻鶴）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字廻栖野（塚野）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "上宗方南1丁目",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "上宗方南2丁目",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "上宗方南3丁目",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "椿ケ丘",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "椿が丘1丁目",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "椿が丘2丁目",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "二豊団地",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "松が丘1丁目",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "松が丘2丁目",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "松が丘3丁目",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "松が丘4丁目",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "宗方台北",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "宗方台西",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "宗方台東",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上宗方（上宗方）",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下宗方（下宗方）",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "敷戸北町",
+      "elementary": "敷戸小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "敷戸西町",
+      "elementary": "敷戸小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "敷戸東町",
+      "elementary": "敷戸小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "敷戸南町",
+      "elementary": "敷戸小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "敷戸台1丁目",
+      "elementary": "敷戸小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "敷戸台2丁目",
+      "elementary": "敷戸小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "星和台1丁目",
+      "elementary": "敷戸小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "星和台2丁目",
+      "elementary": "敷戸小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "芳河原",
+      "elementary": "敷戸小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "芳河原台（11番29号以外）",
+      "elementary": "敷戸小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "曲9組～11組",
+      "elementary": "敷戸小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大園団地",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "坂詰団地",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "サンシャインしきど",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "敷戸駅北町",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "敷戸新町",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "寒田田園町",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高江ハイツ",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "旦野原ハイツ西区",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "旦野原ハイツ東区",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東木団地",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "花の木坂",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字鴛野（鴛野）",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字鴛野（敷戸）",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字寒田（鴛野）",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字寒田（敷戸）",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字旦野原（大分大学）",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字旦野原（大分大学区）",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字旦野原（敷戸）",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字宮崎（鴛野）",
+      "elementary": "鴛野小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "美し野1丁目",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "美し野2丁目",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "サントピア西寒多",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "サントピア藤美園",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "寒田御苑",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "寒田ささむた苑",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "寒田南町1丁目",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "寒田南町2丁目",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "寒田南町3丁目",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "寒田南町4丁目",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "光吉御苑",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字鴛野（旦野原）",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字寒田（寒田）",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字寒田（旦野原）",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字旦野原（旦野原）",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田東中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "桜ヒルズ",
+      "elementary": "横瀬小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "富士見が丘西1丁目",
+      "elementary": "横瀬小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "富士見が丘西2丁目",
+      "elementary": "横瀬小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "富士見が丘西3丁目",
+      "elementary": "横瀬小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "富士見が丘西4丁目",
+      "elementary": "横瀬小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "富士見が丘東1丁目",
+      "elementary": "横瀬小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "富士見が丘東2丁目",
+      "elementary": "横瀬小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "富士見が丘東3丁目",
+      "elementary": "横瀬小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "富士見が丘東4丁目",
+      "elementary": "横瀬小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "富士見が丘東5丁目",
+      "elementary": "横瀬小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字横瀬（下横瀬）",
+      "elementary": "横瀬小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "緑ケ丘1丁目",
+      "elementary": "横瀬西小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "緑ケ丘2丁目",
+      "elementary": "横瀬西小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "緑ケ丘3丁目",
+      "elementary": "横瀬西小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "緑ケ丘4丁目",
+      "elementary": "横瀬西小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "緑ケ丘5丁目",
+      "elementary": "横瀬西小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字鬼崎",
+      "elementary": "横瀬西小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字横瀬（上横瀬）",
+      "elementary": "横瀬西小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字小野鶴（小野鶴市営住宅）",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字小野鶴（上小野鶴）",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字小野鶴（下小野鶴）",
+      "elementary": "宗方小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "小野鶴新町",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "小野鶴南1丁目",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "小野鶴南2丁目",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字田原（田原）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字田原（田原住宅）",
+      "elementary": "稙田小学校",
+      "juniorHigh": "稙田西中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "グランビュー光吉",
+      "elementary": "東稙田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "小原団地",
+      "elementary": "東稙田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "天領ハイツ",
+      "elementary": "東稙田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘北区",
+      "elementary": "東稙田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘北1丁目",
+      "elementary": "東稙田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘北2丁目",
+      "elementary": "東稙田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘西3丁目（1番12号～23号・2番を除く）",
+      "elementary": "東稙田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘東1丁目",
+      "elementary": "東稙田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘東2丁目",
+      "elementary": "東稙田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘東3丁目",
+      "elementary": "東稙田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "光吉新町",
+      "elementary": "東稙田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "光吉台",
+      "elementary": "東稙田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下宗方（八幡田）",
+      "elementary": "東稙田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字田尻の一部（森津、下田尻地区）",
+      "elementary": "東稙田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字光吉（光吉）",
+      "elementary": "東稙田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "田尻北",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "田尻中央",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "田尻西",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "田尻東",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "田尻南1丁目",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "田尻南2丁目",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘西区",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘西1丁目",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘西2丁目",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘西3丁目1番12号～23号・2番",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘南1丁目",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘南2丁目",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘南3丁目",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘山手区",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘山手1丁目",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘山手2丁目",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "ふじが丘山手3丁目",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字岡川（秋岡）",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字岡川（石川）",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字岡川（蕨野）",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上判田（石川）",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字高瀬（岡）",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字高瀬（高城）",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字高瀬（仲村）",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字田尻の一部（井ノ本、中園、畑田地区）",
+      "elementary": "田尻小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "スカイタウン寒田",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "寒田北町1丁目",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "寒田北町2丁目",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "寒田北町3丁目",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "寒田北町4丁目",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "寒田西町",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "寒田わかば台",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "宮崎台1丁目",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "宮崎台2丁目",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "宮崎台3丁目",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字寒田（小原）",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字曲（宮崎）",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字光吉（小原）",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字宮崎（小原）",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字宮崎（宮崎）",
+      "elementary": "寒田小学校",
+      "juniorHigh": "稙田南中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "賀来北1丁目19番",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "賀来北2丁目",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "賀来北3丁目",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "賀来西1丁目",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "賀来西2丁目",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "賀来南1丁目",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "賀来南2丁目",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "賀来南3丁目",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "国分新町",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "国分台",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "国分団地",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東野台1丁目",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東野台2丁目",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "東野台3丁目",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字賀来（上片面）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字賀来（車木）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字賀来（桑原）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字賀来（下片面）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字賀来（東院）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字賀来（中島）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字賀来（宮苑）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字賀来（餅田）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字賀来（脇）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字国分（国分一）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字国分（国分二）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字国分（国分三）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字国分（森ノ木）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字国分（脇）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字東院",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中尾（カームタウン野田）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中尾（中尾）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中尾（中島）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中尾（野田）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中尾（森ノ木）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字中尾（脇）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字野田（カームタウン野田）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字野田（野田）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字平横瀬",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字宮苑（宮苑）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字宮苑（餅田）",
+      "elementary": "賀来小学校",
+      "juniorHigh": "賀来中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大在中央1丁目",
+      "elementary": "大在小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大在中央2丁目",
+      "elementary": "大在小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "政所1丁目",
+      "elementary": "大在小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "政所2丁目",
+      "elementary": "大在小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "横田1丁目",
+      "elementary": "大在小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "横田2丁目",
+      "elementary": "大在小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "角子南2丁目3・4・5番",
+      "elementary": "大在小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字北（横田）",
+      "elementary": "大在小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字城原2709番地の16～18",
+      "elementary": "大在小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字政所（2340番地の3、6～16除く）",
+      "elementary": "大在小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字横田",
+      "elementary": "大在小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字角子原の一部",
+      "elementary": "大在小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "望みが丘",
+      "elementary": "大在小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "青崎1丁目",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "青崎2丁目",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大在北1丁目",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大在北2丁目",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大在北3丁目",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大在北4丁目",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "志村1丁目",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "志村2丁目",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "庄境",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "須賀1丁目",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "須賀2丁目",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "角子原1丁目",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "角子原2丁目",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "角子南1丁目",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "角子南2丁目1・2番",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "花江川",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字志村（上志村）",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字志村（　北　）",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字志村（下志村）",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字志村（角子原）",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字角子原の一部",
+      "elementary": "大在西小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "曙台1丁目",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "曙台2丁目",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "曙台3丁目",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "曙台4丁目",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大在浜1丁目",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大在浜2丁目",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "汐見1丁目",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "汐見2丁目",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "竹下1丁目",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "竹下2丁目",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "横塚1丁目",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "横塚2丁目",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字城原（2709番地の16～18除く）",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字政所2340番地の3、6～16",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字竹下（平野）",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字竹下（横塚）",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字浜（汐見）",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字浜（ 浜 ）",
+      "elementary": "大在東小学校",
+      "juniorHigh": "大在中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "恵比寿町",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "久原北",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "久原中央1丁目",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "久原中央2丁目",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "久原中央3丁目",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "久原中央4丁目",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "久原南1丁目",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "久原南2丁目",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "坂ノ市中央1丁目",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "坂ノ市中央2丁目",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "坂ノ市中央3丁目",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "坂ノ市中央4丁目",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "坂ノ市中央5丁目",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "坂ノ市西1丁目",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "坂ノ市西2丁目",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "坂ノ市南1丁目",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "坂ノ市南2丁目",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "坂ノ市南3丁目",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "坂ノ市南4丁目",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "浜中",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木田（尾田）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木田（上市）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木田（木田西部）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木田（木田東部）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木田（木田南部）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字久原（内久原）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字久原（上津）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字久原（東上野中央）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字久原（松崎）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字坂ノ市（市西）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字坂ノ市（駅通り）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字坂ノ市（尾田）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字坂ノ市（上市）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字坂ノ市（木田東部）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字坂ノ市（倉掛）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字坂ノ市（東本町）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字東上野（内久原）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字東上野（上市）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字東上野（東上野西部）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字東上野（東上野中央）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字東上野（東上野東部）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字東上野（細西部）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字細（細西部）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字細（細東部）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字細（細八丸）",
+      "elementary": "坂ノ市小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大分流通業務団地1丁目",
+      "elementary": "丹生小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大分流通業務団地2丁目",
+      "elementary": "丹生小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大分流通業務団地3丁目",
+      "elementary": "丹生小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字丹川（延命寺）",
+      "elementary": "丹生小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字丹川（上久所）",
+      "elementary": "丹生小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字丹川（佐野）",
+      "elementary": "丹生小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字丹川（下久所）",
+      "elementary": "丹生小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字丹川（野間）",
+      "elementary": "丹生小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字一木（一木）",
+      "elementary": "丹生小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字一木（丹生）",
+      "elementary": "丹生小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字久土（久土）",
+      "elementary": "丹生小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐野（佐野）",
+      "elementary": "丹生小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐野（佐野上）",
+      "elementary": "丹生小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字丹生（一木）",
+      "elementary": "丹生小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字丹生（佐野）",
+      "elementary": "丹生小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字丹生（丹生）",
+      "elementary": "丹生小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "王ノ瀬1丁目",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "王ノ瀬2丁目",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "小佐井1丁目",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "小佐井2丁目",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "小佐井3丁目",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "里1丁目",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "里2丁目",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "里3丁目",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字市尾（市尾上）",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字市尾（市尾下）",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字市尾（宮下）",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字市尾（屋山）",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字久土（屋山）",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字里（旭社宅）",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字里（王ノ瀬）",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字里（川南）",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字里（里中）",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字里（宮下）",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字里（山ノ手）",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字里（屋山）",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字屋山（宮下）",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字屋山（屋山）",
+      "elementary": "小佐井小学校",
+      "juniorHigh": "坂ノ市中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字大平（大平）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字大平（大志生木一）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木佐上（駅）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木佐上（木佐上一）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木佐上（木佐上二）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木佐上（木佐上三）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木佐上（木佐上四）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字木佐上（木佐上五）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字志生木（大志生木一）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字志生木（大志生木二）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字志生木（大志生木三）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字志生木（大志生木四）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字志生木（大志生木五）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字志生木（小志生木）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字馬場（木佐上一）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字馬場（中山）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字馬場（馬場）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字本神崎（駅）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字本神崎（大平）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字本神崎（河内）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字本神崎（小猫）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字本神崎（中）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字本神崎（中の原）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字本神崎（中山）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字本神崎（東上）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字本神崎（東下）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字本神崎（湊）",
+      "elementary": "こうざき小学校",
+      "juniorHigh": "神崎中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字一尺屋（江川）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字一尺屋（笠方）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字一尺屋（下河原）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字一尺屋（田の浦西）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字一尺屋（田の浦東）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字一尺屋（中江川）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字一尺屋（中上）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字一尺屋（中下）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字一尺屋（西上）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字一尺屋（西下）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字一尺屋（浜方）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字一尺屋（早出）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字一尺屋（東上）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字一尺屋（東下）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（黒砂）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（大黒）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（小浜）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（金山）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（神山）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（幸の浦）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（小黒）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（済美寮）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（迫）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（田尻）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（田中一）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（田中二）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（田中三）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（辻）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（鮮浜）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（西古宮社宅）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（西町）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（西脇）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（東古宮アパート）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（東町）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（福水）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（古宮）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（古屋敷）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（本町）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（真砂）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字佐賀関（御幸）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字志生木（辛幸一）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字志生木（辛幸二）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字志生木（光明園）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字志生木（緑ケ丘）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字白木（秋の江）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字白木（小浜）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字白木（汐見）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字白木（白木奥）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字白木（白木浜）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字白木（玉井）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字白木（見尾）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字白木（室生）",
+      "elementary": "佐賀関小学校",
+      "juniorHigh": "佐賀関中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字入蔵（入蔵）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字入蔵（吉熊）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字入蔵（日方羽原）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字辻原（岡倉）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字辻原（辻原）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字野津原（愛宕）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字野津原（恵良）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字野津原（柿野）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字野津原（小屋鶴）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字野津原（新川）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字野津原（新町）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字野津原（なゝせ）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字野津原（舟ケ平）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字野津原（本町）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字福宗（警察学校）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字福宗（福宗一）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字福宗（福宗二）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字福宗（舟ケ平）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字廻栖野（看大住宅）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字廻栖野（新界）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字廻栖野（廻栖）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字廻栖野（廻栖住宅）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字太田（今畑）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字太田（太田）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字太田（田ノ口）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字太田（原村）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字沢田（沢田）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字沢田（朝海）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字沢田（山峰）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下原（太田）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下原（長尾台）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下原（原村）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字下原（下詰）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字竹矢（太田）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字竹矢（竹の内）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字竹矢（矢ノ原）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上詰（上詰）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字上詰（湛水）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字今市（石合）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字今市（石合原）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字今市（一本櫟）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字今市（今市町）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字今市（上石合）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字今市（白家）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字今市（摺）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字今市（練ケ迫）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字今市（山中）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字高原（小原）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字高原（高沢）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字荷尾杵（杵ヶ原）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "大字荷尾杵（荷小野）",
+      "elementary": "野津原小学校",
+      "juniorHigh": "野津原中学校",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "芦崎",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "泉町",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "寿町",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "城崎町1丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "城崎町2丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "城崎町3丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新川西1丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新川西2丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新川町1丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "新川町2丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "末広町1丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "住吉町1丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "住吉町2丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "碩田町1丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "碩田町2丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "碩田町3丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "高砂町",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中央町1丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中央町2丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中央町3丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中央町4丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "千代町1丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "千代町2丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "千代町3丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "千代町4丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "豊海1丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "豊海2丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "豊海3丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "豊海4丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "豊海5丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中島中央1丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中島中央2丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中島中央3丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中島西1丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中島西2丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中島西3丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中島東1丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中島東2丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "中島東3丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "荷揚町",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "浜町北",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "浜町東",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "府内町2丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "府内町3丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "弁天1丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "弁天2丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "弁天3丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "都町1丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "都町2丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "都町3丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "都町4丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "豊町1丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "大分市",
+      "town": "豊町2丁目",
+      "elementary": "-",
+      "juniorHigh": "碩田学園",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "青山町",
+      "elementary": "山の手",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "大観山町",
+      "elementary": "上人",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "赤松",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "竹の内町",
+      "elementary": "大平山",
+      "juniorHigh": "朝日",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "秋葉町",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "立田町",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "朝日ヶ丘町",
+      "elementary": "大平山",
+      "juniorHigh": "朝日",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "田の口",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "朝見一丁目の一部",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "田の湯",
+      "elementary": "山の手",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "中央町",
+      "elementary": "山の手",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "千代町",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "朝見一丁目の一部（上記以外）",
+      "elementary": "山の手",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "朝見二丁目",
+      "elementary": "山の手",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "鶴見一丁目の一部",
+      "elementary": "鶴見",
+      "juniorHigh": "青山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "朝見三丁目",
+      "elementary": "山の手",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "天間",
+      "elementary": "朝日",
+      "juniorHigh": "朝日",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "石垣東一丁目～三丁目",
+      "elementary": "境川",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "石垣東四丁目～七丁目",
+      "elementary": "石垣",
+      "juniorHigh": "鶴見台",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "石垣東八丁目～十丁目",
+      "elementary": "春木川",
+      "juniorHigh": "鶴見台",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "石垣西一丁目～三丁目",
+      "elementary": "境川",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "鶴見二丁目の一部",
+      "elementary": "鶴見",
+      "juniorHigh": "青山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "石垣西四丁目～九丁目",
+      "elementary": "石垣",
+      "juniorHigh": "鶴見台",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "石垣西十丁目1～4番の一部",
+      "elementary": "春木川",
+      "juniorHigh": "鶴見台",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "鶴見三丁目",
+      "elementary": "鶴見",
+      "juniorHigh": "青山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "鶴見四丁目25番",
+      "elementary": "鶴見",
+      "juniorHigh": "青山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "鶴見一丁目、二丁目、四丁目の一部（上記以外）",
+      "elementary": "緑丘",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "石垣西十丁目1～4番の一部（上記以外）",
+      "elementary": "石垣",
+      "juniorHigh": "鶴見台",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "鶴見園町",
+      "elementary": "南立石",
+      "juniorHigh": "青山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "石垣西十丁目5番～10番",
+      "elementary": "春木川",
+      "juniorHigh": "鶴見台",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "井田",
+      "elementary": "朝日",
+      "juniorHigh": "朝日",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "天満町",
+      "elementary": "境川",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "内竈",
+      "elementary": "亀川",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "鳥越",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "内成",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "浦田",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "中島町",
+      "elementary": "山の手",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "駅前町",
+      "elementary": "別府中央",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "中須賀東町",
+      "elementary": "春木川",
+      "juniorHigh": "鶴見台",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "駅前本町",
+      "elementary": "別府中央",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "中須賀本町",
+      "elementary": "春木川",
+      "juniorHigh": "鶴見台",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "枝郷",
+      "elementary": "東山",
+      "juniorHigh": "東山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "中須賀元町",
+      "elementary": "春木川",
+      "juniorHigh": "鶴見台",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "扇山",
+      "elementary": "鶴見",
+      "juniorHigh": "青山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "西野口町",
+      "elementary": "山の手",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "小倉町",
+      "elementary": "大平山",
+      "juniorHigh": "朝日",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "小坂",
+      "elementary": "亀川",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "野口中町",
+      "elementary": "別府中央",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "大所",
+      "elementary": "亀川",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "野口元町",
+      "elementary": "別府中央",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "乙原",
+      "elementary": "山の手",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "野田",
+      "elementary": "亀川",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "大畑町",
+      "elementary": "大平山",
+      "juniorHigh": "朝日",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "馬場",
+      "elementary": "朝日",
+      "juniorHigh": "朝日",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "上田の湯町",
+      "elementary": "山の手",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "浜町",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "上野口町",
+      "elementary": "境川",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "浜脇1丁目～3丁目",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "上原町",
+      "elementary": "山の手",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "原町",
+      "elementary": "山の手",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "上平田町",
+      "elementary": "上人",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "春木町",
+      "elementary": "春木川",
+      "juniorHigh": "鶴見台",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "亀川四の湯町1区",
+      "elementary": "亀川",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "亀川四の湯町2区",
+      "elementary": "上人",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "光町",
+      "elementary": "山の手",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "亀川中央町",
+      "elementary": "亀川",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "東荘園一丁目～三丁目",
+      "elementary": "境川",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "亀川浜田町",
+      "elementary": "亀川",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "東荘園四丁目～九丁目",
+      "elementary": "緑丘",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "亀川東町5～28番",
+      "elementary": "亀川",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "東山一区",
+      "elementary": "東山",
+      "juniorHigh": "東山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "亀川東町1～4番",
+      "elementary": "上人",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "東山二区",
+      "elementary": "東山",
+      "juniorHigh": "東山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "観海寺町",
+      "elementary": "南立石",
+      "juniorHigh": "青山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "平田町",
+      "elementary": "上人",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "鉄輪上",
+      "elementary": "朝日",
+      "juniorHigh": "朝日",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "鉄輪東",
+      "elementary": "朝日",
+      "juniorHigh": "朝日",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "富士見町",
+      "elementary": "別府中央",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "船小路町",
+      "elementary": "春木川",
+      "juniorHigh": "鶴見台",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "城島",
+      "elementary": "東山",
+      "juniorHigh": "東山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "古市町",
+      "elementary": "亀川",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "北鉄輪",
+      "elementary": "朝日",
+      "juniorHigh": "朝日",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "風呂本",
+      "elementary": "朝日",
+      "juniorHigh": "朝日",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "北中",
+      "elementary": "朝日",
+      "juniorHigh": "朝日",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "北浜一丁目～三丁目",
+      "elementary": "別府中央",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "火売",
+      "elementary": "朝日",
+      "juniorHigh": "朝日",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "北的ケ浜町",
+      "elementary": "別府中央",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "堀田町",
+      "elementary": "南立石",
+      "juniorHigh": "青山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "京町",
+      "elementary": "別府中央",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "松原町",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "楠町",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "国立",
+      "elementary": "亀川",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "緑丘町",
+      "elementary": "緑丘",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "南須賀町",
+      "elementary": "石垣",
+      "juniorHigh": "鶴見台",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "河内",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "南荘園町",
+      "elementary": "南立石",
+      "juniorHigh": "青山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "古賀原",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "南立石生目町",
+      "elementary": "南立石",
+      "juniorHigh": "青山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "南立石板地町",
+      "elementary": "南立石",
+      "juniorHigh": "青山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "幸町",
+      "elementary": "別府中央",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "南立石中津留町",
+      "elementary": "南立石",
+      "juniorHigh": "青山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "桜ヶ丘",
+      "elementary": "春木川",
+      "juniorHigh": "鶴見台",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "南立石公園町",
+      "elementary": "南立石",
+      "juniorHigh": "青山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "南立石八幡町",
+      "elementary": "南立石",
+      "juniorHigh": "青山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "汐見町",
+      "elementary": "春木川",
+      "juniorHigh": "鶴見台",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "南立石本町",
+      "elementary": "南立石",
+      "juniorHigh": "青山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "実相寺町",
+      "elementary": "緑丘",
+      "juniorHigh": "鶴見台",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "南町",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "上人仲町",
+      "elementary": "上人",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "南的ケ浜町",
+      "elementary": "別府中央",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "上人本町",
+      "elementary": "上人",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "御幸",
+      "elementary": "朝日",
+      "juniorHigh": "朝日",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "上人西",
+      "elementary": "上人",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "明礬",
+      "elementary": "朝日",
+      "juniorHigh": "朝日",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "上人南",
+      "elementary": "春木川",
+      "juniorHigh": "鶴見台",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "上人ケ浜町",
+      "elementary": "上人",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "餅ケ浜町",
+      "elementary": "別府中央",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "照波園町",
+      "elementary": "上人",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "元町",
+      "elementary": "別府中央",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "新別府町",
+      "elementary": "朝日",
+      "juniorHigh": "朝日",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "新港町",
+      "elementary": "別府中央",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "柳",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "山家",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "末広町",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "山の口",
+      "elementary": "東山",
+      "juniorHigh": "東山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "スパランド豊海",
+      "elementary": "亀川",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "山の手",
+      "elementary": "山の手",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "山の手新町",
+      "elementary": "山の手",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "関の江新町",
+      "elementary": "亀川",
+      "juniorHigh": "北部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "弓ケ浜町",
+      "elementary": "別府中央",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "荘園（光の園以外）",
+      "elementary": "鶴見",
+      "juniorHigh": "青山",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "湯山",
+      "elementary": "朝日",
+      "juniorHigh": "朝日",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "荘園（光の園のみ）",
+      "elementary": "緑丘",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "荘園北町",
+      "elementary": "緑丘",
+      "juniorHigh": "中部",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "両郡橋",
+      "elementary": "南",
+      "juniorHigh": "別府西",
+      "note": ""
+    },
+    {
+      "city": "別府市",
+      "town": "若草町",
+      "elementary": "別府中央",
+      "juniorHigh": "中部",
+      "note": ""
+    }
+  ]
+}
