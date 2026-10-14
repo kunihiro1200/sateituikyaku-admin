@@ -493,6 +493,33 @@ export default function AttachedDocument2Page() {
         mansion_has_elevator:     d.mansion_has_elevator     || '',
       });
 
+      // 交通アクセスを自動補完（seller_attached_document2 に未保存の場合のみ transit_access から読み込む）
+      if (!d.nearest_station_name && !d.nearest_bus_stop_name && sellerData.sellerNumber) {
+        try {
+          const transitRes = await api.get(`/api/transit-access/seller/${sellerData.sellerNumber}`);
+          const transitRecords: Array<{
+            transport_type: string; rank: number;
+            name: string | null; walk_minutes: number | null;
+            is_manually_corrected: boolean; manual_name: string | null; manual_walk_minutes: number | null;
+          }> = transitRes.data.data ?? [];
+          const station = transitRecords.find(r => r.transport_type === 'station' && r.rank === 1);
+          const busStop = transitRecords.find(r => r.transport_type === 'bus_stop' && r.rank === 1);
+          const getName = (r: typeof station) =>
+            (r?.is_manually_corrected && r?.manual_name) ? r.manual_name! : (r?.name ?? '');
+          const getWalk = (r: typeof station) =>
+            (r?.is_manually_corrected && r?.manual_walk_minutes != null)
+              ? String(r.manual_walk_minutes)
+              : (r?.walk_minutes != null ? String(r.walk_minutes) : '');
+          if (station || busStop) {
+            setFields(prev => ({
+              ...prev,
+              ...(station ? { nearest_station_name: getName(station), nearest_station_walk: getWalk(station) } : {}),
+              ...(busStop  ? { nearest_bus_stop_name: getName(busStop), nearest_bus_stop_walk: getWalk(busStop) } : {}),
+            }));
+          }
+        } catch { /* 自動補完失敗はサイレント（必須ではないため） */ }
+      }
+
       // マンション建物情報が未入力の場合、seller_apartment_building_info から自動補完
       // （保存済みの値がある場合は上書きしない）
       const fetchedPropertyType = sellerData.property?.propertyType || (sellerData as any).propertyType || '';
