@@ -610,6 +610,7 @@ export default function AttachedDocument2Page() {
   // ---- 交通アクセス自動入力（seller_transit_access の rank=1 を取得）----
 
   const handleTransitAutoFetch = async () => {
+    console.log('[TransitAutoFetch] START seller:', seller?.sellerNumber ?? 'undefined');
     if (!seller?.sellerNumber) {
       setTransitFetchError('売主番号が取得できませんでした。ページを再読み込みしてください。');
       return;
@@ -617,6 +618,7 @@ export default function AttachedDocument2Page() {
     setTransitFetching(true);
     setTransitFetchError(null);
     try {
+      console.log('[TransitAutoFetch] calling API for:', seller.sellerNumber);
       const res = await api.get(`/api/transit-access/seller/${seller.sellerNumber}`);
       const records: Array<{
         transport_type: 'station' | 'bus_stop';
@@ -630,7 +632,7 @@ export default function AttachedDocument2Page() {
         manual_walk_minutes: number | null;
       }> = res.data.data ?? [];
 
-      console.log('[TransitAutoFetch] sellerNumber:', seller.sellerNumber, 'records:', records.length);
+      console.log('[TransitAutoFetch] records:', records.length, records);
 
       const station  = records.find(r => r.transport_type === 'station'  && r.rank === 1);
       const busStop  = records.find(r => r.transport_type === 'bus_stop' && r.rank === 1);
