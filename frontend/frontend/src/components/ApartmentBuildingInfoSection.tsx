@@ -47,6 +47,17 @@ interface ApartmentBuildingData {
   data_source: string | null;
   fetched_at: string | null;
   fetch_error: string | null;
+  listings: ListingItem[] | null;
+  listings_fetched_at: string | null;
+}
+
+interface ListingItem {
+  url: string;
+  floor: number | null;
+  area_sqm: number | null;
+  price_yen: number | null;
+  price_label: string | null;
+  room_type: string | null;
 }
 
 interface ApartmentBuildingInfoSectionProps {
@@ -132,6 +143,8 @@ export const ApartmentBuildingInfoSection: React.FC<ApartmentBuildingInfoSection
   const [loading, setLoading] = useState(false);   // DB 読み込み中
   const [fetching, setFetching] = useState(false); // Web 取得中
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [fetchingListings, setFetchingListings] = useState(false); // 売り出し取得中
+  const [listingsError, setListingsError] = useState<string | null>(null);
 
   // ── DB キャッシュ読み込み ──
   const loadData = useCallback(async () => {
@@ -168,6 +181,22 @@ export const ApartmentBuildingInfoSection: React.FC<ApartmentBuildingInfoSection
       setFetchError(msg);
     } finally {
       setFetching(false);
+    }
+  };
+
+  // ── 売り出し物件取得 ──
+  const handleFetchListings = async () => {
+    setFetchingListings(true);
+    setListingsError(null);
+    try {
+      const res = await api.post(`/api/apartment-info/seller/${sellerNumber}/fetch-listings`);
+      // listings を現在の data にマージして表示
+      setData(prev => prev ? { ...prev, listings: res.data.listings, listings_fetched_at: new Date().toISOString() } : prev);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error ?? '売り出し情報の取得に失敗しました';
+      setListingsError(msg);
+    } finally {
+      setFetchingListings(false);
     }
   };
 
@@ -456,6 +485,113 @@ export const ApartmentBuildingInfoSection: React.FC<ApartmentBuildingInfoSection
               >
                 ／ 出典: {data.data_source}
               </Typography>
+            )}
+          </Box>
+
+          {/* ── 売り出し物件一覧 ── */}
+          <Box sx={{ mt: 1, pt: 0.75, borderTop: '1px solid #ffe082' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+              <Typography variant="caption" sx={{ fontWeight: 'bold', fontSize: '0.72rem' }}>
+                🏷️ 同一棟の売り出し
+              </Typography>
+              <Box sx={{ flex: 1 }} />
+              {fetchingListings ? (
+                <CircularProgress size={12} />
+              ) : (
+                <Tooltip title={data.listings ? '再取得' : 'SUUMO・AtHomeで売り出し確認'} placement="top">
+                  <Typography
+                    component="span"
+                    variant="caption"
+                    sx={{
+                      fontSize: '0.68rem',
+                      color: 'primary.main',
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      '&:hover': { color: 'primary.dark' },
+                    }}
+                    onClick={handleFetchListings}
+                  >
+                    {data.listings ? '再確認' : '確認する'}
+                  </Typography>
+                </Tooltip>
+              )}
+            </Box>
+
+            {listingsError && (
+              <Alert severity="warning" sx={{ py: 0, px: 1, fontSize: '0.65rem', '& .MuiAlert-message': { py: 0.3 } }}>
+                {listingsError}
+              </Alert>
+            )}
+
+            {data.listings === null && !data.listings_fetched_at && !listingsError && (
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>
+                未確認 —
+              </Typography>
+            )}
+
+            {data.listings && data.listings.length === 0 && (
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>
+                現在売り出し中の物件はありません
+              </Typography>
+            )}
+
+            {data.listings && data.listings.length > 0 && (
+              <Box>
+                {data.listings.map((item, idx) => (
+                  <Box
+                    key={idx}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.75,
+                      py: 0.4,
+                      borderBottom: idx < data.listings!.length - 1 ? '1px solid #fff3cd' : 'none',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    {/* 価格（大きく） */}
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: '0.78rem', minWidth: 70 }}>
+                      {item.price_label ?? (item.price_yen ? `${(item.price_yen / 10000).toLocaleString()}万円` : '—')}
+                    </Typography>
+                    {/* 間取り */}
+                    {item.room_type && (
+                      <Typography variant="caption" sx={{ fontSize: '0.68rem', color: 'text.secondary' }}>
+                        {item.room_type}
+                      </Typography>
+                    )}
+                    {/* 階数 */}
+                    {item.floor != null && (
+                      <Typography variant="caption" sx={{ fontSize: '0.68rem', color: 'text.secondary' }}>
+                        {item.floor}階
+                      </Typography>
+                    )}
+                    {/* 専有面積 */}
+                    {item.area_sqm != null && (
+                      <Typography variant="caption" sx={{ fontSize: '0.68rem', color: 'text.secondary' }}>
+                        {item.area_sqm}m²
+                      </Typography>
+                    )}
+                    {/* URL リンク */}
+                    {item.url && (
+                      <Typography
+                        component="a"
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="caption"
+                        sx={{ fontSize: '0.62rem', color: 'primary.main', ml: 'auto' }}
+                      >
+                        詳細
+                      </Typography>
+                    )}
+                  </Box>
+                ))}
+                {data.listings_fetched_at && (
+                  <Typography variant="caption" sx={{ fontSize: '0.58rem', color: 'text.disabled', mt: 0.25, display: 'block' }}>
+                    確認: {formatDate(data.listings_fetched_at)}
+                  </Typography>
+                )}
+              </Box>
             )}
           </Box>
         </>

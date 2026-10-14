@@ -551,3 +551,148 @@ router.post('/seller/:sellerNumber/fetch', async (req: Request, res: Response) =
 });
 
 export default router;
+
+// ──────────────────────────────────────────────
+// POST /api/apartment-info/seller/:sellerNumber/fetch-listings
+// 同一マンションの現在の売り出し物件を SUUMO / AtHome から取得・保存
+// ──────────────────────────────────────────────
+
+router.post('/seller/:sellerNumber/fetch-listings', async (req: Request, res: Response) => {
+  const { sellerNumber } = req.params;
+
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (!anthropicKey) {
+    return res.status(503).json({ error: 'ANTHROPIC_API_KEY が設定されていません' });
+  }
+
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+  );
+
+  try {
+    // 1. DB から建物名と物件住所を取得
+    const [{ data: seller }, { data: buildingData }] = await Promise.all([
+      supabase.from('sellers').select('property_address').eq('seller_number', sellerNumber).single(),
+      supabase.from('seller_apartment_building_info').select('building_name').eq('seller_number', sellerNumber).single(),
+    ]);
+
+    if (!seller) {
+      return res.status(404).json({ error: '売主が見つかりません' });
+    }
+
+    const propertyAddress: string = seller.property_address || '';
+    const buildingName: string =
+      buildingData?.building_name ||
+      extractBuildingNameFromAddress(propertyAddress) ||
+      '';
+
+    if (!buildingName) {
+      return res.status(422).json({
+        error: 'マンション名が特定できません。先に建物情報を取得してください。',
+      });
+    }
+
+    console.log(`[apartmentInfo/listings] searching: "${buildingName}"`);
+
+    const jinaApiKey = process.env.JINA_API_KEY;
+    const jinaHeaders: Record<string, string> = {
+      Accept: 'text/plain',
+      'X-Return-Format': 'markdown',
+    };
+    if (jinaApiKey) jinaHeaders['Authorization'] = `Bearer ${jinaApiKey}`;
+
+    const fetchPage = async (url: string): Promise<string> => {
+      const r = await axios.get(`https://r.jina.ai/${url}`, {
+        headers: jinaHeaders,
+        timeout: 25000,
+      });
+      return typeof r.data === 'string' ? r.data : JSON.stringify(r.data);
+    };
+
+    // 2. SUUMO 中古マンション検索 + AtHome 中古マンション検索 + DuckDuckGo を並列取得
+    const suumoSearchUrl = `https://suumo.jp/ms/mansion/?q=${encodeURIComponent(buildingName)}`;
+    const athomeSearchUrl = `https://www.athome.co.jp/mansion/chuko/list/?q=${encodeURIComponent(buildingName)}`;
+    const ddgSearchUrl    = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(`"${buildingName}" 中古マンション 売り出し 価格 専有面積 階`)}`;
+
+    const [suumoText, athomeText, ddgText] = await Promise.allSettled([
+      fetchPage(suumoSearchUrl),
+      fetchPage(athomeSearchUrl),
+      fetchPage(ddgSearchUrl),
+    ]).then(results => results.map(r => (r.status === 'fulfilled' ? r.value : '')));
+
+    const combinedContent = [
+      suumoText ? `## SUUMO中古マンション検索（${suumoSearchUrl}）\n${suumoText.substring(0, 3000)}` : '',
+      athomeText ? `## AtHome中古マンション検索（${athomeSearchUrl}）\n${athomeText.substring(0, 3000)}` : '',
+      ddgText    ? `## DuckDuckGo検索スニペット\n${ddgText.substring(0, 2000)}` : '',
+    ].filter(Boolean).join('\n\n');
+
+    if (!combinedContent || combinedContent.length < 200) {
+      return res.status(422).json({ error: '売り出し情報を検索できませんでした' });
+    }
+
+    // 3. Claude で売り出し一覧を抽出
+    const client = new Anthropic({ apiKey: anthropicKey });
+    const prompt = `以下はSUUMOとAtHomeの「${buildingName}」の中古マンション検索結果です。
+現在売り出し中の物件（同一マンション内）の一覧を抽出してください。
+
+${combinedContent}
+
+## 抽出ルール
+- 「${buildingName}」と同じマンション内の物件のみ抽出する
+- 確実に確認できた情報のみ記載する（推測しない）
+- 価格は円単位の整数（例: 24800000）
+- 専有面積は m² の数値（例: 65.5）
+- 階数は整数（例: 3）
+- URL は完全なhttps://...形式で記載
+- 最大10件まで
+- 売り出し物件が見つからない場合は空配列を返す
+
+## 出力形式（JSONのみ・コードブロック不要）
+[
+  {
+    "url": "https://suumo.jp/...",
+    "floor": 3,
+    "area_sqm": 65.5,
+    "price_yen": 24800000,
+    "price_label": "2,480万円",
+    "room_type": "3LDK"
+  }
+]`;
+
+    const claudeRes = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const responseText = claudeRes.content[0].type === 'text' ? claudeRes.content[0].text.trim() : '';
+    const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      return res.status(422).json({ error: '売り出し情報の解析に失敗しました', raw: responseText.substring(0, 200) });
+    }
+
+    const listings = JSON.parse(jsonMatch[0]);
+
+    // 4. DB に upsert（listings カラムを更新）
+    const now = new Date().toISOString();
+    await supabase
+      .from('seller_apartment_building_info')
+      .upsert(
+        {
+          seller_number: sellerNumber,
+          listings,
+          listings_fetched_at: now,
+          updated_at: now,
+        },
+        { onConflict: 'seller_number' }
+      );
+
+    return res.json({ listings, count: listings.length, building_name: buildingName });
+  } catch (err: any) {
+    console.error('[apartmentInfo/fetch-listings] error:', err?.message);
+    return res.status(500).json({ error: '売り出し情報の取得に失敗しました', details: err?.message });
+  }
+});
+
+export default router;
