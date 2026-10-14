@@ -768,9 +768,6 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
         lat: juniorHighSchoolResult?.lat ?? null,
         lng: juniorHighSchoolResult?.lng ?? null,
         districtConfirmed: jhDistConfirmed,
-        // 取得元・データ基準日（仕様#5）
-        dataSource: jhDistrict?.source ?? null,       // 'fukuoka_official' or 'xkt005'
-        dataDate: jhDistrict?.dataDate ?? null,        // '20251226' or '20240401'
         notAvailableReason: (!jhDistConfirmed && !juniorHighSchoolResult?.name) ? 'DISTRICT_NOT_FOUND' : null,
       },
     });
@@ -885,13 +882,18 @@ function findMiddleSchoolDistrict(lat: number, lng: number): {
   return null; // 判定不可（近隣校で代用しない）
 }
 
-/**
- * XKT005 API で中学校区を判定する
+// ---- XKT005: タイル座標変換 ----
+function latLngToTileXY(lat: number, lng: number, z: number): { x: number; y: number } {
+  const n = Math.pow(2, z);
+  const x = Math.floor((lng + 180.0) / 360.0 * n);
+  const latRad = lat * Math.PI / 180.0;
+  const y = Math.floor((1.0 - Math.log(Math.tan(latRad) + 1.0 / Math.cos(latRad)) / Math.PI) / 2.0 * n);
+  return { x, y };
+}
+
 /**
  * XKT005 API で中学校区を判定する
  * z=11→12→13 の順に試し、タイル境界問題を回避する
- * - 成功: { name: 学校名, adminCode: 行政区域コード }
- * - 見つからない / APIエラー: null
  */
 async function fetchJuniorHighSchoolDistrict(
   lat: number,
