@@ -626,8 +626,58 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
       const candidates = (nearbyRes.data.results || []).filter((r: any) => /小学校/.test(r.name));
       const schoolName = candidates[0]?.name || elementarySchoolNameFromDistrict || '小学校';
       elementarySchoolResult = { name: schoolName, lat: customElemLat, lng: customElemLng, districtConfirmed: true };
+    } else if (elementarySchoolNameFromDistrict) {
+      // ---- 学区名が確定している場合: Find Place API で名前指定検索（Nearby Searchより精確）----
+      // 住所対応表・GeoJSONで確定した学校名を使って座標を取得する。
+      // Nearby Searchは最近接校を返すため、境界付近で隣の学校が返ることがある。
+      const placeCoords = await findSchoolCoordsByName(elementarySchoolNameFromDistrict, latNum, lngNum, apiKey);
+      if (placeCoords) {
+        elementarySchoolResult = {
+          name: elementarySchoolNameFromDistrict,
+          lat: placeCoords.lat,
+          lng: placeCoords.lng,
+          districtConfirmed: true,
+        };
+      } else {
+        // Find Place にヒットなし → Nearby Search で名前一致を試みる
+        const nearbyRes2 = await axios.get(
+          'https://maps.googleapis.com/maps/api/place/nearbysearch/json',
+          {
+            params: {
+              location: `${latNum},${lngNum}`,
+              radius: 5000,
+              type: 'school',
+              keyword: '小学校',
+              language: 'ja',
+              key: apiKey,
+            },
+            timeout: 10000,
+          }
+        );
+        const candidates2: any[] = (nearbyRes2.data.results || []).filter((r: any) => /小学校/.test(r.name));
+        const matched2 = candidates2.find((c: any) =>
+          c.name.includes(elementarySchoolNameFromDistrict!) ||
+          (elementarySchoolNameFromDistrict!).includes(c.name.replace(/^.*立/, ''))
+        );
+        if (matched2) {
+          elementarySchoolResult = {
+            name: matched2.name,
+            lat: matched2.geometry.location.lat,
+            lng: matched2.geometry.location.lng,
+            districtConfirmed: true,
+          };
+        } else {
+          // 座標不明だが学区名は確定
+          elementarySchoolResult = {
+            name: elementarySchoolNameFromDistrict,
+            lat: latNum,
+            lng: lngNum,
+            districtConfirmed: true,
+          };
+        }
+      }
     } else {
-      // Places Nearby Search で5km以内の小学校一覧を取得し、学区名に最も近いものを選ぶ
+      // ---- 学区名が不明な場合のみ Nearby Search で最近接校を使用 ----
       const nearbyRes = await axios.get(
         'https://maps.googleapis.com/maps/api/place/nearbysearch/json',
         {
@@ -643,30 +693,12 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
         }
       );
       const candidates: any[] = (nearbyRes.data.results || []).filter((r: any) => /小学校/.test(r.name));
-
       if (candidates.length > 0) {
-        // GeoJSON で判定した学校名と照合（部分一致）
-        let bestCandidate = candidates[0];
-        if (elementarySchoolNameFromDistrict) {
-          const matched = candidates.find((c: any) =>
-            c.name.includes(elementarySchoolNameFromDistrict!) ||
-            (elementarySchoolNameFromDistrict!).includes(c.name.replace(/^.*立/, ''))
-          );
-          if (matched) bestCandidate = matched;
-        }
         elementarySchoolResult = {
-          name: bestCandidate.name,
-          lat: bestCandidate.geometry.location.lat,
-          lng: bestCandidate.geometry.location.lng,
-          districtConfirmed: !!elementarySchoolNameFromDistrict,
-        };
-      } else if (elementarySchoolNameFromDistrict) {
-        // Places API にヒットなし → GeoJSON の学校名のみ返す（距離は計算不能）
-        elementarySchoolResult = {
-          name: elementarySchoolNameFromDistrict,
-          lat: latNum,
-          lng: lngNum,
-          districtConfirmed: true,
+          name: candidates[0].name,
+          lat: candidates[0].geometry.location.lat,
+          lng: candidates[0].geometry.location.lng,
+          districtConfirmed: false,
         };
       }
     }
