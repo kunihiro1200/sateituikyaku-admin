@@ -67,6 +67,16 @@ export interface AttachedDocument2Data {
   solar_panel?: string | null;
   incident_info?: string | null;
   minpaku?: string | null;
+  // マンション建物情報（外部建物情報から自動補完）
+  mansion_building_name?: string | null;
+  mansion_built_year_month?: string | null;
+  mansion_floors_above?: number | null;
+  mansion_floors_below?: number | null;
+  mansion_total_units?: number | null;
+  mansion_structure?: string | null;
+  mansion_developer?: string | null;
+  mansion_management_type?: string | null;
+  mansion_has_elevator?: string | null;
   // 学校距離・正門座標（Google Maps Directions API取得）
   elementary_school_distance?: number | null;
   elementary_school_entrance_lat?: number | null;
@@ -226,6 +236,16 @@ router.put('/sellers/:sellerId/attached-document2', async (req: Request, res: Re
       solar_panel: body.solar_panel || null,
       incident_info: body.incident_info || null,
       minpaku: body.minpaku || null,
+      // マンション建物情報
+      mansion_building_name:    body.mansion_building_name    || null,
+      mansion_built_year_month: body.mansion_built_year_month || null,
+      mansion_floors_above:     body.mansion_floors_above     != null ? Number(body.mansion_floors_above)     : null,
+      mansion_floors_below:     body.mansion_floors_below     != null ? Number(body.mansion_floors_below)     : null,
+      mansion_total_units:      body.mansion_total_units      != null ? Number(body.mansion_total_units)      : null,
+      mansion_structure:        body.mansion_structure        || null,
+      mansion_developer:        body.mansion_developer        || null,
+      mansion_management_type:  body.mansion_management_type  || null,
+      mansion_has_elevator:     body.mansion_has_elevator     || null,
       tokuten_cleaning: !!body.tokuten_cleaning,
       tokuten_garden: !!body.tokuten_garden,
       tokuten_wallpaper: !!body.tokuten_wallpaper,

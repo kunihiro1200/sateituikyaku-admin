@@ -120,6 +120,16 @@ interface DocumentFields {
   // 交通アクセス確認チェックボックス
   nearest_station_confirmed: boolean;
   nearest_bus_stop_confirmed: boolean;
+  // マンション建物情報（外部建物情報から自動補完）
+  mansion_building_name: string;
+  mansion_built_year_month: string;
+  mansion_floors_above: string;
+  mansion_floors_below: string;
+  mansion_total_units: string;
+  mansion_structure: string;
+  mansion_developer: string;
+  mansion_management_type: string;
+  mansion_has_elevator: string;
 }
 
 const EMPTY_FIELDS: DocumentFields = {
@@ -179,6 +189,16 @@ const EMPTY_FIELDS: DocumentFields = {
   junior_high_school_confirmed: false,
   nearest_station_confirmed: false,
   nearest_bus_stop_confirmed: false,
+  // マンション建物情報
+  mansion_building_name: '',
+  mansion_built_year_month: '',
+  mansion_floors_above: '',
+  mansion_floors_below: '',
+  mansion_total_units: '',
+  mansion_structure: '',
+  mansion_developer: '',
+  mansion_management_type: '',
+  mansion_has_elevator: '',
 };
 
 const fmt = (amount?: number) =>
@@ -461,7 +481,50 @@ export default function AttachedDocument2Page() {
         junior_high_school_confirmed: !!d.junior_high_school_confirmed,
         nearest_station_confirmed: !!d.nearest_station_confirmed,
         nearest_bus_stop_confirmed: !!d.nearest_bus_stop_confirmed,
+        // マンション建物情報（DBに保存済みがあればそちらを使い、なければ外部建物情報から補完）
+        mansion_building_name:    d.mansion_building_name    || '',
+        mansion_built_year_month: d.mansion_built_year_month || '',
+        mansion_floors_above:     d.mansion_floors_above     != null ? String(d.mansion_floors_above)  : '',
+        mansion_floors_below:     d.mansion_floors_below     != null ? String(d.mansion_floors_below)  : '',
+        mansion_total_units:      d.mansion_total_units      != null ? String(d.mansion_total_units)   : '',
+        mansion_structure:        d.mansion_structure        || '',
+        mansion_developer:        d.mansion_developer        || '',
+        mansion_management_type:  d.mansion_management_type  || '',
+        mansion_has_elevator:     d.mansion_has_elevator     || '',
       });
+
+      // マンション建物情報が未入力の場合、seller_apartment_building_info から自動補完
+      // （保存済みの値がある場合は上書きしない）
+      const fetchedPropertyType = sellerData.property?.propertyType || sellerData.propertyType || '';
+      const isMansionType = fetchedPropertyType === 'apartment' || fetchedPropertyType === 'マ' || fetchedPropertyType === 'マンション';
+      if (isMansionType) {
+        try {
+          const sellerNum = sellerData.seller_number;
+          if (sellerNum) {
+            const apartRes = await api.get(`/api/apartment-info/seller/${sellerNum}`);
+            const ai = apartRes.data.data;
+            if (ai) {
+              setFields((prev) => ({
+                ...prev,
+                mansion_building_name:    prev.mansion_building_name    || ai.building_name    || '',
+                mansion_built_year_month: prev.mansion_built_year_month || ai.built_year_month || '',
+                mansion_floors_above:     prev.mansion_floors_above     || (ai.total_floors_above  != null ? String(ai.total_floors_above)  : ''),
+                mansion_floors_below:     prev.mansion_floors_below     || (ai.total_floors_below  != null ? String(ai.total_floors_below)  : ''),
+                mansion_total_units:      prev.mansion_total_units      || (ai.total_units          != null ? String(ai.total_units)          : ''),
+                mansion_structure:        prev.mansion_structure        || ai.structure            || '',
+                mansion_developer:        prev.mansion_developer        || ai.developer_company    || '',
+                mansion_management_type:  prev.mansion_management_type  || ai.management_type      || '',
+                mansion_has_elevator:     prev.mansion_has_elevator     || ai.has_elevator         || '',
+                // 管理会社は既存フィールドへ補完
+                management_company:       prev.management_company       || ai.management_company   || '',
+                // 施工会社も補完
+                construction_company:     prev.construction_company     || ai.construction_company || '',
+              }));
+            }
+          }
+        } catch { /* 自動補完失敗はサイレント */ }
+      }
+
       setIsDirty(false);
     } catch (err: any) {
       setError('データの取得に失敗しました');
@@ -1214,6 +1277,36 @@ export default function AttachedDocument2Page() {
                     ))}
                   </Box>
                 </Paper>
+
+                {/* ── マンション建物情報（外部建物情報から自動補完・編集可能） ── */}
+                <Paper variant="outlined" sx={{ p: 1, mb: 1, bgcolor: '#fffde7' }}>
+                  <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', mb: 0.5 }}>マンション建物情報</Typography>
+                  {([
+                    { key: 'mansion_building_name'    as const, label: 'マンション名' },
+                    { key: 'mansion_built_year_month' as const, label: '築年月' },
+                    { key: 'mansion_floors_above'     as const, label: '地上階数' },
+                    { key: 'mansion_total_units'      as const, label: '総戸数' },
+                    { key: 'mansion_structure'        as const, label: '建物構造' },
+                    { key: 'mansion_management_type'  as const, label: '管理形態' },
+                    { key: 'mansion_has_elevator'     as const, label: 'エレベーター' },
+                    { key: 'mansion_developer'        as const, label: '分譲会社' },
+                    { key: 'construction_company'     as const, label: '施工会社' },
+                  ]).map((f) => (
+                    <Box key={f.key} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.4, borderBottom: '1px solid #f0f0f0' }}>
+                      <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, width: 80 }}>{f.label}</Typography>
+                      <TextField
+                        fullWidth size="small"
+                        value={fields[f.key] as string}
+                        onChange={(e) => set(f.key, e.target.value)}
+                        sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' } }}
+                      />
+                    </Box>
+                  ))}
+                  <Typography sx={{ fontSize: '7.5pt', color: '#999', mt: 0.5 }}>
+                    ※ マンション情報セクションから自動補完。管理会社は下の欄へ反映済み。
+                  </Typography>
+                </Paper>
+
                 <Box sx={{ textAlign: 'center', py: 0.8, mb: 1 }}>
                   <Typography sx={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#666', letterSpacing: 1 }}>
                     ＝＝＝＝＝ここから訪問時記入＝＝＝＝＝
