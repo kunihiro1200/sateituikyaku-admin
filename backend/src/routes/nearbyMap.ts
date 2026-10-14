@@ -541,18 +541,7 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     const inFukuokaArea = lngNum >= 130.0 && lngNum <= 130.5 && latNum >= 33.4 && latNum <= 33.9;
     const propertyAddressParam = (req.query.propertyAddress as string | undefined) || '';
 
-    // デバッグログ: 受信した住所を確認
-    console.log(`[nearbyMap/school-walk] lat=${latNum} lng=${lngNum} address="${propertyAddressParam.substring(0, 50)}"`);
-    console.log(`[nearbyMap/school-walk] inFukuoka=${lngNum >= 130.0 && lngNum <= 130.5 && latNum >= 33.4 && latNum <= 33.9}`);
-
-    // レスポンスに含めるデバッグ情報
-    const debugInfo: Record<string, any> = {
-      propertyAddress: propertyAddressParam,
-      inFukuokaArea,
-      addressTableRecords: 0,
-      addressTableHit: false,
-      addressTableResult: null,
-    };
+    const propertyAddressParam = (req.query.propertyAddress as string | undefined) || '';
 
     let elementarySchoolNameFromDistrict: string | null = null;
     let elementaryDistrictSource = 'xkt004';
@@ -564,7 +553,6 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
       try {
         const map = loadFukuokaAddressMapInRoute();
         const records = map.records as any[];
-        debugInfo.addressTableRecords = records?.length ?? 0;
         if (records?.length > 0) {
           // アドレスを parseAddress と同等ロジックでパース
           const wardM = propertyAddressParam.match(/([東南西北博多中央城南早良]+区)/);
@@ -586,8 +574,6 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
                   elementaryConfidence = 'confirmed';
                   // 中学校も同時取得
                   (req as any)._jhFromAddressTable = best.juniorHigh;
-                  debugInfo.addressTableHit = true;
-                  debugInfo.addressTableResult = `${best.elementary} / ${best.juniorHigh}`;
                   console.log(`[nearbyMap] 住所対応表ヒット: ${best.elementary} / ${best.juniorHigh} (${ward} ${tc})`);
                   break;
                 }
@@ -841,7 +827,6 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     const jhHasCoords = !!(juniorHighSchoolResult?.lat && juniorHighSchoolResult?.lng);
 
     return res.json({
-      _debug: debugInfo,
       elementarySchool: elementarySchoolResult
         ? {
             name: elementarySchoolResult.name,
