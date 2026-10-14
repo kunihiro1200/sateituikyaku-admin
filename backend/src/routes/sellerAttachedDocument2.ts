@@ -234,10 +234,8 @@ router.put('/sellers/:sellerId/attached-document2', async (req: Request, res: Re
       tokuten_fee_discount: !!body.tokuten_fee_discount,
       tokuten_bridge_loan: !!body.tokuten_bridge_loan,
       tokuten_key_exchange: !!body.tokuten_key_exchange,
-      elementary_school_confirmed: !!body.elementary_school_confirmed,
-      junior_high_school_confirmed: !!body.junior_high_school_confirmed,
-      nearest_station_confirmed: !!body.nearest_station_confirmed,
-      nearest_bus_stop_confirmed: !!body.nearest_bus_stop_confirmed,
+      // 注意: 以下の確認フラグはPATCHエンドポイント専用で更新する
+      // PUT(全体upsert)には含めない → DBにカラムが存在しなくてもPUTが失敗しない
       updated_at: new Date().toISOString(),
       updated_by: body.updated_by || null,
     };
