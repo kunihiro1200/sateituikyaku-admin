@@ -205,7 +205,7 @@ export const ApartmentBuildingInfoSection: React.FC<ApartmentBuildingInfoSection
           variant="subtitle2"
           sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}
         >
-          🏢 外部建物情報
+          🏢 マンション情報
         </Typography>
         <Tooltip
           title="Jina AI Search（Web検索）と Claude API を使用してマンション建物情報を自動取得します。取得できる項目はWebに公開されている情報に限られます。"
