@@ -687,6 +687,9 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
         lat: juniorHighSchoolResult?.lat ?? null,
         lng: juniorHighSchoolResult?.lng ?? null,
         districtConfirmed: jhDistConfirmed,
+        // 取得元・データ基準日（仕様#5）
+        dataSource: jhDistrict?.source ?? null,       // 'fukuoka_official' or 'xkt005'
+        dataDate: jhDistrict?.dataDate ?? null,        // '20251226' or '20240401'
         notAvailableReason: (!jhDistConfirmed && !juniorHighSchoolResult?.name) ? 'DISTRICT_NOT_FOUND' : null,
       },
     });
@@ -711,34 +714,78 @@ function loadMiddleSchoolDistricts() {
   return middleSchoolDistrictsData;
 }
 
+// ---- 福岡市公式中学校区データ（2025/12/26版）----
+// 国土数値情報（XKT005）に福岡市のデータが存在しないため、市公式Shapefileから変換
+// 出典: https://webmap.city.fukuoka.lg.jp/fukuoka/OpenData
+let fukuokaMiddleSchoolData: any = null;
+function loadFukuokaMiddleSchoolDistricts() {
+  if (fukuokaMiddleSchoolData) return fukuokaMiddleSchoolData;
+  try {
+    fukuokaMiddleSchoolData = require('../data/fukuoka-middle-school-districts.json');
+    console.log(`[nearbyMap] 福岡市中学校区データ読み込み完了: ${fukuokaMiddleSchoolData.features?.length ?? 0}校区`);
+  } catch (err: any) {
+    console.warn('[nearbyMap] 福岡市中学校区データの読み込みに失敗:', err.message);
+    fukuokaMiddleSchoolData = { type: 'FeatureCollection', features: [] };
+  }
+  return fukuokaMiddleSchoolData;
+}
+
 /**
- * 指定座標が属する中学校区を返す（小学校区と同じPoint-in-Polygon方式）
- * XKT005 API への依存なし・REINFOLIB_API_KEY 不要
+ * 指定座標が属する中学校区を返す
+ * - 福岡市内（lng 130.0-130.5, lat 33.4-33.9）: 福岡市公式データ優先
+ * - その他: 国土数値情報（XKT005）から生成したデータを使用
+ * - 判定できない場合: null を返す（近隣校で代用しない）
  */
-function findMiddleSchoolDistrict(lat: number, lng: number): { name: string; adminCode: string } | null {
-  const data = loadMiddleSchoolDistricts();
-  if (!data.features?.length) return null;
+function findMiddleSchoolDistrict(lat: number, lng: number): {
+  name: string;
+  adminCode: string;
+  source: string;
+  dataDate: string;
+} | null {
+  // 福岡市の大まかな範囲チェック（lng 130.0-130.5, lat 33.4-33.9）
+  const inFukuokaArea = lng >= 130.0 && lng <= 130.5 && lat >= 33.4 && lat <= 33.9;
 
-  for (const feature of data.features) {
-    const geomType = feature.geometry?.type;
-    let matched = false;
+  const searchTargets: Array<{ data: any; source: string; dataDate: string }> = [];
 
-    if (geomType === 'Polygon') {
-      const rings = feature.geometry.coordinates;
-      if (rings?.length > 0 && pointInPolygon(lat, lng, rings[0])) matched = true;
-    } else if (geomType === 'MultiPolygon') {
-      for (const rings of feature.geometry.coordinates) {
-        if (rings?.length > 0 && pointInPolygon(lat, lng, rings[0])) { matched = true; break; }
+  if (inFukuokaArea) {
+    // 福岡市エリア: 公式データを最優先
+    searchTargets.push({
+      data: loadFukuokaMiddleSchoolDistricts(),
+      source: 'fukuoka_official',
+      dataDate: '20251226',
+    });
+  }
+  // XKT005データ（他エリアまたはフォールバック）
+  searchTargets.push({
+    data: loadMiddleSchoolDistricts(),
+    source: 'xkt005',
+    dataDate: '20240401',
+  });
+
+  for (const target of searchTargets) {
+    const features = target.data?.features ?? [];
+    for (const feature of features) {
+      const geomType = feature.geometry?.type;
+      let matched = false;
+
+      if (geomType === 'Polygon') {
+        const rings = feature.geometry.coordinates;
+        if (rings?.length > 0 && pointInPolygon(lat, lng, rings[0])) matched = true;
+      } else if (geomType === 'MultiPolygon') {
+        for (const rings of feature.geometry.coordinates) {
+          if (rings?.length > 0 && pointInPolygon(lat, lng, rings[0])) { matched = true; break; }
+        }
+      }
+
+      if (matched) {
+        const name = feature.properties?.name || feature.properties?.A32_004_ja || feature.properties?.A32_002 || null;
+        const adminCode = feature.properties?.adminCode || feature.properties?.A32_001 || '';
+        if (name) return { name, adminCode, source: target.source, dataDate: target.dataDate };
       }
     }
-
-    if (matched) {
-      const name = feature.properties?.name || feature.properties?.A32_004_ja || feature.properties?.A32_002 || null;
-      const adminCode = feature.properties?.adminCode || feature.properties?.A32_001 || '';
-      if (name) return { name, adminCode };
-    }
   }
-  return null;
+
+  return null; // 判定不可（近隣校で代用しない）
 }
 
 /**

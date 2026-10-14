@@ -42,11 +42,13 @@ import api from '../services/api';
 interface SchoolInfo {
   name: string;
   distanceMeters: number | null;
-  walkMinutes: string | null;    // "17" または "17〜22"（範囲表示）
+  walkMinutes: string | null;
   lat: number | null;
   lng: number | null;
   districtConfirmed: boolean;
   isEstimated?: boolean;
+  dataSource?: string | null;  // 'fukuoka_official' | 'xkt005' | null
+  dataDate?: string | null;    // '20251226' など
 }
 
 interface SchoolDistanceSectionProps {
@@ -310,6 +312,20 @@ const SchoolCard: React.FC<SchoolCardProps> = ({
             sx={{ fontSize: '9px', height: 18 }}
           />
         ) : null}
+        {info.dataSource === 'fukuoka_official' && (
+          <Chip
+            label="福岡市公式"
+            size="small"
+            sx={{ fontSize: '9px', height: 18, bgcolor: '#e3f2fd', color: '#1565c0', ml: 0.3 }}
+          />
+        )}
+        {info.dataSource === 'xkt005' && (
+          <Chip
+            label="国土数値情報"
+            size="small"
+            sx={{ fontSize: '9px', height: 18, bgcolor: '#f3e5f5', color: '#6a1b9a', ml: 0.3 }}
+          />
+        )}
         {hasCustomEntrance && (
           <Chip
             label="正門設定済"
@@ -519,6 +535,8 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
           lng: data.juniorHighSchool.lng,
           districtConfirmed: data.juniorHighSchool.districtConfirmed,
           isEstimated: data.juniorHighSchool.isEstimated ?? true,
+          dataSource: data.juniorHighSchool.dataSource ?? null,
+          dataDate: data.juniorHighSchool.dataDate ?? null,
         });
       }
 
