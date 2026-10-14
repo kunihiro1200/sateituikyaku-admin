@@ -1155,6 +1155,7 @@ app.use('/api/hazard', hazardAnalyzeRoutes); // ハザードマップAI解析（
 app.use('/api/hazard-info', hazardInfoRoutes); // ハザード情報自動取得（Reinfolib API・認証不要）
 app.use('/api/transit-access', transitAccessRoutes); // 交通アクセス自動取得（Google Maps Places API・認証不要）
 app.use('/api/apartment-info', apartmentInfoRoutes); // マンション外部建物情報（Jina + Claude・認証不要）
+app.use('/api', buildMiddleSchoolDistrictsRoutes); // 中学校区GeoJSONデータ生成（トークン認証・認証不要セクション）
 // ─── Drive同期エンドポイント（/api キャッチオールより必ず前に登録） ─────────────────
 
 /**
@@ -1368,7 +1369,6 @@ app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/property-listing-sync', propertyListingSyncRoutes);
 app.use('/api/staff-sync', staffSyncRoutes); // スタッフ同期API
 app.use('/api/nearby-map', nearbyMapRoutes); // 近隣MAPapi
-app.use('/api', buildMiddleSchoolDistrictsRoutes); // 中学校区GeoJSONデータ生成（一回限り）
 app.use('/api/youto-chiiki', youtoChiikiRoutes); // 用途地域取得API（不動産情報ライブラリ）
 app.use('/api/distribution-history', distributionHistoryRoutes); // 他社物件配信履歴
 app.use('/api/property-preview', propertyPreviewRoutes); // 物件プレビュー（認証不要・公開）
