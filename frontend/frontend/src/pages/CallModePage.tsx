@@ -8370,7 +8370,9 @@ HP：https://ifoo-oita.com/
 
             {/* 交通アクセス自動取得（物件情報の直下、独立セクション） */}
             {seller?.sellerNumber && (
-              <TransitAccessPanel sellerNumber={seller.sellerNumber} />
+              <CollapsibleSection title="🚌 交通アクセス" defaultExpanded={false} headerColor="#fff8e1">
+                <TransitAccessPanel sellerNumber={seller.sellerNumber} />
+              </CollapsibleSection>
             )}
 
             {/* 地図表示（売主番号が設定されている場合のみ表示） */}
@@ -8388,15 +8390,19 @@ HP：https://ifoo-oita.com/
                   sellerNumber={seller.sellerNumber}
                   sellerId={seller.id}
                   propertyAddress={property?.address || seller?.propertyAddress}
+                  compact={true}
                 />
               </CollapsibleSection>
             )}
 
             {/* マンション外部建物情報（マンション種別のみ表示） */}
+            {/* マンション外部建物情報（マンション種別のみ表示） */}
             {isApartmentType && seller?.sellerNumber && (
-              <ApartmentBuildingInfoSection
-                sellerNumber={seller.sellerNumber}
-              />
+              <CollapsibleSection title="🏢 マンション建物情報" defaultExpanded={false} headerColor="#e3f2fd">
+                <ApartmentBuildingInfoSection
+                  sellerNumber={seller.sellerNumber}
+                />
+              </CollapsibleSection>
             )}
 
             {/* 売主情報 */}

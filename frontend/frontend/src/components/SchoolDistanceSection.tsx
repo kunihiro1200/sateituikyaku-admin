@@ -55,6 +55,8 @@ interface SchoolDistanceSectionProps {
   sellerNumber: string;
   sellerId: string;
   propertyAddress?: string;
+  /** CollapsibleSection内で使用する場合はtrueにする（内部ヘッダーを非表示） */
+  compact?: boolean;
 }
 
 // ---- 自治体公式学区ページURL ----
@@ -436,7 +438,7 @@ function computeWalkDisplay(meters: number, googleMinutes?: number | null): stri
 }
 
 const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
-  sellerNumber, sellerId, propertyAddress,
+  sellerNumber, sellerId, propertyAddress, compact = false,
 }) => {
   const { isLoaded } = useGoogleMaps(); // EntranceMapModal 用のみ
   const [elementarySchool, setElementarySchool] = useState<SchoolInfo>(EMPTY_SCHOOL);
@@ -650,25 +652,33 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
       <Paper
         variant="outlined"
         sx={{
-          mt: 2,
-          p: 2,
-          borderColor: '#1565c0',
+          mt: compact ? 0 : 2,
+          p: compact ? 1.5 : 2,
+          borderColor: compact ? 'transparent' : '#1565c0',
           borderRadius: 2,
-          bgcolor: '#fafcff',
+          bgcolor: compact ? 'transparent' : '#fafcff',
+          boxShadow: compact ? 'none' : undefined,
         }}
       >
-        {/* ヘッダー */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
-          <SchoolIcon sx={{ color: '#1565c0', fontSize: 20 }} />
-          <Typography variant="subtitle1" fontWeight="bold" sx={{ color: '#1565c0' }}>
-            学校区・徒歩距離
-          </Typography>
-          {fetchedAt && (
-            <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-              取得日時: {new Date(fetchedAt).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+        {/* ヘッダー（compactモードでは非表示） */}
+        {!compact && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
+            <SchoolIcon sx={{ color: '#1565c0', fontSize: 20 }} />
+            <Typography variant="subtitle1" fontWeight="bold" sx={{ color: '#1565c0' }}>
+              学校区・徒歩距離
             </Typography>
-          )}
-        </Box>
+            {fetchedAt && (
+              <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                取得日時: {new Date(fetchedAt).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </Typography>
+            )}
+          </Box>
+        )}
+        {compact && fetchedAt && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+            取得日時: {new Date(fetchedAt).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </Typography>
+        )}
 
         {/* 注意書き */}
         <Alert severity="info" sx={{ mb: 1.5, py: 0.5, fontSize: '11px' }}>
