@@ -8383,11 +8383,13 @@ HP：https://ifoo-oita.com/
 
             {/* 学校区・徒歩距離（売主番号とIDが設定されている場合のみ表示） */}
             {seller?.sellerNumber && seller?.id && (
-              <SchoolDistanceSection
-                sellerNumber={seller.sellerNumber}
-                sellerId={seller.id}
-                propertyAddress={property?.address || seller?.propertyAddress}
-              />
+              <CollapsibleSection title="🏫 学校区・徒歩距離" defaultExpanded={false} headerColor="#e8f5e9">
+                <SchoolDistanceSection
+                  sellerNumber={seller.sellerNumber}
+                  sellerId={seller.id}
+                  propertyAddress={property?.address || seller?.propertyAddress}
+                />
+              </CollapsibleSection>
             )}
 
             {/* マンション外部建物情報（マンション種別のみ表示） */}
