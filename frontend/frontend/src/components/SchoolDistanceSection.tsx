@@ -502,10 +502,13 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
     setFetchError(null);
     setSaveSuccess(false);
     try {
-      // 1. 物件の座標を取得
+      // 1. 物件の座標と住所を取得（propertyAddressは住所対応表照合に使用）
       const coordRes = await api.get(`/api/sellers/by-number/${sellerNumber}`);
       const propertyLat: number = coordRes.data.latitude;
       const propertyLng: number = coordRes.data.longitude;
+      // API レスポンスから住所を取得（prop が undefined の場合のフォールバック）
+      const sellerPropertyAddress: string = coordRes.data.propertyAddress || '';
+      const addressToUse = propertyAddress || sellerPropertyAddress;
 
       if (!propertyLat || !propertyLng) {
         setFetchError('物件の座標が未設定です。地図（PropertyMap）で物件の位置を設定してください。');
@@ -515,7 +518,7 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
       // 2. バックエンドで学校名・座標・道路距離を一括取得
       // 物件住所を渡すことで番地レベルの正確な学区照合が可能
       const params: Record<string, string | number> = { lat: propertyLat, lng: propertyLng };
-      if (propertyAddress) params.propertyAddress = propertyAddress;
+      if (addressToUse) params.propertyAddress = addressToUse;
       if (customElemEntrance) {
         params.elementaryLat = customElemEntrance.lat;
         params.elementaryLng = customElemEntrance.lng;

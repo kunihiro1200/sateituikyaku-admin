@@ -632,17 +632,23 @@ export default function AttachedDocument2Page() {
     setSchoolFetching(true);
     setSchoolFetchError(null);
     try {
-      // 1. 物件座標を取得
+      // 1. 物件座標と住所を取得
       const coordRes = await api.get(`/api/sellers/by-number/${seller.sellerNumber}`);
       const lat: number = coordRes.data.latitude;
       const lng: number = coordRes.data.longitude;
+      // API レスポンスから住所取得（prop よりも確実）
+      const addressFromApi: string = coordRes.data.propertyAddress || '';
+      const addressToUse = addressFromApi || propertyAddress || '';
+
       if (!lat || !lng) {
         setSchoolFetchError('物件の座標が未設定です。通話モードの地図で位置を設定してください。');
         return;
       }
 
-      // 2. バックエンドで学校名・座標・道路距離を一括取得（Routes API / Directions API はバックエンドで処理）
-      const res = await api.get('/api/nearby-map/school-walk', { params: { lat, lng } });
+      // 2. バックエンドで学校名・座標・道路距離を一括取得（住所を渡して番地レベル照合）
+      const res = await api.get('/api/nearby-map/school-walk', {
+        params: { lat, lng, ...(addressToUse ? { propertyAddress: addressToUse } : {}) }
+      });
       const data = res.data;
 
       // 徒歩時間文字列生成
