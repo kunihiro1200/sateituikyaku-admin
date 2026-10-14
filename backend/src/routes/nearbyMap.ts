@@ -616,9 +616,8 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
       }
     }
 
-    // ---- 中学校: XKT005（国土数値情報 中学校区）で指定校を判定 ----
-    // REINFOLIB_API_KEY がある場合のみ有効。ない場合は「学区未確認」として返す。
-    // ※ 近隣中学校を指定校として自動設定しない（学区と最寄り校は必ずしも一致しない）
+    // ---- 中学校: 静的GeoJSONファイルで Point-in-Polygon 判定（小学校と同じ方式）----
+    // XKT005 API・REINFOLIB_API_KEY 不要
     let juniorHighSchoolResult: {
       name: string | null; lat: number | null; lng: number | null; districtConfirmed: boolean;
     } | null = null;
@@ -626,71 +625,32 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     const customJhLat = juniorHighLat ? parseFloat(juniorHighLat as string) : null;
     const customJhLng = juniorHighLng ? parseFloat(juniorHighLng as string) : null;
 
-    const reinfilibKey = process.env.REINFOLIB_API_KEY;
+    // Point-in-Polygon で指定中学校区を判定
+    const jhDistrict = findMiddleSchoolDistrict(latNum, lngNum);
 
-    if (reinfilibKey) {
-      // ---- XKT005 で中学校区ポリゴンを取得 → Point-in-Polygon 判定 ----
-      const xkt005Result = await fetchJuniorHighSchoolDistrict(latNum, lngNum, reinfilibKey);
+    if (jhDistrict) {
+      // 判定成功: 指定校名が確定
+      let jhLat = customJhLat;
+      let jhLng = customJhLng;
 
-      if (xkt005Result && xkt005Result.name) {
-        // 判定成功: 指定校名が確定
-        let jhLat = customJhLat;
-        let jhLng = customJhLng;
-
-        if (!jhLat || !jhLng) {
-          const placeCoords = await findSchoolCoordsByName(xkt005Result.name, latNum, lngNum, apiKey);
-          jhLat = placeCoords?.lat ?? null;
-          jhLng = placeCoords?.lng ?? null;
-        }
-
-        juniorHighSchoolResult = {
-          name: xkt005Result.name,
-          lat: jhLat,
-          lng: jhLng,
-          districtConfirmed: true,
-        };
-        console.log(`[nearbyMap] XKT005 中学校区判定成功: ${xkt005Result.name}`);
-      } else if (xkt005Result && xkt005Result.name === null) {
-        // 401 による失敗（キー無効）
-        juniorHighSchoolResult = { name: null, lat: null, lng: null, districtConfirmed: false };
-        console.error('[nearbyMap] XKT005: APIキーが無効（401）');
-      } else {
-        // XKT005 応答はあるが該当区域なし
-        juniorHighSchoolResult = { name: null, lat: null, lng: null, districtConfirmed: false };
-        console.warn('[nearbyMap] XKT005: 該当中学校区なし（学区未確認）');
+      if (!jhLat || !jhLng) {
+        // Places API で学校座標を取得
+        const placeCoords = await findSchoolCoordsByName(jhDistrict.name, latNum, lngNum, apiKey);
+        jhLat = placeCoords?.lat ?? null;
+        jhLng = placeCoords?.lng ?? null;
       }
-    } else if (customJhLat && customJhLng) {
-      // APIキーなしだが正門座標は設定済み → 座標付近の学校名だけ取得（参考）
-      const nearbyRes = await axios.get(
-        'https://maps.googleapis.com/maps/api/place/nearbysearch/json',
-        {
-          params: {
-            location: `${customJhLat},${customJhLng}`,
-            radius: 300,
-            type: 'school',
-            keyword: '中学校',
-            language: 'ja',
-            key: apiKey,
-          },
-          timeout: 10000,
-        }
-      );
-      const candidates = (nearbyRes.data.results || []).filter((r: any) => /中学校/.test(r.name));
+
       juniorHighSchoolResult = {
-        name: candidates[0]?.name ?? null,
-        lat: customJhLat,
-        lng: customJhLng,
-        districtConfirmed: false, // APIキーなし → 学区未確認
+        name: jhDistrict.name,
+        lat: jhLat,
+        lng: jhLng,
+        districtConfirmed: true,
       };
+      console.log(`[nearbyMap] 中学校区判定成功: ${jhDistrict.name}`);
     } else {
-      // APIキーなし・カスタム座標なし → 学区未確認として返す（近隣校は設定しない）
-      juniorHighSchoolResult = {
-        name: null,
-        lat: null,
-        lng: null,
-        districtConfirmed: false,
-      };
-      console.warn('[nearbyMap] REINFOLIB_API_KEY 未設定 → 中学校区は学区未確認');
+      // GeoJSONデータに該当区域なし（エリア外等）
+      juniorHighSchoolResult = { name: null, lat: null, lng: null, districtConfirmed: false };
+      console.warn('[nearbyMap] 中学校区: GeoJSONにヒットなし');
     }
 
     // ---- Directions API で徒歩ルート距離を並列計算 ----
@@ -703,8 +663,9 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
         : Promise.resolve(null),
     ]);
 
-    // xkt005401: APIキー無効フラグ（fetchJuniorHighSchoolDistrict から伝播）
-    const jhXkt005Invalid = reinfilibKey && juniorHighSchoolResult?.name === null && !juniorHighSchoolResult?.districtConfirmed;
+    // ---- レスポンス組み立て ----
+    const jhDistConfirmed = juniorHighSchoolResult?.districtConfirmed ?? false;
+    const jhHasCoords = !!(juniorHighSchoolResult?.lat && juniorHighSchoolResult?.lng);
 
     return res.json({
       elementarySchool: elementarySchoolResult
@@ -726,9 +687,7 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
         lat: juniorHighSchoolResult?.lat ?? null,
         lng: juniorHighSchoolResult?.lng ?? null,
         districtConfirmed: jhDistConfirmed,
-        notAvailableReason: !reinfilibKey
-          ? 'REINFOLIB_API_KEY_NOT_SET'
-          : (jhXkt005Invalid ? 'DISTRICT_NOT_FOUND' : null),
+        notAvailableReason: (!jhDistConfirmed && !juniorHighSchoolResult?.name) ? 'DISTRICT_NOT_FOUND' : null,
       },
     });
   } catch (error: any) {
@@ -737,14 +696,49 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
   }
 });
 
-// ---- XKT005: 国土数値情報（中学校区）API ----
-// 緯度経度 → XYZタイル座標変換
-function latLngToTileXY(lat: number, lng: number, z: number): { x: number; y: number } {
-  const n = Math.pow(2, z);
-  const x = Math.floor((lng + 180.0) / 360.0 * n);
-  const latRad = lat * Math.PI / 180.0;
-  const y = Math.floor((1.0 - Math.log(Math.tan(latRad) + 1.0 / Math.cos(latRad)) / Math.PI) / 2.0 * n);
-  return { x, y };
+// ---- 中学校区（校区ポリゴン）- 小学校区と同じ静的GeoJSON方式 ----
+
+let middleSchoolDistrictsData: any = null;
+function loadMiddleSchoolDistricts() {
+  if (middleSchoolDistrictsData) return middleSchoolDistrictsData;
+  try {
+    middleSchoolDistrictsData = require('../data/middle-school-districts.json');
+    console.log(`[nearbyMap] 中学校区データ読み込み完了: ${middleSchoolDistrictsData.features?.length ?? 0}校区`);
+  } catch (err: any) {
+    console.warn('[nearbyMap] 中学校区データの読み込みに失敗:', err.message);
+    middleSchoolDistrictsData = { type: 'FeatureCollection', features: [] };
+  }
+  return middleSchoolDistrictsData;
+}
+
+/**
+ * 指定座標が属する中学校区を返す（小学校区と同じPoint-in-Polygon方式）
+ * XKT005 API への依存なし・REINFOLIB_API_KEY 不要
+ */
+function findMiddleSchoolDistrict(lat: number, lng: number): { name: string; adminCode: string } | null {
+  const data = loadMiddleSchoolDistricts();
+  if (!data.features?.length) return null;
+
+  for (const feature of data.features) {
+    const geomType = feature.geometry?.type;
+    let matched = false;
+
+    if (geomType === 'Polygon') {
+      const rings = feature.geometry.coordinates;
+      if (rings?.length > 0 && pointInPolygon(lat, lng, rings[0])) matched = true;
+    } else if (geomType === 'MultiPolygon') {
+      for (const rings of feature.geometry.coordinates) {
+        if (rings?.length > 0 && pointInPolygon(lat, lng, rings[0])) { matched = true; break; }
+      }
+    }
+
+    if (matched) {
+      const name = feature.properties?.name || feature.properties?.A32_004_ja || feature.properties?.A32_002 || null;
+      const adminCode = feature.properties?.adminCode || feature.properties?.A32_001 || '';
+      if (name) return { name, adminCode };
+    }
+  }
+  return null;
 }
 
 /**
