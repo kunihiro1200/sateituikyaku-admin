@@ -85,6 +85,9 @@ export interface AttachedDocument2Data {
   junior_high_school_entrance_lat?: number | null;
   junior_high_school_entrance_lng?: number | null;
   school_info_fetched_at?: string | null;
+  // 学校ふりがな（OpenAI生成・FI売主のみ）
+  elementary_school_furigana?: string | null;
+  junior_high_school_furigana?: string | null;
   // 学校確認チェックボックス
   elementary_school_confirmed?: boolean;
   junior_high_school_confirmed?: boolean;

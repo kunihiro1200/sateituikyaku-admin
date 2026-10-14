@@ -59,6 +59,8 @@ interface SchoolDistanceSectionProps {
   compact?: boolean;
 }
 
+interface SchoolInfo {
+
 // ---- 自治体公式学区ページURL ----
 // 住所から市区町村を判定してリンクを返す
 const DISTRICT_PAGE_MAP: Record<string, { label: string; url: string }> = {
@@ -289,11 +291,14 @@ interface SchoolCardProps {
   onWalkMinutesChange: (v: string) => void;   // "17" または "17〜22" など文字列で受け取る
   onSetEntrance: () => void;
   hasCustomEntrance: boolean;
+  furigana?: string | null;        // ふりがな（FI売主のみ）
+  furiganaLoading?: boolean;
 }
 
 const SchoolCard: React.FC<SchoolCardProps> = ({
   label, icon, info, isJuniorHigh,
   onNameChange, onWalkMinutesChange, onSetEntrance, hasCustomEntrance,
+  furigana, furiganaLoading,
 }) => {
   return (
     <Paper
@@ -360,9 +365,20 @@ const SchoolCard: React.FC<SchoolCardProps> = ({
         label="学校名"
         value={info.name}
         onChange={(e) => onNameChange(e.target.value)}
-        sx={{ mb: 1, '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+        sx={{ mb: 0.5, '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
         InputLabelProps={{ sx: { fontSize: '12px' } }}
       />
+      {/* ふりがな（FI売主のみ表示） */}
+      {furiganaLoading && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontSize: '10px' }}>
+          ふりがな生成中...
+        </Typography>
+      )}
+      {furigana && !furiganaLoading && (
+        <Typography variant="caption" sx={{ display: 'block', mb: 1, fontSize: '11px', color: '#555', letterSpacing: '0.05em' }}>
+          {furigana}
+        </Typography>
+      )}
 
       {/* 距離・徒歩時間 */}
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', mb: 1 }}>
@@ -452,6 +468,12 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // ふりがな（FI売主のみ）
+  const isFISeller = sellerNumber.toUpperCase().includes('FI');
+  const [elementaryFurigana, setElementaryFurigana] = useState<string | null>(null);
+  const [juniorHighFurigana, setJuniorHighFurigana] = useState<string | null>(null);
+  const [furiganaLoading, setFuriganaLoading] = useState(false);
+
   const [entranceModalOpen, setEntranceModalOpen] = useState<'elementary' | 'juniorHigh' | null>(null);
 
   // 初期データ読み込み
@@ -490,11 +512,16 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
           });
         }
         setFetchedAt(d.school_info_fetched_at ?? null);
+        // ふりがなの読み込み（FI売主のみ）
+        if (isFISeller) {
+          setElementaryFurigana(d.elementary_school_furigana ?? null);
+          setJuniorHighFurigana(d.junior_high_school_furigana ?? null);
+        }
       }
     } catch (_) {
       // 初回取得エラーは無視（まだ登録されていない場合あり）
     }
-  }, [sellerId]);
+  }, [sellerId, isFISeller]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -591,6 +618,13 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
           setFetchedAt(new Date().toISOString());
           setSaveSuccess(true);
           setTimeout(() => setSaveSuccess(false), 3000);
+          // FI売主のみふりがなを自動生成
+          if (isFISeller) {
+            await generateFurigana(
+              data.elementarySchool?.name ?? '',
+              data.juniorHighSchool?.name ?? ''
+            );
+          }
         } catch (saveErr: any) {
           console.warn('[SchoolDistanceSection] 自動保存失敗:', saveErr.message);
           // 自動保存失敗は警告のみ（手動保存ボタンで対処可）
@@ -602,6 +636,27 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
       setFetching(false);
     }
   };
+
+  // ふりがな自動生成（FI売主のみ・学校名保存後に呼ぶ）
+  const generateFurigana = useCallback(async (elemName: string, jhName: string) => {
+    if (!isFISeller || !sellerId) return;
+    if (!elemName && !jhName) return;
+    setFuriganaLoading(true);
+    try {
+      const res = await api.post('/api/school-furigana/generate', {
+        sellerId,
+        sellerNumber,
+        elementaryName: elemName || null,
+        juniorHighName:  jhName  || null,
+      });
+      if (res.data.elementaryFurigana) setElementaryFurigana(res.data.elementaryFurigana);
+      if (res.data.juniorHighFurigana)  setJuniorHighFurigana(res.data.juniorHighFurigana);
+    } catch (err) {
+      console.warn('[SchoolSection] ふりがな生成失敗:', err);
+    } finally {
+      setFuriganaLoading(false);
+    }
+  }, [isFISeller, sellerId, sellerNumber]);
 
   // 保存
   const handleSave = async () => {
@@ -719,6 +774,8 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
                 setElementarySchool((p) => ({ ...p, walkMinutes: v === '' ? null : v }))
               }
               onSetEntrance={() => setEntranceModalOpen('elementary')}
+              furigana={isFISeller ? elementaryFurigana : null}
+              furiganaLoading={isFISeller && furiganaLoading}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -739,6 +796,8 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
                 setJuniorHighSchool((p) => ({ ...p, walkMinutes: v === '' ? null : v }))
               }
               onSetEntrance={() => setEntranceModalOpen('juniorHigh')}
+              furigana={isFISeller ? juniorHighFurigana : null}
+              furiganaLoading={isFISeller && furiganaLoading}
             />
           </Grid>
         </Grid>
