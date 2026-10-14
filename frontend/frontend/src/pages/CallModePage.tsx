@@ -8397,13 +8397,6 @@ HP：https://ifoo-oita.com/
               />
             )}
 
-            {/* マンション同一棟の売り出し（マンション種別のみ表示） */}
-            {isApartmentType && seller?.sellerNumber && (
-              <ApartmentListingsSection
-                sellerNumber={seller.sellerNumber}
-              />
-            )}
-
             {/* 売主情報 */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
               <Typography variant="h6">
@@ -11228,6 +11221,13 @@ HP：https://ifoo-oita.com/
                 </Button>
               )}
             </Box>
+
+            {/* マンション同一棟の売り出し（マンション種別のみ・コメントの直前） */}
+            {isApartmentType && seller?.sellerNumber && (
+              <ApartmentListingsSection
+                sellerNumber={seller.sellerNumber}
+              />
+            )}
 
             {/* コメント入力・編集エリア（直接書き込み可能） */}
             <Box sx={{ mb: 2 }}>
