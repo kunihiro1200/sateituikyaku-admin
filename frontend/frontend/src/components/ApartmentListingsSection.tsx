@@ -159,6 +159,7 @@ export const ApartmentListingsSection: React.FC<ApartmentListingsSectionProps> =
       {!loading && listings !== null && listings !== undefined && listings.length === 0 && (
         <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.72rem' }}>
           現在売り出し中の物件はありません
+          {fetchedAt && `（確認: ${formatDate(fetchedAt)}）`}
         </Typography>
       )}
 
