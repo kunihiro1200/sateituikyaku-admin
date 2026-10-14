@@ -513,7 +513,9 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
       }
 
       // 2. バックエンドで学校名・座標・道路距離を一括取得
+      // 物件住所を渡すことで番地レベルの正確な学区照合が可能
       const params: Record<string, string | number> = { lat: propertyLat, lng: propertyLng };
+      if (propertyAddress) params.propertyAddress = propertyAddress;
       if (customElemEntrance) {
         params.elementaryLat = customElemEntrance.lat;
         params.elementaryLng = customElemEntrance.lng;

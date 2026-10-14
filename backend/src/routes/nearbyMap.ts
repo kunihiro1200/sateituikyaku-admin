@@ -520,16 +520,34 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     const lngNum = parseFloat(lng as string);
 
     // ---- 小学校区データのロード ----
-    // 福岡市内（lng 130.0-130.5, lat 33.4-33.9）: 福岡市公式データ優先
-    // その他: 国土数値情報（school-districts.json）
+    // 優先順位:
+    //   1. 福岡市住所対応表（番地レベル・最精確）
+    //   2. 福岡市公式GeoJSON（2025/12/26版）
+    //   3. 国土数値情報 GeoJSON（全国）
     const inFukuokaArea = lngNum >= 130.0 && lngNum <= 130.5 && latNum >= 33.4 && latNum <= 33.9;
 
     let elementarySchoolNameFromDistrict: string | null = null;
     let elementaryDistrictSource = 'xkt004';
     let elementaryDistrictDate = '20240401';
+    let elementaryConfidence: 'confirmed' | 'uncertain' = 'confirmed';
 
-    // 福岡市公式データを試みる
-    if (inFukuokaArea) {
+    // ① 福岡市住所対応表（property_address がある場合のみ）
+    // server-side で実行 → req.query から住所を受け取る
+    const propertyAddressParam = (req.query.propertyAddress as string | undefined) || '';
+    if (inFukuokaArea && propertyAddressParam) {
+      const { lookupFukuokaSchool } = await import('../services/FukuokaSchoolAddressService');
+      const result = lookupFukuokaSchool(propertyAddressParam);
+      if (result) {
+        elementarySchoolNameFromDistrict = result.elementary;
+        elementaryDistrictSource = 'fukuoka_address_table';
+        elementaryDistrictDate = '20251226';
+        elementaryConfidence = result.confidence;
+        console.log(`[nearbyMap] 住所対応表照合: ${result.elementary} / ${result.juniorHigh} (${result.confidence})`);
+      }
+    }
+
+    // ② 福岡市公式GeoJSONで判定（住所対応表でヒットしなかった場合）
+    if (!elementarySchoolNameFromDistrict && inFukuokaArea) {
       const fukuokaElemData = loadFukuokaElementarySchoolDistricts();
       if (fukuokaElemData.features?.length > 0) {
         for (const feature of fukuokaElemData.features) {
@@ -553,7 +571,7 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
       }
     }
 
-    // 福岡市公式でヒットしない場合（または福岡市外）: 国土数値情報を使用
+    // ③ 国土数値情報 GeoJSON（福岡市外またはフォールバック）
     if (!elementarySchoolNameFromDistrict) {
       const districtData = loadSchoolDistricts();
       if (districtData.features?.length > 0) {
@@ -651,6 +669,7 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     }
 
     // ---- 中学校: 静的GeoJSONファイルで Point-in-Polygon 判定（小学校と同じ方式）----
+    // ① 福岡市住所対応表（小学校と同じリクエストで取得済み）
     // XKT005 API・REINFOLIB_API_KEY 不要
     let juniorHighSchoolResult: {
       name: string | null; lat: number | null; lng: number | null; districtConfirmed: boolean;
@@ -659,32 +678,51 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     const customJhLat = juniorHighLat ? parseFloat(juniorHighLat as string) : null;
     const customJhLng = juniorHighLng ? parseFloat(juniorHighLng as string) : null;
 
-    // Point-in-Polygon で指定中学校区を判定
-    const jhDistrict = findMiddleSchoolDistrict(latNum, lngNum);
-
-    if (jhDistrict) {
-      // 判定成功: 指定校名が確定
-      let jhLat = customJhLat;
-      let jhLng = customJhLng;
-
-      if (!jhLat || !jhLng) {
-        // Places API で学校座標を取得
-        const placeCoords = await findSchoolCoordsByName(jhDistrict.name, latNum, lngNum, apiKey);
-        jhLat = placeCoords?.lat ?? null;
-        jhLng = placeCoords?.lng ?? null;
+    // 住所対応表で中学校も取得（小学校と同時に取得済みの場合はそちらを使う）
+    if (inFukuokaArea && propertyAddressParam) {
+      const { lookupFukuokaSchool } = await import('../services/FukuokaSchoolAddressService');
+      const result = lookupFukuokaSchool(propertyAddressParam);
+      if (result) {
+        let jhLat = customJhLat;
+        let jhLng = customJhLng;
+        if (!jhLat || !jhLng) {
+          const placeCoords = await findSchoolCoordsByName(result.juniorHigh, latNum, lngNum, apiKey);
+          jhLat = placeCoords?.lat ?? null;
+          jhLng = placeCoords?.lng ?? null;
+        }
+        juniorHighSchoolResult = {
+          name: result.juniorHigh,
+          lat: jhLat,
+          lng: jhLng,
+          districtConfirmed: true,
+        };
+        console.log(`[nearbyMap] 住所対応表 中学校: ${result.juniorHigh}`);
       }
+    }
 
-      juniorHighSchoolResult = {
-        name: jhDistrict.name,
-        lat: jhLat,
-        lng: jhLng,
-        districtConfirmed: true,
-      };
-      console.log(`[nearbyMap] 中学校区判定成功: ${jhDistrict.name}`);
-    } else {
-      // GeoJSONデータに該当区域なし（エリア外等）
-      juniorHighSchoolResult = { name: null, lat: null, lng: null, districtConfirmed: false };
-      console.warn('[nearbyMap] 中学校区: GeoJSONにヒットなし');
+    // ② フォールバック: 静的GeoJSON Point-in-Polygon
+    if (!juniorHighSchoolResult) {
+      const jhDistrict = findMiddleSchoolDistrict(latNum, lngNum);
+
+      if (jhDistrict) {
+        let jhLat = customJhLat;
+        let jhLng = customJhLng;
+        if (!jhLat || !jhLng) {
+          const placeCoords = await findSchoolCoordsByName(jhDistrict.name, latNum, lngNum, apiKey);
+          jhLat = placeCoords?.lat ?? null;
+          jhLng = placeCoords?.lng ?? null;
+        }
+        juniorHighSchoolResult = {
+          name: jhDistrict.name,
+          lat: jhLat,
+          lng: jhLng,
+          districtConfirmed: true,
+        };
+        console.log(`[nearbyMap] 中学校区判定成功: ${jhDistrict.name}`);
+      } else {
+        juniorHighSchoolResult = { name: null, lat: null, lng: null, districtConfirmed: false };
+        console.warn('[nearbyMap] 中学校区: GeoJSONにヒットなし');
+      }
     }
 
     // ---- Directions API で徒歩ルート距離を並列計算 ----
@@ -713,6 +751,7 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
             districtConfirmed: elementarySchoolResult.districtConfirmed,
             dataSource: elementaryDistrictSource,
             dataDate: elementaryDistrictDate,
+            confidence: elementaryConfidence,
           }
         : null,
       juniorHighSchool: {
