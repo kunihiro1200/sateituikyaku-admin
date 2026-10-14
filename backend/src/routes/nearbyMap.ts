@@ -3,17 +3,16 @@ import { authenticate } from '../middleware/auth';
 import axios from 'axios';
 import { lookupFukuokaSchool } from '../services/FukuokaSchoolAddressService';
 
-// 福岡市住所対応表を nearbyMap.ts 内でも直接ロード（Vercelでのパス解決を確実にする）
-let _fukuokaAddressMap: any = null;
+// 福岡市住所対応表を静的インポート（require のパス解決失敗を回避）
+import fukuokaAddressMapJson from '../data/fukuoka-school-address-map.json';
+
+let _fukuokaAddressMap: any = fukuokaAddressMapJson;
 function loadFukuokaAddressMapInRoute() {
-  if (_fukuokaAddressMap) return _fukuokaAddressMap;
-  try {
-    _fukuokaAddressMap = require('../data/fukuoka-school-address-map.json');
-    console.log(`[nearbyMap] 福岡市住所対応表: ${_fukuokaAddressMap.recordCount}件`);
-  } catch (e: any) {
-    console.warn('[nearbyMap] 福岡市住所対応表の読み込み失敗:', e.message);
-    _fukuokaAddressMap = { records: [] };
+  if (!_fukuokaAddressMap?.records?.length) {
+    console.warn('[nearbyMap] 福岡市住所対応表: データなし（静的インポート確認）');
+    return { records: [] };
   }
+  console.log(`[nearbyMap] 福岡市住所対応表: ${_fukuokaAddressMap.records.length}件（静的インポート）`);
   return _fukuokaAddressMap;
 }
 
