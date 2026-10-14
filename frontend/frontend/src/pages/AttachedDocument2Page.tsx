@@ -1502,25 +1502,24 @@ export default function AttachedDocument2Page() {
             </Paper>
 
             <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
-              <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flex: 2 }}>
-                  <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0 }}>固定資産税</Typography>
-                  <TextField fullWidth size="small" value={fields.property_tax} onChange={(e) => set('property_tax', e.target.value)}
-                    placeholder={isMansion ? 'マンションは５年以内に軽減税率あり' : '戸建ては３年以内に軽減税率あり'}
-                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' }, '& input::placeholder': { fontSize: '8pt', color: '#bbb' } }} />
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flex: 2 }}>
-                  <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0 }}>駐車場</Typography>
-                  <TextField fullWidth size="small" value={fields.parking} onChange={(e) => set('parking', e.target.value)}
-                    placeholder={isMansion ? '機械式の場合　高さ、奥行き、幅を確認' : '堀車庫の場合は高さ、幅、奥行き M'}
-                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' }, '& input::placeholder': { fontSize: '8pt', color: '#bbb' } }} />
-                </Box>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                {/* 固定資産税 */}
+                <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, whiteSpace: 'nowrap' }}>固定資産税</Typography>
+                <TextField size="small" value={fields.property_tax} onChange={(e) => set('property_tax', e.target.value)}
+                  placeholder={isMansion ? 'マンションは５年以内に軽減税率あり' : '戸建ては３年以内に軽減税率あり'}
+                  sx={{ flex: 2, minWidth: 0, '& .MuiOutlinedInput-root': { fontSize: '9pt' }, '& input::placeholder': { fontSize: '8pt', color: '#bbb' } }} />
+                {/* 駐車場 */}
+                <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, whiteSpace: 'nowrap', ml: 0.5 }}>駐車場</Typography>
+                <TextField size="small" value={fields.parking} onChange={(e) => set('parking', e.target.value)}
+                  placeholder={isMansion ? '機械式の場合　高さ、奥行き、幅を確認' : '堀車庫の場合は高さ、幅、奥行き M'}
+                  sx={{ flex: 2, minWidth: 0, '& .MuiOutlinedInput-root': { fontSize: '9pt' }, '& input::placeholder': { fontSize: '8pt', color: '#bbb' } }} />
+                {/* ペット（マンションのみ） */}
                 {isMansion && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flex: 1 }}>
-                    <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0 }}>ペット</Typography>
-                    <TextField fullWidth size="small" value={fields.pet} onChange={(e) => set('pet', e.target.value)}
-                      sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
-                  </Box>
+                  <>
+                    <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, whiteSpace: 'nowrap', ml: 0.5 }}>ペット</Typography>
+                    <TextField size="small" value={fields.pet} onChange={(e) => set('pet', e.target.value)}
+                      sx={{ flex: 1, minWidth: 0, '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
+                  </>
                 )}
               </Box>
             </Paper>
