@@ -402,9 +402,24 @@ router.post('/seller/:sellerNumber/fetch', async (req: Request, res: Response) =
     stationsWithDist.sort((a, b) => a.meters - b.meters);
     busStopsWithDist.sort((a, b) => a.meters - b.meters);
 
-    // 同名重複を除去してから上位 N 件を取得
-    const topStations = deduplicateByName(stationsWithDist).slice(0, counts.station);
-    const topBusStops = deduplicateByName(busStopsWithDist).slice(0, counts.bus_stop);
+    // ─── 同名重複除去 → rank1は常に含め rank2以降は徒歩30分未満のみ ────
+    const WALK_LIMIT_MINUTES = 30; // 2件目以降: 30分以上は入力不要
+
+    const filterByRank = (items: WithDistance[], maxCount: number): WithDistance[] => {
+      const result: WithDistance[] = [];
+      for (let i = 0; i < items.length && result.length < maxCount; i++) {
+        const walkMins = calcWalkMinutes(items[i].meters);
+        // rank1（最近接）は距離に関係なく常に含める
+        // rank2以降は30分未満のものだけ含める
+        if (i === 0 || walkMins < WALK_LIMIT_MINUTES) {
+          result.push(items[i]);
+        }
+      }
+      return result;
+    };
+
+    const topStations = filterByRank(deduplicateByName(stationsWithDist), counts.station);
+    const topBusStops = filterByRank(deduplicateByName(busStopsWithDist), counts.bus_stop);
 
     // ─── DB に upsert 保存 ────────────────────────────────────────────────
     const now = new Date().toISOString();
