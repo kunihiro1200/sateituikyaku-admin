@@ -938,8 +938,18 @@ export default function AttachedDocument2Page() {
       + '<td class="lbl">小学校</td><td class="val">' + (fields.elementary_school_name || '') + '</td><td class="val narrow">' + (fields.elementary_school_walk || '') + '</td>'
       + '<td class="lbl">中学校</td><td class="val">' + (fields.junior_high_school_name || '') + '</td><td class="val narrow">' + (fields.junior_high_school_walk || '') + '</td>'
       + '</tr><tr>'
-      + '<td class="lbl">最寄り駅</td><td class="val">' + (fields.nearest_station_name || '') + '</td><td class="val narrow">' + (fields.nearest_station_walk || '') + '</td>'
-      + '<td class="lbl">最寄りバス停</td><td class="val">' + (fields.nearest_bus_stop_name || '') + '</td><td class="val narrow">' + (fields.nearest_bus_stop_walk || '') + '</td>'
+      + '<td class="lbl">最寄り駅①</td><td class="val">' + (fields.nearest_station_name || '') + '</td><td class="val narrow">' + (fields.nearest_station_walk || '') + '</td>'
+      + '<td class="lbl">最寄りバス停①</td><td class="val">' + (fields.nearest_bus_stop_name || '') + '</td><td class="val narrow">' + (fields.nearest_bus_stop_walk || '') + '</td>'
+      + (fields.nearest_station_name_2 || fields.nearest_bus_stop_name_2 ? (
+          '</tr><tr>'
+        + '<td class="lbl">最寄り駅②</td><td class="val">' + (fields.nearest_station_name_2 || '') + '</td><td class="val narrow">' + (fields.nearest_station_walk_2 || '') + '</td>'
+        + '<td class="lbl">最寄りバス停②</td><td class="val">' + (fields.nearest_bus_stop_name_2 || '') + '</td><td class="val narrow">' + (fields.nearest_bus_stop_walk_2 || '') + '</td>'
+      ) : '')
+      + (fields.nearest_station_name_3 || fields.nearest_bus_stop_name_3 ? (
+          '</tr><tr>'
+        + '<td class="lbl">最寄り駅③</td><td class="val">' + (fields.nearest_station_name_3 || '') + '</td><td class="val narrow">' + (fields.nearest_station_walk_3 || '') + '</td>'
+        + '<td class="lbl">最寄りバス停③</td><td class="val">' + (fields.nearest_bus_stop_name_3 || '') + '</td><td class="val narrow">' + (fields.nearest_bus_stop_walk_3 || '') + '</td>'
+      ) : '')
       + '</tr></table>'
       + mansionSection
       + '<table class="it" style="margin-bottom:3pt"><tr>'
