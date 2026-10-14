@@ -117,6 +117,9 @@ interface DocumentFields {
   // 学校確認チェックボックス
   elementary_school_confirmed: boolean;
   junior_high_school_confirmed: boolean;
+  // 学校ふりがな（FI売主のみ・OpenAI生成）
+  elementary_school_furigana: string;
+  junior_high_school_furigana: string;
   // 交通アクセス確認チェックボックス
   nearest_station_confirmed: boolean;
   nearest_bus_stop_confirmed: boolean;
@@ -200,6 +203,8 @@ const EMPTY_FIELDS: DocumentFields = {
   tokuten_key_exchange: false,
   elementary_school_confirmed: false,
   junior_high_school_confirmed: false,
+  elementary_school_furigana: '',
+  junior_high_school_furigana: '',
   nearest_station_confirmed: false,
   nearest_bus_stop_confirmed: false,
   nearest_station_name_2: '',
@@ -245,6 +250,7 @@ const SchoolRowWithConfirm = ({
   nameKey,
   walkKey,
   confirmedKey,
+  furiganaKey,
   fields,
   onSet,
   onConfirmChange,
@@ -253,45 +259,56 @@ const SchoolRowWithConfirm = ({
   nameKey: keyof DocumentFields;
   walkKey: keyof DocumentFields;
   confirmedKey: keyof DocumentFields;
+  furiganaKey?: keyof DocumentFields;
   fields: DocumentFields;
   onSet: (key: keyof DocumentFields, value: string | boolean) => void;
   onConfirmChange: (key: keyof DocumentFields, value: boolean) => void;
 }) => {
   const walkValue = (fields[walkKey] as string) || '';
   const isConfirmed = fields[confirmedKey] as boolean;
+  const furigana = furiganaKey ? (fields[furiganaKey] as string) || '' : '';
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, py: 0.8, borderBottom: '1px solid #ccc' }}>
-      <Typography sx={{ width: 70, flexShrink: 0, fontWeight: 'bold', fontSize: '9.5pt' }}>{label}</Typography>
-      <TextField size="small" variant="outlined" placeholder="学校名"
-        value={fields[nameKey] as string}
-        onChange={(e) => onSet(nameKey, e.target.value)}
-        sx={{ flex: 2, '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
-      <TextField size="small" variant="outlined"
-        value={walkValue}
-        placeholder="17〜22"
-        onChange={(e) => onSet(walkKey, e.target.value)}
-        InputProps={{
-          startAdornment: <InputAdornment position="start" sx={{ mr: 0 }}>
-            <Typography sx={{ fontSize: '8.5pt', color: '#555', whiteSpace: 'nowrap' }}>徒歩</Typography>
-          </InputAdornment>,
-          endAdornment: <InputAdornment position="end">
-            <Typography sx={{ fontSize: '8.5pt', color: '#555' }}>分</Typography>
-          </InputAdornment>,
-        }}
-        sx={{ width: 100, '& .MuiOutlinedInput-root': { fontSize: '9pt', pl: 0.3 } }} />
-      <FormControlLabel
-        control={
-          <Checkbox size="small" checked={isConfirmed}
-            onChange={(e) => onConfirmChange(confirmedKey, e.target.checked)}
-            sx={{ p: 0.3 }} color="success" />
-        }
-        label={
-          <Typography sx={{ fontSize: '8pt', color: isConfirmed ? '#2e7d32' : '#999', whiteSpace: 'nowrap' }}>
-            {isConfirmed ? '✓確認済' : '確認'}
-          </Typography>
-        }
-        sx={{ ml: 0, mr: 0 }}
-      />
+    <Box sx={{ py: 0.8, borderBottom: '1px solid #ccc' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <Typography sx={{ width: 70, flexShrink: 0, fontWeight: 'bold', fontSize: '9.5pt' }}>{label}</Typography>
+        <Box sx={{ flex: 2 }}>
+          {furigana && (
+            <Typography sx={{ fontSize: '8pt', color: '#555', lineHeight: 1.2, mb: 0.2 }}>
+              {furigana}
+            </Typography>
+          )}
+          <TextField size="small" variant="outlined" placeholder="学校名"
+            value={fields[nameKey] as string}
+            onChange={(e) => onSet(nameKey, e.target.value)}
+            sx={{ width: '100%', '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
+        </Box>
+        <TextField size="small" variant="outlined"
+          value={walkValue}
+          placeholder="17〜22"
+          onChange={(e) => onSet(walkKey, e.target.value)}
+          InputProps={{
+            startAdornment: <InputAdornment position="start" sx={{ mr: 0 }}>
+              <Typography sx={{ fontSize: '8.5pt', color: '#555', whiteSpace: 'nowrap' }}>徒歩</Typography>
+            </InputAdornment>,
+            endAdornment: <InputAdornment position="end">
+              <Typography sx={{ fontSize: '8.5pt', color: '#555' }}>分</Typography>
+            </InputAdornment>,
+          }}
+          sx={{ width: 100, '& .MuiOutlinedInput-root': { fontSize: '9pt', pl: 0.3 } }} />
+        <FormControlLabel
+          control={
+            <Checkbox size="small" checked={isConfirmed}
+              onChange={(e) => onConfirmChange(confirmedKey, e.target.checked)}
+              sx={{ p: 0.3 }} color="success" />
+          }
+          label={
+            <Typography sx={{ fontSize: '8pt', color: isConfirmed ? '#2e7d32' : '#999', whiteSpace: 'nowrap' }}>
+              {isConfirmed ? '✓確認済' : '確認'}
+            </Typography>
+          }
+          sx={{ ml: 0, mr: 0 }}
+        />
+      </Box>
     </Box>
   );
 };
@@ -504,6 +521,8 @@ export default function AttachedDocument2Page() {
         tokuten_key_exchange: !!d.tokuten_key_exchange,
         elementary_school_confirmed: !!d.elementary_school_confirmed,
         junior_high_school_confirmed: !!d.junior_high_school_confirmed,
+        elementary_school_furigana: d.elementary_school_furigana || '',
+        junior_high_school_furigana: d.junior_high_school_furigana || '',
         nearest_station_confirmed: !!d.nearest_station_confirmed,
         nearest_bus_stop_confirmed: !!d.nearest_bus_stop_confirmed,
         nearest_station_name_2:      d.nearest_station_name_2      || '',
@@ -942,8 +961,12 @@ export default function AttachedDocument2Page() {
       + '<td class="lbl" style="width:52pt">道路の種類</td><td class="val" style="width:100pt">' + (fields.road_type || '') + '</td>'
       + '</tr></table>'
       + '<table class="it"><tr>'
-      + '<td class="lbl">小学校</td><td class="val">' + (fields.elementary_school_name || '') + '</td><td class="val narrow">' + (fields.elementary_school_walk || '') + '</td>'
-      + '<td class="lbl">中学校</td><td class="val">' + (fields.junior_high_school_name || '') + '</td><td class="val narrow">' + (fields.junior_high_school_walk || '') + '</td>'
+      + '<td class="lbl">小学校</td><td class="val">'
+      + (fields.elementary_school_furigana ? `<span style="font-size:7pt;color:#555;">${fields.elementary_school_furigana}<br></span>` : '')
+      + (fields.elementary_school_name || '') + '</td><td class="val narrow">' + (fields.elementary_school_walk ? fields.elementary_school_walk + '分' : '') + '</td>'
+      + '<td class="lbl">中学校</td><td class="val">'
+      + (fields.junior_high_school_furigana ? `<span style="font-size:7pt;color:#555;">${fields.junior_high_school_furigana}<br></span>` : '')
+      + (fields.junior_high_school_name || '') + '</td><td class="val narrow">' + (fields.junior_high_school_walk ? fields.junior_high_school_walk + '分' : '') + '</td>'
       + '</tr><tr>'
       + '<td class="lbl">最寄り駅①</td><td class="val">' + (fields.nearest_station_name || '') + '</td><td class="val narrow">' + (fields.nearest_station_walk || '') + '</td>'
       + '<td class="lbl">最寄りバス停①</td><td class="val">' + (fields.nearest_bus_stop_name || '') + '</td><td class="val narrow">' + (fields.nearest_bus_stop_walk || '') + '</td>'
@@ -1331,11 +1354,13 @@ export default function AttachedDocument2Page() {
               <Grid container spacing={1} sx={{ mb: 0.5 }}>
                 <Grid item xs={6}>
                   <SchoolRowWithConfirm label="小学校" nameKey="elementary_school_name" walkKey="elementary_school_walk"
-                    confirmedKey="elementary_school_confirmed" fields={fields} onSet={set} onConfirmChange={handleConfirmChange} />
+                    confirmedKey="elementary_school_confirmed" furiganaKey="elementary_school_furigana"
+                    fields={fields} onSet={set} onConfirmChange={handleConfirmChange} />
                 </Grid>
                 <Grid item xs={6}>
                   <SchoolRowWithConfirm label="中学校" nameKey="junior_high_school_name" walkKey="junior_high_school_walk"
-                    confirmedKey="junior_high_school_confirmed" fields={fields} onSet={set} onConfirmChange={handleConfirmChange} />
+                    confirmedKey="junior_high_school_confirmed" furiganaKey="junior_high_school_furigana"
+                    fields={fields} onSet={set} onConfirmChange={handleConfirmChange} />
                 </Grid>
               </Grid>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.3 }}>
