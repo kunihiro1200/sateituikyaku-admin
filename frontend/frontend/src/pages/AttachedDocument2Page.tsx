@@ -495,11 +495,11 @@ export default function AttachedDocument2Page() {
 
       // マンション建物情報が未入力の場合、seller_apartment_building_info から自動補完
       // （保存済みの値がある場合は上書きしない）
-      const fetchedPropertyType = sellerData.property?.propertyType || sellerData.propertyType || '';
+      const fetchedPropertyType = sellerData.property?.propertyType || (sellerData as any).propertyType || '';
       const isMansionType = fetchedPropertyType === 'apartment' || fetchedPropertyType === 'マ' || fetchedPropertyType === 'マンション';
       if (isMansionType) {
         try {
-          const sellerNum = sellerData.seller_number;
+          const sellerNum = sellerData.sellerNumber;
           if (sellerNum) {
             const apartRes = await api.get(`/api/apartment-info/seller/${sellerNum}`);
             const ai = apartRes.data.data;
@@ -1281,30 +1281,33 @@ export default function AttachedDocument2Page() {
                 {/* ── マンション建物情報（外部建物情報から自動補完・編集可能） ── */}
                 <Paper variant="outlined" sx={{ p: 1, mb: 1, bgcolor: '#fffde7' }}>
                   <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', mb: 0.5 }}>マンション建物情報</Typography>
-                  {([
-                    { key: 'mansion_building_name'    as const, label: 'マンション名' },
-                    { key: 'mansion_built_year_month' as const, label: '築年月' },
-                    { key: 'mansion_floors_above'     as const, label: '地上階数' },
-                    { key: 'mansion_total_units'      as const, label: '総戸数' },
-                    { key: 'mansion_structure'        as const, label: '建物構造' },
-                    { key: 'mansion_management_type'  as const, label: '管理形態' },
-                    { key: 'mansion_has_elevator'     as const, label: 'エレベーター' },
-                    { key: 'mansion_developer'        as const, label: '分譲会社' },
-                    { key: 'construction_company'     as const, label: '施工会社' },
-                  ]).map((f) => (
-                    <Box key={f.key} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.4, borderBottom: '1px solid #f0f0f0' }}>
-                      <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, width: 80 }}>{f.label}</Typography>
-                      <TextField
-                        fullWidth size="small"
-                        value={fields[f.key] as string}
-                        onChange={(e) => set(f.key, e.target.value)}
-                        sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' } }}
-                      />
-                    </Box>
-                  ))}
-                  <Typography sx={{ fontSize: '7.5pt', color: '#999', mt: 0.5 }}>
-                    ※ マンション情報セクションから自動補完。管理会社は下の欄へ反映済み。
-                  </Typography>
+                  {/* 全項目を1行横並びのコンパクトレイアウト */}
+                  <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                    {([
+                      { key: 'mansion_built_year_month' as const, label: '築年月',       width: 80 },
+                      { key: 'mansion_floors_above'     as const, label: '地上階数',     width: 56 },
+                      { key: 'mansion_total_units'      as const, label: '総戸数',       width: 56 },
+                      { key: 'mansion_structure'        as const, label: '建物構造',     width: 80 },
+                      { key: 'mansion_management_type'  as const, label: '管理形態',     width: 80 },
+                      { key: 'mansion_has_elevator'     as const, label: 'EV',           width: 48 },
+                      { key: 'mansion_developer'        as const, label: '分譲会社',     width: 100 },
+                      { key: 'construction_company'     as const, label: '施工会社',     width: 100 },
+                    ]).map((f) => (
+                      <Box key={f.key} sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                        <Typography sx={{ fontSize: '7.5pt', color: '#666', lineHeight: 1.2 }}>{f.label}</Typography>
+                        <TextField
+                          size="small"
+                          value={fields[f.key] as string}
+                          onChange={(e) => set(f.key, e.target.value)}
+                          sx={{
+                            width: f.width,
+                            '& .MuiOutlinedInput-root': { fontSize: '9pt' },
+                            '& .MuiInputBase-input': { py: '3px', px: '6px' },
+                          }}
+                        />
+                      </Box>
+                    ))}
+                  </Box>
                 </Paper>
 
                 <Box sx={{ textAlign: 'center', py: 0.8, mb: 1 }}>
