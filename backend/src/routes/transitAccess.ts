@@ -247,7 +247,33 @@ async function searchBusStops(
 }
 
 // ──────────────────────────────────────────────
-// GET /api/transit-access/seller/:sellerNumber
+// 重複除去: 距離ソート済みリストから同名を除く（最短距離を優先）
+// バス停は「清水町（バス）」「清水町」のように名称のコアが同じ場合も除去
+// ──────────────────────────────────────────────
+
+function normalizeName(name: string): string {
+  // 括弧内の補足を除去して正規化: 「清水町（バス）」→「清水町」
+  return name.replace(/[（(][^）)]*[）)]/g, '').replace(/\s+/g, '').trim();
+}
+
+type WithDistance = {
+  transportType: TransportType;
+  candidate: PlaceCandidate;
+  meters: number;
+  isEstimated: boolean;
+};
+
+function deduplicateByName(sorted: WithDistance[]): WithDistance[] {
+  const seen = new Map<string, boolean>();
+  return sorted.filter(item => {
+    const norm = normalizeName(item.candidate.name);
+    if (seen.has(norm)) return false;
+    seen.set(norm, true);
+    return true;
+  });
+}
+
+
 // 保存済み交通アクセス情報を返す（なければ空配列）
 // ──────────────────────────────────────────────
 
@@ -358,14 +384,7 @@ router.post('/seller/:sellerNumber/fetch', async (req: Request, res: Response) =
       )
     );
 
-    // ─── 道路距離順にソートして上位 N 件を選定 ──────────────────────────────
-    type WithDistance = {
-      transportType: TransportType;
-      candidate: PlaceCandidate;
-      meters: number;
-      isEstimated: boolean;
-    };
-
+    // ─── 道路距離順にソートして上位 N 件を選定（同名重複を除去）───────────
     const stationsWithDist: WithDistance[] = [];
     const busStopsWithDist: WithDistance[] = [];
 
@@ -383,8 +402,9 @@ router.post('/seller/:sellerNumber/fetch', async (req: Request, res: Response) =
     stationsWithDist.sort((a, b) => a.meters - b.meters);
     busStopsWithDist.sort((a, b) => a.meters - b.meters);
 
-    const topStations = stationsWithDist.slice(0, counts.station);
-    const topBusStops = busStopsWithDist.slice(0, counts.bus_stop);
+    // 同名重複を除去してから上位 N 件を取得
+    const topStations = deduplicateByName(stationsWithDist).slice(0, counts.station);
+    const topBusStops = deduplicateByName(busStopsWithDist).slice(0, counts.bus_stop);
 
     // ─── DB に upsert 保存 ────────────────────────────────────────────────
     const now = new Date().toISOString();
