@@ -91,6 +91,19 @@ export interface AttachedDocument2Data {
   // 交通アクセス確認チェックボックス
   nearest_station_confirmed?: boolean;
   nearest_bus_stop_confirmed?: boolean;
+  // 交通アクセス 2件目・3件目（FI売主用）
+  nearest_station_name_2?: string | null;
+  nearest_station_walk_2?: string | null;
+  nearest_station_confirmed_2?: boolean;
+  nearest_station_name_3?: string | null;
+  nearest_station_walk_3?: string | null;
+  nearest_station_confirmed_3?: boolean;
+  nearest_bus_stop_name_2?: string | null;
+  nearest_bus_stop_walk_2?: string | null;
+  nearest_bus_stop_confirmed_2?: boolean;
+  nearest_bus_stop_name_3?: string | null;
+  nearest_bus_stop_walk_3?: string | null;
+  nearest_bus_stop_confirmed_3?: boolean;
   // 【特典】チェックボックス
   tokuten_cleaning?: boolean;
   tokuten_garden?: boolean;
@@ -254,6 +267,21 @@ router.put('/sellers/:sellerId/attached-document2', async (req: Request, res: Re
       tokuten_fee_discount: !!body.tokuten_fee_discount,
       tokuten_bridge_loan: !!body.tokuten_bridge_loan,
       tokuten_key_exchange: !!body.tokuten_key_exchange,
+      // 交通アクセス（2件目・3件目 FI売主用）
+      nearest_station_confirmed:    !!body.nearest_station_confirmed,
+      nearest_station_name_2:       body.nearest_station_name_2       || null,
+      nearest_station_walk_2:       body.nearest_station_walk_2       || null,
+      nearest_station_confirmed_2:  !!body.nearest_station_confirmed_2,
+      nearest_station_name_3:       body.nearest_station_name_3       || null,
+      nearest_station_walk_3:       body.nearest_station_walk_3       || null,
+      nearest_station_confirmed_3:  !!body.nearest_station_confirmed_3,
+      nearest_bus_stop_confirmed:   !!body.nearest_bus_stop_confirmed,
+      nearest_bus_stop_name_2:      body.nearest_bus_stop_name_2      || null,
+      nearest_bus_stop_walk_2:      body.nearest_bus_stop_walk_2      || null,
+      nearest_bus_stop_confirmed_2: !!body.nearest_bus_stop_confirmed_2,
+      nearest_bus_stop_name_3:      body.nearest_bus_stop_name_3      || null,
+      nearest_bus_stop_walk_3:      body.nearest_bus_stop_walk_3      || null,
+      nearest_bus_stop_confirmed_3: !!body.nearest_bus_stop_confirmed_3,
       // 注意: 以下の確認フラグはPATCHエンドポイント専用で更新する
       // PUT(全体upsert)には含めない → DBにカラムが存在しなくてもPUTが失敗しない
       updated_at: new Date().toISOString(),
@@ -443,9 +471,21 @@ router.patch('/sellers/:sellerId/attached-document2/transit', async (req: Reques
       nearest_station_name?: string | null;
       nearest_station_walk?: string | null;
       nearest_station_confirmed?: boolean;
+      nearest_station_name_2?: string | null;
+      nearest_station_walk_2?: string | null;
+      nearest_station_confirmed_2?: boolean;
+      nearest_station_name_3?: string | null;
+      nearest_station_walk_3?: string | null;
+      nearest_station_confirmed_3?: boolean;
       nearest_bus_stop_name?: string | null;
       nearest_bus_stop_walk?: string | null;
       nearest_bus_stop_confirmed?: boolean;
+      nearest_bus_stop_name_2?: string | null;
+      nearest_bus_stop_walk_2?: string | null;
+      nearest_bus_stop_confirmed_2?: boolean;
+      nearest_bus_stop_name_3?: string | null;
+      nearest_bus_stop_walk_3?: string | null;
+      nearest_bus_stop_confirmed_3?: boolean;
     };
 
     const patch: Record<string, unknown> = {
@@ -453,12 +493,12 @@ router.patch('/sellers/:sellerId/attached-document2/transit', async (req: Reques
     };
 
     const transitFields = [
-      'nearest_station_name',
-      'nearest_station_walk',
-      'nearest_station_confirmed',
-      'nearest_bus_stop_name',
-      'nearest_bus_stop_walk',
-      'nearest_bus_stop_confirmed',
+      'nearest_station_name',  'nearest_station_walk',  'nearest_station_confirmed',
+      'nearest_station_name_2','nearest_station_walk_2','nearest_station_confirmed_2',
+      'nearest_station_name_3','nearest_station_walk_3','nearest_station_confirmed_3',
+      'nearest_bus_stop_name',  'nearest_bus_stop_walk',  'nearest_bus_stop_confirmed',
+      'nearest_bus_stop_name_2','nearest_bus_stop_walk_2','nearest_bus_stop_confirmed_2',
+      'nearest_bus_stop_name_3','nearest_bus_stop_walk_3','nearest_bus_stop_confirmed_3',
     ] as const;
 
     for (const key of transitFields) {

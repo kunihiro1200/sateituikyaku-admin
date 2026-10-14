@@ -120,6 +120,19 @@ interface DocumentFields {
   // 交通アクセス確認チェックボックス
   nearest_station_confirmed: boolean;
   nearest_bus_stop_confirmed: boolean;
+  // 交通アクセス 2件目・3件目（FI売主用）
+  nearest_station_name_2: string;
+  nearest_station_walk_2: string;
+  nearest_station_confirmed_2: boolean;
+  nearest_station_name_3: string;
+  nearest_station_walk_3: string;
+  nearest_station_confirmed_3: boolean;
+  nearest_bus_stop_name_2: string;
+  nearest_bus_stop_walk_2: string;
+  nearest_bus_stop_confirmed_2: boolean;
+  nearest_bus_stop_name_3: string;
+  nearest_bus_stop_walk_3: string;
+  nearest_bus_stop_confirmed_3: boolean;
   // マンション建物情報（外部建物情報から自動補完）
   mansion_building_name: string;
   mansion_built_year_month: string;
@@ -189,6 +202,18 @@ const EMPTY_FIELDS: DocumentFields = {
   junior_high_school_confirmed: false,
   nearest_station_confirmed: false,
   nearest_bus_stop_confirmed: false,
+  nearest_station_name_2: '',
+  nearest_station_walk_2: '',
+  nearest_station_confirmed_2: false,
+  nearest_station_name_3: '',
+  nearest_station_walk_3: '',
+  nearest_station_confirmed_3: false,
+  nearest_bus_stop_name_2: '',
+  nearest_bus_stop_walk_2: '',
+  nearest_bus_stop_confirmed_2: false,
+  nearest_bus_stop_name_3: '',
+  nearest_bus_stop_walk_3: '',
+  nearest_bus_stop_confirmed_3: false,
   // マンション建物情報
   mansion_building_name: '',
   mansion_built_year_month: '',
@@ -481,6 +506,18 @@ export default function AttachedDocument2Page() {
         junior_high_school_confirmed: !!d.junior_high_school_confirmed,
         nearest_station_confirmed: !!d.nearest_station_confirmed,
         nearest_bus_stop_confirmed: !!d.nearest_bus_stop_confirmed,
+        nearest_station_name_2:      d.nearest_station_name_2      || '',
+        nearest_station_walk_2:      d.nearest_station_walk_2      || '',
+        nearest_station_confirmed_2: !!d.nearest_station_confirmed_2,
+        nearest_station_name_3:      d.nearest_station_name_3      || '',
+        nearest_station_walk_3:      d.nearest_station_walk_3      || '',
+        nearest_station_confirmed_3: !!d.nearest_station_confirmed_3,
+        nearest_bus_stop_name_2:      d.nearest_bus_stop_name_2      || '',
+        nearest_bus_stop_walk_2:      d.nearest_bus_stop_walk_2      || '',
+        nearest_bus_stop_confirmed_2: !!d.nearest_bus_stop_confirmed_2,
+        nearest_bus_stop_name_3:      d.nearest_bus_stop_name_3      || '',
+        nearest_bus_stop_walk_3:      d.nearest_bus_stop_walk_3      || '',
+        nearest_bus_stop_confirmed_3: !!d.nearest_bus_stop_confirmed_3,
         // マンション建物情報（DBに保存済みがあればそちらを使い、なければ外部建物情報から補完）
         mansion_building_name:    d.mansion_building_name    || '',
         mansion_built_year_month: d.mansion_built_year_month || '',
@@ -502,22 +539,32 @@ export default function AttachedDocument2Page() {
             name: string | null; walk_minutes: number | null;
             is_manually_corrected: boolean; manual_name: string | null; manual_walk_minutes: number | null;
           }> = transitRes.data.data ?? [];
-          const station = transitRecords.find(r => r.transport_type === 'station' && r.rank === 1);
-          const busStop = transitRecords.find(r => r.transport_type === 'bus_stop' && r.rank === 1);
-          const getName = (r: typeof station) =>
+
+          const isFI = /fi/i.test(sellerData.sellerNumber);
+          const maxRank = isFI ? 3 : 1;
+
+          const getName = (r: typeof transitRecords[0] | undefined) =>
             (r?.is_manually_corrected && r?.manual_name) ? r.manual_name! : (r?.name ?? '');
-          const getWalk = (r: typeof station) =>
+          const getWalk = (r: typeof transitRecords[0] | undefined) =>
             (r?.is_manually_corrected && r?.manual_walk_minutes != null)
               ? String(r.manual_walk_minutes)
               : (r?.walk_minutes != null ? String(r.walk_minutes) : '');
-          if (station || busStop) {
-            setFields(prev => ({
-              ...prev,
-              ...(station ? { nearest_station_name: getName(station), nearest_station_walk: getWalk(station) } : {}),
-              ...(busStop  ? { nearest_bus_stop_name: getName(busStop), nearest_bus_stop_walk: getWalk(busStop) } : {}),
-            }));
+
+          const stationsAll  = [1, 2, 3].map(rank => transitRecords.find(r => r.transport_type === 'station'  && r.rank === rank));
+          const busStopsAll  = [1, 2, 3].map(rank => transitRecords.find(r => r.transport_type === 'bus_stop' && r.rank === rank));
+
+          const patch: Partial<typeof EMPTY_FIELDS> = {};
+          if (stationsAll[0]) { patch.nearest_station_name = getName(stationsAll[0]); patch.nearest_station_walk = getWalk(stationsAll[0]); }
+          if (maxRank >= 2 && stationsAll[1]) { patch.nearest_station_name_2 = getName(stationsAll[1]); patch.nearest_station_walk_2 = getWalk(stationsAll[1]); }
+          if (maxRank >= 3 && stationsAll[2]) { patch.nearest_station_name_3 = getName(stationsAll[2]); patch.nearest_station_walk_3 = getWalk(stationsAll[2]); }
+          if (busStopsAll[0]) { patch.nearest_bus_stop_name = getName(busStopsAll[0]); patch.nearest_bus_stop_walk = getWalk(busStopsAll[0]); }
+          if (maxRank >= 2 && busStopsAll[1]) { patch.nearest_bus_stop_name_2 = getName(busStopsAll[1]); patch.nearest_bus_stop_walk_2 = getWalk(busStopsAll[1]); }
+          if (maxRank >= 3 && busStopsAll[2]) { patch.nearest_bus_stop_name_3 = getName(busStopsAll[2]); patch.nearest_bus_stop_walk_3 = getWalk(busStopsAll[2]); }
+
+          if (Object.keys(patch).length > 0) {
+            setFields(prev => ({ ...prev, ...patch }));
           }
-        } catch { /* 自動補完失敗はサイレント（必須ではないため） */ }
+        } catch { /* 自動補完失敗はサイレント */ }
       }
 
       // マンション建物情報が未入力の場合、seller_apartment_building_info から自動補完
@@ -661,26 +708,30 @@ export default function AttachedDocument2Page() {
 
       console.log('[TransitAutoFetch] records:', records.length, records);
 
-      const station  = records.find(r => r.transport_type === 'station'  && r.rank === 1);
-      const busStop  = records.find(r => r.transport_type === 'bus_stop' && r.rank === 1);
+      const isFI = /fi/i.test(seller.sellerNumber);
+      const maxRank = isFI ? 3 : 1;
 
-      const getDisplayName = (r: typeof station) =>
+      const stationsAll = [1, 2, 3].map(rank => records.find(r => r.transport_type === 'station'  && r.rank === rank));
+      const busStopsAll = [1, 2, 3].map(rank => records.find(r => r.transport_type === 'bus_stop' && r.rank === rank));
+
+      const getDisplayName = (r: typeof stationsAll[0]) =>
         (r?.is_manually_corrected && r.manual_name) ? r.manual_name! : (r?.name ?? '');
-      const getDisplayWalk = (r: typeof station) =>
+      const getDisplayWalk = (r: typeof stationsAll[0]) =>
         (r?.is_manually_corrected && r.manual_walk_minutes != null)
           ? String(r.manual_walk_minutes)
           : (r?.walk_minutes != null ? String(r.walk_minutes) : '');
 
-      if (station) {
-        set('nearest_station_name', getDisplayName(station));
-        set('nearest_station_walk', getDisplayWalk(station));
-      }
-      if (busStop) {
-        set('nearest_bus_stop_name', getDisplayName(busStop));
-        set('nearest_bus_stop_walk', getDisplayWalk(busStop));
-      }
+      const patch: Partial<typeof fields> = {};
+      if (stationsAll[0]) { patch.nearest_station_name = getDisplayName(stationsAll[0]); patch.nearest_station_walk = getDisplayWalk(stationsAll[0]); }
+      if (maxRank >= 2 && stationsAll[1]) { patch.nearest_station_name_2 = getDisplayName(stationsAll[1]); patch.nearest_station_walk_2 = getDisplayWalk(stationsAll[1]); }
+      if (maxRank >= 3 && stationsAll[2]) { patch.nearest_station_name_3 = getDisplayName(stationsAll[2]); patch.nearest_station_walk_3 = getDisplayWalk(stationsAll[2]); }
+      if (busStopsAll[0]) { patch.nearest_bus_stop_name = getDisplayName(busStopsAll[0]); patch.nearest_bus_stop_walk = getDisplayWalk(busStopsAll[0]); }
+      if (maxRank >= 2 && busStopsAll[1]) { patch.nearest_bus_stop_name_2 = getDisplayName(busStopsAll[1]); patch.nearest_bus_stop_walk_2 = getDisplayWalk(busStopsAll[1]); }
+      if (maxRank >= 3 && busStopsAll[2]) { patch.nearest_bus_stop_name_3 = getDisplayName(busStopsAll[2]); patch.nearest_bus_stop_walk_3 = getDisplayWalk(busStopsAll[2]); }
 
-      if (!station && !busStop) {
+      if (Object.keys(patch).length > 0) {
+        setFields(prev => ({ ...prev, ...patch }));
+      } else {
         setTransitFetchError(`交通アクセス情報が見つかりませんでした（売主番号: ${seller.sellerNumber}）。通話モードページで取得してください。`);
       }
     } catch (err: any) {
@@ -1291,12 +1342,28 @@ export default function AttachedDocument2Page() {
               )}
               <Grid container spacing={1}>
                 <Grid item xs={6}>
-                  <TransitRowWithConfirm label="最寄り駅" nameKey="nearest_station_name" walkKey="nearest_station_walk"
+                  <TransitRowWithConfirm label="最寄り駅①" nameKey="nearest_station_name" walkKey="nearest_station_walk"
                     confirmedKey="nearest_station_confirmed" fields={fields} onSet={set} onConfirmChange={handleTransitConfirmChange} />
+                  {isFukuoka && (
+                    <TransitRowWithConfirm label="最寄り駅②" nameKey="nearest_station_name_2" walkKey="nearest_station_walk_2"
+                      confirmedKey="nearest_station_confirmed_2" fields={fields} onSet={set} onConfirmChange={handleTransitConfirmChange} />
+                  )}
+                  {isFukuoka && (
+                    <TransitRowWithConfirm label="最寄り駅③" nameKey="nearest_station_name_3" walkKey="nearest_station_walk_3"
+                      confirmedKey="nearest_station_confirmed_3" fields={fields} onSet={set} onConfirmChange={handleTransitConfirmChange} />
+                  )}
                 </Grid>
                 <Grid item xs={6}>
-                  <TransitRowWithConfirm label="最寄りバス停" nameKey="nearest_bus_stop_name" walkKey="nearest_bus_stop_walk"
+                  <TransitRowWithConfirm label="最寄りバス停①" nameKey="nearest_bus_stop_name" walkKey="nearest_bus_stop_walk"
                     confirmedKey="nearest_bus_stop_confirmed" fields={fields} onSet={set} onConfirmChange={handleTransitConfirmChange} />
+                  {isFukuoka && (
+                    <TransitRowWithConfirm label="最寄りバス停②" nameKey="nearest_bus_stop_name_2" walkKey="nearest_bus_stop_walk_2"
+                      confirmedKey="nearest_bus_stop_confirmed_2" fields={fields} onSet={set} onConfirmChange={handleTransitConfirmChange} />
+                  )}
+                  {isFukuoka && (
+                    <TransitRowWithConfirm label="最寄りバス停③" nameKey="nearest_bus_stop_name_3" walkKey="nearest_bus_stop_walk_3"
+                      confirmedKey="nearest_bus_stop_confirmed_3" fields={fields} onSet={set} onConfirmChange={handleTransitConfirmChange} />
+                  )}
                 </Grid>
               </Grid>
             </Paper>
