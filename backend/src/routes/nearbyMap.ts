@@ -519,25 +519,59 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     const latNum = parseFloat(lat as string);
     const lngNum = parseFloat(lng as string);
 
-    // ---- 小学校: GeoJSON Point-in-Polygon で学区判定 ----
-    const districtData = loadSchoolDistricts();
-    let elementarySchoolNameFromDistrict: string | null = null;
+    // ---- 小学校区データのロード ----
+    // 福岡市内（lng 130.0-130.5, lat 33.4-33.9）: 福岡市公式データ優先
+    // その他: 国土数値情報（school-districts.json）
+    const inFukuokaArea = lngNum >= 130.0 && lngNum <= 130.5 && latNum >= 33.4 && latNum <= 33.9;
 
-    if (districtData.features?.length > 0) {
-      for (const feature of districtData.features) {
-        const geomType = feature.geometry?.type;
-        let matched = false;
-        if (geomType === 'Polygon') {
-          const rings = feature.geometry.coordinates;
-          if (rings?.length > 0 && pointInPolygon(latNum, lngNum, rings[0])) matched = true;
-        } else if (geomType === 'MultiPolygon') {
-          for (const rings of feature.geometry.coordinates) {
-            if (rings?.length > 0 && pointInPolygon(latNum, lngNum, rings[0])) { matched = true; break; }
+    let elementarySchoolNameFromDistrict: string | null = null;
+    let elementaryDistrictSource = 'xkt004';
+    let elementaryDistrictDate = '20240401';
+
+    // 福岡市公式データを試みる
+    if (inFukuokaArea) {
+      const fukuokaElemData = loadFukuokaElementarySchoolDistricts();
+      if (fukuokaElemData.features?.length > 0) {
+        for (const feature of fukuokaElemData.features) {
+          const geomType = feature.geometry?.type;
+          let matched = false;
+          if (geomType === 'Polygon') {
+            const rings = feature.geometry.coordinates;
+            if (rings?.length > 0 && pointInPolygon(latNum, lngNum, rings[0])) matched = true;
+          } else if (geomType === 'MultiPolygon') {
+            for (const rings of feature.geometry.coordinates) {
+              if (rings?.length > 0 && pointInPolygon(latNum, lngNum, rings[0])) { matched = true; break; }
+            }
+          }
+          if (matched) {
+            elementarySchoolNameFromDistrict = feature.properties?.name || null;
+            elementaryDistrictSource = 'fukuoka_official';
+            elementaryDistrictDate = '20251226';
+            break;
           }
         }
-        if (matched) {
-          elementarySchoolNameFromDistrict = feature.properties?.name || null;
-          break;
+      }
+    }
+
+    // 福岡市公式でヒットしない場合（または福岡市外）: 国土数値情報を使用
+    if (!elementarySchoolNameFromDistrict) {
+      const districtData = loadSchoolDistricts();
+      if (districtData.features?.length > 0) {
+        for (const feature of districtData.features) {
+          const geomType = feature.geometry?.type;
+          let matched = false;
+          if (geomType === 'Polygon') {
+            const rings = feature.geometry.coordinates;
+            if (rings?.length > 0 && pointInPolygon(latNum, lngNum, rings[0])) matched = true;
+          } else if (geomType === 'MultiPolygon') {
+            for (const rings of feature.geometry.coordinates) {
+              if (rings?.length > 0 && pointInPolygon(latNum, lngNum, rings[0])) { matched = true; break; }
+            }
+          }
+          if (matched) {
+            elementarySchoolNameFromDistrict = feature.properties?.name || null;
+            break;
+          }
         }
       }
     }
@@ -677,6 +711,8 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
             lat: elementarySchoolResult.lat,
             lng: elementarySchoolResult.lng,
             districtConfirmed: elementarySchoolResult.districtConfirmed,
+            dataSource: elementaryDistrictSource,
+            dataDate: elementaryDistrictDate,
           }
         : null,
       juniorHighSchool: {
@@ -728,6 +764,22 @@ function loadFukuokaMiddleSchoolDistricts() {
     fukuokaMiddleSchoolData = { type: 'FeatureCollection', features: [] };
   }
   return fukuokaMiddleSchoolData;
+}
+
+// ---- 福岡市公式小学校区データ（2025/12/26版）----
+// 国土数値情報の小学校区より精確な境界を持つ市公式データ
+// 出典: https://webmap.city.fukuoka.lg.jp/fukuoka/OpenData opendata_139.zip
+let fukuokaElementarySchoolData: any = null;
+function loadFukuokaElementarySchoolDistricts() {
+  if (fukuokaElementarySchoolData) return fukuokaElementarySchoolData;
+  try {
+    fukuokaElementarySchoolData = require('../data/fukuoka-elementary-school-districts.json');
+    console.log(`[nearbyMap] 福岡市小学校区データ読み込み完了: ${fukuokaElementarySchoolData.features?.length ?? 0}校区`);
+  } catch (err: any) {
+    console.warn('[nearbyMap] 福岡市小学校区データの読み込みに失敗:', err.message);
+    fukuokaElementarySchoolData = { type: 'FeatureCollection', features: [] };
+  }
+  return fukuokaElementarySchoolData;
 }
 
 /**
