@@ -328,34 +328,22 @@ router.patch('/sellers/:sellerId/attached-document2/tokuten', async (req: Reques
 router.patch('/sellers/:sellerId/attached-document2/school', async (req: Request, res: Response) => {
   try {
     const { sellerId } = req.params;
-    const body = req.body as {
-      elementary_school_name?: string | null;
-      elementary_school_walk?: string | null;
-      elementary_school_distance?: number | null;
-      elementary_school_entrance_lat?: number | null;
-      elementary_school_entrance_lng?: number | null;
-      junior_high_school_name?: string | null;
-      junior_high_school_walk?: string | null;
-      junior_high_school_distance?: number | null;
-      junior_high_school_entrance_lat?: number | null;
-      junior_high_school_entrance_lng?: number | null;
-      school_info_fetched_at?: string | null;
-    };
+    const body = req.body as Record<string, unknown>;
 
-    const patch: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    };
-
-    // undefined でないフィールドのみ更新（null は明示的な削除として扱う）
-    const schoolFields = [
+    // 必ず存在するコアカラム（当初から存在）
+    const coreFields = [
       'elementary_school_name',
       'elementary_school_walk',
+      'junior_high_school_name',
+      'junior_high_school_walk',
+    ] as const;
+
+    // マイグレーション追加カラム（未実行の場合はSupabaseがエラーを返すため個別にtry）
+    const extendedFields = [
       'elementary_school_distance',
       'elementary_school_entrance_lat',
       'elementary_school_entrance_lng',
       'elementary_school_confirmed',
-      'junior_high_school_name',
-      'junior_high_school_walk',
       'junior_high_school_distance',
       'junior_high_school_entrance_lat',
       'junior_high_school_entrance_lng',
@@ -363,8 +351,16 @@ router.patch('/sellers/:sellerId/attached-document2/school', async (req: Request
       'school_info_fetched_at',
     ] as const;
 
-    for (const key of schoolFields) {
-      if (key in body) patch[key] = body[key] ?? null;
+    // コアカラムのパッチデータを構築
+    const corePatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    for (const key of coreFields) {
+      if (key in body) corePatch[key] = body[key] ?? null;
+    }
+
+    // 拡張カラムのパッチデータを構築（値が明示的に指定されたもののみ）
+    const extPatch: Record<string, unknown> = {};
+    for (const key of extendedFields) {
+      if (key in body && body[key] !== undefined) extPatch[key] = body[key] ?? null;
     }
 
     // 行が存在するか確認
@@ -377,14 +373,36 @@ router.patch('/sellers/:sellerId/attached-document2/school', async (req: Request
     if (existing) {
       const { error } = await supabase
         .from('seller_attached_document2')
-        .update(patch)
+        .update({ ...corePatch, ...extPatch })
         .eq('seller_id', sellerId);
-      if (error) throw error;
+      if (error) {
+        // 拡張カラムが原因の場合はコアのみで再試行
+        if (error.message.includes('column') && error.message.includes('does not exist')) {
+          console.warn('[school PATCH] 拡張カラムなしで再試行:', error.message);
+          const { error: coreErr } = await supabase
+            .from('seller_attached_document2')
+            .update(corePatch)
+            .eq('seller_id', sellerId);
+          if (coreErr) throw coreErr;
+        } else {
+          throw error;
+        }
+      }
     } else {
       const { error } = await supabase
         .from('seller_attached_document2')
-        .insert({ seller_id: sellerId, ...patch });
-      if (error) throw error;
+        .insert({ seller_id: sellerId, ...corePatch, ...extPatch });
+      if (error) {
+        if (error.message.includes('column') && error.message.includes('does not exist')) {
+          console.warn('[school PATCH] 拡張カラムなしで再試行:', error.message);
+          const { error: coreErr } = await supabase
+            .from('seller_attached_document2')
+            .insert({ seller_id: sellerId, ...corePatch });
+          if (coreErr) throw coreErr;
+        } else {
+          throw error;
+        }
+      }
     }
 
     res.json({ ok: true });
