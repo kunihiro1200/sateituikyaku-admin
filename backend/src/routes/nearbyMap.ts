@@ -658,25 +658,36 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     const customElemLng = elementaryLng ? parseFloat(elementaryLng as string) : null;
 
     if (customElemLat && customElemLng) {
-      // カスタム正門座標が設定済み → Places APIをスキップして既存名称を維持するため別処理
-      // 名前は Places Nearby から最近接取得
-      const nearbyRes = await axios.get(
-        'https://maps.googleapis.com/maps/api/place/nearbysearch/json',
-        {
-          params: {
-            location: `${customElemLat},${customElemLng}`,
-            radius: 200,
-            type: 'school',
-            keyword: '小学校',
-            language: 'ja',
-            key: apiKey,
-          },
-          timeout: 10000,
-        }
-      );
-      const candidates = (nearbyRes.data.results || []).filter((r: any) => /小学校/.test(r.name));
-      const schoolName = candidates[0]?.name || elementarySchoolNameFromDistrict || '小学校';
-      elementarySchoolResult = { name: schoolName, lat: customElemLat, lng: customElemLng, districtConfirmed: true };
+      // カスタム正門座標が設定済み
+      // 住所対応表で確定した学校名がある場合はそちらを優先（座標のみ保持）
+      if (elementarySchoolNameFromDistrict) {
+        // 住所対応表の結果を使い、座標だけカスタム正門を利用
+        elementarySchoolResult = {
+          name: elementarySchoolNameFromDistrict,
+          lat: customElemLat,
+          lng: customElemLng,
+          districtConfirmed: true,
+        };
+      } else {
+        // 住所対応表未使用時のみ Nearby Search で名前を取得
+        const nearbyRes = await axios.get(
+          'https://maps.googleapis.com/maps/api/place/nearbysearch/json',
+          {
+            params: {
+              location: `${customElemLat},${customElemLng}`,
+              radius: 200,
+              type: 'school',
+              keyword: '小学校',
+              language: 'ja',
+              key: apiKey,
+            },
+            timeout: 10000,
+          }
+        );
+        const candidates = (nearbyRes.data.results || []).filter((r: any) => /小学校/.test(r.name));
+        const schoolName = candidates[0]?.name || '小学校';
+        elementarySchoolResult = { name: schoolName, lat: customElemLat, lng: customElemLng, districtConfirmed: false };
+      }
     } else if (elementarySchoolNameFromDistrict) {
       // ---- 学区名が確定している場合: Find Place API で名前指定検索（Nearby Searchより精確）----
       // 住所対応表・GeoJSONで確定した学校名を使って座標を取得する。

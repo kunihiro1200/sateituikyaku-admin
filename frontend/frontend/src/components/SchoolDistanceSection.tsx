@@ -524,7 +524,9 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
       // 物件住所を渡すことで番地レベルの正確な学区照合が可能
       const params: Record<string, string | number> = { lat: propertyLat, lng: propertyLng };
       if (addressToUse) params.propertyAddress = addressToUse;
-      if (customElemEntrance) {
+      // 住所対応表が使える場合、以前の正門座標は渡さない（古い座標で名前が上書きされるのを防ぐ）
+      // カスタム正門は「住所対応表なし・GeoJSONのみ」の場合のみ使用
+      if (customElemEntrance && !addressToUse) {
         params.elementaryLat = customElemEntrance.lat;
         params.elementaryLng = customElemEntrance.lng;
       }
