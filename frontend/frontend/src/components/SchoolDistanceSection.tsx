@@ -626,6 +626,17 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
 
   const districtLink = getDistrictPageLink(propertyAddress);
 
+  // 福岡市公式データで判定された場合は住所なしでも福岡市リンクを表示
+  const effectiveDistrictLink = districtLink ?? (
+    (elementarySchool.dataSource === 'fukuoka_official' ||
+     juniorHighSchool.dataSource === 'fukuoka_official')
+      ? {
+          label: '福岡市 通学区域照合',
+          url: 'https://www.city.fukuoka.lg.jp/kyoiku-iinkai/tsuugaku/ed/area/tsugaku.html',
+        }
+      : null
+  );
+
   const hasAnyData = elementarySchool.name || juniorHighSchool.name;
 
   return (
@@ -740,10 +751,10 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
           >
             {saving ? '保存中...' : '保存'}
           </Button>
-          {districtLink && (
-            <Tooltip title={`${districtLink.label}（外部サイト）`}>
+          {effectiveDistrictLink && (
+            <Tooltip title={`${effectiveDistrictLink.label}（外部サイト）`}>
               <Link
-                href={districtLink.url}
+                href={effectiveDistrictLink.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '12px', ml: 'auto',
