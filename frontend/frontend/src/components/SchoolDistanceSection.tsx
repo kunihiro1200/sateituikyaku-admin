@@ -527,6 +527,35 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
           '⚠️ 中学校区：REINFOLIB_API_KEY が未設定のため学区未確認です。Vercel 環境変数に REINFOLIB_API_KEY を設定するとXKT005で正確な指定校を判定できます。'
         );
       }
+
+      // 自動取得成功後は即座に保存（保存押し忘れを防止）
+      if (sellerId && (data.elementarySchool || data.juniorHighSchool)) {
+        const elemSchool = data.elementarySchool;
+        const jhSchool = data.juniorHighSchool;
+        try {
+          await api.patch(`/api/sellers/${sellerId}/attached-document2/school`, {
+            elementary_school_name: elemSchool?.name || null,
+            elementary_school_walk: elemSchool?.distanceMeters !== null && elemSchool?.distanceMeters !== undefined
+              ? String(Math.ceil(elemSchool.distanceMeters / 80)) : null,
+            elementary_school_distance: elemSchool?.distanceMeters ?? null,
+            elementary_school_entrance_lat: elemSchool?.lat ?? null,
+            elementary_school_entrance_lng: elemSchool?.lng ?? null,
+            junior_high_school_name: jhSchool?.name ?? null,
+            junior_high_school_walk: jhSchool?.distanceMeters !== null && jhSchool?.distanceMeters !== undefined
+              ? String(Math.ceil(jhSchool.distanceMeters / 80)) : null,
+            junior_high_school_distance: jhSchool?.distanceMeters ?? null,
+            junior_high_school_entrance_lat: jhSchool?.lat ?? null,
+            junior_high_school_entrance_lng: jhSchool?.lng ?? null,
+            school_info_fetched_at: new Date().toISOString(),
+          });
+          setFetchedAt(new Date().toISOString());
+          setSaveSuccess(true);
+          setTimeout(() => setSaveSuccess(false), 3000);
+        } catch (saveErr: any) {
+          console.warn('[SchoolDistanceSection] 自動保存失敗:', saveErr.message);
+          // 自動保存失敗は警告のみ（手動保存ボタンで対処可）
+        }
+      }
     } catch (err: any) {
       setFetchError(err.response?.data?.error || '学校情報の取得に失敗しました');
     } finally {

@@ -630,36 +630,33 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
 
     if (reinfilibKey) {
       // ---- XKT005 で中学校区ポリゴンを取得 → Point-in-Polygon 判定 ----
-      const jhDistrict = await fetchJuniorHighSchoolDistrict(latNum, lngNum, reinfilibKey);
+      const xkt005Result = await fetchJuniorHighSchoolDistrict(latNum, lngNum, reinfilibKey);
 
-      if (jhDistrict) {
+      if (xkt005Result && xkt005Result.name) {
         // 判定成功: 指定校名が確定
-        // 正門座標は Places API で検索（カスタム座標があればそちらを優先）
         let jhLat = customJhLat;
         let jhLng = customJhLng;
 
         if (!jhLat || !jhLng) {
-          // Places API（Find Place from Text）で学校座標を取得
-          const placeCoords = await findSchoolCoordsByName(jhDistrict.name, latNum, lngNum, apiKey);
+          const placeCoords = await findSchoolCoordsByName(xkt005Result.name, latNum, lngNum, apiKey);
           jhLat = placeCoords?.lat ?? null;
           jhLng = placeCoords?.lng ?? null;
         }
 
         juniorHighSchoolResult = {
-          name: jhDistrict.name,
+          name: xkt005Result.name,
           lat: jhLat,
           lng: jhLng,
           districtConfirmed: true,
         };
-        console.log(`[nearbyMap] XKT005 中学校区判定成功: ${jhDistrict.name}`);
+        console.log(`[nearbyMap] XKT005 中学校区判定成功: ${xkt005Result.name}`);
+      } else if (xkt005Result && xkt005Result.name === null) {
+        // 401 による失敗（キー無効）
+        juniorHighSchoolResult = { name: null, lat: null, lng: null, districtConfirmed: false };
+        console.error('[nearbyMap] XKT005: APIキーが無効（401）');
       } else {
-        // XKT005 応答はあるが該当区域なし（区域データ未整備地域など）
-        juniorHighSchoolResult = {
-          name: null,
-          lat: null,
-          lng: null,
-          districtConfirmed: false,
-        };
+        // XKT005 応答はあるが該当区域なし
+        juniorHighSchoolResult = { name: null, lat: null, lng: null, districtConfirmed: false };
         console.warn('[nearbyMap] XKT005: 該当中学校区なし（学区未確認）');
       }
     } else if (customJhLat && customJhLng) {
@@ -706,10 +703,8 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
         : Promise.resolve(null),
     ]);
 
-    // ---- レスポンス組み立て ----
-    // 中学校は学区未確認の場合も返す（フロントエンドで「学区未確認」と表示するため）
-    const jhDistConfirmed = juniorHighSchoolResult?.districtConfirmed ?? false;
-    const jhHasCoords = !!(juniorHighSchoolResult?.lat && juniorHighSchoolResult?.lng);
+    // xkt005401: APIキー無効フラグ（fetchJuniorHighSchoolDistrict から伝播）
+    const jhXkt005Invalid = reinfilibKey && juniorHighSchoolResult?.name === null && !juniorHighSchoolResult?.districtConfirmed;
 
     return res.json({
       elementarySchool: elementarySchoolResult
@@ -724,15 +719,16 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
           }
         : null,
       juniorHighSchool: {
-        name: juniorHighSchoolResult?.name ?? null,           // null = 学区未確認
+        name: juniorHighSchoolResult?.name ?? null,
         distanceMeters: jhHasCoords ? (jhResult?.meters ?? null) : null,
         walkMinutes: jhHasCoords ? (jhResult ? calcWalkMinutes(jhResult.meters) : null) : null,
         isEstimated: jhHasCoords ? (jhResult?.isEstimated ?? false) : false,
         lat: juniorHighSchoolResult?.lat ?? null,
         lng: juniorHighSchoolResult?.lng ?? null,
         districtConfirmed: jhDistConfirmed,
-        // APIキーがない場合のメッセージ
-        notAvailableReason: !reinfilibKey ? 'REINFOLIB_API_KEY_NOT_SET' : (!jhDistConfirmed && !juniorHighSchoolResult?.name ? 'DISTRICT_NOT_FOUND' : null),
+        notAvailableReason: !reinfilibKey
+          ? 'REINFOLIB_API_KEY_NOT_SET'
+          : (jhXkt005Invalid ? 'DISTRICT_NOT_FOUND' : null),
       },
     });
   } catch (error: any) {
