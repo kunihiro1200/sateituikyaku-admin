@@ -3,6 +3,20 @@ import { authenticate } from '../middleware/auth';
 import axios from 'axios';
 import { lookupFukuokaSchool } from '../services/FukuokaSchoolAddressService';
 
+// 福岡市住所対応表を nearbyMap.ts 内でも直接ロード（Vercelでのパス解決を確実にする）
+let _fukuokaAddressMap: any = null;
+function loadFukuokaAddressMapInRoute() {
+  if (_fukuokaAddressMap) return _fukuokaAddressMap;
+  try {
+    _fukuokaAddressMap = require('../data/fukuoka-school-address-map.json');
+    console.log(`[nearbyMap] 福岡市住所対応表: ${_fukuokaAddressMap.recordCount}件`);
+  } catch (e: any) {
+    console.warn('[nearbyMap] 福岡市住所対応表の読み込み失敗:', e.message);
+    _fukuokaAddressMap = { records: [] };
+  }
+  return _fukuokaAddressMap;
+}
+
 const router = Router();
 
 // カテゴリ定義
@@ -540,13 +554,36 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     // ① 福岡市住所対応表（property_address がある場合のみ）
     if (inFukuokaArea && propertyAddressParam) {
       try {
-        const result = lookupFukuokaSchool(propertyAddressParam);
-        if (result) {
-          elementarySchoolNameFromDistrict = result.elementary;
-          elementaryDistrictSource = 'fukuoka_address_table';
-          elementaryDistrictDate = '20251226';
-          elementaryConfidence = result.confidence;
-          console.log(`[nearbyMap] 住所対応表照合: ${result.elementary} / ${result.juniorHigh} (${result.confidence})`);
+        // nearbyMap.ts 内でロードした対応表を使う（services/の require よりパス解決が確実）
+        const map = loadFukuokaAddressMapInRoute();
+        const records = map.records as any[];
+        if (records?.length > 0) {
+          // アドレスを parseAddress と同等ロジックでパース
+          const wardM = propertyAddressParam.match(/([東南西北博多中央城南早良]+区)/);
+          const ward = wardM ? wardM[1] : null;
+          if (ward) {
+            const afterWard = propertyAddressParam.split(ward)[1] || '';
+            const townM = afterWard.match(/^([^\d\-ー－\s\u3000]+)/);
+            let town = townM ? townM[1].trim() : null;
+            if (town) {
+              const townCandidates = [town, ...(town.endsWith('町') ? [] : [town + '町'])];
+              for (const tc of townCandidates) {
+                const hits = records.filter((r: any) => r.ward === ward && r.town === tc);
+                if (hits.length > 0) {
+                  // 全域は無条件マッチ、それ以外はchoice:0で確認済みとして採用
+                  const best = hits.find((r: any) => !r.range || r.range.includes('全域')) || hits[0];
+                  elementarySchoolNameFromDistrict = best.elementary;
+                  elementaryDistrictSource = 'fukuoka_address_table';
+                  elementaryDistrictDate = '20251226';
+                  elementaryConfidence = 'confirmed';
+                  // 中学校も同時取得
+                  (req as any)._jhFromAddressTable = best.juniorHigh;
+                  console.log(`[nearbyMap] 住所対応表ヒット: ${best.elementary} / ${best.juniorHigh} (${ward} ${tc})`);
+                  break;
+                }
+              }
+            }
+          }
         }
       } catch (e: any) {
         console.warn('[nearbyMap] 住所対応表照合エラー:', e.message);
@@ -720,22 +757,23 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     // 住所対応表で中学校も取得
     if (inFukuokaArea && propertyAddressParam) {
       try {
-        const result = lookupFukuokaSchool(propertyAddressParam);
-        if (result) {
+        // 小学校取得時に req に一時保存した中学校名を使用
+        const jhFromTable: string | undefined = (req as any)._jhFromAddressTable;
+        if (jhFromTable) {
           let jhLat = customJhLat;
           let jhLng = customJhLng;
           if (!jhLat || !jhLng) {
-            const placeCoords = await findSchoolCoordsByName(result.juniorHigh, latNum, lngNum, apiKey);
+            const placeCoords = await findSchoolCoordsByName(jhFromTable, latNum, lngNum, apiKey);
             jhLat = placeCoords?.lat ?? null;
             jhLng = placeCoords?.lng ?? null;
           }
           juniorHighSchoolResult = {
-            name: result.juniorHigh,
+            name: jhFromTable,
             lat: jhLat,
             lng: jhLng,
             districtConfirmed: true,
           };
-          console.log(`[nearbyMap] 住所対応表 中学校: ${result.juniorHigh}`);
+          console.log(`[nearbyMap] 住所対応表 中学校: ${jhFromTable}`);
         }
       } catch (e: any) {
         console.warn('[nearbyMap] 住所対応表 中学校照合エラー:', e.message);
