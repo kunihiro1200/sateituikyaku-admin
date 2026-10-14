@@ -54,33 +54,46 @@ export function parseAddress(address: string): ParsedAddress {
 
   if (!address) return result;
 
-  // 区名を抽出（福岡市X区 or 単に X区）
+  // 区名を抽出
   const wardMatch = address.match(/([東南西北博多中央城南早良]+区)/);
   if (wardMatch) result.ward = wardMatch[1];
 
-  // 町名を抽出（X区以降の文字列から取得）
-  // パターン: 区名の後の文字〜丁目・番・号の前まで
+  // 区名以降の文字列
   const afterWard = result.ward ? address.split(result.ward)[1] || '' : address;
-  const townMatch = afterWard.match(/^([^\d丁番号\s]+(?:町|丁目前後|通|浜|団地|公園|ふ頭)?)/);
+
+  // パターン1: 「玉川町」「春吉」のような町名（数字・ハイフンの前まで）
+  // パターン2: 「博多駅前」「上川端町」のようなスペースなし複合語
+  const townMatch = afterWard.match(/^([^\d\-ー－\s　]+)/);
   if (townMatch) {
-    // 「〇丁目」が町名の一部の場合を除外
-    let town = townMatch[1].trim();
-    // 末尾の不要文字を除去
-    town = town.replace(/[の\s　]+$/, '').trim();
+    let town = townMatch[1].trim().replace(/[の\s　]+$/, '');
     if (town) result.town = town;
   }
 
-  // 丁目番号
+  // 丁目番号（「3丁目」形式）
   const chomeMatch = address.match(/(\d+)丁目/);
-  if (chomeMatch) result.chome = parseInt(chomeMatch[1], 10);
+  if (chomeMatch) {
+    result.chome = parseInt(chomeMatch[1], 10);
+  } else {
+    // ハイフン形式「玉川3-25」→ chome=3, ban=25
+    const hyphenMatch = afterWard.match(/^[^\d]*(\d+)[-ー－](\d+)/);
+    if (hyphenMatch) {
+      result.chome = parseInt(hyphenMatch[1], 10);
+      result.ban   = parseInt(hyphenMatch[2], 10);
+    }
+  }
 
-  // 番
-  const banMatch = address.match(/(\d+)番/);
-  if (banMatch) result.ban = parseInt(banMatch[1], 10);
+  // 番（「5番」形式 - 丁目があれば次の数字が番）
+  if (!result.ban) {
+    const banMatch = address.match(/(\d+)番/);
+    if (banMatch) result.ban = parseInt(banMatch[1], 10);
+  }
 
   // 号
   const goMatch = address.match(/(\d+)号/);
   if (goMatch) result.go = parseInt(goMatch[1], 10);
+
+  // 町名が「玉川町」の形式に変換されていない場合の補完
+  // 例: "玉川" → データの "玉川町" にも照合できるよう候補を広げる（lookupで対処）
 
   return result;
 }
@@ -179,37 +192,41 @@ export function lookupFukuokaSchool(address: string): SchoolLookupResult | null 
   const parsed = parseAddress(address);
   if (!parsed.ward || !parsed.town) return null;
 
-  // 町名で候補を絞り込む
-  const candidates = records.filter(
-    (r) => r.ward === parsed.ward && r.town === parsed.town
-  );
+  // 照合候補の町名リスト（表記揺れに対応）
+  const townCandidates = [
+    parsed.town,
+    // 末尾に「町」を付加した形も試す（例: "玉川" → "玉川町"）
+    ...(parsed.town.endsWith('町') ? [] : [parsed.town + '町']),
+  ];
 
-  if (!candidates.length) {
-    // 丁目なし町名でも試す（例: "博多駅前1丁目" → town="博多駅前"）
-    return null;
-  }
+  for (const town of townCandidates) {
+    const candidates = records.filter(
+      (r) => r.ward === parsed.ward && r.town === town
+    );
+    if (!candidates.length) continue;
 
-  // 区域チェック
-  let bestMatch: { record: any; confidence: 'confirmed' | 'uncertain' } | null = null;
+    // 区域チェック
+    let bestMatch: { record: any; confidence: 'confirmed' | 'uncertain' } | null = null;
+    for (const rec of candidates) {
+      const result = matchRange(rec.range, parsed.chome, parsed.ban);
+      if (result === 'match') {
+        bestMatch = { record: rec, confidence: 'confirmed' };
+        break;
+      } else if (result === 'uncertain' && !bestMatch) {
+        bestMatch = { record: rec, confidence: 'uncertain' };
+      }
+    }
 
-  for (const rec of candidates) {
-    const result = matchRange(rec.range, parsed.chome, parsed.ban);
-    if (result === 'match') {
-      bestMatch = { record: rec, confidence: 'confirmed' };
-      break; // 完全一致が見つかれば即採用
-    } else if (result === 'uncertain' && !bestMatch) {
-      bestMatch = { record: rec, confidence: 'uncertain' };
-      // 不確実でも候補として保持（より良いものがあれば上書き）
+    if (bestMatch) {
+      return {
+        elementary: bestMatch.record.elementary,
+        juniorHigh: bestMatch.record.juniorHigh,
+        ward: bestMatch.record.ward,
+        town: bestMatch.record.town,
+        confidence: bestMatch.confidence,
+      };
     }
   }
 
-  if (!bestMatch) return null;
-
-  return {
-    elementary: bestMatch.record.elementary,
-    juniorHigh: bestMatch.record.juniorHigh,
-    ward: bestMatch.record.ward,
-    town: bestMatch.record.town,
-    confidence: bestMatch.confidence,
-  };
+  return null;
 }

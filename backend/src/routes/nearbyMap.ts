@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware/auth';
 import axios from 'axios';
+import { lookupFukuokaSchool } from '../services/FukuokaSchoolAddressService';
 
 const router = Router();
 
@@ -525,6 +526,7 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     //   2. 福岡市公式GeoJSON（2025/12/26版）
     //   3. 国土数値情報 GeoJSON（全国）
     const inFukuokaArea = lngNum >= 130.0 && lngNum <= 130.5 && latNum >= 33.4 && latNum <= 33.9;
+    const propertyAddressParam = (req.query.propertyAddress as string | undefined) || '';
 
     let elementarySchoolNameFromDistrict: string | null = null;
     let elementaryDistrictSource = 'xkt004';
@@ -532,17 +534,18 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     let elementaryConfidence: 'confirmed' | 'uncertain' = 'confirmed';
 
     // ① 福岡市住所対応表（property_address がある場合のみ）
-    // server-side で実行 → req.query から住所を受け取る
-    const propertyAddressParam = (req.query.propertyAddress as string | undefined) || '';
     if (inFukuokaArea && propertyAddressParam) {
-      const { lookupFukuokaSchool } = await import('../services/FukuokaSchoolAddressService');
-      const result = lookupFukuokaSchool(propertyAddressParam);
-      if (result) {
-        elementarySchoolNameFromDistrict = result.elementary;
-        elementaryDistrictSource = 'fukuoka_address_table';
-        elementaryDistrictDate = '20251226';
-        elementaryConfidence = result.confidence;
-        console.log(`[nearbyMap] 住所対応表照合: ${result.elementary} / ${result.juniorHigh} (${result.confidence})`);
+      try {
+        const result = lookupFukuokaSchool(propertyAddressParam);
+        if (result) {
+          elementarySchoolNameFromDistrict = result.elementary;
+          elementaryDistrictSource = 'fukuoka_address_table';
+          elementaryDistrictDate = '20251226';
+          elementaryConfidence = result.confidence;
+          console.log(`[nearbyMap] 住所対応表照合: ${result.elementary} / ${result.juniorHigh} (${result.confidence})`);
+        }
+      } catch (e: any) {
+        console.warn('[nearbyMap] 住所対応表照合エラー:', e.message);
       }
     }
 
@@ -678,25 +681,28 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     const customJhLat = juniorHighLat ? parseFloat(juniorHighLat as string) : null;
     const customJhLng = juniorHighLng ? parseFloat(juniorHighLng as string) : null;
 
-    // 住所対応表で中学校も取得（小学校と同時に取得済みの場合はそちらを使う）
+    // 住所対応表で中学校も取得
     if (inFukuokaArea && propertyAddressParam) {
-      const { lookupFukuokaSchool } = await import('../services/FukuokaSchoolAddressService');
-      const result = lookupFukuokaSchool(propertyAddressParam);
-      if (result) {
-        let jhLat = customJhLat;
-        let jhLng = customJhLng;
-        if (!jhLat || !jhLng) {
-          const placeCoords = await findSchoolCoordsByName(result.juniorHigh, latNum, lngNum, apiKey);
-          jhLat = placeCoords?.lat ?? null;
-          jhLng = placeCoords?.lng ?? null;
+      try {
+        const result = lookupFukuokaSchool(propertyAddressParam);
+        if (result) {
+          let jhLat = customJhLat;
+          let jhLng = customJhLng;
+          if (!jhLat || !jhLng) {
+            const placeCoords = await findSchoolCoordsByName(result.juniorHigh, latNum, lngNum, apiKey);
+            jhLat = placeCoords?.lat ?? null;
+            jhLng = placeCoords?.lng ?? null;
+          }
+          juniorHighSchoolResult = {
+            name: result.juniorHigh,
+            lat: jhLat,
+            lng: jhLng,
+            districtConfirmed: true,
+          };
+          console.log(`[nearbyMap] 住所対応表 中学校: ${result.juniorHigh}`);
         }
-        juniorHighSchoolResult = {
-          name: result.juniorHigh,
-          lat: jhLat,
-          lng: jhLng,
-          districtConfirmed: true,
-        };
-        console.log(`[nearbyMap] 住所対応表 中学校: ${result.juniorHigh}`);
+      } catch (e: any) {
+        console.warn('[nearbyMap] 住所対応表 中学校照合エラー:', e.message);
       }
     }
 
