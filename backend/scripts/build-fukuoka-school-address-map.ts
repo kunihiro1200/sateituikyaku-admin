@@ -316,7 +316,16 @@ async function main() {
   // Wayback Machine データには含まれていない 2026年新設・更新分を手動で追加
   // 出典: 福岡市 R8（令和8年4月1日現在）学校別通学区域一覧 R8gakkoubetu.pdf
   const R8_SUPPLEMENTS: DistrictRecord[] = [
-    // 周船寺中（2026年4月開校 - Wayback Machineデータに未収録）
+    // ── na行（nc.html 2025-04）で消失したレコードを補完 ──
+    // 城南区 片江 2丁目8番 / 堤丘小 / 長尾中:
+    // nc.html の Wayback Machine 再スクレイプ時に欠落した。
+    // na行データ（nc.html 2025-04-01）に明記されているため手動で補完。
+    {
+      ward: '城南区', town: '片江',
+      range: '2丁目8番',
+      elementary: '堤丘小', juniorHigh: '長尾中', note: '',
+      source: 'nc (WB 2025-04)',
+    },
     // 元岡中から分離された西区西部エリア
     {
       ward: '西区', town: '周船寺',
