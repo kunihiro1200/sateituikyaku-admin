@@ -129,17 +129,25 @@ async function searchBuildingInfo(
 
       console.log(`[apartmentInfo] Found detail URLs: ${JSON.stringify(detailUrls)}`);
 
-      // 最初に取得できた詳細ページを使う
-      for (const url of detailUrls) {
+      // 複数の詳細ページを取得して内容を結合（AtHomeが空でも rehouse/SUUMO で補完）
+      const detailContents: string[] = [];
+      const usedUrls: string[] = [];
+      for (const url of detailUrls.slice(0, 5)) {
+        if (detailContents.length >= 3) break; // 最大3ページ
         try {
           const detailText = await fetchPage(url);
-          if (detailText && detailText.length > 400) {
+          if (detailText && detailText.length > 200) {
             console.log(`[apartmentInfo] Got detail page: ${url} (${detailText.length} chars)`);
-            return `DATA_SOURCE_URL: ${url}\n\n## 建物詳細ページ\n${detailText.substring(0, 6000)}\n\n## 検索スニペット\n${searchText.substring(0, 1500)}`;
+            detailContents.push(`## 出典: ${url}\n${detailText.substring(0, 2500)}`);
+            usedUrls.push(url);
           }
         } catch (e) {
           console.warn(`[apartmentInfo] detail fetch failed ${url}:`, (e as any)?.message);
         }
+      }
+
+      if (detailContents.length > 0) {
+        return `DATA_SOURCE_URL: ${usedUrls[0]}\n\n${detailContents.join('\n\n---\n\n')}\n\n## 検索スニペット（補足）\n${searchText.substring(0, 1500)}`;
       }
 
       // 詳細ページが取れなくてもスニペットをClaudeに渡す（スニペットだけで抽出できる場合が多い）
@@ -167,7 +175,7 @@ async function searchBuildingInfo(
       const uddgMatches = [...ddgText.matchAll(/uddg=(https?[^&\s"'<\)]+)/g)];
       const uddgUrls = uddgMatches
         .map(m => { try { return decodeURIComponent(m[1]); } catch { return ''; } })
-        .filter(u => /(?:suumo\.jp\/library|athome\.co\.jp\/bldg-library|library\.smtrc\.jp\/mansion)/.test(u));
+        .filter(u => /(?:suumo\.jp\/library|athome\.co\.jp\/bldg-library|library\.smtrc\.jp\/mansion|rehouse\.co\.jp\/mansionlibrary)/.test(u));
       detailUrls = [...new Set([...detailUrls, ...uddgUrls])];
       console.log(`[apartmentInfo] DuckDuckGo found URLs: ${JSON.stringify(detailUrls)}`);
 
