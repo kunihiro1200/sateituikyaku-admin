@@ -5496,7 +5496,7 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
     // 1. property_listingsから座標付き物件を全件取得
     const { data: allListings } = await supabase
       .from('property_listings')
-      .select('property_number, property_type, address, display_address, land_area, building_area, sales_price, settlement_date, atbb_status, offer_status, construction_year_month, latitude, longitude')
+      .select('property_number, property_type, address, display_address, land_area, building_area, price, sales_price, settlement_date, atbb_status, offer_status, construction_year_month, latitude, longitude')
       .not('latitude', 'is', null)
       .not('longitude', 'is', null);
 
@@ -5549,7 +5549,14 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
           displayAddress: listing.display_address || '',
           landArea: listing.land_area ? String(listing.land_area) : '',
           buildingArea: listing.building_area ? String(listing.building_area) : '',
-          salesPrice: listing.sales_price ? String(listing.sales_price) : '',
+          // 価格: 販売中物件は price、成約済み物件は sales_price に値が入っているため、
+          // どちらか値のある方を使う。成約済みは成約価格(sales_price)を優先する。
+          salesPrice: (() => {
+            const priceVal = isSettled
+              ? (listing.sales_price ?? listing.price)
+              : (listing.price ?? listing.sales_price);
+            return priceVal != null && priceVal !== '' ? String(priceVal) : '';
+          })(),
           atbbStatus: statusLabel,
           buildYear: (() => {
             const val = listing.construction_year_month;
