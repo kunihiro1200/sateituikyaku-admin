@@ -4365,7 +4365,22 @@ router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
     }
 
     const buyerService = new BuyerService();
-    const buyers = await buyerService.getBuyersByAreas(effectiveAreas, propertyType, salesPrice);
+    let buyers = await buyerService.getBuyersByAreas(effectiveAreas, propertyType, salesPrice);
+
+    // 売主の地域に応じて買主番号プレフィックスで除外する
+    // - AA準備（大分、売主番号 AA〜）: 買主番号 FK（福岡）を表示しない
+    // - FI準備（福岡、売主番号 FI〜）: 買主番号 AA（大分）を表示しない
+    const excludeBuyerPrefix = sellerPrefix === 'AA' ? 'FK'
+      : sellerPrefix === 'FI' ? 'AA'
+      : null;
+    if (excludeBuyerPrefix) {
+      const beforeCount = buyers.length;
+      buyers = buyers.filter((b: any) => {
+        const bn = String(b.buyer_number || '').toUpperCase();
+        return !bn.startsWith(excludeBuyerPrefix);
+      });
+      console.log(`🚫 Excluded buyer prefix "${excludeBuyerPrefix}" for seller prefix "${sellerPrefix}": ${beforeCount} → ${buyers.length}`);
+    }
 
     console.log(`✅ Found ${buyers.length} nearby buyers for seller ${id}`);
 
