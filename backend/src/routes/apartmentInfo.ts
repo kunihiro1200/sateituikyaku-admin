@@ -74,6 +74,24 @@ function extractBuildingNameFromAddress(address: string): string | null {
 }
 
 // ──────────────────────────────────────────────
+// 建物名を正規化（序数・建物タイプを除去して表記ゆれに対応）
+// 例: "東カン第1福岡ビル" → "東カン福岡"
+// 例: "ファーネスト平和中央公園" → "ファーネスト平和中央公園" (変化なし)
+// ──────────────────────────────────────────────
+
+function simplifyBuildingName(name: string): string | null {
+  const simplified = name
+    .replace(/第[一二三四五六七八九十百\d]+/gu, '')   // 第1, 第一等
+    .replace(/[（(][^）)]*[）)]/gu, '')               // 括弧内
+    .replace(/(ビル|マンション|タワー|コーポ|ハイツ|パレス|レジデンス|テラス|コート|プラザ|ガーデン|ハウス|スクエア)$/u, '')
+    .replace(/\s+/g, '')
+    .trim();
+  // 元の名前と同じ または 3文字以下に縮小した場合は意味がない
+  if (!simplified || simplified.length < 3 || simplified === name) return null;
+  return simplified;
+}
+
+// ──────────────────────────────────────────────
 // Jina AI Search でマンション建物情報を検索
 // ──────────────────────────────────────────────
 
@@ -144,6 +162,24 @@ async function searchBuildingInfo(
       console.log(`[apartmentInfo] DDG URLs: ${JSON.stringify(detailUrls)}`);
       const combined = await fetchDetailPages(detailUrls, ddgText);
       if (combined) return combined;
+
+      // URL が見つからなかった場合: 建物名を正規化してリトライ
+      const simplified = buildingName ? simplifyBuildingName(buildingName) : null;
+      if (simplified) {
+        console.log(`[apartmentInfo] DDG retry with simplified name: "${simplified}"`);
+        const q2 = `${simplified} マンション 総戸数 築年月 構造 管理会社`;
+        const ddgText2 = await fetchPage(
+          `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q2)}`,
+          10000
+        );
+        if (ddgText2 && ddgText2.length > 200) {
+          const urls2 = extractUrls(ddgText2);
+          console.log(`[apartmentInfo] DDG retry URLs: ${JSON.stringify(urls2)}`);
+          const combined2 = await fetchDetailPages(urls2, ddgText2);
+          if (combined2) return combined2;
+        }
+      }
+
       return `DATA_SOURCE_URL: ${ddgUrl}\n\n## DuckDuckGo検索結果\n${ddgText.substring(0, 5000)}`;
     }
   } catch (err: any) {
