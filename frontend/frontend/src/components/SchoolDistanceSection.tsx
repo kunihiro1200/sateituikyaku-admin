@@ -608,6 +608,16 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
         const elemSchool = data.elementarySchool;
         const jhSchool = data.juniorHighSchool;
         try {
+          // ⚠️ FI売主のふりがな生成は学校名の保存より先に行う
+          // 保存後に呼ぶと DB の学校名が新名に更新済みになり
+          // 「名前が変わっていない」と判断されてふりがなが再生成されない
+          if (isFISeller) {
+            await generateFurigana(
+              elemSchool?.name ?? '',
+              jhSchool?.name ?? ''
+            );
+          }
+
           await api.patch(`/api/sellers/${sellerId}/attached-document2/school`, {
             elementary_school_name: elemSchool?.name || null,
             elementary_school_walk: elemSchool?.googleWalkMinutes != null
@@ -628,13 +638,6 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
           setFetchedAt(new Date().toISOString());
           setSaveSuccess(true);
           setTimeout(() => setSaveSuccess(false), 3000);
-          // FI売主のみふりがなを自動生成
-          if (isFISeller) {
-            await generateFurigana(
-              data.elementarySchool?.name ?? '',
-              data.juniorHighSchool?.name ?? ''
-            );
-          }
         } catch (saveErr: any) {
           console.warn('[SchoolDistanceSection] 自動保存失敗:', saveErr.message);
           // 自動保存失敗は警告のみ（手動保存ボタンで対処可）
@@ -647,7 +650,8 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
     }
   };
 
-  // ふりがな自動生成（FI売主のみ・学校名保存後に呼ぶ）
+  // ふりがな自動生成（FI売主のみ・学校名保存前に呼ぶ）
+  // 保存後に呼ぶと DB の学校名が新名に更新済みになり再生成がスキップされる
   const generateFurigana = useCallback(async (elemName: string, jhName: string) => {
     if (!isFISeller || !sellerId) return;
     if (!elemName && !jhName) return;
