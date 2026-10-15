@@ -21,6 +21,7 @@ import {
   Chip,
   IconButton,
   Divider,
+  MenuItem,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -29,7 +30,7 @@ import {
 import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
-import { uploadFileToStorage, toggleStaff } from '../utils/sharedItemFormUtils';
+import { uploadFileToStorage, toggleStaff, SHARING_LOCATIONS } from '../utils/sharedItemFormUtils';
 import { useAuthStore } from '../store/authStore';
 import { useSharedItemPresenceTrack } from '../hooks/useListPresence';
 
@@ -120,6 +121,7 @@ export default function SharedItemDetailPage() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [sharingDate, setSharingDate] = useState('');
+  const [sharingLocation, setSharingLocation] = useState('');
 
   // 未確認スタッフ（DB管理）
   const [unconfirmedStaff, setUnconfirmedStaff] = useState<string[]>([]);
@@ -154,6 +156,7 @@ export default function SharedItemDetailPage() {
   const [initialTitle, setInitialTitle] = useState('');
   const [initialContent, setInitialContent] = useState('');
   const [initialSharingDate, setInitialSharingDate] = useState('');
+  const [initialSharingLocation, setInitialSharingLocation] = useState('');
 
   // チャット送信関連（共有場が「他」の場合のみ）
   const [scheduledChatDatetime, setScheduledChatDatetime] = useState('');
@@ -168,6 +171,7 @@ export default function SharedItemDetailPage() {
     setTitle('');
     setContent('');
     setSharingDate('');
+    setSharingLocation('');
     setUnconfirmedStaff([]);
     setNewPdfs([]);
     setNewImages([]);
@@ -191,12 +195,15 @@ export default function SharedItemDetailPage() {
         const sns = foundItem['共有できていない'] || '';
         const ct = foundItem['内容'] || '';
         const tl = foundItem['タイトル'] || '';
+        const sl = foundItem['共有場'] || '';
         setTitle(tl);
         setSharingDate(sd);
         setContent(ct);
+        setSharingLocation(sl);
         setInitialTitle(tl);
         setInitialSharingDate(sd);
         setInitialContent(ct);
+        setInitialSharingLocation(sl);
 
         // 未確認スタッフをDBから取得
         try {
@@ -517,6 +524,7 @@ export default function SharedItemDetailPage() {
       });
       const payload: Record<string, string> = {
         'タイトル': title,
+        '共有場': sharingLocation,
         'PDF1': pdfUrls[0], 'PDF2': pdfUrls[1], 'PDF3': pdfUrls[2], 'PDF4': pdfUrls[3], 'PDF5': pdfUrls[4],
         'PDF6': pdfUrls[5], 'PDF7': pdfUrls[6], 'PDF8': pdfUrls[7], 'PDF9': pdfUrls[8], 'PDF10': pdfUrls[9],
         '画像１': imageUrls[0], '画像２': imageUrls[1], '画像３': imageUrls[2], '画像４': imageUrls[3],
@@ -693,6 +701,7 @@ export default function SharedItemDetailPage() {
 
       const payload: Record<string, string> = {
         'タイトル': title,
+        '共有場': sharingLocation,
         'PDF1': pdfUrls[0],
         'PDF2': pdfUrls[1],
         'PDF3': pdfUrls[2],
@@ -750,6 +759,7 @@ export default function SharedItemDetailPage() {
       setInitialTitle(title);
       setInitialSharingDate(sharingDate);
       setInitialContent(content);
+      setInitialSharingLocation(sharingLocation);
       setInitialImageComments({ ...imageComments });
       setSaveSuccess(true);
     } catch (error: any) {
@@ -796,6 +806,7 @@ export default function SharedItemDetailPage() {
     title !== initialTitle ||
     content !== initialContent ||
     sharingDate !== initialSharingDate ||
+    sharingLocation !== initialSharingLocation ||
     JSON.stringify(imageComments) !== JSON.stringify(initialImageComments);
 
   const isTeamMode = TEAM_MODES.includes(item['共有場'] || '');
@@ -911,8 +922,21 @@ export default function SharedItemDetailPage() {
           {/* 共有場・項目 */}
           <Grid item xs={6}>
             <Typography variant="caption" color="text.secondary">共有場</Typography>
-            <TextField fullWidth value={item['共有場'] || ''} disabled size="small"
-              sx={{ mt: 1, '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: '#000' } }} />
+            <TextField
+              select
+              fullWidth
+              value={sharingLocation}
+              onChange={(e) => setSharingLocation(e.target.value)}
+              size="small"
+              sx={{ mt: 1 }}
+            >
+              {(SHARING_LOCATIONS as readonly string[]).includes(sharingLocation) || !sharingLocation
+                ? null
+                : <MenuItem key={sharingLocation} value={sharingLocation}>{sharingLocation}</MenuItem>}
+              {SHARING_LOCATIONS.map((loc) => (
+                <MenuItem key={loc} value={loc}>{loc}</MenuItem>
+              ))}
+            </TextField>
           </Grid>
           <Grid item xs={6}>
             <Typography variant="caption" color="text.secondary">項目</Typography>
