@@ -243,3 +243,33 @@ describe('lookupFukuokaSchool', () => {
     });
   });
 });
+
+// ────────────────────────────────────────────────────────────────────────────
+// FI89 再発防止テスト（小笹1丁目 ただし例外節スキップ）
+// ────────────────────────────────────────────────────────────────────────────
+describe('FI89 小笹1丁目 ただし例外節テスト', () => {
+  test('小笹1丁目8-7 → 小笹小/平尾中 (confirmed)', () => {
+    // 「1丁目～3丁目（ただし、3丁目20番の一部を除く・・・笹丘小）」
+    // 例外は3丁目20番。1丁目8番は明らかに例外外 → confirmed
+    const r = lookupFukuokaSchool('福岡県福岡市中央区小笹１丁目8-7ファーネスト平和中央公園408');
+    expect(r).not.toBeNull();
+    expect(r!.elementary).toContain('小笹小');
+    expect(r!.juniorHigh).toContain('平尾中');
+    expect(r!.confidence).toBe('confirmed');
+  });
+
+  test('小笹3丁目15番 → 小笹小/平尾中 (confirmed, 例外番地ではない)', () => {
+    // 例外「3丁目20番の一部」ではない → confirmed
+    const r = lookupFukuokaSchool('福岡市中央区小笹3丁目15番');
+    expect(r).not.toBeNull();
+    expect(r!.elementary).toContain('小笹小');
+    expect(r!.confidence).toBe('confirmed');
+  });
+
+  test('小笹3丁目20番 → uncertain (例外番地「の一部」)', () => {
+    // 例外「3丁目20番の一部を除く」 → 判定不能 → uncertain
+    const r = lookupFukuokaSchool('福岡市中央区小笹3丁目20番');
+    expect(r).not.toBeNull();
+    expect(r!.confidence).toBe('uncertain');
+  });
+});
