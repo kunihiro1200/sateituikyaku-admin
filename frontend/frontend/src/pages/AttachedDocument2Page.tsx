@@ -437,6 +437,7 @@ export default function AttachedDocument2Page() {
   const [hazardSuggestion, setHazardSuggestion] = useState<string | null>(null);
   const [schoolFetching, setSchoolFetching] = useState(false);
   const [schoolFetchError, setSchoolFetchError] = useState<string | null>(null);
+  const [schoolFetchWarning, setSchoolFetchWarning] = useState<string | null>(null);
   const [transitFetching, setTransitFetching] = useState(false);
   const [transitFetchError, setTransitFetchError] = useState<string | null>(null);
 
@@ -650,6 +651,7 @@ export default function AttachedDocument2Page() {
     if (!seller?.sellerNumber) return;
     setSchoolFetching(true);
     setSchoolFetchError(null);
+    setSchoolFetchWarning(null);
     try {
       // 1. 物件座標と住所を取得
       const coordRes = await api.get(`/api/sellers/by-number/${seller.sellerNumber}`);
@@ -673,19 +675,43 @@ export default function AttachedDocument2Page() {
       // 徒歩時間文字列生成
       const computeWalk = (meters: number): string => String(Math.ceil(meters / 80));
 
+      // ③ 信頼性チェック: uncertain（照会・の一部・境界地区）は要確認メッセージを表示
+      const elemConf = data.elementarySchool?.confidence;
+      const jhConf   = data.juniorHighSchool?.confidence;
+      const hasUncertain = elemConf === 'uncertain' || jhConf === 'uncertain';
+      const elemSource   = data.elementarySchool?.dataSource || '';
+
       // 3. フォームに反映（編集可能な状態で）
       if (data.elementarySchool?.name) {
         set('elementary_school_name', data.elementarySchool.name);
         const meters = data.elementarySchool.distanceMeters;
         if (meters) set('elementary_school_walk', computeWalk(meters));
+        // uncertain の場合: 確認済みフラグを明示的に false に（参考値として扱う）
+        if (elemConf === 'uncertain') {
+          set('elementary_school_confirmed', false);
+        }
       }
       if (data.juniorHighSchool?.name) {
         set('junior_high_school_name', data.juniorHighSchool.name);
         const meters = data.juniorHighSchool.distanceMeters;
         if (meters) set('junior_high_school_walk', computeWalk(meters));
+        if (jhConf === 'uncertain') {
+          set('junior_high_school_confirmed', false);
+        }
       } else if (data.juniorHighSchool?.notAvailableReason === 'REINFOLIB_API_KEY_NOT_SET') {
         setSchoolFetchError(
           '⚠️ 中学校区はREINFOLIB_API_KEY未設定のため取得できませんでした（小学校は取得済み）。'
+        );
+      }
+
+      // 要確認メッセージ: uncertain 結果は参考値として警告
+      if (hasUncertain) {
+        const sourceLabel = elemSource === 'fukuoka_address_table' ? '住所対応表（照会・境界地区）' :
+                            elemSource === 'fukuoka_official' ? '福岡市公式GeoJSON' :
+                            elemSource === 'oita_official' ? '大分/別府公式データ' : '推定';
+        setSchoolFetchWarning(
+          `⚠️ この住所は学区境界が「照会が必要」の地区です（判定根拠: ${sourceLabel}）。` +
+          `学校名は参考値として入力しました。公式の通学区域を確認してから「確認済み」チェックを入れてください。`
         );
       }
     } catch (err: any) {
@@ -1351,6 +1377,11 @@ export default function AttachedDocument2Page() {
               {schoolFetchError && (
                 <Alert severity="error" sx={{ mb: 0.5, py: 0, fontSize: '8pt' }} onClose={() => setSchoolFetchError(null)}>
                   {schoolFetchError}
+                </Alert>
+              )}
+              {schoolFetchWarning && (
+                <Alert severity="warning" sx={{ mb: 0.5, py: 0, fontSize: '8pt' }} onClose={() => setSchoolFetchWarning(null)}>
+                  {schoolFetchWarning}
                 </Alert>
               )}
               <Grid container spacing={1} sx={{ mb: 0.5 }}>

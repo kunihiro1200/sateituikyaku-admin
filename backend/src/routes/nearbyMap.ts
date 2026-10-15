@@ -670,6 +670,10 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
             elementarySchoolNameFromDistrict = feature.properties?.name || null;
             elementaryDistrictSource = 'fukuoka_official';
             elementaryDistrictDate = '20251226';
+            // GeoJSON は Point-in-Polygon によるポリゴン内判定 → confirmed
+            // ただし住所対応表が uncertain を返した場合はすでにその値が設定されており
+            // このステップは skipped になるため、ここでは 'confirmed' を明示
+            elementaryConfidence = 'confirmed';
             break;
           }
         }
@@ -693,6 +697,8 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
           }
           if (matched) {
             elementarySchoolNameFromDistrict = feature.properties?.name || null;
+            // 国土数値情報は境界精度が福岡市公式より低い → 参考値として confirmed
+            elementaryConfidence = 'confirmed';
             break;
           }
         }

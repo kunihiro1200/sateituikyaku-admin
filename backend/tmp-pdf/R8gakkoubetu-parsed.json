@@ -1,0 +1,3957 @@
+{
+  "records": [
+    {
+      "ward": "東区",
+      "town": "大字勝馬",
+      "range": "全域",
+      "elementary": "勝馬小",
+      "juniorHigh": "",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "大字志賀島",
+      "range": "全域",
+      "elementary": "勝馬小",
+      "juniorHigh": "",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "大字弘",
+      "range": "全域",
+      "elementary": "志賀島小",
+      "juniorHigh": "志賀中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "西戸崎",
+      "range": "1丁目～6丁目",
+      "elementary": "志賀島小",
+      "juniorHigh": "志賀中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "大岳",
+      "range": "1丁目～4丁目",
+      "elementary": "西戸崎小",
+      "juniorHigh": "志賀中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "大字西戸崎",
+      "range": "全域",
+      "elementary": "西戸崎小",
+      "juniorHigh": "志賀中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "美和台",
+      "range": "※一部の詳細は、学校計画第1課・第2課に照会のこと",
+      "elementary": "西戸崎小",
+      "juniorHigh": "志賀中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "美和台新町",
+      "range": "全域",
+      "elementary": "西戸崎小",
+      "juniorHigh": "志賀中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "和白東",
+      "range": "5丁目22番、23番",
+      "elementary": "美和台小",
+      "juniorHigh": "志賀中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "和白丘",
+      "range": "1丁目～4丁目",
+      "elementary": "美和台小",
+      "juniorHigh": "和白丘中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "和白",
+      "range": "5丁目17番",
+      "elementary": "美和台小",
+      "juniorHigh": "和白丘中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "大字上和白278(2)～629、1401の一部",
+      "range": "※一部の詳細は、学校計画第1課・第2課に照会のこと",
+      "elementary": "美和台小",
+      "juniorHigh": "和白丘中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "和白東",
+      "range": "1丁目～5丁目(ただし、5丁目22番23番を除く…美和台小)",
+      "elementary": "和白東小",
+      "juniorHigh": "和白丘中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "高美台",
+      "range": "1丁目～4丁目",
+      "elementary": "和白東小",
+      "juniorHigh": "和白丘中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "香椎台",
+      "range": "1丁目～5丁目1丁目、2丁目1番～12番(ただし、12番（11号～15号）を除く…香椎小)、",
+      "elementary": "和白東小",
+      "juniorHigh": "和白丘中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "香椎",
+      "range": "13番の一部、14番～17番、18番（25号～33号）※一部の詳細は、学校計画第1課・第2課に照会のこと3丁目2番～31番、40番～54番、",
+      "elementary": "和白東小",
+      "juniorHigh": "和白丘中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "水谷",
+      "range": "3丁目28番（48号～51号）924、1002～1015、1337～1339、1343、1347～1354、1358～1369、1395、1396、1458、1461～1463、1486～1502、1511～1526、1529～1541、1572",
+      "elementary": "香椎東小",
+      "juniorHigh": "和白丘中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "大字香椎",
+      "range": "～1574全域(ただし、香椎東小区域を除く)※1～79は青葉小及び青葉中への指定学校変更が可能。",
+      "elementary": "香椎東小",
+      "juniorHigh": "香椎第３中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "下原",
+      "range": "1丁目～5丁目",
+      "elementary": "香椎東小",
+      "juniorHigh": "香椎第３中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "大字下原",
+      "range": "全域",
+      "elementary": "香椎東小",
+      "juniorHigh": "香椎第３中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "唐原",
+      "range": "7丁目5番、15番（34号、41号)、16番",
+      "elementary": "香椎東小",
+      "juniorHigh": "香椎第３中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "松香台",
+      "range": "1丁目2丁目(ただし、1番～17番、18番（25号～33号）を除く…香",
+      "elementary": "香椎東小",
+      "juniorHigh": "香椎第３中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "香椎",
+      "range": "椎小または香椎東小)、3丁目1番1丁目15番(14号、15号)、27番～30番、31番(18号、19号)、32番～36番、",
+      "elementary": "香椎下原小",
+      "juniorHigh": "香椎第３中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "香椎駅東",
+      "range": "37番（18号～24号）、38番～40番3丁目、4丁目",
+      "elementary": "香椎下原小",
+      "juniorHigh": "香椎第３中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "大字浜男",
+      "range": "全域",
+      "elementary": "香椎下原小",
+      "juniorHigh": "香椎第３中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "香椎",
+      "range": "※一部の詳細は、学校計画第1課・第2課に照会のこと",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "香椎第３中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "香椎駅前",
+      "range": "1丁目～3丁目1丁目1番～26番、31番、37番",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "香椎第３中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "香椎駅東",
+      "range": "37番（18号～24号）を除く…香椎下原小)、2丁目",
+      "elementary": "香椎小",
+      "juniorHigh": "香椎第３中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "御島崎",
+      "range": "1丁目、2丁目",
+      "elementary": "香椎小",
+      "juniorHigh": "香椎第２中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "香住ヶ丘",
+      "range": "7丁目5番～10番1丁目～7丁目",
+      "elementary": "香椎小",
+      "juniorHigh": "香椎第２中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "唐原",
+      "range": "(ただし、7丁目5番、15番(34号、41号)、16番を除く…香椎下原小)",
+      "elementary": "香椎小",
+      "juniorHigh": "香椎第２中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "香住ヶ丘",
+      "range": "1丁目～7丁目(ただし、7丁目5番～10番を除く…香椎小)",
+      "elementary": "香椎小",
+      "juniorHigh": "香椎第２中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "松香台",
+      "range": "2丁目1丁目、",
+      "elementary": "香住丘小",
+      "juniorHigh": "香椎第２中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "和白",
+      "range": "4丁目1番～8番(ただし、8番(14号～20号)を除く…和白小)",
+      "elementary": "香住丘小",
+      "juniorHigh": "香椎第２中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "大字上和白1332、1334～1344、1347、1391、1392、1401の一部",
+      "range": "※一部の詳細は、学校計画第1課・第2課に照会のこと",
+      "elementary": "香住丘小",
+      "juniorHigh": "香椎第２中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "城浜団地",
+      "range": "全域",
+      "elementary": "城浜小",
+      "juniorHigh": "城香中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "香椎浜",
+      "range": "2丁目、3丁目",
+      "elementary": "城浜小",
+      "juniorHigh": "城香中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "香椎浜ふ頭",
+      "range": "1丁目～4丁目",
+      "elementary": "香椎浜小",
+      "juniorHigh": "城香中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "香椎照葉",
+      "range": "1丁目～3丁目4丁目、7丁目1番～13番、14番の一部",
+      "elementary": "照葉小",
+      "juniorHigh": "城香中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "香椎照葉",
+      "range": "※一部の詳細は、学校計画第1課・第2課に照会のこと5丁目、6丁目、7丁目14番の一部",
+      "elementary": "照葉北小",
+      "juniorHigh": "照葉中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "香椎照葉",
+      "range": "※一部の詳細は、学校計画第1課・第2課に照会のこと",
+      "elementary": "照葉北小",
+      "juniorHigh": "照葉中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "みなと香椎",
+      "range": "１丁目～4丁目3丁目5番～13番、",
+      "elementary": "照葉はばたき小",
+      "juniorHigh": "照葉中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "千早",
+      "range": "4丁目（ただし、1番～15番を除く…千早西小）、",
+      "elementary": "照葉はばたき小",
+      "juniorHigh": "照葉中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "香椎団地",
+      "range": "全域",
+      "elementary": "千早小",
+      "juniorHigh": "香椎第１中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "千早",
+      "range": "1丁目、2丁目、3丁目1番～4番、4丁目1番～15番",
+      "elementary": "千早小",
+      "juniorHigh": "香椎第１中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "香椎浜",
+      "range": "",
+      "elementary": "千早西小",
+      "juniorHigh": "香椎第１中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "舞松原",
+      "range": "2丁目15番～34番、3丁目～6丁目1丁目3番、5番～15番、19番～30番",
+      "elementary": "香陵小",
+      "juniorHigh": "香椎第１中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "水谷",
+      "range": "2丁目、3丁目(ただし、28番(48号～51号)を除く…香椎東小)",
+      "elementary": "舞松原小",
+      "juniorHigh": "多々良中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "若宮",
+      "range": "2丁目～5丁目",
+      "elementary": "舞松原小",
+      "juniorHigh": "多々良中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "舞松原",
+      "range": "1丁目、2丁目1番～14番",
+      "elementary": "若宮小",
+      "juniorHigh": "多々良中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "水谷",
+      "range": "1丁目1番、2番、4番、16番～18番",
+      "elementary": "若宮小",
+      "juniorHigh": "多々良中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "名島",
+      "range": "1丁目～5丁目",
+      "elementary": "若宮小",
+      "juniorHigh": "多々良中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "松崎",
+      "range": "1丁目～4丁目",
+      "elementary": "名島小",
+      "juniorHigh": "松崎中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "原田",
+      "range": "1丁目、2丁目",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "松崎中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "筥松新町",
+      "range": "全域1丁目、2丁目、",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "松崎中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "筥松",
+      "range": "3丁目1番(1号～10号、26号～30号)、2番(1号～13号、27号～33号)、3番(4号)",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "松崎中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "社領",
+      "range": "1丁目～3丁目",
+      "elementary": "筥松小",
+      "juniorHigh": "箱崎清松中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "二又瀬新町",
+      "range": "全域",
+      "elementary": "筥松小",
+      "juniorHigh": "箱崎清松中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "二又瀬",
+      "range": "全域",
+      "elementary": "筥松小",
+      "juniorHigh": "箱崎清松中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "郷口町",
+      "range": "全域1丁目～4丁目、5丁目1番～5番",
+      "elementary": "筥松小",
+      "juniorHigh": "箱崎清松中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "箱崎",
+      "range": "6丁目1番～8番、10番の一部、11番～18番、19番の一部",
+      "elementary": "筥松小",
+      "juniorHigh": "箱崎清松中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "箱崎ふ頭",
+      "range": "1丁目、2丁目、4丁目～6丁目5丁目6番～11番、",
+      "elementary": "箱崎小",
+      "juniorHigh": "箱崎中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "箱崎",
+      "range": "6丁目9番、10番の一部、19番の一部、7丁目※一部の詳細は、学校計画第1課・第2課に照会のこと",
+      "elementary": "箱崎小",
+      "juniorHigh": "箱崎中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "貝塚団地",
+      "range": "全域",
+      "elementary": "東箱崎小",
+      "juniorHigh": "箱崎中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "箱崎ふ頭",
+      "range": "3丁目",
+      "elementary": "東箱崎小",
+      "juniorHigh": "箱崎中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "筥松",
+      "range": "3丁目19番50号(ニュー筥松住宅)、4丁目1丁目～6丁目(ただし、3丁目31番～34番、5丁目21番～",
+      "elementary": "東箱崎小",
+      "juniorHigh": "箱崎中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "松島",
+      "range": "29番を除く…多々良小)3丁目1番(12号～24号)、2番(14号～26号)、",
+      "elementary": "東箱崎小",
+      "juniorHigh": "箱崎中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "筥松",
+      "range": "3番(3号、5号～68号)、4番～18番、19番(ただし、50号を除く…箱崎中)、20番～22番",
+      "elementary": "松島小",
+      "juniorHigh": "箱崎清松中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "原田",
+      "range": "3丁目、4丁目",
+      "elementary": "松島小",
+      "juniorHigh": "箱崎清松中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "松田",
+      "range": "1丁目～3丁目",
+      "elementary": "松島小",
+      "juniorHigh": "箱崎清松中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "馬出",
+      "range": "1丁目～6丁目",
+      "elementary": "松島小",
+      "juniorHigh": "箱崎清松中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "東浜",
+      "range": "1丁目、2丁目",
+      "elementary": "馬出小",
+      "juniorHigh": "福岡中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "青葉",
+      "range": "1丁目～7丁目",
+      "elementary": "馬出小",
+      "juniorHigh": "福岡中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "みどりが丘",
+      "range": "1丁目～3丁目",
+      "elementary": "青葉小",
+      "juniorHigh": "青葉中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "多の津",
+      "range": "1丁目～5丁目",
+      "elementary": "青葉小",
+      "juniorHigh": "青葉中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "土井",
+      "range": "1丁目～4丁目",
+      "elementary": "青葉小",
+      "juniorHigh": "青葉中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "松島",
+      "range": "3丁目31番～34番、5丁目21番～29番",
+      "elementary": "青葉小",
+      "juniorHigh": "青葉中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "蒲田",
+      "range": "1丁目～5丁目",
+      "elementary": "青葉小",
+      "juniorHigh": "青葉中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "名子",
+      "range": "※青葉小への指定学校変更が可能。青葉中への変更はできません。全域",
+      "elementary": "多々良小",
+      "juniorHigh": "多々良中央中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "大字名子",
+      "range": "※青葉小への指定学校変更が可能。青葉中への変更はできません。",
+      "elementary": "多々良小",
+      "juniorHigh": "多々良中央中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "多々良",
+      "range": "1丁目、2丁目",
+      "elementary": "多々良小",
+      "juniorHigh": "多々良中央中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "若宮",
+      "range": "1丁目",
+      "elementary": "多々良小",
+      "juniorHigh": "多々良中央中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "八田",
+      "range": "1丁目～4丁目",
+      "elementary": "八田小",
+      "juniorHigh": "多々良中央中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "雁の巣",
+      "range": "1丁目、2丁目",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "多々良中央中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "塩浜",
+      "range": "1丁目38番、3丁目2500番地、2518番地1",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "多々良中央中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "奈多",
+      "range": "1丁目5番～21番、2丁目、3丁目",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "多々良中央中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "大字奈多",
+      "range": "全域",
+      "elementary": "奈多小",
+      "juniorHigh": "多々良中央中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "奈多団地",
+      "range": "全域2丁目35番の一部(南側世帯のみ)",
+      "elementary": "奈多小",
+      "juniorHigh": "多々良中央中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "三苫",
+      "range": "※一部の詳細は学校計画第1課・第2課に照会のこと2丁目、3丁目、",
+      "elementary": "奈多小",
+      "juniorHigh": "多々良中央中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "和白",
+      "range": "4丁目8番(14号～20号)、9番～29番、5丁目、6丁目（ただし、5丁目17番を除く…美和台小）1丁目1番～37番、",
+      "elementary": "奈多小",
+      "juniorHigh": "和白中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "塩浜",
+      "range": "2丁目、3丁目349番地1～490番地1、811番地1～856番地",
+      "elementary": "和白小",
+      "juniorHigh": "和白中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "奈多",
+      "range": "1丁目1番～4番3丁目36番の一部",
+      "elementary": "和白小",
+      "juniorHigh": "和白中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "美和台",
+      "range": "※一部の詳細は学校計画第1課・第2課に照会のこと1丁目～8丁目",
+      "elementary": "和白小",
+      "juniorHigh": "和白中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "三苫",
+      "range": "(ただし、2丁目35番の一部(南側世帯のみ)を除く…奈多小)",
+      "elementary": "和白小",
+      "juniorHigh": "和白中",
+      "note": ""
+    },
+    {
+      "ward": "東区",
+      "town": "大字三苫",
+      "range": "全域",
+      "elementary": "三苫小",
+      "juniorHigh": "和白中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "城内",
+      "range": "1番～10番",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "南本町",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "赤坂",
+      "range": "1丁目～3丁目",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "南本町",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "大手門",
+      "range": "1丁目1丁目、2丁目、",
+      "elementary": "赤坂小",
+      "juniorHigh": "南本町",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "桜坂",
+      "range": "3丁目5番～13番（ただし、5番(60号)を除く…平尾小)",
+      "elementary": "赤坂小",
+      "juniorHigh": "警固中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "薬院",
+      "range": "1丁目、2丁目",
+      "elementary": "赤坂小",
+      "juniorHigh": "警固中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "今泉",
+      "range": "1丁目、2丁目",
+      "elementary": "赤坂小",
+      "juniorHigh": "警固中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "渡辺通",
+      "range": "2丁目、4丁目、5丁目20番～24番",
+      "elementary": "警固小",
+      "juniorHigh": "警固中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "警固",
+      "range": "1丁目～3丁目1丁目～3丁目（ただし、3丁目20番の一部を除く…笹丘小）、4丁目1番～13番(ただし、13番(21号～37号)を除く…笹丘小)、",
+      "elementary": "警固小",
+      "juniorHigh": "警固中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "小笹",
+      "range": "5丁目",
+      "elementary": "警固小",
+      "juniorHigh": "警固中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "平和",
+      "range": "3丁目、5丁目(1丁目、2丁目、4丁目は南区)",
+      "elementary": "小笹小",
+      "juniorHigh": "警固中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "薬院",
+      "range": "3丁目、4丁目",
+      "elementary": "小笹小",
+      "juniorHigh": "警固中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "平尾",
+      "range": "1丁目～5丁目",
+      "elementary": "小笹小",
+      "juniorHigh": "警固中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "南公園",
+      "range": "全域",
+      "elementary": "小笹小",
+      "juniorHigh": "平尾中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "桜坂",
+      "range": "3丁目1番～4番、5番(60号)",
+      "elementary": "小笹小",
+      "juniorHigh": "平尾中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "平尾浄水町",
+      "range": "全域",
+      "elementary": "小笹小",
+      "juniorHigh": "平尾中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "御所ヶ谷",
+      "range": "全域",
+      "elementary": "平尾小",
+      "juniorHigh": "平尾中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "浄水通",
+      "range": "全域",
+      "elementary": "平尾小",
+      "juniorHigh": "平尾中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "古小烏町",
+      "range": "全域",
+      "elementary": "平尾小",
+      "juniorHigh": "平尾中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "平丘町",
+      "range": "全域",
+      "elementary": "平尾小",
+      "juniorHigh": "平尾中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "薬院伊福町",
+      "range": "全域",
+      "elementary": "平尾小",
+      "juniorHigh": "平尾中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "山荘通",
+      "range": "3丁目",
+      "elementary": "平尾小",
+      "juniorHigh": "平尾中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "草香江",
+      "range": "1丁目、2丁目",
+      "elementary": "平尾小",
+      "juniorHigh": "平尾中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "谷",
+      "range": "1丁目、2丁目",
+      "elementary": "平尾小",
+      "juniorHigh": "平尾中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "六本松",
+      "range": "1丁目～4丁目",
+      "elementary": "草ヶ江小",
+      "juniorHigh": "城西中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "城内",
+      "range": "11番",
+      "elementary": "草ヶ江小",
+      "juniorHigh": "※城西中校",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "鳥飼",
+      "range": "1丁目5番～8番",
+      "elementary": "※鳥飼小",
+      "juniorHigh": "にもあり",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "港",
+      "range": "1丁目～3丁目",
+      "elementary": "あり",
+      "juniorHigh": "にもあり",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "大手門",
+      "range": "2丁目～3丁目",
+      "elementary": "あり",
+      "juniorHigh": "にもあり",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "荒戸",
+      "range": "1丁目",
+      "elementary": "あり",
+      "juniorHigh": "にもあり",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "荒津",
+      "range": "1丁目、2丁目",
+      "elementary": "あり",
+      "juniorHigh": "にもあり",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "西公園",
+      "range": "1番、2番",
+      "elementary": "あり",
+      "juniorHigh": "にもあり",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "大名",
+      "range": "1丁目、2丁目",
+      "elementary": "舞鶴小",
+      "juniorHigh": "舞鶴中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "天神",
+      "range": "1丁目～5丁目",
+      "elementary": "舞鶴小",
+      "juniorHigh": "舞鶴中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "那の津",
+      "range": "1丁目～5丁目",
+      "elementary": "舞鶴小",
+      "juniorHigh": "舞鶴中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "長浜",
+      "range": "1丁目～3丁目",
+      "elementary": "舞鶴小",
+      "juniorHigh": "舞鶴中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "舞鶴",
+      "range": "1丁目～3丁目",
+      "elementary": "舞鶴小",
+      "juniorHigh": "舞鶴中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "白金",
+      "range": "1丁目、2丁目",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "高宮中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "大宮",
+      "range": "1丁目、2丁目2丁目17番、18番、20番、21番(16号～25号)、22番、",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "※高宮中校",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "清川",
+      "range": "3丁目6番～20番、25番～27番",
+      "elementary": "高宮小",
+      "juniorHigh": "西高宮小校",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "那の川",
+      "range": "2丁目5番～11番(1番～4番は南区)",
+      "elementary": "高宮小",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "高砂",
+      "range": "1丁目12番～16番、2丁目",
+      "elementary": "高宮小",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "梅光園団地",
+      "range": "全域",
+      "elementary": "高宮小",
+      "juniorHigh": "友泉中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "梅光園",
+      "range": "1丁目～3丁目3丁目20番の一部",
+      "elementary": "高宮小",
+      "juniorHigh": "※友泉中校",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "小笹",
+      "range": "4丁目13番(21号～37号)、14番～22番※一部の詳細は、学校計画第1課・第2課に照会のこと",
+      "elementary": "笹丘小",
+      "juniorHigh": "区、田島小",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "輝国",
+      "range": "1丁目、2丁目",
+      "elementary": "笹丘小",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "笹丘",
+      "range": "1丁目～3丁目",
+      "elementary": "笹丘小",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "西公園",
+      "range": "3番～14番",
+      "elementary": "笹丘小",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "荒戸",
+      "range": "2丁目、3丁目",
+      "elementary": "笹丘小",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "伊崎",
+      "range": "全域",
+      "elementary": "笹丘小",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "黒門",
+      "range": "全域",
+      "elementary": "当仁小",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "大濠公園",
+      "range": "全域",
+      "elementary": "当仁小",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "唐人町",
+      "range": "1丁目～3丁目",
+      "elementary": "当仁小",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "大濠",
+      "range": "2丁目12番(11号～38号)、13番(16号～42号)",
+      "elementary": "当仁小",
+      "juniorHigh": "当仁中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "福浜",
+      "range": "1丁目、2丁目",
+      "elementary": "福浜小",
+      "juniorHigh": "当仁中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "鳥飼",
+      "range": "1丁目1番～4番、2丁目、3丁目1丁目、",
+      "elementary": "福浜小",
+      "juniorHigh": "当仁中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "大濠",
+      "range": "２丁目１番～11番、12番(1号～10号、39号～44号)、13番(1号～15号、43号～49号)",
+      "elementary": "福浜小",
+      "juniorHigh": "当仁中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "今川",
+      "range": "1丁目、2丁目",
+      "elementary": "南当仁小",
+      "juniorHigh": "当仁中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "地行",
+      "range": "1丁目～4丁目",
+      "elementary": "南当仁小",
+      "juniorHigh": "当仁中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "地行浜",
+      "range": "1丁目、2丁目",
+      "elementary": "南当仁小",
+      "juniorHigh": "当仁中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "西中州",
+      "range": "全域",
+      "elementary": "南当仁小",
+      "juniorHigh": "春吉中",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "春吉",
+      "range": "1丁目～3丁目1丁目、3丁目、",
+      "elementary": "南当仁小",
+      "juniorHigh": "※春吉中校",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "渡辺通",
+      "range": "5丁目1番～16番、25番、26番",
+      "elementary": "南当仁小",
+      "juniorHigh": "※春吉中校",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "清川",
+      "range": "2丁目1番～16番、19番、21番(1号～15号、26号～30号)、3丁目1番～5番、21番～24番、28番～33番",
+      "elementary": "春吉小",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "中央区",
+      "town": "高砂",
+      "range": "1丁目1番～11番、17番～24番",
+      "elementary": "春吉小",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "大橋",
+      "range": "20番(1号～3号、21号～28号)",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "清水",
+      "range": "1丁目、3丁目、4丁目",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "玉川町",
+      "range": "全域",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "向野",
+      "range": "1丁目、2丁目1丁目1番～13番、14番(7号～15号、22号～29号)、",
+      "elementary": "玉川小",
+      "juniorHigh": "※春吉中校",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "野間",
+      "range": "15番(1号、2号、9号～17号)、19番～29番",
+      "elementary": "玉川小",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "清水",
+      "range": "2丁目",
+      "elementary": "玉川小",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "大橋団地",
+      "range": "全域",
+      "elementary": "玉川小",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "大橋",
+      "range": "2丁目1番～8番1丁目～3丁目、",
+      "elementary": "塩原小",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "塩原",
+      "range": "4丁目1番～29番",
+      "elementary": "塩原小",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "井尻",
+      "range": "1丁目～3丁目",
+      "elementary": "宮竹小",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "五十川",
+      "range": "1丁目、2丁目",
+      "elementary": "区は博多区に",
+      "juniorHigh": "宮竹中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "高木",
+      "range": "1丁目～3丁目",
+      "elementary": "もあり",
+      "juniorHigh": "宮竹中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "井尻",
+      "range": "4丁目、5丁目",
+      "elementary": "高木小",
+      "juniorHigh": "宮竹中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "折立町",
+      "range": "全域",
+      "elementary": "高木小",
+      "juniorHigh": "宮竹中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "曰佐",
+      "range": "1丁目、2丁目、4丁目、5丁目",
+      "elementary": "高木小",
+      "juniorHigh": "宮竹中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "的場",
+      "range": "1丁目、2丁目",
+      "elementary": "高木小",
+      "juniorHigh": "宮竹中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "横手",
+      "range": "1丁目～4丁目(ただし、3丁目41番の一部、42番、43番を除く…曰佐小)",
+      "elementary": "曰佐小",
+      "juniorHigh": "横手中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "横手南町",
+      "range": "全域",
+      "elementary": "横手小",
+      "juniorHigh": "横手中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "警弥郷",
+      "range": "1丁目～3丁目",
+      "elementary": "横手小",
+      "juniorHigh": "横手中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "弥永",
+      "range": "1丁目～3丁目、4丁目3番～27番、5丁目",
+      "elementary": "弥永西小",
+      "juniorHigh": "横手中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "曰佐",
+      "range": "3丁目",
+      "elementary": "弥永西小",
+      "juniorHigh": "曰佐中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "柳瀬",
+      "range": "1丁目、2丁目",
+      "elementary": "弥永西小",
+      "juniorHigh": "曰佐中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "弥永",
+      "range": "4丁目1番、2番",
+      "elementary": "弥永小",
+      "juniorHigh": "曰佐中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "弥永団地",
+      "range": "全域",
+      "elementary": "弥永小",
+      "juniorHigh": "曰佐中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "高宮",
+      "range": "5丁目5番～20番1丁目1番～10番、19番～21番",
+      "elementary": "弥永小",
+      "juniorHigh": "曰佐中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "多賀",
+      "range": "(ただし、1丁目9番（16号～33号）を除く…大池小)1丁目14番(16号、18号～21号)、",
+      "elementary": "弥永小",
+      "juniorHigh": "曰佐中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "野間",
+      "range": "15番(3号～8号)、16番～18番",
+      "elementary": "弥永小",
+      "juniorHigh": "曰佐中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "柳河内",
+      "range": "1丁目1丁目1番～22番、24番～40番",
+      "elementary": "若久小",
+      "juniorHigh": "野間中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "若久",
+      "range": "4丁目2丁目5番(1号、2号の一部、26号～35号)",
+      "elementary": "若久小",
+      "juniorHigh": "野間中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "筑紫丘",
+      "range": "※一部の詳細は、学校計画第1課・第2課に照会のこと",
+      "elementary": "若久小",
+      "juniorHigh": "野間中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "大池",
+      "range": "1丁目、2丁目",
+      "elementary": "若久小",
+      "juniorHigh": "野間中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "多賀",
+      "range": "1丁目9番(16号～33号)、11番～18番、2丁目",
+      "elementary": "大池小",
+      "juniorHigh": "野間中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "寺塚",
+      "range": "1丁目、2丁目",
+      "elementary": "大池小",
+      "juniorHigh": "野間中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "柳河内",
+      "range": "2丁目1丁目23番、2丁目26番(12号～37号)、27番～40番、3丁目、5丁目、",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "野間中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "若久",
+      "range": "6丁目1番～54番、56番(1号～11号、27号～29号、35号～41号)、57番、58番、59番(11号～16号)、60番、61番(1号～14号、20号～31号)、62番(1号～7号、28号～30号)、63番～65番1丁目１１番(1号、2号、12号～19号)、12番、20番(4号～20号)、",
+      "elementary": "東若久小",
+      "juniorHigh": "筑紫丘中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "大橋",
+      "range": "21番～24番、25番(1号～5号、12号～19号)、27番(19号、20号)、4丁目14番(1号～6号、13号～49号)、15番、17番～32番",
+      "elementary": "東若久小",
+      "juniorHigh": "筑紫丘中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "南大橋",
+      "range": "1丁目、2丁目",
+      "elementary": "東若久小",
+      "juniorHigh": "筑紫丘中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "筑紫丘",
+      "range": "2丁目1番～4番、5番(2号の一部～25号)、6番～28番※一部の詳細は、学校計画第1課・第2課に照会のこと",
+      "elementary": "筑紫丘小",
+      "juniorHigh": "筑紫丘中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "三宅",
+      "range": "1丁目8番(13号～37号)、22番(20号～26号)",
+      "elementary": "筑紫丘小",
+      "juniorHigh": "筑紫丘中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "若久団地",
+      "range": "全域",
+      "elementary": "筑紫丘小",
+      "juniorHigh": "筑紫丘中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "若久",
+      "range": "2丁目1番～25番、26番(1号～11号、38号～46号)",
+      "elementary": "筑紫丘小",
+      "juniorHigh": "筑紫丘中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "長丘",
+      "range": "1丁目～5丁目",
+      "elementary": "筑紫丘小",
+      "juniorHigh": "筑紫丘中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "平和",
+      "range": "4丁目(3丁目、5丁目は中央区)1丁目、2丁目、",
+      "elementary": "長丘小",
+      "juniorHigh": "筑紫丘中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "長住",
+      "range": "3丁目33番～35番、43番～45番、53番～65番、70番4丁目～7丁目",
+      "elementary": "長丘小",
+      "juniorHigh": "筑紫丘中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "西長住",
+      "range": "3丁目3丁目1番～7番、10番～25番、30番～32番、",
+      "elementary": "長住小",
+      "juniorHigh": "長丘中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "長住",
+      "range": "40番～42番、46番～52番",
+      "elementary": "西長住小",
+      "juniorHigh": "長丘中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "西長住",
+      "range": "",
+      "elementary": "校区は城南",
+      "juniorHigh": "長丘中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "中尾",
+      "range": "3丁目12番～53番1丁目、2丁目6番、7番(1号～13号、29号～37号)、",
+      "elementary": "区にもあり",
+      "juniorHigh": "長丘中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "花畑",
+      "range": "8番～45番、3丁目、4丁目3番～4番、7番～12番",
+      "elementary": "区にもあり",
+      "juniorHigh": "長丘中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "屋形原",
+      "range": "7番(1号～4号、40号～65号)、8番～12番、13番(21号～24号)、14番",
+      "elementary": "花畑小",
+      "juniorHigh": "柏原中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "桧原",
+      "range": "3丁目19番、26番1丁目1番～11番、18番～25番、46番",
+      "elementary": "花畑小",
+      "juniorHigh": "柏原中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "柏原",
+      "range": "1丁目12番～17番、27番～45番、47番～53番、3丁目～7丁目",
+      "elementary": "花畑小",
+      "juniorHigh": "柏原中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "大字柏原",
+      "range": "全域",
+      "elementary": "花畑小",
+      "juniorHigh": "柏原中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "大平寺",
+      "range": "1丁目、2丁目",
+      "elementary": "柏原小",
+      "juniorHigh": "柏原中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "桧原",
+      "range": "3丁目22番～25番、4丁目13番(10号～21号)",
+      "elementary": "柏原小",
+      "juniorHigh": "柏原中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "中尾",
+      "range": "1丁目、2丁目、3丁目1番～11番",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "柏原中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "野多目",
+      "range": "5丁目",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "柏原中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "花畑",
+      "range": "2丁目1番～5番、7番(14号～28号)、46番～54番1丁目～3丁目、",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "柏原中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "屋形原",
+      "range": "27番～39番、5丁目1番～5番、6番(1号～19号、32号)、7番(5号～39号)、13番(1号～20号、25号～終)",
+      "elementary": "東花畑小",
+      "juniorHigh": "花畑中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "若久",
+      "range": "6丁目55番、56番(12号～26号、30号～34号)",
+      "elementary": "東花畑小",
+      "juniorHigh": "花畑中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "皿山",
+      "range": "1丁目～4丁目",
+      "elementary": "東花畑小",
+      "juniorHigh": "花畑中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "大字桧原",
+      "range": "全域",
+      "elementary": "東花畑小",
+      "juniorHigh": "花畑中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "花畑",
+      "range": "4丁目1番、2番、5番、6番",
+      "elementary": "東花畑小",
+      "juniorHigh": "花畑中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "桧原",
+      "range": "14番～41番5丁目～7丁目1丁目～3丁目、",
+      "elementary": "西花畑小",
+      "juniorHigh": "花畑中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "野多目",
+      "range": "4丁目1番～13番、18番(1号～14号、61号～82号)、19番～30番",
+      "elementary": "西花畑小",
+      "juniorHigh": "花畑中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "向新町",
+      "range": "1丁目、2丁目",
+      "elementary": "西花畑小",
+      "juniorHigh": "花畑中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "和田",
+      "range": "1丁目、2丁目1丁目1番(1号～17号、26号～48号)、2番～4番、",
+      "elementary": "野多目小",
+      "juniorHigh": "花畑中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "老司",
+      "range": "5番(18号～36号)、6番、7番(9号～28号)",
+      "elementary": "野多目小",
+      "juniorHigh": "花畑中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "若久",
+      "range": "6丁目71番(21号～27号)1丁目9番、10番、11番(3号～11号)、25番(6号～11号)、27番(1号～18号、21号～25号)、",
+      "elementary": "野多目小",
+      "juniorHigh": "花畑中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "大橋",
+      "range": "2丁目9番～29番、3丁目、4丁目1番～13番、14番(7号～12号)、16番6丁目59番(1号～10号、17号～24号)、61番(15号～19号)、",
+      "elementary": "野多目小",
+      "juniorHigh": "三宅中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "若久",
+      "range": "62番(8号～27号)、",
+      "elementary": "野多目小",
+      "juniorHigh": "三宅中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "塩原",
+      "range": "4丁目30番",
+      "elementary": "三宅小",
+      "juniorHigh": "三宅中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "和田",
+      "range": "3丁目、4丁目1丁目1番～7番、8番(1号～12号、38号、39号)、9番～21番、22番(1号～19号、27号、28号)、",
+      "elementary": "三宅小",
+      "juniorHigh": "三宅中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "三宅",
+      "range": "23番～28番、2丁目、3丁目",
+      "elementary": "三宅小",
+      "juniorHigh": "三宅中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "野多目",
+      "range": "6丁目1丁目1番(18号～25号)、5番(1号～17号、37号～53号)、",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "三宅中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "老司",
+      "range": "7番(1号～8号、29号～39号)、8番～35番、2丁目～4丁目、5丁目1番～28番、54番",
+      "elementary": "老司小",
+      "juniorHigh": "老司中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "鶴田",
+      "range": "4丁目23番(8号～10号)1丁目～4丁目",
+      "elementary": "老司小",
+      "juniorHigh": "老司中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "鶴田",
+      "range": "(ただし、4丁目23番(8号～10号)を除く･･･老司小)",
+      "elementary": "老司小",
+      "juniorHigh": "老司中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "柏原",
+      "range": "1丁目26番、2丁目",
+      "elementary": "鶴田小",
+      "juniorHigh": "老司中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "老司",
+      "range": "5丁目29番～53番",
+      "elementary": "鶴田小",
+      "juniorHigh": "老司中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "市崎",
+      "range": "1丁目、2丁目",
+      "elementary": "鶴田小",
+      "juniorHigh": "高宮中",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "高宮",
+      "range": "1丁目～4丁目、5丁目1番～4番",
+      "elementary": "西高宮小",
+      "juniorHigh": "※高宮中校",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "平和",
+      "range": "1丁目、2丁目",
+      "elementary": "西高宮小",
+      "juniorHigh": "区は中央区に",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "大楠",
+      "range": "1丁目～3丁目",
+      "elementary": "西高宮小",
+      "juniorHigh": "高宮小校区",
+      "note": ""
+    },
+    {
+      "ward": "南区",
+      "town": "那の川",
+      "range": "1丁目、2丁目(2丁目5番～11番は中央区)",
+      "elementary": "大楠小",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "西片江",
+      "range": "1丁目、2丁目",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "片江",
+      "range": "1丁目～5丁目",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "神松寺",
+      "range": "1丁目1番～21番、2丁目、3丁目",
+      "elementary": "片江小",
+      "juniorHigh": "片江中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "松山",
+      "range": "1丁目1番、2番",
+      "elementary": "片江小",
+      "juniorHigh": "片江中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "東油山",
+      "range": "2丁目、3丁目",
+      "elementary": "片江小",
+      "juniorHigh": "片江中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "堤",
+      "range": "2丁目13番～31番",
+      "elementary": "南片江小",
+      "juniorHigh": "片江中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "南片江",
+      "range": "1丁目～6丁目",
+      "elementary": "南片江小",
+      "juniorHigh": "片江中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "大字梅林",
+      "range": "全域",
+      "elementary": "南片江小",
+      "juniorHigh": "梅林中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "梅林",
+      "range": "1丁目～5丁目(6丁目、7丁目は早良区)",
+      "elementary": "南片江小",
+      "juniorHigh": "梅林中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "干隈",
+      "range": "1丁目、2丁目(3丁目～6丁目は早良区)3丁目9番～14番、21番～23番",
+      "elementary": "七隈小",
+      "juniorHigh": "※梅林中校区",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "七隈",
+      "range": "4丁目～7丁目、8丁目9番～18番",
+      "elementary": "七隈小",
+      "juniorHigh": "隈小、野芥小",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "金山団地",
+      "range": "全域",
+      "elementary": "七隈小",
+      "juniorHigh": "校区の一部あ",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "松山",
+      "range": "1丁目3番～20番、2丁目",
+      "elementary": "七隈小",
+      "juniorHigh": "り",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "七隈",
+      "range": "8丁目1番～8番、19番、20番",
+      "elementary": "金山小",
+      "juniorHigh": "り",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "友丘",
+      "range": "4丁目～6丁目",
+      "elementary": "金山小",
+      "juniorHigh": "り",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "長尾",
+      "range": "1丁目～5丁目",
+      "elementary": "金山小",
+      "juniorHigh": "友泉中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "友丘",
+      "range": "2丁目、3丁目",
+      "elementary": "金山小",
+      "juniorHigh": "友泉中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "友泉亭",
+      "range": "全域",
+      "elementary": "長尾小",
+      "juniorHigh": "※友泉中校区",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "神松寺",
+      "range": "1丁目22番、23番1丁目～6丁目",
+      "elementary": "長尾小",
+      "juniorHigh": "丘小校区あり",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "田島",
+      "range": "(ただし、2丁目16番、21番～25番を除く…別府小)",
+      "elementary": "長尾小",
+      "juniorHigh": "丘小校区あり",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "友丘",
+      "range": "1丁目",
+      "elementary": "田島小",
+      "juniorHigh": "丘小校区あり",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "茶山",
+      "range": "2丁目、3丁目",
+      "elementary": "田島小",
+      "juniorHigh": "丘小校区あり",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "荒江団地",
+      "range": "全域",
+      "elementary": "田島小",
+      "juniorHigh": "丘小校区あり",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "荒江",
+      "range": "1丁目(2丁目、3丁目は早良区)",
+      "elementary": "田島小",
+      "juniorHigh": "丘小校区あり",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "飯倉",
+      "range": "1丁目(2丁目～8丁目は早良区)",
+      "elementary": "田島小",
+      "juniorHigh": "丘小校区あり",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "茶山",
+      "range": "1丁目6番～9番、4丁目～6丁目",
+      "elementary": "城南小",
+      "juniorHigh": "丘小校区あり",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "別府",
+      "range": "6丁目14番～26番",
+      "elementary": "城南小",
+      "juniorHigh": "城南中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "七隈",
+      "range": "1丁目、2丁目、3丁目1番～8番、15番～20番",
+      "elementary": "城南小",
+      "juniorHigh": "城南中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "田島",
+      "range": "2丁目16番、21番～25番",
+      "elementary": "城南小",
+      "juniorHigh": "城南中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "茶山",
+      "range": "1丁目1番～5番",
+      "elementary": "城南小",
+      "juniorHigh": "城南中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "別府",
+      "range": "1丁目～7丁目(ただし、6丁目14番～26番を除く…城南小)",
+      "elementary": "別府小",
+      "juniorHigh": "城南中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "別府団地",
+      "range": "全域",
+      "elementary": "別府小",
+      "juniorHigh": "城南中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "城西団地",
+      "range": "全域",
+      "elementary": "別府小",
+      "juniorHigh": "城南中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "樋井川",
+      "range": "4丁目～7丁目",
+      "elementary": "別府小",
+      "juniorHigh": "城南中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "東油山",
+      "range": "1丁目、4丁目～6丁目",
+      "elementary": "別府小",
+      "juniorHigh": "城南中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "大字東油山",
+      "range": "全域",
+      "elementary": "堤小",
+      "juniorHigh": "城南中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "宝台団地",
+      "range": "全域",
+      "elementary": "堤小",
+      "juniorHigh": "城南中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "堤",
+      "range": "2丁目3番～12番",
+      "elementary": "堤小",
+      "juniorHigh": "城南中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "樋井川",
+      "range": "1丁目、2丁目",
+      "elementary": "堤小",
+      "juniorHigh": "長尾中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "堤団地",
+      "range": "全域",
+      "elementary": "堤丘小",
+      "juniorHigh": "長尾中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "堤",
+      "range": "1丁目、2丁目1番、2番",
+      "elementary": "堤丘小",
+      "juniorHigh": "長尾中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "樋井川",
+      "range": "3丁目",
+      "elementary": "※西長住小",
+      "juniorHigh": "長尾中",
+      "note": ""
+    },
+    {
+      "ward": "城南区",
+      "town": "鳥飼",
+      "range": "4丁目～7丁目(1丁目～3丁目は中央区)",
+      "elementary": "鳥飼小",
+      "juniorHigh": "飼小校区あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "有田",
+      "range": "7丁目",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "飼小校区あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "室住団地",
+      "range": "全域",
+      "elementary": "有住小",
+      "juniorHigh": "飼小校区あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "有田",
+      "range": "1丁目～5丁目",
+      "elementary": "有住小",
+      "juniorHigh": "西福岡中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "小田部",
+      "range": "2丁目～4丁目",
+      "elementary": "有住小",
+      "juniorHigh": "西福岡中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "原",
+      "range": "8丁目1番～20番、22番、23番、36番～40番、(8丁目21番、24番～35番は賀茂小)1丁目、2丁目、3丁目1番～28番、4丁目1番～9番、10番(1号～20号、49号、50号、52号～55号)、11番～13番、14番(18号)、15番(5号、40号～43号)、",
+      "elementary": "原西小",
+      "juniorHigh": "西福岡中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "次郎丸",
+      "range": "18番(1号～6号、10号～12号、46号、48号、50号～54号、56号)、",
+      "elementary": "原西小",
+      "juniorHigh": "西福岡中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "有田団地",
+      "range": "全域",
+      "elementary": "有田小",
+      "juniorHigh": "次郎丸中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "有田",
+      "range": "6丁目、8丁目",
+      "elementary": "有田小",
+      "juniorHigh": "次郎丸中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "星の原団地",
+      "range": "13番～52番、56番～72番",
+      "elementary": "有田小",
+      "juniorHigh": "次郎丸中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "原",
+      "range": "8丁目21番、24番～35番",
+      "elementary": "賀茂小",
+      "juniorHigh": "次郎丸中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "賀茂",
+      "range": "1丁目～4丁目",
+      "elementary": "賀茂小",
+      "juniorHigh": "次郎丸中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "飯倉",
+      "range": "5丁目～7丁目",
+      "elementary": "賀茂小",
+      "juniorHigh": "次郎丸中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "星の原団地",
+      "range": "1番～12番、53番～55番、80番、81番",
+      "elementary": "飯倉小",
+      "juniorHigh": "次郎丸中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "干隈",
+      "range": "3丁目～6丁目(1丁目、2丁目は城南区)",
+      "elementary": "飯倉小",
+      "juniorHigh": "原中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "飯倉",
+      "range": "4丁目、8丁目",
+      "elementary": "飯倉小",
+      "juniorHigh": "原中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "原",
+      "range": "6丁目、7丁目",
+      "elementary": "飯原小",
+      "juniorHigh": "原中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "飯倉",
+      "range": "2丁目、3丁目",
+      "elementary": "飯倉中央小",
+      "juniorHigh": "原中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "大字梅林",
+      "range": "全域6丁目1番～23番、",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "隈小、金山小",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "梅林",
+      "range": "7丁目1番～40番、46番、47番、52番",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "の一部あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "大字西油山",
+      "range": "全域",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "の一部あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "野芥",
+      "range": "3丁目1番、2番、14番、16番～30番、4丁目～8丁目",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "の一部あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "大字野芥",
+      "range": "全域",
+      "elementary": "野芥小",
+      "juniorHigh": "の一部あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "田村",
+      "range": "5丁目18番、19番、27番",
+      "elementary": "野芥小",
+      "juniorHigh": "の一部あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "田隈",
+      "range": "3丁目17番～23番6丁目24番～32番、",
+      "elementary": "野芥小",
+      "juniorHigh": "の一部あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "梅林",
+      "range": "7丁目41番～45番、48番～51番3丁目29番～30番、4丁目10番(21号～46号)、14番(ただし、18号を除く)、15番(ただし、5号、40号～43号を除く)、16番、17番、",
+      "elementary": "野芥小",
+      "juniorHigh": "田隈中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "次郎丸",
+      "range": "18番(ただし、1号～6号、10～12号、46号、48号、50号～54号、56号を除く)、19番、",
+      "elementary": "野芥小",
+      "juniorHigh": "田隈中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "四箇",
+      "range": "1丁目1番(1号～11号、32号～43号)1丁目～4丁目、5丁目(ただし、18番、19番、27番…野芥小、",
+      "elementary": "田村小",
+      "juniorHigh": "田隈中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "田村",
+      "range": "23番～26番…四箇田小　を除く)、6丁目(ただし、11番(32号)を除く…四箇田小)、7丁目(ただし、13番(38号)、22番を除く…四箇田小)",
+      "elementary": "田村小",
+      "juniorHigh": "田隈中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "野芥",
+      "range": "1丁目1番～23番、2丁目、3丁目3番～13番、15番",
+      "elementary": "田村小",
+      "juniorHigh": "田隈中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "田隈",
+      "range": "1丁目、2丁目、3丁目1番～16番、24番～68番",
+      "elementary": "田村小",
+      "juniorHigh": "梅林中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "野芥",
+      "range": "1丁目24番～32番",
+      "elementary": "田隈小",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "四箇田団地",
+      "range": "全域",
+      "elementary": "田隈小",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "四箇",
+      "range": "1丁目～6丁目(ただし、田村小区域を除く)",
+      "elementary": "田隈小",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "重留",
+      "range": "7丁目1番～27番",
+      "elementary": "田隈小",
+      "juniorHigh": "校区あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "田村",
+      "range": "6丁目11番(32号)、7丁目13番(38号)、22番１丁目５番～７番",
+      "elementary": "四箇田小",
+      "juniorHigh": "区は、西区に",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "西入部",
+      "range": "1丁目(ただし、5番～7番を除く･･･四箇田小)、2丁目、3丁目、4丁目、5丁目",
+      "elementary": "四箇田小",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "大字西入部",
+      "range": "全域",
+      "elementary": "四箇田小",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "東入部",
+      "range": "1丁目～8丁目",
+      "elementary": "入部小",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "大字東入部",
+      "range": "全域(ただし、早良小区域を除く)",
+      "elementary": "入部小",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "重留",
+      "range": "1丁目～6丁目、7丁目28番～35番、8丁目",
+      "elementary": "入部小",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "大字内野",
+      "range": "全域(ただし、内野小区域を除く)",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "大字東入部",
+      "range": "657～879",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "早良",
+      "range": "1丁目～7丁目",
+      "elementary": "早良小",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "大字西",
+      "range": "1839、1841",
+      "elementary": "早良小",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "大字内野",
+      "range": "182、803～805、807～815、817～822",
+      "elementary": "早良小",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "内野",
+      "range": "1丁目～8丁目",
+      "elementary": "早良小",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "大字西",
+      "range": "全域(ただし、早良小区域を除く)",
+      "elementary": "早良小",
+      "juniorHigh": "あり",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "大字石釜",
+      "range": "全域",
+      "elementary": "内野小",
+      "juniorHigh": "早良中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "大字曲渕",
+      "range": "全域",
+      "elementary": "内野小",
+      "juniorHigh": "早良中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "大字飯場",
+      "range": "全域",
+      "elementary": "内野小",
+      "juniorHigh": "早良中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "脇山",
+      "range": "1丁目、2丁目",
+      "elementary": "内野小",
+      "juniorHigh": "早良中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "大字脇山",
+      "range": "全域",
+      "elementary": "内野小",
+      "juniorHigh": "早良中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "大字板屋",
+      "range": "全域",
+      "elementary": "脇山小",
+      "juniorHigh": "早良中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "大字小笠木",
+      "range": "全域",
+      "elementary": "脇山小",
+      "juniorHigh": "早良中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "大字椎原",
+      "range": "全域",
+      "elementary": "脇山小",
+      "juniorHigh": "早良中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "南庄",
+      "range": "4丁目13番(室見団地)、5丁目",
+      "elementary": "脇山小",
+      "juniorHigh": "早良中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "小田部",
+      "range": "1丁目、5丁目～7丁目1丁目～4丁目",
+      "elementary": "小田部小",
+      "juniorHigh": "原北中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "南庄",
+      "range": "(ただし、4丁目13番(室見団地)を除く…小田部小)6丁目",
+      "elementary": "原北小",
+      "juniorHigh": "原北中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "原団地",
+      "range": "全域",
+      "elementary": "原北小",
+      "juniorHigh": "原北中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "原",
+      "range": "3丁目、4丁目",
+      "elementary": "大原小",
+      "juniorHigh": "原中央中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "荒江",
+      "range": "2丁目、3丁目(1丁目は城南区)",
+      "elementary": "大原小",
+      "juniorHigh": "原中央中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "原",
+      "range": "1丁目、2丁目",
+      "elementary": "原小",
+      "juniorHigh": "原中央中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "百道",
+      "range": "1丁目～3丁目",
+      "elementary": "原小",
+      "juniorHigh": "原中央中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "室見",
+      "range": "1丁目",
+      "elementary": "百道小",
+      "juniorHigh": "原中央中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "曙",
+      "range": "1丁目、2丁目1番～5番",
+      "elementary": "百道小",
+      "juniorHigh": "百道中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "西新",
+      "range": "1丁目～4丁目、6丁目、7丁目",
+      "elementary": "西新小",
+      "juniorHigh": "百道中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "城西",
+      "range": "1丁目～3丁目",
+      "elementary": "西新小",
+      "juniorHigh": "百道中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "百道浜",
+      "range": "1丁目～4丁目",
+      "elementary": "百道浜小",
+      "juniorHigh": "百道中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "藤崎",
+      "range": "1丁目、2丁目",
+      "elementary": "百道浜小",
+      "juniorHigh": "百道中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "弥生",
+      "range": "1丁目、2丁目",
+      "elementary": "室見小",
+      "juniorHigh": "百道中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "室見",
+      "range": "2丁目～5丁目",
+      "elementary": "室見小",
+      "juniorHigh": "百道中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "高取",
+      "range": "1丁目、2丁目",
+      "elementary": "室見小",
+      "juniorHigh": "高取中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "西新",
+      "range": "5丁目",
+      "elementary": "室見小",
+      "juniorHigh": "高取中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "祖原",
+      "range": "全域",
+      "elementary": "高取小",
+      "juniorHigh": "高取中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "昭代",
+      "range": "1丁目～3丁目",
+      "elementary": "高取小",
+      "juniorHigh": "高取中",
+      "note": ""
+    },
+    {
+      "ward": "早良区",
+      "town": "曙",
+      "range": "2丁目6番～11番",
+      "elementary": "高取小",
+      "juniorHigh": "高取中",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～4丁目",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "愛宕",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "2丁目1番、2番",
+      "elementary": "愛宕小",
+      "juniorHigh": "豊浜",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～3丁目",
+      "elementary": "愛宕小",
+      "juniorHigh": "姪の浜",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "5丁目",
+      "elementary": "愛宕小",
+      "juniorHigh": "姪の浜",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "3丁目～5丁目",
+      "elementary": "内浜小",
+      "juniorHigh": "内浜",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目、2丁目",
+      "elementary": "内浜小",
+      "juniorHigh": "福重団地",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "内浜小",
+      "juniorHigh": "福重団地",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～5丁目",
+      "elementary": "福重小",
+      "juniorHigh": "姪浜駅南",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "2丁目30番（10号～16号）、31番、32番",
+      "elementary": "福重小",
+      "juniorHigh": "愛宕南",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目、2丁目",
+      "elementary": "福重小",
+      "juniorHigh": "愛宕南",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目、",
+      "elementary": "福重小",
+      "juniorHigh": "姪浜駅南",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "2丁目(ただし、30番（10号～16号）、31番、32番を除く…福重小)",
+      "elementary": "福重小",
+      "juniorHigh": "姪浜駅南",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "3丁目、4丁目",
+      "elementary": "福重小",
+      "juniorHigh": "姪浜駅南",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目、",
+      "elementary": "姪浜小",
+      "juniorHigh": "姪浜駅南",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "2丁目1番～8番、9番(1号～23号)、10～13番、",
+      "elementary": "姪浜小",
+      "juniorHigh": "姪の浜",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "14番(1号～13号、55号～60号)、",
+      "elementary": "姪浜小",
+      "juniorHigh": "姪の浜",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "15番、16番、17番(1号～24号、27号)、18番、",
+      "elementary": "姪浜小",
+      "juniorHigh": "姪の浜",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "27番～30番",
+      "elementary": "姪浜小",
+      "juniorHigh": "小戸",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目、2丁目",
+      "elementary": "姪浜小",
+      "juniorHigh": "小戸",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "2丁目9番(24号)、14番(14号～54号)、17番(25号)、",
+      "elementary": "姪浜小",
+      "juniorHigh": "姪浜中",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "19番～21番、23番～26番、",
+      "elementary": "姪北小",
+      "juniorHigh": "姪の浜",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "3丁目(ただし、32番(11号、16号)、38番～48番を除く…愛宕浜小)、",
+      "elementary": "姪北小",
+      "juniorHigh": "姪の浜",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "4丁目、6丁目",
+      "elementary": "姪北小",
+      "juniorHigh": "愛宕浜",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～4丁目(ただし、2丁目1番、2番を除く…愛宕小)",
+      "elementary": "姪北小",
+      "juniorHigh": "愛宕浜",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "2丁目22番、",
+      "elementary": "愛宕浜小",
+      "juniorHigh": "姪の浜",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "3丁目32番(11号、16号)、38番～48番",
+      "elementary": "愛宕浜小",
+      "juniorHigh": "拾六町団地",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "愛宕浜小",
+      "juniorHigh": "大字野方",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "891(2)",
+      "range": "",
+      "elementary": "愛宕浜小",
+      "juniorHigh": "野方",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目、5丁目1番、2番、3番、8番、6丁目、7丁目",
+      "elementary": "愛宕浜小",
+      "juniorHigh": "野方",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～3丁目",
+      "elementary": "壱岐小",
+      "juniorHigh": "西の丘",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～3丁目",
+      "elementary": "壱岐小",
+      "juniorHigh": "西の丘",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～4丁目(ただし、2丁目16番を除く…壱岐東小)",
+      "elementary": "壱岐小",
+      "juniorHigh": "拾六町",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "2丁目16番",
+      "elementary": "壱岐小",
+      "juniorHigh": "拾六町",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1番～93番",
+      "elementary": "壱岐東小",
+      "juniorHigh": "橋本",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目14番",
+      "elementary": "壱岐東小",
+      "juniorHigh": "大字野方",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "1096(3)、1098(130)、1097(2)",
+      "range": "",
+      "elementary": "壱岐東小",
+      "juniorHigh": "大字羽根戸",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "725(1)～752(10)",
+      "range": "",
+      "elementary": "壱岐東小",
+      "juniorHigh": "壱岐団地",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "100番～終",
+      "elementary": "壱岐東小",
+      "juniorHigh": "壱岐団地",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "2丁目～4丁目、",
+      "elementary": "壱岐東小",
+      "juniorHigh": "壱岐団地",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "5丁目4番～7番、9番～64番",
+      "elementary": "壱岐南小",
+      "juniorHigh": "橋本",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目、2丁目(ただし、1丁目14番を除く･･･壱岐東小)",
+      "elementary": "壱岐南小",
+      "juniorHigh": "大字橋本",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "壱岐南小",
+      "juniorHigh": "戸切",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目、2丁目、3丁目1番～33番、35番、38番",
+      "elementary": "壱岐南小",
+      "juniorHigh": "戸切",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目13番(25号、28号)、2丁目19番、20番",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "周船寺",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～3丁目（１丁目382、675～685、2463～2480、",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "学園通",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "3丁目2605～2619を除く…西都北小）",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "大字桑原",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "大字元岡",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "元浜",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～4丁目",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "田尻",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～3丁目（ただし、2丁目14番を除く…西都北小）",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "田尻",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "3丁目（ただし、2550～2554、2557～2567、",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "田尻",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "2570番地12…玄洋小、",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "田尻",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "2568～2585（",
+      "range": "2570番地12を除く）、",
+      "elementary": "元岡小",
+      "juniorHigh": "田尻東",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "2686～2714、",
+      "range": "",
+      "elementary": "元岡小",
+      "juniorHigh": "田尻東",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "４丁目…西都北小　を除く）",
+      "elementary": "元岡小",
+      "juniorHigh": "丸川",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～2丁目",
+      "elementary": "元岡小",
+      "juniorHigh": "太郎丸",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～4丁目",
+      "elementary": "元岡小",
+      "juniorHigh": "大字太郎丸",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "元岡小",
+      "juniorHigh": "九大新町",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "元岡小",
+      "juniorHigh": "泉",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～3丁目",
+      "elementary": "元岡小",
+      "juniorHigh": "富士見",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～3丁目",
+      "elementary": "元岡小",
+      "juniorHigh": "宇田川原",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "元岡小",
+      "juniorHigh": "大字千里",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "元岡小",
+      "juniorHigh": "大字飯氏",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "元岡小",
+      "juniorHigh": "大字周船寺",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "元岡小",
+      "juniorHigh": "大字周船寺",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "660",
+      "range": "",
+      "elementary": "周船寺小",
+      "juniorHigh": "大字徳永",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "2丁目4番の一部",
+      "elementary": "周船寺小",
+      "juniorHigh": "北原",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "※一部の詳細は学校計画第1課・第2課に照会のこと",
+      "range": "",
+      "elementary": "周船寺小",
+      "juniorHigh": "周船寺中",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目(ただし、13番(25号、28号)を除く･･･元岡小)、",
+      "elementary": "周船寺小",
+      "juniorHigh": "周船寺",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "2丁目1番～18番、",
+      "elementary": "周船寺小",
+      "juniorHigh": "周船寺",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "3丁目",
+      "elementary": "周船寺小",
+      "juniorHigh": "徳永北",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "周船寺小",
+      "juniorHigh": "女原北",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "周船寺小",
+      "juniorHigh": "女原北",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "西都小",
+      "juniorHigh": "大字德永",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域(ただし、660を除く・・・周船寺小)",
+      "elementary": "西都小",
+      "juniorHigh": "西都",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "2丁目",
+      "elementary": "西都小",
+      "juniorHigh": "西都",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "１丁目",
+      "elementary": "西都小",
+      "juniorHigh": "西都",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "１丁目～2丁目（ただし、2丁目4番の一部…周船寺小、",
+      "elementary": "西都小",
+      "juniorHigh": "北原",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "36番の一部及び37番の一部…玄洋小を除く）",
+      "elementary": "西都小",
+      "juniorHigh": "北原",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "※一部の詳細は学校計画第1課・第2課に照会のこと",
+      "range": "",
+      "elementary": "西都小",
+      "juniorHigh": "田尻",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "2丁目14番",
+      "elementary": "西都小",
+      "juniorHigh": "田尻",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～2丁目、",
+      "elementary": "西都北小",
+      "juniorHigh": "元岡中",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "3丁目2568～2585（ただし、2570番地12を除く…玄洋小）、",
+      "elementary": "西都北小",
+      "juniorHigh": "田尻東",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "2686～2714、",
+      "range": "",
+      "elementary": "西都北小",
+      "juniorHigh": "田尻東",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "4丁目",
+      "elementary": "西都北小",
+      "juniorHigh": "田尻東",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "１丁目382、675～685、2463～2480",
+      "elementary": "西都北小",
+      "juniorHigh": "学園通",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "3丁目2605～2619",
+      "elementary": "西都北小",
+      "juniorHigh": "学園通",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～3丁目(ただし、3丁目111番を除く･･･今宿小)",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "横浜",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～3丁目",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "横浜",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "3丁目2550～2554、2557～2567、2570番12",
+      "elementary": "この一覧は令和８年４月１日現在のものです。",
+      "juniorHigh": "横浜",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "※詳細は学校計画第1課・第2課に照会のこと",
+      "range": "",
+      "elementary": "玄洋小",
+      "juniorHigh": "田尻東",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "2丁目36番の一部及び37番の一部",
+      "elementary": "玄洋小",
+      "juniorHigh": "北原",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "※一部の詳細は学校計画第1課・第2課に照会のこと",
+      "range": "",
+      "elementary": "玄洋小",
+      "juniorHigh": "今宿",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "3丁目111番",
+      "elementary": "玄洋小",
+      "juniorHigh": "今宿町",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "玄洋小",
+      "juniorHigh": "今宿上ノ原",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "玄洋小",
+      "juniorHigh": "今宿上ノ原",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "玄洋小",
+      "juniorHigh": "今宿上ノ原",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "※今宿青木大谷地区（1092～",
+      "range": "1105番地）は、西陵小、西陵中への指",
+      "elementary": "今宿小",
+      "juniorHigh": "今宿青木",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "定学校変更が可能。",
+      "range": "",
+      "elementary": "今宿小",
+      "juniorHigh": "今宿駅前",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目",
+      "elementary": "今宿小",
+      "juniorHigh": "今宿東",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～3丁目",
+      "elementary": "今宿小",
+      "juniorHigh": "今宿西",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目",
+      "elementary": "今宿小",
+      "juniorHigh": "今宿西",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "今津小",
+      "juniorHigh": "大町団地",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "今津小",
+      "juniorHigh": "大町団地",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "石丸小",
+      "juniorHigh": "石丸",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～4丁目",
+      "elementary": "石丸小",
+      "juniorHigh": "下山門",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～4丁目(ただし、4丁目16番～19番を除く)",
+      "elementary": "石丸小",
+      "juniorHigh": "下山門",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目(ただし、24番～26番を除く…西陵小)",
+      "elementary": "下山門小",
+      "juniorHigh": "下山門団地",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1番～28番(ただし、5番(2号)を除く…西陵小)",
+      "elementary": "下山門小",
+      "juniorHigh": "大字下山門",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "1710(31)～1718",
+      "range": "",
+      "elementary": "下山門小",
+      "juniorHigh": "大字下山門",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "5番(2号)、29番～79番",
+      "elementary": "西陵小",
+      "juniorHigh": "生の松原",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目24番～26番、2丁目～4丁目",
+      "elementary": "西陵小",
+      "juniorHigh": "城の原団地",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "西陵小",
+      "juniorHigh": "上山門",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～3丁目",
+      "elementary": "西陵小",
+      "juniorHigh": "上山門",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "5丁目",
+      "elementary": "城原小",
+      "juniorHigh": "下山門",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "4丁目16番～19番",
+      "elementary": "城原小",
+      "juniorHigh": "大字飯盛",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "城原小",
+      "juniorHigh": "大字吉武",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "城原小",
+      "juniorHigh": "大字金武",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "城原小",
+      "juniorHigh": "※金武中校",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域(ただし、壱岐南小区域を除く)",
+      "elementary": "城原小",
+      "juniorHigh": "※金武中校",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "※壱岐丘中への指定学校変更が可能。",
+      "range": "",
+      "elementary": "金武小",
+      "juniorHigh": "大字田",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "1191",
+      "range": "",
+      "elementary": "金武小",
+      "juniorHigh": "戸切",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "3丁目34番、36番、37番、39番、40番",
+      "elementary": "金武小",
+      "juniorHigh": "室見が丘",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "1丁目～3丁目",
+      "elementary": "金武小",
+      "juniorHigh": "大字草場",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "金武小",
+      "juniorHigh": "大字小田",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "金武小",
+      "juniorHigh": "大字小田",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "北崎小",
+      "juniorHigh": "大字西浦",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "北崎小",
+      "juniorHigh": "大字西浦",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "能古小",
+      "juniorHigh": "能古",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "玄界小",
+      "juniorHigh": "大字玄界島",
+      "note": ""
+    },
+    {
+      "ward": "西区",
+      "town": "",
+      "range": "全域",
+      "elementary": "小呂小",
+      "juniorHigh": "大字小呂島",
+      "note": ""
+    }
+  ],
+  "pdf_count": 494
+}
