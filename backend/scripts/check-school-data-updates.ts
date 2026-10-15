@@ -158,8 +158,63 @@ async function checkWaybackPages(
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// 差分計算（⑤ 1件でも変化があれば記録）
+// ⑤ ソース別件数チェック: 部分取得失敗時に既存データを保護する
+// 「一部が取得できなかった場合に既存データ全体を書き換えない」ための安全策
 // ────────────────────────────────────────────────────────────────────────────
+
+/** 各ソースの最低期待件数（現行 569件時点） */
+const MIN_RECORDS_BY_SOURCE: Record<string, number> = {
+  'hc (live 2026-08)':  60,   // 実績 94件
+  'mc (live 2026-08)':  50,   // 実績 76件
+  'ac (WB 2026-01)':    30,   // 実績 53件
+  'kc (WB 2025-04)':    50,   // 実績 85件
+  'sc (WB 2025-04)':    50,   // 実績 78件
+  'tc (WB 2025-04)':    50,   // 実績 80件
+  'nc (WB 2025-04)':    25,   // 実績 43件
+  'yc (WB 2025-04)':    30,   // 実績 53件
+  'R8 PDF (2026-04)':    5,   // 実績  7件（手動補完）
+};
+
+function mergeWithExistingBySource(
+  newRecords: any[],
+  oldRecords: any[],
+  warnFn: (msg: string) => void,
+): { records: any[]; failedSources: string[] } {
+  const countBySource = (recs: any[]): Record<string, number> => {
+    const cnt: Record<string, number> = {};
+    for (const r of recs) {
+      const s = r.source || 'unknown';
+      cnt[s] = (cnt[s] || 0) + 1;
+    }
+    return cnt;
+  };
+
+  const newCnt = countBySource(newRecords);
+  const oldCnt = countBySource(oldRecords);
+  const failedSources: string[] = [];
+  let merged = [...newRecords];
+
+  for (const [src, minExpected] of Object.entries(MIN_RECORDS_BY_SOURCE)) {
+    const newCount = newCnt[src] || 0;
+    const oldCount = oldCnt[src] || 0;
+
+    // 新規取得数が「最低期待件数」を下回った場合 → 既存データを使用
+    if (newCount < minExpected && oldCount >= minExpected) {
+      failedSources.push(src);
+      const oldSourceRecs = oldRecords.filter(r => (r.source || 'unknown') === src);
+      // 新しいレコードセットからこのソースを除去して旧データで補完
+      merged = [
+        ...merged.filter(r => (r.source || 'unknown') !== src),
+        ...oldSourceRecs,
+      ];
+      warnFn(
+        `⚠️ [部分取得失敗] ${src}: 新規${newCount}件 < 最低${minExpected}件 → 既存${oldCount}件を維持`
+      );
+    }
+  }
+
+  return { records: merged, failedSources };
+}
 function computeDiff(
   oldRecords: any[],
   newRecords: any[],
@@ -319,6 +374,22 @@ async function main() {
   // メタデータ読み込み
   const metadata = JSON.parse(fs.readFileSync(METADATA_JSON, 'utf-8'));
 
+  // ⑤ 冪等性チェック: 今年すでに実行済みなら（force_rebuild でない限り）スキップ
+  const lastCheck = metadata._last_annual_check || '';
+  if (!isDryRun && !process.env.FORCE_REBUILD && lastCheck.startsWith(String(year))) {
+    console.log(`今年(${year})は既に確認済みです（${lastCheck}）。スキップします。`);
+    console.log('強制実行する場合は FORCE_REBUILD=true を設定してください。');
+    setOutput('has_changes', 'false');
+    setOutput('has_errors', 'false');
+    // 変更なし Issue 用の最小レポート
+    fs.writeFileSync(
+      path.join(TMP_DIR, 'update-report.md'),
+      `# ✅ 学校区データ年次確認 ${year}年4月: スキップ\n\n今年はすでに ${lastCheck} に確認済みです。\n`,
+      'utf-8',
+    );
+    return;
+  }
+
   // 現行 JSON 読み込み
   const currentFukuoka  = JSON.parse(fs.readFileSync(FUKUOKA_JSON,  'utf-8'));
   const currentOitaBeppu = JSON.parse(fs.readFileSync(OITA_JSON, 'utf-8'));
@@ -413,15 +484,27 @@ async function main() {
     reportError('学校区データ取得失敗 - 福岡市', msg);
     process.exit(1);
   }
-  if (newFukuokaRecords.length < oldFukuokaRecords.length * 0.95) {
-    const msg = `❌ 福岡市レコードが異常に減少しました (${oldFukuokaRecords.length}→${newFukuokaRecords.length})。パーサーエラーの可能性があります。`;
+
+  // ⑤ ソース別マージ: 取得できなかったソースは既存データで補完
+  const { records: mergedFukuokaRecords, failedSources } = mergeWithExistingBySource(
+    newFukuokaRecords,
+    oldFukuokaRecords,
+    (msg) => warnings.push(msg),
+  );
+
+  if (mergedFukuokaRecords.length < oldFukuokaRecords.length * 0.95) {
+    const msg = `❌ マージ後もレコードが異常に減少しました (${oldFukuokaRecords.length}→${mergedFukuokaRecords.length})。パーサーエラーの可能性があります。`;
     reportError('学校区データ取得失敗 - 異常な件数減少', msg);
     process.exit(1);
   }
 
+  if (failedSources.length > 0) {
+    warnings.push(`一部ソース取得失敗 (${failedSources.join(', ')}) → 既存データを補完しました。`);
+  }
+
   // ─── Step 6: 差分計算 ─────────────────────────────────────────────────────
   console.log('\n=== Step 6: 差分計算 ===');
-  const fukuokaDiff = computeDiff(oldFukuokaRecords, newFukuokaRecords, '福岡市');
+  const fukuokaDiff = computeDiff(oldFukuokaRecords, mergedFukuokaRecords, '福岡市');
   const oitaBeppuDiff = computeDiff(oldOitaBeppuRecords, oldOitaBeppuRecords, '大分/別府');
   // ※ 大分/別府の自動更新は確認のみ。実際の更新は別途 Python スクリプトで行う。
 

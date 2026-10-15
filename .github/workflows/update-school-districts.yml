@@ -2,9 +2,12 @@ name: 学校区データ年次更新チェック
 
 on:
   schedule:
-    # 毎年4月の第1月曜日 11:00 JST (02:00 UTC)
-    # ⑨ 年1回の実行 ≈ 10分/年 → GitHub Actions 無料枠への影響は最小
-    - cron: '0 2 1-7 4 1'
+    # ④ 毎年4月1日〜7日の 11:00 JST (02:00 UTC) に実行
+    # ⚠️ cron の dom と dow 両方指定は OR 条件のため、
+    #    意図した「4月第1月曜のみ」にはならない。
+    #    代わりに「4月1〜7日毎日」で実行し、
+    #    スクリプト内の 冪等性チェック(_last_annual_check)で年1回に制限する。
+    - cron: '0 2 1-7 4 *'
 
   # ⑧ 手動実行（workflow_dispatch）
   workflow_dispatch:
@@ -72,8 +75,11 @@ jobs:
         env:
           DRY_RUN: ${{ inputs.dry_run }}
           FORCE_REBUILD: ${{ inputs.force_full_rebuild }}
-          # GitHub Actions のアーティファクト用
-          GITHUB_OUTPUT: ${{ env.GITHUB_OUTPUT }}
+          # ② ドライラン時は本番 JSON・既存 DB・物件情報を一切変更しない保証:
+          #   check-school-data-updates.ts は SCHOOL_OUTPUT_PATH に出力するため
+          #   src/data/ の本番 JSON は変更されない。
+          #   その後のコミット・PR 作成ステップも dry_run=true の場合はスキップされる。
+          SCHOOL_OUTPUT_PATH: backend/tmp-update/fukuoka-new.json
 
       # ──────────────────────────────────────────────────────────────────────
       # 変更あり → ブランチ作成 + PR（④ 管理者承認フロー）
