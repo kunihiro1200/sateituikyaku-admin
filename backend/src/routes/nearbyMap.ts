@@ -634,13 +634,79 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
               for (const tc of townCandidates) {
                 const hits = records.filter((r: any) => r.ward === ward && r.town === tc);
                 if (hits.length > 0) {
-                  // 全域は無条件マッチ、それ以外はchoice:0で確認済みとして採用
-                  const best = hits.find((r: any) => !r.range || r.range.includes('全域')) || hits[0];
+                  // 番地レンジチェック（丁目・番地を含む複雑なレンジを解析）
+                  const chomeM = propertyAddressParam.match(/(\d+)丁目/);
+                  const chomeNum = chomeM ? parseInt(chomeM[1], 10) : null;
+                  // ハイフン番地 or 番
+                  const afterWard2 = propertyAddressParam.split(ward)[1] || '';
+                  const hyphenM = afterWard2.match(/\d+丁目(\d+)[-ー－]/);
+                  const banM = propertyAddressParam.match(/(\d+)番/);
+                  const banNum = hyphenM ? parseInt(hyphenM[1], 10) : (banM ? parseInt(banM[1], 10) : null);
+
+                  // レンジチェック関数
+                  const isInRange = (range: string): boolean => {
+                    if (!range || range.includes('全域')) return true;
+                    if (range.includes('ただし') || range.includes('除く') || range.includes('照会')) return true; // 例外は許容
+                    const parts = range.split(/[、，,]/).map(p => p.trim()).filter(Boolean);
+                    let lastChome: number | null = null;
+                    for (const part of parts) {
+                      const chomeRangeM = part.match(/^(\d+)丁目～(\d+)丁目$/);
+                      if (chomeRangeM) {
+                        if (chomeNum !== null) {
+                          const from = parseInt(chomeRangeM[1], 10);
+                          const to   = parseInt(chomeRangeM[2], 10);
+                          if (chomeNum >= from && chomeNum <= to) return true;
+                        }
+                        continue;
+                      }
+                      const chomeWithBanM = part.match(/^(\d+)丁目(.*)$/);
+                      if (chomeWithBanM) {
+                        const partChome = parseInt(chomeWithBanM[1], 10);
+                        lastChome = partChome;
+                        if (chomeNum !== null && chomeNum !== partChome) continue;
+                        const rest = chomeWithBanM[2].trim();
+                        if (!rest) return true; // 丁目のみ → 全番地OK
+                        const banRangeM = rest.match(/^(\d+)番～(\d+)番/);
+                        if (banRangeM) {
+                          if (banNum === null) return true;
+                          const from = parseInt(banRangeM[1], 10);
+                          const to   = parseInt(banRangeM[2], 10);
+                          if (banNum >= from && banNum <= to) return true;
+                        }
+                        continue;
+                      }
+                      // 単独 "N番"（直前の丁目コンテキスト）
+                      const banOnlyM = part.match(/^(\d+)番$/);
+                      if (banOnlyM && lastChome !== null) {
+                        if (chomeNum !== null && chomeNum === lastChome) {
+                          if (banNum !== null && banNum === parseInt(banOnlyM[1], 10)) return true;
+                        }
+                        continue;
+                      }
+                      // "1丁目" 単独
+                      const chomeOnlyM = part.match(/^(\d+)丁目$/);
+                      if (chomeOnlyM) {
+                        lastChome = parseInt(chomeOnlyM[1], 10);
+                        if (chomeNum !== null && chomeNum === lastChome) return true;
+                        continue;
+                      }
+                    }
+                    return false;
+                  };
+
+                  // まず「全域」マッチを優先、次にレンジ内のレコードを探す
+                  const best = hits.find((r: any) => !r.range || r.range.includes('全域'))
+                    ?? hits.find((r: any) => isInRange(r.range));
+
+                  if (!best) {
+                    console.log(`[nearbyMap] 住所対応表: ${ward} ${tc} chome=${chomeNum} ban=${banNum} はレンジ外 → GeoJSONへ`);
+                    break; // レンジ外 → GeoJSONフォールバック
+                  }
+
                   elementarySchoolNameFromDistrict = best.elementary;
                   elementaryDistrictSource = 'fukuoka_address_table';
                   elementaryDistrictDate = '20251226';
                   elementaryConfidence = 'confirmed';
-                  // 中学校も同時取得
                   (req as any)._jhFromAddressTable = best.juniorHigh;
                   console.log(`[nearbyMap] 住所対応表ヒット: ${best.elementary} / ${best.juniorHigh} (${ward} ${tc})`);
                   break;
