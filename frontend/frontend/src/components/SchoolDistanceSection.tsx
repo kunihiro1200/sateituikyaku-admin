@@ -20,7 +20,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box, Paper, Typography, Button, Grid, TextField, CircularProgress,
   Alert, Chip, IconButton, Tooltip, Dialog, DialogTitle, DialogContent,
-  DialogActions, Link, Divider,
+  DialogActions, Link, Divider, InputAdornment,
 } from '@mui/material';
 import {
   School as SchoolIcon,
@@ -356,30 +356,30 @@ const SchoolCard: React.FC<SchoolCardProps> = ({
         )}
       </Box>
 
-      {/* 学校名 */}
+      {/* 学校名 + ふりがな（末尾に（よみ）表示） */}
       <TextField
         fullWidth
         size="small"
         label="学校名"
         value={info.name}
         onChange={(e) => onNameChange(e.target.value)}
-        sx={{ mb: 0.5, '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
+        sx={{ mb: 1, '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
         InputLabelProps={{ sx: { fontSize: '12px' } }}
+        InputProps={{
+          endAdornment: furigana && !furiganaLoading ? (
+            <InputAdornment position="end">
+              <Typography sx={{ fontSize: '11px', color: '#777', whiteSpace: 'nowrap' }}>
+                （{furigana}）
+              </Typography>
+            </InputAdornment>
+          ) : furiganaLoading ? (
+            <InputAdornment position="end">
+              <Typography sx={{ fontSize: '10px', color: '#aaa' }}>取得中...</Typography>
+            </InputAdornment>
+          ) : undefined,
+        }}
       />
-      {/* ふりがな（FI売主のみ表示） */}
-      {furiganaLoading && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontSize: '10px' }}>
-          ふりがな生成中...
-        </Typography>
-      )}
-      {furigana && !furiganaLoading && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-          <Typography variant="caption" sx={{ fontSize: '9px', color: '#888', flexShrink: 0 }}>よみ：</Typography>
-          <Typography variant="caption" sx={{ fontSize: '12px', color: '#1565c0', letterSpacing: '0.05em', fontWeight: 'bold' }}>
-            {furigana}
-          </Typography>
-        </Box>
-      )}
+      {/* ふりがな表示なし（endAdornmentに移動） */}
 
       {/* 距離・徒歩時間 */}
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', mb: 1 }}>
