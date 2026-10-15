@@ -681,13 +681,19 @@ export default function AttachedDocument2Page() {
       const hasUncertain = elemConf === 'uncertain' || jhConf === 'uncertain';
       const elemSource   = data.elementarySchool?.dataSource || '';
 
+      // ① confidence（自動判定の信頼性）は API の transient な値
+      // elementary_school_confirmed（担当者確認フラグ）は DB に永続化
+      // この2つは独立して管理する。
+
       // 3. フォームに反映（編集可能な状態で）
       if (data.elementarySchool?.name) {
         set('elementary_school_name', data.elementarySchool.name);
         const meters = data.elementarySchool.distanceMeters;
         if (meters) set('elementary_school_walk', computeWalk(meters));
-        // uncertain の場合: 確認済みフラグを明示的に false に（参考値として扱う）
-        if (elemConf === 'uncertain') {
+        // ② uncertain の場合: 学校名が変わった場合のみ確認済みをリセット
+        // 同じ学校名で uncertain → 既確認状態は維持（担当者の確認を尊重）
+        // 別の学校名で uncertain → 未確認に戻す（再確認が必要）
+        if (elemConf === 'uncertain' && data.elementarySchool.name !== fields.elementary_school_name) {
           set('elementary_school_confirmed', false);
         }
       }
@@ -695,7 +701,7 @@ export default function AttachedDocument2Page() {
         set('junior_high_school_name', data.juniorHighSchool.name);
         const meters = data.juniorHighSchool.distanceMeters;
         if (meters) set('junior_high_school_walk', computeWalk(meters));
-        if (jhConf === 'uncertain') {
+        if (jhConf === 'uncertain' && data.juniorHighSchool.name !== fields.junior_high_school_name) {
           set('junior_high_school_confirmed', false);
         }
       } else if (data.juniorHighSchool?.notAvailableReason === 'REINFOLIB_API_KEY_NOT_SET') {
@@ -711,7 +717,7 @@ export default function AttachedDocument2Page() {
                             elemSource === 'oita_official' ? '大分/別府公式データ' : '推定';
         setSchoolFetchWarning(
           `⚠️ この住所は学区境界が「照会が必要」の地区です（判定根拠: ${sourceLabel}）。` +
-          `学校名は参考値として入力しました。公式の通学区域を確認してから「確認済み」チェックを入れてください。`
+          `学校名は参考値として入力しました。内容を確認し、正しければ「確認済み」チェックを入れてください。`
         );
       }
     } catch (err: any) {

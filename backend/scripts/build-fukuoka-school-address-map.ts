@@ -35,6 +35,7 @@ interface DistrictRecord {
   elementary: string;
   juniorHigh: string;
   note: string;
+  source?: string;   // データ取得元（例: "hc (live 2026-08)", "kc (WB 2025-04)"）
 }
 
 // =====================================================================
@@ -279,6 +280,18 @@ async function main() {
       const html = Buffer.from(response.data).toString('utf-8');
 
       const records = parseHtml(html, page.key);
+      // ③ 各レコードにデータ取得元を記録（未検証状態の管理に使用）
+      const sourceLabel = {
+        'hc': 'hc (live 2026-08)',
+        'mc': 'mc (live 2026-08)',
+        'ac': 'ac (WB 2026-01)',
+        'kc': 'kc (WB 2025-04)',
+        'sc': 'sc (WB 2025-04)',
+        'tc': 'tc (WB 2025-04)',
+        'nc': 'nc (WB 2025-04)',
+        'yc': 'yc (WB 2025-04)',
+      }[page.key] || page.key;
+      records.forEach((r: DistrictRecord) => { r.source = sourceLabel; });
       allRecords.push(...records);
       totalPages++;
       console.log(`  → ${records.length}件 取得`);
@@ -309,36 +322,43 @@ async function main() {
       ward: '西区', town: '周船寺',
       range: '1丁目(ただし、13番(25号、28号)を除く···元岡小)、2丁目1番～18番、3丁目',
       elementary: '周船寺小', juniorHigh: '周船寺中', note: '',
+      source: 'R8 PDF (2026-04)',
     },
     {
       ward: '西区', town: '徳永北',
       range: '全域',
       elementary: '周船寺小', juniorHigh: '周船寺中', note: '',
+      source: 'R8 PDF (2026-04)',
     },
     {
       ward: '西区', town: '大字徳永',
       range: '660',
       elementary: '周船寺小', juniorHigh: '周船寺中', note: '660番地のみ',
+      source: 'R8 PDF (2026-04)',
     },
     {
       ward: '西区', town: '女原北',
       range: '全域',
       elementary: '西都小', juniorHigh: '周船寺中', note: '',
+      source: 'R8 PDF (2026-04)',
     },
     {
       ward: '西区', town: '大字女原',
       range: '全域',
       elementary: '西都小', juniorHigh: '周船寺中', note: '',
+      source: 'R8 PDF (2026-04)',
     },
     {
       ward: '西区', town: '大字德永',
       range: '全域(ただし、660を除く···周船寺小)',
       elementary: '西都小', juniorHigh: '周船寺中', note: '',
+      source: 'R8 PDF (2026-04)',
     },
     {
       ward: '西区', town: '西都',
       range: '2丁目',
       elementary: '西都小', juniorHigh: '周船寺中', note: '',
+      source: 'R8 PDF (2026-04)',
     },
   ];
 

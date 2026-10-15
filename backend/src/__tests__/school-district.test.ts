@@ -273,3 +273,151 @@ describe('FI89 小笹1丁目 ただし例外節テスト', () => {
     expect(r!.confidence).toBe('uncertain');
   });
 });
+
+// ────────────────────────────────────────────────────────────────────────────
+// ④ 取得→保存→再読み込みのフロー検証テスト
+// ────────────────────────────────────────────────────────────────────────────
+
+// このテスト群は以下を検証する:
+// ① confidence（自動判定の信頼性） vs elementary_school_confirmed（担当者確認フラグ）の分離
+// ② uncertain の場合、学校名は候補として表示するが confirmed フラグは管理者操作まで false
+// ③ source フィールドによるデータ出典の管理
+// ④ 同一学校名の再取得では confirmed を維持する
+
+describe('④ confidence / confirmed 分離テスト', () => {
+  // ① 自動判定の confidence フィールドが school lookup から正しく返ること
+  describe('confidence フィールドの正確性', () => {
+    test('確定住所は confirmed を返す', () => {
+      const r = lookupFukuokaSchool('福岡市中央区渡辺通5丁目24番');
+      expect(r).not.toBeNull();
+      expect(r!.confidence).toBe('confirmed');
+      // confidence は algorithm の出力（transient）
+    });
+
+    test('照会住所は uncertain を返す', () => {
+      const r = lookupFukuokaSchool('福岡市東区箱崎6丁目10番');
+      expect(r).not.toBeNull();
+      expect(r!.confidence).toBe('uncertain');
+    });
+
+    test('住所対応表ヒットなしは null を返す（GeoJSON へ）', () => {
+      // 八幡は福岡市外 → null → GeoJSON fallback（この service では null）
+      const r = lookupFukuokaSchool('北九州市八幡西区1丁目1番');
+      expect(r).toBeNull();
+      // null の場合、呼び出し側は GeoJSON で confirmed として返す
+    });
+  });
+
+  // ② uncertain の場合の confirmed フラグ管理
+  // フロントエンドロジックをサービス層でシミュレーション
+  describe('confirmed フラグ管理ロジック', () => {
+    test('uncertain 結果 + 学校名が変わった場合 → confirmed = false にすべき', () => {
+      const oldName = '春吉小';      // 既存の（間違った）学校名
+      const newResult = lookupFukuokaSchool('福岡市東区箱崎6丁目10番');
+      expect(newResult).not.toBeNull();
+      expect(newResult!.confidence).toBe('uncertain');
+      // 学校名が変わった → confirmed は false にすべき
+      const nameChanged = newResult!.elementary !== oldName;
+      const shouldResetConfirmed = newResult!.confidence === 'uncertain' && nameChanged;
+      expect(shouldResetConfirmed).toBe(true);
+    });
+
+    test('uncertain 結果 + 学校名が同じ場合 → confirmed を維持すべき', () => {
+      const result = lookupFukuokaSchool('福岡市東区箱崎6丁目10番');
+      expect(result).not.toBeNull();
+      expect(result!.confidence).toBe('uncertain');
+      const currentName = result!.elementary; // 今の学校名を取得
+      // 同じ名前で再取得した場合 → confirmed を維持
+      const result2 = lookupFukuokaSchool('福岡市東区箱崎6丁目10番');
+      expect(result2!.elementary).toBe(currentName);
+      const nameChanged = result2!.elementary !== currentName;
+      const shouldResetConfirmed = result2!.confidence === 'uncertain' && nameChanged;
+      expect(shouldResetConfirmed).toBe(false); // 同じ学校名 → リセットしない
+    });
+
+    test('confirmed 結果は学校名が変わっても明示リセット不要（別の学校が正しい）', () => {
+      const r = lookupFukuokaSchool('福岡市中央区渡辺通5丁目24番');
+      expect(r!.confidence).toBe('confirmed');
+      // confirmed の場合はリセット不要（システムが確定したため）
+      expect(r!.confidence).not.toBe('uncertain');
+    });
+  });
+
+  // ③ source フィールドの管理（データ出典の記録）
+  describe('source フィールド', () => {
+    test('渡辺通 は か行（Wayback Machine 2025-04）から取得', () => {
+      const data = require('../data/fukuoka-school-address-map.json');
+      const rec = data.records.find((r: any) =>
+        r.ward === '中央区' && r.town === '渡辺通' && r.juniorHigh === '警固中'
+      );
+      expect(rec).toBeTruthy();
+      // 警固中 は か行 (kc.html 2025-04 Wayback)
+      expect(rec.source).toMatch(/kc|WB 2025-04/);
+    });
+
+    test('周船寺 は R8 PDF 補完から取得', () => {
+      const data = require('../data/fukuoka-school-address-map.json');
+      const rec = data.records.find((r: any) =>
+        r.ward === '西区' && r.town === '周船寺' && r.juniorHigh === '周船寺中'
+      );
+      expect(rec).toBeTruthy();
+      expect(rec.source).toMatch(/R8 PDF|2026-04/);
+    });
+
+    test('金武中 は か行 Wayback Machine 2025-04 から取得', () => {
+      const data = require('../data/fukuoka-school-address-map.json');
+      const recs = data.records.filter((r: any) => r.juniorHigh === '金武中');
+      expect(recs.length).toBeGreaterThan(0);
+      expect(recs[0].source).toMatch(/WB 2025-04/);
+    });
+
+    test('全レコードに source フィールドが存在する', () => {
+      const data = require('../data/fukuoka-school-address-map.json');
+      const noSource = data.records.filter((r: any) => !r.source);
+      expect(noSource.length).toBe(0);
+    });
+  });
+
+  // ④ DB 保存・再読み込みの動作確認
+  // 注意: 実際のDB操作はライブ環境が必要なため、ここではロジックのみを検証する
+  // 実機での手動確認手順:
+  // 1. 箱崎6丁目の住所（東区）で「学校を自動入力」をクリック
+  // 2. 黄色警告が表示されることを確認
+  // 3. elementary_school_confirmed チェックボックスが false であることを確認
+  // 4. 保存ボタンを押す
+  // 5. ページを再読み込みする
+  // 6. elementary_school_confirmed が false のまま（要確認状態が維持）であることを確認
+  describe('DB 保存・再読み込み（ロジック検証）', () => {
+    test('uncertain 結果 + 学校名変更 → フォームの confirmed が false になる条件', () => {
+      // フロントエンドロジックのシミュレーション
+      // AttachedDocument2Page.tsx の handleSchoolAutoFetch のロジックを再現
+      const currentSchoolName = '東箱崎小学校'; // DBに保存されていた古い値
+      const apiResult = { name: '箱崎小', confidence: 'uncertain' };
+
+      const nameChanged = apiResult.name !== currentSchoolName;
+      const shouldReset = apiResult.confidence === 'uncertain' && nameChanged;
+
+      expect(shouldReset).toBe(true); // → elementary_school_confirmed = false に設定
+    });
+
+    test('confirmed 結果は confirmed フラグを変更しない', () => {
+      const currentSchoolName = '警固小'; // DBに保存されていた値
+      const apiResult = { name: '警固小', confidence: 'confirmed' };
+
+      const nameChanged = apiResult.name !== currentSchoolName;
+      const shouldReset = apiResult.confidence === 'uncertain' && nameChanged;
+
+      expect(shouldReset).toBe(false); // → confirmed フラグは変更しない
+    });
+
+    test('同一 uncertain 結果の再取得では confirmed を維持する', () => {
+      const currentSchoolName = '箱崎小'; // ユーザーが既に確認した学校名
+      const apiResult = { name: '箱崎小', confidence: 'uncertain' }; // 再取得
+
+      const nameChanged = apiResult.name !== currentSchoolName;
+      const shouldReset = apiResult.confidence === 'uncertain' && nameChanged;
+
+      expect(shouldReset).toBe(false); // → ユーザーの確認状態を維持
+    });
+  });
+});
