@@ -82,6 +82,117 @@ function calcStraightDistance(lat1: number, lng1: number, lat2: number, lng2: nu
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
+// ──────────────────────────────────────────────
+// 博多駅への transit 情報取得（FI売主向け）
+// ──────────────────────────────────────────────
+
+/** 博多駅の座標（JR・地下鉄共通出入口付近） */
+const HAKATA_STATION = { lat: 33.58975, lng: 130.42006 };
+
+/** 翌営業日の朝 9 時のタイムスタンプを返す（transit API は未来の時刻が必要） */
+function getNextWeekdayMorningTs(): number {
+  const now = new Date();
+  const next = new Date(now);
+  const day = now.getDay(); // 0=日 6=土
+  const addDays = day === 0 ? 1 : day === 6 ? 2 : 1;
+  next.setDate(now.getDate() + addDays);
+  next.setHours(9, 0, 0, 0);
+  return Math.floor(next.getTime() / 1000);
+}
+
+/**
+ * Directions API (transit) を使って駅→博多駅の経路情報を取得する。
+ * - lineName: 出発駅で乗車する路線名（例: 地下鉄七隈線）
+ * - minutesToHakata: 博多駅までの所要分数
+ * - routeText: "七隈線直通 博多まで10分" / "西鉄→天神で空港線乗換→博多まで25分"
+ */
+async function fetchTransitToHakata(
+  stationLat: number,
+  stationLng: number,
+  apiKey: string
+): Promise<{
+  lineName: string | null;
+  minutesToHakata: number | null;
+  routeText: string | null;
+}> {
+  try {
+    const response = await axios.get(
+      'https://maps.googleapis.com/maps/api/directions/json',
+      {
+        params: {
+          origin: `${stationLat},${stationLng}`,
+          destination: `${HAKATA_STATION.lat},${HAKATA_STATION.lng}`,
+          mode: 'transit',
+          departure_time: getNextWeekdayMorningTs(),
+          language: 'ja',
+          key: apiKey,
+        },
+        timeout: 12000,
+      }
+    );
+
+    if (response.data.status !== 'OK' || !response.data.routes?.[0]?.legs?.[0]) {
+      console.warn('[transitAccess/hakata] status:', response.data.status);
+      return { lineName: null, minutesToHakata: null, routeText: null };
+    }
+
+    const leg = response.data.routes[0].legs[0];
+    const totalMinutes = Math.ceil(leg.duration.value / 60);
+
+    // TRANSIT ステップのみ抽出（WALKING ステップを除く）
+    const transitSteps: any[] = (leg.steps as any[]).filter(
+      (s: any) => s.travel_mode === 'TRANSIT'
+    );
+
+    if (transitSteps.length === 0) {
+      return { lineName: null, minutesToHakata: totalMinutes, routeText: `博多まで${totalMinutes}分` };
+    }
+
+    // 最初に乗る路線名
+    const firstStep = transitSteps[0];
+    const firstLineName: string =
+      firstStep.transit_details?.line?.name ||
+      firstStep.transit_details?.line?.short_name ||
+      '';
+
+    if (transitSteps.length === 1) {
+      // 乗り換えなし
+      const routeText = firstLineName
+        ? `${firstLineName}直通 博多まで${totalMinutes}分`
+        : `博多まで${totalMinutes}分`;
+      return { lineName: firstLineName || null, minutesToHakata: totalMinutes, routeText };
+    } else {
+      // 乗り換えあり
+      const transfers = transitSteps
+        .slice(1)
+        .map((s: any) => {
+          const depStop: string = s.transit_details?.departure_stop?.name ?? '';
+          const lineName: string =
+            s.transit_details?.line?.name ||
+            s.transit_details?.line?.short_name ||
+            '';
+          return depStop ? `${depStop}で${lineName}乗換` : `${lineName}乗換`;
+        })
+        .join('→');
+      const routeText = `${firstLineName}→${transfers}→博多まで${totalMinutes}分`;
+      return { lineName: firstLineName || null, minutesToHakata: totalMinutes, routeText };
+    }
+  } catch (err: any) {
+    console.warn('[transitAccess/hakata] error:', err.message);
+    return { lineName: null, minutesToHakata: null, routeText: null };
+  }
+}
+  const R = 6371000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
 /**
  * Directions API で徒歩道路距離を取得する。
  * API が利用できない場合は直線距離 × 1.3 で推定する（isEstimated=true）。
@@ -425,10 +536,29 @@ router.post('/seller/:sellerNumber/fetch', async (req: Request, res: Response) =
     const now = new Date().toISOString();
     const upsertRows: any[] = [];
 
+    // ─── FI売主（福岡）の駅のみ博多駅への transit 情報を取得 ──────────────
+    type HakataInfo = { lineName: string | null; minutesToHakata: number | null; routeText: string | null };
+    let stationHakataInfos: HakataInfo[] = topStations.map(() => ({
+      lineName: null, minutesToHakata: null, routeText: null,
+    }));
+
+    if (storeType === 'fukuoka' && topStations.length > 0) {
+      stationHakataInfos = await Promise.all(
+        topStations.map(s =>
+          fetchTransitToHakata(s.candidate.place_lat, s.candidate.place_lng, apiKey)
+        )
+      );
+      console.log(
+        `[transitAccess] Hakata transit info for ${sellerNumber}:`,
+        stationHakataInfos.map(h => h.routeText)
+      );
+    }
+
     const buildRow = (
       transportType: TransportType,
       rank: number,
-      item: WithDistance
+      item: WithDistance,
+      hakataInfo?: HakataInfo
     ): any => {
       const existing = existingMap.get(`${transportType}_${rank}`);
       return {
@@ -437,13 +567,19 @@ router.post('/seller/:sellerNumber/fetch', async (req: Request, res: Response) =
         transport_type: transportType,
         rank,
         name: item.candidate.name,
-        line_name: null,  // Places API から取得不可。手動入力を促す。
+        // 路線名: transit APIで取得（手動修正がある場合はそちらを優先するため既存値を確認）
+        line_name: existing?.is_manually_corrected && existing?.manual_line_name
+          ? existing.manual_line_name
+          : (hakataInfo?.lineName ?? null),
         walk_distance_m: item.meters,
         walk_minutes: calcWalkMinutes(item.meters),
         is_estimated_distance: item.isEstimated,
         place_id: item.candidate.place_id,
         place_lat: item.candidate.place_lat,
         place_lng: item.candidate.place_lng,
+        // 博多駅への交通情報（駅のみ）
+        transit_to_hakata_minutes: hakataInfo?.minutesToHakata ?? null,
+        transit_to_hakata_text:    hakataInfo?.routeText ?? null,
         // ユーザー操作値は既存データを引き継ぐ（なければデフォルト）
         is_selected:            existing?.is_selected            ?? false,
         is_manually_corrected:  existing?.is_manually_corrected  ?? false,
@@ -461,7 +597,7 @@ router.post('/seller/:sellerNumber/fetch', async (req: Request, res: Response) =
     };
 
     for (let i = 0; i < topStations.length; i++) {
-      upsertRows.push(buildRow('station', i + 1, topStations[i]));
+      upsertRows.push(buildRow('station', i + 1, topStations[i], stationHakataInfos[i]));
     }
     for (let i = 0; i < topBusStops.length; i++) {
       upsertRows.push(buildRow('bus_stop', i + 1, topBusStops[i]));

@@ -47,6 +47,9 @@ export interface TransitRecord {
   manual_walk_minutes: number | null;
   is_confirmed: boolean;
   confirmed_at: string | null;
+  // 博多駅への交通情報（FI売主の駅のみ）
+  transit_to_hakata_minutes: number | null;
+  transit_to_hakata_text: string | null;
   data_source: string;
   fetched_at: string | null;
   fetch_error: string | null;
@@ -469,14 +472,12 @@ const TransitRow: React.FC<TransitRowProps> = ({ record: r, onToggleSelected, on
           sx={{ fontSize: '0.7rem', color: 'text.primary', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
         >
           {displayName || '—'}
+          {displayLine && (
+            <Typography component="span" sx={{ fontSize: '0.62rem', color: 'text.secondary', ml: 0.3 }}>
+              （{displayLine}）
+            </Typography>
+          )}
         </Typography>
-
-        {/* 路線名（あれば） */}
-        {displayLine && (
-          <Typography variant="caption" sx={{ fontSize: '0.62rem', color: 'text.secondary', display: 'block' }}>
-            {displayLine}
-          </Typography>
-        )}
 
         {/* 徒歩分数 — 目立つ色で表示 */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
@@ -497,6 +498,13 @@ const TransitRow: React.FC<TransitRowProps> = ({ record: r, onToggleSelected, on
             <Chip label="修正" size="small" sx={{ height: 13, fontSize: '0.57rem', bgcolor: '#fff3e0', color: '#e65100' }} />
           )}
         </Box>
+
+        {/* 博多駅までの経路情報（FI売主の駅のみ） */}
+        {r.transport_type === 'station' && r.transit_to_hakata_text && (
+          <Typography variant="caption" sx={{ fontSize: '0.62rem', color: '#1565c0', display: 'block' }}>
+            🚇 {r.transit_to_hakata_text}
+          </Typography>
+        )}
       </Box>
 
       {/* 確認済みアイコン */}
