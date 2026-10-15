@@ -962,11 +962,13 @@ export default function AttachedDocument2Page() {
       + '</tr></table>'
       + '<table class="it"><tr>'
       + '<td class="lbl">小学校</td><td class="val">'
-      + (fields.elementary_school_furigana ? `<span style="font-size:7pt;color:#555;">${fields.elementary_school_furigana}<br></span>` : '')
-      + (fields.elementary_school_name || '') + '</td><td class="val narrow">' + (fields.elementary_school_walk ? fields.elementary_school_walk + '分' : '') + '</td>'
+      + (fields.elementary_school_name || '')
+      + (fields.elementary_school_furigana ? `（${fields.elementary_school_furigana}）` : '')
+      + '</td><td class="val narrow">' + (fields.elementary_school_walk ? fields.elementary_school_walk + '分' : '') + '</td>'
       + '<td class="lbl">中学校</td><td class="val">'
-      + (fields.junior_high_school_furigana ? `<span style="font-size:7pt;color:#555;">${fields.junior_high_school_furigana}<br></span>` : '')
-      + (fields.junior_high_school_name || '') + '</td><td class="val narrow">' + (fields.junior_high_school_walk ? fields.junior_high_school_walk + '分' : '') + '</td>'
+      + (fields.junior_high_school_name || '')
+      + (fields.junior_high_school_furigana ? `（${fields.junior_high_school_furigana}）` : '')
+      + '</td><td class="val narrow">' + (fields.junior_high_school_walk ? fields.junior_high_school_walk + '分' : '') + '</td>'
       + '</tr><tr>'
       + '<td class="lbl">最寄り駅①</td><td class="val">' + (fields.nearest_station_name || '') + '</td><td class="val narrow">' + (fields.nearest_station_walk || '') + '</td>'
       + '<td class="lbl">最寄りバス停①</td><td class="val">' + (fields.nearest_bus_stop_name || '') + '</td><td class="val narrow">' + (fields.nearest_bus_stop_walk || '') + '</td>'
