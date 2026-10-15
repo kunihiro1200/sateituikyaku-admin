@@ -829,6 +829,9 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
       name: string | null; lat: number | null; lng: number | null; districtConfirmed: boolean;
     } | null = null;
 
+    // 中学校の confidence を追跡する（小学校と同じ address table から取得されるため同じ値）
+    let jhConfidence: 'confirmed' | 'uncertain' = 'confirmed';
+
     const customJhLat = juniorHighLat ? parseFloat(juniorHighLat as string) : null;
     const customJhLng = juniorHighLng ? parseFloat(juniorHighLng as string) : null;
 
@@ -850,7 +853,9 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
             lng: jhLng,
             districtConfirmed: true,
           };
-          console.log(`[nearbyMap] 住所対応表 中学校: ${jhFromTable}`);
+          // 中学校は小学校と同じ address table lookup からのデータなので、同じ confidence を使う
+          jhConfidence = elementaryConfidence;
+          console.log(`[nearbyMap] 住所対応表 中学校: ${jhFromTable} [${jhConfidence}]`);
         }
       } catch (e: any) {
         console.warn('[nearbyMap] 住所対応表 中学校照合エラー:', e.message);
@@ -875,6 +880,8 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
           lng: jhLng,
           districtConfirmed: true,
         };
+        // GeoJSON フォールバック → confirmed（address table からの uncertain は上で設定済み）
+        jhConfidence = 'confirmed';
         console.log(`[nearbyMap] 中学校区判定成功: ${jhDistrict.name}`);
       } else {
         juniorHighSchoolResult = { name: null, lat: null, lng: null, districtConfirmed: false };
@@ -919,6 +926,7 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
         lat: juniorHighSchoolResult?.lat ?? null,
         lng: juniorHighSchoolResult?.lng ?? null,
         districtConfirmed: jhDistConfirmed,
+        confidence: jhConfidence,
         notAvailableReason: (!jhDistConfirmed && !juniorHighSchoolResult?.name) ? 'DISTRICT_NOT_FOUND' : null,
       },
     });
