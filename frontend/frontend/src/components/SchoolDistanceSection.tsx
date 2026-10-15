@@ -615,10 +615,12 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
           // ⚠️ FI売主のふりがな生成は学校名の保存より先に行う
           // 保存後に呼ぶと DB の学校名が新名に更新済みになり
           // 「名前が変わっていない」と判断されてふりがなが再生成されない
+          // force=true: DB に同名が残っていても必ず再生成する
           if (isFISeller) {
             await generateFurigana(
               elemSchool?.name ?? '',
-              jhSchool?.name ?? ''
+              jhSchool?.name ?? '',
+              true  // 自動取得時は常に強制再生成
             );
           }
 
@@ -656,7 +658,8 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
 
   // ふりがな自動生成（FI売主のみ・学校名保存前に呼ぶ）
   // 保存後に呼ぶと DB の学校名が新名に更新済みになり再生成がスキップされる
-  const generateFurigana = useCallback(async (elemName: string, jhName: string) => {
+  // force=true: DB の学校名が同じでも強制的に再生成する（自動取得時に使用）
+  const generateFurigana = useCallback(async (elemName: string, jhName: string, force = false) => {
     if (!isFISeller || !sellerId) return;
     if (!elemName && !jhName) return;
     setFuriganaLoading(true);
@@ -666,6 +669,7 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
         sellerNumber,
         elementaryName: elemName || null,
         juniorHighName:  jhName  || null,
+        force,
       });
       if (res.data.elementaryFurigana) setElementaryFurigana(res.data.elementaryFurigana);
       if (res.data.juniorHighFurigana)  setJuniorHighFurigana(res.data.juniorHighFurigana);
