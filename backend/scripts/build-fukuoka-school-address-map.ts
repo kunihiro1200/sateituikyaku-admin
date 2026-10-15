@@ -299,6 +299,59 @@ async function main() {
     return true;
   });
 
+  // ── 2026年 R8 PDF 補完データ ──────────────────────────────────────────────
+  // Wayback Machine データには含まれていない 2026年新設・更新分を手動で追加
+  // 出典: 福岡市 R8（令和8年4月1日現在）学校別通学区域一覧 R8gakkoubetu.pdf
+  const R8_SUPPLEMENTS: DistrictRecord[] = [
+    // 周船寺中（2026年4月開校 - Wayback Machineデータに未収録）
+    // 元岡中から分離された西区西部エリア
+    {
+      ward: '西区', town: '周船寺',
+      range: '1丁目(ただし、13番(25号、28号)を除く···元岡小)、2丁目1番～18番、3丁目',
+      elementary: '周船寺小', juniorHigh: '周船寺中', note: '',
+    },
+    {
+      ward: '西区', town: '徳永北',
+      range: '全域',
+      elementary: '周船寺小', juniorHigh: '周船寺中', note: '',
+    },
+    {
+      ward: '西区', town: '大字徳永',
+      range: '660',
+      elementary: '周船寺小', juniorHigh: '周船寺中', note: '660番地のみ',
+    },
+    {
+      ward: '西区', town: '女原北',
+      range: '全域',
+      elementary: '西都小', juniorHigh: '周船寺中', note: '',
+    },
+    {
+      ward: '西区', town: '大字女原',
+      range: '全域',
+      elementary: '西都小', juniorHigh: '周船寺中', note: '',
+    },
+    {
+      ward: '西区', town: '大字德永',
+      range: '全域(ただし、660を除く···周船寺小)',
+      elementary: '西都小', juniorHigh: '周船寺中', note: '',
+    },
+    {
+      ward: '西区', town: '西都',
+      range: '2丁目',
+      elementary: '西都小', juniorHigh: '周船寺中', note: '',
+    },
+  ];
+
+  // 補完データを追加（既存キーと重複しない場合のみ）
+  for (const supp of R8_SUPPLEMENTS) {
+    const key = `${supp.ward}|${supp.town}|${supp.range}|${supp.juniorHigh}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(supp);
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   // 空のレコードを除外
   const valid = deduped.filter(r => r.ward && r.town && r.range && r.juniorHigh);
 
@@ -306,9 +359,10 @@ async function main() {
     version: '2026-04-01',
     source: [
       'は行・ま行: 福岡市教育委員会 https://www.city.fukuoka.lg.jp/kyoiku-iinkai/tsuugaku/ed/area/ (2026年8月)',
-      'あ・か・さ・た・な・や行: Wayback Machine 2025-04-01版',
+      'あ・か・さ・た・な・や行: Wayback Machine 2025-04-01版 / 2026-01-01版',
+      '周船寺中: 福岡市 R8（2026年4月1日現在）学校別通学区域一覧PDF 手動補完',
     ],
-    note: 'か行～や行は2025年4月1日現在のデータ。学校区域は変更が少ないため概ね有効。',
+    note: '周船寺中は2026年4月開校の新設中学校。GeoJSON(fukuoka-middle-school-districts.json)には2025-12-26版で収録済み。',
     recordCount: valid.length,
     pages: totalPages,
     records: valid,
