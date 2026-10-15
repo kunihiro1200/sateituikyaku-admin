@@ -120,8 +120,8 @@ async function searchBuildingInfo(
     if (searchText && searchText.length > 300) {
       console.log(`[apartmentInfo] Jina Search: ${searchText.length} chars`);
 
-      // SUUMO library / AtHome bldg-library / マンションノート / 三井住友ライブラリ の詳細URLを全件抽出
-      const detailPattern = /https?:\/\/(?:suumo\.jp\/library\/[^\s)"\]\n<]+|www\.athome\.co\.jp\/bldg-library\/[^\s)"\]\n<]+|www\.mansion-note\.com\/mansion\/[^\s)"\]\n<]+|library\.smtrc\.jp\/mansion\/[^\s)"\]\n<]+)/g;
+      // SUUMO library / AtHome bldg-library / マンションノート / 三井住友ライブラリ / rehouse の詳細URLを全件抽出
+      const detailPattern = /https?:\/\/(?:suumo\.jp\/library\/[^\s)"\]\n<]+|www\.athome\.co\.jp\/bldg-library\/[^\s)"\]\n<]+|www\.mansion-note\.com\/mansion\/[^\s)"\]\n<]+|library\.smtrc\.jp\/mansion\/[^\s)"\]\n<]+|rehouse\.co\.jp\/mansionlibrary\/[^\s)"\]\n<]+)/g;
       const rawUrls = searchText.match(detailPattern) ?? [];
       const detailUrls = rawUrls
         .map(u => u.replace(/[\)\]"'>,]+$/, ''))
@@ -159,8 +159,8 @@ async function searchBuildingInfo(
     const ddgText = await fetchPage(ddgUrl);
 
     if (ddgText && ddgText.length > 300) {
-      // ① 直接URLパターンで抽出
-      const detailPattern = /https?:\/\/(?:suumo\.jp\/library\/[^\s)"\]\n<]+|www\.athome\.co\.jp\/bldg-library\/[^\s)"\]\n<]+|library\.smtrc\.jp\/mansion\/[^\s)"\]\n<]+)/g;
+      // ① 直接URLパターンで抽出（rehouse 追加）
+      const detailPattern = /https?:\/\/(?:suumo\.jp\/library\/[^\s)"\]\n<]+|www\.athome\.co\.jp\/bldg-library\/[^\s)"\]\n<]+|library\.smtrc\.jp\/mansion\/[^\s)"\]\n<]+|rehouse\.co\.jp\/mansionlibrary\/[^\s)"\]\n<]+)/g;
       let detailUrls = (ddgText.match(detailPattern) ?? []).map(u => u.replace(/[\)\]"'>,]+$/, ''));
 
       // ② DuckDuckGo は uddg= にURLをエンコードして埋め込む場合があるのでデコードも試みる
@@ -447,10 +447,10 @@ router.post('/seller/:sellerNumber/fetch', async (req: Request, res: Response) =
   );
 
   try {
-    // 1. sellers テーブルから物件住所を取得
+    // 1. sellers テーブルから物件住所を取得、さらに properties テーブルからイエウール用マンション名も取得
     const { data: seller, error: sellerError } = await supabase
       .from('sellers')
-      .select('property_address')
+      .select('id, property_address')
       .eq('seller_number', sellerNumber)
       .single();
 
@@ -465,11 +465,27 @@ router.post('/seller/:sellerNumber/fetch', async (req: Request, res: Response) =
       });
     }
 
-    console.log(`[apartmentInfo] fetching for ${sellerNumber}: ${propertyAddress}`);
+    // イエウール用マンション名（property_address_ieul_apartment）を補完ヒントに使う
+    // FI売主など住所にマンション名が含まれないケースで精度向上
+    let ieulApartmentName: string | null = null;
+    try {
+      const { data: prop } = await supabase
+        .from('properties')
+        .select('property_address_ieul_apartment')
+        .eq('seller_id', seller.id)
+        .single();
+      ieulApartmentName = prop?.property_address_ieul_apartment || null;
+    } catch { /* サイレント */ }
+
+    console.log(`[apartmentInfo] fetching for ${sellerNumber}: ${propertyAddress} (ieul: ${ieulApartmentName})`);
 
     // 2. Jina AI Search でマンション情報を取得
+    // マンション名が住所から取れない場合は ieulApartmentName を優先使用
     const jinaApiKey = process.env.JINA_API_KEY;
-    const webContent = await searchBuildingInfo(propertyAddress, jinaApiKey);
+    const effectiveAddress = ieulApartmentName
+      ? `${propertyAddress} ${ieulApartmentName}`.trim()
+      : propertyAddress;
+    const webContent = await searchBuildingInfo(effectiveAddress, jinaApiKey);
 
     let buildingInfo: ApartmentBuildingInfo & { data_source: string | null };
     let fetchError: string | null = null;
@@ -487,11 +503,12 @@ router.post('/seller/:sellerNumber/fetch', async (req: Request, res: Response) =
     } else {
       // 3. Claude で構造化抽出
       try {
-        buildingInfo = await extractBuildingInfo(webContent, propertyAddress, anthropicKey);
+        buildingInfo = await extractBuildingInfo(webContent, effectiveAddress, anthropicKey);
 
         // 管理会社が取れなかった場合、専用フォールバック検索を実行
         if (!buildingInfo.management_company) {
-          const buildingName = extractBuildingNameFromAddress(propertyAddress);
+          const buildingName = extractBuildingNameFromAddress(effectiveAddress)
+            || (ieulApartmentName ? ieulApartmentName : null);
           if (buildingName) {
             const jinaKey = process.env.JINA_API_KEY;
             const mgmt = await fetchManagementCompanyFallback(buildingName, jinaKey, anthropicKey);
