@@ -407,7 +407,7 @@ const SchoolCard: React.FC<SchoolCardProps> = ({
             inputProps={{ style: { fontSize: '13px' } }}
             InputLabelProps={{ sx: { fontSize: '11px' } }}
             sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
-            helperText={info.walkMinutes?.includes('〜') ? '標準〜Google実測（分）' : '広告表示用（80m/分・切上）'}
+            helperText={info.walkMinutes?.includes('〜') ? '標準〜Google実測（分）' : 'Google Maps実測（分）'}
             FormHelperTextProps={{ sx: { fontSize: '9px', mt: 0.3 } }}
           />
         </Box>
@@ -563,12 +563,19 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
       const data = res.data;
 
       // 3. バックエンドの結果をそのまま state に反映
+      // Google Maps 実測時間（googleWalkMinutes）を優先し、なければ80m/分規約計算
+      const toWalk = (gMin: number | null | undefined, meters: number | null | undefined): string | null => {
+        if (gMin != null) return String(gMin);
+        if (meters != null) return String(Math.ceil(meters / 80));
+        return null;
+      };
+
       if (data.elementarySchool) {
         const meters = data.elementarySchool.distanceMeters;
         setElementarySchool({
           name: data.elementarySchool.name,
           distanceMeters: meters,
-          walkMinutes: meters !== null ? computeWalkDisplay(meters, null) : null,
+          walkMinutes: toWalk(data.elementarySchool.googleWalkMinutes, meters),
           lat: data.elementarySchool.lat,
           lng: data.elementarySchool.lng,
           districtConfirmed: data.elementarySchool.districtConfirmed,
@@ -580,7 +587,7 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
         setJuniorHighSchool({
           name: data.juniorHighSchool.name ?? '',
           distanceMeters: meters,
-          walkMinutes: meters !== null ? computeWalkDisplay(meters, null) : null,
+          walkMinutes: toWalk(data.juniorHighSchool.googleWalkMinutes, meters),
           lat: data.juniorHighSchool.lat,
           lng: data.juniorHighSchool.lng,
           districtConfirmed: data.juniorHighSchool.districtConfirmed,
@@ -603,14 +610,16 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
         try {
           await api.patch(`/api/sellers/${sellerId}/attached-document2/school`, {
             elementary_school_name: elemSchool?.name || null,
-            elementary_school_walk: elemSchool?.distanceMeters !== null && elemSchool?.distanceMeters !== undefined
-              ? String(Math.ceil(elemSchool.distanceMeters / 80)) : null,
+            elementary_school_walk: elemSchool?.googleWalkMinutes != null
+              ? String(elemSchool.googleWalkMinutes)
+              : (elemSchool?.distanceMeters != null ? String(Math.ceil(elemSchool.distanceMeters / 80)) : null),
             elementary_school_distance: elemSchool?.distanceMeters ?? null,
             elementary_school_entrance_lat: elemSchool?.lat ?? null,
             elementary_school_entrance_lng: elemSchool?.lng ?? null,
             junior_high_school_name: jhSchool?.name ?? null,
-            junior_high_school_walk: jhSchool?.distanceMeters !== null && jhSchool?.distanceMeters !== undefined
-              ? String(Math.ceil(jhSchool.distanceMeters / 80)) : null,
+            junior_high_school_walk: jhSchool?.googleWalkMinutes != null
+              ? String(jhSchool.googleWalkMinutes)
+              : (jhSchool?.distanceMeters != null ? String(Math.ceil(jhSchool.distanceMeters / 80)) : null),
             junior_high_school_distance: jhSchool?.distanceMeters ?? null,
             junior_high_school_entrance_lat: jhSchool?.lat ?? null,
             junior_high_school_entrance_lng: jhSchool?.lng ?? null,
@@ -746,7 +755,7 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
           」で自動判定します（令和5年度データ）。
           学区不明の場合は「
           <Box component="span" fontWeight="bold">学区未確認</Box>
-          」と表示されます。徒歩時間は道路距離80mにつき1分・端数切り上げの不動産広告表示基準です。
+          」と表示されます。徒歩時間はGoogle Maps実測時間（取得できない場合は道路距離80mにつき1分・切り上げ）で表示します。
         </Alert>
 
         {/* エラー表示 */}

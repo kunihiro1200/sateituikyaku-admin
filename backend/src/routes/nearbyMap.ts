@@ -435,7 +435,7 @@ async function fetchWalkingDistance(
   destLat: number,
   destLng: number,
   apiKey: string
-): Promise<{ meters: number; isEstimated: boolean }> {
+): Promise<{ meters: number; durationSeconds: number | null; isEstimated: boolean }> {
   // ---- 試み1: Routes API（新版・推奨）----
   try {
     const routesRes = await axios.post(
@@ -456,8 +456,11 @@ async function fetchWalkingDistance(
       }
     );
     const meters = routesRes.data?.routes?.[0]?.distanceMeters;
+    // duration は "1320s" 形式（秒数 + "s"）
+    const durationStr: string | undefined = routesRes.data?.routes?.[0]?.duration;
+    const durationSeconds = durationStr ? parseInt(durationStr.replace('s', ''), 10) : null;
     if (meters) {
-      return { meters, isEstimated: false };
+      return { meters, durationSeconds, isEstimated: false };
     }
   } catch (routesErr: any) {
     const code = routesErr.response?.data?.error?.code || routesErr.response?.status;
@@ -480,7 +483,12 @@ async function fetchWalkingDistance(
       }
     );
     if (response.data.status === 'OK' && response.data.routes?.[0]?.legs?.[0]) {
-      return { meters: response.data.routes[0].legs[0].distance.value, isEstimated: false };
+      const leg = response.data.routes[0].legs[0];
+      return {
+        meters: leg.distance.value,
+        durationSeconds: leg.duration.value ?? null,
+        isEstimated: false,
+      };
     }
     console.warn('[nearbyMap] Directions API status:', response.data.status);
   } catch (err: any) {
@@ -489,7 +497,7 @@ async function fetchWalkingDistance(
 
   // ---- フォールバック: 直線距離 × 1.3 ----
   const estimatedMeters = Math.round(calcDistance(originLat, originLng, destLat, destLng) * 1.3);
-  return { meters: estimatedMeters, isEstimated: true };
+  return { meters: estimatedMeters, durationSeconds: null, isEstimated: true };
 }
 
 /**
@@ -909,6 +917,10 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
             name: elementarySchoolResult.name,
             distanceMeters: elemResult?.meters ?? null,
             walkMinutes: elemResult ? calcWalkMinutes(elemResult.meters) : null,
+            // Google Maps 実測徒歩分数（APIが返した duration をそのまま分換算・切り上げ）
+            googleWalkMinutes: elemResult?.durationSeconds != null
+              ? Math.ceil(elemResult.durationSeconds / 60)
+              : null,
             isEstimated: elemResult?.isEstimated ?? false,
             lat: elementarySchoolResult.lat,
             lng: elementarySchoolResult.lng,
@@ -922,6 +934,10 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
         name: juniorHighSchoolResult?.name ?? null,
         distanceMeters: jhHasCoords ? (jhResult?.meters ?? null) : null,
         walkMinutes: jhHasCoords ? (jhResult ? calcWalkMinutes(jhResult.meters) : null) : null,
+        // Google Maps 実測徒歩分数（APIが返した duration をそのまま分換算・切り上げ）
+        googleWalkMinutes: jhHasCoords && jhResult?.durationSeconds != null
+          ? Math.ceil(jhResult.durationSeconds / 60)
+          : null,
         isEstimated: jhHasCoords ? (jhResult?.isEstimated ?? false) : false,
         lat: juniorHighSchoolResult?.lat ?? null,
         lng: juniorHighSchoolResult?.lng ?? null,

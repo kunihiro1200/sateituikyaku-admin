@@ -673,7 +673,14 @@ export default function AttachedDocument2Page() {
       const data = res.data;
 
       // 徒歩時間文字列生成
+      // googleWalkMinutes: Google Maps の実測時間（秒→分切り上げ）を優先
+      // フォールバック: 不動産公正競争規約の計算（道路距離÷80m/分・切り上げ）
       const computeWalk = (meters: number): string => String(Math.ceil(meters / 80));
+      const toWalkStr = (googleMin: number | null | undefined, meters: number | null | undefined): string | null => {
+        if (googleMin != null) return String(googleMin);
+        if (meters) return computeWalk(meters);
+        return null;
+      };
 
       // ③ 信頼性チェック: uncertain（照会・の一部・境界地区）は要確認メッセージを表示
       const elemConf = data.elementarySchool?.confidence;
@@ -688,8 +695,8 @@ export default function AttachedDocument2Page() {
       // 3. フォームに反映（編集可能な状態で）
       if (data.elementarySchool?.name) {
         set('elementary_school_name', data.elementarySchool.name);
-        const meters = data.elementarySchool.distanceMeters;
-        if (meters) set('elementary_school_walk', computeWalk(meters));
+        const walkStr = toWalkStr(data.elementarySchool.googleWalkMinutes, data.elementarySchool.distanceMeters);
+        if (walkStr) set('elementary_school_walk', walkStr);
         // ② uncertain の場合: 学校名が変わった場合のみ確認済みをリセット
         // 同じ学校名で uncertain → 既確認状態は維持（担当者の確認を尊重）
         // 別の学校名で uncertain → 未確認に戻す（再確認が必要）
@@ -699,8 +706,8 @@ export default function AttachedDocument2Page() {
       }
       if (data.juniorHighSchool?.name) {
         set('junior_high_school_name', data.juniorHighSchool.name);
-        const meters = data.juniorHighSchool.distanceMeters;
-        if (meters) set('junior_high_school_walk', computeWalk(meters));
+        const walkStr = toWalkStr(data.juniorHighSchool.googleWalkMinutes, data.juniorHighSchool.distanceMeters);
+        if (walkStr) set('junior_high_school_walk', walkStr);
         if (jhConf === 'uncertain' && data.juniorHighSchool.name !== fields.junior_high_school_name) {
           set('junior_high_school_confirmed', false);
         }
