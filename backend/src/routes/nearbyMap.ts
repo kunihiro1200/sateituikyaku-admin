@@ -3,20 +3,8 @@ import { authenticate } from '../middleware/auth';
 import axios from 'axios';
 import { lookupFukuokaSchool } from '../services/FukuokaSchoolAddressService';
 
-// 福岡市住所対応表を静的インポート（require のパス解決失敗を回避）
-import fukuokaAddressMapJson from '../data/fukuoka-school-address-map.json';
 // 大分市・別府市住所対応表を静的インポート
 import oitaBeppuAddressMapJson from '../data/oita-beppu-school-address-map.json';
-
-let _fukuokaAddressMap: any = fukuokaAddressMapJson;
-function loadFukuokaAddressMapInRoute() {
-  if (!_fukuokaAddressMap?.records?.length) {
-    console.warn('[nearbyMap] 福岡市住所対応表: データなし（静的インポート確認）');
-    return { records: [] };
-  }
-  console.log(`[nearbyMap] 福岡市住所対応表: ${_fukuokaAddressMap.records.length}件（静的インポート）`);
-  return _fukuokaAddressMap;
-}
 
 // 大分市・別府市住所対応表
 let _oitaBeppuAddressMap: any = oitaBeppuAddressMapJson;
@@ -617,103 +605,24 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     let elementaryDistrictDate = '20240401';
     let elementaryConfidence: 'confirmed' | 'uncertain' = 'confirmed';
 
-    // ① 福岡市住所対応表（property_address がある場合のみ）
-    if (inFukuokaArea && propertyAddressParam) {      try {
-        const map = loadFukuokaAddressMapInRoute();
-        const records = map.records as any[];
-        if (records?.length > 0) {
-          // アドレスを parseAddress と同等ロジックでパース
-          const wardM = propertyAddressParam.match(/([東南西北博多中央城南早良]+区)/);
-          const ward = wardM ? wardM[1] : null;
-          if (ward) {
-            const afterWard = propertyAddressParam.split(ward)[1] || '';
-            const townM = afterWard.match(/^([^\d\-ー－\s\u3000]+)/);
-            let town = townM ? townM[1].trim() : null;
-            if (town) {
-              const townCandidates = [town, ...(town.endsWith('町') ? [] : [town + '町'])];
-              for (const tc of townCandidates) {
-                const hits = records.filter((r: any) => r.ward === ward && r.town === tc);
-                if (hits.length > 0) {
-                  // 番地レンジチェック（丁目・番地を含む複雑なレンジを解析）
-                  const chomeM = propertyAddressParam.match(/(\d+)丁目/);
-                  const chomeNum = chomeM ? parseInt(chomeM[1], 10) : null;
-                  // ハイフン番地 or 番
-                  const afterWard2 = propertyAddressParam.split(ward)[1] || '';
-                  const hyphenM = afterWard2.match(/\d+丁目(\d+)[-ー－]/);
-                  const banM = propertyAddressParam.match(/(\d+)番/);
-                  const banNum = hyphenM ? parseInt(hyphenM[1], 10) : (banM ? parseInt(banM[1], 10) : null);
-
-                  // レンジチェック関数
-                  const isInRange = (range: string): boolean => {
-                    if (!range || range.includes('全域')) return true;
-                    if (range.includes('ただし') || range.includes('除く') || range.includes('照会')) return true; // 例外は許容
-                    const parts = range.split(/[、，,]/).map(p => p.trim()).filter(Boolean);
-                    let lastChome: number | null = null;
-                    for (const part of parts) {
-                      const chomeRangeM = part.match(/^(\d+)丁目～(\d+)丁目$/);
-                      if (chomeRangeM) {
-                        if (chomeNum !== null) {
-                          const from = parseInt(chomeRangeM[1], 10);
-                          const to   = parseInt(chomeRangeM[2], 10);
-                          if (chomeNum >= from && chomeNum <= to) return true;
-                        }
-                        continue;
-                      }
-                      const chomeWithBanM = part.match(/^(\d+)丁目(.*)$/);
-                      if (chomeWithBanM) {
-                        const partChome = parseInt(chomeWithBanM[1], 10);
-                        lastChome = partChome;
-                        if (chomeNum !== null && chomeNum !== partChome) continue;
-                        const rest = chomeWithBanM[2].trim();
-                        if (!rest) return true; // 丁目のみ → 全番地OK
-                        const banRangeM = rest.match(/^(\d+)番～(\d+)番/);
-                        if (banRangeM) {
-                          if (banNum === null) return true;
-                          const from = parseInt(banRangeM[1], 10);
-                          const to   = parseInt(banRangeM[2], 10);
-                          if (banNum >= from && banNum <= to) return true;
-                        }
-                        continue;
-                      }
-                      // 単独 "N番"（直前の丁目コンテキスト）
-                      const banOnlyM = part.match(/^(\d+)番$/);
-                      if (banOnlyM && lastChome !== null) {
-                        if (chomeNum !== null && chomeNum === lastChome) {
-                          if (banNum !== null && banNum === parseInt(banOnlyM[1], 10)) return true;
-                        }
-                        continue;
-                      }
-                      // "1丁目" 単独
-                      const chomeOnlyM = part.match(/^(\d+)丁目$/);
-                      if (chomeOnlyM) {
-                        lastChome = parseInt(chomeOnlyM[1], 10);
-                        if (chomeNum !== null && chomeNum === lastChome) return true;
-                        continue;
-                      }
-                    }
-                    return false;
-                  };
-
-                  // まず「全域」マッチを優先、次にレンジ内のレコードを探す
-                  const best = hits.find((r: any) => !r.range || r.range.includes('全域'))
-                    ?? hits.find((r: any) => isInRange(r.range));
-
-                  if (!best) {
-                    console.log(`[nearbyMap] 住所対応表: ${ward} ${tc} chome=${chomeNum} ban=${banNum} はレンジ外 → GeoJSONへ`);
-                    break; // レンジ外 → GeoJSONフォールバック
-                  }
-
-                  elementarySchoolNameFromDistrict = best.elementary;
-                  elementaryDistrictSource = 'fukuoka_address_table';
-                  elementaryDistrictDate = '20251226';
-                  elementaryConfidence = 'confirmed';
-                  (req as any)._jhFromAddressTable = best.juniorHigh;
-                  console.log(`[nearbyMap] 住所対応表ヒット: ${best.elementary} / ${best.juniorHigh} (${ward} ${tc})`);
-                  break;
-                }
-              }
-            }
-          }
+    // ① 福岡市住所対応表（FukuokaSchoolAddressService を使用・番地/号レベル対応）
+    // データ: 562件（全中学校行）、Wayback Machine 2025-04-01 + 現行 hc/mc
+    if (inFukuokaArea && propertyAddressParam) {
+      try {
+        const schoolResult = lookupFukuokaSchool(propertyAddressParam);
+        if (schoolResult) {
+          // 義務教育学校（elementary="-"）: 中学校名を小学校欄にも表示
+          const elem = schoolResult.elementary === '-'
+            ? schoolResult.juniorHigh
+            : schoolResult.elementary;
+          elementarySchoolNameFromDistrict = elem;
+          elementaryDistrictSource = 'fukuoka_address_table';
+          elementaryDistrictDate   = '20260401';
+          elementaryConfidence     = schoolResult.confidence;
+          (req as any)._jhFromAddressTable = schoolResult.juniorHigh;
+          console.log(`[nearbyMap] 住所対応表ヒット: ${elem} / ${schoolResult.juniorHigh} (${schoolResult.ward} ${schoolResult.town}) [${schoolResult.confidence}]`);
+        } else {
+          console.log(`[nearbyMap] 住所対応表: ヒットなし → GeoJSONフォールバック (${propertyAddressParam})`);
         }
       } catch (e: any) {
         console.warn('[nearbyMap] 住所対応表照合エラー:', e.message);
@@ -726,12 +635,16 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
       try {
         const result = lookupOitaBeppuSchool(propertyAddressParam);
         if (result) {
-          elementarySchoolNameFromDistrict = result.elementary;
+          // 義務教育学校（elementary="-"）: 中学校名を小学校欄にも表示
+          const elem = result.elementary === '-'
+            ? result.juniorHigh
+            : result.elementary;
+          elementarySchoolNameFromDistrict = elem;
           elementaryDistrictSource = 'oita_official';
           elementaryDistrictDate = result.city === '大分市' ? '20250401' : '20260401';
           elementaryConfidence = result.confidence;
           (req as any)._jhFromAddressTable = result.juniorHigh;
-          console.log(`[nearbyMap] 大分/別府住所対応表ヒット: ${result.elementary} / ${result.juniorHigh} (${result.city} ${result.town})`);
+          console.log(`[nearbyMap] 大分/別府住所対応表ヒット: ${elem} / ${result.juniorHigh} (${result.city} ${result.town}) [${result.confidence}]`);
         }
       } catch (e: any) {
         console.warn('[nearbyMap] 大分/別府住所対応表照合エラー:', e.message);
