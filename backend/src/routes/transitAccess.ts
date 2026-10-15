@@ -117,6 +117,9 @@ async function fetchTransitToHakata(
 }> {
   // Transit専用キー（GOOGLE_MAPS_DIRECTIONS_KEY）を優先、なければメインキーを使う
   const transitApiKey = process.env.GOOGLE_MAPS_DIRECTIONS_KEY || apiKey;
+  try {
+    const departureTime = getNextWeekdayMorningTs();
+    console.log(`[transitAccess/hakata] key=${transitApiKey.substring(0, 8)}... lat=${stationLat} lng=${stationLng}`);
 
     const response = await axios.get(
       'https://maps.googleapis.com/maps/api/directions/json',
@@ -127,7 +130,7 @@ async function fetchTransitToHakata(
           mode: 'transit',
           departure_time: departureTime,
           language: 'ja',
-          key: apiKey,
+          key: transitApiKey,
         },
         timeout: 12000,
       }
