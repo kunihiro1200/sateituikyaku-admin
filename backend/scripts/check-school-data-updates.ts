@@ -275,29 +275,54 @@ function generateReport(
   oitaNewCount: number,
   warnings: string[],
   metadata: any,
+  failedSources: string[] = [],
 ): string {
   const hasAnyChange =
     fukuokaDiff.added.length + fukuokaDiff.deleted.length + fukuokaDiff.rangeChanged.length +
     oitaBeppuDiff.added.length + oitaBeppuDiff.deleted.length + oitaBeppuDiff.rangeChanged.length > 0;
+  const hasPartialFailure = failedSources.length > 0;
 
   const lines: string[] = [
     `# 📚 学校区データ年次更新レポート ${year}年4月`,
     '',
-    '## サマリー',
-    '',
+  ];
+
+  // ③ 全体ステータスを明確に表示（「変更なし」と「未確認」を区別）
+  if (hasPartialFailure && !hasAnyChange) {
+    lines.push('> ⚠️ **一部ソース取得未確認** — 「変更なし」ではありません');
+    lines.push('> 既存データで補完しましたが、下記ソースは最新公式データとの照合が未完了です。');
+  } else if (hasPartialFailure && hasAnyChange) {
+    lines.push('> ⚠️ **変更あり + 一部ソース取得未確認** — 内容を慎重に確認してください');
+  } else if (!hasAnyChange) {
+    lines.push('> ✅ **変更なし** — 全ソースの確認が完了しました');
+  } else {
+    lines.push('> 📝 **変更あり** — 差分内容を確認し、問題なければマージしてください');
+  }
+  lines.push('');
+
+  lines.push(
+    '## サマリー', '',
     '| データ | 旧件数 | 新件数 | 追加 | 削除 | 区域変更 |',
     '|---|---|---|---|---|---|',
     `| 福岡市 | ${fukuokaOldCount} | ${fukuokaNewCount} | +${fukuokaDiff.added.length} | -${fukuokaDiff.deleted.length} | ~${fukuokaDiff.rangeChanged.length} |`,
     `| 大分市・別府市 | ${oitaOldCount} | ${oitaNewCount} | +${oitaBeppuDiff.added.length} | -${oitaBeppuDiff.deleted.length} | ~${oitaBeppuDiff.rangeChanged.length} |`,
-  ];
-
-  if (!hasAnyChange) {
-    lines.push('', '> ✅ **変更なし** — データは最新です。');
-  }
-
+  );
   if (warnings.length > 0) {
     lines.push('', '## ⚠️ 警告', '');
     warnings.forEach(w => lines.push(`- ${w}`));
+  }
+
+  // ③ 取得未確認ソースの明示（部分取得失敗）
+  if (failedSources.length > 0) {
+    lines.push('', '## ❌ 取得未確認ソース（既存データで補完）', '');
+    lines.push('> **これらのソースは今回の公式データとの照合が完了していません。**');
+    lines.push('> 「変更なし」ではなく「**更新未確認**」として扱ってください。');
+    lines.push('');
+    lines.push('| ソース | 理由 | 対応 |');
+    lines.push('|---|---|---|');
+    failedSources.forEach(s => {
+      lines.push(`| ${s} | 取得失敗（件数が最低基準を下回った） | 既存データで補完済み。手動確認を推奨。 |`);
+    });
   }
 
   // 福岡市: 新設校
@@ -374,14 +399,32 @@ async function main() {
   // メタデータ読み込み
   const metadata = JSON.parse(fs.readFileSync(METADATA_JSON, 'utf-8'));
 
-  // ⑤ 冪等性チェック: 今年すでに実行済みなら（force_rebuild でない限り）スキップ
+  // ② 第1月曜日チェック: 4月の第1月曜日（1〜7日）のみ本処理を実行
+  // cron は '0 2 * 4 1' (4月の全月曜) だが、
+  // スクリプトで day > 7 をチェックして第1月曜日以外をスキップする。
+  // JST = UTC+9 で日付を判定
+  const nowUtc   = new Date();
+  const nowJst   = new Date(nowUtc.getTime() + 9 * 60 * 60 * 1000);
+  const dayOfMonthJst = nowJst.getUTCDate();
+  const dayOfWeekJst  = nowJst.getUTCDay(); // 0=日,1=月,...
+
+  if (!isDryRun && !process.env.FORCE_REBUILD) {
+    if (dayOfMonthJst > 7) {
+      console.log(`今日は4月${dayOfMonthJst}日です。第1月曜日ではありません（第1月曜日は1〜7日）。スキップします。`);
+      setOutput('has_changes', 'false');
+      setOutput('has_errors', 'false');
+      return;
+    }
+  }
+
+  // ② 冪等性チェック: 今年すでに実行済みなら（force_rebuild でない限り）スキップ
+  // NOTE: _last_annual_check はメタデータをメインブランチに直接コミットすることで保存する。
+  //       PRがマージされなくても次の月曜日にスキップできる。
   const lastCheck = metadata._last_annual_check || '';
   if (!isDryRun && !process.env.FORCE_REBUILD && lastCheck.startsWith(String(year))) {
     console.log(`今年(${year})は既に確認済みです（${lastCheck}）。スキップします。`);
-    console.log('強制実行する場合は FORCE_REBUILD=true を設定してください。');
     setOutput('has_changes', 'false');
     setOutput('has_errors', 'false');
-    // 変更なし Issue 用の最小レポート
     fs.writeFileSync(
       path.join(TMP_DIR, 'update-report.md'),
       `# ✅ 学校区データ年次確認 ${year}年4月: スキップ\n\n今年はすでに ${lastCheck} に確認済みです。\n`,
@@ -514,6 +557,11 @@ async function main() {
     || waybackUpdated.length > 0
     || process.env.FORCE_REBUILD === 'true';
 
+  // ③ 部分取得失敗の検出: 既存データで補完した場合は「更新未確認」として扱う
+  const hasPartialFailure = failedSources.length > 0;
+  // 部分取得失敗 = データ変更の可能性が確認できていない → PR で通知が必要
+  const needsPrOrNotification = hasAnyChange || hasPartialFailure;
+
   // ─── Step 7: メタデータ更新 ────────────────────────────────────────────────
   metadata._last_annual_check = new Date().toISOString().split('T')[0];
   metadata._next_annual_check = `${year + 1}-04-01`;
@@ -538,11 +586,12 @@ async function main() {
     fukuokaDiff,
     oitaBeppuDiff,
     oldFukuokaRecords.length,
-    newFukuokaRecords.length,
+    mergedFukuokaRecords.length,
     oldOitaBeppuRecords.length,
-    oldOitaBeppuRecords.length, // Oita/Beppu は auto-update なし
+    oldOitaBeppuRecords.length,
     warnings,
     metadata,
+    failedSources,
   );
 
   fs.writeFileSync(path.join(TMP_DIR, 'update-report.md'), report, 'utf-8');
@@ -555,12 +604,21 @@ async function main() {
   );
 
   // ─── Step 9: 出力変数 ──────────────────────────────────────────────────────
-  setOutput('has_changes', String(hasAnyChange));
+  // ③ 部分取得失敗時は has_changes=true にして PR/通知フローに乗せる
+  const effectiveHasChanges = needsPrOrNotification;
+  setOutput('has_changes', String(effectiveHasChanges));
   setOutput('has_errors', 'false');
-  setOutput('change_summary', `福岡市: +${fukuokaDiff.added.length}/-${fukuokaDiff.deleted.length}/~${fukuokaDiff.rangeChanged.length}, 大分/別府: 要確認 ${oitaCheck.changed || beppuCheck.changed ? '変更あり' : '変更なし'}`);
+  setOutput('has_partial_failure', String(hasPartialFailure));
+  setOutput('failed_sources', failedSources.join(', '));
+  setOutput('change_summary',
+    `福岡市: +${fukuokaDiff.added.length}/-${fukuokaDiff.deleted.length}/~${fukuokaDiff.rangeChanged.length}` +
+    (hasPartialFailure ? ` (未確認:${failedSources.length}件)` : '') +
+    `, 大分/別府: ${oitaBeppuChanged ? '変更あり' : '変更なし'}`
+  );
 
   console.log(`\n=== 完了 ===`);
-  console.log(`変更あり: ${hasAnyChange}`);
+  console.log(`変更あり: ${effectiveHasChanges}`);
+  console.log(`部分取得失敗: ${hasPartialFailure} (${failedSources.join(', ') || 'なし'})`);
   console.log(`警告: ${warnings.length}件`);
   console.log(`エラー: ${errors.length}件`);
 

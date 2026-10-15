@@ -2,12 +2,11 @@ name: 学校区データ年次更新チェック
 
 on:
   schedule:
-    # ④ 毎年4月1日〜7日の 11:00 JST (02:00 UTC) に実行
-    # ⚠️ cron の dom と dow 両方指定は OR 条件のため、
-    #    意図した「4月第1月曜のみ」にはならない。
-    #    代わりに「4月1〜7日毎日」で実行し、
-    #    スクリプト内の 冪等性チェック(_last_annual_check)で年1回に制限する。
-    - cron: '0 2 1-7 4 *'
+    # ② 毎年4月の全月曜日（02:00 UTC = 11:00 JST）に実行
+    # スクリプト内で「dayOfMonth <= 7」(第1月曜日のみ) チェックを行う。
+    # 冪等性: _last_annual_check をメインブランチに即コミットするため
+    #          同年内の2回目以降はスキップされる。
+    - cron: '0 2 * 4 1'
 
   # ⑧ 手動実行（workflow_dispatch）
   workflow_dispatch:
@@ -80,6 +79,33 @@ jobs:
           #   src/data/ の本番 JSON は変更されない。
           #   その後のコミット・PR 作成ステップも dry_run=true の場合はスキップされる。
           SCHOOL_OUTPUT_PATH: backend/tmp-update/fukuoka-new.json
+
+      # ──────────────────────────────────────────────────────────────────────
+      # ② 冪等性状態を main に即コミット
+      # PRがマージされなくても次週の月曜日に再実行されないよう
+      # _last_annual_check をメインブランチに直接コミットする。
+      # （データ本体は変更しない、メタデータのみ）
+      # ──────────────────────────────────────────────────────────────────────
+      - name: 冪等性フラグを main に直接コミット
+        if: inputs.dry_run != 'true' && steps.check.outputs.has_errors != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # メタデータの _last_annual_check が更新されていれば main にコミット
+          if ! git diff --quiet backend/scripts/school-data-metadata.json; then
+            git add backend/scripts/school-data-metadata.json
+            git commit -m "chore: 学校区年次チェック完了フラグを記録 $(date +%Y-%m-%d)
+
+_last_annual_check を更新。同年内の重複実行を防止するためのフラグ。
+データ本体は変更していません。"
+            git push origin main
+            echo "✅ 冪等性フラグを main にコミットしました。今年の残りの月曜日はスキップされます。"
+          else
+            echo "メタデータに変更なし"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ──────────────────────────────────────────────────────────────────────
       # 変更あり → ブランチ作成 + PR（④ 管理者承認フロー）
