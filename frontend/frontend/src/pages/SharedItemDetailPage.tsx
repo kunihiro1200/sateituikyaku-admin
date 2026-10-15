@@ -30,7 +30,7 @@ import {
 import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
-import { uploadFileToStorage, toggleStaff, SHARING_LOCATIONS } from '../utils/sharedItemFormUtils';
+import { uploadFileToStorage, toggleStaff, SHARING_LOCATIONS, CATEGORIES } from '../utils/sharedItemFormUtils';
 import { useAuthStore } from '../store/authStore';
 import { useSharedItemPresenceTrack } from '../hooks/useListPresence';
 
@@ -122,6 +122,7 @@ export default function SharedItemDetailPage() {
   const [content, setContent] = useState('');
   const [sharingDate, setSharingDate] = useState('');
   const [sharingLocation, setSharingLocation] = useState('');
+  const [category, setCategory] = useState('');
 
   // 未確認スタッフ（DB管理）
   const [unconfirmedStaff, setUnconfirmedStaff] = useState<string[]>([]);
@@ -157,6 +158,7 @@ export default function SharedItemDetailPage() {
   const [initialContent, setInitialContent] = useState('');
   const [initialSharingDate, setInitialSharingDate] = useState('');
   const [initialSharingLocation, setInitialSharingLocation] = useState('');
+  const [initialCategory, setInitialCategory] = useState('');
 
   // チャット送信関連（共有場が「他」の場合のみ）
   const [scheduledChatDatetime, setScheduledChatDatetime] = useState('');
@@ -172,6 +174,7 @@ export default function SharedItemDetailPage() {
     setContent('');
     setSharingDate('');
     setSharingLocation('');
+    setCategory('');
     setUnconfirmedStaff([]);
     setNewPdfs([]);
     setNewImages([]);
@@ -196,14 +199,17 @@ export default function SharedItemDetailPage() {
         const ct = foundItem['内容'] || '';
         const tl = foundItem['タイトル'] || '';
         const sl = foundItem['共有場'] || '';
+        const cat = foundItem['項目'] || '';
         setTitle(tl);
         setSharingDate(sd);
         setContent(ct);
         setSharingLocation(sl);
+        setCategory(cat);
         setInitialTitle(tl);
         setInitialSharingDate(sd);
         setInitialContent(ct);
         setInitialSharingLocation(sl);
+        setInitialCategory(cat);
 
         // 未確認スタッフをDBから取得
         try {
@@ -471,8 +477,7 @@ export default function SharedItemDetailPage() {
   const handleChatSend = async () => {
     if (!item) return;
 
-    // 共有場が「他」であることを確認
-    const sharingLocation = item['共有場'] || item.sharing_location;
+    // 共有場が「他」であることを確認（画面で選択中の値で判定）
     if (sharingLocation !== '他') {
       setChatError('チャット送信は共有場が「他」の場合のみ利用できます');
       return;
@@ -483,6 +488,13 @@ export default function SharedItemDetailPage() {
     setChatSuccess(false);
 
     try {
+      // 未保存の変更がある場合は先に保存する
+      // （バックエンドの送信処理はDB（スプレッドシート）の値を参照するため、
+      //   共有場を「他」に変更した直後は保存しないと送信できない）
+      if (hasChanges) {
+        await handleSave();
+      }
+
       const payload: { scheduledDatetime?: string; includeWarningText?: boolean } = {};
       if (scheduledChatDatetime) {
         payload.scheduledDatetime = scheduledChatDatetime;
@@ -525,6 +537,7 @@ export default function SharedItemDetailPage() {
       const payload: Record<string, string> = {
         'タイトル': title,
         '共有場': sharingLocation,
+        '項目': category,
         'PDF1': pdfUrls[0], 'PDF2': pdfUrls[1], 'PDF3': pdfUrls[2], 'PDF4': pdfUrls[3], 'PDF5': pdfUrls[4],
         'PDF6': pdfUrls[5], 'PDF7': pdfUrls[6], 'PDF8': pdfUrls[7], 'PDF9': pdfUrls[8], 'PDF10': pdfUrls[9],
         '画像１': imageUrls[0], '画像２': imageUrls[1], '画像３': imageUrls[2], '画像４': imageUrls[3],
@@ -702,6 +715,7 @@ export default function SharedItemDetailPage() {
       const payload: Record<string, string> = {
         'タイトル': title,
         '共有場': sharingLocation,
+        '項目': category,
         'PDF1': pdfUrls[0],
         'PDF2': pdfUrls[1],
         'PDF3': pdfUrls[2],
@@ -760,6 +774,7 @@ export default function SharedItemDetailPage() {
       setInitialSharingDate(sharingDate);
       setInitialContent(content);
       setInitialSharingLocation(sharingLocation);
+      setInitialCategory(category);
       setInitialImageComments({ ...imageComments });
       setSaveSuccess(true);
     } catch (error: any) {
@@ -807,6 +822,7 @@ export default function SharedItemDetailPage() {
     content !== initialContent ||
     sharingDate !== initialSharingDate ||
     sharingLocation !== initialSharingLocation ||
+    category !== initialCategory ||
     JSON.stringify(imageComments) !== JSON.stringify(initialImageComments);
 
   const isTeamMode = TEAM_MODES.includes(item['共有場'] || '');
@@ -940,8 +956,21 @@ export default function SharedItemDetailPage() {
           </Grid>
           <Grid item xs={6}>
             <Typography variant="caption" color="text.secondary">項目</Typography>
-            <TextField fullWidth value={item['項目'] || ''} disabled size="small"
-              sx={{ mt: 1, '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: '#000' } }} />
+            <TextField
+              select
+              fullWidth
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              size="small"
+              sx={{ mt: 1 }}
+            >
+              {(CATEGORIES as readonly string[]).includes(category) || !category
+                ? null
+                : <MenuItem key={category} value={category}>{category}</MenuItem>}
+              {CATEGORIES.map((cat) => (
+                <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+              ))}
+            </TextField>
           </Grid>
 
           {/* タイトル／問い */}
@@ -1472,7 +1501,7 @@ export default function SharedItemDetailPage() {
           </Grid>
 
           {/* チャット送信（共有場が「他」の場合のみ表示） */}
-          {item && (item['共有場'] === '他' || item.sharing_location === '他') && (
+          {sharingLocation === '他' && (
             <>
               <Grid item xs={12}>
                 <Divider sx={{ my: 2 }} />
