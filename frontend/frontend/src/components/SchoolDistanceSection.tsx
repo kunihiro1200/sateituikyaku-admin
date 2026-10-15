@@ -554,7 +554,11 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
         params.elementaryLat = customElemEntrance.lat;
         params.elementaryLng = customElemEntrance.lng;
       }
-      if (customJhEntrance) {
+      // 中学校の保存済み座標は自動取得時には渡さない。
+      // 保存済み座標が誤っていても毎回再利用されてしまうのを防ぐため、
+      // 常に Places API で最新の座標を取得する。
+      // （小学校と同じ方針：propertyAddress があれば常に Places API を使う）
+      if (customJhEntrance && !addressToUse) {
         params.juniorHighLat = customJhEntrance.lat;
         params.juniorHighLng = customJhEntrance.lng;
       }
