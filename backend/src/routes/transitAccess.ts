@@ -102,11 +102,10 @@ function getNextWeekdayMorningTs(): number {
 
 /**
  * Directions API (transit) を使って駅→博多駅の経路情報を取得する。
- * origin に座標ではなく駅名テキストを使うことで Google Maps が正確に transit を認識する。
+ * place_id を origin に使うことで駅を一意に特定し正確な transit ルートを取得する。
  */
 async function fetchTransitToHakata(
-  stationLat: number,
-  stationLng: number,
+  stationPlaceId: string,
   stationName: string,
   apiKey: string
 ): Promise<{
@@ -118,16 +117,14 @@ async function fetchTransitToHakata(
   const transitApiKey = process.env.GOOGLE_MAPS_DIRECTIONS_KEY || apiKey;
   try {
     const departureTime = getNextWeekdayMorningTs();
-    // 駅名テキストをoriginに使う（座標より transit 認識が確実）
-    const originText = `${stationName} 福岡`;
-    console.log(`[transitAccess/hakata] origin="${originText}" key=${transitApiKey.substring(0, 8)}...`);
+    console.log(`[transitAccess/hakata] place_id=${stationPlaceId} name="${stationName}"`);
 
     const response = await axios.get(
       'https://maps.googleapis.com/maps/api/directions/json',
       {
         params: {
-          origin: originText,
-          destination: '博多駅 福岡',
+          origin: `place_id:${stationPlaceId}`,  // 駅固有IDで一意に特定
+          destination: '博多駅',
           mode: 'transit',
           departure_time: departureTime,
           language: 'ja',
@@ -553,7 +550,7 @@ router.post('/seller/:sellerNumber/fetch', async (req: Request, res: Response) =
     if (storeType === 'fukuoka' && topStations.length > 0) {
       stationHakataInfos = await Promise.all(
         topStations.map(s =>
-          fetchTransitToHakata(s.candidate.place_lat, s.candidate.place_lng, s.candidate.name, apiKey)
+          fetchTransitToHakata(s.candidate.place_id, s.candidate.name, apiKey)
         )
       );
       console.log(
