@@ -1,0 +1,119 @@
+{
+  "_comment": "学校区データ取得元メタデータ（⑦ データ鮮度管理）",
+  "_last_annual_check": "2026-10-15",
+  "_next_annual_check": "2027-04-01",
+  "_total_records": 569,
+
+  "fukuoka": {
+    "hc_mc": {
+      "source_type": "live_site",
+      "urls": [
+        "https://www.city.fukuoka.lg.jp/kyoiku-iinkai/tsuugaku/ed/area/tsugaku-hc.html",
+        "https://www.city.fukuoka.lg.jp/kyoiku-iinkai/tsuugaku/ed/area/tsugaku-mc.html"
+      ],
+      "last_fetched": "2026-08-15",
+      "data_as_of": "2026-08-15",
+      "record_count": 170,
+      "verified": true,
+      "notes": "ライブサイトから直接取得済み。令和8年8月時点の公式データ。"
+    },
+    "other_rows_ac": {
+      "source_type": "wayback_machine",
+      "original_url": "https://www.city.fukuoka.lg.jp/kyoiku-iinkai/tsuugaku/ed/area/tsugaku-ac.html",
+      "wayback_timestamp": "20260101",
+      "data_as_of": "2026-01-01",
+      "record_count": 53,
+      "verified": false,
+      "notes": "Wayback Machine スナップショット。ライブサイトは 404。2026年1月時点のデータであり、2026年4月以降の変更は未検証。"
+    },
+    "other_rows_kc": {
+      "source_type": "wayback_machine",
+      "original_url": "https://www.city.fukuoka.lg.jp/kyoiku-iinkai/tsuugaku/ed/area/tsugaku-kc.html",
+      "wayback_timestamp": "20250401",
+      "data_as_of": "2025-04-01",
+      "record_count": 85,
+      "verified": false,
+      "notes": "Wayback Machine スナップショット。2025年4月時点のデータ。2026年4月以降の変更（周船寺中新設等）は手動補完。"
+    },
+    "other_rows_sc": {
+      "source_type": "wayback_machine",
+      "original_url": "https://www.city.fukuoka.lg.jp/kyoiku-iinkai/tsuugaku/ed/area/tsugaku-sc.html",
+      "wayback_timestamp": "20250401",
+      "data_as_of": "2025-04-01",
+      "record_count": 78,
+      "verified": false,
+      "notes": "Wayback Machine スナップショット。2025年4月時点のデータ。"
+    },
+    "other_rows_tc": {
+      "source_type": "wayback_machine",
+      "original_url": "https://www.city.fukuoka.lg.jp/kyoiku-iinkai/tsuugaku/ed/area/tsugaku-tc.html",
+      "wayback_timestamp": "20250401",
+      "data_as_of": "2025-04-01",
+      "record_count": 80,
+      "verified": false,
+      "notes": "Wayback Machine スナップショット。2025年4月時点のデータ。"
+    },
+    "other_rows_nc": {
+      "source_type": "wayback_machine",
+      "original_url": "https://www.city.fukuoka.lg.jp/kyoiku-iinkai/tsuugaku/ed/area/tsugaku-nc.html",
+      "wayback_timestamp": "20250401",
+      "data_as_of": "2025-04-01",
+      "record_count": 43,
+      "verified": false,
+      "notes": "Wayback Machine スナップショット。2025年4月時点のデータ。"
+    },
+    "other_rows_yc": {
+      "source_type": "wayback_machine",
+      "original_url": "https://www.city.fukuoka.lg.jp/kyoiku-iinkai/tsuugaku/ed/area/tsugaku-yc.html",
+      "wayback_timestamp": "20250401",
+      "data_as_of": "2025-04-01",
+      "record_count": 53,
+      "verified": false,
+      "notes": "Wayback Machine スナップショット。2025年4月時点のデータ。"
+    },
+    "pdf_supplement": {
+      "source_type": "manual_pdf",
+      "file": "R8gakkoubetu.pdf",
+      "pdf_url": "https://www.city.fukuoka.lg.jp/kyoiku-iinkai/tsuugaku/ed/area/documents/R8gakkoubetu.pdf",
+      "data_as_of": "2026-04-01",
+      "record_count": 7,
+      "verified": true,
+      "notes": "周船寺中（2026年4月開校）。R8 PDF から手動で補完。令和8年4月1日現在の公式データ。"
+    },
+    "change_notifications": {
+      "last_page_check": "2026-10-15",
+      "page_url": "https://www.city.fukuoka.lg.jp/kyoiku-iinkai/tsuugaku/ed/area/tsugaku.html",
+      "known_changes": [
+        {
+          "date": "2026-04-01",
+          "description": "東区箱崎6丁目10番・19番の一部: 東箱崎小→箱崎小",
+          "pdf_url": "https://www.city.fukuoka.lg.jp/kyoiku-iinkai/tsuugaku/ed/area/documents/higashihakozaki.pdf",
+          "applied": true,
+          "notes": "hc.html 2026-08版に反映済み（の一部 ※照会）"
+        }
+      ]
+    }
+  },
+
+  "oita": {
+    "source_type": "open_data_csv",
+    "page_url": "https://www.city.oita.oita.jp/o190/kosodate/shochugakko/1336693333358.html",
+    "csv_url": "https://www.city.oita.oita.jp/o190/kosodate/shochugakko/documents/tugakukuikiopen.csv",
+    "last_fetched": "2026-04-01",
+    "data_as_of": "2025-04-01",
+    "record_count": 1192,
+    "verified": true,
+    "notes": "大分市オープンデータ CSV。令和7年4月現在。毎年4月に更新される見込み。URL は固定（内容が更新される）。"
+  },
+
+  "beppu": {
+    "source_type": "official_excel",
+    "page_url": "https://www.city.beppu.oita.jp/gakusyuu/gakkou/05tetsuduki_gakkugai.html",
+    "excel_url": "https://www.city.beppu.oita.jp/doc/gakusyuu/gakkou/05tetsuduki/tuugaku2.xlsx",
+    "last_fetched": "2026-04-01",
+    "data_as_of": "2026-04-01",
+    "record_count": 136,
+    "verified": true,
+    "notes": "別府市公式 Excel。令和8年度版。URL が毎年変わる可能性があるため、自動取得失敗時は手動確認が必要。"
+  }
+}

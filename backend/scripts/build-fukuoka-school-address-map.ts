@@ -14,7 +14,8 @@ import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const OUTPUT_PATH = path.resolve(__dirname, '../src/data/fukuoka-school-address-map.json');
+const OUTPUT_PATH = process.env.SCHOOL_OUTPUT_PATH
+  || path.resolve(__dirname, '../src/data/fukuoka-school-address-map.json');
 
 // ページ定義
 const PAGES = [
