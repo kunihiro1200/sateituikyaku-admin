@@ -616,29 +616,65 @@ router.post('/seller/:sellerNumber/fetch-listings', async (req: Request, res: Re
     };
     if (jinaApiKey) jinaHeaders['Authorization'] = `Bearer ${jinaApiKey}`;
 
-    const fetchPage = async (url: string): Promise<string> => {
+    const fetchPage = async (url: string, timeoutMs = 10000): Promise<string> => {
       const r = await axios.get(`https://r.jina.ai/${url}`, {
         headers: jinaHeaders,
-        timeout: 25000,
+        timeout: timeoutMs,
       });
       return typeof r.data === 'string' ? r.data : JSON.stringify(r.data);
     };
 
-    // 2. SUUMO 中古マンション検索 + AtHome 中古マンション検索 + DuckDuckGo を並列取得
-    const suumoSearchUrl = `https://suumo.jp/ms/mansion/?q=${encodeURIComponent(buildingName)}`;
-    const athomeSearchUrl = `https://www.athome.co.jp/mansion/chuko/list/?q=${encodeURIComponent(buildingName)}`;
-    const ddgSearchUrl    = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(`"${buildingName}" 中古マンション 売り出し 価格 専有面積 階`)}`;
+    // 2. AtHome建物ライブラリページを優先取得（建物ページに現在の販売情報が載っている）
+    //    data_sourceにAtHomeのbldg-library URLが保存されていればそれを使う
+    const { data: buildingInfoData } = await supabase
+      .from('seller_apartment_building_info')
+      .select('data_source, building_name')
+      .eq('seller_number', sellerNumber)
+      .single();
 
-    const [suumoText, athomeText, ddgText] = await Promise.allSettled([
-      fetchPage(suumoSearchUrl),
-      fetchPage(athomeSearchUrl),
-      fetchPage(ddgSearchUrl),
+    const athomeBldgUrl = buildingInfoData?.data_source?.includes('athome.co.jp/bldg-library/')
+      ? buildingInfoData.data_source
+      : null;
+
+    // AtHome建物ページを直接取得（販売情報セクションあり）
+    let athomeBldgContent = '';
+    if (athomeBldgUrl) {
+      try {
+        console.log(`[apartmentInfo/listings] AtHome bldg-library: ${athomeBldgUrl}`);
+        athomeBldgContent = await fetchPage(athomeBldgUrl, 12000);
+      } catch { /* continue */ }
+    }
+
+    // AtHome建物ページが取れなかった場合はDDGで建物ページを検索
+    if (!athomeBldgContent && buildingName) {
+      try {
+        const ddgQ = `${buildingName} athome bldg-library 販売情報`;
+        const ddgBldg = await fetchPage(
+          `https://html.duckduckgo.com/html/?q=${encodeURIComponent(ddgQ)}`,
+          10000
+        );
+        const athomeMatch = ddgBldg.match(/https?:\/\/www\.athome\.co\.jp\/bldg-library\/[^\s)"\]\n<]+/);
+        if (athomeMatch) {
+          const url = athomeMatch[0].replace(/[\)\]"'>,]+$/, '');
+          console.log(`[apartmentInfo/listings] Found AtHome bldg URL: ${url}`);
+          athomeBldgContent = await fetchPage(url, 12000);
+        }
+      } catch { /* continue */ }
+    }
+
+    // SUUMO物件ライブラリ・DuckDuckGo検索も並列取得
+    const suumoSearchUrl = `https://suumo.jp/ms/mansion/?q=${encodeURIComponent(buildingName)}`;
+    const ddgSearchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(`${buildingName} 中古マンション 売り出し 価格 専有面積 階 現在`)}`;
+
+    const [suumoText, ddgText] = await Promise.allSettled([
+      fetchPage(suumoSearchUrl, 9000),
+      fetchPage(ddgSearchUrl, 9000),
     ]).then(results => results.map(r => (r.status === 'fulfilled' ? r.value : '')));
 
     const combinedContent = [
-      suumoText ? `## SUUMO中古マンション検索（${suumoSearchUrl}）\n${suumoText.substring(0, 3000)}` : '',
-      athomeText ? `## AtHome中古マンション検索（${athomeSearchUrl}）\n${athomeText.substring(0, 3000)}` : '',
-      ddgText    ? `## DuckDuckGo検索スニペット\n${ddgText.substring(0, 2000)}` : '',
+      athomeBldgContent ? `## AtHome建物ライブラリ（${athomeBldgUrl || 'bldg-library'}）\n${athomeBldgContent.substring(0, 4000)}` : '',
+      suumoText ? `## SUUMO中古マンション検索\n${suumoText.substring(0, 2000)}` : '',
+      ddgText   ? `## DuckDuckGo検索スニペット\n${ddgText.substring(0, 2000)}` : '',
     ].filter(Boolean).join('\n\n');
 
     if (!combinedContent || combinedContent.length < 200) {
@@ -647,29 +683,29 @@ router.post('/seller/:sellerNumber/fetch-listings', async (req: Request, res: Re
 
     // 3. Claude で売り出し一覧を抽出
     const client = new Anthropic({ apiKey: anthropicKey });
-    const prompt = `以下はSUUMOとAtHomeの「${buildingName}」の中古マンション検索結果です。
-現在売り出し中の物件（同一マンション内）の一覧を抽出してください。
+    const prompt = `以下は「${buildingName}」の現在の売り出し物件情報です。
+AtHome建物ライブラリページに「販売情報」セクションがある場合、そこから現在募集中の物件を抽出してください。
 
 ${combinedContent}
 
 ## 抽出ルール
-- 「${buildingName}」と同じマンション内の物件のみ抽出する
-- 確実に確認できた情報のみ記載する（推測しない）
-- 価格は円単位の整数（例: 24800000）
-- 専有面積は m² の数値（例: 65.5）
+- 「${buildingName}」と同じマンション内の**現在募集中**の物件のみ抽出する
+- 「掲載が終了」「成約済み」等の過去物件は含めない
+- URLはAtHome・SUUMO・SUUMOライブラリ等の完全なhttps://...形式（ステップ等の中間サービスのURLは使わない）
+- 価格は円単位の整数（例: 29400000）
+- 専有面積は m² の数値（例: 70.56）
 - 階数は整数（例: 3）
-- URL は完全なhttps://...形式で記載
 - 最大10件まで
 - 売り出し物件が見つからない場合は空配列を返す
 
 ## 出力形式（JSONのみ・コードブロック不要）
 [
   {
-    "url": "https://suumo.jp/...",
+    "url": "https://www.athome.co.jp/...",
     "floor": 3,
-    "area_sqm": 65.5,
-    "price_yen": 24800000,
-    "price_label": "2,480万円",
+    "area_sqm": 70.56,
+    "price_yen": 29400000,
+    "price_label": "2,940万円",
     "room_type": "3LDK"
   }
 ]`;
