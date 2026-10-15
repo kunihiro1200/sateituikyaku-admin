@@ -79,11 +79,12 @@ function extractBuildingNameFromAddress(address: string): string | null {
 
 async function searchBuildingInfo(
   propertyAddress: string,
-  jinaApiKey?: string
+  jinaApiKey?: string,
+  buildingNameHint?: string
 ): Promise<string> {
-  const buildingName = extractBuildingNameFromAddress(propertyAddress);
+  const buildingName = buildingNameHint || extractBuildingNameFromAddress(propertyAddress);
   const searchTarget = buildingName || propertyAddress;
-  console.log(`[apartmentInfo] search target: "${searchTarget}" (addr: "${propertyAddress}")`);
+  console.log(`[apartmentInfo] searchBuildingInfo: name="${buildingName}" target="${searchTarget}"`);
 
   const jinaHeaders: Record<string, string> = {
     Accept: 'text/plain',
@@ -91,155 +92,107 @@ async function searchBuildingInfo(
   };
   if (jinaApiKey) jinaHeaders['Authorization'] = `Bearer ${jinaApiKey}`;
 
-  const fetchPage = async (url: string): Promise<string> => {
+  // タイムアウト短縮でVercel 30s制限に収める
+  const fetchPage = async (url: string, timeoutMs = 9000): Promise<string> => {
     const res = await axios.get(`https://r.jina.ai/${url}`, {
       headers: jinaHeaders,
-      timeout: 25000,
+      timeout: timeoutMs,
     });
     return typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
   };
 
-  // ──────────────────────────────────────
-  // 戦略1: Jina Search（スニペット + URL抽出）
-  //   スニペットにすでに 総戸数・築年月・構造等が含まれることが多い
-  // ──────────────────────────────────────
-  try {
-    const query = buildingName
-      ? `"${buildingName}" マンション 建物情報 管理会社 総戸数 築年月`
-      : `${propertyAddress} マンション 建物情報 管理会社 総戸数`;
+  // URL抽出ヘルパー（直接URL + DuckDuckGo uddg= デコード）
+  const urlPattern = /https?:\/\/(?:suumo\.jp\/library\/[^\s)"\]\n<]+|www\.athome\.co\.jp\/bldg-library\/[^\s)"\]\n<]+|www\.mansion-note\.com\/mansion\/[^\s)"\]\n<]+|library\.smtrc\.jp\/mansion\/[^\s)"\]\n<]+|rehouse\.co\.jp\/mansionlibrary\/[^\s)"\]\n<]+)/g;
+  const extractUrls = (text: string): string[] => {
+    const direct = (text.match(urlPattern) ?? []).map(u => u.replace(/[\)\]"'>,]+$/, ''));
+    const uddg = [...text.matchAll(/uddg=(https?[^&\s"'<\)]+)/g)]
+      .map(m => { try { return decodeURIComponent(m[1]); } catch { return ''; } })
+      .filter(u => /(?:suumo\.jp\/library|athome\.co\.jp\/bldg-library|library\.smtrc\.jp\/mansion|rehouse\.co\.jp\/mansionlibrary)/.test(u));
+    return [...new Set([...direct, ...uddg])]
+      .filter(u => !u.includes('?q=') && !u.includes('/search') && !u.includes('/list') && u.length > 15);
+  };
 
-    console.log(`[apartmentInfo] Strategy1: s.jina.ai query="${query}"`);
-    const searchRes = await axios.get(
-      `https://s.jina.ai/${encodeURIComponent(query)}`,
-      { headers: jinaHeaders, timeout: 30000 }
+  // 詳細ページを並列取得して結合（直列→並列で高速化）
+  const fetchDetailPages = async (urls: string[], base: string): Promise<string | null> => {
+    if (urls.length === 0) return null;
+    const results = await Promise.allSettled(
+      urls.slice(0, 2).map(url => fetchPage(url, 8000).then(text => ({ url, text })))
     );
-    const searchText = typeof searchRes.data === 'string'
-      ? searchRes.data
-      : JSON.stringify(searchRes.data);
-
-    if (searchText && searchText.length > 300) {
-      console.log(`[apartmentInfo] Jina Search: ${searchText.length} chars`);
-
-      // SUUMO library / AtHome bldg-library / マンションノート / 三井住友ライブラリ / rehouse の詳細URLを全件抽出
-      const detailPattern = /https?:\/\/(?:suumo\.jp\/library\/[^\s)"\]\n<]+|www\.athome\.co\.jp\/bldg-library\/[^\s)"\]\n<]+|www\.mansion-note\.com\/mansion\/[^\s)"\]\n<]+|library\.smtrc\.jp\/mansion\/[^\s)"\]\n<]+|rehouse\.co\.jp\/mansionlibrary\/[^\s)"\]\n<]+)/g;
-      const rawUrls = searchText.match(detailPattern) ?? [];
-      const detailUrls = rawUrls
-        .map(u => u.replace(/[\)\]"'>,]+$/, ''))
-        .filter(u => !u.includes('?q=') && !u.includes('/search') && !u.includes('/list'));
-
-      console.log(`[apartmentInfo] Found detail URLs: ${JSON.stringify(detailUrls)}`);
-
-      // 複数の詳細ページを取得して内容を結合（AtHomeが空でも rehouse/SUUMO で補完）
-      const detailContents1: string[] = [];
-      const usedUrls1: string[] = [];
-      for (const url of detailUrls.slice(0, 5)) {
-        if (detailContents1.length >= 3) break;
-        try {
-          const detailText = await fetchPage(url);
-          if (detailText && detailText.length > 200) {
-            console.log(`[apartmentInfo] Got detail page: ${url} (${detailText.length} chars)`);
-            detailContents1.push(`## 出典: ${url}\n${detailText.substring(0, 2500)}`);
-            usedUrls1.push(url);
-          }
-        } catch (e) {
-          console.warn(`[apartmentInfo] detail fetch failed ${url}:`, (e as any)?.message);
-        }
-      }
-
-      if (detailContents1.length > 0) {
-        return `DATA_SOURCE_URL: ${usedUrls1[0]}\n\n${detailContents1.join('\n\n---\n\n')}\n\n## 検索スニペット（補足）\n${searchText.substring(0, 1500)}`;
-      }
-
-      // 詳細ページが取れなくてもスニペットをClaudeに渡す（スニペットだけで抽出できる場合が多い）
-      console.log('[apartmentInfo] No detail page, using search snippets only');
-      return `DATA_SOURCE_URL: (Jina Web検索スニペット)\n\n${searchText.substring(0, 6000)}`;
-    }
-  } catch (err: any) {
-    console.warn('[apartmentInfo] Strategy1 Jina Search error:', err?.message);
-  }
+    const parts = results
+      .filter((r): r is PromiseFulfilledResult<{ url: string; text: string }> =>
+        r.status === 'fulfilled' && r.value.text.length > 200
+      )
+      .map(r => `## 出典: ${r.value.url}\n${r.value.text.substring(0, 2500)}`);
+    if (parts.length === 0) return null;
+    const firstUrl = (results.find(r => r.status === 'fulfilled') as PromiseFulfilledResult<{ url: string; text: string }>).value.url;
+    return `DATA_SOURCE_URL: ${firstUrl}\n\n${parts.join('\n\n---\n\n')}\n\n## 検索スニペット\n${base.substring(0, 1500)}`;
+  };
 
   // ──────────────────────────────────────
-  // 戦略2: DuckDuckGo HTML（JS不要・サーバーサイドレンダリング）
+  // 戦略1: DuckDuckGo HTML（レート制限なし・高速）
   // ──────────────────────────────────────
   try {
-    const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(`"${searchTarget}" マンション 建物情報 管理会社 総戸数`)}`;
-    console.log(`[apartmentInfo] Strategy2: DuckDuckGo HTML`);
-    const ddgText = await fetchPage(ddgUrl);
+    const q = buildingName
+      ? `"${buildingName}" 総戸数 築年月 構造 施工会社 管理会社`
+      : `${propertyAddress} マンション 総戸数 築年月 構造`;
+    const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`;
+    console.log(`[apartmentInfo] Strategy1: DuckDuckGo "${q}"`);
 
-    if (ddgText && ddgText.length > 300) {
-      // ① 直接URLパターンで抽出（rehouse 追加）
-      const detailPattern = /https?:\/\/(?:suumo\.jp\/library\/[^\s)"\]\n<]+|www\.athome\.co\.jp\/bldg-library\/[^\s)"\]\n<]+|library\.smtrc\.jp\/mansion\/[^\s)"\]\n<]+|rehouse\.co\.jp\/mansionlibrary\/[^\s)"\]\n<]+)/g;
-      let detailUrls = (ddgText.match(detailPattern) ?? []).map(u => u.replace(/[\)\]"'>,]+$/, ''));
-
-      // ② DuckDuckGo は uddg= にURLをエンコードして埋め込む場合があるのでデコードも試みる
-      const uddgMatches = [...ddgText.matchAll(/uddg=(https?[^&\s"'<\)]+)/g)];
-      const uddgUrls = uddgMatches
-        .map(m => { try { return decodeURIComponent(m[1]); } catch { return ''; } })
-        .filter(u => /(?:suumo\.jp\/library|athome\.co\.jp\/bldg-library|library\.smtrc\.jp\/mansion|rehouse\.co\.jp\/mansionlibrary)/.test(u));
-      detailUrls = [...new Set([...detailUrls, ...uddgUrls])];
-      console.log(`[apartmentInfo] DuckDuckGo found URLs: ${JSON.stringify(detailUrls)}`);
-
-      for (const url of detailUrls) {
-        try {
-          const detailText = await fetchPage(url);
-          if (detailText && detailText.length > 400) {
-            // 詳細ページ + 検索スニペットを両方渡す（どちらかに欠けてる情報を補完）
-            return `DATA_SOURCE_URL: ${url}\n\n## 建物詳細ページ（${url}）\n${detailText.substring(0, 4000)}\n\n## 検索スニペット（補足）\n${ddgText.substring(0, 2000)}`;
-          }
-        } catch { /* continue */ }
-      }
-
+    const ddgText = await fetchPage(ddgUrl, 12000);
+    if (ddgText && ddgText.length > 200) {
+      const detailUrls = extractUrls(ddgText);
+      console.log(`[apartmentInfo] DDG URLs: ${JSON.stringify(detailUrls)}`);
+      const combined = await fetchDetailPages(detailUrls, ddgText);
+      if (combined) return combined;
       return `DATA_SOURCE_URL: ${ddgUrl}\n\n## DuckDuckGo検索結果\n${ddgText.substring(0, 5000)}`;
     }
   } catch (err: any) {
-    console.warn('[apartmentInfo] Strategy2 DuckDuckGo error:', err?.message);
+    console.warn('[apartmentInfo] Strategy1 DDG error:', err?.message);
   }
 
   // ──────────────────────────────────────
-  // 戦略3: SUUMO ライブラリ直接検索
+  // 戦略2: Jina Search（DDG失敗時のバックアップ）
+  // ──────────────────────────────────────
+  try {
+    const q = buildingName
+      ? `"${buildingName}" マンション 総戸数 築年月 構造 管理会社`
+      : `${propertyAddress} マンション 総戸数 築年月 構造`;
+    console.log(`[apartmentInfo] Strategy2: Jina Search`);
+
+    const jinaRes = await axios.get(
+      `https://s.jina.ai/${encodeURIComponent(q)}`,
+      { headers: jinaHeaders, timeout: 12000 }
+    );
+    const jinaText = typeof jinaRes.data === 'string' ? jinaRes.data : JSON.stringify(jinaRes.data);
+
+    if (jinaText && jinaText.length > 200) {
+      const detailUrls = extractUrls(jinaText);
+      console.log(`[apartmentInfo] Jina URLs: ${JSON.stringify(detailUrls)}`);
+      const combined = await fetchDetailPages(detailUrls, jinaText);
+      if (combined) return combined;
+      return `DATA_SOURCE_URL: (Jina Search)\n\n${jinaText.substring(0, 5000)}`;
+    }
+  } catch (err: any) {
+    console.warn('[apartmentInfo] Strategy2 Jina error:', err?.message);
+  }
+
+  // ──────────────────────────────────────
+  // 戦略3: SUUMO 直接検索
   // ──────────────────────────────────────
   try {
     const suumoUrl = `https://suumo.jp/library/?q=${encodeURIComponent(searchTarget)}`;
-    console.log(`[apartmentInfo] Strategy3: SUUMO library direct`);
-    const suumoText = await fetchPage(suumoUrl);
-
-    if (suumoText && suumoText.length > 300) {
-      const detailMatch = suumoText.match(/https?:\/\/suumo\.jp\/library\/tf_[^\s)"\]\n<]+/);
-      if (detailMatch) {
-        const url = detailMatch[0].replace(/[\)\]"'>,]+$/, '');
-        const detailText = await fetchPage(url);
-        if (detailText && detailText.length > 400) {
-          return `DATA_SOURCE_URL: ${url}\n\n## SUUMO物件ライブラリ\n${detailText.substring(0, 6000)}`;
+    const text = await fetchPage(suumoUrl, 10000);
+    if (text && text.length > 300) {
+      const m = text.match(/https?:\/\/suumo\.jp\/library\/tf_[^\s)"\]\n<]+/);
+      if (m) {
+        const detail = await fetchPage(m[0], 8000);
+        if (detail && detail.length > 300) {
+          return `DATA_SOURCE_URL: ${m[0]}\n\n## SUUMO物件ライブラリ\n${detail.substring(0, 5000)}`;
         }
       }
-      return `DATA_SOURCE_URL: ${suumoUrl}\n\n## SUUMO検索\n${suumoText.substring(0, 5000)}`;
+      return `DATA_SOURCE_URL: ${suumoUrl}\n\n${text.substring(0, 4000)}`;
     }
-  } catch (err: any) {
-    console.warn('[apartmentInfo] Strategy3 SUUMO error:', err?.message);
-  }
-
-  // ──────────────────────────────────────
-  // 戦略4: AtHome 建物ライブラリ直接検索
-  // ──────────────────────────────────────
-  try {
-    const athomeUrl = `https://www.athome.co.jp/bldg-library/?q=${encodeURIComponent(searchTarget)}`;
-    console.log(`[apartmentInfo] Strategy4: AtHome bldg-library direct`);
-    const athomeText = await fetchPage(athomeUrl);
-
-    if (athomeText && athomeText.length > 300) {
-      const detailMatch = athomeText.match(/https?:\/\/www\.athome\.co\.jp\/bldg-library\/[^\s)"\]\n<]+\/\d+\//);
-      if (detailMatch) {
-        const url = detailMatch[0].replace(/[\)\]"'>,]+$/, '');
-        const detailText = await fetchPage(url);
-        if (detailText && detailText.length > 400) {
-          return `DATA_SOURCE_URL: ${url}\n\n## AtHome建物ライブラリ\n${detailText.substring(0, 6000)}`;
-        }
-      }
-      return `DATA_SOURCE_URL: ${athomeUrl}\n\n## AtHome検索\n${athomeText.substring(0, 5000)}`;
-    }
-  } catch (err: any) {
-    console.warn('[apartmentInfo] Strategy4 AtHome error:', err?.message);
-  }
+  } catch { /* continue */ }
 
   return '';
 }
@@ -493,7 +446,7 @@ router.post('/seller/:sellerNumber/fetch', async (req: Request, res: Response) =
     const effectiveAddress = ieulApartmentName
       ? `${propertyAddress} ${ieulApartmentName}`.trim()
       : propertyAddress;
-    const webContent = await searchBuildingInfo(effectiveAddress, jinaApiKey);
+    const webContent = await searchBuildingInfo(effectiveAddress, jinaApiKey, ieulApartmentName || undefined);
 
     let buildingInfo: ApartmentBuildingInfo & { data_source: string | null };
     let fetchError: string | null = null;
