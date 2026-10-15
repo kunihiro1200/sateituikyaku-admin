@@ -130,24 +130,24 @@ async function searchBuildingInfo(
       console.log(`[apartmentInfo] Found detail URLs: ${JSON.stringify(detailUrls)}`);
 
       // 複数の詳細ページを取得して内容を結合（AtHomeが空でも rehouse/SUUMO で補完）
-      const detailContents: string[] = [];
-      const usedUrls: string[] = [];
+      const detailContents1: string[] = [];
+      const usedUrls1: string[] = [];
       for (const url of detailUrls.slice(0, 5)) {
-        if (detailContents.length >= 3) break; // 最大3ページ
+        if (detailContents1.length >= 3) break;
         try {
           const detailText = await fetchPage(url);
           if (detailText && detailText.length > 200) {
             console.log(`[apartmentInfo] Got detail page: ${url} (${detailText.length} chars)`);
-            detailContents.push(`## 出典: ${url}\n${detailText.substring(0, 2500)}`);
-            usedUrls.push(url);
+            detailContents1.push(`## 出典: ${url}\n${detailText.substring(0, 2500)}`);
+            usedUrls1.push(url);
           }
         } catch (e) {
           console.warn(`[apartmentInfo] detail fetch failed ${url}:`, (e as any)?.message);
         }
       }
 
-      if (detailContents.length > 0) {
-        return `DATA_SOURCE_URL: ${usedUrls[0]}\n\n${detailContents.join('\n\n---\n\n')}\n\n## 検索スニペット（補足）\n${searchText.substring(0, 1500)}`;
+      if (detailContents1.length > 0) {
+        return `DATA_SOURCE_URL: ${usedUrls1[0]}\n\n${detailContents1.join('\n\n---\n\n')}\n\n## 検索スニペット（補足）\n${searchText.substring(0, 1500)}`;
       }
 
       // 詳細ページが取れなくてもスニペットをClaudeに渡す（スニペットだけで抽出できる場合が多い）
