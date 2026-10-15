@@ -116,6 +116,9 @@ async function fetchTransitToHakata(
   routeText: string | null;
 }> {
   try {
+    const departureTime = getNextWeekdayMorningTs();
+    console.log(`[transitAccess/hakata] calling transit API lat=${stationLat} lng=${stationLng} departure=${new Date(departureTime * 1000).toISOString()}`);
+
     const response = await axios.get(
       'https://maps.googleapis.com/maps/api/directions/json',
       {
@@ -123,7 +126,7 @@ async function fetchTransitToHakata(
           origin: `${stationLat},${stationLng}`,
           destination: `${HAKATA_STATION.lat},${HAKATA_STATION.lng}`,
           mode: 'transit',
-          departure_time: getNextWeekdayMorningTs(),
+          departure_time: departureTime,
           language: 'ja',
           key: apiKey,
         },
@@ -131,9 +134,15 @@ async function fetchTransitToHakata(
       }
     );
 
-    if (response.data.status !== 'OK' || !response.data.routes?.[0]?.legs?.[0]) {
-      console.warn('[transitAccess/hakata] status:', response.data.status);
-      return { lineName: null, minutesToHakata: null, routeText: null };
+    const status: string = response.data.status;
+    console.log(`[transitAccess/hakata] status=${status} error_message=${response.data.error_message ?? ''} routes=${response.data.routes?.length ?? 0}`);
+
+    if (status !== 'OK' || !response.data.routes?.[0]?.legs?.[0]) {
+      // 診断用: エラー理由を routeText に格納して UI に表示
+      const reason = response.data.error_message
+        ? `${status}: ${response.data.error_message}`
+        : `status=${status}`;
+      return { lineName: null, minutesToHakata: null, routeText: `[取得失敗] ${reason}` };
     }
 
     const leg = response.data.routes[0].legs[0];
@@ -143,6 +152,11 @@ async function fetchTransitToHakata(
     const transitSteps: any[] = (leg.steps as any[]).filter(
       (s: any) => s.travel_mode === 'TRANSIT'
     );
+
+    console.log(`[transitAccess/hakata] totalMinutes=${totalMinutes} transitSteps=${transitSteps.length}`);
+    if (transitSteps.length > 0) {
+      console.log(`[transitAccess/hakata] first line=`, JSON.stringify(transitSteps[0].transit_details?.line));
+    }
 
     if (transitSteps.length === 0) {
       return { lineName: null, minutesToHakata: totalMinutes, routeText: `博多まで${totalMinutes}分` };
@@ -178,8 +192,8 @@ async function fetchTransitToHakata(
       return { lineName: firstLineName || null, minutesToHakata: totalMinutes, routeText };
     }
   } catch (err: any) {
-    console.warn('[transitAccess/hakata] error:', err.message);
-    return { lineName: null, minutesToHakata: null, routeText: null };
+    console.error('[transitAccess/hakata] exception:', err.message);
+    return { lineName: null, minutesToHakata: null, routeText: `[例外] ${err.message}` };
   }
 }
 
