@@ -373,9 +373,12 @@ const SchoolCard: React.FC<SchoolCardProps> = ({
         </Typography>
       )}
       {furigana && !furiganaLoading && (
-        <Typography variant="caption" sx={{ display: 'block', mb: 1, fontSize: '11px', color: '#555', letterSpacing: '0.05em' }}>
-          {furigana}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+          <Typography variant="caption" sx={{ fontSize: '9px', color: '#888', flexShrink: 0 }}>よみ：</Typography>
+          <Typography variant="caption" sx={{ fontSize: '12px', color: '#1565c0', letterSpacing: '0.05em', fontWeight: 'bold' }}>
+            {furigana}
+          </Typography>
+        </Box>
       )}
 
       {/* 距離・徒歩時間 */}
