@@ -133,7 +133,7 @@ async function searchBuildingInfo(
   // ──────────────────────────────────────
   try {
     const q = buildingName
-      ? `"${buildingName}" 総戸数 築年月 構造 施工会社 管理会社`
+      ? `${buildingName} マンション 総戸数 築年月 構造 施工会社 管理会社`
       : `${propertyAddress} マンション 総戸数 築年月 構造`;
     const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`;
     console.log(`[apartmentInfo] Strategy1: DuckDuckGo "${q}"`);
@@ -155,7 +155,7 @@ async function searchBuildingInfo(
   // ──────────────────────────────────────
   try {
     const q = buildingName
-      ? `"${buildingName}" マンション 総戸数 築年月 構造 管理会社`
+      ? `${buildingName} マンション 総戸数 築年月 構造 管理会社`
       : `${propertyAddress} マンション 総戸数 築年月 構造`;
     console.log(`[apartmentInfo] Strategy2: Jina Search`);
 

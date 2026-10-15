@@ -183,19 +183,20 @@ export const ApartmentBuildingInfoSection: React.FC<ApartmentBuildingInfoSection
 
   const isBusy = loading || fetching;
 
-  // 取得済みフィールドが1つでもあるか
+  // 取得済みフィールドが2つ以上あるか（1つだけではグリッド表示しない）
   const hasAnyData =
     data &&
-    (data.building_name ||
-      data.management_company ||
-      data.built_year_month ||
-      data.total_floors_above ||
-      data.total_units ||
-      data.structure ||
-      data.developer_company ||
-      data.construction_company ||
-      data.management_type ||
-      data.has_elevator);
+    [
+      data.management_company,
+      data.built_year_month,
+      data.total_floors_above,
+      data.total_units,
+      data.structure,
+      data.developer_company,
+      data.construction_company,
+      data.management_type,
+      data.has_elevator,
+    ].filter(Boolean).length >= 1;
 
   return (
     <Paper sx={{ p: 2, mb: 3, bgcolor: '#fff8e1', border: '1px solid #ffe082' }}>
