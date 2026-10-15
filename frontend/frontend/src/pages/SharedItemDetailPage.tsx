@@ -1264,6 +1264,96 @@ export default function SharedItemDetailPage() {
             </Grid>
           )}
 
+          {/* チャット送信（共有場が「他」の場合のみ表示） */}
+          {sharingLocation === '他' && (
+            <>
+              <Grid item xs={12}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="h6" fontWeight="bold" sx={{ color: color.main, mb: 2 }}>
+                  💬 チャット送信
+                </Typography>
+              </Grid>
+
+              {chatError && (
+                <Grid item xs={12}>
+                  <Alert severity="error" onClose={() => setChatError('')}>
+                    {chatError}
+                  </Alert>
+                </Grid>
+              )}
+
+              {chatSuccess && (
+                <Grid item xs={12}>
+                  <Alert severity="success" onClose={() => setChatSuccess(false)}>
+                    チャット送信が完了しました
+                  </Alert>
+                </Grid>
+              )}
+
+              <Grid item xs={12} md={6}>
+                <Typography variant="caption" color="text.secondary">
+                  送信予定日時（オプション）
+                </Typography>
+                <TextField
+                  fullWidth
+                  type="datetime-local"
+                  value={scheduledChatDatetime}
+                  onChange={(e) => setScheduledChatDatetime(e.target.value)}
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ mt: 0.5 }}
+                  helperText="未入力の場合は即時送信"
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <Alert severity="info" sx={{ fontSize: '0.875rem' }}>
+                  <strong>チャット送信内容：</strong>
+                  <br />
+                  • タイトル、内容、PDF/画像リンクをGoogle Chatへ送信します
+                  <br />
+                  • 詳細ページのリンクも送信されます
+                </Alert>
+              </Grid>
+
+              <Grid item xs={12}>
+                <Box sx={{ p: 1.5, bgcolor: '#fff3e0', borderRadius: 1, border: '1px solid #ffb74d' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={includeWarningText}
+                      onChange={(e) => setIncludeWarningText(e.target.checked)}
+                      style={{ marginRight: 8, width: 18, height: 18, cursor: 'pointer' }}
+                    />
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#e65100' }}>
+                      **「共有できていないスタッフ」の自分のアカウントにチェックして必ず保存してください**
+                    </Typography>
+                  </label>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, ml: 3.5 }}>
+                    ※ チェックを入れると、チャット送信時に上記の注意文が含まれます
+                  </Typography>
+                </Box>
+              </Grid>
+
+              <Grid item xs={12}>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={handleChatSend}
+                  disabled={sendingChat}
+                  startIcon={sendingChat ? <CircularProgress size={16} color="inherit" /> : undefined}
+                  sx={{ 
+                    bgcolor: '#7e57c2', 
+                    '&:hover': { bgcolor: '#5e35b1' },
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {sendingChat ? '送信中...' : scheduledChatDatetime ? '予約送信' : '今すぐ送信'}
+                </Button>
+              </Grid>
+            </>
+          )}
+
           {/* PDF */}
           <Grid item xs={12}>
             <Typography variant="caption" color="text.secondary">PDF</Typography>
@@ -1499,96 +1589,6 @@ export default function SharedItemDetailPage() {
               })}
             </Box>
           </Grid>
-
-          {/* チャット送信（共有場が「他」の場合のみ表示） */}
-          {sharingLocation === '他' && (
-            <>
-              <Grid item xs={12}>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="h6" fontWeight="bold" sx={{ color: color.main, mb: 2 }}>
-                  💬 チャット送信
-                </Typography>
-              </Grid>
-
-              {chatError && (
-                <Grid item xs={12}>
-                  <Alert severity="error" onClose={() => setChatError('')}>
-                    {chatError}
-                  </Alert>
-                </Grid>
-              )}
-
-              {chatSuccess && (
-                <Grid item xs={12}>
-                  <Alert severity="success" onClose={() => setChatSuccess(false)}>
-                    チャット送信が完了しました
-                  </Alert>
-                </Grid>
-              )}
-
-              <Grid item xs={12} md={6}>
-                <Typography variant="caption" color="text.secondary">
-                  送信予定日時（オプション）
-                </Typography>
-                <TextField
-                  fullWidth
-                  type="datetime-local"
-                  value={scheduledChatDatetime}
-                  onChange={(e) => setScheduledChatDatetime(e.target.value)}
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                  sx={{ mt: 0.5 }}
-                  helperText="未入力の場合は即時送信"
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <Alert severity="info" sx={{ fontSize: '0.875rem' }}>
-                  <strong>チャット送信内容：</strong>
-                  <br />
-                  • タイトル、内容、PDF/画像リンクをGoogle Chatへ送信します
-                  <br />
-                  • 詳細ページのリンクも送信されます
-                </Alert>
-              </Grid>
-
-              <Grid item xs={12}>
-                <Box sx={{ p: 1.5, bgcolor: '#fff3e0', borderRadius: 1, border: '1px solid #ffb74d' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={includeWarningText}
-                      onChange={(e) => setIncludeWarningText(e.target.checked)}
-                      style={{ marginRight: 8, width: 18, height: 18, cursor: 'pointer' }}
-                    />
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#e65100' }}>
-                      **「共有できていないスタッフ」の自分のアカウントにチェックして必ず保存してください**
-                    </Typography>
-                  </label>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, ml: 3.5 }}>
-                    ※ チェックを入れると、チャット送信時に上記の注意文が含まれます
-                  </Typography>
-                </Box>
-              </Grid>
-
-              <Grid item xs={12}>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  onClick={handleChatSend}
-                  disabled={sendingChat}
-                  startIcon={sendingChat ? <CircularProgress size={16} color="inherit" /> : undefined}
-                  sx={{ 
-                    bgcolor: '#7e57c2', 
-                    '&:hover': { bgcolor: '#5e35b1' },
-                    fontWeight: 'bold'
-                  }}
-                >
-                  {sendingChat ? '送信中...' : scheduledChatDatetime ? '予約送信' : '今すぐ送信'}
-                </Button>
-              </Grid>
-            </>
-          )}
 
           {/* 打ち合わせ内容 */}
           <Grid item xs={12}>
