@@ -149,11 +149,8 @@ const TransitAccessPanel: React.FC<TransitAccessPanelProps> = ({ sellerNumber })
 
       const service = new google.maps.DirectionsService();
 
-      // 翌営業日 9:00（JST）を出発時刻に
+      // 出発時刻：現在時刻（トゥモローにすると transit データがない場合あり）
       const depTime = new Date();
-      const dow = depTime.getDay();
-      depTime.setDate(depTime.getDate() + (dow === 0 ? 1 : dow === 6 ? 2 : 1));
-      depTime.setHours(9, 0, 0, 0);
 
       // 物件座標を取得（徒歩距離計算に必要）
       let propLat: number | null = null;
@@ -199,7 +196,7 @@ const TransitAccessPanel: React.FC<TransitAccessPanelProps> = ({ sellerNumber })
           try {
             const transitRes = await callDir({
               origin:          new google.maps.LatLng(propLat, propLng),
-              destination:     '博多駅, 福岡市',
+              destination:     new google.maps.LatLng(33.58975, 130.42006), // 博多駅座標
               travelMode:      google.maps.TravelMode.TRANSIT,
               transitOptions:  { departureTime: depTime },
             } as google.maps.DirectionsRequest);
