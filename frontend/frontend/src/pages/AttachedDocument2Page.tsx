@@ -1362,13 +1362,15 @@ export default function AttachedDocument2Page() {
                     sx={{ m: 0, alignItems: 'flex-start' }}
                   />
                 </Grid>
-                {/* 道路の種類 */}
-                <Grid item xs={3}>
-                  <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', mb: 0.4 }}>道路の種類</Typography>
-                  <TextField fullWidth size="small" value={fields.road_type}
-                    onChange={(e) => set('road_type', e.target.value)}
-                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
-                </Grid>
+                {/* 道路の種類（マンション以外のみ） */}
+                {!isMansion && (
+                  <Grid item xs={3}>
+                    <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', mb: 0.4 }}>道路の種類</Typography>
+                    <TextField fullWidth size="small" value={fields.road_type}
+                      onChange={(e) => set('road_type', e.target.value)}
+                      sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
+                  </Grid>
+                )}
               </Grid>
             </Paper>
 
@@ -1607,21 +1609,23 @@ export default function AttachedDocument2Page() {
                 { key: 'incident_info'         as const, label: '事件、事故' },
                 { key: 'minpaku'               as const, label: '民泊' },
               ].map((f, idx, arr) => (
-                <Box key={f.key} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.6, borderBottom: idx < arr.length - 1 || fields.solar_panel !== undefined ? '1px solid #eee' : 'none' }}>
+                <Box key={f.key} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.6, borderBottom: idx < arr.length - 1 || !isMansion ? '1px solid #eee' : 'none' }}>
                   <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, width: 140 }}>{f.label}</Typography>
                   <TextField fullWidth size="small" value={fields[f.key]}
                     onChange={(e) => set(f.key, e.target.value)}
                     sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
                 </Box>
               ))}
-              {/* 太陽光 */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.6 }}>
-                <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, width: 140 }}>太陽光</Typography>
-                <TextField fullWidth size="small" value={fields.solar_panel}
-                  onChange={(e) => set('solar_panel', e.target.value)}
-                  placeholder="　Kw　買取保証期間　年　月"
-                  sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' }, '& input::placeholder': { color: '#bbb', opacity: 1 } }} />
-              </Box>
+              {/* 太陽光（マンション以外のみ） */}
+              {!isMansion && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.6 }}>
+                  <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, width: 140 }}>太陽光</Typography>
+                  <TextField fullWidth size="small" value={fields.solar_panel}
+                    onChange={(e) => set('solar_panel', e.target.value)}
+                    placeholder="　Kw　買取保証期間　年　月"
+                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' }, '& input::placeholder': { color: '#bbb', opacity: 1 } }} />
+                </Box>
+              )}
             </Paper>
 
             <Box sx={{ mt: 3, pt: 2, borderTop: '3px dashed #aaa' }}>
