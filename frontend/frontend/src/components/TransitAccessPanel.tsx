@@ -193,12 +193,13 @@ const TransitAccessPanel: React.FC<TransitAccessPanelProps> = ({ sellerNumber })
           }
         }
 
-        // ── 路線名・博多所要時間: FI売主の駅のみ（失敗しても走行距離には影響しない）──
-        if (r.transport_type === 'station' && storeType === 'fukuoka' && r.place_lat && r.place_lng) {
+        // ── 路線名・博多所要時間: FI売主の駅のみ（物件→博多でtransitを1回計算）──
+        // 各駅から博多へのroutingはZERO_RESULTSになるため、物件→博多で計算する
+        if (r.transport_type === 'station' && storeType === 'fukuoka' && propLat && propLng && r.rank === 1) {
           try {
             const transitRes = await callDir({
-              origin:          new google.maps.LatLng(r.place_lat, r.place_lng),
-              destination:     '博多駅',
+              origin:          new google.maps.LatLng(propLat, propLng),
+              destination:     '博多駅, 福岡市',
               travelMode:      google.maps.TravelMode.TRANSIT,
               transitOptions:  { departureTime: depTime },
             } as google.maps.DirectionsRequest);
@@ -211,6 +212,7 @@ const TransitAccessPanel: React.FC<TransitAccessPanelProps> = ({ sellerNumber })
                 const firstLine: string =
                   (tSteps[0] as any).transit?.line?.name ||
                   (tSteps[0] as any).transit?.line?.short_name || '';
+                const boardStop: string = (tSteps[0] as any).transit?.departure_stop?.name || '';
                 const routeText = tSteps.length === 1
                   ? (firstLine ? `${firstLine}直通 博多まで${totalMins}分` : `博多まで${totalMins}分`)
                   : `${firstLine}→${tSteps.slice(1).map((s: any) => {
@@ -218,6 +220,7 @@ const TransitAccessPanel: React.FC<TransitAccessPanelProps> = ({ sellerNumber })
                       const ln  = s.transit?.line?.name || s.transit?.line?.short_name || '';
                       return dep ? `${dep}で${ln}乗換` : `${ln}乗換`;
                     }).join('→')}→博多まで${totalMins}分`;
+                console.log('[TransitPanel] transit OK', { boardStop, firstLine, totalMins });
                 patch.line_name                 = firstLine || null;
                 patch.transit_to_hakata_minutes = totalMins;
                 patch.transit_to_hakata_text    = routeText;
@@ -227,7 +230,7 @@ const TransitAccessPanel: React.FC<TransitAccessPanelProps> = ({ sellerNumber })
               }
             }
           } catch (transitErr) {
-            console.warn('[TransitPanel] transit calc failed (API key may not have Directions API):', transitErr);
+            console.warn('[TransitPanel] transit calc failed:', transitErr);
           }
         }
 
