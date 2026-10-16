@@ -159,16 +159,25 @@ const TransitAccessPanel: React.FC<TransitAccessPanelProps> = ({ sellerNumber })
         const coordRes = await api.get(`/api/sellers/by-number/${sellerNumber}`);
         propLat = coordRes.data.latitude ?? null;
         propLng = coordRes.data.longitude ?? null;
-      } catch { /* 座標取得失敗は無視 */ }
+        console.log('[TransitPanel] propLat:', propLat, 'propLng:', propLng);
+      } catch (e) {
+        console.error('[TransitPanel] coord fetch failed:', e);
+      }
 
-      // Directions API Promise ラッパー
-      const callDir = (req: google.maps.DirectionsRequest): Promise<google.maps.DirectionsResult | null> =>
-        new Promise(resolve =>
-          service.route(req, (r, s) =>
-            (s === google.maps.DirectionsStatus.OK && r?.routes?.[0]?.legs?.[0])
-              ? resolve(r) : resolve(null)
-          )
-        );
+      // Directions API Promise ラッパー（タイムアウト付き）
+      const callDir = (req: google.maps.DirectionsRequest): Promise<google.maps.DirectionsResult | null> => {
+        const timeout = new Promise<null>(res => setTimeout(() => res(null), 8000));
+        const dir = new Promise<google.maps.DirectionsResult | null>(resolve => {
+          try {
+            service.route(req, (r, s) => {
+              console.log('[TransitPanel] DirectionsService status:', s, 'mode:', req.travelMode);
+              (s === google.maps.DirectionsStatus.OK && r?.routes?.[0]?.legs?.[0])
+                ? resolve(r) : resolve(null);
+            });
+          } catch (e) { resolve(null); }
+        });
+        return Promise.race([dir, timeout]);
+      };
 
       // 各レコードを並列処理
       const storeType = newRecords[0]?.store_type;
