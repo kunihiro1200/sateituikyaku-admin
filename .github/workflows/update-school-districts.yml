@@ -2,29 +2,23 @@ name: 学校区データ年次更新チェック
 
 on:
   schedule:
-    # ② 毎年4月の全月曜日（02:00 UTC = 11:00 JST）に実行
-    # スクリプト内で「dayOfMonth <= 7」(第1月曜日のみ) チェックを行う。
-    # 冪等性: _last_annual_check をメインブランチに即コミットするため
-    #          同年内の2回目以降はスキップされる。
+    # 毎年4月の全月曜日（02:00 UTC = 11:00 JST）
+    # スクリプト内で day <= 7（第1月曜日のみ）チェックを行う
     - cron: '0 2 * 4 1'
 
-  # ⑧ 手動実行（workflow_dispatch）
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'ドライラン（PR・Issue 作成なし、レポートのみ生成）'
+        description: 'ドライラン（PR・Issue・コミット・DB更新を一切行わない）'
         type: boolean
-        default: false
-      force_full_rebuild:
-        description: '変更がなくても全件再ビルドを強制実行'
+        default: true
+      force_run:
+        description: '第1月曜チェックをスキップして強制実行（手動テスト用）'
         type: boolean
         default: false
 
-# ③ GitHub 標準のメール通知:
-#    assignee（kunihiro1200）に PR / Issue が割り当てられると
-#    GitHub が自動でメール通知を送信（Settings > Notifications で確認可能）
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
   issues: write
 
@@ -34,84 +28,48 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: チェックアウト
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Node.js セットアップ
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
-      - name: Python セットアップ
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Python 依存関係インストール（無料ツールのみ）
+      - name: 依存関係インストール
         run: |
-          pip install \
-            pdfminer.six==20221105 \
-            pymupdf==1.27.2.3 \
-            requests==2.32.3 \
-            openpyxl==3.1.5 \
-            --quiet
-        working-directory: backend
-
-      - name: Node 依存関係インストール
-        run: npm ci
+          pip install pdfminer.six==20221105 pymupdf==1.27.2.3 requests==2.32.3 openpyxl==3.1.5 --quiet
+          npm ci
         working-directory: backend
 
       - name: 一時ディレクトリ作成
         run: mkdir -p backend/tmp-update
 
+      # ─────────────────────────────────────────────────────────────────────
+      # メイン: 学校区データ更新チェック
+      # ─────────────────────────────────────────────────────────────────────
       - name: 学校区データ取得・差分チェック
         id: check
-        run: |
-          npx ts-node scripts/check-school-data-updates.ts
+        run: npx ts-node scripts/check-school-data-updates.ts
         working-directory: backend
         env:
           DRY_RUN: ${{ inputs.dry_run }}
-          FORCE_REBUILD: ${{ inputs.force_full_rebuild }}
-          # ② ドライラン時は本番 JSON・既存 DB・物件情報を一切変更しない保証:
-          #   check-school-data-updates.ts は SCHOOL_OUTPUT_PATH に出力するため
-          #   src/data/ の本番 JSON は変更されない。
-          #   その後のコミット・PR 作成ステップも dry_run=true の場合はスキップされる。
-          SCHOOL_OUTPUT_PATH: backend/tmp-update/fukuoka-new.json
+          FORCE_RUN: ${{ inputs.force_run }}
+          # ドライランでは tmp-update/ に書き込むだけで src/data/ は変更しない
+          SCHOOL_OUTPUT_PATH: tmp-update/fukuoka-new.json
 
-      # ──────────────────────────────────────────────────────────────────────
-      # ② 冪等性状態を main に即コミット
-      # PRがマージされなくても次週の月曜日に再実行されないよう
-      # _last_annual_check をメインブランチに直接コミットする。
-      # （データ本体は変更しない、メタデータのみ）
-      # ──────────────────────────────────────────────────────────────────────
-      - name: 冪等性フラグを main に直接コミット
-        if: inputs.dry_run != 'true' && steps.check.outputs.has_errors != 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # メタデータの _last_annual_check が更新されていれば main にコミット
-          if ! git diff --quiet backend/scripts/school-data-metadata.json; then
-            git add backend/scripts/school-data-metadata.json
-            git commit -m "chore: 学校区年次チェック完了フラグを記録 $(date +%Y-%m-%d)
-
-_last_annual_check を更新。同年内の重複実行を防止するためのフラグ。
-データ本体は変更していません。"
-            git push origin main
-            echo "✅ 冪等性フラグを main にコミットしました。今年の残りの月曜日はスキップされます。"
-          else
-            echo "メタデータに変更なし"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # ──────────────────────────────────────────────────────────────────────
-      # 変更あり → ブランチ作成 + PR（④ 管理者承認フロー）
-      # ──────────────────────────────────────────────────────────────────────
-      - name: 変更ありの場合 - ブランチ作成とコミット
-        if: steps.check.outputs.has_changes == 'true' && inputs.dry_run != 'true'
+      # ─────────────────────────────────────────────────────────────────────
+      # 全ソース取得成功 + 変更あり → PR 作成（⑤ 既存 PR は更新）
+      # ─────────────────────────────────────────────────────────────────────
+      - name: 変更あり - PR 作成または更新
+        if: |
+          steps.check.outputs.all_ok == 'true' &&
+          steps.check.outputs.has_changes == 'true' &&
+          inputs.dry_run != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -119,119 +77,101 @@ _last_annual_check を更新。同年内の重複実行を防止するための�
           YEAR=$(date +%Y)
           BRANCH="school-data-update-${YEAR}"
 
-          # 既存ブランチがあれば削除してから作成
           git push origin --delete "$BRANCH" 2>/dev/null || true
           git checkout -b "$BRANCH"
 
-          # 更新されたファイルをコミット
-          git add backend/src/data/fukuoka-school-address-map.json
-          git add backend/src/data/oita-beppu-school-address-map.json
-          git add backend/scripts/school-data-metadata.json
+          git add backend/src/data/fukuoka-school-address-map.json \
+                   backend/src/data/oita-beppu-school-address-map.json \
+                   backend/scripts/school-data-metadata.json
 
-          # 差分がある場合のみコミット
-          if git diff --cached --quiet; then
-            echo "コミット対象ファイルなし"
-          else
-            git commit -m "chore: 学校区データ年次更新 ${YEAR}年4月
-
-- 福岡市住所対応表を更新
-- 大分市・別府市データを確認
-- school-data-metadata.json を更新
-
-変更詳細は PR 本文を参照してください。"
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: 学校区データ年次更新 ${YEAR}年4月"
             git push origin "$BRANCH"
           fi
 
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # ⑤ 既存 PR があれば更新、なければ新規作成
+          EXISTING=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          REPORT=$(cat backend/tmp-update/update-report.md 2>/dev/null || echo "レポートなし")
+          TITLE="📚 学校区データ年次更新 ${YEAR}年4月 - 変更あり"
 
-      - name: 変更ありの場合 - PR 作成
-        if: steps.check.outputs.has_changes == 'true' && inputs.dry_run != 'true'
-        run: |
-          YEAR=$(date +%Y)
-          BRANCH="school-data-update-${YEAR}"
-
-          # PR 本文を読み込む
-          REPORT_FILE="backend/tmp-update/update-report.md"
-          if [ ! -f "$REPORT_FILE" ]; then
-            REPORT_FILE="backend/tmp-update-report.md"
-          fi
-
-          # PR 既存チェック
-          EXISTING_PR=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number' 2>/dev/null || echo "")
-          if [ -n "$EXISTING_PR" ]; then
-            echo "既存 PR #$EXISTING_PR を更新します"
-            gh pr edit "$EXISTING_PR" --body "$(cat $REPORT_FILE 2>/dev/null || echo '差分レポートを生成できませんでした。ログを確認してください。')"
+          if [ -n "$EXISTING" ]; then
+            gh pr edit "$EXISTING" --title "$TITLE" --body "$REPORT"
+            echo "✅ 既存 PR #$EXISTING を更新しました"
           else
-            gh pr create \
-              --title "📚 学校区データ年次更新 ${YEAR}年4月 - 変更あり（レビュー必要）" \
-              --body "$(cat $REPORT_FILE 2>/dev/null || echo '差分レポートを生成できませんでした。ログを確認してください。')" \
-              --base main \
-              --head "$BRANCH" \
-              --assignee "${{ github.repository_owner }}" \
-              --label "school-data" || true
+            gh pr create --title "$TITLE" --body "$REPORT" \
+              --base main --head "$BRANCH" \
+              --assignee "${{ github.repository_owner }}"
+            echo "✅ PR を新規作成しました"
           fi
-
-          echo "✅ PR を作成/更新しました。管理者がレビュー・マージするまで本番には反映されません。"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ──────────────────────────────────────────────────────────────────────
-      # 変更なし → Issue でサマリー通知
-      # ──────────────────────────────────────────────────────────────────────
-      - name: 変更なしの場合 - Issue でサマリー通知
-        if: steps.check.outputs.has_changes == 'false' && inputs.dry_run != 'true'
+      # ─────────────────────────────────────────────────────────────────────
+      # 全ソース取得成功 + 変更なし → Issue で通知
+      # ─────────────────────────────────────────────────────────────────────
+      - name: 変更なし - Issue 通知
+        if: |
+          steps.check.outputs.all_ok == 'true' &&
+          steps.check.outputs.has_changes == 'false' &&
+          inputs.dry_run != 'true'
         run: |
           YEAR=$(date +%Y)
-          REPORT_FILE="backend/tmp-update/update-report.md"
-
+          REPORT=$(cat backend/tmp-update/update-report.md 2>/dev/null || echo "レポートなし")
           gh issue create \
-            --title "✅ 学校区データ年次確認 ${YEAR}年4月: 変更なし" \
-            --body "$(cat $REPORT_FILE 2>/dev/null || echo '確認レポートを生成できませんでした。ログを確認してください。')" \
-            --assignee "${{ github.repository_owner }}" \
-            --label "school-data" || true
-
-          echo "✅ 変更なし。Issue でサマリーを通知しました。"
+            --title "✅ 学校区データ年次確認 ${YEAR}年4月: 変更なし（全ソース確認済み）" \
+            --body "$REPORT" \
+            --assignee "${{ github.repository_owner }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ──────────────────────────────────────────────────────────────────────
-      # ドライラン → レポートをログに出力
-      # ──────────────────────────────────────────────────────────────────────
-      - name: ドライランの場合 - レポートをログに出力
-        if: inputs.dry_run == 'true'
+      # ─────────────────────────────────────────────────────────────────────
+      # ③ 一部取得失敗 → Issue のみ作成、PR は作成しない、既存データ維持
+      # ─────────────────────────────────────────────────────────────────────
+      - name: 取得失敗 - Issue 通知（PRは作成しない）
+        if: |
+          steps.check.outputs.all_ok == 'false' &&
+          inputs.dry_run != 'true'
         run: |
-          echo "=== ドライランモード ==="
-          echo "has_changes: ${{ steps.check.outputs.has_changes }}"
-          echo ""
-          echo "=== 差分レポート ==="
-          cat backend/tmp-update/update-report.md 2>/dev/null || echo "(レポートなし)"
+          YEAR=$(date +%Y)
+          REPORT=$(cat backend/tmp-update/update-report.md 2>/dev/null || \
+                   cat backend/tmp-update/error-report.md 2>/dev/null || \
+                   echo "詳細はActionsログを確認してください")
+          gh issue create \
+            --title "⚠️ 学校区データ取得未確認 ${YEAR}年4月 - 手動確認が必要" \
+            --body "$REPORT" \
+            --assignee "${{ github.repository_owner }}" \
+            --label "school-data"
+          echo "⚠️ 一部ソースの取得に失敗しました。既存データを維持します。PRは作成しません。"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ──────────────────────────────────────────────────────────────────────
-      # ⑥ エラー時: 既存データを維持し Issue で通知
-      # ──────────────────────────────────────────────────────────────────────
-      - name: エラー時 - Issue で通知（既存データは変更しない）
+      # ─────────────────────────────────────────────────────────────────────
+      # スクリプト自体がクラッシュした場合のフォールバック
+      # ─────────────────────────────────────────────────────────────────────
+      - name: 致命的エラー - Issue 通知
         if: failure() && inputs.dry_run != 'true'
         run: |
           YEAR=$(date +%Y)
-          ERROR_REPORT="backend/tmp-update/error-report.md"
-
-          BODY="## ⚠️ 学校区データ取得失敗 ${YEAR}年4月
-
-**既存データは変更されていません。**
-
-エラーの詳細は GitHub Actions のログを確認してください。
-
-**実行ログ**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-$(cat $ERROR_REPORT 2>/dev/null || echo '')
-"
-
           gh issue create \
-            --title "⚠️ 学校区データ取得失敗 ${YEAR}年4月 - 手動確認が必要" \
-            --body "$BODY" \
+            --title "❌ 学校区データ年次更新 ${YEAR}年4月 - 致命的エラー" \
+            --body "スクリプト実行中にエラーが発生しました。**既存データは変更されていません。**
+
+ログ: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --assignee "${{ github.repository_owner }}" \
-            --label "school-data,bug" || true
+            --label "school-data,bug"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ⑥ ドライラン時はログにレポートを出力するだけ
+      - name: ドライラン - レポートをログに出力
+        if: inputs.dry_run == 'true'
+        run: |
+          echo "=== DRY RUN - PR・Issue・コミット・DB更新は一切行いません ==="
+          echo ""
+          echo "all_ok: ${{ steps.check.outputs.all_ok }}"
+          echo "has_changes: ${{ steps.check.outputs.has_changes }}"
+          echo ""
+          echo "=== 差分レポート ==="
+          cat backend/tmp-update/update-report.md 2>/dev/null || \
+          cat backend/tmp-update/error-report.md 2>/dev/null || \
+          echo "(レポートなし)"
