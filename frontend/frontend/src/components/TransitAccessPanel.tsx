@@ -240,10 +240,7 @@ const TransitAccessPanel: React.FC<TransitAccessPanelProps> = ({ sellerNumber })
     } finally {
       setFetching(false);
     }
-  }; {
-      setFetching(false);
-    }
-  };
+  }; 
 
   // ─── チェックボックス ──────────────────────────────────────────────
   const handleToggleSelected = async (record: TransitRecord) => {
