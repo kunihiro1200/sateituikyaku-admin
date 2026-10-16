@@ -152,11 +152,11 @@ jobs:
         if: failure() && inputs.dry_run != 'true'
         run: |
           YEAR=$(date +%Y)
+          BODY=$(printf 'スクリプト実行中にエラーが発生しました。**既存データは変更されていません。**\n\nログ: %s/%s/actions/runs/%s' \
+            "${{ github.server_url }}" "${{ github.repository }}" "${{ github.run_id }}")
           gh issue create \
             --title "❌ 学校区データ年次更新 ${YEAR}年4月 - 致命的エラー" \
-            --body "スクリプト実行中にエラーが発生しました。**既存データは変更されていません。**
-
-ログ: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --body "$BODY" \
             --assignee "${{ github.repository_owner }}" \
             --label "school-data,bug"
         env:
