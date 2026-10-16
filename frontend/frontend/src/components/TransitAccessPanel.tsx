@@ -144,90 +144,103 @@ const TransitAccessPanel: React.FC<TransitAccessPanelProps> = ({ sellerNumber })
       const newRecords: TransitRecord[] = res.data.data ?? [];
       setRecords(newRecords);
 
-      // FI売主の駅について、フロントエンドDirectionsServiceでtransit情報を計算
+      // Google Maps JS API が未準備なら補完計算をスキップ
+      if (!isLoaded || typeof google === 'undefined') return;
+
+      const service = new google.maps.DirectionsService();
+
+      // 翌営業日 9:00（JST）を出発時刻に
+      const depTime = new Date();
+      const dow = depTime.getDay();
+      depTime.setDate(depTime.getDate() + (dow === 0 ? 1 : dow === 6 ? 2 : 1));
+      depTime.setHours(9, 0, 0, 0);
+
+      // 物件座標を取得（徒歩距離計算に必要）
+      let propLat: number | null = null;
+      let propLng: number | null = null;
+      try {
+        const coordRes = await api.get(`/api/sellers/by-number/${sellerNumber}`);
+        propLat = coordRes.data.latitude ?? null;
+        propLng = coordRes.data.longitude ?? null;
+      } catch { /* 座標取得失敗は無視 */ }
+
+      // Directions API Promise ラッパー
+      const callDir = (req: google.maps.DirectionsRequest): Promise<google.maps.DirectionsResult | null> =>
+        new Promise(resolve =>
+          service.route(req, (r, s) =>
+            (s === google.maps.DirectionsStatus.OK && r?.routes?.[0]?.legs?.[0])
+              ? resolve(r) : resolve(null)
+          )
+        );
+
+      // 各レコードを並列処理
       const storeType = newRecords[0]?.store_type;
-      if (storeType === 'fukuoka' && isLoaded && typeof google !== 'undefined') {
-        const stations = newRecords.filter(r => r.transport_type === 'station' && r.place_id);
-        if (stations.length > 0) {
-          // 翌営業日 9:00 を出発時刻に（transit API は未来の時刻が必要）
-          const depTime = new Date();
-          const day = depTime.getDay();
-          depTime.setDate(depTime.getDate() + (day === 0 ? 1 : day === 6 ? 2 : 1));
-          depTime.setHours(9, 0, 0, 0);
+      await Promise.all(newRecords.map(async (r) => {
+        const patch: Record<string, any> = {};
 
-          const service = new google.maps.DirectionsService();
-
-          const calcTransit = (placeId: string): Promise<{
-            lineName: string | null;
-            minutesToHakata: number | null;
-            routeText: string | null;
-          }> => new Promise(resolve => {
-            service.route({
-              origin: { placeId },
-              destination: { query: '博多駅' },
-              travelMode: google.maps.TravelMode.TRANSIT,
-              transitOptions: { departureTime: depTime },
-              region: 'JP',
-            } as google.maps.DirectionsRequest, (result, status) => {
-              if (status !== google.maps.DirectionsStatus.OK || !result?.routes?.[0]?.legs?.[0]) {
-                console.warn('[TransitPanel] transit status:', status);
-                resolve({ lineName: null, minutesToHakata: null, routeText: null });
-                return;
-              }
-              const leg = result.routes[0].legs[0];
-              const totalMins = Math.ceil(leg.duration!.value / 60);
-              const transitSteps = leg.steps.filter(s => s.travel_mode === 'TRANSIT');
-              if (transitSteps.length === 0) {
-                resolve({ lineName: null, minutesToHakata: totalMins, routeText: `博多まで${totalMins}分` });
-                return;
-              }
-              const firstLine: string =
-                (transitSteps[0] as any).transit?.line?.name ||
-                (transitSteps[0] as any).transit?.line?.short_name || '';
-              let routeText: string;
-              if (transitSteps.length === 1) {
-                routeText = firstLine ? `${firstLine}直通 博多まで${totalMins}分` : `博多まで${totalMins}分`;
-              } else {
-                const transfers = transitSteps.slice(1).map((s: any) => {
-                  const dep = s.transit?.departure_stop?.name ?? '';
-                  const ln  = s.transit?.line?.name || s.transit?.line?.short_name || '';
-                  return dep ? `${dep}で${ln}乗換` : `${ln}乗換`;
-                }).join('→');
-                routeText = `${firstLine}→${transfers}→博多まで${totalMins}分`;
-              }
-              resolve({ lineName: firstLine || null, minutesToHakata: totalMins, routeText });
-            });
+        // ── 徒歩距離: 推定の場合にフロントエンドで再計算 ──────────────
+        if (r.is_estimated_distance && propLat && propLng && r.place_lat && r.place_lng) {
+          const walkRes = await callDir({
+            origin:      new google.maps.LatLng(propLat, propLng),
+            destination: new google.maps.LatLng(r.place_lat, r.place_lng),
+            travelMode:  google.maps.TravelMode.WALKING,
           });
-
-          // 各駅の transit 情報を並列計算
-          const transitInfos = await Promise.all(stations.map(s => calcTransit(s.place_id!)));
-
-          // 結果を PATCH で保存
-          await Promise.all(stations.map(async (s, i) => {
-            const info = transitInfos[i];
-            if (info.routeText || info.lineName) {
-              try {
-                const patchRes = await api.patch(
-                  `/api/transit-access/seller/${sellerNumber}/${s.id}`,
-                  {
-                    line_name:                 info.lineName,
-                    transit_to_hakata_minutes: info.minutesToHakata,
-                    transit_to_hakata_text:    info.routeText,
-                  }
-                );
-                // ローカルstate更新
-                setRecords(prev => prev.map(r => r.id === s.id ? patchRes.data.data : r));
-              } catch (e) {
-                console.warn('[TransitPanel] patch error:', e);
-              }
-            }
-          }));
+          if (walkRes) {
+            const m = walkRes.routes[0].legs[0].distance!.value;
+            patch.walk_distance_m      = m;
+            patch.walk_minutes         = Math.ceil(m / 80);
+            patch.is_estimated_distance = false;
+          }
         }
-      }
+
+        // ── 路線名・博多所要時間: FI売主の駅のみ ──────────────────────
+        if (r.transport_type === 'station' && storeType === 'fukuoka' && r.place_lat && r.place_lng) {
+          const transitRes = await callDir({
+            origin:          new google.maps.LatLng(r.place_lat, r.place_lng),
+            destination:     '博多駅',
+            travelMode:      google.maps.TravelMode.TRANSIT,
+            transitOptions:  { departureTime: depTime },
+          } as google.maps.DirectionsRequest);
+
+          if (transitRes) {
+            const leg = transitRes.routes[0].legs[0];
+            const totalMins = Math.ceil(leg.duration!.value / 60);
+            const tSteps = leg.steps.filter(s => s.travel_mode === 'TRANSIT');
+            if (tSteps.length > 0) {
+              const firstLine: string =
+                (tSteps[0] as any).transit?.line?.name ||
+                (tSteps[0] as any).transit?.line?.short_name || '';
+              const routeText = tSteps.length === 1
+                ? (firstLine ? `${firstLine}直通 博多まで${totalMins}分` : `博多まで${totalMins}分`)
+                : `${firstLine}→${tSteps.slice(1).map((s: any) => {
+                    const dep = s.transit?.departure_stop?.name ?? '';
+                    const ln  = s.transit?.line?.name || s.transit?.line?.short_name || '';
+                    return dep ? `${dep}で${ln}乗換` : `${ln}乗換`;
+                  }).join('→')}→博多まで${totalMins}分`;
+              patch.line_name                 = firstLine || null;
+              patch.transit_to_hakata_minutes = totalMins;
+              patch.transit_to_hakata_text    = routeText;
+            } else {
+              patch.transit_to_hakata_minutes = totalMins;
+              patch.transit_to_hakata_text    = `博多まで${totalMins}分`;
+            }
+          }
+        }
+
+        if (Object.keys(patch).length > 0) {
+          try {
+            const patchRes = await api.patch(`/api/transit-access/seller/${sellerNumber}/${r.id}`, patch);
+            setRecords(prev => prev.map(rec => rec.id === r.id ? patchRes.data.data : rec));
+          } catch (e) { console.warn('[TransitPanel] patch error:', e); }
+        }
+      }));
+
     } catch (err: any) {
-      const msg = err?.response?.data?.error ?? '交通アクセス情報の取得に失敗しました';
-      setFetchError(msg);
+      setFetchError(err?.response?.data?.error ?? '交通アクセス情報の取得に失敗しました');
     } finally {
+      setFetching(false);
+    }
+  }; {
       setFetching(false);
     }
   };
