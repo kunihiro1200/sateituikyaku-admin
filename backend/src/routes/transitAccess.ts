@@ -200,8 +200,8 @@ async function fetchTransitToHakata(
 
 /**
  * Directions API で徒歩道路距離を取得する。
- * API が利用できない場合は直線距離 × 1.3 で推定する（isEstimated=true）。
- * nearbyMap.ts の fetchWalkingDistance() と同じ実装。
+ * GOOGLE_MAPS_DIRECTIONS_KEY を優先使用（Directions API が許可されたキー）。
+ * 失敗時は直線距離 × 1.3 で推定する（isEstimated=true）。
  */
 async function fetchWalkingDistance(
   originLat: number,
@@ -210,6 +210,8 @@ async function fetchWalkingDistance(
   destLng: number,
   apiKey: string
 ): Promise<{ meters: number; isEstimated: boolean }> {
+  // Directions API 用の専用キーを優先（GOOGLE_MAPS_API_KEY は制限がある場合がある）
+  const walkKey = process.env.GOOGLE_MAPS_DIRECTIONS_KEY || apiKey;
   try {
     const response = await axios.get(
       'https://maps.googleapis.com/maps/api/directions/json',
@@ -219,7 +221,7 @@ async function fetchWalkingDistance(
           destination: `${destLat},${destLng}`,
           mode: 'walking',
           language: 'ja',
-          key: apiKey,
+          key: walkKey,
         },
         timeout: 10000,
       }
@@ -227,9 +229,9 @@ async function fetchWalkingDistance(
     if (response.data.status === 'OK' && response.data.routes?.[0]?.legs?.[0]) {
       return { meters: response.data.routes[0].legs[0].distance.value, isEstimated: false };
     }
-    console.warn('[transitAccess] Directions API status:', response.data.status, '→ 推定値にフォールバック');
+    console.warn('[transitAccess] Directions API walking status:', response.data.status, '→ 推定値にフォールバック');
   } catch (err: any) {
-    console.warn('[transitAccess] Directions API error:', err.message, '→ 推定値にフォールバック');
+    console.warn('[transitAccess] Directions API walking error:', err.message, '→ 推定値にフォールバック');
   }
   const straight = calcStraightDistance(originLat, originLng, destLat, destLng);
   return { meters: Math.round(straight * 1.3), isEstimated: true };
