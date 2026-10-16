@@ -658,6 +658,13 @@ router.patch('/seller/:sellerNumber/:id', async (req: Request, res: Response) =>
     manual_line_name,
     manual_walk_minutes,
     is_confirmed,
+    // フロントエンドDirectionsServiceで計算した結果
+    line_name,
+    walk_distance_m,
+    walk_minutes,
+    is_estimated_distance,
+    transit_to_hakata_minutes,
+    transit_to_hakata_text,
   } = req.body;
 
   try {
@@ -677,6 +684,13 @@ router.patch('/seller/:sellerNumber/:id', async (req: Request, res: Response) =>
       updates.is_confirmed = is_confirmed;
       updates.confirmed_at = is_confirmed ? new Date().toISOString() : null;
     }
+    // 自動計算フィールド（フロントエンドDirectionsServiceから）
+    if (line_name !== undefined)                 updates.line_name = line_name || null;
+    if (walk_distance_m !== undefined)           updates.walk_distance_m = walk_distance_m ?? null;
+    if (walk_minutes !== undefined)              updates.walk_minutes = walk_minutes ?? null;
+    if (is_estimated_distance !== undefined)     updates.is_estimated_distance = !!is_estimated_distance;
+    if (transit_to_hakata_minutes !== undefined) updates.transit_to_hakata_minutes = transit_to_hakata_minutes ?? null;
+    if (transit_to_hakata_text !== undefined)    updates.transit_to_hakata_text = transit_to_hakata_text || null;
 
     const { data, error } = await supabase
       .from('seller_transit_access')
