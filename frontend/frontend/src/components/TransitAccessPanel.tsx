@@ -193,37 +193,41 @@ const TransitAccessPanel: React.FC<TransitAccessPanelProps> = ({ sellerNumber })
           }
         }
 
-        // ── 路線名・博多所要時間: FI売主の駅のみ ──────────────────────
+        // ── 路線名・博多所要時間: FI売主の駅のみ（失敗しても走行距離には影響しない）──
         if (r.transport_type === 'station' && storeType === 'fukuoka' && r.place_lat && r.place_lng) {
-          const transitRes = await callDir({
-            origin:          new google.maps.LatLng(r.place_lat, r.place_lng),
-            destination:     '博多駅',
-            travelMode:      google.maps.TravelMode.TRANSIT,
-            transitOptions:  { departureTime: depTime },
-          } as google.maps.DirectionsRequest);
+          try {
+            const transitRes = await callDir({
+              origin:          new google.maps.LatLng(r.place_lat, r.place_lng),
+              destination:     '博多駅',
+              travelMode:      google.maps.TravelMode.TRANSIT,
+              transitOptions:  { departureTime: depTime },
+            } as google.maps.DirectionsRequest);
 
-          if (transitRes) {
-            const leg = transitRes.routes[0].legs[0];
-            const totalMins = Math.ceil(leg.duration!.value / 60);
-            const tSteps = leg.steps.filter(s => s.travel_mode === 'TRANSIT');
-            if (tSteps.length > 0) {
-              const firstLine: string =
-                (tSteps[0] as any).transit?.line?.name ||
-                (tSteps[0] as any).transit?.line?.short_name || '';
-              const routeText = tSteps.length === 1
-                ? (firstLine ? `${firstLine}直通 博多まで${totalMins}分` : `博多まで${totalMins}分`)
-                : `${firstLine}→${tSteps.slice(1).map((s: any) => {
-                    const dep = s.transit?.departure_stop?.name ?? '';
-                    const ln  = s.transit?.line?.name || s.transit?.line?.short_name || '';
-                    return dep ? `${dep}で${ln}乗換` : `${ln}乗換`;
-                  }).join('→')}→博多まで${totalMins}分`;
-              patch.line_name                 = firstLine || null;
-              patch.transit_to_hakata_minutes = totalMins;
-              patch.transit_to_hakata_text    = routeText;
-            } else {
-              patch.transit_to_hakata_minutes = totalMins;
-              patch.transit_to_hakata_text    = `博多まで${totalMins}分`;
+            if (transitRes) {
+              const leg = transitRes.routes[0].legs[0];
+              const totalMins = Math.ceil(leg.duration!.value / 60);
+              const tSteps = leg.steps.filter(s => s.travel_mode === 'TRANSIT');
+              if (tSteps.length > 0) {
+                const firstLine: string =
+                  (tSteps[0] as any).transit?.line?.name ||
+                  (tSteps[0] as any).transit?.line?.short_name || '';
+                const routeText = tSteps.length === 1
+                  ? (firstLine ? `${firstLine}直通 博多まで${totalMins}分` : `博多まで${totalMins}分`)
+                  : `${firstLine}→${tSteps.slice(1).map((s: any) => {
+                      const dep = s.transit?.departure_stop?.name ?? '';
+                      const ln  = s.transit?.line?.name || s.transit?.line?.short_name || '';
+                      return dep ? `${dep}で${ln}乗換` : `${ln}乗換`;
+                    }).join('→')}→博多まで${totalMins}分`;
+                patch.line_name                 = firstLine || null;
+                patch.transit_to_hakata_minutes = totalMins;
+                patch.transit_to_hakata_text    = routeText;
+              } else {
+                patch.transit_to_hakata_minutes = totalMins;
+                patch.transit_to_hakata_text    = `博多まで${totalMins}分`;
+              }
             }
+          } catch (transitErr) {
+            console.warn('[TransitPanel] transit calc failed (API key may not have Directions API):', transitErr);
           }
         }
 
