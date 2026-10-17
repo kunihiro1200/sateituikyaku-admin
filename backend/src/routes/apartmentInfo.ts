@@ -587,7 +587,7 @@ router.post('/seller/:sellerNumber/fetch-listings', async (req: Request, res: Re
   try {
     // 1. DB から建物名と物件住所を取得
     const [{ data: seller }, { data: buildingData }] = await Promise.all([
-      supabase.from('sellers').select('property_address').eq('seller_number', sellerNumber).single(),
+      supabase.from('sellers').select('id, property_address').eq('seller_number', sellerNumber).single(),
       supabase.from('seller_apartment_building_info').select('building_name').eq('seller_number', sellerNumber).single(),
     ]);
 
@@ -596,8 +596,24 @@ router.post('/seller/:sellerNumber/fetch-listings', async (req: Request, res: Re
     }
 
     const propertyAddress: string = seller.property_address || '';
+
+    // イエウール用マンション名（property_address_ieul_apartment）をフォールバックとして取得
+    // FI売主など住所にマンション名が含まれないケースでも検索できるようにする
+    let ieulApartmentName: string | null = null;
+    if (seller.id) {
+      try {
+        const { data: prop } = await supabase
+          .from('properties')
+          .select('property_address_ieul_apartment')
+          .eq('seller_id', seller.id)
+          .single();
+        ieulApartmentName = prop?.property_address_ieul_apartment || null;
+      } catch { /* サイレント */ }
+    }
+
     const buildingName: string =
       buildingData?.building_name ||
+      ieulApartmentName ||
       extractBuildingNameFromAddress(propertyAddress) ||
       '';
 
