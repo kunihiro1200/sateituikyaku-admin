@@ -545,6 +545,15 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         >
           ＊事務は1～{isMansionType ? '10' : '9'}まで準備
         </Typography>
+        <Typography
+          sx={{
+            color: 'error.main',
+            fontWeight: 'bold',
+            mb: 2,
+          }}
+        >
+          ＊パンフレットも準備
+        </Typography>
 
         {/* リンク一覧（番号付きリスト） */}
         <List component="ol" sx={{ listStyleType: 'decimal', pl: 2 }}>
