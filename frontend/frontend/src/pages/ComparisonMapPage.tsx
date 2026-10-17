@@ -562,10 +562,8 @@ body {
   width: 194mm;
 }
 .page {
-  display: flex;
-  flex-direction: column;
-  height: 281mm;
-  overflow: hidden;
+  /* flex を使わず自然フロー。画像サイズが決まったあとに表が続く */
+  display: block;
 }
 .title {
   text-align: center;
@@ -575,19 +573,17 @@ body {
   padding-bottom: 3pt;
   margin-bottom: 3pt;
   border-bottom: 2.5pt solid #CC0000;
-  flex-shrink: 0;
 }
 .map-wrapper {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  border: 0.5pt solid #ccc;
+  position: relative;   /* 吹き出しラベルの基準 */
+  width: 100%;
+  /* ⚠️ height / overflow / object-fit は一切設定しない。
+     画像の自然サイズ（width:100% height:auto）に完全追従させることで
+     ピン座標の % 計算と表示位置が一致する。 */
 }
 .map-wrapper img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;         /* アスペクト比維持・トリミングなし */
   display: block;
 }
 .map-attribution {
