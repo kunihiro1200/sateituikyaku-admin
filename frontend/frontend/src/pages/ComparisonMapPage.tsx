@@ -235,6 +235,7 @@ const ComparisonMapPage: React.FC = () => {
   const [extractError, setExtractError] = useState<string | null>(null);
   const [extractedProps, setExtractedProps] = useState<ExtractedProperty[]>([]);
   const [showExtractDialog, setShowExtractDialog] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
   // ── 売主データ読み込み ────────────────────────────────────────
@@ -671,51 +672,65 @@ body {
   }
 
   // ── 資料アップロード＆AI抽出処理 ────────────────────────────────
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!e.target.files) return;
-    // 複数ファイルは1件ずつ順番に処理（今回は1ファイルのみ受け付ける）
-    const targetFile = file;
-    if (!targetFile) return;
 
-    // リセット
-    e.target.value = '';
+  /** File オブジェクトを受け取り Claude で物件情報を抽出する共通処理 */
+  const processFile = async (file: File) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+    if (!allowed.includes(file.type)) {
+      setExtractError('対応形式: PDF / JPEG / PNG / WebP / GIF');
+      return;
+    }
+
     setExtractError(null);
     setExtracting(true);
-
     try {
-      // Base64 変換
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          // data:image/png;base64,XXXX → XXXX のみ取り出す
-          resolve(result.split(',')[1] ?? '');
-        };
+        reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
         reader.onerror = reject;
-        reader.readAsDataURL(targetFile);
+        reader.readAsDataURL(file);
       });
-
-      const mediaType = targetFile.type || 'image/jpeg';
 
       const { data } = await api.post('/api/comparison-maps/extract-properties', {
         imageBase64: base64,
-        mediaType,
+        mediaType: file.type || 'image/jpeg',
       });
 
       if (!data.properties?.length) {
-        setExtractError('物件情報を読み取れませんでした。鮮明な画像またはPDFを試してください。');
+        setExtractError('物件情報を読み取れませんでした。より鮮明な画像またはPDFを試してください。');
         return;
       }
-
       setExtractedProps(data.properties);
       setShowExtractDialog(true);
     } catch (err: any) {
-      const msg = err.response?.data?.error ?? err.message ?? 'エラーが発生しました。';
-      setExtractError(msg);
+      setExtractError(err.response?.data?.error ?? err.message ?? 'エラーが発生しました。');
     } finally {
       setExtracting(false);
     }
+  };
+
+  /** input[type=file] の onChange */
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (file) processFile(file);
+  };
+
+  /** ドラッグイベント */
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!extracting && competing.length < 5) setIsDragging(true);
+  };
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (extracting || competing.length >= 5) return;
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
   };
 
   /** 確認ダイアログで「追加する」を押した時 */
@@ -1057,42 +1072,73 @@ body {
               type="file"
               accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
               style={{ display: 'none' }}
-              onChange={handleFileUpload}
+              onChange={handleFileInput}
             />
 
-            {/* アップロードエリア */}
+            {/* ドラッグ＆ドロップ対応アップロードエリア */}
             <Paper
               variant="outlined"
               onClick={() => !extracting && competing.length < 5 && uploadInputRef.current?.click()}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
               sx={{
-                p: 1.5, textAlign: 'center', cursor: competing.length >= 5 || extracting ? 'default' : 'pointer',
-                borderStyle: 'dashed', borderColor: extracting ? 'primary.main' : '#aaa',
-                bgcolor: extracting ? '#e3f2fd' : '#fafafa',
-                transition: 'all 0.2s',
-                '&:hover': competing.length < 5 && !extracting ? { bgcolor: '#f0f7ff', borderColor: 'primary.main' } : {},
+                p: 2,
+                textAlign: 'center',
+                cursor: competing.length >= 5 || extracting ? 'default' : 'pointer',
+                borderStyle: 'dashed',
+                borderWidth: '2px',
+                borderColor: isDragging
+                  ? 'primary.main'
+                  : extracting
+                  ? 'primary.light'
+                  : competing.length >= 5
+                  ? '#ddd'
+                  : '#bbb',
+                bgcolor: isDragging
+                  ? '#e8f4fd'
+                  : extracting
+                  ? '#e3f2fd'
+                  : '#fafafa',
+                transition: 'all 0.15s',
+                '&:hover': competing.length < 5 && !extracting && !isDragging
+                  ? { bgcolor: '#f0f7ff', borderColor: 'primary.light' }
+                  : {},
               }}
             >
               {extracting ? (
                 <Box>
-                  <CircularProgress size={20} sx={{ mb: 0.5 }} />
-                  <Typography variant="caption" display="block" color="primary">
-                    資料を読み取り中...
+                  <CircularProgress size={24} sx={{ mb: 0.5 }} />
+                  <Typography variant="body2" color="primary" fontWeight="bold">
+                    Claude が資料を読み取り中...
                   </Typography>
-                  <LinearProgress sx={{ mt: 0.5, borderRadius: 1 }} />
+                  <LinearProgress sx={{ mt: 1, borderRadius: 1 }} />
                 </Box>
               ) : competing.length >= 5 ? (
                 <Typography variant="caption" color="text.disabled">
                   競合物件は最大5件です
                 </Typography>
+              ) : isDragging ? (
+                /* ドラッグ中 */
+                <Box sx={{ pointerEvents: 'none' }}>
+                  <UploadFileIcon sx={{ fontSize: 32, color: 'primary.main', mb: 0.5 }} />
+                  <Typography variant="body2" color="primary" fontWeight="bold">
+                    ここにドロップ！
+                  </Typography>
+                </Box>
               ) : (
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                  <UploadFileIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
-                  <Box sx={{ textAlign: 'left' }}>
-                    <Typography variant="caption" display="block" fontWeight="bold" color="text.secondary">
-                      資料から読み込む
-                    </Typography>
-                    <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
-                      PDF・画像を選択（1枚に複数物件でもOK）
+                /* 通常状態 */
+                <Box>
+                  <UploadFileIcon sx={{ fontSize: 28, color: 'text.secondary', mb: 0.5 }} />
+                  <Typography variant="body2" fontWeight="bold" color="text.secondary">
+                    資料をここにドラッグ＆ドロップ
+                  </Typography>
+                  <Typography variant="caption" color="text.disabled">
+                    または クリックしてファイルを選択
+                  </Typography>
+                  <Box sx={{ mt: 0.5 }}>
+                    <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.62rem' }}>
+                      PDF・JPEG・PNG・WebP 対応 ／ 1枚に複数物件が載っていても一括読み取りOK
                     </Typography>
                   </Box>
                 </Box>
