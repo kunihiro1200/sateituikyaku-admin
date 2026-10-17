@@ -139,11 +139,8 @@ async function fetchTransitToHakata(
     console.log(`[transitAccess/hakata] status=${status} error_message=${response.data.error_message ?? ''} routes=${response.data.routes?.length ?? 0}`);
 
     if (status !== 'OK' || !response.data.routes?.[0]?.legs?.[0]) {
-      // 診断用: エラー理由を routeText に格納して UI に表示
-      const reason = response.data.error_message
-        ? `${status}: ${response.data.error_message}`
-        : `status=${status}`;
-      return { lineName: null, minutesToHakata: null, routeText: `[取得失敗] ${reason}` };
+      console.warn(`[transitAccess/hakata] transit ${status} - no route found`);
+      return { lineName: null, minutesToHakata: null, routeText: null };
     }
 
     const leg = response.data.routes[0].legs[0];
@@ -194,7 +191,7 @@ async function fetchTransitToHakata(
     }
   } catch (err: any) {
     console.error('[transitAccess/hakata] exception:', err.message);
-    return { lineName: null, minutesToHakata: null, routeText: `[例外] ${err.message}` };
+    return { lineName: null, minutesToHakata: null, routeText: null };
   }
 }
 
