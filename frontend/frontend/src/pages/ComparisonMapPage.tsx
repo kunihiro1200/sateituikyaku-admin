@@ -463,6 +463,7 @@ const ComparisonMapPage: React.FC = () => {
     tableData: TableForPrint[],
   ): string {
     // 吹き出しラベルHTML
+    const CIRCLED = ['', '①', '②', '③', '④', '⑤']; // 1〜5の丸数字
     const labelHtml = labels.map(p => {
       const goLeft = p.xPct > 60;
       const labelStyle = goLeft
@@ -470,8 +471,10 @@ const ComparisonMapPage: React.FC = () => {
         : `left:${p.xPct.toFixed(2)}%; top:${p.yPct.toFixed(2)}%; transform:translate(3mm,-50%);`;
       const arrowClass = goLeft ? 'arrow-right' : 'arrow-left';
       const areaLabel = extractAreaLabel(p.address);
-      // 査定対象は ★ を名前の前に付ける
-      const displayName = p.isSubject ? `★ ${p.name}` : p.name;
+      // 査定対象は「★ 物件名」、競合は「① 物件名」形式
+      const num = parseInt(p.label, 10);
+      const prefix = p.isSubject ? '★ ' : (CIRCLED[num] ? CIRCLED[num] + ' ' : `${p.label} `);
+      const displayName = `${prefix}${p.name}`;
       return `<div class="map-label ${arrowClass}" style="position:absolute;${labelStyle}">
   <div class="label-name">${displayName}</div>
   ${areaLabel ? `<div class="label-area">${areaLabel}</div>` : ''}
@@ -479,12 +482,14 @@ const ComparisonMapPage: React.FC = () => {
     }).join('\n');
 
     // 比較表HTML
-    const colW = Math.floor(85 / tableData.length); // header列15mm引いた残りを均等分割
-
+    const CIRCLED_NUM = ['', '①', '②', '③', '④', '⑤'];
+    const colW = Math.floor(85 / tableData.length);
     const headerCells = tableData.map(p => {
       const badgeBg = p.isSubject ? '#FF8800' : '#CC0000';
+      const num = parseInt(p.label, 10);
+      const badgeLabel = p.isSubject ? '★' : (CIRCLED_NUM[num] ?? p.label);
       return `<th style="width:${colW}%;text-align:center;background:#fff;padding:3pt 2pt;border:0.5pt solid #ccc;">
-  <div style="display:inline-flex;width:18pt;height:18pt;border-radius:50%;background:${badgeBg};color:white;font-weight:bold;font-size:9pt;align-items:center;justify-content:center;margin-bottom:2pt;">${p.label}</div>
+  <div style="display:inline-flex;width:18pt;height:18pt;border-radius:50%;background:${badgeBg};color:white;font-weight:bold;font-size:9pt;align-items:center;justify-content:center;margin-bottom:2pt;">${p.isSubject ? '★' : p.label}</div>
   <div style="font-size:7pt;font-weight:bold;line-height:1.3;color:#111;">${p.name}</div>
   <div style="font-size:6pt;color:#555;line-height:1.3;">${p.address}</div>
 </th>`;
