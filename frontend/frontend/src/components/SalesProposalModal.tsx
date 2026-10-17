@@ -130,6 +130,9 @@ export default function SalesProposalModal({
   // 'doc2' = 添付資料2の保存済み値, 'api' = ライブAPI, null = 未取得
   const [schoolSource, setSchoolSource] = useState<'doc2' | 'api' | null>(null);
 
+  // リフレッシュ確認ダイアログ（手動入力済みの内容を上書きする前に確認する）
+  const [refreshConfirmOpen, setRefreshConfirmOpen] = useState(false);
+
   // コピー状態
   const [copied, setCopied] = useState(false);
 
@@ -354,6 +357,14 @@ export default function SalesProposalModal({
   const envText = envParts.length > 0 ? envParts.join('\n') : '（未取得）';
 
   // ─── ChatGPT 指示文生成 ──────────────────────────────────────────────────
+  const PROMPT_SUFFIX = `以上の内容とプロジェクトに登録された参考画像をもとに、売主様にそのままお渡しできる、明るく高級感のあるA4縦1枚の販売価格・販売戦略提案書を画像生成してください。
+
+レイアウトは物件の特徴や情報量に合わせて変更してください。白・ネイビー・ゴールド・淡いベージュを基調とし、価格・購入ターゲット・販売戦略が分かりやすい資料にしてください。
+
+売主番号や社内情報は掲載せず、会社名・署名は指定されたものを使用してください。未確認情報は推測で追加しないでください。
+
+必要な情報が揃っている場合は、追加質問をせず、そのまま画像生成を実行してください。`;
+
   const generatedPrompt =
     `以下の条件で、売主様向けの販売価格・販売戦略提案書を作成してください。
 
@@ -376,7 +387,9 @@ Supabaseから取得した物件情報とスタッフが指定した条件を利
 
 プロジェクトに登録された参考画像をデザインの参考とし、物件に応じた構成でA4縦の画像を作成してください。
 
-社内情報・未確認情報・架空の事実は掲載しないでください。`.trim();
+社内情報・未確認情報・架空の事実は掲載しないでください。
+
+${PROMPT_SUFFIX}`.trim();
 
   // ─── クリップボードへコピー ───────────────────────────────────────────────
   const handleCopy = async () => {
@@ -438,6 +451,7 @@ Supabaseから取得した物件情報とスタッフが指定した条件を利
   };
 
   return (
+    <>
     <Dialog
       open={open}
       onClose={onClose}
@@ -523,7 +537,15 @@ Supabaseから取得した物件情報とスタッフが指定した条件を利
                   <span>
                     <IconButton
                       size="small"
-                      onClick={() => { setInfoFetched(false); fetchSchoolTransit(true); }}
+                      onClick={() => {
+                        // 手動入力済みの内容がある場合は確認ダイアログを表示
+                        if (form.schoolInfo || form.transitInfo) {
+                          setRefreshConfirmOpen(true);
+                        } else {
+                          setInfoFetched(false);
+                          fetchSchoolTransit(true);
+                        }
+                      }}
                       disabled={fetchingInfo}
                     >
                       {fetchingInfo
@@ -769,5 +791,46 @@ Supabaseから取得した物件情報とスタッフが指定した条件を利
         </Button>
       </DialogActions>
     </Dialog>
+
+    {/* ── リフレッシュ確認ダイアログ ── */}
+    {/* 手動入力済みの学校・交通情報を上書きする前に確認する */}
+    <Dialog
+      open={refreshConfirmOpen}
+      onClose={() => setRefreshConfirmOpen(false)}
+      maxWidth="xs"
+      fullWidth
+    >
+      <DialogTitle sx={{ fontWeight: 'bold', pb: 1 }}>
+        🔄 学校・交通情報を再取得しますか？
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          現在入力されている学校・交通情報を、添付資料2の保存値または学校区APIで上書きします。
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          手動で修正した内容がある場合は、再取得後に内容を確認してください。
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button
+          onClick={() => setRefreshConfirmOpen(false)}
+          color="inherit"
+        >
+          キャンセル
+        </Button>
+        <Button
+          variant="contained"
+          startIcon={<RefreshIcon />}
+          onClick={() => {
+            setRefreshConfirmOpen(false);
+            setInfoFetched(false);
+            fetchSchoolTransit(true);
+          }}
+        >
+          再取得して上書き
+        </Button>
+      </DialogActions>
+    </Dialog>
+    </>
   );
 }
