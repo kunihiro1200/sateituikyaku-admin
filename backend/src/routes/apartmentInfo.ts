@@ -44,19 +44,31 @@ interface ApartmentBuildingInfo {
 function extractBuildingNameFromAddress(address: string): string | null {
   if (!address) return null;
 
-  // ① 号室・部屋番号を末尾から除去（例: 101号室, 1001, 20F）
-  let cleaned = address
+  // ① 全角数字・全角ハイフンを半角に正規化
+  //    例: "田島４丁目-７−７" → "田島4丁目-7-7"
+  //    JavaScript の \d（/u フラグ付き）は ASCII 数字 [0-9] のみマッチするため必須
+  let normalized = address
+    .replace(/[０-９]/gu, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    .replace(/[－]/gu, '-');
+
+  // ② 末尾の括弧付き読み仮名を除去
+  //    例: "...501（じょうなんくたしま）" → "...501"
+  normalized = normalized.replace(/\s*[（(][^）)]*[）)]\s*$/u, '').trim();
+
+  // ③ 末尾の号室・部屋番号を除去（例: 101号室, 1001, 20F）
+  let cleaned = normalized
     .replace(/\s*\d{2,4}(号室?|F|階)?$/u, '')
     .trim();
 
-  // ② 番地パターンの後ろにある文字列をマンション名と判断
+  // ④ 番地パターンの後ろにある文字列をマンション名と判断
   // パターン: 数字-数字(-数字)? の後に続くカタカナ・漢字・英字の文字列
   const patterns = [
     // 例: "1-2-3 マンション名" or "1-2-3マンション名"
+    //     "田島4丁目-7-7フランドルフ田島2" の "7-7フランドルフ田島2" にマッチ
     /\d+[-−ー]\d+(?:[-−ー]\d+)?\s*([^\d\s].{2,}?)$/u,
     // 例: "1番2号 マンション名"
     /\d+番\d+号\s*([^\d\s].{2,}?)$/u,
-    // 例: "1丁目2-3 マンション名"
+    // 例: "1丁目2-3 マンション名"（丁目直後に数字が続く形式）
     /\d+丁目\d+[-−]?\d*\s*([^\d\s].{2,}?)$/u,
   ];
 
