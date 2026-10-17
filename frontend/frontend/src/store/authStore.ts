@@ -184,50 +184,45 @@ export const useAuthStore = create<AuthState>()(
     try {
       console.log('🔍 Checking auth...');
       
-      // Zustand persistで認証済みの場合、バックグラウンドで確認（UIをブロックしない）
       const currentState = useAuthStore.getState();
-      if (currentState.isAuthenticated && currentState.employee) {
-        console.log('🔍 Already authenticated (cached), verifying in background...');
-        set({ isLoading: false });
-        // バックグラウンドで検証（失敗しても即座にログアウトしない）
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            localStorage.setItem('session_token', session.access_token);
-            if (session.refresh_token) {
-              localStorage.setItem('refresh_token', session.refresh_token);
-            }
-          } else {
-            // セッションがnullの場合、refresh_tokenでの復元を試みる
-            const storedRefreshToken = localStorage.getItem('refresh_token');
-            if (storedRefreshToken) {
-              console.log('🔄 Background: session null, trying refresh...');
-              const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
-                refresh_token: storedRefreshToken,
-              });
-              if (!refreshError && refreshData.session) {
-                console.log('✅ Background: session refreshed');
-                localStorage.setItem('session_token', refreshData.session.access_token);
-                if (refreshData.session.refresh_token) {
-                  localStorage.setItem('refresh_token', refreshData.session.refresh_token);
+      // localStorage に保存した employee-cache を読み込む
+      let cachedEmployee: any = null;
+      try {
+        cachedEmployee = JSON.parse(localStorage.getItem('employee-cache') || 'null');
+      } catch { cachedEmployee = null; }
+
+      // ─── ケース A: isAuthenticated=true かつ employee-cache あり ─────────
+      // キャッシュを使って即座に画面を表示し、バックグラウンドで最新データを取得
+      if (currentState.isAuthenticated && cachedEmployee) {
+        console.log('🚀 Fast path: using employee cache, showing app immediately');
+        set({ employee: cachedEmployee, isLoading: false });
+        // バックグラウンドでセッション確認（失敗してもログアウトしない）
+        setTimeout(async () => {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+              // セッションが本当に切れていたら静かにクリア（次回のAPI呼び出しで401になる）
+              const storedRefreshToken = localStorage.getItem('refresh_token');
+              if (storedRefreshToken) {
+                const { data: refreshData } = await supabase.auth.refreshSession({ refresh_token: storedRefreshToken });
+                if (refreshData.session) {
+                  localStorage.setItem('session_token', refreshData.session.access_token);
                 }
-              } else {
-                // リフレッシュも失敗 → ただしここでは即座にログアウトしない
-                // 次回のAPI呼び出しで401が返り、その時点でユーザーに通知される
-                console.warn('⚠️ Background: refresh failed, will handle on next API call');
               }
             } else {
-              // refresh_tokenもない → 次回のAPI呼び出しに任せる
-              console.warn('⚠️ Background: no session and no refresh_token');
+              // セッション有効: 最新の社員情報をバックグラウンドで取得
+              try {
+                const response = await api.get('/auth/me', { timeout: 20000 });
+                localStorage.setItem('employee-cache', JSON.stringify(response.data));
+                useAuthStore.setState({ employee: response.data });
+              } catch { /* タイムアウトは無視 */ }
             }
-          }
-        } catch {
-          // バックグラウンド検証失敗は無視（次回のAPI呼び出しで401が返る）
-          console.warn('⚠️ Background auth verification failed, ignoring');
-        }
+          } catch { /* バックグラウンド処理失敗は無視 */ }
+        }, 1000); // 1秒後にバックグラウンドで確認
         return;
       }
 
+      // ─── ケース B: 初回ログイン or isAuthenticated=false ────────────────
       set({ isLoading: true });
       
       // Supabase Authからセッションを確認（期限切れの場合はrefresh_tokenで自動更新）
@@ -264,6 +259,7 @@ export const useAuthStore = create<AuthState>()(
                 initials: response.data.initials,
                 email: response.data.email,
               });
+              localStorage.setItem('employee-cache', JSON.stringify(response.data));
               set({ employee: response.data, isAuthenticated: true, isLoading: false });
               return;
             } catch {
@@ -282,9 +278,7 @@ export const useAuthStore = create<AuthState>()(
         localStorage.setItem('refresh_token', session.refresh_token);
       }
 
-      // 社員情報を取得
-      // ★ タイムアウトは短く(8秒)、api.ts の自動リトライは _skipRetry フラグで無効化
-      //   （二重リトライ防止: 8秒 × api.ts3回 = 24秒になるのを防ぐ）
+      // 社員情報を取得（短いタイムアウト、api.ts の自動リトライを無効化）
       const AUTH_ME_TIMEOUT = 8000;
       let authMeSuccess = false;
       for (let attempt = 1; attempt <= 3; attempt++) {
