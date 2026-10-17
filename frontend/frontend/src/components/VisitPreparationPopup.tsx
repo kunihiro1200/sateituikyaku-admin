@@ -440,7 +440,16 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         </Box>
       ),
     },
-    // 10. 評価ポイント！（システム内で入力・保存）
+    // 10. パンフレット
+    {
+      label: 'パンフレット',
+      content: (
+        <Typography component="span" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
+          パンフレット
+        </Typography>
+      ),
+    },
+    // 11. 評価ポイント！（システム内で入力・保存）
     {
       label: '評価ポイント！',
       noCheckbox: true,
@@ -460,15 +469,6 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         </Box>
       ) : (
         <span>（リンクなし）</span>
-      ),
-    },
-    // 11. パンフレット
-    {
-      label: 'パンフレット',
-      content: (
-        <Typography component="span" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
-          パンフレット
-        </Typography>
       ),
     },
     // ハウスメーカー（コメントにハウスメーカー名がある場合のみ）
