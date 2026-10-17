@@ -126,6 +126,9 @@ export default function SalesProposalModal({
   const [fetchingInfo, setFetchingInfo] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [infoFetched, setInfoFetched] = useState(false);
+  // 学校情報の取得元（UIに表示して確認しやすくする）
+  // 'doc2' = 添付資料2の保存済み値, 'api' = ライブAPI, null = 未取得
+  const [schoolSource, setSchoolSource] = useState<'doc2' | 'api' | null>(null);
 
   // コピー状態
   const [copied, setCopied] = useState(false);
@@ -165,7 +168,7 @@ export default function SalesProposalModal({
   // ─── 学校・交通情報の未取得時に自動取得 ────────────────────────────────────
   useEffect(() => {
     if (open && !infoFetched) {
-      fetchSchoolTransit();
+      fetchSchoolTransit(false); // force=false: 既存値を上書きしない
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, infoFetched]);
@@ -179,25 +182,65 @@ export default function SalesProposalModal({
     });
   }, [storageKey]);
 
-  // ─── 学校・交通情報の自動取得 ──────────────────────────────────────────────
-  const fetchSchoolTransit = useCallback(async () => {
+  // ─── 学校・交通情報の取得（優先順位あり）────────────────────────────────────
+  //
+  //  force = false（自動取得）: 既にフォームに値がある場合は上書きしない
+  //  force = true （手動リフレッシュ）: 常に最新値で上書き
+  //
+  //  学校情報の取得優先順位:
+  //    1. /api/sellers/${sellerId}/attached-document2（添付資料2の保存済み値）
+  //    2. /api/nearby-map/school-walk（ライブAPI）→ 1 で取得できなかった場合のみ
+  //    3. 空欄（手動入力へフォールバック）
+  //
+  //  交通アクセス: seller_transit_access テーブル経由（変更なし）
+  //
+  const fetchSchoolTransit = useCallback(async (force = false) => {
     if (!sellerNumber) return;
     setFetchingInfo(true);
     setFetchError(null);
 
     let schoolText = '';
     let transitText = '';
+    let usedDoc2 = false;
 
-    try {
-      // 座標取得
-      const coordRes = await api.get(`/api/sellers/by-number/${sellerNumber}`);
-      const lat: number | null = coordRes.data.latitude ?? null;
-      const lng: number | null = coordRes.data.longitude ?? null;
-      const addr: string = coordRes.data.propertyAddress || propertyAddress;
+    // ─ STEP 1: seller_attached_document2 から保存済み学校情報を取得（最優先） ─
+    if (sellerId) {
+      try {
+        const docRes = await api.get(`/api/sellers/${sellerId}/attached-document2`);
+        const doc = docRes.data ?? {};
+        const parts: string[] = [];
 
-      if (lat != null && lng != null) {
-        // 学校情報取得
-        try {
+        if (doc.elementary_school_name) {
+          const walk = doc.elementary_school_walk
+            ? `（徒歩${doc.elementary_school_walk}分）`
+            : '';
+          parts.push(`小学校：${doc.elementary_school_name}${walk}`);
+        }
+        if (doc.junior_high_school_name) {
+          const walk = doc.junior_high_school_walk
+            ? `（徒歩${doc.junior_high_school_walk}分）`
+            : '';
+          parts.push(`中学校：${doc.junior_high_school_name}${walk}`);
+        }
+
+        if (parts.length > 0) {
+          schoolText = parts.join(' / ');
+          usedDoc2 = true;
+        }
+      } catch {
+        // 添付資料2の取得失敗はサイレント → ライブAPIにフォールバック
+      }
+    }
+
+    // ─ STEP 2: doc2 に学校情報がない場合のみ、ライブAPIから取得 ──────────────
+    if (!usedDoc2) {
+      try {
+        const coordRes = await api.get(`/api/sellers/by-number/${sellerNumber}`);
+        const lat: number | null = coordRes.data.latitude ?? null;
+        const lng: number | null = coordRes.data.longitude ?? null;
+        const addr: string = coordRes.data.propertyAddress || propertyAddress;
+
+        if (lat != null && lng != null) {
           const schoolRes = await api.get('/api/nearby-map/school-walk', {
             params: { lat, lng, ...(addr ? { propertyAddress: addr } : {}) },
           });
@@ -226,58 +269,64 @@ export default function SalesProposalModal({
                 (walkMin != null ? `（徒歩${walkMin}分）` : ''),
             );
           }
-          schoolText = parts.join(' / ');
-        } catch { /* 学校取得失敗はサイレント */ }
-      }
-
-      // 交通アクセス取得
-      try {
-        const transitRes = await api.get(`/api/transit-access/seller/${sellerNumber}`);
-        const records: any[] = transitRes.data.data ?? [];
-        const maxRank = isFI ? 3 : 1;
-        const parts: string[] = [];
-
-        for (let rank = 1; rank <= maxRank; rank++) {
-          const st = records.find(r => r.transport_type === 'station' && r.rank === rank);
-          if (st) {
-            const name =
-              st.is_manually_corrected && st.manual_name ? st.manual_name : st.name;
-            const walk =
-              st.is_manually_corrected && st.manual_walk_minutes != null
-                ? st.manual_walk_minutes
-                : st.walk_minutes;
-            if (name) parts.push(`${name}駅${walk != null ? `（徒歩${walk}分）` : ''}`);
-          }
-          const bs = records.find(r => r.transport_type === 'bus_stop' && r.rank === rank);
-          if (bs) {
-            const name =
-              bs.is_manually_corrected && bs.manual_name ? bs.manual_name : bs.name;
-            const walk =
-              bs.is_manually_corrected && bs.manual_walk_minutes != null
-                ? bs.manual_walk_minutes
-                : bs.walk_minutes;
-            if (name) parts.push(`${name}バス停${walk != null ? `（徒歩${walk}分）` : ''}`);
-          }
+          if (parts.length > 0) schoolText = parts.join(' / ');
         }
-        transitText = parts.join(' / ');
-      } catch { /* 交通取得失敗はサイレント */ }
+      } catch {
+        // ライブAPI失敗もサイレント → 空欄のまま手動入力へ
+      }
+    }
 
-    } catch { /* 座標取得失敗 */ }
+    // ─ STEP 3: 交通アクセス（seller_transit_access テーブル・変更なし） ────────
+    try {
+      const transitRes = await api.get(`/api/transit-access/seller/${sellerNumber}`);
+      const records: any[] = transitRes.data.data ?? [];
+      const maxRank = isFI ? 3 : 1;
+      const parts: string[] = [];
+
+      for (let rank = 1; rank <= maxRank; rank++) {
+        const st = records.find(r => r.transport_type === 'station' && r.rank === rank);
+        if (st) {
+          const name =
+            st.is_manually_corrected && st.manual_name ? st.manual_name : st.name;
+          const walk =
+            st.is_manually_corrected && st.manual_walk_minutes != null
+              ? st.manual_walk_minutes
+              : st.walk_minutes;
+          if (name) parts.push(`${name}駅${walk != null ? `（徒歩${walk}分）` : ''}`);
+        }
+        const bs = records.find(r => r.transport_type === 'bus_stop' && r.rank === rank);
+        if (bs) {
+          const name =
+            bs.is_manually_corrected && bs.manual_name ? bs.manual_name : bs.name;
+          const walk =
+            bs.is_manually_corrected && bs.manual_walk_minutes != null
+              ? bs.manual_walk_minutes
+              : bs.walk_minutes;
+          if (name) parts.push(`${name}バス停${walk != null ? `（徒歩${walk}分）` : ''}`);
+        }
+      }
+      transitText = parts.join(' / ');
+    } catch {
+      // 交通取得失敗もサイレント
+    }
 
     setFetchingInfo(false);
     setInfoFetched(true);
+    setSchoolSource(usedDoc2 ? 'doc2' : (schoolText ? 'api' : null));
 
-    // 取得できた情報をフォームに反映（手動編集済みの場合は上書きしない）
+    // フォームに反映
+    //   force=true（手動リフレッシュ）: 常に上書き
+    //   force=false（自動取得）: 既に入力がある場合は上書きしない
     setForm(prev => {
       const next = {
         ...prev,
-        schoolInfo: prev.schoolInfo || schoolText,
-        transitInfo: prev.transitInfo || transitText,
+        schoolInfo: force ? schoolText : (prev.schoolInfo || schoolText),
+        transitInfo: force ? transitText : (prev.transitInfo || transitText),
       };
       try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* ignore */ }
       return next;
     });
-  }, [sellerNumber, propertyAddress, isFI, storageKey]);
+  }, [sellerId, sellerNumber, propertyAddress, isFI, storageKey]);
 
   // ─── 物件情報テキスト組み立て ──────────────────────────────────────────────
   const propertyTypeLabel = PROPERTY_TYPE_LABELS[propertyType] || propertyType || '不明';
@@ -470,11 +519,11 @@ Supabaseから取得した物件情報とスタッフが指定した条件を利
                 <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
                   🏫 学校・周辺環境
                 </Typography>
-                <Tooltip title="再取得">
+                <Tooltip title="添付資料2の保存値 → 学校区APIの順で再取得">
                   <span>
                     <IconButton
                       size="small"
-                      onClick={() => { setInfoFetched(false); fetchSchoolTransit(); }}
+                      onClick={() => { setInfoFetched(false); fetchSchoolTransit(true); }}
                       disabled={fetchingInfo}
                     >
                       {fetchingInfo
@@ -497,7 +546,22 @@ Supabaseから取得した物件情報とスタッフが指定した条件を利
                 value={form.schoolInfo}
                 onChange={e => setField('schoolInfo', e.target.value)}
                 sx={{ mb: 1 }}
-                helperText="自動取得できない場合は手動で入力してください"
+                helperText={
+                  schoolSource === 'doc2'
+                    ? '✅ 添付資料2の保存済み値を使用（手動編集可）'
+                    : schoolSource === 'api'
+                    ? '⚠️ 学校区APIから取得（添付資料2に未保存）'
+                    : '自動取得できない場合は手動で入力してください'
+                }
+                FormHelperTextProps={{
+                  sx: {
+                    color:
+                      schoolSource === 'doc2' ? '#4caf50' :
+                      schoolSource === 'api'  ? '#ff9800' :
+                      'text.secondary',
+                    fontWeight: schoolSource ? 'bold' : 'normal',
+                  },
+                }}
               />
               <TextField
                 fullWidth size="small" multiline rows={2}
