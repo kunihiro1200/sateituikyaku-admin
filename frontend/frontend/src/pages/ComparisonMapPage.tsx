@@ -237,8 +237,10 @@ const ComparisonMapPage: React.FC = () => {
   const [showExtractDialog, setShowExtractDialog] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  // 自動保存したマップのID（2回目以降の上書き用）
+  const [savedMapId, setSavedMapId] = useState<string | null>(null);
 
-  // ── 売主データ読み込み ────────────────────────────────────────
+  // ── 売主データ読み込み＆自動ジオコーディング ─────────────────
   useEffect(() => {
     if (!sellerId) { setPageLoading(false); return; }
     (async () => {
@@ -265,6 +267,7 @@ const ComparisonMapPage: React.FC = () => {
         const priceType: PriceType = maxVal > 0 ? '査定価格' : '査定前';
         const priceStr = maxVal > 0 ? String(Math.round(maxVal / 10000)) : '';
 
+        const hasCoords = !!(data.latitude && data.longitude);
         setSubject(prev => ({
           ...prev,
           address: addr,
@@ -272,12 +275,33 @@ const ComparisonMapPage: React.FC = () => {
           exclusiveArea: ba ? String(ba) : '',
           priceType,
           price: priceStr,
-          ...(data.latitude && data.longitude ? {
+          ...(hasCoords ? {
             latitude: data.latitude,
             longitude: data.longitude,
             locStatus: 'confirmed' as LocStatus,
           } : {}),
         }));
+
+        // ── 座標がなければ住所から自動ジオコーディング ──
+        if (!hasCoords && addr) {
+          setSubject(prev => ({ ...prev, locStatus: 'loading', locMsg: '' }));
+          try {
+            const { data: geoData } = await api.post('/api/comparison-maps/geocode', { address: addr });
+            if (geoData.success) {
+              setSubject(prev => ({
+                ...prev,
+                latitude: geoData.latitude,
+                longitude: geoData.longitude,
+                locStatus: geoData.needsConfirmation ? 'warning' : 'confirmed',
+                locMsg: geoData.message ?? '',
+              }));
+            } else {
+              setSubject(prev => ({ ...prev, locStatus: 'idle', locMsg: '' }));
+            }
+          } catch {
+            setSubject(prev => ({ ...prev, locStatus: 'idle', locMsg: '' }));
+          }
+        }
       } catch (err) {
         console.error('[ComparisonMap] load seller failed:', err);
         setPageError('売主データの読み込みに失敗しました。');
@@ -286,6 +310,58 @@ const ComparisonMapPage: React.FC = () => {
       }
     })();
   }, [sellerId]);
+
+  // ── 保存済み競合物件を復元 ────────────────────────────────────
+  useEffect(() => {
+    if (!sellerId) return;
+    (async () => {
+      try {
+        const { data: savedMaps } = await api.get(`/api/comparison-maps/seller/${sellerId}`);
+        if (!savedMaps?.length) return;
+        const latest = savedMaps[0];
+        setSavedMapId(latest.id);
+        const savedCompeting: CompetingProperty[] = (latest.competing_properties ?? []).map((p: any) => ({
+          id: uuidv4(),
+          name: p.name ?? '',
+          address: p.address ?? '',
+          latitude: p.latitude ?? null,
+          longitude: p.longitude ?? null,
+          price: p.price ?? '',
+          builtYearMonth: p.builtYearMonth ?? '',
+          exclusiveArea: p.exclusiveArea ?? '',
+          totalUnits: p.totalUnits ?? '',
+          floorInfo: p.floorInfo ?? '',
+          locStatus: (p.latitude && p.longitude ? 'confirmed' : 'idle') as LocStatus,
+          locMsg: '',
+        }));
+        if (savedCompeting.length > 0) setCompeting(savedCompeting);
+      } catch {
+        // 保存データなしは無視
+      }
+    })();
+  }, [sellerId]);
+
+  // ── 競合物件の自動保存（変更後2.5秒） ────────────────────────
+  useEffect(() => {
+    if (!sellerId || competing.length === 0) return;
+    const timer = setTimeout(async () => {
+      try {
+        const body = {
+          id: savedMapId,          // null = 新規 / 値あり = 上書き
+          sellerId,
+          sellerNumber: sellerInfo?.sellerNumber ?? '',
+          subjectProperty: { name: subject.name, address: subject.address, latitude: subject.latitude, longitude: subject.longitude, priceType: subject.priceType, price: subject.price, builtYearMonth: subject.builtYearMonth, exclusiveArea: subject.exclusiveArea },
+          competingProperties: competing.map(p => ({ name: p.name, address: p.address, latitude: p.latitude, longitude: p.longitude, price: p.price, builtYearMonth: p.builtYearMonth, exclusiveArea: p.exclusiveArea, totalUnits: p.totalUnits, floorInfo: p.floorInfo })),
+        };
+        const { data } = await api.post('/api/comparison-maps/save', body);
+        if (data?.id && !savedMapId) setSavedMapId(data.id);
+      } catch {
+        // 自動保存失敗は無視
+      }
+    }, 2500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [competing, sellerId]);
 
   // ── 地図の範囲自動調整 ───────────────────────────────────────
   const fitMap = useCallback(() => {
@@ -452,7 +528,7 @@ const ComparisonMapPage: React.FC = () => {
         })),
       ];
 
-      const html = buildPrintHtml(tableData.length, mapData.imageData, labelPositions, tableData);
+      const html = buildPrintHtml(tableData.length, mapData.imageData, tableData);
       const w = window.open('', '_blank');
       if (w) { w.document.write(html); w.document.close(); }
     } catch (err: any) {
@@ -470,29 +546,9 @@ const ComparisonMapPage: React.FC = () => {
   function buildPrintHtml(
     count: number,
     imgData: string,
-    labels: LabelForPrint[],
     tableData: TableForPrint[],
   ): string {
-    // 吹き出しラベルHTML
-    const CIRCLED = ['', '①', '②', '③', '④', '⑤']; // 1〜5の丸数字
-    const labelHtml = labels.map(p => {
-      const goLeft = p.xPct > 60;
-      const labelStyle = goLeft
-        ? `right:${(100 - p.xPct).toFixed(2)}%; top:${p.yPct.toFixed(2)}%; transform:translate(0,-50%);`
-        : `left:${p.xPct.toFixed(2)}%; top:${p.yPct.toFixed(2)}%; transform:translate(3mm,-50%);`;
-      const arrowClass = goLeft ? 'arrow-right' : 'arrow-left';
-      const areaLabel = extractAreaLabel(p.address);
-      // 査定対象は「★ 物件名」、競合は「① 物件名」形式
-      const num = parseInt(p.label, 10);
-      const prefix = p.isSubject ? '★ ' : (CIRCLED[num] ? CIRCLED[num] + ' ' : `${p.label} `);
-      const displayName = `${prefix}${p.name}`;
-      return `<div class="map-label ${arrowClass}" style="position:absolute;${labelStyle}">
-  <div class="label-name">${displayName}</div>
-  ${areaLabel ? `<div class="label-area">${areaLabel}</div>` : ''}
-</div>`;
-    }).join('\n');
-
-    // 比較表HTML
+    // 比較表HTML（ラベルオーバーレイは廃止 → 静的マップのピン番号のみ使用）
     const CIRCLED_NUM = ['', '①', '②', '③', '④', '⑤'];
     const colW = Math.floor(85 / tableData.length);
     const headerCells = tableData.map(p => {
@@ -607,47 +663,11 @@ body {
   padding: 1pt 3pt;
   border-radius: 2pt;
 }
-/* 吹き出しラベル */
-.map-label {
-  background: white;
-  border: 1.5pt solid #CC0000;
-  border-radius: 3pt;
-  padding: 2pt 5pt;
-  line-height: 1.3;
-  box-shadow: 1pt 1pt 3pt rgba(0,0,0,0.25);
-  white-space: nowrap;
-  pointer-events: none;
-}
-.label-name {
-  font-size: 8pt;
-  font-weight: bold;
-  color: #CC0000;
-}
-.label-area {
-  font-size: 6.5pt;
-  color: #333;
-}
-/* 左向き矢印（ラベルが右側にある場合） */
-.arrow-left::before {
-  content: '';
-  position: absolute;
-  left: -6pt;
   top: 50%;
   transform: translateY(-50%);
   border-top: 4pt solid transparent;
   border-bottom: 4pt solid transparent;
   border-right: 6pt solid #CC0000;
-}
-/* 右向き矢印（ラベルが左側にある場合） */
-.arrow-right::after {
-  content: '';
-  position: absolute;
-  right: -6pt;
-  top: 50%;
-  transform: translateY(-50%);
-  border-top: 4pt solid transparent;
-  border-bottom: 4pt solid transparent;
-  border-left: 6pt solid #CC0000;
 }
 .table-section {
   flex-shrink: 0;
@@ -673,7 +693,6 @@ body {
   <div class="title">${count}物件 比較マップ</div>
   <div class="map-wrapper">
     <img src="${imgData}" alt="比較マップ" />
-    ${labelHtml}
     <div class="map-attribution">© Google</div>
   </div>
   <div class="table-section">

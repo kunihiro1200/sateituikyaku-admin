@@ -252,30 +252,63 @@ router.get('/static-map', async (req: Request, res: Response) => {
 // ── 比較マップ保存 ──────────────────────────────────────────────
 /**
  * POST /api/comparison-maps/save
+ * body に id があれば更新、なければ新規作成。1売主につき1件を維持する。
  */
 router.post('/save', async (req: Request, res: Response) => {
   try {
-    const { sellerId, sellerNumber, mapTitle, subjectProperty, competingProperties, createdBy } = req.body;
+    const { id, sellerId, sellerNumber, mapTitle, subjectProperty, competingProperties, createdBy } = req.body;
 
     const supabase = getSupabase();
+
+    if (id) {
+      // 既存レコードを更新
+      const { error } = await supabase
+        .from('comparison_maps')
+        .update({
+          map_title: mapTitle ?? null,
+          subject_property: subjectProperty ?? {},
+          competing_properties: competingProperties ?? [],
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+      if (error) throw error;
+      return res.json({ success: true, id });
+    }
+
+    // sellerId で既存レコードを検索（同一売主に複数作らない）
+    if (sellerId) {
+      const { data: existing } = await supabase
+        .from('comparison_maps')
+        .select('id')
+        .eq('seller_id', sellerId)
+        .limit(1)
+        .single();
+      if (existing?.id) {
+        await supabase.from('comparison_maps').update({
+          map_title: mapTitle ?? null,
+          subject_property: subjectProperty ?? {},
+          competing_properties: competingProperties ?? [],
+          updated_at: new Date().toISOString(),
+        }).eq('id', existing.id);
+        return res.json({ success: true, id: existing.id });
+      }
+    }
+
+    // 新規作成
     const { data, error } = await supabase
       .from('comparison_maps')
       .insert({
-        seller_id: sellerId || null,
-        seller_number: sellerNumber || null,
-        map_title: mapTitle || null,
+        seller_id: sellerId ?? null,
+        seller_number: sellerNumber ?? null,
+        map_title: mapTitle ?? null,
         subject_property: subjectProperty ?? {},
         competing_properties: competingProperties ?? [],
-        created_by: createdBy || null,
+        created_by: createdBy ?? null,
       })
       .select('id')
       .single();
 
-    if (error) {
-      console.error('[ComparisonMap] save error:', error);
-      return res.status(500).json({ error: '保存に失敗しました。' });
-    }
-
+    if (error) throw error;
     return res.json({ success: true, id: data.id });
   } catch (err: any) {
     console.error('[ComparisonMap] save error:', err?.message);
