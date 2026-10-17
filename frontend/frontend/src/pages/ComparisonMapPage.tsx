@@ -410,41 +410,20 @@ const ComparisonMapPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [competing, settledCompeting, sellerId]);
 
-  // ── 近隣の学校を Places API で検索 ────────────────────────────
+  // ── 近隣の学校を Places API で検索（バックエンド経由） ────────
   useEffect(() => {
-    if (!subject.latitude || !subject.longitude || !isLoaded || !window.google) return;
-
-    const location = { lat: subject.latitude, lng: subject.longitude };
-
-    const searchNearby = (type: string): Promise<Array<{ lat: number; lng: number; name: string }>> =>
-      new Promise(resolve => {
-        const svc = new window.google.maps.places.PlacesService(document.createElement('div'));
-        svc.nearbySearch(
-          { location, radius: 1500, type: type as any },
-          (results, status) => {
-            if (status === 'OK' && results) {
-              resolve(results.slice(0, 8).map(r => ({
-                lat: r.geometry!.location!.lat(),
-                lng: r.geometry!.location!.lng(),
-                name: r.name ?? '',
-              })));
-            } else {
-              resolve([]);
-            }
-          }
-        );
-      });
-
-    Promise.all([
-      searchNearby('primary_school'),
-      searchNearby('secondary_school'),
-    ]).then(([el, mi]) => {
-      setSchoolMarkers([
-        ...el.map(s => ({ ...s, schoolType: 'elementary' as const })),
-        ...mi.map(s => ({ ...s, schoolType: 'middle' as const })),
-      ]);
-    }).catch(console.error);
-  }, [subject.latitude, subject.longitude, isLoaded]);
+    if (!subject.latitude || !subject.longitude) return;
+    // バックエンド経由でサーバーサイド Places API を呼ぶ（フロント直接呼び出しより安定）
+    api.get('/api/comparison-maps/nearby-schools', {
+      params: { lat: subject.latitude, lng: subject.longitude },
+    }).then(({ data }) => {
+      const markers = [
+        ...(data.elementary ?? []).map((s: any) => ({ ...s, schoolType: 'elementary' as const })),
+        ...(data.middle ?? []).map((s: any) => ({ ...s, schoolType: 'middle' as const })),
+      ];
+      setSchoolMarkers(markers);
+    }).catch(err => console.warn('[ComparisonMap] nearby-schools failed:', err?.message));
+  }, [subject.latitude, subject.longitude]);
 
   // ── 地図の範囲自動調整 ───────────────────────────────────────
   const fitMap = useCallback(() => {
@@ -673,7 +652,7 @@ const ComparisonMapPage: React.FC = () => {
         { isSubject: true, label: '★', name: subject.name || '査定対象物件', address: subject.address, price: subject.price, priceType: subject.priceType, builtYearMonth: subject.builtYearMonth, exclusiveArea: subject.exclusiveArea },
         ...settledCompeting.map((p, i): TableItem => ({ isSubject: false, label: String(i + 1), name: p.name || `成約物件${i + 1}`, address: p.address, price: p.price, priceType: undefined, builtYearMonth: p.builtYearMonth, exclusiveArea: p.exclusiveArea })),
       ];
-      const html = buildPrintHtml(tableData.length, mapData.imageData, tableData, { titleSuffix: '（成約済み物件）', priceRowLabel: '成約価格', badgeColor: '#2196F3' });
+      const html = buildPrintHtml(tableData.length, mapData.imageData, tableData, { titleSuffix: '（成約済み物件）', priceRowLabel: '成約価格', badgeColor: '#2196F3', accentColor: '#1565c0' });
       const w = window.open('', '_blank');
       if (w) { w.document.write(html); w.document.close(); }
     } catch (err) {
@@ -691,10 +670,11 @@ const ComparisonMapPage: React.FC = () => {
     count: number,
     imgData: string,
     tableData: TableForPrint[],
-    options?: { titleSuffix?: string; priceRowLabel?: string; badgeColor?: string }
+    options?: { titleSuffix?: string; priceRowLabel?: string; badgeColor?: string; accentColor?: string }
   ): string {
     const titleSuffix = options?.titleSuffix ?? '（現在募集中物件）';
     const priceRowLabel = options?.priceRowLabel ?? '価格';
+    const accentColor = options?.accentColor ?? '#CC0000';
     const subjectBadgeBg = '#FF8800';
     const competingBadgeBg = options?.badgeColor ?? '#CC0000';
     // 比較表HTML（ラベルオーバーレイは廃止 → 静的マップのピン番号のみ使用）
@@ -791,7 +771,7 @@ body {
   letter-spacing: 1pt;
   padding-bottom: 3pt;
   margin-bottom: 3pt;
-  border-bottom: 2.5pt solid #CC0000;
+  border-bottom: 2.5pt solid ${accentColor};
 }
 .map-wrapper {
   position: relative;   /* 吹き出しラベルの基準 */
@@ -1031,6 +1011,8 @@ body {
   };
 
   // ── 地図プレビュー ────────────────────────────────────────────
+  // ⚠️ schoolMarkers / showSchools を deps に含めないと
+  //    useCallback がキャッシュした古い値でレンダリングされるため必ず含める
   const MapPreview = useCallback(() => {
     if (!isLoaded) {
       return (
@@ -1143,7 +1125,7 @@ body {
         })}
       </GoogleMap>
     );
-  }, [isLoaded, subject, competing, infoId, fitMap]);
+  }, [isLoaded, subject, competing, infoId, fitMap, showSchools, schoolMarkers]);
 
   // ── レンダリング ───────────────────────────────────────────────
   if (pageLoading) {

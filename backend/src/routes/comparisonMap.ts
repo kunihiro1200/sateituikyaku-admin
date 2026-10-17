@@ -117,6 +117,45 @@ router.post('/extract-properties', async (req: Request, res: Response) => {
   }
 });
 
+// ── 近隣の学校を取得（バックエンド経由・Places API） ─────────────
+/**
+ * GET /api/comparison-maps/nearby-schools?lat=&lng=&radius=
+ */
+router.get('/nearby-schools', async (req: Request, res: Response) => {
+  try {
+    const { lat, lng, radius = '1500' } = req.query as Record<string, string>;
+    if (!lat || !lng) return res.status(400).json({ error: 'lat, lng が必要です。' });
+
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'GOOGLE_MAPS_API_KEY が未設定です。' });
+
+    const searchSchools = async (type: string) => {
+      const resp = await axios.get('https://maps.googleapis.com/maps/api/place/nearbysearch/json', {
+        params: { location: `${lat},${lng}`, radius, type, key: apiKey, language: 'ja' },
+        timeout: 8000,
+      });
+      return ((resp.data.results as any[]) ?? []).slice(0, 8).map((r: any) => ({
+        name: r.name ?? '',
+        lat: r.geometry?.location?.lat ?? 0,
+        lng: r.geometry?.location?.lng ?? 0,
+      }));
+    };
+
+    const [elementary, middle] = await Promise.all([
+      searchSchools('primary_school'),
+      searchSchools('secondary_school'),
+    ]);
+
+    return res.json({
+      elementary: elementary.map(s => ({ ...s, schoolType: 'elementary' })),
+      middle: middle.map(s => ({ ...s, schoolType: 'middle' })),
+    });
+  } catch (err: any) {
+    console.error('[ComparisonMap] nearby-schools error:', err?.message);
+    return res.status(500).json({ error: '学校情報の取得に失敗しました。' });
+  }
+});
+
 // ── 住所ジオコーディング ──────────────────────────────────────────
 /**
  * POST /api/comparison-maps/geocode
