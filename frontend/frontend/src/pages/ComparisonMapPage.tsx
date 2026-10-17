@@ -580,12 +580,6 @@ const ComparisonMapPage: React.FC = () => {
         },
       });
 
-      type LabelItem2 = PinItem & { xPct: number; yPct: number };
-      const labelPositions: LabelItem2[] = pins.map(p => {
-        const { xPct, yPct } = latLngToPixelPct(p.lat, p.lng, centerLat, centerLng, zoom, ACT_W, ACT_H);
-        return { ...p, xPct, yPct: Math.max(0, yPct - PIN_Y_OFFSET_PCT) };
-      });
-
       // 各ピンの画像上の % 位置を計算（吹き出しラベル用）
       // ★ ピンは「先端（Tip）= 座標位置」だが、番号バッジは円部（先端から約26px上）にある。
       //    ラベルを番号バッジに揃えるため Y を上方向にオフセットする。
