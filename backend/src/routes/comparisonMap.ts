@@ -219,9 +219,10 @@ router.get('/static-map', async (req: Request, res: Response) => {
       params.push(`zoom=${zoom}`);
     }
 
-    // マーカーを追加
+    // マーカーを追加（labelが空の場合はlabel:を省略してシンプルピンにする）
     for (const m of markers) {
-      params.push(`markers=color:${m.color}|size:large|label:${m.label}|${m.lat},${m.lng}`);
+      const labelPart = m.label ? `|label:${m.label}` : '';
+      params.push(`markers=color:${m.color}|size:large${labelPart}|${m.lat},${m.lng}`);
     }
 
     const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?${params.join('&')}`;

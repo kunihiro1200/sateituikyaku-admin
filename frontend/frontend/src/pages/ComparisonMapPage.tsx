@@ -359,7 +359,7 @@ const ComparisonMapPage: React.FC = () => {
     };
     const pins: PinItem[] = [];
     if (subject.latitude && subject.longitude) {
-      pins.push({ isSubject: true, label: 'S', name: subject.name || '査定対象物件', address: subject.address, lat: subject.latitude, lng: subject.longitude });
+      pins.push({ isSubject: true, label: '★', name: subject.name || '査定対象物件', address: subject.address, lat: subject.latitude, lng: subject.longitude });
     }
     competing.forEach((p, i) => {
       if (p.latitude && p.longitude) {
@@ -390,7 +390,9 @@ const ComparisonMapPage: React.FC = () => {
       const zoom = calcBoundsZoom(points, ACT_W, ACT_H);
 
       const markers = pins.map(p => ({
-        lat: p.lat, lng: p.lng, label: p.label,
+        lat: p.lat, lng: p.lng,
+        // 査定対象はラベルなし（金ピン）。Static APIはA-Z/0-9のみ対応のため★は空文字にする
+        label: p.isSubject ? '' : p.label,
         color: p.isSubject ? '0xFFAA00' : '0xFF0000',
       }));
 
@@ -420,7 +422,7 @@ const ComparisonMapPage: React.FC = () => {
       };
       const tableData: TableItem[] = [
         {
-          isSubject: true, label: 'S',
+          isSubject: true, label: '★',
           name: subject.name || '査定対象物件',
           address: subject.address,
           price: subject.price,
@@ -461,27 +463,33 @@ const ComparisonMapPage: React.FC = () => {
     tableData: TableForPrint[],
   ): string {
     // 吹き出しラベルHTML
+    const CIRCLED = ['', '①', '②', '③', '④', '⑤']; // 1〜5の丸数字
     const labelHtml = labels.map(p => {
-      // 右側配置か左側配置かを決定（xPct > 60% なら左に）
       const goLeft = p.xPct > 60;
       const labelStyle = goLeft
         ? `right:${(100 - p.xPct).toFixed(2)}%; top:${p.yPct.toFixed(2)}%; transform:translate(0,-50%);`
         : `left:${p.xPct.toFixed(2)}%; top:${p.yPct.toFixed(2)}%; transform:translate(3mm,-50%);`;
       const arrowClass = goLeft ? 'arrow-right' : 'arrow-left';
       const areaLabel = extractAreaLabel(p.address);
+      // 査定対象は「★ 物件名」、競合は「① 物件名」形式
+      const num = parseInt(p.label, 10);
+      const prefix = p.isSubject ? '★ ' : (CIRCLED[num] ? CIRCLED[num] + ' ' : `${p.label} `);
+      const displayName = `${prefix}${p.name}`;
       return `<div class="map-label ${arrowClass}" style="position:absolute;${labelStyle}">
-  <div class="label-name">${p.name}</div>
+  <div class="label-name">${displayName}</div>
   ${areaLabel ? `<div class="label-area">${areaLabel}</div>` : ''}
 </div>`;
     }).join('\n');
 
     // 比較表HTML
-    const colW = Math.floor(85 / tableData.length); // header列15mm引いた残りを均等分割
-
+    const CIRCLED_NUM = ['', '①', '②', '③', '④', '⑤'];
+    const colW = Math.floor(85 / tableData.length);
     const headerCells = tableData.map(p => {
       const badgeBg = p.isSubject ? '#FF8800' : '#CC0000';
+      const num = parseInt(p.label, 10);
+      const badgeLabel = p.isSubject ? '★' : (CIRCLED_NUM[num] ?? p.label);
       return `<th style="width:${colW}%;text-align:center;background:#fff;padding:3pt 2pt;border:0.5pt solid #ccc;">
-  <div style="display:inline-flex;width:18pt;height:18pt;border-radius:50%;background:${badgeBg};color:white;font-weight:bold;font-size:9pt;align-items:center;justify-content:center;margin-bottom:2pt;">${p.label}</div>
+  <div style="display:inline-flex;width:18pt;height:18pt;border-radius:50%;background:${badgeBg};color:white;font-weight:bold;font-size:9pt;align-items:center;justify-content:center;margin-bottom:2pt;">${p.isSubject ? '★' : p.label}</div>
   <div style="font-size:7pt;font-weight:bold;line-height:1.3;color:#111;">${p.name}</div>
   <div style="font-size:6pt;color:#555;line-height:1.3;">${p.address}</div>
 </th>`;
@@ -733,8 +741,8 @@ body {
     if (file) processFile(file);
   };
 
-  /** 確認ダイアログで「追加する」を押した時 */
-  const handleAddExtracted = () => {
+  /** 確認ダイアログで「追加する」を押した時 ─ 追加後に自動ジオコーディング */
+  const handleAddExtracted = async () => {
     const remaining = 5 - competing.length;
     const toAdd = extractedProps.slice(0, remaining).map(p => ({
       ...newCompeting(),
@@ -749,6 +757,28 @@ body {
     setCompeting(arr => [...arr, ...toAdd]);
     setShowExtractDialog(false);
     setExtractedProps([]);
+
+    // 住所がある物件は自動ジオコーディング
+    for (const prop of toAdd) {
+      if (!prop.address.trim()) continue;
+      setCompeting(arr => arr.map(p => p.id === prop.id ? { ...p, locStatus: 'loading', locMsg: '' } : p));
+      try {
+        const { data } = await api.post('/api/comparison-maps/geocode', { address: prop.address, name: prop.name });
+        setCompeting(arr => arr.map(p => {
+          if (p.id !== prop.id) return p;
+          if (!data.success) return { ...p, locStatus: 'error', locMsg: data.error ?? 'エラー' };
+          return {
+            ...p,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            locStatus: data.needsConfirmation ? 'warning' : 'confirmed',
+            locMsg: data.message ?? '',
+          };
+        }));
+      } catch {
+        setCompeting(arr => arr.map(p => p.id === prop.id ? { ...p, locStatus: 'error', locMsg: '位置取得に失敗しました' } : p));
+      }
+    }
   };
 
   // ── 競合物件の更新ヘルパー ────────────────────────────────────
@@ -913,7 +943,8 @@ body {
               <Grid item xs={12}>
                 <Box sx={{ display: 'flex', gap: 0.5 }}>
                   <TextField label="所在地" value={subject.address} size="small" fullWidth
-                    onChange={e => setSubject(p => ({ ...p, address: e.target.value, locStatus: 'idle', locMsg: '' }))} />
+                    onChange={e => setSubject(p => ({ ...p, address: e.target.value, locStatus: 'idle', locMsg: '' }))}
+                    onBlur={() => { if (subject.address.trim() && subject.locStatus === 'idle') geocode('subject'); }} />
                   <Button variant="outlined" size="small" sx={{ whiteSpace: 'nowrap', minWidth: 76 }}
                     onClick={() => geocode('subject')}
                     disabled={subject.locStatus === 'loading' || !subject.address.trim()}
@@ -1008,7 +1039,8 @@ body {
                 <Grid item xs={12}>
                   <Box sx={{ display: 'flex', gap: 0.5 }}>
                     <TextField label="所在地" value={prop.address} size="small" fullWidth
-                      onChange={e => updComp(prop.id, { address: e.target.value, locStatus: 'idle', locMsg: '' })} />
+                      onChange={e => updComp(prop.id, { address: e.target.value, locStatus: 'idle', locMsg: '' })}
+                      onBlur={() => { if (prop.address.trim() && prop.locStatus === 'idle') geocode(prop.id); }} />
                     <Button variant="outlined" size="small" sx={{ whiteSpace: 'nowrap', minWidth: 76 }}
                       onClick={() => geocode(prop.id)}
                       disabled={prop.locStatus === 'loading' || !prop.address.trim()}
