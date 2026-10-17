@@ -381,13 +381,18 @@ const ComparisonMapPage: React.FC = () => {
     setPrintLoading(true);
     try {
       // 静的地図パラメータを計算
-      const IMG_W = 600, IMG_H = 380;
-      const ACT_W = IMG_W * 2, ACT_H = IMG_H * 2; // scale=2
+      // IMG_H=460 で縦長にしてA4の余白を削減
+      const IMG_W = 600, IMG_H = 460;
+      const ACT_W = IMG_W * 2, ACT_H = IMG_H * 2; // scale=2 で物理サイズは2倍
 
       const points = pins.map(p => ({ lat: p.lat, lng: p.lng }));
-      const centerLat = points.reduce((s, p) => s + p.lat, 0) / points.length;
-      const centerLng = points.reduce((s, p) => s + p.lng, 0) / points.length;
-      const zoom = calcBoundsZoom(points, ACT_W, ACT_H);
+      // ── 中心 = バウンディングボックスの中央（平均より精確）
+      const lats = points.map(p => p.lat);
+      const lngs = points.map(p => p.lng);
+      const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+      const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+      // ── ズーム = 論理サイズ(600×460)・大きめのパディングで全ピンを収める
+      const zoom = calcBoundsZoom(points, IMG_W, IMG_H, 110);
 
       const markers = pins.map(p => ({
         lat: p.lat, lng: p.lng,
@@ -408,11 +413,17 @@ const ComparisonMapPage: React.FC = () => {
         },
       });
 
-      // 各ピンの画像上のパーセント位置を計算（吹き出しラベル用）
+      // 各ピンの画像上の % 位置を計算（吹き出しラベル用）
+      // ★ ピンは「先端（Tip）= 座標位置」だが、番号バッジは円部（先端から約26px上）にある。
+      //    ラベルを番号バッジに揃えるため Y を上方向にオフセットする。
+      //    大きなマーカー(scale=2)の物理高さ ≈ 72px → 論理 36px
+      //    バッジ中心 ≈ 先端から 26px 上 → ACT_H=920 に対して 52px = 52/920 = 5.7%
+      const PIN_Y_OFFSET_PCT = 5.5; // Tip → バッジ中心へのオフセット（%）
+
       type LabelItem = PinItem & { xPct: number; yPct: number };
       const labelPositions: LabelItem[] = pins.map(p => {
         const { xPct, yPct } = latLngToPixelPct(p.lat, p.lng, centerLat, centerLng, zoom, ACT_W, ACT_H);
-        return { ...p, xPct, yPct };
+        return { ...p, xPct, yPct: Math.max(0, yPct - PIN_Y_OFFSET_PCT) };
       });
 
       // 比較表データ（全物件：位置未確認でも表示）
