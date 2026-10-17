@@ -27,7 +27,7 @@ import {
   UploadFile as UploadFileIcon,
   Edit as EditIcon,
 } from '@mui/icons-material';
-import { GoogleMap, Marker, InfoWindow, TransitLayer } from '@react-google-maps/api';
+import { GoogleMap, Marker, InfoWindow, TransitLayer, OverlayView } from '@react-google-maps/api';
 import { useGoogleMaps } from '../contexts/GoogleMapsContext';
 import api from '../services/api';
 import { v4 as uuidv4 } from 'uuid';
@@ -278,10 +278,9 @@ const ComparisonMapPage: React.FC = () => {
         const ba = data.property?.buildingArea ?? data.buildingArea;
 
         // 査定額
-        const v1 = data.valuationAmount1, v2 = data.valuationAmount2, v3 = data.valuationAmount3;
-        const maxVal = Math.max(v1 || 0, v2 || 0, v3 || 0);
-        const priceType: PriceType = maxVal > 0 ? '査定価格' : '査定前';
-        const priceStr = maxVal > 0 ? String(Math.round(maxVal / 10000)) : '';
+        // 査定額は自動補完しない（デフォルト：査定前・空欄）
+        const priceType: PriceType = '査定前';
+        const priceStr = '';
 
         const hasCoords = !!(data.latitude && data.longitude);
         setSubject(prev => ({
@@ -539,13 +538,35 @@ const ComparisonMapPage: React.FC = () => {
         color: p.isSubject ? '0xFFAA00' : '0xFF0000',
       }));
 
-      // 学校マーカーを追加（showSchools ON かつ座標が取れているもの）
-      const schoolMarkersForPrint = showSchools ? schoolMarkers.map(s => ({
+      // 学校マーカーを追加（showSchools ON の場合・印刷前に未ロードなら取得）
+      let currentSchools = schoolMarkers;
+      if (showSchools && currentSchools.length === 0 && subject.latitude && subject.longitude) {
+        try {
+          const { data: sd } = await api.get('/api/comparison-maps/nearby-schools', {
+            params: { lat: subject.latitude, lng: subject.longitude },
+          });
+          currentSchools = [
+            ...(sd.elementary ?? []).map((s: any) => ({ ...s, schoolType: 'elementary' as const })),
+            ...(sd.middle ?? []).map((s: any) => ({ ...s, schoolType: 'middle' as const })),
+          ];
+          setSchoolMarkers(currentSchools);
+        } catch { /* 学校なしで続行 */ }
+      }
+
+      // Static Maps 用マーカー（学校はサイズ mid で数字なし）
+      const schoolMarkersForPrint = showSchools ? currentSchools.map(s => ({
         lat: s.lat, lng: s.lng,
         label: s.schoolType === 'elementary' ? 'E' : 'M',
         color: s.schoolType === 'elementary' ? '0x4CAF50' : '0xFF9800',
-        size: 'small' as const,
+        size: 'mid' as const,  // mid = ラベル付き小マーカー
       })) : [];
+
+      // CSS オーバーレイ用の学校位置（パーセント）を計算
+      type SchoolForPrint = typeof currentSchools[0] & { xPct: number; yPct: number };
+      const schoolsForOverlay: SchoolForPrint[] = showSchools ? currentSchools.map(s => {
+        const { xPct, yPct } = latLngToPixelPct(s.lat, s.lng, centerLat, centerLng, zoom, ACT_W, ACT_H);
+        return { ...s, xPct, yPct };
+      }) : [];
 
       // バックエンドから静的地図画像（base64）を取得
       const { data: mapData } = await api.get('/api/comparison-maps/static-map', {
@@ -557,6 +578,12 @@ const ComparisonMapPage: React.FC = () => {
           width: IMG_W,
           height: IMG_H,
         },
+      });
+
+      type LabelItem2 = PinItem & { xPct: number; yPct: number };
+      const labelPositions: LabelItem2[] = pins.map(p => {
+        const { xPct, yPct } = latLngToPixelPct(p.lat, p.lng, centerLat, centerLng, zoom, ACT_W, ACT_H);
+        return { ...p, xPct, yPct: Math.max(0, yPct - PIN_Y_OFFSET_PCT) };
       });
 
       // 各ピンの画像上の % 位置を計算（吹き出しラベル用）
@@ -598,7 +625,7 @@ const ComparisonMapPage: React.FC = () => {
         })),
       ];
 
-      const html = buildPrintHtml(tableData.length, mapData.imageData, tableData);
+      const html = buildPrintHtml(tableData.length, mapData.imageData, tableData, undefined, schoolsForOverlay);
       const w = window.open('', '_blank');
       if (w) { w.document.write(html); w.document.close(); }
     } catch (err: any) {
@@ -665,18 +692,30 @@ const ComparisonMapPage: React.FC = () => {
   // ── 印刷HTML構築 ──────────────────────────────────────────────
   type LabelForPrint = { isSubject: boolean; label: string; name: string; address: string; xPct: number; yPct: number };
   type TableForPrint = { isSubject: boolean; label: string; name: string; address: string; price: string; priceType?: PriceType; builtYearMonth: string; exclusiveArea: string };
+  type SchoolForPrint = { lat: number; lng: number; name: string; schoolType: 'elementary' | 'middle'; xPct: number; yPct: number };
 
   function buildPrintHtml(
     count: number,
     imgData: string,
     tableData: TableForPrint[],
-    options?: { titleSuffix?: string; priceRowLabel?: string; badgeColor?: string; accentColor?: string }
+    options?: { titleSuffix?: string; priceRowLabel?: string; badgeColor?: string; accentColor?: string },
+    schools?: SchoolForPrint[]
   ): string {
     const titleSuffix = options?.titleSuffix ?? '（現在募集中物件）';
     const priceRowLabel = options?.priceRowLabel ?? '価格';
     const accentColor = options?.accentColor ?? '#CC0000';
     const subjectBadgeBg = '#FF8800';
     const competingBadgeBg = options?.badgeColor ?? '#CC0000';
+    // ── 学校名 CSS ラベル ──
+    const schoolLabelsHtml = (schools ?? []).map(s => {
+      const borderColor = s.schoolType === 'elementary' ? '#4CAF50' : '#FF9800';
+      const textColor = s.schoolType === 'elementary' ? '#2E7D32' : '#E65100';
+      const goLeft = s.xPct > 65;
+      const xStyle = goLeft
+        ? `right:${(100 - s.xPct).toFixed(2)}%; transform:translate(0,-50%);`
+        : `left:${s.xPct.toFixed(2)}%; transform:translate(4pt,-50%);`;
+      return `<div style="position:absolute;${xStyle}top:${s.yPct.toFixed(2)}%;background:rgba(255,255,255,0.92);border:0.5pt solid ${borderColor};border-radius:2pt;padding:0.5pt 2pt;font-size:6pt;font-weight:bold;color:${textColor};white-space:nowrap;pointer-events:none;line-height:1.2;">${s.name}</div>`;
+    }).join('');
     // 比較表HTML（ラベルオーバーレイは廃止 → 静的マップのピン番号のみ使用）
     const CIRCLED_NUM = ['', '①', '②', '③', '④', '⑤'];
     const colW = Math.floor(85 / tableData.length);
@@ -825,6 +864,7 @@ body {
   <div class="title">${count}物件 比較表${titleSuffix}</div>
   <div class="map-wrapper">
     <img src="${imgData}" alt="比較マップ" />
+    ${schoolLabelsHtml}
     <div class="map-attribution">© Google</div>
   </div>
   <div class="table-section">
@@ -1037,25 +1077,39 @@ body {
 
         {/* 学校マーカー（showSchools が ON の場合） */}
         {showSchools && schoolMarkers.map((s, i) => (
-          <Marker
-            key={`school-${i}`}
-            position={{ lat: s.lat, lng: s.lng }}
-            label={{
-              text: s.schoolType === 'elementary' ? '小' : '中',
-              color: 'white',
-              fontWeight: 'bold',
-              fontSize: '11px',
-            }}
-            icon={{
-              path: googleMaps.SymbolPath.CIRCLE,
-              fillColor: s.schoolType === 'elementary' ? '#4CAF50' : '#FF9800',
-              fillOpacity: 1,
-              strokeWeight: 2,
-              strokeColor: 'white',
-              scale: 11,
-            }}
-            title={s.name}
-          />
+          <React.Fragment key={`school-${i}`}>
+            <Marker
+              position={{ lat: s.lat, lng: s.lng }}
+              label={{ text: s.schoolType === 'elementary' ? '小' : '中', color: 'white', fontWeight: 'bold', fontSize: '11px' }}
+              icon={{
+                path: googleMaps.SymbolPath.CIRCLE,
+                fillColor: s.schoolType === 'elementary' ? '#4CAF50' : '#FF9800',
+                fillOpacity: 1,
+                strokeWeight: 2,
+                strokeColor: 'white',
+                scale: 11,
+              }}
+              title={s.name}
+            />
+            {/* 学校名ラベル（常に表示） */}
+            <OverlayView
+              position={{ lat: s.lat, lng: s.lng }}
+              mapPaneName="overlayLayer"
+              getPixelPositionOffset={() => ({ x: 14, y: -8 })}
+            >
+              <div style={{
+                background: 'rgba(255,255,255,0.92)',
+                border: `1px solid ${s.schoolType === 'elementary' ? '#4CAF50' : '#FF9800'}`,
+                borderRadius: '3px', padding: '1px 4px',
+                fontSize: '10px', fontWeight: 'bold',
+                color: s.schoolType === 'elementary' ? '#2E7D32' : '#E65100',
+                whiteSpace: 'nowrap', boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                pointerEvents: 'none', lineHeight: '1.3',
+              }}>
+                {s.name}
+              </div>
+            </OverlayView>
+          </React.Fragment>
         ))}
 
         {/* 査定対象 */}
