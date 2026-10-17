@@ -359,7 +359,7 @@ const ComparisonMapPage: React.FC = () => {
     };
     const pins: PinItem[] = [];
     if (subject.latitude && subject.longitude) {
-      pins.push({ isSubject: true, label: 'S', name: subject.name || '査定対象物件', address: subject.address, lat: subject.latitude, lng: subject.longitude });
+      pins.push({ isSubject: true, label: '★', name: subject.name || '査定対象物件', address: subject.address, lat: subject.latitude, lng: subject.longitude });
     }
     competing.forEach((p, i) => {
       if (p.latitude && p.longitude) {
@@ -390,7 +390,9 @@ const ComparisonMapPage: React.FC = () => {
       const zoom = calcBoundsZoom(points, ACT_W, ACT_H);
 
       const markers = pins.map(p => ({
-        lat: p.lat, lng: p.lng, label: p.label,
+        lat: p.lat, lng: p.lng,
+        // 査定対象はラベルなし（金ピン）。Static APIはA-Z/0-9のみ対応のため★は空文字にする
+        label: p.isSubject ? '' : p.label,
         color: p.isSubject ? '0xFFAA00' : '0xFF0000',
       }));
 
@@ -420,7 +422,7 @@ const ComparisonMapPage: React.FC = () => {
       };
       const tableData: TableItem[] = [
         {
-          isSubject: true, label: 'S',
+          isSubject: true, label: '★',
           name: subject.name || '査定対象物件',
           address: subject.address,
           price: subject.price,
@@ -462,15 +464,16 @@ const ComparisonMapPage: React.FC = () => {
   ): string {
     // 吹き出しラベルHTML
     const labelHtml = labels.map(p => {
-      // 右側配置か左側配置かを決定（xPct > 60% なら左に）
       const goLeft = p.xPct > 60;
       const labelStyle = goLeft
         ? `right:${(100 - p.xPct).toFixed(2)}%; top:${p.yPct.toFixed(2)}%; transform:translate(0,-50%);`
         : `left:${p.xPct.toFixed(2)}%; top:${p.yPct.toFixed(2)}%; transform:translate(3mm,-50%);`;
       const arrowClass = goLeft ? 'arrow-right' : 'arrow-left';
       const areaLabel = extractAreaLabel(p.address);
+      // 査定対象は ★ を名前の前に付ける
+      const displayName = p.isSubject ? `★ ${p.name}` : p.name;
       return `<div class="map-label ${arrowClass}" style="position:absolute;${labelStyle}">
-  <div class="label-name">${p.name}</div>
+  <div class="label-name">${displayName}</div>
   ${areaLabel ? `<div class="label-area">${areaLabel}</div>` : ''}
 </div>`;
     }).join('\n');
@@ -733,8 +736,8 @@ body {
     if (file) processFile(file);
   };
 
-  /** 確認ダイアログで「追加する」を押した時 */
-  const handleAddExtracted = () => {
+  /** 確認ダイアログで「追加する」を押した時 ─ 追加後に自動ジオコーディング */
+  const handleAddExtracted = async () => {
     const remaining = 5 - competing.length;
     const toAdd = extractedProps.slice(0, remaining).map(p => ({
       ...newCompeting(),
@@ -749,6 +752,28 @@ body {
     setCompeting(arr => [...arr, ...toAdd]);
     setShowExtractDialog(false);
     setExtractedProps([]);
+
+    // 住所がある物件は自動ジオコーディング
+    for (const prop of toAdd) {
+      if (!prop.address.trim()) continue;
+      setCompeting(arr => arr.map(p => p.id === prop.id ? { ...p, locStatus: 'loading', locMsg: '' } : p));
+      try {
+        const { data } = await api.post('/api/comparison-maps/geocode', { address: prop.address, name: prop.name });
+        setCompeting(arr => arr.map(p => {
+          if (p.id !== prop.id) return p;
+          if (!data.success) return { ...p, locStatus: 'error', locMsg: data.error ?? 'エラー' };
+          return {
+            ...p,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            locStatus: data.needsConfirmation ? 'warning' : 'confirmed',
+            locMsg: data.message ?? '',
+          };
+        }));
+      } catch {
+        setCompeting(arr => arr.map(p => p.id === prop.id ? { ...p, locStatus: 'error', locMsg: '位置取得に失敗しました' } : p));
+      }
+    }
   };
 
   // ── 競合物件の更新ヘルパー ────────────────────────────────────
@@ -913,7 +938,8 @@ body {
               <Grid item xs={12}>
                 <Box sx={{ display: 'flex', gap: 0.5 }}>
                   <TextField label="所在地" value={subject.address} size="small" fullWidth
-                    onChange={e => setSubject(p => ({ ...p, address: e.target.value, locStatus: 'idle', locMsg: '' }))} />
+                    onChange={e => setSubject(p => ({ ...p, address: e.target.value, locStatus: 'idle', locMsg: '' }))}
+                    onBlur={() => { if (subject.address.trim() && subject.locStatus === 'idle') geocode('subject'); }} />
                   <Button variant="outlined" size="small" sx={{ whiteSpace: 'nowrap', minWidth: 76 }}
                     onClick={() => geocode('subject')}
                     disabled={subject.locStatus === 'loading' || !subject.address.trim()}
@@ -1008,7 +1034,8 @@ body {
                 <Grid item xs={12}>
                   <Box sx={{ display: 'flex', gap: 0.5 }}>
                     <TextField label="所在地" value={prop.address} size="small" fullWidth
-                      onChange={e => updComp(prop.id, { address: e.target.value, locStatus: 'idle', locMsg: '' })} />
+                      onChange={e => updComp(prop.id, { address: e.target.value, locStatus: 'idle', locMsg: '' })}
+                      onBlur={() => { if (prop.address.trim() && prop.locStatus === 'idle') geocode(prop.id); }} />
                     <Button variant="outlined" size="small" sx={{ whiteSpace: 'nowrap', minWidth: 76 }}
                       onClick={() => geocode(prop.id)}
                       disabled={prop.locStatus === 'loading' || !prop.address.trim()}
