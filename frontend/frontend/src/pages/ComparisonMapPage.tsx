@@ -27,7 +27,7 @@ import {
   UploadFile as UploadFileIcon,
   Edit as EditIcon,
 } from '@mui/icons-material';
-import { GoogleMap, Marker, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, Marker, InfoWindow, TransitLayer } from '@react-google-maps/api';
 import { useGoogleMaps } from '../contexts/GoogleMapsContext';
 import api from '../services/api';
 import { v4 as uuidv4 } from 'uuid';
@@ -1000,6 +1000,9 @@ body {
         options={{ mapTypeControl: false, streetViewControl: false }}
         onLoad={map => { mapRef.current = map; fitMap(); }}
       >
+        {/* バス停・鉄道・路線を表示（TransitLayer） */}
+        <TransitLayer />
+
         {/* 査定対象 */}
         {subject.latitude && subject.longitude && (
           <>
