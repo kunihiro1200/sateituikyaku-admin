@@ -11,6 +11,7 @@ import {
   ListItemText,
   Box,
   Tooltip,
+  Checkbox,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import HouseMakerModal from './HouseMakerModal';
@@ -215,6 +216,11 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
   const [mansionModalOpen, setMansionModalOpen] = useState(false);
   const [evaluationPointsOpen, setEvaluationPointsOpen] = useState(false);
+  // 事務用チェック状態（各番号項目のチェックボックス、indexをキーに管理）
+  const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>({});
+  const toggleChecked = (index: number) => {
+    setCheckedItems((prev) => ({ ...prev, [index]: !prev[index] }));
+  };
 
   // ハウスメーカー名がコメントに含まれるか判定
   const plainComment = commentHtml.replace(/<[^>]+>/g, '');
@@ -233,7 +239,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
   const MANSION_SEARCH_ID = 'FJmJa763';
   const MANSION_SEARCH_PW = 'c37YuwB2';
   // 表示順序：添付資料 → ぜんりん（+ログイン情報） → 謄本 → 査定書 → 成約事例 → 近隣買主
-  const items: Array<{ label: string; content: React.ReactNode }> = [
+  const items: Array<{ label: string; content: React.ReactNode; noCheckbox?: boolean }> = [
     // 1. 添付資料
     {
       label: '添付資料',
@@ -437,6 +443,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
     // 10. 評価ポイント！（システム内で入力・保存）
     {
       label: '評価ポイント！',
+      noCheckbox: true,
       content: sellerId ? (
         <Box
           component="span"
@@ -455,7 +462,16 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         <span>（リンクなし）</span>
       ),
     },
-    // 11. ハウスメーカー（コメントにハウスメーカー名がある場合のみ）
+    // 11. パンフレット
+    {
+      label: 'パンフレット',
+      content: (
+        <Typography component="span" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
+          パンフレット
+        </Typography>
+      ),
+    },
+    // ハウスメーカー（コメントにハウスメーカー名がある場合のみ）
     ...(hasHouseMaker ? [{
       label: 'ハウスメーカー',
       content: (
@@ -494,6 +510,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
     // 売却スケジュール（常時表示）
     {
       label: '【売却スケジュール】',
+      noCheckbox: true,
       content: (
         <Box component="span" sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
           <a
@@ -536,24 +553,6 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         >
           ＊準備前に必ずカレンダーに●つけてください！！
         </Typography>
-        <Typography
-          sx={{
-            color: 'error.main',
-            fontWeight: 'bold',
-            mb: 2,
-          }}
-        >
-          ＊事務は1～{isMansionType ? '10' : '9'}まで準備
-        </Typography>
-        <Typography
-          sx={{
-            color: 'error.main',
-            fontWeight: 'bold',
-            mb: 2,
-          }}
-        >
-          ＊パンフレットも準備
-        </Typography>
 
         {/* リンク一覧（番号付きリスト） */}
         <List component="ol" sx={{ listStyleType: 'decimal', pl: 2 }}>
@@ -566,6 +565,14 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
               <ListItemText
                 primary={
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    {!item.noCheckbox && (
+                      <Checkbox
+                        size="small"
+                        checked={!!checkedItems[index]}
+                        onChange={() => toggleChecked(index)}
+                        sx={{ p: 0, mr: 0.5, mt: '2px' }}
+                      />
+                    )}
                     <Typography component="span" sx={{ whiteSpace: 'nowrap' }}>
                       {item.label}：
                     </Typography>
