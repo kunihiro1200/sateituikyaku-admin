@@ -1,15 +1,17 @@
 /**
  * 比較マップ API
- * - POST /api/comparison-maps/geocode       住所から座標を取得
- * - GET  /api/comparison-maps/static-map    Google Maps Static API プロキシ（base64返却）
- * - POST /api/comparison-maps/save          比較マップを保存
- * - GET  /api/comparison-maps/seller/:id    売主の比較マップ一覧
- * - GET  /api/comparison-maps/:mapId        比較マップを取得
+ * - POST /api/comparison-maps/geocode            住所から座標を取得
+ * - POST /api/comparison-maps/extract-properties 画像/PDFから競合物件情報をAIで抽出（1〜4件）
+ * - GET  /api/comparison-maps/static-map         Google Maps Static API プロキシ（base64返却）
+ * - POST /api/comparison-maps/save               比較マップを保存
+ * - GET  /api/comparison-maps/seller/:id         売主の比較マップ一覧
+ * - GET  /api/comparison-maps/:mapId             比較マップを取得
  */
 
 import { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
+import Anthropic from '@anthropic-ai/sdk';
 
 const router = Router();
 
@@ -19,6 +21,101 @@ function getSupabase() {
     process.env.SUPABASE_SERVICE_KEY!
   );
 }
+
+// ── 画像/PDF から競合物件情報を AI 抽出 ─────────────────────────
+/**
+ * POST /api/comparison-maps/extract-properties
+ * body: { imageBase64: string, mediaType: string }
+ * 1枚の画像・PDFに含まれる物件を最大4件まで一括抽出して返す。
+ */
+router.post('/extract-properties', async (req: Request, res: Response) => {
+  try {
+    const { imageBase64, mediaType } = req.body as { imageBase64?: string; mediaType?: string };
+    if (!imageBase64 || !mediaType) {
+      return res.status(400).json({ error: 'imageBase64 と mediaType が必要です。' });
+    }
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'ANTHROPIC_API_KEY が未設定です。' });
+    }
+
+    const client = new Anthropic({ apiKey });
+
+    const prompt = `この画像は不動産の物件資料（チラシ・概要書・スキャン等）です。
+画像に含まれる**全ての物件**を識別してください（1枚のスキャンに複数物件が掲載されている場合もあります）。
+
+各物件について以下のJSON形式で抽出してください。
+読み取れない項目は空文字にしてください。絶対に推測や補完をしないでください。
+
+{
+  "name": "マンション名または物件名",
+  "address": "所在地（住所全文）",
+  "price": "販売価格（万円単位の数値のみ。例: 4600。記載なければ空文字）",
+  "builtYearMonth": "築年月（YYYY年MM月形式に変換。例: 2012年08月。不明は空文字）",
+  "exclusiveArea": "専有面積（数値のみ、㎡単位。例: 72.50。不明は空文字）",
+  "totalUnits": "総戸数（数値のみ。不明は空文字）",
+  "floorInfo": "所在階（例: 10階建7階。不明は空文字）"
+}
+
+複数物件がある場合は配列で返す。1件なら1要素の配列。
+必ずJSON配列のみを返してください。説明文は不要です。`;
+
+    const isPdf = mediaType === 'application/pdf';
+    const contentPart = isPdf
+      ? { type: 'document' as const, source: { type: 'base64' as const, media_type: 'application/pdf' as const, data: imageBase64 } }
+      : { type: 'image' as const, source: { type: 'base64' as const, media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: imageBase64 } };
+
+    const response = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 2048,
+      messages: [{
+        role: 'user',
+        content: [contentPart, { type: 'text', text: prompt }],
+      }],
+    });
+
+    const text = response.content
+      .filter(c => c.type === 'text')
+      .map(c => (c as { type: 'text'; text: string }).text)
+      .join('');
+
+    console.log('[ComparisonMap] Claude extraction response:', text.substring(0, 500));
+
+    // JSON 配列を抽出
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      return res.status(422).json({ error: '物件情報を読み取れませんでした。鮮明な画像を試してください。' });
+    }
+
+    let properties: unknown[];
+    try {
+      properties = JSON.parse(jsonMatch[0]);
+    } catch {
+      return res.status(422).json({ error: 'AI応答の解析に失敗しました。' });
+    }
+
+    if (!Array.isArray(properties) || properties.length === 0) {
+      return res.json({ properties: [] });
+    }
+
+    // 最大4件に制限し、フィールドを文字列に正規化
+    const normalized = properties.slice(0, 4).map((p: any) => ({
+      name: String(p.name ?? ''),
+      address: String(p.address ?? ''),
+      price: String(p.price ?? ''),
+      builtYearMonth: String(p.builtYearMonth ?? ''),
+      exclusiveArea: String(p.exclusiveArea ?? ''),
+      totalUnits: String(p.totalUnits ?? ''),
+      floorInfo: String(p.floorInfo ?? ''),
+    }));
+
+    return res.json({ properties: normalized });
+  } catch (err: any) {
+    console.error('[ComparisonMap] extract-properties error:', err?.message);
+    return res.status(500).json({ error: '資料の読み取りに失敗しました。' });
+  }
+});
 
 // ── 住所ジオコーディング ──────────────────────────────────────────
 /**

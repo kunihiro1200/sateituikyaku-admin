@@ -13,6 +13,8 @@ import {
   Box, Typography, Button, TextField, Paper, Grid,
   IconButton, CircularProgress, Alert, Tooltip,
   Select, MenuItem, FormControl, InputLabel,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  LinearProgress,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -22,6 +24,8 @@ import {
   ArrowBack as ArrowBackIcon,
   CheckCircle as CheckCircleIcon,
   Warning as WarningIcon,
+  UploadFile as UploadFileIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import { GoogleMap, Marker, InfoWindow } from '@react-google-maps/api';
 import { useGoogleMaps } from '../contexts/GoogleMapsContext';
@@ -61,6 +65,18 @@ interface CompetingProperty {
   floorInfo: string;
   locStatus: LocStatus;
   locMsg: string;
+}
+
+// ─── 抽出済みプロパティの型 ───────────────────────────────────────
+
+interface ExtractedProperty {
+  name: string;
+  address: string;
+  price: string;
+  builtYearMonth: string;
+  exclusiveArea: string;
+  totalUnits: string;
+  floorInfo: string;
 }
 
 // ─── ユーティリティ ────────────────────────────────────────────────
@@ -213,6 +229,13 @@ const ComparisonMapPage: React.FC = () => {
   const [infoId, setInfoId] = useState<string | null>(null); // open InfoWindow id
   const [printLoading, setPrintLoading] = useState(false);
   const mapRef = useRef<google.maps.Map | null>(null);
+
+  // ── 資料アップロード＆AI抽出用ステート ─────────────────────────
+  const [extracting, setExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
+  const [extractedProps, setExtractedProps] = useState<ExtractedProperty[]>([]);
+  const [showExtractDialog, setShowExtractDialog] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   // ── 売主データ読み込み ────────────────────────────────────────
   useEffect(() => {
@@ -647,6 +670,72 @@ body {
 </html>`;
   }
 
+  // ── 資料アップロード＆AI抽出処理 ────────────────────────────────
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!e.target.files) return;
+    // 複数ファイルは1件ずつ順番に処理（今回は1ファイルのみ受け付ける）
+    const targetFile = file;
+    if (!targetFile) return;
+
+    // リセット
+    e.target.value = '';
+    setExtractError(null);
+    setExtracting(true);
+
+    try {
+      // Base64 変換
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // data:image/png;base64,XXXX → XXXX のみ取り出す
+          resolve(result.split(',')[1] ?? '');
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(targetFile);
+      });
+
+      const mediaType = targetFile.type || 'image/jpeg';
+
+      const { data } = await api.post('/api/comparison-maps/extract-properties', {
+        imageBase64: base64,
+        mediaType,
+      });
+
+      if (!data.properties?.length) {
+        setExtractError('物件情報を読み取れませんでした。鮮明な画像またはPDFを試してください。');
+        return;
+      }
+
+      setExtractedProps(data.properties);
+      setShowExtractDialog(true);
+    } catch (err: any) {
+      const msg = err.response?.data?.error ?? err.message ?? 'エラーが発生しました。';
+      setExtractError(msg);
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  /** 確認ダイアログで「追加する」を押した時 */
+  const handleAddExtracted = () => {
+    const remaining = 5 - competing.length;
+    const toAdd = extractedProps.slice(0, remaining).map(p => ({
+      ...newCompeting(),
+      name: p.name,
+      address: p.address,
+      price: p.price,
+      builtYearMonth: p.builtYearMonth,
+      exclusiveArea: p.exclusiveArea,
+      totalUnits: p.totalUnits,
+      floorInfo: p.floorInfo,
+    }));
+    setCompeting(arr => [...arr, ...toAdd]);
+    setShowExtractDialog(false);
+    setExtractedProps([]);
+  };
+
   // ── 競合物件の更新ヘルパー ────────────────────────────────────
   const updComp = useCallback((id: string, patch: Partial<CompetingProperty>) => {
     setCompeting(arr => arr.map(p => p.id === id ? { ...p, ...patch } : p));
@@ -960,6 +1049,63 @@ body {
             </Button>
           )}
 
+          {/* ── 資料から読み込む ── */}
+          <Box sx={{ mb: 1.5 }}>
+            {/* 隠しファイル入力 */}
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
+              style={{ display: 'none' }}
+              onChange={handleFileUpload}
+            />
+
+            {/* アップロードエリア */}
+            <Paper
+              variant="outlined"
+              onClick={() => !extracting && competing.length < 5 && uploadInputRef.current?.click()}
+              sx={{
+                p: 1.5, textAlign: 'center', cursor: competing.length >= 5 || extracting ? 'default' : 'pointer',
+                borderStyle: 'dashed', borderColor: extracting ? 'primary.main' : '#aaa',
+                bgcolor: extracting ? '#e3f2fd' : '#fafafa',
+                transition: 'all 0.2s',
+                '&:hover': competing.length < 5 && !extracting ? { bgcolor: '#f0f7ff', borderColor: 'primary.main' } : {},
+              }}
+            >
+              {extracting ? (
+                <Box>
+                  <CircularProgress size={20} sx={{ mb: 0.5 }} />
+                  <Typography variant="caption" display="block" color="primary">
+                    資料を読み取り中...
+                  </Typography>
+                  <LinearProgress sx={{ mt: 0.5, borderRadius: 1 }} />
+                </Box>
+              ) : competing.length >= 5 ? (
+                <Typography variant="caption" color="text.disabled">
+                  競合物件は最大5件です
+                </Typography>
+              ) : (
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                  <UploadFileIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                  <Box sx={{ textAlign: 'left' }}>
+                    <Typography variant="caption" display="block" fontWeight="bold" color="text.secondary">
+                      資料から読み込む
+                    </Typography>
+                    <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
+                      PDF・画像を選択（1枚に複数物件でもOK）
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+            </Paper>
+
+            {extractError && (
+              <Alert severity="error" sx={{ mt: 0.5 }} onClose={() => setExtractError(null)}>
+                {extractError}
+              </Alert>
+            )}
+          </Box>
+
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, lineHeight: 1.6 }}>
             ※ 各物件の「位置確認」ボタンを押して座標を取得後、「A4印刷」ボタンで比較マップを生成します。<br />
             ※ 地図は住所ベースの概略位置です。
@@ -987,6 +1133,73 @@ body {
           </Box>
         </Box>
       </Box>
+      {/* ── 資料読み取り確認ダイアログ ── */}
+      <Dialog open={showExtractDialog} onClose={() => setShowExtractDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          読み取り結果 — {extractedProps.length}件
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+            （内容を確認してから追加してください）
+          </Typography>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 1.5 }}>
+          {extractedProps.map((p, i) => (
+            <Paper key={i} variant="outlined" sx={{ p: 1.5, mb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Box sx={{ width: 22, height: 22, borderRadius: '50%', bgcolor: '#CC0000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '11px', flexShrink: 0 }}>
+                  {competing.length + i + 1}
+                </Box>
+                <Typography variant="subtitle2" fontWeight="bold">競合物件 {competing.length + i + 1}</Typography>
+              </Box>
+              <Grid container spacing={1}>
+                <Grid item xs={12}>
+                  <TextField label="物件名" value={p.name} size="small" fullWidth
+                    onChange={e => setExtractedProps(arr => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField label="所在地" value={p.address} size="small" fullWidth
+                    onChange={e => setExtractedProps(arr => arr.map((x, j) => j === i ? { ...x, address: e.target.value } : x))} />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField label="価格（万円）" value={p.price} size="small" fullWidth
+                    InputProps={{ endAdornment: <Typography variant="caption">万円</Typography> }}
+                    onChange={e => setExtractedProps(arr => arr.map((x, j) => j === i ? { ...x, price: e.target.value } : x))} />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField label="築年月" value={p.builtYearMonth} size="small" fullWidth
+                    onChange={e => setExtractedProps(arr => arr.map((x, j) => j === i ? { ...x, builtYearMonth: e.target.value } : x))} />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField label="専有面積（㎡）" value={p.exclusiveArea} size="small" fullWidth
+                    InputProps={{ endAdornment: <Typography variant="caption">㎡</Typography> }}
+                    onChange={e => setExtractedProps(arr => arr.map((x, j) => j === i ? { ...x, exclusiveArea: e.target.value } : x))} />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField label="総戸数" value={p.totalUnits} size="small" fullWidth
+                    onChange={e => setExtractedProps(arr => arr.map((x, j) => j === i ? { ...x, totalUnits: e.target.value } : x))} />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField label="所在階" value={p.floorInfo} size="small" fullWidth
+                    onChange={e => setExtractedProps(arr => arr.map((x, j) => j === i ? { ...x, floorInfo: e.target.value } : x))} />
+                </Grid>
+              </Grid>
+            </Paper>
+          ))}
+          {competing.length + extractedProps.length > 5 && (
+            <Alert severity="warning" sx={{ mt: 1 }}>
+              競合物件の上限（5件）を超えるため、先頭から{5 - competing.length}件のみ追加されます。
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setShowExtractDialog(false); setExtractedProps([]); }}>
+            キャンセル
+          </Button>
+          <Button variant="contained" onClick={handleAddExtracted}
+            disabled={extractedProps.length === 0}>
+            {Math.min(extractedProps.length, 5 - competing.length)}件を競合物件に追加
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
