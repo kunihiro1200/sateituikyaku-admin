@@ -555,10 +555,13 @@ const ComparisonMapPage: React.FC = () => {
       const badgeBg = p.isSubject ? '#FF8800' : '#CC0000';
       const num = parseInt(p.label, 10);
       const badgeLabel = p.isSubject ? '★' : (CIRCLED_NUM[num] ?? p.label);
-      return `<th style="width:${colW}%;text-align:center;background:#fff;padding:3pt 2pt;border:0.5pt solid #ccc;">
-  <div style="display:inline-flex;width:18pt;height:18pt;border-radius:50%;background:${badgeBg};color:white;font-weight:bold;font-size:9pt;align-items:center;justify-content:center;margin-bottom:2pt;">${p.isSubject ? '★' : p.label}</div>
-  <div style="font-size:7pt;font-weight:bold;line-height:1.3;color:#111;">${p.name}</div>
-  <div style="font-size:6pt;color:#555;line-height:1.3;">${p.address}</div>
+      // ★ 数字バッジを th の先頭に固定行として配置し、縦方向の揃えを強制する
+      return `<th style="width:${colW}%;text-align:center;background:#fff;padding:3pt 2pt;border:0.5pt solid #ccc;vertical-align:top;">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:1pt;">
+    <div style="display:inline-flex;width:18pt;height:18pt;border-radius:50%;background:${badgeBg};color:white;font-weight:bold;font-size:9pt;align-items:center;justify-content:center;flex-shrink:0;">${p.isSubject ? '★' : p.label}</div>
+    <div style="font-size:7pt;font-weight:bold;line-height:1.3;color:#111;word-break:break-all;">${p.name}</div>
+    <div style="font-size:6pt;color:#555;line-height:1.3;word-break:break-all;">${p.address}</div>
+  </div>
 </th>`;
     }).join('');
 
@@ -690,7 +693,7 @@ body {
 </head>
 <body>
 <div class="page">
-  <div class="title">${count}物件 比較マップ</div>
+  <div class="title">${count}物件 比較表（現在募集中物件）</div>
   <div class="map-wrapper">
     <img src="${imgData}" alt="比較マップ" />
     <div class="map-attribution">© Google</div>
