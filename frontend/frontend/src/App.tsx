@@ -80,6 +80,7 @@ import FukuokaTateuriPage from './pages/FukuokaTateuriPage';
 import FukuokaTateuriManagePage from './pages/FukuokaTateuriManagePage';
 import TateuriRootPage from './pages/TateuriRootPage';
 import YoutoChiikiExplanationPage from './pages/YoutoChiikiExplanationPage';
+import ComparisonMapPage from './pages/ComparisonMapPage';
 // FloorPlanComparePage は遅延読み込み（他ページへの影響を完全に分離）
 const FloorPlanComparePage = lazy(() => import('./pages/FloorPlanComparePage'));
 import ProtectedRoute from './components/ProtectedRoute';
@@ -188,6 +189,14 @@ function App() {
         element={
           <ProtectedRoute>
             <CallTranscriptionPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sellers/:id/comparison-map"
+        element={
+          <ProtectedRoute>
+            <ComparisonMapPage />
           </ProtectedRoute>
         }
       />
