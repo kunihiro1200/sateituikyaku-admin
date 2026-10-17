@@ -283,27 +283,48 @@ export const useAuthStore = create<AuthState>()(
       }
 
       // 社員情報を取得（必ずAPIから取得、キャッシュを使用しない）
-      try {
-        const response = await api.get('/auth/me', { timeout: 15000 });
-        console.log('✅ Auth check successful, got employee info from API:', {
-          name: response.data.name,
-          initials: response.data.initials,
-          email: response.data.email,
-        });
-        set({ employee: response.data, isAuthenticated: true, isLoading: false });
-      } catch (apiError: any) {
-        console.error('❌ Failed to get employee info:', apiError);
-        
-        // 401エラーの場合はセッションをクリア
-        if (apiError.response?.status === 401) {
-          console.log('ℹ️ Session expired, clearing tokens');
-          await supabase.auth.signOut();
+      // タイムアウト: コールドスタート対応のため45秒に延長
+      const AUTH_ME_TIMEOUT = 45000;
+      let authMeSuccess = false;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const response = await api.get('/auth/me', { timeout: AUTH_ME_TIMEOUT });
+          console.log('✅ Auth check successful, got employee info from API:', {
+            name: response.data.name,
+            initials: response.data.initials,
+            email: response.data.email,
+          });
+          set({ employee: response.data, isAuthenticated: true, isLoading: false });
+          authMeSuccess = true;
+          break;
+        } catch (apiError: any) {
+          const isTimeout = apiError.code === 'ECONNABORTED' || apiError.message?.includes('timeout');
+          const status = apiError.response?.status;
+
+          // 401 = 明確にセッション無効 → 即ログアウト
+          if (status === 401) {
+            console.log('ℹ️ Session expired (401), clearing tokens');
+            await supabase.auth.signOut();
+            localStorage.removeItem('session_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('auth-storage');
+            set({ employee: null, isAuthenticated: false, isLoading: false });
+            authMeSuccess = true; // ループ終了フラグ
+            break;
+          }
+
+          // タイムアウト or サーバーエラー → リトライ
+          if (attempt < 3) {
+            const wait = attempt * 3000; // 3s → 6s
+            console.warn(`⚠️ /auth/me attempt ${attempt} failed (${isTimeout ? 'timeout' : status}), retrying in ${wait / 1000}s...`);
+            await new Promise(r => setTimeout(r, wait));
+          } else {
+            // 3回すべてタイムアウト → 認証状態を維持してロードを終わらせる
+            // ログアウトはしない（ネットワーク障害かコールドスタートの可能性）
+            console.error('❌ Failed to get employee info after 3 attempts:', apiError);
+            set({ isLoading: false });
+          }
         }
-        
-        localStorage.removeItem('session_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('auth-storage');
-        set({ employee: null, isAuthenticated: false, isLoading: false });
       }
     } catch (error) {
       console.error('❌ Check auth error:', error);
