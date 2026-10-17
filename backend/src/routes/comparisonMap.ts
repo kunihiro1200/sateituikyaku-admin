@@ -117,9 +117,10 @@ router.post('/extract-properties', async (req: Request, res: Response) => {
   }
 });
 
-// ── 近隣の学校を取得（バックエンド経由・Places API） ─────────────
+// ── 近隣の学校・バス停を取得（バックエンド経由・Places API） ───────
 /**
  * GET /api/comparison-maps/nearby-schools?lat=&lng=&radius=
+ * 小学校・中学校・バス停を返す
  */
 router.get('/nearby-schools', async (req: Request, res: Response) => {
   try {
@@ -129,9 +130,9 @@ router.get('/nearby-schools', async (req: Request, res: Response) => {
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
     if (!apiKey) return res.status(500).json({ error: 'GOOGLE_MAPS_API_KEY が未設定です。' });
 
-    const searchSchools = async (type: string) => {
+    const search = async (type: string, r: string) => {
       const resp = await axios.get('https://maps.googleapis.com/maps/api/place/nearbysearch/json', {
-        params: { location: `${lat},${lng}`, radius, type, key: apiKey, language: 'ja' },
+        params: { location: `${lat},${lng}`, radius: r, type, key: apiKey, language: 'ja' },
         timeout: 8000,
       });
       return ((resp.data.results as any[]) ?? []).slice(0, 8).map((r: any) => ({
@@ -141,18 +142,20 @@ router.get('/nearby-schools', async (req: Request, res: Response) => {
       }));
     };
 
-    const [elementary, middle] = await Promise.all([
-      searchSchools('primary_school'),
-      searchSchools('secondary_school'),
+    const [elementary, middle, buses] = await Promise.all([
+      search('primary_school', radius),
+      search('secondary_school', radius),
+      search('bus_station', '600'),  // バス停は半径600mに制限
     ]);
 
     return res.json({
       elementary: elementary.map(s => ({ ...s, schoolType: 'elementary' })),
       middle: middle.map(s => ({ ...s, schoolType: 'middle' })),
+      busStops: buses.slice(0, 10).map(s => ({ ...s, schoolType: 'bus_station' })),
     });
   } catch (err: any) {
     console.error('[ComparisonMap] nearby-schools error:', err?.message);
-    return res.status(500).json({ error: '学校情報の取得に失敗しました。' });
+    return res.status(500).json({ error: '施設情報の取得に失敗しました。' });
   }
 });
 

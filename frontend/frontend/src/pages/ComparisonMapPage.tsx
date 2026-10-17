@@ -252,7 +252,7 @@ const ComparisonMapPage: React.FC = () => {
   // ── 学校マーカーステート ──────────────────────────────────────
   const [showSchools, setShowSchools] = useState(true); // 初期値: 表示ON
   const [schoolMarkers, setSchoolMarkers] = useState<Array<{
-    lat: number; lng: number; name: string; schoolType: 'elementary' | 'middle';
+    lat: number; lng: number; name: string; schoolType: 'elementary' | 'middle' | 'bus_station';
   }>>([]);
   const settledUploadRef = useRef<HTMLInputElement>(null);
 
@@ -419,6 +419,7 @@ const ComparisonMapPage: React.FC = () => {
       const markers = [
         ...(data.elementary ?? []).map((s: any) => ({ ...s, schoolType: 'elementary' as const })),
         ...(data.middle ?? []).map((s: any) => ({ ...s, schoolType: 'middle' as const })),
+        ...(data.busStops ?? []).map((s: any) => ({ ...s, schoolType: 'bus_station' as const })),
       ];
       setSchoolMarkers(markers);
     }).catch(err => console.warn('[ComparisonMap] nearby-schools failed:', err?.message));
@@ -548,6 +549,7 @@ const ComparisonMapPage: React.FC = () => {
           currentSchools = [
             ...(sd.elementary ?? []).map((s: any) => ({ ...s, schoolType: 'elementary' as const })),
             ...(sd.middle ?? []).map((s: any) => ({ ...s, schoolType: 'middle' as const })),
+            ...(sd.busStops ?? []).map((s: any) => ({ ...s, schoolType: 'bus_station' as const })),
           ];
           setSchoolMarkers(currentSchools);
         } catch { /* 学校なしで続行 */ }
@@ -556,9 +558,9 @@ const ComparisonMapPage: React.FC = () => {
       // Static Maps 用マーカー（学校はサイズ mid で数字なし）
       const schoolMarkersForPrint = showSchools ? currentSchools.map(s => ({
         lat: s.lat, lng: s.lng,
-        label: s.schoolType === 'elementary' ? 'E' : 'M',
-        color: s.schoolType === 'elementary' ? '0x4CAF50' : '0xFF9800',
-        size: 'mid' as const,  // mid = ラベル付き小マーカー
+        label: s.schoolType === 'elementary' ? 'E' : s.schoolType === 'middle' ? 'M' : 'B',
+        color: s.schoolType === 'elementary' ? '0x4CAF50' : s.schoolType === 'middle' ? '0xFF9800' : '0x2196F3',
+        size: 'mid' as const,
       })) : [];
 
       // CSS オーバーレイ用の学校位置（パーセント）を計算
@@ -663,17 +665,44 @@ const ComparisonMapPage: React.FC = () => {
       const markers = pins.map(p => ({
         lat: p.lat, lng: p.lng,
         label: p.isSubject ? '' : p.label,
-        color: p.isSubject ? '0xFFAA00' : '0x2196F3', // 成約済みは青
+        color: p.isSubject ? '0xFFAA00' : '0x2196F3',
       }));
+
+      // 学校・バス停を取得（handlePrint と同様）
+      let currentSchoolsS = schoolMarkers;
+      if (showSchools && currentSchoolsS.length === 0 && subject.latitude && subject.longitude) {
+        try {
+          const { data: sd } = await api.get('/api/comparison-maps/nearby-schools', {
+            params: { lat: subject.latitude, lng: subject.longitude },
+          });
+          currentSchoolsS = [
+            ...(sd.elementary ?? []).map((s: any) => ({ ...s, schoolType: 'elementary' as const })),
+            ...(sd.middle ?? []).map((s: any) => ({ ...s, schoolType: 'middle' as const })),
+            ...(sd.busStops ?? []).map((s: any) => ({ ...s, schoolType: 'bus_station' as const })),
+          ];
+          setSchoolMarkers(currentSchoolsS);
+        } catch { /* 学校なしで続行 */ }
+      }
+      const schoolMrkS = showSchools ? currentSchoolsS.map(s => ({
+        lat: s.lat, lng: s.lng,
+        label: s.schoolType === 'elementary' ? 'E' : s.schoolType === 'middle' ? 'M' : 'B',
+        color: s.schoolType === 'elementary' ? '0x4CAF50' : s.schoolType === 'middle' ? '0xFF9800' : '0x2196F3',
+        size: 'mid' as const,
+      })) : [];
+      const schoolsOverlayS: SchoolForPrint[] = showSchools ? currentSchoolsS.map(s => {
+        const { xPct, yPct } = latLngToPixelPct(s.lat, s.lng, centerLat, centerLng, zoom, ACT_W, ACT_H);
+        return { ...s, xPct, yPct } as SchoolForPrint;
+      }) : [];
+
       const { data: mapData } = await api.get('/api/comparison-maps/static-map', {
-        params: { markers: JSON.stringify(markers), centerLat: centerLat.toFixed(7), centerLng: centerLng.toFixed(7), zoom, width: IMG_W, height: IMG_H },
+        params: { markers: JSON.stringify([...markers, ...schoolMrkS]), centerLat: centerLat.toFixed(7), centerLng: centerLng.toFixed(7), zoom, width: IMG_W, height: IMG_H },
       });
       type TableItem = { isSubject: boolean; label: string; name: string; address: string; price: string; priceType?: PriceType; builtYearMonth: string; exclusiveArea: string };
       const tableData: TableItem[] = [
         { isSubject: true, label: '★', name: subject.name || '査定対象物件', address: subject.address, price: subject.price, priceType: subject.priceType, builtYearMonth: subject.builtYearMonth, exclusiveArea: subject.exclusiveArea },
         ...settledCompeting.map((p, i): TableItem => ({ isSubject: false, label: String(i + 1), name: p.name || `成約物件${i + 1}`, address: p.address, price: p.price, priceType: undefined, builtYearMonth: p.builtYearMonth, exclusiveArea: p.exclusiveArea })),
       ];
-      const html = buildPrintHtml(tableData.length, mapData.imageData, tableData, { titleSuffix: '（成約済み物件）', priceRowLabel: '成約価格', badgeColor: '#2196F3', accentColor: '#1565c0' });
+      const html = buildPrintHtml(tableData.length, mapData.imageData, tableData, { titleSuffix: '（成約済み物件）', priceRowLabel: '成約価格', badgeColor: '#2196F3', accentColor: '#1565c0' }, schoolsOverlayS);
       const w = window.open('', '_blank');
       if (w) { w.document.write(html); w.document.close(); }
     } catch (err) {
@@ -686,7 +715,7 @@ const ComparisonMapPage: React.FC = () => {
   // ── 印刷HTML構築 ──────────────────────────────────────────────
   type LabelForPrint = { isSubject: boolean; label: string; name: string; address: string; xPct: number; yPct: number };
   type TableForPrint = { isSubject: boolean; label: string; name: string; address: string; price: string; priceType?: PriceType; builtYearMonth: string; exclusiveArea: string };
-  type SchoolForPrint = { lat: number; lng: number; name: string; schoolType: 'elementary' | 'middle'; xPct: number; yPct: number };
+  type SchoolForPrint = { lat: number; lng: number; name: string; schoolType: 'elementary' | 'middle' | 'bus_station'; xPct: number; yPct: number };
 
   function buildPrintHtml(
     count: number,
@@ -702,13 +731,16 @@ const ComparisonMapPage: React.FC = () => {
     const competingBadgeBg = options?.badgeColor ?? '#CC0000';
     // ── 学校名 CSS ラベル ──
     const schoolLabelsHtml = (schools ?? []).map(s => {
-      const borderColor = s.schoolType === 'elementary' ? '#4CAF50' : '#FF9800';
-      const textColor = s.schoolType === 'elementary' ? '#2E7D32' : '#E65100';
+      const isBus = s.schoolType === 'bus_station';
+      const borderColor = s.schoolType === 'elementary' ? '#4CAF50' : isBus ? '#2196F3' : '#FF9800';
+      const textColor = s.schoolType === 'elementary' ? '#2E7D32' : isBus ? '#1565c0' : '#E65100';
+      // バス停はラベルを小さく（名前が長い）
+      const fontSize = isBus ? '5.5pt' : '6pt';
       const goLeft = s.xPct > 65;
       const xStyle = goLeft
         ? `right:${(100 - s.xPct).toFixed(2)}%; transform:translate(0,-50%);`
         : `left:${s.xPct.toFixed(2)}%; transform:translate(4pt,-50%);`;
-      return `<div style="position:absolute;${xStyle}top:${s.yPct.toFixed(2)}%;background:rgba(255,255,255,0.92);border:0.5pt solid ${borderColor};border-radius:2pt;padding:0.5pt 2pt;font-size:6pt;font-weight:bold;color:${textColor};white-space:nowrap;pointer-events:none;line-height:1.2;">${s.name}</div>`;
+      return `<div style="position:absolute;${xStyle}top:${s.yPct.toFixed(2)}%;background:rgba(255,255,255,0.92);border:0.5pt solid ${borderColor};border-radius:2pt;padding:0.5pt 2pt;font-size:${fontSize};font-weight:bold;color:${textColor};white-space:nowrap;pointer-events:none;line-height:1.2;">${s.name}</div>`;
     }).join('');
     // 比較表HTML（ラベルオーバーレイは廃止 → 静的マップのピン番号のみ使用）
     const CIRCLED_NUM = ['', '①', '②', '③', '④', '⑤'];
