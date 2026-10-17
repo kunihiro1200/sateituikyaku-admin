@@ -248,6 +248,12 @@ const ComparisonMapPage: React.FC = () => {
   const [settledExtractedProps, setSettledExtractedProps] = useState<ExtractedProperty[]>([]);
   const [showSettledExtractDialog, setShowSettledExtractDialog] = useState(false);
   const [isSettledDragging, setIsSettledDragging] = useState(false);
+
+  // ── 学校マーカーステート ──────────────────────────────────────
+  const [showSchools, setShowSchools] = useState(true); // 初期値: 表示ON
+  const [schoolMarkers, setSchoolMarkers] = useState<Array<{
+    lat: number; lng: number; name: string; schoolType: 'elementary' | 'middle';
+  }>>([]);
   const settledUploadRef = useRef<HTMLInputElement>(null);
 
   // ── 売主データ読み込み＆自動ジオコーディング ─────────────────
@@ -404,6 +410,42 @@ const ComparisonMapPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [competing, settledCompeting, sellerId]);
 
+  // ── 近隣の学校を Places API で検索 ────────────────────────────
+  useEffect(() => {
+    if (!subject.latitude || !subject.longitude || !isLoaded || !window.google) return;
+
+    const location = { lat: subject.latitude, lng: subject.longitude };
+
+    const searchNearby = (type: string): Promise<Array<{ lat: number; lng: number; name: string }>> =>
+      new Promise(resolve => {
+        const svc = new window.google.maps.places.PlacesService(document.createElement('div'));
+        svc.nearbySearch(
+          { location, radius: 1500, type: type as any },
+          (results, status) => {
+            if (status === 'OK' && results) {
+              resolve(results.slice(0, 8).map(r => ({
+                lat: r.geometry!.location!.lat(),
+                lng: r.geometry!.location!.lng(),
+                name: r.name ?? '',
+              })));
+            } else {
+              resolve([]);
+            }
+          }
+        );
+      });
+
+    Promise.all([
+      searchNearby('primary_school'),
+      searchNearby('secondary_school'),
+    ]).then(([el, mi]) => {
+      setSchoolMarkers([
+        ...el.map(s => ({ ...s, schoolType: 'elementary' as const })),
+        ...mi.map(s => ({ ...s, schoolType: 'middle' as const })),
+      ]);
+    }).catch(console.error);
+  }, [subject.latitude, subject.longitude, isLoaded]);
+
   // ── 地図の範囲自動調整 ───────────────────────────────────────
   const fitMap = useCallback(() => {
     if (!mapRef.current || !window.google) return;
@@ -518,10 +560,18 @@ const ComparisonMapPage: React.FC = () => {
         color: p.isSubject ? '0xFFAA00' : '0xFF0000',
       }));
 
+      // 学校マーカーを追加（showSchools ON かつ座標が取れているもの）
+      const schoolMarkersForPrint = showSchools ? schoolMarkers.map(s => ({
+        lat: s.lat, lng: s.lng,
+        label: s.schoolType === 'elementary' ? 'E' : 'M',
+        color: s.schoolType === 'elementary' ? '0x4CAF50' : '0xFF9800',
+        size: 'small' as const,
+      })) : [];
+
       // バックエンドから静的地図画像（base64）を取得
       const { data: mapData } = await api.get('/api/comparison-maps/static-map', {
         params: {
-          markers: JSON.stringify(markers),
+          markers: JSON.stringify([...markers, ...schoolMarkersForPrint]),
           centerLat: centerLat.toFixed(7),
           centerLng: centerLng.toFixed(7),
           zoom,
@@ -1002,6 +1052,29 @@ body {
       >
         {/* バス停・鉄道・路線を表示（TransitLayer） */}
         <TransitLayer />
+
+        {/* 学校マーカー（showSchools が ON の場合） */}
+        {showSchools && schoolMarkers.map((s, i) => (
+          <Marker
+            key={`school-${i}`}
+            position={{ lat: s.lat, lng: s.lng }}
+            label={{
+              text: s.schoolType === 'elementary' ? '小' : '中',
+              color: 'white',
+              fontWeight: 'bold',
+              fontSize: '11px',
+            }}
+            icon={{
+              path: googleMaps.SymbolPath.CIRCLE,
+              fillColor: s.schoolType === 'elementary' ? '#4CAF50' : '#FF9800',
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: 'white',
+              scale: 11,
+            }}
+            title={s.name}
+          />
+        ))}
 
         {/* 査定対象 */}
         {subject.latitude && subject.longitude && (
@@ -1486,7 +1559,7 @@ body {
           </Typography>
           <MapPreview />
           {/* 凡例 */}
-          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <Box sx={{ width: 20, height: 20, borderRadius: '50%', bgcolor: '#FF8800', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '10px' }}>★</Box>
               <Typography variant="caption">査定対象</Typography>
@@ -1497,6 +1570,16 @@ body {
                 <Typography variant="caption">競合{i + 1}</Typography>
               </Box>
             ))}
+            {/* 学校トグル */}
+            <Box
+              onClick={() => setShowSchools(v => !v)}
+              sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', ml: 'auto',
+                opacity: showSchools ? 1 : 0.4, border: '1px solid #ccc', borderRadius: 1, px: 0.8, py: 0.3 }}
+            >
+              <Box sx={{ width: 16, height: 16, borderRadius: '50%', bgcolor: '#4CAF50', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '9px', fontWeight: 'bold' }}>小</Box>
+              <Box sx={{ width: 16, height: 16, borderRadius: '50%', bgcolor: '#FF9800', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '9px', fontWeight: 'bold' }}>中</Box>
+              <Typography variant="caption" color="text.secondary">{showSchools ? '学校：表示中' : '学校：非表示'}</Typography>
+            </Box>
           </Box>
         </Box>
       </Box>
