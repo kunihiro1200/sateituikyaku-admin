@@ -437,6 +437,7 @@ export default function AttachedDocument2Page() {
   const [hazardSuggestion, setHazardSuggestion] = useState<string | null>(null);
   const [schoolFetching, setSchoolFetching] = useState(false);
   const [schoolFetchError, setSchoolFetchError] = useState<string | null>(null);
+  const [schoolFetchWarning, setSchoolFetchWarning] = useState<string | null>(null);
   const [transitFetching, setTransitFetching] = useState(false);
   const [transitFetchError, setTransitFetchError] = useState<string | null>(null);
 
@@ -650,6 +651,7 @@ export default function AttachedDocument2Page() {
     if (!seller?.sellerNumber) return;
     setSchoolFetching(true);
     setSchoolFetchError(null);
+    setSchoolFetchWarning(null);
     try {
       // 1. 物件座標と住所を取得
       const coordRes = await api.get(`/api/sellers/by-number/${seller.sellerNumber}`);
@@ -671,21 +673,58 @@ export default function AttachedDocument2Page() {
       const data = res.data;
 
       // 徒歩時間文字列生成
+      // googleWalkMinutes: Google Maps の実測時間（秒→分切り上げ）を優先
+      // フォールバック: 不動産公正競争規約の計算（道路距離÷80m/分・切り上げ）
       const computeWalk = (meters: number): string => String(Math.ceil(meters / 80));
+      const toWalkStr = (googleMin: number | null | undefined, meters: number | null | undefined): string | null => {
+        if (googleMin != null) return String(googleMin);
+        if (meters) return computeWalk(meters);
+        return null;
+      };
+
+      // ③ 信頼性チェック: uncertain（照会・の一部・境界地区）は要確認メッセージを表示
+      const elemConf = data.elementarySchool?.confidence;
+      const jhConf   = data.juniorHighSchool?.confidence;
+      const hasUncertain = elemConf === 'uncertain' || jhConf === 'uncertain';
+      const elemSource   = data.elementarySchool?.dataSource || '';
+
+      // ① confidence（自動判定の信頼性）は API の transient な値
+      // elementary_school_confirmed（担当者確認フラグ）は DB に永続化
+      // この2つは独立して管理する。
 
       // 3. フォームに反映（編集可能な状態で）
       if (data.elementarySchool?.name) {
         set('elementary_school_name', data.elementarySchool.name);
-        const meters = data.elementarySchool.distanceMeters;
-        if (meters) set('elementary_school_walk', computeWalk(meters));
+        const walkStr = toWalkStr(data.elementarySchool.googleWalkMinutes, data.elementarySchool.distanceMeters);
+        if (walkStr) set('elementary_school_walk', walkStr);
+        // ② uncertain の場合: 学校名が変わった場合のみ確認済みをリセット
+        // 同じ学校名で uncertain → 既確認状態は維持（担当者の確認を尊重）
+        // 別の学校名で uncertain → 未確認に戻す（再確認が必要）
+        if (elemConf === 'uncertain' && data.elementarySchool.name !== fields.elementary_school_name) {
+          set('elementary_school_confirmed', false);
+        }
       }
       if (data.juniorHighSchool?.name) {
         set('junior_high_school_name', data.juniorHighSchool.name);
-        const meters = data.juniorHighSchool.distanceMeters;
-        if (meters) set('junior_high_school_walk', computeWalk(meters));
+        const walkStr = toWalkStr(data.juniorHighSchool.googleWalkMinutes, data.juniorHighSchool.distanceMeters);
+        if (walkStr) set('junior_high_school_walk', walkStr);
+        if (jhConf === 'uncertain' && data.juniorHighSchool.name !== fields.junior_high_school_name) {
+          set('junior_high_school_confirmed', false);
+        }
       } else if (data.juniorHighSchool?.notAvailableReason === 'REINFOLIB_API_KEY_NOT_SET') {
         setSchoolFetchError(
           '⚠️ 中学校区はREINFOLIB_API_KEY未設定のため取得できませんでした（小学校は取得済み）。'
+        );
+      }
+
+      // 要確認メッセージ: uncertain 結果は参考値として警告
+      if (hasUncertain) {
+        const sourceLabel = elemSource === 'fukuoka_address_table' ? '住所対応表（照会・境界地区）' :
+                            elemSource === 'fukuoka_official' ? '福岡市公式GeoJSON' :
+                            elemSource === 'oita_official' ? '大分/別府公式データ' : '推定';
+        setSchoolFetchWarning(
+          `⚠️ この住所は学区境界が「照会が必要」の地区です（判定根拠: ${sourceLabel}）。` +
+          `学校名は参考値として入力しました。内容を確認し、正しければ「確認済み」チェックを入れてください。`
         );
       }
     } catch (err: any) {
@@ -964,10 +1003,12 @@ export default function AttachedDocument2Page() {
       + '<td class="lbl">小学校</td><td class="val">'
       + (fields.elementary_school_name || '')
       + (fields.elementary_school_furigana ? `（${fields.elementary_school_furigana}）` : '')
+      + (!fields.elementary_school_confirmed && fields.elementary_school_name ? ' <span style="color:#cc0000;font-size:7.5pt;font-weight:bold">（要確認）</span>' : '')
       + '</td><td class="val narrow">' + (fields.elementary_school_walk ? fields.elementary_school_walk + '分' : '') + '</td>'
       + '<td class="lbl">中学校</td><td class="val">'
       + (fields.junior_high_school_name || '')
       + (fields.junior_high_school_furigana ? `（${fields.junior_high_school_furigana}）` : '')
+      + (!fields.junior_high_school_confirmed && fields.junior_high_school_name ? ' <span style="color:#cc0000;font-size:7.5pt;font-weight:bold">（要確認）</span>' : '')
       + '</td><td class="val narrow">' + (fields.junior_high_school_walk ? fields.junior_high_school_walk + '分' : '') + '</td>'
       + '</tr><tr>'
       + '<td class="lbl">最寄り駅①</td><td class="val">' + (fields.nearest_station_name || '') + '</td><td class="val narrow">' + (fields.nearest_station_walk || '') + '</td>'
@@ -1321,13 +1362,15 @@ export default function AttachedDocument2Page() {
                     sx={{ m: 0, alignItems: 'flex-start' }}
                   />
                 </Grid>
-                {/* 道路の種類 */}
-                <Grid item xs={3}>
-                  <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', mb: 0.4 }}>道路の種類</Typography>
-                  <TextField fullWidth size="small" value={fields.road_type}
-                    onChange={(e) => set('road_type', e.target.value)}
-                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
-                </Grid>
+                {/* 道路の種類（マンション以外のみ） */}
+                {!isMansion && (
+                  <Grid item xs={3}>
+                    <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', mb: 0.4 }}>道路の種類</Typography>
+                    <TextField fullWidth size="small" value={fields.road_type}
+                      onChange={(e) => set('road_type', e.target.value)}
+                      sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
+                  </Grid>
+                )}
               </Grid>
             </Paper>
 
@@ -1351,6 +1394,11 @@ export default function AttachedDocument2Page() {
               {schoolFetchError && (
                 <Alert severity="error" sx={{ mb: 0.5, py: 0, fontSize: '8pt' }} onClose={() => setSchoolFetchError(null)}>
                   {schoolFetchError}
+                </Alert>
+              )}
+              {schoolFetchWarning && (
+                <Alert severity="warning" sx={{ mb: 0.5, py: 0, fontSize: '8pt' }} onClose={() => setSchoolFetchWarning(null)}>
+                  {schoolFetchWarning}
                 </Alert>
               )}
               <Grid container spacing={1} sx={{ mb: 0.5 }}>
@@ -1561,21 +1609,23 @@ export default function AttachedDocument2Page() {
                 { key: 'incident_info'         as const, label: '事件、事故' },
                 { key: 'minpaku'               as const, label: '民泊' },
               ].map((f, idx, arr) => (
-                <Box key={f.key} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.6, borderBottom: idx < arr.length - 1 || fields.solar_panel !== undefined ? '1px solid #eee' : 'none' }}>
+                <Box key={f.key} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.6, borderBottom: idx < arr.length - 1 || !isMansion ? '1px solid #eee' : 'none' }}>
                   <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, width: 140 }}>{f.label}</Typography>
                   <TextField fullWidth size="small" value={fields[f.key]}
                     onChange={(e) => set(f.key, e.target.value)}
                     sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' } }} />
                 </Box>
               ))}
-              {/* 太陽光 */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.6 }}>
-                <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, width: 140 }}>太陽光</Typography>
-                <TextField fullWidth size="small" value={fields.solar_panel}
-                  onChange={(e) => set('solar_panel', e.target.value)}
-                  placeholder="　Kw　買取保証期間　年　月"
-                  sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' }, '& input::placeholder': { color: '#bbb', opacity: 1 } }} />
-              </Box>
+              {/* 太陽光（マンション以外のみ） */}
+              {!isMansion && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.6 }}>
+                  <Typography sx={{ fontWeight: 'bold', fontSize: '9pt', flexShrink: 0, width: 140 }}>太陽光</Typography>
+                  <TextField fullWidth size="small" value={fields.solar_panel}
+                    onChange={(e) => set('solar_panel', e.target.value)}
+                    placeholder="　Kw　買取保証期間　年　月"
+                    sx={{ '& .MuiOutlinedInput-root': { fontSize: '9pt' }, '& input::placeholder': { color: '#bbb', opacity: 1 } }} />
+                </Box>
+              )}
             </Paper>
 
             <Box sx={{ mt: 3, pt: 2, borderTop: '3px dashed #aaa' }}>

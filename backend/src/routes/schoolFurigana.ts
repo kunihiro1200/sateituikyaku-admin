@@ -96,7 +96,7 @@ async function getSchoolFurigana(schoolName: string): Promise<string | null> {
  * FI売主（sellerNumber に 'FI' を含む）のみ対象。
  */
 router.post('/generate', authenticate, async (req: Request, res: Response) => {
-  const { sellerId, sellerNumber, elementaryName, juniorHighName } = req.body;
+  const { sellerId, sellerNumber, elementaryName, juniorHighName, force = false } = req.body;
 
   if (!sellerId) {
     return res.status(400).json({ error: 'sellerId が必要です' });
@@ -125,12 +125,12 @@ router.post('/generate', authenticate, async (req: Request, res: Response) => {
   let elemFurigana = existing?.elementary_school_furigana ?? null;
   let jhFurigana   = existing?.junior_high_school_furigana ?? null;
 
-  // 学校名が変わった or ふりがな未設定の場合のみ生成
+  // 学校名が変わった or ふりがな未設定 or 強制再生成の場合のみ生成
   const needElem = currentElemName && (
-    !elemFurigana || elementaryName !== existing?.elementary_school_name
+    force || !elemFurigana || elementaryName !== existing?.elementary_school_name
   );
   const needJh = currentJhName && (
-    !jhFurigana || juniorHighName !== existing?.junior_high_school_name
+    force || !jhFurigana || juniorHighName !== existing?.junior_high_school_name
   );
 
   if (needElem || needJh) {

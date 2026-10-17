@@ -434,15 +434,21 @@ async function fetchWalkingDistance(
   originLng: number,
   destLat: number,
   destLng: number,
-  apiKey: string
-): Promise<{ meters: number; isEstimated: boolean }> {
+  apiKey: string,
+  destPlaceId?: string | null   // place_id が使えると座標スナップ問題を回避できる
+): Promise<{ meters: number; durationSeconds: number | null; isEstimated: boolean }> {
   // ---- 試み1: Routes API（新版・推奨）----
   try {
+    // place_id があれば座標より優先（建物内座標スナップ問題を回避）
+    const destination = destPlaceId
+      ? { placeId: destPlaceId }
+      : { location: { latLng: { latitude: destLat, longitude: destLng } } };
+
     const routesRes = await axios.post(
       'https://routes.googleapis.com/directions/v2:computeRoutes',
       {
         origin: { location: { latLng: { latitude: originLat, longitude: originLng } } },
-        destination: { location: { latLng: { latitude: destLat, longitude: destLng } } },
+        destination,
         travelMode: 'WALK',
         computeAlternativeRoutes: false,
       },
@@ -456,8 +462,11 @@ async function fetchWalkingDistance(
       }
     );
     const meters = routesRes.data?.routes?.[0]?.distanceMeters;
+    // duration は "1320s" 形式（秒数 + "s"）
+    const durationStr: string | undefined = routesRes.data?.routes?.[0]?.duration;
+    const durationSeconds = durationStr ? parseInt(durationStr.replace('s', ''), 10) : null;
     if (meters) {
-      return { meters, isEstimated: false };
+      return { meters, durationSeconds, isEstimated: false };
     }
   } catch (routesErr: any) {
     const code = routesErr.response?.data?.error?.code || routesErr.response?.status;
@@ -466,12 +475,15 @@ async function fetchWalkingDistance(
 
   // ---- 試み2: Directions API（旧版） ----
   try {
+    // place_id があれば "place_id:ChIJ..." 形式で指定
+    const destination = destPlaceId ? `place_id:${destPlaceId}` : `${destLat},${destLng}`;
+
     const response = await axios.get(
       'https://maps.googleapis.com/maps/api/directions/json',
       {
         params: {
           origin: `${originLat},${originLng}`,
-          destination: `${destLat},${destLng}`,
+          destination,
           mode: 'walking',
           language: 'ja',
           key: apiKey,
@@ -480,16 +492,22 @@ async function fetchWalkingDistance(
       }
     );
     if (response.data.status === 'OK' && response.data.routes?.[0]?.legs?.[0]) {
-      return { meters: response.data.routes[0].legs[0].distance.value, isEstimated: false };
+      const leg = response.data.routes[0].legs[0];
+      return {
+        meters: leg.distance.value,
+        durationSeconds: leg.duration.value ?? null,
+        isEstimated: false,
+      };
     }
-    console.warn('[nearbyMap] Directions API status:', response.data.status);
+    console.warn('[nearbyMap] Directions API status:', response.data.status,
+      destPlaceId ? `(place_id: ${destPlaceId})` : `(coords: ${destLat},${destLng})`);
   } catch (err: any) {
     console.warn('[nearbyMap] Directions API error:', err.message);
   }
 
   // ---- フォールバック: 直線距離 × 1.3 ----
   const estimatedMeters = Math.round(calcDistance(originLat, originLng, destLat, destLng) * 1.3);
-  return { meters: estimatedMeters, isEstimated: true };
+  return { meters: estimatedMeters, durationSeconds: null, isEstimated: true };
 }
 
 /**
@@ -670,6 +688,10 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
             elementarySchoolNameFromDistrict = feature.properties?.name || null;
             elementaryDistrictSource = 'fukuoka_official';
             elementaryDistrictDate = '20251226';
+            // GeoJSON は Point-in-Polygon によるポリゴン内判定 → confirmed
+            // ただし住所対応表が uncertain を返した場合はすでにその値が設定されており
+            // このステップは skipped になるため、ここでは 'confirmed' を明示
+            elementaryConfidence = 'confirmed';
             break;
           }
         }
@@ -693,6 +715,8 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
           }
           if (matched) {
             elementarySchoolNameFromDistrict = feature.properties?.name || null;
+            // 国土数値情報は境界精度が福岡市公式より低い → 参考値として confirmed
+            elementaryConfidence = 'confirmed';
             break;
           }
         }
@@ -702,7 +726,7 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     // ---- 小学校: Places API で座標取得 ----
     // カスタム正門座標がある場合はそれを優先
     let elementarySchoolResult: {
-      name: string; lat: number; lng: number; districtConfirmed: boolean;
+      name: string; lat: number; lng: number; districtConfirmed: boolean; placeId?: string | null;
     } | null = null;
 
     const customElemLat = elementaryLat ? parseFloat(elementaryLat as string) : null;
@@ -749,6 +773,7 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
           name: elementarySchoolNameFromDistrict,
           lat: placeCoords.lat,
           lng: placeCoords.lng,
+          placeId: placeCoords.placeId ?? null,
           districtConfirmed: true,
         };
       } else {
@@ -820,8 +845,11 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     // ① 福岡市住所対応表（小学校と同じリクエストで取得済み）
     // XKT005 API・REINFOLIB_API_KEY 不要
     let juniorHighSchoolResult: {
-      name: string | null; lat: number | null; lng: number | null; districtConfirmed: boolean;
+      name: string | null; lat: number | null; lng: number | null; districtConfirmed: boolean; placeId?: string | null;
     } | null = null;
+
+    // 中学校の confidence を追跡する（小学校と同じ address table から取得されるため同じ値）
+    let jhConfidence: 'confirmed' | 'uncertain' = 'confirmed';
 
     const customJhLat = juniorHighLat ? parseFloat(juniorHighLat as string) : null;
     const customJhLng = juniorHighLng ? parseFloat(juniorHighLng as string) : null;
@@ -833,18 +861,23 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
         if (jhFromTable) {
           let jhLat = customJhLat;
           let jhLng = customJhLng;
+          let jhPlaceId: string | null = null;
           if (!jhLat || !jhLng) {
             const placeCoords = await findSchoolCoordsByName(jhFromTable, latNum, lngNum, apiKey);
             jhLat = placeCoords?.lat ?? null;
             jhLng = placeCoords?.lng ?? null;
+            jhPlaceId = placeCoords?.placeId ?? null;
           }
           juniorHighSchoolResult = {
             name: jhFromTable,
             lat: jhLat,
             lng: jhLng,
+            placeId: jhPlaceId,
             districtConfirmed: true,
           };
-          console.log(`[nearbyMap] 住所対応表 中学校: ${jhFromTable}`);
+          // 中学校は小学校と同じ address table lookup からのデータなので、同じ confidence を使う
+          jhConfidence = elementaryConfidence;
+          console.log(`[nearbyMap] 住所対応表 中学校: ${jhFromTable} [${jhConfidence}]`);
         }
       } catch (e: any) {
         console.warn('[nearbyMap] 住所対応表 中学校照合エラー:', e.message);
@@ -858,17 +891,22 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
       if (jhDistrict) {
         let jhLat = customJhLat;
         let jhLng = customJhLng;
+        let jhPlaceId: string | null = null;
         if (!jhLat || !jhLng) {
           const placeCoords = await findSchoolCoordsByName(jhDistrict.name, latNum, lngNum, apiKey);
           jhLat = placeCoords?.lat ?? null;
           jhLng = placeCoords?.lng ?? null;
+          jhPlaceId = placeCoords?.placeId ?? null;
         }
         juniorHighSchoolResult = {
           name: jhDistrict.name,
           lat: jhLat,
           lng: jhLng,
+          placeId: jhPlaceId,
           districtConfirmed: true,
         };
+        // GeoJSON フォールバック → confirmed（address table からの uncertain は上で設定済み）
+        jhConfidence = 'confirmed';
         console.log(`[nearbyMap] 中学校区判定成功: ${jhDistrict.name}`);
       } else {
         juniorHighSchoolResult = { name: null, lat: null, lng: null, districtConfirmed: false };
@@ -879,10 +917,12 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
     // ---- Directions API で徒歩ルート距離を並列計算 ----
     const [elemResult, jhResult] = await Promise.all([
       elementarySchoolResult
-        ? fetchWalkingDistance(latNum, lngNum, elementarySchoolResult.lat, elementarySchoolResult.lng, apiKey)
+        ? fetchWalkingDistance(latNum, lngNum, elementarySchoolResult.lat, elementarySchoolResult.lng, apiKey,
+            elementarySchoolResult.placeId ?? null)
         : Promise.resolve(null),
       juniorHighSchoolResult
-        ? fetchWalkingDistance(latNum, lngNum, juniorHighSchoolResult.lat, juniorHighSchoolResult.lng, apiKey)
+        ? fetchWalkingDistance(latNum, lngNum, juniorHighSchoolResult.lat, juniorHighSchoolResult.lng, apiKey,
+            juniorHighSchoolResult.placeId ?? null)
         : Promise.resolve(null),
     ]);
 
@@ -896,6 +936,10 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
             name: elementarySchoolResult.name,
             distanceMeters: elemResult?.meters ?? null,
             walkMinutes: elemResult ? calcWalkMinutes(elemResult.meters) : null,
+            // Google Maps 実測徒歩分数（APIが返した duration をそのまま分換算・切り上げ）
+            googleWalkMinutes: elemResult?.durationSeconds != null
+              ? Math.ceil(elemResult.durationSeconds / 60)
+              : null,
             isEstimated: elemResult?.isEstimated ?? false,
             lat: elementarySchoolResult.lat,
             lng: elementarySchoolResult.lng,
@@ -909,10 +953,15 @@ router.get('/school-walk', authenticate, async (req: Request, res: Response) => 
         name: juniorHighSchoolResult?.name ?? null,
         distanceMeters: jhHasCoords ? (jhResult?.meters ?? null) : null,
         walkMinutes: jhHasCoords ? (jhResult ? calcWalkMinutes(jhResult.meters) : null) : null,
+        // Google Maps 実測徒歩分数（APIが返した duration をそのまま分換算・切り上げ）
+        googleWalkMinutes: jhHasCoords && jhResult?.durationSeconds != null
+          ? Math.ceil(jhResult.durationSeconds / 60)
+          : null,
         isEstimated: jhHasCoords ? (jhResult?.isEstimated ?? false) : false,
         lat: juniorHighSchoolResult?.lat ?? null,
         lng: juniorHighSchoolResult?.lng ?? null,
         districtConfirmed: jhDistConfirmed,
+        confidence: jhConfidence,
         notAvailableReason: (!jhDistConfirmed && !juniorHighSchoolResult?.name) ? 'DISTRICT_NOT_FOUND' : null,
       },
     });
@@ -1113,7 +1162,7 @@ async function findSchoolCoordsByName(
   nearLat: number,
   nearLng: number,
   mapsApiKey: string
-): Promise<{ lat: number; lng: number } | null> {
+): Promise<{ lat: number; lng: number; placeId?: string } | null> {
   try {
     const response = await axios.get(
       'https://maps.googleapis.com/maps/api/place/findplacefromtext/json',
@@ -1121,7 +1170,7 @@ async function findSchoolCoordsByName(
         params: {
           input: schoolName,
           inputtype: 'textquery',
-          fields: 'geometry,name',
+          fields: 'geometry,name,place_id',  // place_id を追加
           locationbias: `point:${nearLat},${nearLng}`,
           language: 'ja',
           key: mapsApiKey,
@@ -1134,6 +1183,7 @@ async function findSchoolCoordsByName(
       return {
         lat: candidate.geometry.location.lat,
         lng: candidate.geometry.location.lng,
+        placeId: candidate.place_id ?? undefined,
       };
     }
     return null;

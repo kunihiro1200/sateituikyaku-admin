@@ -18,6 +18,7 @@ import {
   DialogContent, DialogActions, TextField, Divider,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import { useGoogleMaps } from '../contexts/GoogleMapsContext';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import api from '../services/api';
@@ -47,6 +48,9 @@ export interface TransitRecord {
   manual_walk_minutes: number | null;
   is_confirmed: boolean;
   confirmed_at: string | null;
+  // 博多駅への交通情報（FI売主の駅のみ）
+  transit_to_hakata_minutes: number | null;
+  transit_to_hakata_text: string | null;
   data_source: string;
   fetched_at: string | null;
   fetch_error: string | null;
@@ -101,6 +105,7 @@ function formatDate(iso: string | null): string | null {
 // ────────────────────────────────────────────
 
 const TransitAccessPanel: React.FC<TransitAccessPanelProps> = ({ sellerNumber }) => {
+  const { isLoaded } = useGoogleMaps();
   const [records, setRecords] = useState<TransitRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
@@ -130,20 +135,125 @@ const TransitAccessPanel: React.FC<TransitAccessPanelProps> = ({ sellerNumber })
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // ─── 再取得 ──────────────────────────────────────────────────────
+  // ─── 再取得 + フロントエンドDirectionsServiceで路線名・博多所要時間を計算 ──
   const handleFetch = async () => {
     setFetching(true);
     setFetchError(null);
     try {
       const res = await api.post(`/api/transit-access/seller/${sellerNumber}/fetch`);
-      setRecords(res.data.data ?? []);
+      const newRecords: TransitRecord[] = res.data.data ?? [];
+      setRecords(newRecords);
+
+      // Google Maps JS API が未準備なら補完計算をスキップ
+      if (!isLoaded || typeof google === 'undefined') return;
+
+      const service = new google.maps.DirectionsService();
+
+      // 出発時刻：現在時刻（トゥモローにすると transit データがない場合あり）
+      const depTime = new Date();
+
+      // 物件座標を取得（徒歩距離計算に必要）
+      let propLat: number | null = null;
+      let propLng: number | null = null;
+      try {
+        const coordRes = await api.get(`/api/sellers/by-number/${sellerNumber}`);
+        propLat = coordRes.data.latitude ?? null;
+        propLng = coordRes.data.longitude ?? null;
+        console.log('[TransitPanel] propLat:', propLat, 'propLng:', propLng);
+      } catch (e) {
+        console.error('[TransitPanel] coord fetch failed:', e);
+      }
+
+      // Directions API Promise ラッパー（タイムアウト付き）
+      const callDir = (req: google.maps.DirectionsRequest): Promise<google.maps.DirectionsResult | null> => {
+        const timeout = new Promise<null>(res => setTimeout(() => res(null), 8000));
+        const dir = new Promise<google.maps.DirectionsResult | null>(resolve => {
+          try {
+            service.route(req, (r, s) => {
+              console.log('[TransitPanel] DirectionsService status:', s, 'mode:', req.travelMode);
+              (s === google.maps.DirectionsStatus.OK && r?.routes?.[0]?.legs?.[0])
+                ? resolve(r) : resolve(null);
+            });
+          } catch (e) { resolve(null); }
+        });
+        return Promise.race([dir, timeout]);
+      };
+
+      // 各レコードを並列処理
+      const storeType = newRecords[0]?.store_type;
+      await Promise.all(newRecords.map(async (r) => {
+        const patch: Record<string, any> = {};
+
+        // ── 徒歩距離: 推定の場合にフロントエンドで再計算 ──────────────
+        if (r.is_estimated_distance && propLat && propLng && r.place_lat && r.place_lng) {
+          const walkRes = await callDir({
+            origin:      new google.maps.LatLng(propLat, propLng),
+            destination: new google.maps.LatLng(r.place_lat, r.place_lng),
+            travelMode:  google.maps.TravelMode.WALKING,
+          });
+          if (walkRes) {
+            const m = walkRes.routes[0].legs[0].distance!.value;
+            patch.walk_distance_m      = m;
+            patch.walk_minutes         = Math.ceil(m / 80);
+            patch.is_estimated_distance = false;
+          }
+        }
+
+        // ── 路線名・博多所要時間: FI売主の駅のみ（物件→博多でtransitを1回計算）──
+        // 各駅から博多へのroutingはZERO_RESULTSになるため、物件→博多で計算する
+        if (r.transport_type === 'station' && storeType === 'fukuoka' && propLat && propLng && r.rank === 1) {
+          try {
+            const transitRes = await callDir({
+              origin:          new google.maps.LatLng(propLat, propLng),
+              destination:     new google.maps.LatLng(33.58975, 130.42006), // 博多駅座標
+              travelMode:      google.maps.TravelMode.TRANSIT,
+              transitOptions:  { departureTime: depTime },
+            } as google.maps.DirectionsRequest);
+
+            if (transitRes) {
+              const leg = transitRes.routes[0].legs[0];
+              const totalMins = Math.ceil(leg.duration!.value / 60);
+              const tSteps = leg.steps.filter(s => s.travel_mode === 'TRANSIT');
+              if (tSteps.length > 0) {
+                const firstLine: string =
+                  (tSteps[0] as any).transit?.line?.name ||
+                  (tSteps[0] as any).transit?.line?.short_name || '';
+                const boardStop: string = (tSteps[0] as any).transit?.departure_stop?.name || '';
+                const routeText = tSteps.length === 1
+                  ? (firstLine ? `${firstLine}直通 博多まで${totalMins}分` : `博多まで${totalMins}分`)
+                  : `${firstLine}→${tSteps.slice(1).map((s: any) => {
+                      const dep = s.transit?.departure_stop?.name ?? '';
+                      const ln  = s.transit?.line?.name || s.transit?.line?.short_name || '';
+                      return dep ? `${dep}で${ln}乗換` : `${ln}乗換`;
+                    }).join('→')}→博多まで${totalMins}分`;
+                console.log('[TransitPanel] transit OK', { boardStop, firstLine, totalMins });
+                patch.line_name                 = firstLine || null;
+                patch.transit_to_hakata_minutes = totalMins;
+                patch.transit_to_hakata_text    = routeText;
+              } else {
+                patch.transit_to_hakata_minutes = totalMins;
+                patch.transit_to_hakata_text    = `博多まで${totalMins}分`;
+              }
+            }
+          } catch (transitErr) {
+            console.warn('[TransitPanel] transit calc failed:', transitErr);
+          }
+        }
+
+        if (Object.keys(patch).length > 0) {
+          try {
+            const patchRes = await api.patch(`/api/transit-access/seller/${sellerNumber}/${r.id}`, patch);
+            setRecords(prev => prev.map(rec => rec.id === r.id ? patchRes.data.data : rec));
+          } catch (e) { console.warn('[TransitPanel] patch error:', e); }
+        }
+      }));
+
     } catch (err: any) {
-      const msg = err?.response?.data?.error ?? '交通アクセス情報の取得に失敗しました';
-      setFetchError(msg);
+      setFetchError(err?.response?.data?.error ?? '交通アクセス情報の取得に失敗しました');
     } finally {
       setFetching(false);
     }
-  };
+  }; 
 
   // ─── チェックボックス ──────────────────────────────────────────────
   const handleToggleSelected = async (record: TransitRecord) => {
@@ -469,14 +579,12 @@ const TransitRow: React.FC<TransitRowProps> = ({ record: r, onToggleSelected, on
           sx={{ fontSize: '0.7rem', color: 'text.primary', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
         >
           {displayName || '—'}
+          {displayLine && (
+            <Typography component="span" sx={{ fontSize: '0.62rem', color: 'text.secondary', ml: 0.3 }}>
+              （{displayLine}）
+            </Typography>
+          )}
         </Typography>
-
-        {/* 路線名（あれば） */}
-        {displayLine && (
-          <Typography variant="caption" sx={{ fontSize: '0.62rem', color: 'text.secondary', display: 'block' }}>
-            {displayLine}
-          </Typography>
-        )}
 
         {/* 徒歩分数 — 目立つ色で表示 */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
@@ -497,6 +605,13 @@ const TransitRow: React.FC<TransitRowProps> = ({ record: r, onToggleSelected, on
             <Chip label="修正" size="small" sx={{ height: 13, fontSize: '0.57rem', bgcolor: '#fff3e0', color: '#e65100' }} />
           )}
         </Box>
+
+        {/* 博多駅までの経路情報（FI売主の駅のみ） */}
+        {r.transport_type === 'station' && r.transit_to_hakata_text && (
+          <Typography variant="caption" sx={{ fontSize: '0.62rem', color: '#1565c0', display: 'block' }}>
+            🚇 {r.transit_to_hakata_text}
+          </Typography>
+        )}
       </Box>
 
       {/* 確認済みアイコン */}

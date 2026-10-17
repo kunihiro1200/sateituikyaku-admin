@@ -143,6 +143,49 @@ function matchGoRange(goSpec: string, go: number | null): boolean | null {
 }
 
 /**
+ * 「ただし〜を除く」例外節から住所が除外されるかチェック
+ * @returns true = 除外される, false = 除外されない, null = 判定不能
+ */
+function isExcludedByClause(
+  exc: string,        // 例: "3丁目20番の一部を除く・・・笹丘小", "13番(21号～37号)を除く"
+  chome: number | null,
+  ban:   number | null,
+  go:    number | null,
+): boolean | null {
+
+  // 例外節の丁目・番を抽出
+  const excChomeM = exc.match(/(\d+)丁目/);
+  const excBanM   = exc.match(/(\d+)番/);
+  const excChome  = excChomeM ? parseInt(excChomeM[1], 10) : null;
+  const excBan    = excBanM   ? parseInt(excBanM[1],   10) : null;
+
+  // 丁目が違う → 除外されない
+  if (excChome !== null && chome !== null && chome !== excChome) return false;
+
+  // 番が違う → 除外されない
+  if (excBan !== null && ban !== null && ban !== excBan) return false;
+
+  // 号範囲チェック: "13番(21号～37号)" のような括弧内 go 仕様
+  const goRangeM = exc.match(/\((\d+)号～(\d+)号\)/);
+  if (goRangeM && go !== null) {
+    const from = parseInt(goRangeM[1], 10);
+    const to   = parseInt(goRangeM[2], 10);
+    if (go < from || go > to) return false; // go が範囲外 → 除外されない
+    return true; // go が範囲内 → 除外される
+  }
+
+  // "の一部" → 細部不明のため判定不能
+  if (exc.includes('の一部')) return null;
+
+  // 丁目も番も一致、go仕様なし → 除外される可能性が高い（uncertain）
+  if (excChome !== null && chome === excChome) {
+    if (excBan === null || ban === excBan) return null; // 詳細不明
+  }
+
+  return null;
+}
+
+/**
  * 1つのパート（"5丁目20番～24番" 等）を照合する
  * @returns { matched, uncertain, newChome }
  */
@@ -159,8 +202,22 @@ function matchPart(
 
   let p = part.trim();
 
-  // ただし/除く/照会 → 例外があるが基本はmatchとして扱い、uncertain フラグを立てる
-  if (p.includes('ただし') || p.includes('除く') || p.includes('照会')) return UNCERTAIN;
+  // ─── Step 1: 括弧内の「ただし〜を除く」例外節を先に抽出 ───
+  const exceptions: string[] = [];
+  const pStripped = p.replace(/[（(]ただし([^）)]+)[）)]/g, (_match, exc) => {
+    exceptions.push(exc);
+    return '';
+  }).trim();
+
+  // 括弧外の「ただし/除く/照会」はそのまま uncertain
+  if (pStripped.includes('ただし') || pStripped.includes('除く') || pStripped.includes('照会')) {
+    return UNCERTAIN;
+  }
+
+  // 例外節を除いたベースレンジを使う
+  p = pStripped;
+
+  // ─── Step 2: ベースレンジの照合 ───
 
   // 丁目範囲: "N丁目～M丁目"
   const chomeRangeM = p.match(/^(\d+)丁目～(\d+)丁目$/);
@@ -168,7 +225,10 @@ function matchPart(
     const from = parseInt(chomeRangeM[1], 10);
     const to   = parseInt(chomeRangeM[2], 10);
     if (addrChome === null) return UNCERTAIN;
-    return { matched: addrChome >= from && addrChome <= to, uncertain: false, newChome: to };
+    if (addrChome < from || addrChome > to) return NO_MATCH;
+    // ベースマッチ → 例外確認へ
+    const newChome = addrChome;
+    return checkExceptions(exceptions, addrChome, addrBan, addrGo, true, false, newChome);
   }
 
   // 単独丁目（番地指定なし）: "N丁目"
@@ -176,7 +236,8 @@ function matchPart(
   if (chomeOnlyM) {
     const partChome = parseInt(chomeOnlyM[1], 10);
     if (addrChome === null) return UNCERTAIN;
-    return { matched: addrChome === partChome, uncertain: false, newChome: partChome };
+    if (addrChome !== partChome) return NO_MATCH;
+    return checkExceptions(exceptions, addrChome, addrBan, addrGo, true, false, partChome);
   }
 
   // 丁目+番地指定: "N丁目BanSpec"
@@ -187,7 +248,6 @@ function matchPart(
   if (chomeWithBanM) {
     partChome = parseInt(chomeWithBanM[1], 10);
     banSpec   = chomeWithBanM[2].trim();
-    // 丁目が住所と一致しない → この部分はスキップ（no_match）
     if (addrChome !== null && addrChome !== partChome) {
       return { matched: false, uncertain: false, newChome: partChome };
     }
@@ -196,7 +256,7 @@ function matchPart(
 
   const newChome = partChome ?? ctxChome;
 
-  // 番地の括弧内 go 仕様を抽出: "24番(6号～15号)" → banPart="24番", goSpec="6号～15号"
+  // 番地の括弧内 go 仕様を抽出
   let goSpec = '';
   const goInParenM = banSpec.match(/^(.*?)[(（]([^)）]+)[)）](.*)$/);
   if (goInParenM) {
@@ -207,7 +267,6 @@ function matchPart(
   // 番地範囲: "N番～M番"
   const banRangeM = banSpec.match(/^(\d+)番～(\d+)番$/);
   if (banRangeM) {
-    // 丁目コンテキストが違う場合はスキップ
     if (newChome !== null && addrChome !== null && newChome !== addrChome) {
       return { matched: false, uncertain: false, newChome };
     }
@@ -218,15 +277,14 @@ function matchPart(
     if (goSpec) {
       const goMatch = matchGoRange(goSpec, addrGo);
       if (goMatch === null) return { matched: false, uncertain: true, newChome };
-      return { matched: goMatch, uncertain: false, newChome };
+      if (!goMatch) return { matched: false, uncertain: false, newChome };
     }
-    return { matched: true, uncertain: false, newChome };
+    return checkExceptions(exceptions, addrChome, addrBan, addrGo, true, false, newChome);
   }
 
   // 単独番地: "N番"
   const banSingleM = banSpec.match(/^(\d+)番$/);
   if (banSingleM) {
-    // 丁目コンテキストが違う場合はスキップ
     if (newChome !== null && addrChome !== null && newChome !== addrChome) {
       return { matched: false, uncertain: false, newChome };
     }
@@ -236,16 +294,50 @@ function matchPart(
     if (goSpec) {
       const goMatch = matchGoRange(goSpec, addrGo);
       if (goMatch === null) return { matched: false, uncertain: true, newChome };
-      return { matched: goMatch, uncertain: false, newChome };
+      if (!goMatch) return { matched: false, uncertain: false, newChome };
     }
-    return { matched: true, uncertain: false, newChome };
+    return checkExceptions(exceptions, addrChome, addrBan, addrGo, true, false, newChome);
   }
 
-  // 番地 or 地番のみ（"N番地" / "N" 単独）: 照会扱い
-  if (/^\d+番地$/.test(banSpec) || /^\d+$/.test(banSpec)) return UNCERTAIN;
+  if (/^\d+番地$/.test(banSpec) || /^\d+$/.test(banSpec)) return { matched: false, uncertain: true, newChome };
 
-  // 解析不能なパターン → uncertain
-  return UNCERTAIN;
+  // 「N番の一部」または複合 banSpec（"20番の一部 4丁目13番(21号～37号)" 等）
+  // → uncertain だが、banSpec 内に埋め込まれた最後の丁目番号を newChome として伝播する
+  if (banSpec.includes('の一部') || !banSpec.match(/^[\d番～号、 ]+$/)) {
+    const embeddedChomes = [...banSpec.matchAll(/(\d+)丁目/g)];
+    const lastEmbeddedChome = embeddedChomes.length > 0
+      ? parseInt(embeddedChomes[embeddedChomes.length - 1][1], 10)
+      : null;
+    const finalNewChome = lastEmbeddedChome ?? newChome;
+    return { matched: false, uncertain: true, newChome: finalNewChome };
+  }
+
+  return { matched: false, uncertain: true, newChome };
+}
+
+/**
+ * ベースレンジがマッチした後、例外節を確認する
+ */
+function checkExceptions(
+  exceptions: string[],
+  chome: number | null,
+  ban:   number | null,
+  go:    number | null,
+  baseMatched: boolean,
+  baseUncertain: boolean,
+  newChome: number | null,
+): { matched: boolean; uncertain: boolean; newChome: number | null } {
+  if (!baseMatched) return { matched: false, uncertain: baseUncertain, newChome };
+  if (exceptions.length === 0) return { matched: true, uncertain: false, newChome };
+
+  for (const exc of exceptions) {
+    const excluded = isExcludedByClause(exc, chome, ban, go);
+    if (excluded === true)  return { matched: false, uncertain: false, newChome }; // 除外確定 → no_match
+    if (excluded === null)  return { matched: false, uncertain: true,  newChome }; // 判定不能 → uncertain
+    // excluded === false → 除外されない → continue
+  }
+  // 全例外を確認、どれも除外しない → confirmed match
+  return { matched: true, uncertain: false, newChome };
 }
 
 /**
@@ -277,7 +369,28 @@ export function matchRange(
     return 'match';
   }
 
-  // ただし/除く 全体
+  // ─── ただし例外節の先読み処理 ────────────────────────────────────────
+  // 「N丁目～M丁目（ただし、P丁目Q番の一部を除く）」パターンに限定して確定判定する。
+  // 「の一部」を含む場合のみ対象（ban範囲除外は blanket uncertain に任せる）
+  const chomeRangeWithTadashiM = r.match(/^(\d+)丁目～(\d+)丁目[（(]ただし、(\d+)丁目(\d+)番の一部/);
+  if (chomeRangeWithTadashiM && chome !== null) {
+    const from     = parseInt(chomeRangeWithTadashiM[1], 10);
+    const to       = parseInt(chomeRangeWithTadashiM[2], 10);
+    const excChome = parseInt(chomeRangeWithTadashiM[3], 10);
+    const excBan   = parseInt(chomeRangeWithTadashiM[4], 10);
+    if (chome >= from && chome <= to) {
+      if (chome !== excChome) {
+        return 'match'; // 例外丁目ではない → confirmed
+      }
+      if (ban !== null && ban !== excBan) {
+        return 'match'; // 例外番地ではない → confirmed
+      }
+      return 'uncertain'; // 例外番地「の一部」の可能性あり
+    }
+    // 範囲外 → 下の処理へ
+  }
+
+  // ただし/除く/照会 を含む → uncertain（その他のケース）
   if (r.includes('ただし') || r.includes('除く') || r.includes('照会')) return 'uncertain';
 
   // パーツに分割して個別チェック

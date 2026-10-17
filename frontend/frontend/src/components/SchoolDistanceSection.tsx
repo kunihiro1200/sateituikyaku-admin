@@ -407,7 +407,7 @@ const SchoolCard: React.FC<SchoolCardProps> = ({
             inputProps={{ style: { fontSize: '13px' } }}
             InputLabelProps={{ sx: { fontSize: '11px' } }}
             sx={{ '& .MuiOutlinedInput-root': { fontSize: '13px' } }}
-            helperText={info.walkMinutes?.includes('〜') ? '標準〜Google実測（分）' : '広告表示用（80m/分・切上）'}
+            helperText={info.walkMinutes?.includes('〜') ? '標準〜Google実測（分）' : 'Google Maps実測（分）'}
             FormHelperTextProps={{ sx: { fontSize: '9px', mt: 0.3 } }}
           />
         </Box>
@@ -554,7 +554,11 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
         params.elementaryLat = customElemEntrance.lat;
         params.elementaryLng = customElemEntrance.lng;
       }
-      if (customJhEntrance) {
+      // 中学校の保存済み座標は自動取得時には渡さない。
+      // 保存済み座標が誤っていても毎回再利用されてしまうのを防ぐため、
+      // 常に Places API で最新の座標を取得する。
+      // （小学校と同じ方針：propertyAddress があれば常に Places API を使う）
+      if (customJhEntrance && !addressToUse) {
         params.juniorHighLat = customJhEntrance.lat;
         params.juniorHighLng = customJhEntrance.lng;
       }
@@ -563,12 +567,19 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
       const data = res.data;
 
       // 3. バックエンドの結果をそのまま state に反映
+      // Google Maps 実測時間（googleWalkMinutes）を優先し、なければ80m/分規約計算
+      const toWalk = (gMin: number | null | undefined, meters: number | null | undefined): string | null => {
+        if (gMin != null) return String(gMin);
+        if (meters != null) return String(Math.ceil(meters / 80));
+        return null;
+      };
+
       if (data.elementarySchool) {
         const meters = data.elementarySchool.distanceMeters;
         setElementarySchool({
           name: data.elementarySchool.name,
           distanceMeters: meters,
-          walkMinutes: meters !== null ? computeWalkDisplay(meters, null) : null,
+          walkMinutes: toWalk(data.elementarySchool.googleWalkMinutes, meters),
           lat: data.elementarySchool.lat,
           lng: data.elementarySchool.lng,
           districtConfirmed: data.elementarySchool.districtConfirmed,
@@ -580,7 +591,7 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
         setJuniorHighSchool({
           name: data.juniorHighSchool.name ?? '',
           distanceMeters: meters,
-          walkMinutes: meters !== null ? computeWalkDisplay(meters, null) : null,
+          walkMinutes: toWalk(data.juniorHighSchool.googleWalkMinutes, meters),
           lat: data.juniorHighSchool.lat,
           lng: data.juniorHighSchool.lng,
           districtConfirmed: data.juniorHighSchool.districtConfirmed,
@@ -601,16 +612,30 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
         const elemSchool = data.elementarySchool;
         const jhSchool = data.juniorHighSchool;
         try {
+          // ⚠️ FI売主のふりがな生成は学校名の保存より先に行う
+          // 保存後に呼ぶと DB の学校名が新名に更新済みになり
+          // 「名前が変わっていない」と判断されてふりがなが再生成されない
+          // force=true: DB に同名が残っていても必ず再生成する
+          if (isFISeller) {
+            await generateFurigana(
+              elemSchool?.name ?? '',
+              jhSchool?.name ?? '',
+              true  // 自動取得時は常に強制再生成
+            );
+          }
+
           await api.patch(`/api/sellers/${sellerId}/attached-document2/school`, {
             elementary_school_name: elemSchool?.name || null,
-            elementary_school_walk: elemSchool?.distanceMeters !== null && elemSchool?.distanceMeters !== undefined
-              ? String(Math.ceil(elemSchool.distanceMeters / 80)) : null,
+            elementary_school_walk: elemSchool?.googleWalkMinutes != null
+              ? String(elemSchool.googleWalkMinutes)
+              : (elemSchool?.distanceMeters != null ? String(Math.ceil(elemSchool.distanceMeters / 80)) : null),
             elementary_school_distance: elemSchool?.distanceMeters ?? null,
             elementary_school_entrance_lat: elemSchool?.lat ?? null,
             elementary_school_entrance_lng: elemSchool?.lng ?? null,
             junior_high_school_name: jhSchool?.name ?? null,
-            junior_high_school_walk: jhSchool?.distanceMeters !== null && jhSchool?.distanceMeters !== undefined
-              ? String(Math.ceil(jhSchool.distanceMeters / 80)) : null,
+            junior_high_school_walk: jhSchool?.googleWalkMinutes != null
+              ? String(jhSchool.googleWalkMinutes)
+              : (jhSchool?.distanceMeters != null ? String(Math.ceil(jhSchool.distanceMeters / 80)) : null),
             junior_high_school_distance: jhSchool?.distanceMeters ?? null,
             junior_high_school_entrance_lat: jhSchool?.lat ?? null,
             junior_high_school_entrance_lng: jhSchool?.lng ?? null,
@@ -619,13 +644,6 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
           setFetchedAt(new Date().toISOString());
           setSaveSuccess(true);
           setTimeout(() => setSaveSuccess(false), 3000);
-          // FI売主のみふりがなを自動生成
-          if (isFISeller) {
-            await generateFurigana(
-              data.elementarySchool?.name ?? '',
-              data.juniorHighSchool?.name ?? ''
-            );
-          }
         } catch (saveErr: any) {
           console.warn('[SchoolDistanceSection] 自動保存失敗:', saveErr.message);
           // 自動保存失敗は警告のみ（手動保存ボタンで対処可）
@@ -638,8 +656,10 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
     }
   };
 
-  // ふりがな自動生成（FI売主のみ・学校名保存後に呼ぶ）
-  const generateFurigana = useCallback(async (elemName: string, jhName: string) => {
+  // ふりがな自動生成（FI売主のみ・学校名保存前に呼ぶ）
+  // 保存後に呼ぶと DB の学校名が新名に更新済みになり再生成がスキップされる
+  // force=true: DB の学校名が同じでも強制的に再生成する（自動取得時に使用）
+  const generateFurigana = useCallback(async (elemName: string, jhName: string, force = false) => {
     if (!isFISeller || !sellerId) return;
     if (!elemName && !jhName) return;
     setFuriganaLoading(true);
@@ -649,6 +669,7 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
         sellerNumber,
         elementaryName: elemName || null,
         juniorHighName:  jhName  || null,
+        force,
       });
       if (res.data.elementaryFurigana) setElementaryFurigana(res.data.elementaryFurigana);
       if (res.data.juniorHighFurigana)  setJuniorHighFurigana(res.data.juniorHighFurigana);
@@ -746,7 +767,7 @@ const SchoolDistanceSection: React.FC<SchoolDistanceSectionProps> = ({
           」で自動判定します（令和5年度データ）。
           学区不明の場合は「
           <Box component="span" fontWeight="bold">学区未確認</Box>
-          」と表示されます。徒歩時間は道路距離80mにつき1分・端数切り上げの不動産広告表示基準です。
+          」と表示されます。徒歩時間はGoogle Maps実測時間（取得できない場合は道路距離80mにつき1分・切り上げ）で表示します。
         </Alert>
 
         {/* エラー表示 */}

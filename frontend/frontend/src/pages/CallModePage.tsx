@@ -6759,6 +6759,11 @@ HP：https://ifoo-oita.com/
                     <MenuItem onClick={() => { setDocGenMenuAnchor(null); setServiceModalOpen(true); }}>
                       サービス
                     </MenuItem>
+                    {seller?.id && (
+                      <MenuItem onClick={() => { setDocGenMenuAnchor(null); window.open(`/sellers/${seller.id}/comparison-map`, '_blank'); }}>
+                        比較マップ
+                      </MenuItem>
+                    )}
                   </Menu>
                   {/* 文字起ボタン（資料生成の下に配置） */}
                   <Button

@@ -82,10 +82,126 @@ function calcStraightDistance(lat1: number, lng1: number, lat2: number, lng2: nu
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
+// ──────────────────────────────────────────────
+// 博多駅への transit 情報取得（FI売主向け）
+// ──────────────────────────────────────────────
+
+/** 博多駅の座標（JR・地下鉄共通出入口付近） */
+const HAKATA_STATION = { lat: 33.58975, lng: 130.42006 };
+
+/** 翌営業日の朝 9 時のタイムスタンプを返す（transit API は未来の時刻が必要） */
+function getNextWeekdayMorningTs(): number {
+  const now = new Date();
+  const next = new Date(now);
+  const day = now.getDay(); // 0=日 6=土
+  const addDays = day === 0 ? 1 : day === 6 ? 2 : 1;
+  next.setDate(now.getDate() + addDays);
+  next.setHours(9, 0, 0, 0);
+  return Math.floor(next.getTime() / 1000);
+}
+
+/**
+ * Directions API (transit) を使って駅→博多駅の経路情報を取得する。
+ * place_id を origin に使うことで駅を一意に特定し正確な transit ルートを取得する。
+ */
+async function fetchTransitToHakata(
+  stationPlaceId: string,
+  stationName: string,
+  apiKey: string
+): Promise<{
+  lineName: string | null;
+  minutesToHakata: number | null;
+  routeText: string | null;
+}> {
+  // Transit専用キー（GOOGLE_MAPS_DIRECTIONS_KEY）を優先、なければメインキーを使う
+  const transitApiKey = process.env.GOOGLE_MAPS_DIRECTIONS_KEY || apiKey;
+  try {
+    const departureTime = getNextWeekdayMorningTs();
+    console.log(`[transitAccess/hakata] place_id=${stationPlaceId} name="${stationName}"`);
+
+    const response = await axios.get(
+      'https://maps.googleapis.com/maps/api/directions/json',
+      {
+        params: {
+          origin: `place_id:${stationPlaceId}`,  // 駅固有IDで一意に特定
+          destination: '博多駅',
+          mode: 'transit',
+          departure_time: departureTime,
+          language: 'ja',
+          region: 'jp',
+          key: transitApiKey,
+        },
+        timeout: 12000,
+      }
+    );
+
+    const status: string = response.data.status;
+    console.log(`[transitAccess/hakata] status=${status} error_message=${response.data.error_message ?? ''} routes=${response.data.routes?.length ?? 0}`);
+
+    if (status !== 'OK' || !response.data.routes?.[0]?.legs?.[0]) {
+      // 診断用: エラー理由を routeText に格納して UI に表示
+      const reason = response.data.error_message
+        ? `${status}: ${response.data.error_message}`
+        : `status=${status}`;
+      return { lineName: null, minutesToHakata: null, routeText: `[取得失敗] ${reason}` };
+    }
+
+    const leg = response.data.routes[0].legs[0];
+    const totalMinutes = Math.ceil(leg.duration.value / 60);
+
+    // TRANSIT ステップのみ抽出（WALKING ステップを除く）
+    const transitSteps: any[] = (leg.steps as any[]).filter(
+      (s: any) => s.travel_mode === 'TRANSIT'
+    );
+
+    console.log(`[transitAccess/hakata] totalMinutes=${totalMinutes} transitSteps=${transitSteps.length}`);
+    if (transitSteps.length > 0) {
+      console.log(`[transitAccess/hakata] first line=`, JSON.stringify(transitSteps[0].transit_details?.line));
+    }
+
+    if (transitSteps.length === 0) {
+      return { lineName: null, minutesToHakata: totalMinutes, routeText: `博多まで${totalMinutes}分` };
+    }
+
+    // 最初に乗る路線名
+    const firstStep = transitSteps[0];
+    const firstLineName: string =
+      firstStep.transit_details?.line?.name ||
+      firstStep.transit_details?.line?.short_name ||
+      '';
+
+    if (transitSteps.length === 1) {
+      // 乗り換えなし
+      const routeText = firstLineName
+        ? `${firstLineName}直通 博多まで${totalMinutes}分`
+        : `博多まで${totalMinutes}分`;
+      return { lineName: firstLineName || null, minutesToHakata: totalMinutes, routeText };
+    } else {
+      // 乗り換えあり
+      const transfers = transitSteps
+        .slice(1)
+        .map((s: any) => {
+          const depStop: string = s.transit_details?.departure_stop?.name ?? '';
+          const lineName: string =
+            s.transit_details?.line?.name ||
+            s.transit_details?.line?.short_name ||
+            '';
+          return depStop ? `${depStop}で${lineName}乗換` : `${lineName}乗換`;
+        })
+        .join('→');
+      const routeText = `${firstLineName}→${transfers}→博多まで${totalMinutes}分`;
+      return { lineName: firstLineName || null, minutesToHakata: totalMinutes, routeText };
+    }
+  } catch (err: any) {
+    console.error('[transitAccess/hakata] exception:', err.message);
+    return { lineName: null, minutesToHakata: null, routeText: `[例外] ${err.message}` };
+  }
+}
+
 /**
  * Directions API で徒歩道路距離を取得する。
- * API が利用できない場合は直線距離 × 1.3 で推定する（isEstimated=true）。
- * nearbyMap.ts の fetchWalkingDistance() と同じ実装。
+ * GOOGLE_MAPS_DIRECTIONS_KEY を優先使用（Directions API が許可されたキー）。
+ * 失敗時は直線距離 × 1.3 で推定する（isEstimated=true）。
  */
 async function fetchWalkingDistance(
   originLat: number,
@@ -94,6 +210,8 @@ async function fetchWalkingDistance(
   destLng: number,
   apiKey: string
 ): Promise<{ meters: number; isEstimated: boolean }> {
+  // Directions API 用の専用キーを優先（GOOGLE_MAPS_API_KEY は制限がある場合がある）
+  const walkKey = process.env.GOOGLE_MAPS_DIRECTIONS_KEY || apiKey;
   try {
     const response = await axios.get(
       'https://maps.googleapis.com/maps/api/directions/json',
@@ -103,7 +221,7 @@ async function fetchWalkingDistance(
           destination: `${destLat},${destLng}`,
           mode: 'walking',
           language: 'ja',
-          key: apiKey,
+          key: walkKey,
         },
         timeout: 10000,
       }
@@ -111,9 +229,9 @@ async function fetchWalkingDistance(
     if (response.data.status === 'OK' && response.data.routes?.[0]?.legs?.[0]) {
       return { meters: response.data.routes[0].legs[0].distance.value, isEstimated: false };
     }
-    console.warn('[transitAccess] Directions API status:', response.data.status, '→ 推定値にフォールバック');
+    console.warn('[transitAccess] Directions API walking status:', response.data.status, '→ 推定値にフォールバック');
   } catch (err: any) {
-    console.warn('[transitAccess] Directions API error:', err.message, '→ 推定値にフォールバック');
+    console.warn('[transitAccess] Directions API walking error:', err.message, '→ 推定値にフォールバック');
   }
   const straight = calcStraightDistance(originLat, originLng, destLat, destLng);
   return { meters: Math.round(straight * 1.3), isEstimated: true };
@@ -425,10 +543,29 @@ router.post('/seller/:sellerNumber/fetch', async (req: Request, res: Response) =
     const now = new Date().toISOString();
     const upsertRows: any[] = [];
 
+    // ─── FI売主（福岡）の駅のみ博多駅への transit 情報を取得 ──────────────
+    type HakataInfo = { lineName: string | null; minutesToHakata: number | null; routeText: string | null };
+    let stationHakataInfos: HakataInfo[] = topStations.map(() => ({
+      lineName: null, minutesToHakata: null, routeText: null,
+    }));
+
+    if (storeType === 'fukuoka' && topStations.length > 0) {
+      stationHakataInfos = await Promise.all(
+        topStations.map(s =>
+          fetchTransitToHakata(s.candidate.place_id, s.candidate.name, apiKey)
+        )
+      );
+      console.log(
+        `[transitAccess] Hakata transit info for ${sellerNumber}:`,
+        stationHakataInfos.map(h => h.routeText)
+      );
+    }
+
     const buildRow = (
       transportType: TransportType,
       rank: number,
-      item: WithDistance
+      item: WithDistance,
+      hakataInfo?: HakataInfo
     ): any => {
       const existing = existingMap.get(`${transportType}_${rank}`);
       return {
@@ -437,13 +574,19 @@ router.post('/seller/:sellerNumber/fetch', async (req: Request, res: Response) =
         transport_type: transportType,
         rank,
         name: item.candidate.name,
-        line_name: null,  // Places API から取得不可。手動入力を促す。
+        // 路線名: transit APIで取得（手動修正がある場合はそちらを優先するため既存値を確認）
+        line_name: existing?.is_manually_corrected && existing?.manual_line_name
+          ? existing.manual_line_name
+          : (hakataInfo?.lineName ?? null),
         walk_distance_m: item.meters,
         walk_minutes: calcWalkMinutes(item.meters),
         is_estimated_distance: item.isEstimated,
         place_id: item.candidate.place_id,
         place_lat: item.candidate.place_lat,
         place_lng: item.candidate.place_lng,
+        // 博多駅への交通情報（駅のみ）
+        transit_to_hakata_minutes: hakataInfo?.minutesToHakata ?? null,
+        transit_to_hakata_text:    hakataInfo?.routeText ?? null,
         // ユーザー操作値は既存データを引き継ぐ（なければデフォルト）
         is_selected:            existing?.is_selected            ?? false,
         is_manually_corrected:  existing?.is_manually_corrected  ?? false,
@@ -461,7 +604,7 @@ router.post('/seller/:sellerNumber/fetch', async (req: Request, res: Response) =
     };
 
     for (let i = 0; i < topStations.length; i++) {
-      upsertRows.push(buildRow('station', i + 1, topStations[i]));
+      upsertRows.push(buildRow('station', i + 1, topStations[i], stationHakataInfos[i]));
     }
     for (let i = 0; i < topBusStops.length; i++) {
       upsertRows.push(buildRow('bus_stop', i + 1, topBusStops[i]));
@@ -517,6 +660,13 @@ router.patch('/seller/:sellerNumber/:id', async (req: Request, res: Response) =>
     manual_line_name,
     manual_walk_minutes,
     is_confirmed,
+    // フロントエンドDirectionsServiceで計算した結果
+    line_name,
+    walk_distance_m,
+    walk_minutes,
+    is_estimated_distance,
+    transit_to_hakata_minutes,
+    transit_to_hakata_text,
   } = req.body;
 
   try {
@@ -536,6 +686,13 @@ router.patch('/seller/:sellerNumber/:id', async (req: Request, res: Response) =>
       updates.is_confirmed = is_confirmed;
       updates.confirmed_at = is_confirmed ? new Date().toISOString() : null;
     }
+    // 自動計算フィールド（フロントエンドDirectionsServiceから）
+    if (line_name !== undefined)                 updates.line_name = line_name || null;
+    if (walk_distance_m !== undefined)           updates.walk_distance_m = walk_distance_m ?? null;
+    if (walk_minutes !== undefined)              updates.walk_minutes = walk_minutes ?? null;
+    if (is_estimated_distance !== undefined)     updates.is_estimated_distance = !!is_estimated_distance;
+    if (transit_to_hakata_minutes !== undefined) updates.transit_to_hakata_minutes = transit_to_hakata_minutes ?? null;
+    if (transit_to_hakata_text !== undefined)    updates.transit_to_hakata_text = transit_to_hakata_text || null;
 
     const { data, error } = await supabase
       .from('seller_transit_access')
