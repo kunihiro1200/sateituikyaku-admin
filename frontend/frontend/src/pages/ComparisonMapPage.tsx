@@ -230,7 +230,7 @@ const ComparisonMapPage: React.FC = () => {
   const [printLoading, setPrintLoading] = useState(false);
   const mapRef = useRef<google.maps.Map | null>(null);
 
-  // ── 資料アップロード＆AI抽出用ステート ─────────────────────────
+  // ── 資料アップロード＆AI抽出用ステート（現在募集中）──────────────
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
   const [extractedProps, setExtractedProps] = useState<ExtractedProperty[]>([]);
@@ -239,6 +239,16 @@ const ComparisonMapPage: React.FC = () => {
   const uploadInputRef = useRef<HTMLInputElement>(null);
   // 自動保存したマップのID（2回目以降の上書き用）
   const [savedMapId, setSavedMapId] = useState<string | null>(null);
+
+  // ── 成約済み物件ステート ────────────────────────────────────────
+  const [settledCompeting, setSettledCompeting] = useState<CompetingProperty[]>([]);
+  const [settledPrintLoading, setSettledPrintLoading] = useState(false);
+  const [settledExtracting, setSettledExtracting] = useState(false);
+  const [settledExtractError, setSettledExtractError] = useState<string | null>(null);
+  const [settledExtractedProps, setSettledExtractedProps] = useState<ExtractedProperty[]>([]);
+  const [showSettledExtractDialog, setShowSettledExtractDialog] = useState(false);
+  const [isSettledDragging, setIsSettledDragging] = useState(false);
+  const settledUploadRef = useRef<HTMLInputElement>(null);
 
   // ── 売主データ読み込み＆自動ジオコーディング ─────────────────
   useEffect(() => {
@@ -335,6 +345,22 @@ const ComparisonMapPage: React.FC = () => {
           locMsg: '',
         }));
         if (savedCompeting.length > 0) setCompeting(savedCompeting);
+        // ── 成約済み物件を復元 ──
+        const savedSettled: CompetingProperty[] = ((latest.subject_property as any)?.settledProperties ?? []).map((p: any) => ({
+          id: uuidv4(),
+          name: p.name ?? '',
+          address: p.address ?? '',
+          latitude: p.latitude ?? null,
+          longitude: p.longitude ?? null,
+          price: p.price ?? '',
+          builtYearMonth: p.builtYearMonth ?? '',
+          exclusiveArea: p.exclusiveArea ?? '',
+          totalUnits: p.totalUnits ?? '',
+          floorInfo: p.floorInfo ?? '',
+          locStatus: (p.latitude && p.longitude ? 'confirmed' : 'idle') as LocStatus,
+          locMsg: '',
+        }));
+        if (savedSettled.length > 0) setSettledCompeting(savedSettled);
       } catch {
         // 保存データなしは無視
       }
@@ -343,15 +369,30 @@ const ComparisonMapPage: React.FC = () => {
 
   // ── 競合物件の自動保存（変更後2.5秒） ────────────────────────
   useEffect(() => {
-    if (!sellerId || competing.length === 0) return;
+    if (!sellerId || (competing.length === 0 && settledCompeting.length === 0)) return;
     const timer = setTimeout(async () => {
       try {
         const body = {
-          id: savedMapId,          // null = 新規 / 値あり = 上書き
+          id: savedMapId,
           sellerId,
           sellerNumber: sellerInfo?.sellerNumber ?? '',
-          subjectProperty: { name: subject.name, address: subject.address, latitude: subject.latitude, longitude: subject.longitude, priceType: subject.priceType, price: subject.price, builtYearMonth: subject.builtYearMonth, exclusiveArea: subject.exclusiveArea },
-          competingProperties: competing.map(p => ({ name: p.name, address: p.address, latitude: p.latitude, longitude: p.longitude, price: p.price, builtYearMonth: p.builtYearMonth, exclusiveArea: p.exclusiveArea, totalUnits: p.totalUnits, floorInfo: p.floorInfo })),
+          subjectProperty: {
+            name: subject.name, address: subject.address,
+            latitude: subject.latitude, longitude: subject.longitude,
+            priceType: subject.priceType, price: subject.price,
+            builtYearMonth: subject.builtYearMonth, exclusiveArea: subject.exclusiveArea,
+            // 成約済み物件もここに格納（別テーブル不要）
+            settledProperties: settledCompeting.map(p => ({
+              name: p.name, address: p.address, latitude: p.latitude, longitude: p.longitude,
+              price: p.price, builtYearMonth: p.builtYearMonth, exclusiveArea: p.exclusiveArea,
+              totalUnits: p.totalUnits, floorInfo: p.floorInfo,
+            })),
+          },
+          competingProperties: competing.map(p => ({
+            name: p.name, address: p.address, latitude: p.latitude, longitude: p.longitude,
+            price: p.price, builtYearMonth: p.builtYearMonth, exclusiveArea: p.exclusiveArea,
+            totalUnits: p.totalUnits, floorInfo: p.floorInfo,
+          })),
         };
         const { data } = await api.post('/api/comparison-maps/save', body);
         if (data?.id && !savedMapId) setSavedMapId(data.id);
@@ -361,7 +402,7 @@ const ComparisonMapPage: React.FC = () => {
     }, 2500);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [competing, sellerId]);
+  }, [competing, settledCompeting, sellerId]);
 
   // ── 地図の範囲自動調整 ───────────────────────────────────────
   const fitMap = useCallback(() => {
@@ -539,6 +580,59 @@ const ComparisonMapPage: React.FC = () => {
     }
   };
 
+  // ── 成約済み物件 印刷 ─────────────────────────────────────────
+  const handlePrintSettled = async () => {
+    if (settledCompeting.length === 0) {
+      alert('成約済み物件を1件以上追加してください。');
+      return;
+    }
+    type PinItem = { isSubject: boolean; label: string; name: string; address: string; lat: number; lng: number };
+    const pins: PinItem[] = [];
+    if (subject.latitude && subject.longitude) {
+      pins.push({ isSubject: true, label: '★', name: subject.name || '査定対象物件', address: subject.address, lat: subject.latitude, lng: subject.longitude });
+    }
+    settledCompeting.forEach((p, i) => {
+      if (p.latitude && p.longitude) {
+        pins.push({ isSubject: false, label: String(i + 1), name: p.name || `成約物件${i + 1}`, address: p.address, lat: p.latitude, lng: p.longitude });
+      }
+    });
+    if (pins.length === 0) {
+      alert('位置確認済みの物件がありません。');
+      return;
+    }
+    setSettledPrintLoading(true);
+    try {
+      const IMG_W = 600, IMG_H = 460;
+      const ACT_W = IMG_W * 2, ACT_H = IMG_H * 2;
+      const points = pins.map(p => ({ lat: p.lat, lng: p.lng }));
+      const lats = points.map(p => p.lat);
+      const lngs = points.map(p => p.lng);
+      const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+      const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+      const zoom = calcBoundsZoom(points, IMG_W, IMG_H, 110);
+      const markers = pins.map(p => ({
+        lat: p.lat, lng: p.lng,
+        label: p.isSubject ? '' : p.label,
+        color: p.isSubject ? '0xFFAA00' : '0x2196F3', // 成約済みは青
+      }));
+      const { data: mapData } = await api.get('/api/comparison-maps/static-map', {
+        params: { markers: JSON.stringify(markers), centerLat: centerLat.toFixed(7), centerLng: centerLng.toFixed(7), zoom, width: IMG_W, height: IMG_H },
+      });
+      type TableItem = { isSubject: boolean; label: string; name: string; address: string; price: string; priceType?: PriceType; builtYearMonth: string; exclusiveArea: string };
+      const tableData: TableItem[] = [
+        { isSubject: true, label: '★', name: subject.name || '査定対象物件', address: subject.address, price: subject.price, priceType: subject.priceType, builtYearMonth: subject.builtYearMonth, exclusiveArea: subject.exclusiveArea },
+        ...settledCompeting.map((p, i): TableItem => ({ isSubject: false, label: String(i + 1), name: p.name || `成約物件${i + 1}`, address: p.address, price: p.price, priceType: undefined, builtYearMonth: p.builtYearMonth, exclusiveArea: p.exclusiveArea })),
+      ];
+      const html = buildPrintHtml(tableData.length, mapData.imageData, tableData, { titleSuffix: '（成約済み物件）', priceRowLabel: '成約価格', badgeColor: '#2196F3' });
+      const w = window.open('', '_blank');
+      if (w) { w.document.write(html); w.document.close(); }
+    } catch (err) {
+      alert('地図画像の取得に失敗しました。');
+    } finally {
+      setSettledPrintLoading(false);
+    }
+  };
+
   // ── 印刷HTML構築 ──────────────────────────────────────────────
   type LabelForPrint = { isSubject: boolean; label: string; name: string; address: string; xPct: number; yPct: number };
   type TableForPrint = { isSubject: boolean; label: string; name: string; address: string; price: string; priceType?: PriceType; builtYearMonth: string; exclusiveArea: string };
@@ -547,12 +641,17 @@ const ComparisonMapPage: React.FC = () => {
     count: number,
     imgData: string,
     tableData: TableForPrint[],
+    options?: { titleSuffix?: string; priceRowLabel?: string; badgeColor?: string }
   ): string {
+    const titleSuffix = options?.titleSuffix ?? '（現在募集中物件）';
+    const priceRowLabel = options?.priceRowLabel ?? '価格';
+    const subjectBadgeBg = '#FF8800';
+    const competingBadgeBg = options?.badgeColor ?? '#CC0000';
     // 比較表HTML（ラベルオーバーレイは廃止 → 静的マップのピン番号のみ使用）
     const CIRCLED_NUM = ['', '①', '②', '③', '④', '⑤'];
     const colW = Math.floor(85 / tableData.length);
     const headerCells = tableData.map(p => {
-      const badgeBg = p.isSubject ? '#FF8800' : '#CC0000';
+      const badgeBg = p.isSubject ? subjectBadgeBg : competingBadgeBg;
       const num = parseInt(p.label, 10);
       const badgeLabel = p.isSubject ? '★' : (CIRCLED_NUM[num] ?? p.label);
       // ★ 数字バッジを th の先頭に固定行として配置し、縦方向の揃えを強制する
@@ -604,7 +703,7 @@ const ComparisonMapPage: React.FC = () => {
   </thead>
   <tbody>
     <tr>
-      <td style="${rowHdr}">価格</td>${priceRow}
+      <td style="${rowHdr}">${priceRowLabel}</td>${priceRow}
     </tr>
     <tr>
       <td style="${rowHdr}">築年月</td>${builtRow}
@@ -693,7 +792,7 @@ body {
 </head>
 <body>
 <div class="page">
-  <div class="title">${count}物件 比較表（現在募集中物件）</div>
+  <div class="title">${count}物件 比較表${titleSuffix}</div>
   <div class="map-wrapper">
     <img src="${imgData}" alt="比較マップ" />
     <div class="map-attribution">© Google</div>
@@ -815,6 +914,72 @@ body {
     setCompeting(arr => arr.map(p => p.id === id ? { ...p, ...patch } : p));
   }, []);
 
+  // ── 成約済み物件のジオコーディング ─────────────────────────────
+  const geocodeSettled = async (id: string) => {
+    const prop = settledCompeting.find(p => p.id === id);
+    if (!prop?.address.trim()) { alert('住所を入力してください。'); return; }
+    setSettledCompeting(arr => arr.map(p => p.id === id ? { ...p, locStatus: 'loading', locMsg: '' } : p));
+    try {
+      const { data } = await api.post('/api/comparison-maps/geocode', { address: prop.address, name: prop.name });
+      if (!data.success) throw new Error(data.error ?? '座標取得失敗');
+      setSettledCompeting(arr => arr.map(p => p.id === id ? {
+        ...p, latitude: data.latitude, longitude: data.longitude,
+        locStatus: data.needsConfirmation ? 'warning' : 'confirmed', locMsg: data.message ?? '',
+      } : p));
+    } catch (err: any) {
+      setSettledCompeting(arr => arr.map(p => p.id === id ? { ...p, locStatus: 'error', locMsg: err.response?.data?.error ?? err.message } : p));
+    }
+  };
+
+  // ── 成約済み物件の AI 抽出 ────────────────────────────────────
+  const processSettledFile = async (file: File) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+    if (!allowed.includes(file.type)) { setSettledExtractError('対応形式: PDF / JPEG / PNG / WebP / GIF'); return; }
+    setSettledExtractError(null);
+    setSettledExtracting(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const { data } = await api.post('/api/comparison-maps/extract-properties', { imageBase64: base64, mediaType: file.type || 'image/jpeg' });
+      if (!data.properties?.length) { setSettledExtractError('物件情報を読み取れませんでした。'); return; }
+      setSettledExtractedProps(data.properties);
+      setShowSettledExtractDialog(true);
+    } catch (err: any) {
+      setSettledExtractError(err.response?.data?.error ?? err.message ?? 'エラーが発生しました。');
+    } finally {
+      setSettledExtracting(false);
+    }
+  };
+
+  const handleSettledFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (file) processSettledFile(file);
+  };
+
+  const handleAddSettledExtracted = async () => {
+    const remaining = 5 - settledCompeting.length;
+    const toAdd = settledExtractedProps.slice(0, remaining).map(p => ({ ...newCompeting(), name: p.name, address: p.address, price: p.price, builtYearMonth: p.builtYearMonth, exclusiveArea: p.exclusiveArea, totalUnits: p.totalUnits, floorInfo: p.floorInfo }));
+    setSettledCompeting(arr => [...arr, ...toAdd]);
+    setShowSettledExtractDialog(false);
+    setSettledExtractedProps([]);
+    for (const prop of toAdd) {
+      if (!prop.address.trim()) continue;
+      setSettledCompeting(arr => arr.map(p => p.id === prop.id ? { ...p, locStatus: 'loading', locMsg: '' } : p));
+      try {
+        const { data } = await api.post('/api/comparison-maps/geocode', { address: prop.address, name: prop.name });
+        setSettledCompeting(arr => arr.map(p => {
+          if (p.id !== prop.id) return p;
+          if (!data.success) return { ...p, locStatus: 'error', locMsg: data.error ?? 'エラー' };
+          return { ...p, latitude: data.latitude, longitude: data.longitude, locStatus: data.needsConfirmation ? 'warning' : 'confirmed', locMsg: data.message ?? '' };
+        }));
+      } catch { setSettledCompeting(arr => arr.map(p => p.id === prop.id ? { ...p, locStatus: 'error', locMsg: '位置取得失敗' } : p)); }
+    }
+  };
+
   // ── 地図プレビュー ────────────────────────────────────────────
   const MapPreview = useCallback(() => {
     if (!isLoaded) {
@@ -928,7 +1093,7 @@ body {
             {sellerInfo.sellerNumber}{sellerInfo.name ? ` — ${sellerInfo.name}様` : ''}
           </Typography>
         )}
-        <Box sx={{ ml: 'auto' }}>
+        <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
           <Button
             variant="contained"
             startIcon={printLoading ? <CircularProgress size={16} color="inherit" /> : <PrintIcon />}
@@ -937,7 +1102,17 @@ body {
             size="small"
             sx={{ bgcolor: '#37474f', '&:hover': { bgcolor: '#263238' } }}
           >
-            {printLoading ? '地図準備中...' : 'A4印刷'}
+            {printLoading ? '準備中...' : '募集中 印刷'}
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={settledPrintLoading ? <CircularProgress size={16} color="inherit" /> : <PrintIcon />}
+            onClick={handlePrintSettled}
+            disabled={settledPrintLoading || settledCompeting.length === 0}
+            size="small"
+            sx={{ bgcolor: '#1565c0', '&:hover': { bgcolor: '#0d47a1' } }}
+          >
+            {settledPrintLoading ? '準備中...' : '成約済み 印刷'}
           </Button>
         </Box>
       </Box>
@@ -1217,6 +1392,88 @@ body {
             ※ 各物件の「位置確認」ボタンを押して座標を取得後、「A4印刷」ボタンで比較マップを生成します。<br />
             ※ 地図は住所ベースの概略位置です。
           </Typography>
+
+          {/* ───────────────── 成約済み物件セクション ───────────────── */}
+          <Box sx={{ mt: 2, pt: 2, borderTop: '2px solid #1565c0' }}>
+            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1, color: '#1565c0' }}>
+              成約済み比較物件
+              <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                ({settledCompeting.length}/5件)
+              </Typography>
+            </Typography>
+
+            {settledCompeting.map((prop, idx) => (
+              <Paper key={prop.id} variant="outlined" sx={{ p: 1.5, mb: 1.5, borderColor: '#90caf9' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <Box sx={{ width: 24, height: 24, borderRadius: '50%', bgcolor: '#2196F3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '12px', flexShrink: 0 }}>{idx + 1}</Box>
+                  <Typography variant="subtitle2" fontWeight="bold">成約物件 {idx + 1}</Typography>
+                  <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <LocIcon status={prop.locStatus} msg={prop.locMsg} />
+                    <IconButton size="small" color="error" onClick={() => setSettledCompeting(arr => arr.filter(p => p.id !== prop.id))}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
+                <Grid container spacing={1}>
+                  <Grid item xs={12}><TextField label="マンション名・物件名" value={prop.name} size="small" fullWidth onChange={e => setSettledCompeting(arr => arr.map(p => p.id === prop.id ? { ...p, name: e.target.value } : p))} /></Grid>
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <TextField label="所在地" value={prop.address} size="small" fullWidth
+                        onChange={e => setSettledCompeting(arr => arr.map(p => p.id === prop.id ? { ...p, address: e.target.value, locStatus: 'idle', locMsg: '' } : p))}
+                        onBlur={() => { if (prop.address.trim() && prop.locStatus === 'idle') geocode(prop.id + '_settled'); }} />
+                      <Button variant="outlined" size="small" sx={{ whiteSpace: 'nowrap', minWidth: 76 }}
+                        onClick={() => geocodeSettled(prop.id)}
+                        disabled={prop.locStatus === 'loading' || !prop.address.trim()}
+                        startIcon={<MyLocationIcon />}>
+                        {prop.locStatus === 'loading' ? '取得中' : '位置確認'}
+                      </Button>
+                    </Box>
+                    {prop.locMsg && <Typography variant="caption" color={prop.locStatus === 'error' ? 'error' : 'warning.main'}>{prop.locMsg}</Typography>}
+                  </Grid>
+                  <Grid item xs={12}><TextField label="成約価格（万円）" value={prop.price} size="small" fullWidth type="number" InputProps={{ endAdornment: <Typography variant="caption">万円</Typography> }} onChange={e => setSettledCompeting(arr => arr.map(p => p.id === prop.id ? { ...p, price: e.target.value } : p))} /></Grid>
+                  <Grid item xs={6}><TextField label="築年月" value={prop.builtYearMonth} size="small" fullWidth placeholder="例: 2015年02月" onChange={e => setSettledCompeting(arr => arr.map(p => p.id === prop.id ? { ...p, builtYearMonth: e.target.value } : p))} /></Grid>
+                  <Grid item xs={6}><TextField label="専有面積（㎡）" value={prop.exclusiveArea} size="small" fullWidth type="number" InputProps={{ endAdornment: <Typography variant="caption">㎡</Typography> }} onChange={e => setSettledCompeting(arr => arr.map(p => p.id === prop.id ? { ...p, exclusiveArea: e.target.value } : p))} /></Grid>
+                  <Grid item xs={6}><TextField label="総戸数" value={prop.totalUnits} size="small" fullWidth onChange={e => setSettledCompeting(arr => arr.map(p => p.id === prop.id ? { ...p, totalUnits: e.target.value } : p))} /></Grid>
+                  <Grid item xs={6}><TextField label="所在階" value={prop.floorInfo} size="small" fullWidth onChange={e => setSettledCompeting(arr => arr.map(p => p.id === prop.id ? { ...p, floorInfo: e.target.value } : p))} /></Grid>
+                  {prop.price && prop.exclusiveArea && <Grid item xs={12}><Typography variant="caption" color="text.secondary">㎡単価: {calcPerSqm(prop.price, prop.exclusiveArea)}</Typography></Grid>}
+                </Grid>
+              </Paper>
+            ))}
+
+            {settledCompeting.length < 5 && (
+              <Button variant="outlined" fullWidth startIcon={<AddIcon />} sx={{ mb: 1, borderColor: '#2196F3', color: '#2196F3' }}
+                onClick={() => setSettledCompeting(arr => [...arr, newCompeting()])}>
+                成約済み物件を追加（{settledCompeting.length + 1}件目）
+              </Button>
+            )}
+
+            {/* 成約済み資料アップロードエリア */}
+            <Box sx={{ mb: 1 }}>
+              <input ref={settledUploadRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" style={{ display: 'none' }} onChange={handleSettledFileInput} />
+              <Paper variant="outlined"
+                onClick={() => !settledExtracting && settledCompeting.length < 5 && settledUploadRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); if (!settledExtracting && settledCompeting.length < 5) setIsSettledDragging(true); }}
+                onDragLeave={e => { e.preventDefault(); setIsSettledDragging(false); }}
+                onDrop={e => { e.preventDefault(); setIsSettledDragging(false); if (!settledExtracting && settledCompeting.length < 5) { const f = e.dataTransfer.files?.[0]; if (f) processSettledFile(f); } }}
+                sx={{ p: 2, textAlign: 'center', cursor: settledCompeting.length >= 5 || settledExtracting ? 'default' : 'pointer', borderStyle: 'dashed', borderWidth: '2px', borderColor: isSettledDragging ? '#2196F3' : settledExtracting ? '#64b5f6' : '#90caf9', bgcolor: isSettledDragging ? '#e3f2fd' : '#f3f9ff', transition: 'all 0.15s' }}>
+                {settledExtracting ? (
+                  <Box><CircularProgress size={24} sx={{ mb: 0.5, color: '#2196F3' }} /><Typography variant="body2" color="primary" fontWeight="bold">Claudeが資料を読み取り中...</Typography><LinearProgress sx={{ mt: 1, borderRadius: 1 }} /></Box>
+                ) : settledCompeting.length >= 5 ? (
+                  <Typography variant="caption" color="text.disabled">成約済み物件は最大5件です</Typography>
+                ) : isSettledDragging ? (
+                  <Box><UploadFileIcon sx={{ fontSize: 32, color: '#2196F3', mb: 0.5 }} /><Typography variant="body2" color="primary" fontWeight="bold">ここにドロップ！</Typography></Box>
+                ) : (
+                  <Box>
+                    <UploadFileIcon sx={{ fontSize: 28, color: '#90caf9', mb: 0.5 }} />
+                    <Typography variant="body2" fontWeight="bold" color="text.secondary">成約済み資料をドラッグ＆ドロップ</Typography>
+                    <Typography variant="caption" color="text.disabled">または クリックしてファイルを選択</Typography>
+                    <Box sx={{ mt: 0.5 }}><Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.62rem' }}>PDF・JPEG・PNG 対応 ／ 複数物件まとめてOK</Typography></Box>
+                  </Box>
+                )}
+              </Paper>
+              {settledExtractError && <Alert severity="error" sx={{ mt: 0.5 }} onClose={() => setSettledExtractError(null)}>{settledExtractError}</Alert>}
+            </Box>
+          </Box>
         </Box>
 
         {/* 右：地図プレビュー */}
@@ -1304,6 +1561,34 @@ body {
           <Button variant="contained" onClick={handleAddExtracted}
             disabled={extractedProps.length === 0}>
             {Math.min(extractedProps.length, 5 - competing.length)}件を競合物件に追加
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* ── 成約済み 資料読み取り確認ダイアログ ── */}
+      <Dialog open={showSettledExtractDialog} onClose={() => setShowSettledExtractDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>読み取り結果（成約済み）— {settledExtractedProps.length}件</DialogTitle>
+        <DialogContent dividers sx={{ p: 1.5 }}>
+          {settledExtractedProps.map((p, i) => (
+            <Paper key={i} variant="outlined" sx={{ p: 1.5, mb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Box sx={{ width: 22, height: 22, borderRadius: '50%', bgcolor: '#2196F3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '11px', flexShrink: 0 }}>{settledCompeting.length + i + 1}</Box>
+                <Typography variant="subtitle2" fontWeight="bold">成約物件 {settledCompeting.length + i + 1}</Typography>
+              </Box>
+              <Grid container spacing={1}>
+                <Grid item xs={12}><TextField label="物件名" value={p.name} size="small" fullWidth onChange={e => setSettledExtractedProps(arr => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} /></Grid>
+                <Grid item xs={12}><TextField label="所在地" value={p.address} size="small" fullWidth onChange={e => setSettledExtractedProps(arr => arr.map((x, j) => j === i ? { ...x, address: e.target.value } : x))} /></Grid>
+                <Grid item xs={6}><TextField label="成約価格（万円）" value={p.price} size="small" fullWidth InputProps={{ endAdornment: <Typography variant="caption">万円</Typography> }} onChange={e => setSettledExtractedProps(arr => arr.map((x, j) => j === i ? { ...x, price: e.target.value } : x))} /></Grid>
+                <Grid item xs={6}><TextField label="築年月" value={p.builtYearMonth} size="small" fullWidth onChange={e => setSettledExtractedProps(arr => arr.map((x, j) => j === i ? { ...x, builtYearMonth: e.target.value } : x))} /></Grid>
+                <Grid item xs={6}><TextField label="専有面積（㎡）" value={p.exclusiveArea} size="small" fullWidth InputProps={{ endAdornment: <Typography variant="caption">㎡</Typography> }} onChange={e => setSettledExtractedProps(arr => arr.map((x, j) => j === i ? { ...x, exclusiveArea: e.target.value } : x))} /></Grid>
+                <Grid item xs={6}><TextField label="所在階" value={p.floorInfo} size="small" fullWidth onChange={e => setSettledExtractedProps(arr => arr.map((x, j) => j === i ? { ...x, floorInfo: e.target.value } : x))} /></Grid>
+              </Grid>
+            </Paper>
+          ))}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setShowSettledExtractDialog(false); setSettledExtractedProps([]); }}>キャンセル</Button>
+          <Button variant="contained" sx={{ bgcolor: '#2196F3' }} onClick={handleAddSettledExtracted} disabled={settledExtractedProps.length === 0}>
+            {Math.min(settledExtractedProps.length, 5 - settledCompeting.length)}件を成約済み物件に追加
           </Button>
         </DialogActions>
       </Dialog>
