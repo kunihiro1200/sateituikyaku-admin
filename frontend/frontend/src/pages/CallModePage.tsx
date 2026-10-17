@@ -120,6 +120,7 @@ import SellerPortalAdminModal from '../components/SellerPortalAdminModal';
 import { SouhuModal } from '../components/SouhuModal';
 import AreaReportModal from '../components/AreaReportModal';
 import ServiceSupportModal from '../components/ServiceSupportModal';
+import SalesProposalModal from '../components/SalesProposalModal';
 import CollapsibleSection from '../components/CollapsibleSection';
 
 import HouseMakerModal from '../components/HouseMakerModal';
@@ -1276,6 +1277,8 @@ const CallModePage = () => {
   const [areaReportOpen, setAreaReportOpen] = useState(false);
   // サービス資料生成モーダル用の状態
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
+  // 販売提案書作成モーダル用の状態
+  const [salesProposalModalOpen, setSalesProposalModalOpen] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
 
   // 訪問予約編集用の状態
@@ -6758,6 +6761,9 @@ HP：https://ifoo-oita.com/
                     )}
                     <MenuItem onClick={() => { setDocGenMenuAnchor(null); setServiceModalOpen(true); }}>
                       サービス
+                    </MenuItem>
+                    <MenuItem onClick={() => { setDocGenMenuAnchor(null); setSalesProposalModalOpen(true); }}>
+                      販売提案書作成
                     </MenuItem>
                     {seller?.id && (
                       <MenuItem onClick={() => { setDocGenMenuAnchor(null); window.open(`/sellers/${seller.id}/comparison-map`, '_blank'); }}>
@@ -12966,6 +12972,27 @@ HP：https://ifoo-oita.com/
           sellerNumber={seller.sellerNumber || ''}
           ownerName={seller.name || ''}
           propertyAddress={propInfo.address || seller.propertyAddress || ''}
+        />
+      )}
+
+      {/* 販売提案書作成モーダル */}
+      {seller && (
+        <SalesProposalModal
+          open={salesProposalModalOpen}
+          onClose={() => setSalesProposalModalOpen(false)}
+          sellerId={seller.id}
+          sellerNumber={seller.sellerNumber || ''}
+          propertyAddress={propInfo.address || seller.propertyAddress || ''}
+          propertyType={propInfo.propertyType || seller.propertyType || ''}
+          landArea={propInfo.landArea}
+          buildingArea={propInfo.buildingArea}
+          landAreaVerified={propInfo.landAreaVerified}
+          buildingAreaVerified={propInfo.buildingAreaVerified}
+          buildYear={propInfo.buildYear}
+          structure={propInfo.structure}
+          valuationAmount1={seller.valuationAmount1}
+          valuationAmount2={seller.valuationAmount2}
+          valuationAmount3={seller.valuationAmount3}
         />
       )}
 
