@@ -25,9 +25,14 @@ import {
   Refresh as RefreshIcon,
   Check as CheckIcon,
   Save as SaveIcon,
+  Download as DownloadIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
+import SalesProposalImagePanel, {
+  ProposalImage,
+  MAX_PROPOSAL_IMAGES,
+} from './SalesProposalImagePanel';
 
 // ─── 会社情報 ─────────────────────────────────────────────────────────────────
 const COMPANY_INFO = {
@@ -133,6 +138,12 @@ export default function SalesProposalModal({
   // リフレッシュ確認ダイアログ（手動入力済みの内容を上書きする前に確認する）
   const [refreshConfirmOpen, setRefreshConfirmOpen] = useState(false);
 
+  // 添付画像（ブラウザメモリ内のみ・サーバーアップロードなし）
+  const [attachedImages, setAttachedImages] = useState<ProposalImage[]>([]);
+
+  // 添付画像のダウンロード中フラグ
+  const [downloading, setDownloading] = useState(false);
+
   // コピー状態
   const [copied, setCopied] = useState(false);
 
@@ -144,7 +155,14 @@ export default function SalesProposalModal({
 
   // ─── モーダルが開くたびに localStorage から復元 ─────────────────────────────
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      // モーダルを閉じる際に画像ObjectURLを解放（メモリリーク防止）
+      setAttachedImages(prev => {
+        prev.forEach(img => URL.revokeObjectURL(img.previewUrl));
+        return [];
+      });
+      return;
+    }
     setCopied(false);
     setSaveSuccess(false);
     setSaveError(null);
@@ -357,6 +375,33 @@ export default function SalesProposalModal({
   const envText = envParts.length > 0 ? envParts.join('\n') : '（未取得）';
 
   // ─── ChatGPT 指示文生成 ──────────────────────────────────────────────────
+
+  // 画像加工ルール（添付画像がある場合のみ挿入）
+  const IMAGE_RULES_TEXT = attachedImages.length > 0
+    ? `
+---
+添付した画像がある場合は、提案書に使用する前に資料用として見やすく加工してください。
+
+【画像加工ルール】
+- 添付画像は実際の物件・周辺環境の参考画像として使用してください。
+- 画像に人物が写っている場合は削除してください。
+- 画像に車、生活用品、ゴミ、目立つ雑多な物が写っている場合は、必要に応じて整理してください。
+- 電柱、電線、看板、画面上の不要なUI表示などが目立つ場合は、資料用として自然に整理してください。
+- Google Map等のスクリーンショットを使用する場合は、地図サービスの画面表示・UI・余計な文字情報が目立たないように整理してください。
+- 明るさ、傾き、トリミング、見やすさは資料向けに調整してください。
+- ただし、建物形状、道路形状、敷地形状、周辺施設の位置関係など、物件判断に関わる重要な事実は変えないでください。
+- 実際に写っていない建物や設備を新たに加えないでください。
+- 実物と異なる印象を与える過度な演出はしないでください。
+---
+
+添付画像一覧（${attachedImages.length}枚）：
+${attachedImages.map((img, i) =>
+      `  ${i + 1}. ${img.type}${img.description ? ` / ${img.description}` : ''}（${img.file.name}）`
+    ).join('\n')}
+
+添付した画像がある場合は、その実画像を優先して使用してください。必要に応じて、人物・電柱・電線・不要物・画面UI等を資料用に自然に整理したうえで、提案書に掲載してください。建物や敷地の形状など重要な事実は変更しないでください。`
+    : '';
+
   const PROMPT_SUFFIX = `以上の内容とプロジェクトに登録された参考画像をもとに、売主様にそのままお渡しできる、明るく高級感のあるA4縦1枚の販売価格・販売戦略提案書を画像生成してください。
 
 レイアウトは物件の特徴や情報量に合わせて変更してください。白・ネイビー・ゴールド・淡いベージュを基調とし、価格・購入ターゲット・販売戦略が分かりやすい資料にしてください。
@@ -388,8 +433,53 @@ Supabaseから取得した物件情報とスタッフが指定した条件を利
 プロジェクトに登録された参考画像をデザインの参考とし、物件に応じた構成でA4縦の画像を作成してください。
 
 社内情報・未確認情報・架空の事実は掲載しないでください。
+${IMAGE_RULES_TEXT}
 
 ${PROMPT_SUFFIX}`.trim();
+
+  // ─── 添付画像のダウンロード（1枚: 直接 / 複数枚: ZIP） ─────────────────────
+  const handleDownloadImages = async () => {
+    if (attachedImages.length === 0 || downloading) return;
+    setDownloading(true);
+    try {
+      if (attachedImages.length === 1) {
+        // 1枚: 直接ダウンロード
+        const img = attachedImages[0];
+        const a = document.createElement('a');
+        a.href = img.previewUrl;
+        a.download = img.file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else {
+        // 複数枚: ZIP にまとめてダウンロード
+        const JSZip = (await import('jszip')).default;
+        const zip = new JSZip();
+        attachedImages.forEach((img, i) => {
+          const prefix = String(i + 1).padStart(2, '0');
+          const ext = img.file.name.split('.').pop() || 'jpg';
+          const typePart = img.type.replace(/\s/g, '_');
+          const descPart = img.description
+            ? `_${img.description.replace(/[\s/\\:*?"<>|]/g, '_').slice(0, 20)}`
+            : '';
+          zip.file(`${prefix}_${typePart}${descPart}.${ext}`, img.file);
+        });
+        const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 5 } });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `提案書画像_${sellerNumber}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      console.error('[SalesProposalModal] 画像ダウンロードエラー:', err);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // ─── クリップボードへコピー ───────────────────────────────────────────────
   const handleCopy = async () => {
@@ -654,6 +744,24 @@ ${PROMPT_SUFFIX}`.trim();
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
               💾 入力内容はブラウザに自動保存されます（誤操作による消失を防止）
             </Typography>
+
+            {/* 掲載画像（任意） */}
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+              🖼️ 掲載画像（任意・最大{MAX_PROPOSAL_IMAGES}枚）
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              現地写真・Google Mapのスクリーンショット等を添付すると、指示文に画像加工ルールと一覧が自動追加されます
+            </Typography>
+            <SalesProposalImagePanel
+              images={attachedImages}
+              onImagesChange={setAttachedImages}
+            />
+            {attachedImages.length > 0 && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                ⚠️ 画像はブラウザ内のみ保存されます。モーダルを閉じると消えます。
+              </Typography>
+            )}
           </Grid>
 
           {/* ── 右カラム：生成された指示文プレビュー ── */}
@@ -733,13 +841,34 @@ ${PROMPT_SUFFIX}`.trim();
               <Box
                 sx={{
                   px: 2, py: 1,
-                  bgcolor: '#e8f4fd',
-                  borderTop: '1px solid #b3d4f0',
+                  bgcolor: attachedImages.length > 0 ? '#fff8e1' : '#e8f4fd',
+                  borderTop: '1px solid',
+                  borderColor: attachedImages.length > 0 ? '#ffe082' : '#b3d4f0',
                 }}
               >
-                <Typography variant="caption" color="text.secondary">
-                  💡 上記をコピーして ChatGPT の「くじら不動産｜売却提案書作成」プロジェクトに貼り付けてください
-                </Typography>
+                {attachedImages.length > 0 ? (
+                  <Box>
+                    <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#e65100', display: 'block', mb: 0.5 }}>
+                      📋 ChatGPT への渡し方（画像あり）
+                    </Typography>
+                    {[
+                      '「作成指示をコピー」で文章をコピー',
+                      '「添付画像をダウンロード」でファイルを保存',
+                      '（ZIPの場合は解凍する）',
+                      'ChatGPT の「くじら不動産｜売却提案書作成」を開く',
+                      '文章を貼り付け、画像ファイルをアップロード',
+                      '送信',
+                    ].map((step, i) => (
+                      <Typography key={i} variant="caption" sx={{ display: 'block', color: '#5d4037', lineHeight: 1.6 }}>
+                        {i < 2 || i >= 3 ? `${i + 1}. ` : '　　'}{step}
+                      </Typography>
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography variant="caption" color="text.secondary">
+                    💡 上記をコピーして ChatGPT の「くじら不動産｜売却提案書作成」プロジェクトに貼り付けてください
+                  </Typography>
+                )}
               </Box>
             </Box>
           </Grid>
@@ -777,6 +906,23 @@ ${PROMPT_SUFFIX}`.trim();
             </Button>
           </span>
         </Tooltip>
+
+        {/* 添付画像ダウンロードボタン（画像がある場合のみ表示） */}
+        {attachedImages.length > 0 && (
+          <Tooltip title={attachedImages.length > 1 ? `${attachedImages.length}枚をZIPでダウンロード` : '1枚をダウンロード'}>
+            <span>
+              <Button
+                variant="outlined"
+                color="warning"
+                startIcon={downloading ? <CircularProgress size={16} /> : <DownloadIcon />}
+                onClick={handleDownloadImages}
+                disabled={downloading}
+              >
+                添付画像をダウンロード（{attachedImages.length}枚）
+              </Button>
+            </span>
+          </Tooltip>
+        )}
 
         {/* メインのコピーボタン */}
         <Button
