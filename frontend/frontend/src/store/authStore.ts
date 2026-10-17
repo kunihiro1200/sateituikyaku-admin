@@ -282,23 +282,28 @@ export const useAuthStore = create<AuthState>()(
         localStorage.setItem('refresh_token', session.refresh_token);
       }
 
-      // 社員情報を取得（必ずAPIから取得、キャッシュを使用しない）
-      // タイムアウト: コールドスタート対応のため45秒に延長
-      const AUTH_ME_TIMEOUT = 45000;
+      // 社員情報を取得
+      // ★ タイムアウトは短く(8秒)、api.ts の自動リトライは _skipRetry フラグで無効化
+      //   （二重リトライ防止: 8秒 × api.ts3回 = 24秒になるのを防ぐ）
+      const AUTH_ME_TIMEOUT = 8000;
       let authMeSuccess = false;
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-          const response = await api.get('/auth/me', { timeout: AUTH_ME_TIMEOUT });
+          const response = await (api as any).get('/auth/me', {
+            timeout: AUTH_ME_TIMEOUT,
+            _retryCount: 10, // api.ts の自動リトライを実質無効化（上限3なので10で十分）
+          });
           console.log('✅ Auth check successful, got employee info from API:', {
             name: response.data.name,
             initials: response.data.initials,
             email: response.data.email,
           });
+          // 取得成功したらキャッシュに保存（次回のフォールバック用）
+          localStorage.setItem('employee-cache', JSON.stringify(response.data));
           set({ employee: response.data, isAuthenticated: true, isLoading: false });
           authMeSuccess = true;
           break;
         } catch (apiError: any) {
-          const isTimeout = apiError.code === 'ECONNABORTED' || apiError.message?.includes('timeout');
           const status = apiError.response?.status;
 
           // 401 = 明確にセッション無効 → 即ログアウト
@@ -308,21 +313,27 @@ export const useAuthStore = create<AuthState>()(
             localStorage.removeItem('session_token');
             localStorage.removeItem('refresh_token');
             localStorage.removeItem('auth-storage');
+            localStorage.removeItem('employee-cache');
             set({ employee: null, isAuthenticated: false, isLoading: false });
-            authMeSuccess = true; // ループ終了フラグ
+            authMeSuccess = true;
             break;
           }
 
-          // タイムアウト or サーバーエラー → リトライ
           if (attempt < 3) {
-            const wait = attempt * 3000; // 3s → 6s
-            console.warn(`⚠️ /auth/me attempt ${attempt} failed (${isTimeout ? 'timeout' : status}), retrying in ${wait / 1000}s...`);
+            const wait = 3000;
+            console.warn(`⚠️ /auth/me attempt ${attempt} failed (${status ?? 'timeout'}), retrying in ${wait / 1000}s...`);
             await new Promise(r => setTimeout(r, wait));
           } else {
-            // 3回すべてタイムアウト → 認証状態を維持してロードを終わらせる
-            // ログアウトはしない（ネットワーク障害かコールドスタートの可能性）
+            // 3回すべて失敗 → Supabase セッションは有効なのでキャッシュを使って画面を開く
             console.error('❌ Failed to get employee info after 3 attempts:', apiError);
-            set({ isLoading: false });
+            const cachedEmployee = JSON.parse(localStorage.getItem('employee-cache') || 'null');
+            if (cachedEmployee) {
+              console.warn('⚠️ Using cached employee data as fallback');
+              set({ employee: cachedEmployee, isAuthenticated: true, isLoading: false });
+            } else {
+              // キャッシュもない → isAuthenticated: true で画面は開く（社員データは後で取得）
+              set({ isAuthenticated: true, isLoading: false });
+            }
           }
         }
       }
